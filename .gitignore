@@ -42,6 +42,22 @@
 *.xcodeproj
 *.xcworkspace
 
+# ---- 参照データ（本家とファンゲームの書き出し、計約 29 GB。git の対象外） ----
+/pak_reference/
+/pak_reference_2/
+/cc2_reference/
+
+# ---- 参照データからスクリプトで作り直せる素材（Tools/ と Content/Python/wasami_tools が作る） ----
+/Content/CC2/
+/Content/DD/
+/Content/Pipeline/
+/Content/Stage/
+/Content/Developers/
+/Content/Collections/
+
+# ---- Python のキャッシュ ----
+__pycache__/
+
 # ---- Claude Code の個人設定 ----
 .claude/settings.local.json
 
