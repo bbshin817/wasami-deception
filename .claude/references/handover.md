@@ -102,3 +102,25 @@ WebGL 版の多くの工夫は「ブラウザで UE の見た目と挙動を再�
 - 参照データから作り直せる素材（`/Game/CC2` など、数 GB）は git の外に置く。手で作るアセットは Git LFS で扱う（`.gitattributes`）。
 - コミットと push は WebGL 版と同じ運用（実装ごとにコミット、条件を満たすと main を自動で push。`.claude/guides/git-workflow.md`）。
 - 参照データ（pak_reference・pak_reference_2・cc2_reference）はこのリポジトリの直下へ移した（`.gitignore`）。WebGL 版の派生データ（`assets-src/cc2/layout.json`・`assets-src/level/stage.json`・`assets-src/cc2/tex/`）と調査の資料（`.claude/references/`）は WebGL 版の場所から読む。
+
+## 7. 現状（2026-09-16 の作業の終わり）と次の一歩
+
+できたこと:
+
+- M0: 運用ルール（`CLAUDE.md`、`.claude/guides/`）、参照データの移動、git（main、Git LFS、origin へ push 済み）。
+- ステージの取り込み: `python Tools/cc2/prepare_stage.py` → MCP の `WasamiStageTools` で `/Game/CC2` にメッシュ 68・テクスチャ 286・マテリアル 157、レベル `/Game/Stage/Maps/L_Zone1`（配置 1,242・灯 301・反射キャプチャ 2・ポストプロセスボリューム 2・霧・スカイライト・プレイヤースタート）。ホームの見た目は WebGL 版の画面と同じ色と質感で、Lumen で照らされる。
+- M2 の始まり: C++ の `WasamiGameMode` と `WasamiPlayerCharacter`（本家の値: カプセル 50 / 88、SpringArm (0, 0, 95)・長さ 0・回転ラグ 20、歩き 300・ダッシュ 600・ブースト 870 cm/s を 6.75 s・再使用 8.5 s、速さに連動する FOV 90→115〈本家の 0.001 s のタイマー〉、頭の揺れ〈本家の歩き・走りのシェイクを `/Game/DD` に作った LegacyCameraShake〉、中クリックの 180°、マウスの軸〈感度 0.07・UE4 の FOV スケーリング・スムージング〉）。PIE でホームに出て、各値が本家どおりなことを確かめた。
+
+まだ確かめていないこと・課題:
+
+- 実際の入力での動き（歩く・ダッシュ・FOV の広がり・頭の揺れ・180°・ブースト）。エディタが背後にあると 3 fps ほどに落ち、リモートの疑似操作（`LaunchCharacter`）では速さが出ず確かめられなかった。PIE で触るか、入力を流す Automation テストを作る。
+- MCP の再接続: Docker Desktop が `0.0.0.0:8000` を掴んでいるため、エディタを閉じている間に Claude Code の接続が切れる。開き直した後は `/mcp` で再接続する（`.claude/guides/unreal-workflow.md`）。
+- ステージ: デカール（`Chaotic_Customer_Zone_1_Decals.usda` の 112）、当たり（いまはすべて複雑な当たり。階段・柵・扉を PIE で歩いて確かめる）、NavMesh、性能（301 灯の影・Nanite・Lumen をこの PC で計測）。動く部品（扉・柵・障壁・街灯・車・列車）はまだ静的なメッシュとして置いてあるだけ。
+- LUT のテクスチャは `refresh_cc2_asset_settings` のたびに「変わった」と数えられる（設定の読み戻しが違う）。害はない。
+
+次の一歩（おすすめの順）:
+
+1. PIE で歩いて当たりと見た目を確かめ、性能を測る（`stat fps` / `stat unit`）。
+2. M2 の残り: 視線の手のマーク（interact）、テレポーテーション、タブレット（本家の UMG と BP の値）。
+3. M3: シャード（ワサミ餅）301 個、チェックポイントとセーブ、死亡とライフ。
+4. M1 の残り: デカール、NavMesh、ギミックを動く部品として作り直す（M5 の準備）。
