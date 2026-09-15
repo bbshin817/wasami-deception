@@ -178,7 +178,8 @@ def _player_start(eas, stage, counts):
     start = stage["gameplay"]["start"]
     loc = _vec(start["location"])
     loc.z += START_LIFT
-    actor = eas.spawn_actor_from_class(unreal.PlayerStart, loc, unreal.Rotator(0.0, float(start["yaw"]), 0.0))
+    # unreal.Rotator's positional order is (roll, pitch, yaw): name them
+    actor = eas.spawn_actor_from_class(unreal.PlayerStart, loc, unreal.Rotator(roll=0.0, pitch=0.0, yaw=float(start["yaw"])))
     _tag(actor, "PlayerStart_Checkpoint1", "Gameplay")
     counts["player_start"] += 1
 

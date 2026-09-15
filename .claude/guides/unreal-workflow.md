@@ -5,6 +5,8 @@
 - エンジン: UE 5.8.2（`C:\Program Files\Epic Games\UE_5.8`）。プロジェクト: `wasami_deception.uproject`（C++ モジュール `wasami_deception`）。
 - PC: i7-9700K、32 GB、GeForce GTX 1660 SUPER（4 GB、RT コアなし）。
 - MCP: `.mcp.json` の `unreal-mcp`（http://127.0.0.1:8000/mcp）。エディタが起動していないと使えない。
+- この PC では Docker Desktop（`com.docker.backend.exe`）が `0.0.0.0:8000` を掴んでいる。エディタの MCP サーバーはより狭い `127.0.0.1:8000` で受けるので動くが、**エディタを閉じている間に Claude Code が接続を試すと Docker に当たって `ENDPOINT_NOT_FOUND` になり、そのセッションでは `unreal-mcp` が切れたままになる**。エディタを開き直した後は、ユーザーに `/mcp` で再接続してもらう（それまではリモート実行で作業できる）。
+- Python の `unreal.Rotator(a, b, c)` の位置引数は (roll, pitch, yaw) の順。必ず `unreal.Rotator(roll=…, pitch=…, yaw=…)` と名前で渡す。
 
 ## MCP の使い方
 
