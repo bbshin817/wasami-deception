@@ -1,0 +1,51 @@
+# =========================================================
+# Unreal Engine (C++) プロジェクト用 .gitignore
+# =========================================================
+
+# ---- UE が自動生成するフォルダ (ビルド成果物・キャッシュ・ログ等) ----
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+
+# プラグイン配下の生成物
+/Plugins/**/Binaries/
+/Plugins/**/Intermediate/
+
+# ---- ビルド済みライティングデータ (Build Lighting で再生成可能) ----
+*_BuiltData.uasset
+
+# ---- パッケージ出力 ----
+# Build/ はアイコンと PakBlacklist のみ追跡する
+/Build/*
+!/Build/*/
+/Build/*/**
+!/Build/*/PakBlacklist*.txt
+!/Build/**/*.ico
+
+# ---- IDE プロジェクトファイル ("Generate Project Files" で再生成可能) ----
+# Visual Studio
+.vs/
+*.sln
+*.slnx
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+.vsconfig
+# JetBrains Rider
+.idea/
+# Visual Studio Code
+.vscode/
+*.code-workspace
+# Xcode
+*.xcodeproj
+*.xcworkspace
+
+# ---- Claude Code の個人設定 ----
+.claude/settings.local.json
+
+# ---- OS が生成するファイル ----
+Thumbs.db
+Desktop.ini
+.DS_Store
