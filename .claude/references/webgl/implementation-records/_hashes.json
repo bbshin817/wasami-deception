@@ -1,0 +1,173 @@
+{
+  "00-overview.md": {
+    "src/main.ts": "b4533da5192702e4c76913660d32ef4089cf4920",
+    "src/game/game.ts": "b4603c9f2f342ee8fb3974ceb0d6db303ad9c8a9"
+  },
+  "01-boot-and-config.md": {
+    "src/main.ts": "b4533da5192702e4c76913660d32ef4089cf4920",
+    "src/config.ts": "1ff28115e9d26deffe882240b1caa9f8724bda34",
+    "src/core/overrides.ts": "dbbd9c2fd8ad9aa8a4f189ce08fff7c1852d6d09",
+    "index.html": "27a3f67a016eabb07b612cff9590e2b43f44bf3b",
+    "vite.config.ts": "b5149614c8d846517c23572a9136343860d5819a",
+    "tsconfig.json": "97449d7a5d4aa851948c4aa04b503e3c754d7a9b",
+    "package.json": "30f5e7701b8c06a777e0fced8eea3b6e1115b402",
+    "scripts/check-pages-limits.mjs": "9e3b83e8a89c9fb25f33c602fd919330fbdb0240",
+    "tests/pages-limits.test.ts": "74c6d8025318838481e65eb2dfb37401f31fce64"
+  },
+  "02-core-engine-loader-input.md": {
+    "src/core/engine.ts": "c3b6d80f9fb52fc5540d0c6e5b787bce1aaddf4f",
+    "src/core/loader.ts": "d3dcf67c1776d832aa19a7732385311df25cf755",
+    "src/core/input.ts": "8d379413e4d0e605f17a1fda2e3517730c9e7e50"
+  },
+  "03-debug-stats.md": {
+    "src/debug/stats.ts": "e54cd5361eb18e067548a852ffd9e248ab3bd215"
+  },
+  "04-game-state-save.md": {
+    "src/game/game.ts": "b4603c9f2f342ee8fb3974ceb0d6db303ad9c8a9",
+    "src/game/state.ts": "325647092c5512b98242f47cd6b4d179f8748b8d",
+    "src/game/results.ts": "bab216b50809b3351f055bca47a9159a61cc271b",
+    "src/game/save.ts": "be91f407434de181efdec5bd21b88e33673caa07",
+    "src/game/settings.ts": "67016815565de071c470fd31a29698c4e7e21ffc",
+    "src/game/traps.ts": "f96e30c0d95ffbe0949f28fd187d815f863fd269",
+    "tests/traps.test.ts": "f6edf5d484f66b90a86673ff9e9ab2ff9540c0ba",
+    "src/game/doors.ts": "e983298bce9cde728dc71d4045848e232684235c",
+    "tests/doors.test.ts": "18efe283e05e8afe1022ec609cad0dd1c9b95592",
+    "src/game/escape.ts": "32aee6a3011213f4a78823566eae9fefef9797db",
+    "tests/escape.test.ts": "9b41c4e437aa179423f45c3a36cf3a238cf6e0a8",
+    "tests/state.test.ts": "06d62f449957bda076ae8782e6d79f31924eb51f",
+    "tests/results.test.ts": "41476ac0aeb064e65a29c82475776e2702b29582",
+    "tests/settings.test.ts": "30cb0d789320df0bd98c5a79a61709a8f63094e7"
+  },
+  "05-player-controller.md": {
+    "src/player/controller.ts": "300691a490c90c1b87a9ce796aa05efe461e2749",
+    "src/player/teleport.ts": "83fb754f61a48489fb99ed8951a5dffd310f6872",
+    "src/player/teleport-fx.ts": "923e9a0b10b7bd9fa377d94c7777191a80abbc61",
+    "src/player/teleport-ring.ts": "ab03804484c7c792cee0fae326693b3b6df44715",
+    "src/player/boost-fx.ts": "b90619b94f5083ab2e1a52acf1f4da474976cc70",
+    "tests/teleport-fx.test.ts": "767c6039869b33b8af452fa8f3367d90b6e46cc2",
+    "tests/boost-fx.test.ts": "5cf7195b960c59533476b9c3cece2aa9f41a702b",
+    "src/core/ue-curve.ts": "eaa8e5eb05873e74675549a7e96e0fc63b8ce7e7",
+    "tests/ue-curve.test.ts": "c1cc0465ac71dbe4cf9dcfab2eee4890504b1112",
+    "src/player/walk.ts": "5232d60afa5f2f30fa36de79e4ec649ce8390748",
+    "tests/walk.test.ts": "dbfdd059362f6eba266448eb60f0652aa577410d"
+  },
+  "06-audio.md": {
+    "src/audio/audio.ts": "c0c99b948872ef6c0606031fd1f2bb08b24b7cb6",
+    "src/audio/pitch.ts": "ce231eba116a7a2df51c39b0c4f39f13c4326883",
+    "src/audio/stage-sounds.ts": "2fd9502e0f5b9fa60f6fb57f7b50dea01443ca46",
+    "src/game/stage-music.ts": "a7b7edb5339cb674e7b56714257b13f8d1b6ee5d",
+    "tests/pitch.test.ts": "476ed099532959a371ad9a71db6f3779f4a4c587",
+    "tests/stage-music.test.ts": "6be4a3e1f3588278308cd2dac521e670fba63e2d"
+  },
+  "07-world-level-lights.md": {
+    "src/world/level.ts": "78efefed951e18429def4be6668f3a69bfe3609a",
+    "src/world/lights.ts": "85e5441d0f77f8834ab2360e6b265b71d6d4c475",
+    "src/world/stage-lamps.ts": "f7a63d1b8d211eb69ea181867bc61d8a65d89624",
+    "tests/stage-lamps.test.ts": "a86bab4aeed77353dfbf3e9bded4a1d545baca03",
+    "src/world/trap-fx.ts": "a0c39a55e30d9f7b3e9c5b54b3453d2fa792f631",
+    "src/world/door-parts.ts": "a3a1e3d2077399b507799d714967bfb9b18b1d63",
+    "src/world/debug-field.ts": "617543db9cb97ef976eed558f6d6ffd378c9157b",
+    "src/world/carpet.ts": "11e1c23496756426fa1c451fcf5470af7d0f86df",
+    "src/world/breakables.ts": "449ca8f651e6cc08266bf1728bfa8631c59a1539",
+    "src/world/woodboards.ts": "3c2e1ab3607b063bfab549f48fe16898810ddeaf",
+    "tests/woodboards.test.ts": "a4365ccbd34bc2ffa53d99cba15d4cea377f7742"
+  },
+  "08-world-shards-gate.md": {
+    "src/world/shards.ts": "2629a385e36eea8f811043e8a64b863acdecc66b",
+    "src/world/gate.ts": "6d6acbbb4a17f18c61f48cd32218e76bbef6349e",
+    "src/world/special-rules.ts": "4b9cdecda7d8d27c59e29b3821e9a340c704e242",
+    "src/world/collect-fx.ts": "86b024d297fa8333ded47ea37e1b9b3de0d201f0",
+    "src/world/flash-sprites.ts": "e2354d4f3d29935cec4b80e0c085dec99cb94fae",
+    "src/world/shard-fx.ts": "1e57cd9d26d2c05d09816fdd6453fd5915ed03e9",
+    "tests/shard-fx.test.ts": "dab0735fd7195a0312e021d9cc9b16dd0dc2b403",
+    "src/world/specials.ts": "31a157b8c24edd29194a261a2a6beb6cd05f134a",
+    "src/world/interact.ts": "3484e645357ff1ea97aa8dcb8344c9c83642968c",
+    "tests/interact.test.ts": "f4601350557b91663432a72964f4575f20dac6fc",
+    "tests/specials.test.ts": "75a91fb68d5e22669290c16dbd4ba8d84db980e0"
+  },
+  "09-render-postfx-shaders.md": {
+    "src/render/postfx.ts": "d1d0f3a6ce1cc4012f4121408055ce22ff73944e",
+    "src/render/shaders.ts": "2a082e3dc4c014429d64042b46433e02a8f0af85",
+    "src/render/ue-grade.ts": "1e14d5c02c25bf30efcb2945fd370a79bb552ce2",
+    "src/render/scene-ao.ts": "b83b2c83d9dec17f739cfbd14ae53dcc169dcb06",
+    "src/render/ssr.ts": "3c23e06b54e0a4c7470e5967bc93fdebe95133d2",
+    "src/render/depth-proxies.ts": "e1a54d597a91b50fd7591cbfa9a63df35f845dac",
+    "src/render/stage-luts.ts": "f71df3b2548b6e9fc1fa9995f237727c3a1024b8",
+    "tests/ue-grade.test.ts": "7884794662e42aab534992f2773c8dce08cee81c"
+  },
+  "10-hud-tablet.md": {
+    "src/hud/tablet.ts": "561c6104e83f54790d4a413c972c4d45ac517756",
+    "src/hud/hud.ts": "e20a48986f88e8ac2d2c8e42c66ad12097b98de8",
+    "src/styles.css": "4fb75f2d2a1a9a7f206a083c99ec91b586829316",
+    "src/hud/title.ts": "527b43a50535fa98f766df46576effade46e03eb",
+    "src/hud/options.ts": "f105de8eaf982834868d3c6420535e607de12801",
+    "src/hud/pause.ts": "9108f6f2059da7f88f4af278d0170666b081a3a5",
+    "src/hud/death.ts": "f2ebf5c7d5e694ea682d9909c0b98bf08f2744c4",
+    "src/hud/stage.ts": "e44e0ba4426de74726ab5f928be1477b0542af18",
+    "tests/title.test.ts": "9647ae00dc2c1ca294a28f660aae30d7f122e41f",
+    "tests/options.test.ts": "884742e1bab63d52afc96163bec258e54a39f20e",
+    "tests/pause.test.ts": "d6fed78ac5ba170703c0f85b5ff1a41880997fb8",
+    "tests/death.test.ts": "0cdf7695e7785683dde714ee9c62c0054fb0be8c",
+    "src/hud/tablet-anim.ts": "aa0cf3dadef218dbeb34b3d97babd08a3457ee97",
+    "tests/tablet-anim.test.ts": "782a3a84a2b84d06e1e9c6cf97f56aad863fb099",
+    "src/hud/stage-intro.ts": "c4aca2d63bb1efa48ccd1a44a855bff769826263",
+    "tests/stage-intro.test.ts": "2149525fdf15159f38ee9fd229afe413f978ae20",
+    "src/hud/streak.ts": "c352acf1edcede6cd6cc3ef7727f60560bb48d62",
+    "tests/streak.test.ts": "c5f1e6430b38cd3291e22026114e78d2a480dec0",
+    "src/hud/vignette-sides.ts": "634cebd9d03fa34fcef82f31b2412bc3094b6662",
+    "tests/vignette-sides.test.ts": "a5c19e58b2d674b398f39017dae5554a4313e989",
+    "src/hud/level-clear.ts": "476520816d013e8df0f9a383a986d2bf954ea9f4",
+    "tests/level-clear.test.ts": "b9ef8ddaab64a3262420633fad4bd5a9f80a106b"
+  },
+  "11-minimap.md": {
+    "src/hud/minimap.ts": "24caf0ea5f6e654e9549f8313663c57f3f285816",
+    "src/hud/arrow-pointer.ts": "29ff32bf8f7502263455e5dd4b77f53fd8c2e961",
+    "tests/arrow-pointer.test.ts": "34beb5b529a6342931787ce70ac2978b09793037"
+  },
+  "12-level-generation-blender.md": {
+    "scripts/cc2/ue.py": "312f514bd19939ccd33e468a2c2c782221d94175",
+    "scripts/cc2/layout.py": "2a2cf882c003d7e0be9a84a026c7afbe89b88dc1",
+    "scripts/blender/build_cc2.py": "f4eb8835ec16d9e3c35be1fbd42e2698a52d3bf2",
+    "scripts/cc2/colliders.mjs": "389e8a73d5b8f7b8cfe52a660863001c72f4bcfa",
+    "scripts/cc2/raster.mjs": "8f67af05d0246241f0c29abd131ac1270e905372",
+    "scripts/cc2/raster.d.mts": "c60e30c73b89d0a93f3923dddd467f826dbc9db6",
+    "scripts/cc2/heightfield.mjs": "66095199350d3d641b4a23c78ac93008dcb023d7",
+    "scripts/cc2/heightfield.d.mts": "db0e8de2b5411661737ce54a00c6c32ae78648b2",
+    "scripts/cc2/grading-luts.mjs": "e5617d5ab6fed1328a16398087c96c7a49812dc3",
+    "tests/cc2-heightfield.test.ts": "b75c3340bbfdefa85e83d7f29857fa9968bba296",
+    "tests/cc2-raster.test.ts": "e962bc32dd7c32c5c31b0e176d2d95c3a4aa5477"
+  },
+  "13-asset-pipeline.md": {
+    "scripts/encode-ktx2.mjs": "ac0bb079ce00964c5bac845912c03c986f517e03",
+    "scripts/build-level.mjs": "f352fbdb1b6c3c20d384edca1fa444911b5b2e7f",
+    "scripts/vendor-babylon.mjs": "396d2e9b85ca1ad67f6b6621bc8af5ad57a5e874",
+    "scripts/copy-sfx.mjs": "021adfff87fcb337375444f7a96a274cc87b97c0",
+    "scripts/prepare-shard-model.mjs": "c0f1dacdb8142582a73f28c601535a8f877ecf82",
+    "scripts/prepare-enemy-model.mjs": "43d8c31a45cc1a05dc876f560168636fd3440390",
+    "scripts/prepare-boost-fx.mjs": "08eee02968a781c6a92969ad626d155ac5f82753",
+    "scripts/prepare-title-assets.mjs": "20fffda23fc423aae447475576028e574c4fe618",
+    "scripts/prepare-pause-heads.mjs": "38afc187c4c9345c8a26184dca88e34e6d3d34b6",
+    "scripts/prepare-cc2-textures.mjs": "8a43a140f0d79a1fae60b21d67d90db9500fc2da",
+    "scripts/prepare-special-shards.mjs": "e2c26f2f473f7be5e53d28077a19e4c3cfc97610",
+    "tests/shard-model.test.ts": "012a41e8f119d94e02d3aa3803a38a463edf1364",
+    "tests/enemy-model.test.ts": "260ec81bcd35f85463cb55668df8008fbfac7ea6",
+    "tests/ktx2-textures.test.ts": "4a6199d641deb16772c23db674fdd46a120fda4d"
+  },
+  "14-bench-and-smoke-tooling.md": {
+    "scripts/bench.mjs": "97d6ec797b86fe97636838ae48fe1a84e097a8a3",
+    "scripts/smoke.mjs": "b616b3c008b9217aef46a318c903d83c9a028b7c",
+    "scripts/flow-check.mjs": "d30e039b1ca0f2118dabe75d043cd804cdddc7b0",
+    "scripts/enemy-check.mjs": "ee8347f3752103bb0fada1a9ca6db725918f55f6",
+    "scripts/shots.mjs": "05836713db1ab62e410715ac1d5830a8cab59776",
+    "scripts/launch-browser.mjs": "5f4fd3012a55bd93ad29c96d0bd9106e0c803dfa"
+  },
+  "15-enemies.md": {
+    "src/enemy/navgrid.ts": "38be9edbac2e01fe5573c0418056f4bf3e0d556f",
+    "src/enemy/brain.ts": "79bbd9c9fce68597acea6af95e988cef2b1855e4",
+    "src/enemy/enemies.ts": "970fa92589f9c050400636195e137c56fd7782c4",
+    "tests/navgrid.test.ts": "0e16fb6d381ba948233b3facd5db5d7052072c2e",
+    "src/enemy/jumpscare.ts": "3033a65311a9d4e667ab5808a5396daaff1cd47c",
+    "tests/enemy-brain.test.ts": "cfc234ef7a9f7a29eb83da34985965f3f2143d11",
+    "tests/jumpscare.test.ts": "ee9c070a8701267380730775bcaebee7c403fb53"
+  }
+}
