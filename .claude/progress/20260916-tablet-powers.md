@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 06:35
+updated: 2026-09-17 08:10
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -28,7 +28,7 @@ updated: 2026-09-17 06:35
 - [x] 5. テレポーテーションの見た目 … 2026-09-17 完了。**パーティクルは Cascade のまま原作の値を写した**（C++ の道具 `UWasamiCascadeLibrary` が構造を作り、`pipeline/dd_particles.py` が書き出しの焼き込み済みの分布の表をそのまま書く。テスト `Wasami.Cascade.Build`）。`P_ky_cutter2` をデカールの子に付け、デカールに `M_Decal_Teleport` を入れた。材質 3 つ（斬撃・火花・デカール）はグラフが cook で消えているので推定のマスター（`/Game/Pipeline/Materials/M_DD_*`）を作り、原作のパスにそのインスタンスを置いた。**旧版の実機で照準を撮り直し**、デカールが 1 秒周期で明滅する縁の鋭い円（加算）であることを見つけて形・大きさ・周期を合わせ、PIE で斬撃の輪との比が旧版と同じになることを確かめた。デカールの色と明るさ、斬撃と火花の見え方はステップ 11 で最新版の病院と見比べる。実装記録 01・04 と索引、調査 02、observations/README を直した
 - [x] 6. 一瞬の演出の共通部品と Primal Fear … 2026-09-17 完了。基底 `AWasamiPowerBurst`（範囲なしのポストプロセス 2 つ、2 秒のタイムラインを `FRichCurve` で評価、`float2` で重み、終わりで破棄）と `AWasamiPrimalPower`（50 m 下に遅延スポーン → プレイヤーの位置、音、シェイク ×25、Pawn の重なり判定で敵に `SetState(Stun, false)`、球の拡縮と MID のトラック）、`UsePrimal`（0.05 s で 0、0.06 s 後に再使用 23 s）、仮の的 `AWasamiTestEnemy`、テスト `Wasami.Powers.PrimalTimeline`・`PrimalStun`（10 件）。取り込みに音・シェイク・`T_05_PortalMaps`・推定の `M_DD_Primal` とインスタンス `M_05_Primal`。**取り込みのシェイクがコンパイル前の既定値しか持たない不具合**（`dd_assets.camera_shake`）と、`ue_props` が振動の構造体をベクトルと取り違える不具合を直した。PIE で値・的・ゲージ・画面・揺れを確かめた。実装記録 01・04 と索引、検証のガイド（PIE の決まり、`record` が止まるときの gdigrab）、CLAUDE.md を直した
 - [x] 7. Vanish … 2026-09-17 完了。`AWasamiVanishPower`（紫と白の一瞬の演出、煙 `PPP_VanishPuff` をプレイヤーの前 92 cm・下 152 cm に、音、タグ `Enemy` で実装のある全敵に `PlayerVanish` を 1 回）、`UWasamiVanishWidget`（`UMG_Vanish`。紫の揺らぐビネット、1 秒のアニメを 1/15 倍速）、パワーのコンポーネントの `UseVanish`（カプセルの `ECC_Camera` を Ignore、15 s）・`EndVanish`（Block に戻す、再使用 15 s）・`RefillVanish`（ウィジェットを外す。リセットも同じ）、テスト `Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget`（13 件）。取り込みに `T_LoopingSmoke_8x8`・`T_perlinnoise`、推定のマスター `M_DD_LoopingSmoke`（ライティングを受ける半透明）・`M_DD_WobblyVignette`（速さ・周期・強さは仮）とインスタンス、`PPP_VanishPuff`（`dd_particles` に `BurstList` を足した）。`GrainIntensity` の上書きは UE 5.8 で効かないので写さない。PIE で値・的への通知・ウィジェットの曲線・15 s + 15 s・リセットと使い直し・画面（閃光・紫・ビネット・煙のもや）を確かめた。煙は `CameraDepthFade` で正面からはほとんど見えない（ステップ 11 で本家と見比べる）。実装記録 01・04 と索引を直した
-- [ ] 8. Telepathy（`BP_Telepathy` とトラッカー、`UMG_TelepathyTracker` と `MM_Telepathy`、開始と終わりの音、シェイク、9 s・再使用 6.5 s）
+- [x] 8. Telepathy … 2026-09-17 完了。`AWasamiTelepathyPower`（`BP_Telepathy`。すぐと 0.8 s ごとにレベルの全敵〈`NoTelepathy` を除く〉に印を 1 つずつ、`Time` 秒で全部の印に `Remove` して消える）、`AWasamiTelepathyTracker`（`BP_TelepathyTracker`。画面空間の `UWidgetComponent` で敵を追い、距離で大きさ〈0.5 → 0.1 / 100 m、クランプなし〉、`Remove` の 0.5 s 後に消える）、`UWasamiTelepathyTrackerWidget`（`UMG_TelepathyTracker`。256 の箱と `MM_Telepathy_Inst` の画像、Appear / Disappear を `FRichCurve` で、乱数の `Tiling`・`Speed`・角度）、パワーのコンポーネントの `UseTelepathy`（音 0.6・シェイク・原点に遅延スポーン・9 s）・`EndTelepathy`（`Teleport_Mode_Entered` 1.0 / 1.5、再使用 6.5 s）・`RefillTelepathy`（リセットはしない）、テスト `Wasami.Powers.TelepathyTracker`・`TelepathyTargets`（15 件。後者は UE の `FTestWorldWrapper` で手でティック）。取り込みに `Telepathy` の音、`T_ky_noise16`・`T_ky_noise`、推定のマスター `M_DD_Telepathy`（UI・加算、Opacity = saturate((2 つのパンするノイズの R の和) × 放射グラデーション × Gain)。速さと Gain は仮）と原作と同じ親子のインスタンス `MM_Telepathy` → `MM_Telepathy_Inst`。ファイルが増えてユニティビルドのまとまり方が変わり、Vanish の無名名前空間の名前がぶつかったので変えた。地図には本家どおり出ない（足す処理なし）。PIE で印の数・位置・大きさ・曲線、0.8 s の再検索、9 s の終わり、Disappear と 0.5 s 後の消滅、6.5 s の再使用、ゲージ、画面を確かめた。印の見え方は推定の材質なのでステップ 11 で本家と見比べる。実装記録 01・04 と索引、observations/README を直した
 - [ ] 9. シャードの最小限（M3 の前倒し。最新版の `BP_Shard`）: 病院の配置（Zone 1 は 337、Zone 2 は 342）、回収（数・音 `Soul_Shard_Pickup_v2_Cue` と同時発音 `OnlyFew`・シェイク `BP_CameraShake_ShardCollect`・閃光 `P_ky_flash3`）、`Activate` の引き寄せ（`Shard Pull`、ExpoIn）、タブレットの数と地図
 - [ ] 10. テレキネシス（半径 3000 の重なり判定、`P_ky_forceField_Telekinesis`、ポストプロセス、シェイク、音、再使用 8 s）
 - [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（本家の起動とエディタの開き直しはユーザーの確認を取る。PIE は確認不要）。テレポートの照準は**最新版の病院**で見比べる（材質は両版で同じ。旧版の Manor はポストプロセスが強く色と明るさを戻せない）: デカールの `Color`・`PulseLow`・`PulseHigh`（`dd_powers.DECAL_*`）、斬撃の色の出方、火花の大きさと数（PIE のほうが大きく多く見える）
@@ -36,11 +36,10 @@ updated: 2026-09-17 06:35
 
 ## 次にやること
 
-ステップ 8（Telepathy）。まず `.claude/references/powers/04-primal-telepathy.md` の §0（要点）・§1（共通の流れ）・§3（3.1〜3.10。プレイヤー側・`BP_Telepathy`・`BP_TelepathyTracker`・`UMG_TelepathyTracker`・`MM_Telepathy`・音と画面の演出・強化段階・タブレットの地図・対象から外す敵・旧版との違い）・§4（敵側）・§8 と、実装記録 `04-powers.md` の「Primal Fear」「Vanish」「死亡のリセット」（Telepathy はリセットしない）を読む。
-1. プレイヤー側の `UseTelepathy`（9 s・再使用 6.5 s、ゲージ、開始と終わりの音、シェイク）と、`BP_Telepathy`・トラッカー（画面空間の印。`NoTelepathy` の敵は外す）を C++ で。
-2. `UMG_TelepathyTracker` と `MM_Telepathy`（推定。グラフは cook で消えている）の取り込み、`dd_powers` への素材の追加（音・シェイク・テクスチャ・材質。粒子があれば `dd_particles` の値の形を広げる）。
-3. 取り込み → ビルド（C++ を変えたら `python Tools/editor_cycle.py`。**エディタを閉じる前にユーザーの確認を取る**）→ テスト → PIE（**確認は要らない**。仮の的 `AWasamiTestEnemy` の `bNoTelepathy` で対象外を確かめる）。
-4. タブレットの地図への表示（§3.8）は、いまのタブレットの画面（03 記録）でどこまで出せるかを見てから決める。
+ステップ 9（シャードの最小限。M3 の前倒し。**最新版の `BP_Shard`**）。まず `.claude/references/powers/03-telekinesis-vanish.md` の §2.7（何を引き寄せるか）・§2.8（`BP_Shard` の処理）・§5（アセット）と、`.claude/references/handover.md` の「現状と次の一歩」の 1（M3）、実装記録 `03-tablet.md`（シャード数の `SetShardCount`、地図の `ShowOnlyActors`）・`02-player.md`（プレイヤーのシーンキャプチャと 0.1 s ごとの数）・`01-stage-pipeline.md`（`stage_ue.json` の `actors` と組み立て）を読む。本家のバイトコードは `pak_reference_2/_bytecode/DDeception/Content/` の `BP_Shard` を探して読む（WebGL 版の記録 `.claude/references/webgl/implementation-records/` にもシャードの取得演出と連続回収の値がある。値の根拠は本家のデータを優先）。
+1. 病院の配置（Zone 1 は 337、Zone 2 は 342。前処理の出力にあるか、組み立てに足すか）を確かめる。
+2. C++ の `AWasamiShard`（回収: 数・音 `Soul_Shard_Pickup_v2_Cue` と同時発音 `OnlyFew`・シェイク `BP_CameraShake_ShardCollect`・閃光 `P_ky_flash3`。`IWasamiTelekinesisInterface::Activate` の引き寄せ `Shard Pull`〈ExpoIn〉）とタブレットの数・地図。
+3. 取り込み（音の Cue・同時発音・シェイク・粒子。`dd_particles` に足りない値の形があれば足す）→ ビルド（**エディタを閉じる前にユーザーの確認を取る**。ファイルを足すとユニティビルドのまとまり方が変わるので、無名名前空間の名前はファイルごとに固有にする）→ 組み立て直しと焼き直し（要るなら）→ テスト → PIE（確認不要）。
 
 ## 決定事項
 
@@ -105,8 +104,19 @@ updated: 2026-09-17 06:35
 - 2026-09-17（ステップ 7）: `M_LoopingSmoke1_Sheet` は書き出しに Emissive の接続が無く、シェーディングモデルも書かれていない（= DefaultLit）ので、**ライティングを受ける半透明**と推定する（BaseColor = コマ × 粒子の色、Opacity = コマの A × 粒子の A × `CameraDepthFade`）。粒子の色の 1 を超える値は BaseColor で切られて白に近くなる。`MM_WobblyVignette` は Emissive = ビネットの RGB（原作どおり）、Opacity = ビネットの A × 2 つのパンするノイズを `LinearSine` で行き来させたもの × 強さ、と推定し、速さ・周期・強さは仮の値にした。どちらもステップ 11 で最新版と見比べる。
 - 2026-09-17（ステップ 7）: ウィジェットの `UMG_Vanish` は、本家の `Create(OwningPlayer なし)`（= 最初のローカルプレイヤー）をプレイヤーのコントローラを持ち主にして作り、本家どおり `AddToPlayerScreen(0)` で出す。アニメは C++ の `FRichCurve`（接線は 1 ティックあたり × 60000）で評価する。
 
+- 2026-09-17（ユーザーの回答、ステップ 8）: エディタを閉じてビルドし開き直すこと、取り込みと Automation テストまで進めてよい（PIE は確認不要のまま）。
+- 2026-09-17（ステップ 8 の構成）: 本家の 3 つ（`BP_Telepathy`・`BP_TelepathyTracker`・`UMG_TelepathyTracker`）をそれぞれ C++ の `AWasamiTelepathyPower`・`AWasamiTelepathyTracker`（`UWidgetComponent` を画面空間で持つ）・`UWasamiTelepathyTrackerWidget` にする。ウィジェットの木（`SizeBox_54` 256 × 256 → `Image_90`）は、本家の BP ウィジェットと同じく作った時点で揃うよう `Initialize` で組む（トラッカーの `Set Size` が `Construct` より先に来うるため）。
+- 2026-09-17（ステップ 8、調査 04 §3.5 の訂正）: `MM_Telepathy` の `MaterialFunctionInfos` に `ExponentialDensity` があるのは、`RadialGradientExponential` の中で呼ばれる依存だから（未使用の `M_TelepathyRange` も `RadialGradientExponential` の呼び出し 1 つだけで同じ 2 つを持つ）。`MM_Telepathy` が直接呼ぶのは `RadialGradientExponential` だけと見る。残っている式は 21 個中 6 個（`Color`・`T_ky_noise16`〈LinearColor、座標は `Panner_0`〉・`T_ky_noise`〈Color、座標は `Panner_1`〉・`RadialGradientExponential`・`Tiling`・`Speed`）。
+- 2026-09-17（ステップ 8、UE 5.8 のソースで確認）: (1) UI の加算は、Substrate が有効でも無効でも「Emissive × saturate(Opacity)」に頂点カラー（ウィジェットの色と不透明度）が掛かる（`SubstrateLegacyConversion.ush` の `SubstrateCreateUIMaterial`、`SlateElementPixelShader.usf`）。(2) 画面空間の `UWidgetComponent` は `DrawSize`（UE 5.8 も既定 500 × 500）の枠にピボット (0.5, 0.5) で置かれ（`SWorldWidgetScreenLayer.cpp`）、ルートの `SizeBox` の 256 は希望の大きさにしか効かず、中身は 500 × 500 に広がる（`SBox` は割り当てられた大きさで子を並べる）。距離 0 で 250、10000 cm で 50（DPI の拡大率がさらに掛かる）。(3) ウィジェットのアニメの終わりは「状態を保つ」（`UWidgetAnimation` は ini に `DefaultCompletionMode` が無く 0 = KeepState、区間の既定も KeepState）。最後に評価されるのは再生範囲の終わりの 1 ティック前（`MovieScenePlaybackManager.cpp` の `GetLastValidTick`）なので、Appear は拡縮 0.95・不透明度 ≈ 1 で止まる。Disappear の拡縮の区間は 18000 を含まないので、最後のティックでは拡縮を書かない（不透明度は 0 を書く）。(4) 2D 変換のトラックはデータのある拡縮の X / Y だけを書き、角度は触らない（`Construct` が再生の後に入れた乱数の角度が残る）。`PlayAnimation` はその場で最初のフレームを評価する（`WidgetAnimationState.cpp` の `UpdateToNextTick` と `Flush`）。UE 4.24 のソースは手元に無いが、本家も乱数の角度を入れているので残る前提で作る。
+- 2026-09-17（ステップ 8）: 2 つのアニメが同時に動くとき（`Appear` の途中の `Remove`）は、UE 4.24 の `UUserWidget` が再生中のプレイヤーを始めた順に進めて書く（後が勝つ）ので、毎ティック Appear → Disappear の順に書く。
+- 2026-09-17（ステップ 8）: 終わりの音 `Teleport_Mode_Entered` と開始の音 `Telepathy` の ogg は両版で同一（md5 が一致、SoundWave の書き出しも同じ）。終わりの音は取り込み済みの `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered` を使う。シェイクは取り込み済みの `BP_CameraShake_Streak`。
+- 2026-09-17（ステップ 8、§3.8）: タブレットの地図はシーンキャプチャの `ShowOnlyActors`（地図の板とシャード）だけを描く（03 記録）ので、トラッカーは載らない。本家どおりで、足す処理は無い。
+- 2026-09-17（ステップ 8）: `MM_Telepathy_Inst` の `Size`（親に無いパラメータ）と `RefractionDepthBias`（UE の既定のパラメータで UI には効かない）は写さない。`BasePropertyOverrides` の `BlendMode` Additive は親と同じ、`ShadingModel` Unlit は UI で常に同じなので写さない。
+
 ## 再開時の注意
 
+- **2026-09-17 08:10 ごろ（ステップ 8 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは止めた。ビルドは最新（`TelepathyTargets` のテストだけ Live Coding で入れ替えた。次のフルビルドで取り込まれる）。取り込みは済み。
+- **PIE で Telepathy を確かめる手順**（8 で使った。scratchpad の `telepathy_probe.py` はセッションごとに消えるので、要るときは作り直す）: `editor_request_begin_play()` → プレイヤーを (−25, 3000, 90.15)・ヨー −90 に置き、仮の的を出す（`no_telepathy` を立てた的も 1 つ）→ 小窓を閉じる → ビューポート (2620, 600) をクリック → Space、1 × 2（左が Telepathy）、Space → 毎フレームの記録を始めて Q。印は `get_all_actors_of_class(world, unreal.WasamiTelepathyTracker)`、その `get_editor_property('widget').get_user_widget_object()` のパス + `.WidgetTree.SizeBox_54` / `.WidgetTree.Image_90` を `find_object` し、`get_editor_property('render_transform')` と `get_render_opacity()` で読む。**Python に `SlateBlueprintLibrary` は無い**（画面上の大きさは読めなかった）。**毎フレームのコールバックが例外を出すとその行が落ちるので、始める前に `snapshot()` を 1 回呼んで確かめる**（8 では 1 回目の使用の記録を失った）。
 - **2026-09-17 06:30 ごろ（ステップ 7 の終わり）**: エディタは起動している（PID 27772、セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは動いたまま（`python Tools/desktop.py stop` で止めてよい）。ビルドは最新（警告なし）。取り込みは済み。Python のツールセットは `from wasami_tools.toolsets.dd import WasamiDDTools` で呼ぶ（`unreal.` の下には無い）。
 - **PIE で Vanish を確かめる手順**（7 で使った。scratchpad の `vanish_probe.py` はセッションごとに消えるので、要るときは作り直す）: `editor_request_begin_play()` → プレイヤーを (−25, 3000, 90.15)・ヨー −90 に置き、仮の的を出す → Automation のログの小窓（× (2195, 405)）を閉じる → ビューポート (2620, 600) をクリック → Space、1 × 5（左が Vanish）、Space → 毎フレームの記録を始めて Q。ウィジェットの画像は `unreal.find_object(None, <ウィジェットのパス> + '.WidgetTree.Image_82')` の `get_render_opacity()` で読める。収録は gdigrab でビューポートの範囲 (2236, 280, 884x596)。フレームは `-fps_mode passthrough` で取り出す（付けないと番号が時刻と合わない）。
 
@@ -138,6 +148,8 @@ updated: 2026-09-17 06:35
 - 画面の撮影 1 回に数秒かかるので、時間に依存する確認は `unreal.GameplayStatics.get_time_seconds` と一緒に読む（scratchpad の `probe_powers.py` がパワーの状態を読む。scratchpad はセッションごとなので、要るときは作り直す）。
 
 ## 検証
+
+- ステップ 8: C++ ビルド成功（1 回目はユニティビルドの名前の衝突と C4458 で落ち、名前を変えて通った。警告なし）、`Automation RunTests Wasami` 15 件成功（`Wasami.Powers.TelepathyTracker`・`TelepathyTargets` を新設。後者は Live Coding で書き直した）、check_records OK、取り込み `import_dd_powers`（音 7・シェイク 2・カメラアニメ 2・テクスチャ 8・マテリアル 17・パーティクル 2。`Failed to compile` なし）と読み戻し、PIE で印の数・位置・大きさ・Appear と Disappear の曲線・0.8 s の再検索・9 s の終わりと 0.5 s 後の消滅・6.5 s の再使用・ゲージ・画面（収録）を確かめた（詳細は 04 記録の「確かめたこと」）
 
 - ステップ 7: C++ ビルド成功（1 回目は `WasamiVanishWidget.cpp` のローカル変数 `Slot` が `UWidget::Slot` を隠す C4458 で落ち、名前を変えて通った。警告なし）、`Automation RunTests Wasami` 13 件成功（`Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget` を新設）、check_records OK、取り込み `import_dd_powers`（音 6・シェイク 2・カメラアニメ 2・テクスチャ 6・マテリアル 14・パーティクル 2。`Failed to compile` なし）と読み戻し、PIE で使った瞬間のカプセルの応答・通知・アクタと粒子の位置、毎フレームの重みとウィジェットの不透明度、15 s の終わりと 15 s の再使用、リセットと使い直し、画面を確かめた（詳細は 04 記録の「確かめたこと」）
 

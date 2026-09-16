@@ -1,5 +1,5 @@
 ---
-title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Primal Fear と Vanish と一瞬の演出の基底・カメラアニメ・FX）
+title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Telepathy・Primal Fear と Vanish と一瞬の演出の基底・カメラアニメ・FX）
 sources:
   - Source/wasami_deception/WasamiPowerTypes.h
   - Source/wasami_deception/WasamiPowerTypes.cpp
@@ -23,6 +23,12 @@ sources:
   - Source/wasami_deception/WasamiVanishPower.cpp
   - Source/wasami_deception/WasamiVanishWidget.h
   - Source/wasami_deception/WasamiVanishWidget.cpp
+  - Source/wasami_deception/WasamiTelepathyPower.h
+  - Source/wasami_deception/WasamiTelepathyPower.cpp
+  - Source/wasami_deception/WasamiTelepathyTracker.h
+  - Source/wasami_deception/WasamiTelepathyTracker.cpp
+  - Source/wasami_deception/WasamiTelepathyTrackerWidget.h
+  - Source/wasami_deception/WasamiTelepathyTrackerWidget.cpp
   - Source/wasami_deception/Tests/WasamiTestEnemy.h
   - Source/wasami_deception/Tests/WasamiTestEnemy.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
@@ -33,7 +39,7 @@ updated: 2026-09-17
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）、テレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）、Primal Fear（`AWasamiPrimalPower`）、Vanish（`AWasamiVanishPower` と `UWasamiVanishWidget`）で、ほかの 2 種（Telepathy・Telekinesis）は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 8〜10 で足す）。Primal・Telekinesis・Vanish が共有する一瞬の演出（全画面のポストプロセス 2 つと 2 秒のタイムライン）は基底 `AWasamiPowerBurst` にまとめた。敵はまだ無いので、確かめには仮の的 `AWasamiTestEnemy` を使う。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）、テレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）、Telepathy（`AWasamiTelepathyPower` と、敵ごとの画面空間の印 `AWasamiTelepathyTracker`・`UWasamiTelepathyTrackerWidget`）、Primal Fear（`AWasamiPrimalPower`）、Vanish（`AWasamiVanishPower` と `UWasamiVanishWidget`）で、Telekinesis は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 10 で足す）。Primal・Telekinesis・Vanish が共有する一瞬の演出（全画面のポストプロセス 2 つと 2 秒のタイムライン）は基底 `AWasamiPowerBurst` にまとめた。敵はまだ無いので、確かめには仮の的 `AWasamiTestEnemy` を使う。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -49,7 +55,7 @@ updated: 2026-09-17
 - 読み出し（BlueprintPure）: `GetTeleportAim()`（出ている照準。無ければ null）、`GetSocketPower(bLeft)`（枠が解放済みの範囲の外なら `None`）、`GetGaugePercent(Power)`、`IsPowerAvailable(Power)`、`IsUsingPower(Power)`（本家の `Is Player Using Power ?`。`Active Powers` に入っているか）、`HasPowers()`、`GetUpgradeLevel(Power)`。C++ だけの `GetTuning(Power)`。
 - `OnPowerUsed(EWasamiPower)`（BlueprintAssignable）… 本家の `UsedPower`（と、パワーごとの `UsedTelepathy` などをまとめたもの）。
 - 設定（EditAnywhere）: `UnlockedPowers`（既定は 6 種すべてを並び順に）、`UpgradeLevel`（既定 5。0〜5）。
-- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）、`PrimalPowerClass`（既定 `AWasamiPrimalPower`）、`VanishPowerClass`（既定 `AWasamiVanishPower`）、`VanishWidgetClass`（既定 `UWasamiVanishWidget`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）、照準の素材（`AWasamiTeleportAim::LoadAssets`）、Primal の素材（`AWasamiPrimalPower::LoadAssets`）、Vanish の素材（`AWasamiVanishPower::LoadAssets`・`UWasamiVanishWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
+- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`、`TelepathySound` `/Game/DD/Audio/SharedGameplay/Telepathy`、`TelepathyEndSound`（`TeleportAimSound` と同じ音）、`TelepathyShakeClass`（`BoostShakeClass` と同じシェイク）。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）、`TelepathyPowerClass`（既定 `AWasamiTelepathyPower`）、`PrimalPowerClass`（既定 `AWasamiPrimalPower`）、`VanishPowerClass`（既定 `AWasamiVanishPower`）、`VanishWidgetClass`（既定 `UWasamiVanishWidget`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）、照準の素材（`AWasamiTeleportAim::LoadAssets`）、Telepathy の印の素材（`UWasamiTelepathyTrackerWidget::LoadAssets`）、Primal の素材（`AWasamiPrimalPower::LoadAssets`）、Vanish の素材（`AWasamiVanishPower::LoadAssets`・`UWasamiVanishWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
 
 ### `AWasamiTeleportAim : AActor`（`WasamiTeleportAim.h`）
 本家の `BP_Power_Teleport`（旧版）。パワーが出し、移動か取り消しで消える。
@@ -60,6 +66,23 @@ updated: 2026-09-17
 - 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`ConfirmCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_Teleport`、`DecalMaterial` `/Game/DD/Blueprints/Main/Powers/M_Decal_Teleport`、`AimParticles` `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2`（`UParticleSystem`）。
 - コンポーネント（本家と同じ木）: `DefaultSceneRoot` → `SpringArm`（`TargetArmLength` 0 だけ変える。ほかは UE の既定＝位置ラグの速さ 10・サブステップあり）→ `Decal`（`DecalSize` (3, 100, 100)、相対回転 (P −90, Y 0, R 5.46e-5)、拡縮 (3.3264, 1, 1)。ソケット名なしでアームに付くので、アームの先〈ラグで遅れる位置〉に付いていく）、`Decal` → `ParticleSystem`（`UParticleSystemComponent`。相対位置 (−4.13494, −0.000263, 2.3e-6)・回転 (P 90, Y 0.91133, R −359.08875)・拡縮 0.2。UE の既定の `bAutoActivate` のまま）、`DefaultSceneRoot` → `Audio`（音量 0.65、減衰なし）。本家の `Arrow`（エディタの表示用）は置いていない。`GetSpringArm()`・`GetDecal()`・`GetParticleSystem()`（C++ だけ）。
 - 見た目: `BeginPlay` でデカールに `DecalMaterial` を入れ、パーティクルに `AimParticles` を `SetTemplate` する（登録済みで `bAutoActivate` なので、その場で動き出す。本家はコンポーネントのテンプレートとして持ち、スポーンで自動で始まる）。合成したワールド変換は調査 02 §2.1 どおり（PIE で読み戻し: 粒子の原点は当たった点の 13.754 cm 上、拡縮 (0.665276, 0.2, 0.2)、回転 ≈ 0）。
+
+### `AWasamiTelepathyPower : AActor`（`WasamiTelepathyPower.h`）
+本家の `BP_Telepathy`（最新版）。敵に印を付け、時間が来たら全部の印を外すだけ（音・揺れ・ゲージ・再使用はパワーのコンポーネント）。
+- `Time`（既定 0。`ExposeOnSpawn`。パワーが強化段階の効果時間〈Lv5 で 9〉を入れる。Blueprint の `SetTimer` と同じく 0 秒のタイマーは仕掛けられないので、0 なら終わらない）、`TrackerClass`（既定 `AWasamiTelepathyTracker`）。
+- `UpdateTargets()`（BlueprintCallable。新しく出した印の数を返す）・`Finish()`（BlueprintCallable）、読み出し `GetActorsWithTracker()`（本家の `Actors With Tracker`）。
+- コンポーネントは `DefaultSceneRoot` だけ。
+
+### `AWasamiTelepathyTracker : AActor`（`WasamiTelepathyTracker.h`）
+本家の `BP_TelepathyTracker`（最新版）。敵 1 体に 1 つ。
+- `Actor`（`ExposeOnSpawn`。追う敵）、`Remove()`（BlueprintCallable）、static `SizeForDistance(距離)`（BlueprintPure。`MapRangeUnclamped(距離, 0, 10000, 0.5, 0.1)`）。読み出し `IsFollowing()`（本家の Gate が開いているか）・`GetWidget()`・`GetWidgetReference()`（C++ だけ）。
+- コンポーネント: `DefaultSceneRoot` → `Widget`（`UWidgetComponent`。空間 Screen、クラス `UWasamiTelepathyTrackerWidget`。ほかは UE の既定〈`DrawSize` 500 × 500・ピボット (0.5, 0.5)・`bDrawAtDesiredSize` 偽。UE 4.24 の既定と同じ〉）。本家の `WindowVisibility` Visible は UE 4.24 の既定値で、ワールド空間の仮想の窓にしか使われない（UE 5.8 も古い資産を読むと Visible に直す）ので写していない（UE 5.8 の `SetWindowVisibility` は、ウィジェットを作る前に呼ぶと ensure する）。アクタはティックする。
+
+### `UWasamiTelepathyTrackerWidget : UUserWidget`（`WasamiTelepathyTrackerWidget.h`）
+本家の `UMG_TelepathyTracker`（最新版）。
+- 木: `SizeBox_54`（幅と高さの上書き 256）→ `Image_90`（ブラシ `MM_Telepathy_Inst`、ほかは既定。スロットも既定 = 箱いっぱい）。**`Initialize` で組む**（本家の BP ウィジェットは作った時点で木があり、トラッカーの `Set Size` が `Construct` より先に来うるため）。
+- `Remove()`・`SetSize(Size)`（BlueprintCallable）、`TrackerMaterial`（ソフト参照 `/Game/DD/Blueprints/Main/Powers/Telepathy/MM_Telepathy_Inst`）。
+- static `EvaluateAppearScale` / `EvaluateAppearOpacity`（0.5 秒のアニメ `Appear`）・`EvaluateDisappearScale` / `EvaluateDisappearOpacity`（0.3 秒の `Disappear`）、定数 `AppearLength` 0.5・`DisappearLength` 0.3、`LoadAssets(Out)`。読み出し `IsAppearPlaying()`・`IsDisappearPlaying()`・`GetSizeBox()`・`GetImage()`（C++ だけ）。
 
 ### `AWasamiPowerBurst : AActor`（`WasamiPowerBurst.h`、抽象）
 本家の `BP_PrimalPower`・`BP_TelekinesisPower`・`BP_VanishPower` に共通の形。
@@ -145,7 +168,7 @@ updated: 2026-09-17
 2. **枠を弾ませる**（`UWasamiTabletWidget::BounceSocket`）。使えるかの判定より前なので、使えないときも弾む。
 3. 枠のパワーを取る（添字が範囲外なら構造体の既定 = 使えない）。`bAvailable` が偽なら終わる。**音も何も出さない**（最新版どおり。旧版は `power_not_ready` を鳴らしていた。ユーザーの回答）。
    - **例外（旧版から採る。ユーザーの回答）**: 解放済みが 1 つ以上あり、テレポートを使用中（`Active Powers` にある）で、押した側がテレポートを使った側（`bTeleportLeft`。本家の `CurrentSide`）なら、テレポートを取り消す（`ResetTeleport`）。枠のパワーが何かは見ない（使った側の枠は照準中に切り替えられないので、ふつうはテレポートのまま）。キーごとの 0.5 秒の連打防止を通った後なので、照準を出してから 0.5 秒は取り消せない。
-4. `Use Power` 側の DoOnce（`bUseClosed`）を通ったら、`OnPowerUsed` を出し、パワーごとの処理へ（いまは `SpeedBoost`・`Teleport`・`PrimalFear`。ほかは何もしない）。
+4. `Use Power` 側の DoOnce（`bUseClosed`）を通ったら、`OnPowerUsed` を出し、パワーごとの処理へ（いまは `SpeedBoost`・`Teleport`・`Telepathy`・`PrimalFear`・`Vanish`。`Telekinesis` は何もしない）。
 5. 最後に 0.5 秒の Delay で DoOnce を戻す。**連打防止は Q / E ごとと、発動全体の 2 段**。
 
 ### 1 / 2（`CyclePower`）
@@ -191,6 +214,20 @@ updated: 2026-09-17
 - 充填（`RefillTeleport`）: 充填の DoOnce が開いていれば閉じて `Refill`（`power_refilled` 0.5・使える状態）。
 - 取り消し・死亡のリセット（`ResetTeleport`。本家の `Reset Teleport` @31827 と `BP_Powers` の `Stop Teleport Timeline`）: Gate を閉じる → `RefillTeleport`（使った後なら即座に充填・音）→ 照準があれば消す → `UsedTeleport`（Gate が閉じているので `Delay` は始まらない）→ ゲージを止めて 1。結果、すぐ使える・アイコンは 1・`power_refilled` が 1 回。
   - **クリックから移動までの 0.12 秒の間に取り消すと、移動は起きず、カプセルは `Pawn` と `WorldDynamic` を無視したまま残る**（本家どおり。次のテレポートの移動で戻る）。
+
+### Telepathy（`UseTelepathy` → `EndTelepathy` → `RefillTelepathy`、アクタは `AWasamiTelepathyPower`、印は `AWasamiTelepathyTracker`）
+- 使った瞬間（本家の @16461〜@18164）: `Active Powers` に足す → 開始の音 `Telepathy` を `PlaySound2D` の音量 0.6 → 使えない状態 → `BP_CameraShake_Streak` を倍率 1・`CameraLocal` → `AWasamiTelepathyPower` を**ワールドの原点**に回転 0 で遅延スポーンし（衝突の扱いはクラスの既定）、`Time` に効果時間（Lv5 で 9 秒）を入れてから `FinishSpawning` → ゲージの `SetDelay(効果時間)`（アイコンが 1 → 0）→ `Delay(効果時間)` で `EndTelepathy`。効果時間はプレイヤーの Delay とアクタの `Finish` のタイマーが別々に数える。
+- 終わり（`EndTelepathy`、@4271〜@4971）: `Active Powers` から外す → 終わりの音 `Teleport_Mode_Entered`（エンジンの VREditor の音。テレポートの照準の開始と同じもの）を `PlaySound2D` の音量 1.0・ピッチ 1.5 → 再使用（Lv5 で 6.5 秒）でゲージの `SetDelay`（アイコンが 0 → 1）→ `Delay(再使用)` で `RefillTelepathy`（`power_refilled` 0.5・使える状態。前の Gate は素通し）。
+- アクタ（`AWasamiTelepathyPower`）: `BeginPlay` ですぐ `UpdateTargets`、0.8 秒ごとの繰り返しのタイマー、`Time` 秒後の `Finish` のタイマー。`EndPlay` で 2 つのタイマーを止める。
+  - `UpdateTargets`: `GetAllActorsWithInterface(IWasamiEnemyInterface)` で**レベルの全敵**（距離も遮蔽も見ない）を集め、`NoTelepathy` が真のもの（本家では `BP_08_BearTrap` だけ）と、`ActorsWithTracker` に入っているものを飛ばし、残りの敵ごとに印を**敵の位置**に回転 0 で遅延スポーンして `Actor` を入れ、`FinishSpawning` して配列に足す。効果中に現れた敵も次の 0.8 秒で拾う。タグ `Enemy` だけでインターフェースの無いもの（本家の Zone 2 のマトロン）には付かない。敵がいなくても、使用・音・揺れ・ゲージ・再使用は同じ。
+  - `Finish`: 繰り返しのタイマーを止め、**ワールドの全ての印**（`TrackerClass` のアクタ）に `Remove` → 自分を消す。
+- 印（`AWasamiTelepathyTracker`）: `BeginPlay`（コンポーネントの `BeginPlay` がウィジェットを作った後）でウィジェットを `WidgetReference` に持ち、Gate を開く。毎ティック、Gate が開いていれば `Update`: 敵が無効なら `Remove`、有効なら敵の原点（カプセルの中心）へ `SetActorLocation`（スイープなし）し、プレイヤー（`GetPlayerCharacter(0)`。いなければ距離 0）との距離から `SizeForDistance` をウィジェットの `SetSize` に入れる（0 cm で 0.5、50 m で 0.3、100 m で 0.1、125 m で 0、それより遠いと負 = 反転。本家どおりクランプしない）。
+  - `Remove`: Gate を閉じる → ウィジェットの `Remove`（Disappear）→ `Delay(0.5)` で自分を消す（数えている間の 2 回目は仕掛け直さない）。`EndPlay` でそのタイマーを止める。
+  - 画面での出方: UE 5.8 の画面空間のウィジェットは、ビューポートの層（`SWorldWidgetScreenLayer`）で、コンポーネントの位置を投影した点に `DrawSize` 500 × 500 の枠をピボット (0.5, 0.5) で置く（カメラの後ろなら出さない。近いものほど上）。ルートの `SizeBox` の 256 は希望の大きさにしか効かず、中身は 500 × 500 に広がるので、印の大きさは「500 × `SetSize` × Appear の拡縮 × DPI の拡大率」（距離 0 で 250、100 m で 50）。世界の描画の上に重なるので壁越しに見える。シーンキャプチャには写らないので**タブレットの地図には出ない**（本家どおり。地図は `ShowOnlyActors` だけを描く。03 記録）。
+- ウィジェット（`UWasamiTelepathyTrackerWidget`）: `NativeConstruct`（画面の層に載って Slate の部品ができたとき = 印の最初のティックのころ）で、Appear を頭から再生して**その場で最初のフレームを入れ**（拡縮 0・不透明度 0）、`Image_90` の MID を作って `Tiling`・`Speed` に 0.5〜1.5 の乱数、`Image_90` の描画の角度に 0.5〜360 の乱数を入れる（この順。本家の `RandomFloatInRange`）。`NativeTick` で Appear → Disappear の順に時刻を進めて値を書く（UE 4.24 の `UUserWidget` は再生中のプレイヤーを始めた順に進めるので、両方が動くときは Disappear が勝つ）。`Remove` は Disappear を頭から（再生中でもやり直し）、最初のフレームをその場で入れる。`SetSize` は `SizeBox_54` の描画の拡縮を (値, 値) にする。
+  - アニメ（ティックは 1 秒 60000。キーは 3 次で、書き出しの 1 ティックあたりの接線を × 60000 して `FRichCurve` で評価）: **Appear**（再生範囲 [0, 30001)）は `Image_90` の拡縮 0 / 15000 / 30000 → 0 / 1 / 0.95（接線 0 / 3e-5 / 0）と不透明度 0 / 30001 → 0 / 1。**Disappear**（[0, 18001)）は拡縮 0 / 9000 / 18000 → 1 / 1.1 / 0（接線 0 / −3.33e-5 / 0）と不透明度 0 / 18000 → 1 / 0。どちらも描画の変換は拡縮の X / Y だけを書き、角度はそのまま（UE の 2D 変換のトラックは、データのあるチャンネルだけを書く）。
+  - 終わり: UE 5.8 は再生範囲の終わりの 1 ティック前（Appear は 0.5 秒、Disappear は 0.3 秒）で最後に評価し、値を保つ（`UWidgetAnimation` の既定の終わり方は KeepState）。Appear は拡縮 0.95・不透明度 ≈ 1 で止まる。Disappear の拡縮の区間は [0, 18000) なので、最後の評価では拡縮を書かず（直前の値のまま）、不透明度 0 を書く。
+- 死亡のリセット: **Telepathy は戻さない**（本家の `Reset All Powers` に無い。効果中の印もそのまま残る）。
 
 ### 一瞬の演出の基底（`AWasamiPowerBurst`）
 - `BeginPlay`: アクタの `BeginPlay` → `StartPower()` → タイムラインを頭から（位置 0 にして **その場で 1 回更新**。UE4 / UE 5.8 の `FTimeline::PlayFromStart` が `SetPlaybackPosition(0)` の更新を出すのと同じ）。
@@ -290,6 +327,12 @@ updated: 2026-09-17
 | `/Game/Pipeline/Materials/M_DD_KySlash` | **推定**（`M_ky_slash01_4x4`。cook に残るのは設定〈Translucent・Unlit・両面・スプライトとメッシュ粒子〉、`ParticleSubUV`〈`T_ky_slash01_4x4`・Linear Color〉、4 つのパラメータ、Emissive が `Lerp` から来ることだけ）。`TextureSampleParameterSubUV`（`Texture`）の R の `colorCorrect` 乗 × 粒子の色を、G で `hilightColor` へ `Lerp` して Emissive に。Opacity は `saturate(R × alphaDensity) × 粒子のアルファ` を `DepthFade`（`depthFade`）に通したもの |
 | `/Game/Pipeline/Materials/M_DD_PPPRadialGradient` | **推定**（`PPP_Radial_Gradient_Doffed`。cook に残るのは設定〈Translucent・Unlit・Responsive AA・分離透過なし・スプライト / ビーム / 静的ライティング〉、Emissive = `ParticleColor` の RGB〈原作どおり〉、関数 `RadialGradient`・`CameraDepthFade`）。Opacity = `RadialGradient`（既定。硬さ 0 の `SphereMask`）× `CameraDepthFade`（既定。長さ 512・オフセット 24）× 粒子のアルファ。UE 4 の「分離透過なし」は UE 5 の `TranslucencyPass` = `MTP_BeforeDOF` |
 | `/Game/Pipeline/Materials/M_DD_DecalTeleport` | **推定**（`M_Decal_Teleport`。cook に残るのは設定〈Deferred Decal・Translucent・DBM_Emissive〉、関数 `RadialGradientExponential`・`CheapContrast`・`LinearGradient`、Emissive が `Multiply` から来ることだけ）。Emissive = `Color` (1.0, 0.105, 0.09) × `Intensity` 1 × `saturate(CheapContrast(RadialGradientExponential〈既定: 中心 0.5・半径 0.5・密度 2.333〉, Contrast 5))` × `Lerp(PulseLow 0.04, PulseHigh 0.6, sin(2π 時刻) / 2 + 1/2)`。Emissive だけをつなぐので UE 5.8 では加算のデカール（`SourceAlpha, One`）。`LinearGradient` は使わない（下の「確かめたこと」）。**色と明るさ（`Color`・`PulseLow`・`PulseHigh`）は仮の値**で、進捗記録のステップ 11 で最新版の病院と見比べて決める |
+| `/Game/DD/Audio/SharedGameplay/Telepathy` | Telepathy の開始の音（1.760 秒、44.1 kHz。SoundWave の値は既定のまま。両版で同じ ogg）。終わりの音は上の `Teleport_Mode_Entered`（両版で同じ ogg） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX13/Textures/T_ky_noise16` | Telepathy の印のノイズ A（1024²、R に煙状・G に縦の筋・B にまだら。sRGB なし・`TC_Default`〈DXT1〉・`TEXTUREGROUP_Effects`。原作の cook も同じ） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise` | Telepathy の印のノイズ B（512²、どのチャンネルも雲状。sRGB・`TC_Default`〈DXT1〉・`TEXTUREGROUP_Effects`。原作の cook も同じ） |
+| `/Game/DD/Blueprints/Main/Powers/Telepathy/MM_Telepathy` | `M_DD_Telepathy` のインスタンス。原作のパラメータ `Color` (1, 0, 0, 1)・`Tiling` 1・`Speed` 1 |
+| `/Game/DD/Blueprints/Main/Powers/Telepathy/MM_Telepathy_Inst` | `MM_Telepathy` のインスタンス（原作と同じ親子）。`Speed` 1。原作の `Size` 1（親に無いパラメータ）・`RefractionDepthBias` 0（UI では使われない）と、親と同じになる `BlendMode` Additive・`ShadingModel` Unlit の上書きは写していない |
+| `/Game/Pipeline/Materials/M_DD_Telepathy` | **推定**（`MM_Telepathy`。cook に残るのは設定〈UI・Additive〉、Emissive = `Color` の RGB〈原作どおり〉、パラメータ `Tiling`・`Speed`、`Panner_0` を座標にした `T_ky_noise16` のサンプル〈Linear Color〉、`Panner_1` を座標にした `T_ky_noise` のサンプル〈Color〉、`RadialGradientExponential` の呼び出し、式が 21 個あったこと。`MaterialFunctionInfos` の `ExponentialDensity` は `RadialGradientExponential` の中の依存）。座標 = TexCoord 0 × `Tiling`、パンの時間 = `Time` × `Speed`、Opacity = `saturate((A の R + B の R) × RadialGradientExponential〈既定〉× Gain)`。**パンの速さ（(0.05, −0.1)・(−0.04, −0.15)）と `Gain` 3 は仮の値**（`dd_powers.TELEPATHY_*`）。UI の加算は Emissive × saturate(Opacity) × ウィジェットの色と不透明度（Substrate でも同じ。`SubstrateCreateUIMaterial`）。進捗記録のステップ 11 で最新版と見比べる |
 | `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04` | Primal Fear の音（1.710 秒、44.1 kHz。SoundWave の値は既定のまま） |
 | `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop` | Primal Fear のシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.5、位置 X 2/50・Y 2/35・Z 3/10〈始まりの位相は乱数、正弦波〉、回転と FOV なし。倍率 25 で鳴らす） |
 | `/Game/DD/Textures/05_Circus/T_05_PortalMaps` | Primal の球（2048²、R に星状の粒・G に中心の丸い光・B に雲状のノイズ。sRGB なし・`TC_Default`〈DXT1〉・`TEXTUREGROUP_World`。原作の cook も DXT1・sRGB なし・12 ミップ） |
@@ -319,6 +362,8 @@ updated: 2026-09-17
 - テレポートの見た目（旧版）: `pak_reference/_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2.json`（粒子。01 記録の `dd_particles`）、`…/Materials/M_ky_slash01_4x4.json`・`_assets/DDeception/Content/PyroParticlePack/Materials/PPP_Radial_Gradient_Doffed.json`・`Blueprints/Main/Powers/M_Decal_Teleport.json`（材質の設定と残った式）、`_textures.json`（`T_ky_slash01_4x4`）、`BP_Power_Teleport.json` の `ParticleSystem_GEN_VARIABLE`・`Decal_GEN_VARIABLE`。まとめは `.claude/references/powers/02-teleport.md` §2・§5.3・§5.4。推定の材質の形は旧版の実機の収録から決めた（下の「確かめたこと」）。関数の中身は UE 5.8 のもの（`RadialGradient` は原作と同じ StateId）。
 - Primal Fear: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_PrimalPower.txt`（`ReceiveBeginPlay` @915〜@1478、更新 @1511〜@1938、終わり @15）、`_assets/…/Powers/BP_PrimalPower.json`（コンポーネントの値、`CurveFloat_0〜3`、`Timeline_0_Template`）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @18337〜@19621、再使用 @5187〜@6084、充填 @6301〜@6444、`Reset Primal` @37261）、`_assets/…/Materials/05_Circus/M_05_Primal.json`・`M_05_WarpTest.json`（シェーディングモデルが書き出されることの比較）、`_textures.json`（`T_05_PortalMaps`）、`_assets/…/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.json`、`_assets/…/Audio/SharedGameplay/Stun_Wave_Attack_New_04.json`。まとめは `.claude/references/powers/04-primal-telepathy.md` §2。
 - Vanish: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_VanishPower.txt`（`ReceiveBeginPlay` @471〜@705、敵のループ @30〜@466、更新 @738〜@940、終わり @15）、`_assets/…/Powers/BP_VanishPower.json`（コンポーネントの値、`CurveFloat_0〜3`、`Timeline_0_Template`）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @20985〜@22969、終わり @6856〜@7725、Gate の初期化と Open → Enter @7784〜@7917、充填 @7927〜@8328、`Reset Vanish` @37737 → @27838 → @27826・@7927）、`_assets/…/UI/Main/Powers/UMG_Vanish.json`（木・色・拡縮・アニメのキー）と `_bytecode/…/UMG_Vanish.txt`（`Construct` → `PlayAnimation`）、`_assets/…/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff.json`、`_assets/…/Particles/Shared/SmokeTest/M_LoopingSmoke1_Sheet.json`（同じ材質を使う遊園地の粒子も色が 10 → 1）、`_assets/…/Materials/Special/MM_WobblyVignette.json`、`_assets/Engine/Content/Functions/Engine_MaterialFunctions02/Utility/LinearSine.json`、`_textures.json`（`T_LoopingSmoke_8x8`・`T_perlinnoise`）。まとめは `.claude/references/powers/03-telekinesis-vanish.md` §3。
+- Telepathy: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter.txt`（使った瞬間 @16461〜@18164、終わり @4271〜@4971、充填 @3762〜@3880）、`_bytecode/…/Powers/Telepathy/BP_Telepathy.txt`（`ReceiveBeginPlay` @72 → @86 → @10、`Update Targets`、`Finish`）・`BP_TelepathyTracker.txt`（Gate の初期化 @85〈Start Closed〉、Enter @186、Open @245、Close @255、`ReceiveBeginPlay` @270、`Update`、`Remove` @416 → @15）・`UMG_TelepathyTracker.txt`（`Construct` @154〜@506、`Remove` @102、`Set Size` @10）、`_assets/…/Powers/Telepathy/BP_TelepathyTracker.json`（`Widget_GEN_VARIABLE`）・`UMG_TelepathyTracker.json`（木とアニメのキー・区間・再生範囲）・`MM_Telepathy.json`・`MM_Telepathy_Inst.json`、`_assets/…/Materials/Player/M_TelepathyRange.json`（`ExponentialDensity` が依存として載ることの比較）、`_textures.json`（`T_ky_noise16`・`T_ky_noise`）、両版の `Telepathy.ogg`・`Teleport_Mode_Entered.ogg`（md5 が一致）。まとめは `.claude/references/powers/04-primal-telepathy.md` §3。
+- UE 5.8 の挙動（Telepathy）: `Engine/Source/Runtime/UMG/Private/Components/WidgetComponent.cpp`（既定の `DrawSize` 500・`WindowVisibility`、`BeginPlay` の `InitWidget`、画面空間はティックで層に載せる、古い資産の `WindowVisibility` を Visible に直す）、`UMG/Private/Slate/SWorldWidgetScreenLayer.cpp`（投影・枠の大きさ・ピボット・距離の Z 順）、`UMG/Private/Animation/WidgetAnimationState.cpp`（`Play` がその場で最初のフレームを評価する）、`MovieScene/Private/Evaluation/MovieScenePlaybackManager.cpp`（最後の評価は終わりの 1 ティック前）、`MovieScene/Public/MovieSceneSection.h`（区間の既定の終わり方 KeepState）と `Config/BaseEngine.ini`（`DefaultCompletionMode` は Level / Template Sequence だけ）、`UMG/Private/UserWidget.cpp`（`Initialize`・`CreateWidgetInstance`）、`SlateRHIRenderer/Private/SlateRHIRenderingPolicy.cpp`（UI の加算は `One, One`）、`Shaders/Private/SlateElementPixelShader.usf`・`Substrate/SubstrateLegacyConversion.ush`（加算の色 × 不透明度）、`Engine/Private/LevelActor.cpp`（ワールドのコンテキストが無いと `DestroyActor` が警告する）・`Engine/Public/Tests/AutomationCommon.h`（`FTestWorldWrapper`。エンジン自身の `TimerManagerTests.cpp` と同じ使い方）。
 - UE 5.8 の挙動（Vanish）: `Engine/Source/Runtime/Engine/Classes/Engine/Scene.h`（`GrainIntensity_DEPRECATED` と `FilmGrainIntensity`）・`Private/Scene.cpp`（変換が無いこと）・`Private/SceneView.cpp`（ブレンドするのは `FilmGrainIntensity` だけ）、`Private/Particles/ParticleSystemComponent.cpp`（コンストラクタの `bAutoActivate`、起動と停止でティックを自分で切り替えること）、`Classes/Particles/ParticleEmitter.h` の `FParticleBurst`、`UMG/Public/Blueprint/UserWidget.h`（`AddToPlayerScreen`）。
 - UE 5.8 の挙動（Primal）: `Engine/Source/Runtime/Engine/Private/Timeline.cpp`（`PlayFromStart` の更新、長さを超えたティックでの終わり）、`Private/Components/PostProcessComponent.cpp`（既定の `bUnbound`・`BlendRadius`・`Priority`）、`Private/Curves/RichCurve.cpp`（`AddKey` と `SetKeys` が Auto の接線を計算し直す）、`Private/KismetSystemLibrary.cpp`（`SphereOverlapActors`）、`PhysicsCore/Private/ChaosScene.cpp`（`AddActorsToScene_AssumesLocked` が既定で体をすぐに問い合わせの構造へ入れる。テストの一時的なワールドで重なり判定が効く理由）。
 - UE 5.8 の挙動（テレポート）: `Engine/Source/Runtime/Engine/Private/GameFramework/SpringArmComponent.cpp`（ラグ、`GetSocketTransform` がソケット名を見ないこと、長さ 0 ではトレースしないこと）、`Private/Components/DecalComponent.cpp`（材質が無いデカールは既定のデカール材で描く）、`Renderer/Private/DecalRenderingCommon.cpp`（Emissive だけのデカールは `BO_Add, BF_SourceAlpha, BF_One` の加算）、`Private/Particles/ParticleSystemComponent.cpp`（`SetTemplate` は登録済みで `bAutoActivate` なら動き出す）、`Private/KismetSystemLibrary.cpp`・`KismetTraceUtils.cpp`（`LineTraceSingleForObjects` の中身）。
@@ -331,7 +376,7 @@ updated: 2026-09-17
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（13 件。うち `Wasami.Cascade.Build` は 01 記録）。
+`Automation RunTests Wasami`（15 件。うち `Wasami.Cascade.Build` は 01 記録）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
@@ -341,6 +386,8 @@ updated: 2026-09-17
 - `Wasami.Powers.VanishTimeline` … `BP_VanishPower` の `float2`（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）と重み（0 秒で色 0.997・閃光 0.991、0.12 秒で閃光 0、0.3 秒以降で色 0）、クラスの既定（範囲なし・重み 0、紫のゲイン、中間調 100、色収差の上書きが 0、フィルムグレインの上書きなし、粒子の位置・自動起動・ティックの開始なし、粒子の素材の指定）。
 - `Wasami.Powers.VanishNotify` … 一時的なゲームのワールドで、タグ `Enemy` と実装のある的には距離によらず `PlayerVanish` が 1 回ずつ届き、タグの無い的と、タグだけで実装の無いアクタには届かないこと。`SetState` は送らないこと。
 - `Wasami.Powers.VanishWidget` … アニメ `Vanish` の不透明度を 1/15 倍速で読んだ値（0 / 0.375 / 0.75 / 1.125 / 1.5 / 7.5 / 13.5 / 14.25 / 14.625 / 15 / 20 秒で 0 / 0.156 / 0.499 / 0.843 / 1 / 1.0123 / 1 / 0.499 / 0.156 / 0 / 0）と、クラスの `Speed` 1。
+- `Wasami.Powers.TelepathyTracker` … 距離から印の大きさ（0 / 50 / 100 / 125 m で 0.5 / 0.3 / 0.1 / 0、さらに遠いと負）、Appear と Disappear の拡縮と不透明度（書き出しの接線で計算した値と 1e-5 以内。Appear は 0.25 秒で拡縮 1・0.375 秒で 1.031・0.5 秒以降 0.95、Disappear は 0.15 秒で 1.1・0.3 秒で 0）、トラッカーのウィジェットコンポーネントの既定（画面空間・クラス・500 × 500・ピボット 0.5・希望の大きさで描かない）、ティックすること、Telepathy のクラスの `Time` 0。
+- `Wasami.Powers.TelepathyTargets` … UE の `FTestWorldWrapper`（ゲームインスタンスとワールドのコンテキストを持ち、プレイを始めて手でティックするワールド）で、`BeginPlay` が近く・遠く（2 km）の 2 体に印を出し（敵の位置に、追従を始めて、ウィジェット付きで）、`NoTelepathy` の的とタグだけのアクタには出さないこと。直後の `UpdateTargets` は 0。印が動いた敵へ移り、プレイヤーがいないので箱の拡縮が 0.5 になること。後から出た敵は 0.7 秒では見つからず、0.8 秒の検索で見つかること。敵が消えた印は次のティックで追従をやめ、0.5 秒後に消えること。9 秒の直前まで Telepathy が残り、9 秒で消えて、残りの印が追従をやめて Disappear を始め、0.5 秒後に消えること。2 回目の使用（1 秒）で同じ敵に再び印が付き、終わりから 0.5 秒で全部消えること。
 - `Wasami.CameraAnim.Playback`（`Tests/WasamiCameraAnimTests.cpp`）… ブーストの再生（0.25 秒で 0.5、0.5 秒で 1、9.25 秒でブレンドアウトが始まり 9.5 秒で 0.5、9.75 秒で 0、その次で終わり）、即座の停止、ブレンドの無い 0.5 秒のアニメが長さで終わること、ブレンドイン中の停止が小さい方の重みで続くこと。
 - `Wasami.CameraAnim.Tracks` … ブーストの 1 キーの色が保たれ上書きフラグを触らないこと、`CameraAnim_Teleport`（旧版）のキーと接線で、書き出しの 60 fps の標本（`CameraAnim_Teleport.csv`）と同じ値になること（0.1 秒の露出 1.149884・色調 (1.528122, 0.532324, 0.471878)、0.05 秒、8/60 秒の露出の山 67.69149）。FOV のトラックは PP を変えない。
 - `Wasami.CameraAnim.FieldOfView` … `CameraAnim_Teleport` の FOV のキーで、モディファイアの再生が書き出しの 60 fps の標本と同じ変化を足すこと（1/60 秒で 92.706、0.05 秒に 100° の視点で 119.80、0.13 秒で 150）、`BaseFOV` を基準にしないこと、0.5 秒の後は視点を変えないこと、5〜170° の切り詰めと重みの掛け方。
@@ -401,8 +448,21 @@ updated: 2026-09-17
 - 死亡のリセット（効果の 3.7 秒後に `ResetPowers`）: 使える状態・ゲージ 1・ウィジェット 0 になり、カプセルの Ignore と使用中は残った。その 3 秒後に使い直すと、的に 2 度目の `PlayerVanish`、新しいウィジェットとアクタが出た。終わりは最初の使用から 15.0 秒（使い直しの Delay は仕掛け直されない）で、そこから 15 秒後に使える状態になり、2 つ目のウィジェットが外れた。**使い直しの `SetDelay` が 1 回多くなるのでゲージの FlipFlop がずれ**、使い直しではアイコンが 0 → 1、再使用中は 1 → 0 と逆に動き、使える状態になったときアイコンは 0 だった（本家の `Stop Vanish Timeline` も FlipFlop を戻さず、終わりの Delay も仕掛け直さないので、本家どおり）。
 - PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」は前からのもの）。音はユーザーのスピーカーで確かめていない。PIE は止めた。PIE のビューポートの外周に、縮尺の違う絵が枠のように出るのは、Vanish の前（ステップ 6 の撮影）からあるもの。
 
+### Telepathy（2026-09-17、PIE、`L_Hospital_Zone1`、Space・1・Q とビューポートのクリックは `Tools/desktop.py` から送り、値はエディタの Python で毎フレーム読んだ）
+- ビルド: 1 回目は、ファイルが増えてユニティビルドのまとまり方が変わり、`WasamiVanishPower.cpp` と `WasamiPrimalPower.cpp`（`WaveVolume`・`WavePitch`・`FadeKeys`）、`WasamiVanishPower.cpp` とテストの的（`EnemyTag`）、`WasamiVanishWidget.cpp` と `WasamiSpeedBoostWidget.cpp`（`VignetteScale`）の無名名前空間の名前がぶつかり、新しいウィジェットのローカル変数 `bInitialized` が `UUserWidget` のメンバーを隠して（C4458）落ちた。名前を変えて通した（警告なし）。
+- 取り込み: `import_dd_powers()` が `sounds 7・camera_shakes 2・camera_anims 2・textures 8・materials 17・particle_systems 2` を作った（`Failed to compile` なし）。読み戻し: `M_DD_Telepathy` は UI・Additive・ノード 17 で、Emissive ← `Color` の RGB、Opacity ← `Saturate` ← `Multiply`（`Gain`）。`MM_Telepathy` の親は `M_DD_Telepathy`（`Tiling` 1・`Speed` 1・`Color` (1, 0, 0, 1)）、`MM_Telepathy_Inst` の親は `MM_Telepathy`（`Speed` 1）。テクスチャは 1024・sRGB なし / 512・sRGB、どちらも `TC_Default`・`TEXTUREGROUP_Effects`。音は 1.760 秒。
+- テスト 15 件が成功した。`TelepathyTargets` は最初、`UWorld::CreateWorld` だけのワールドで書いたが、ワールドのコンテキストが無く `DestroyActor` が警告し、タイマーも期待どおりに進まなかったので、UE の `FTestWorldWrapper` に書き直した（テストだけ Live Coding で入れ替えた）。
+- プレイヤーを (−25, 3000)・南向きに置き、仮の的を 800 cm 先・30 m 先・後ろ 5 m・右前（`NoTelepathy`）に出し、左の枠を Telepathy にして Q。毎フレームの記録（約 100 fps）: 使ったフレームで Telepathy のアクタが 1 つ出て、正面・30 m 先・後ろの 3 体（と、1 回目に足した的）に印が付き、`NoTelepathy` の的には付かなかった。箱の拡縮は距離どおり（800 cm で 0.468、30 m で 0.38、5 m で 0.48、1123 cm で 0.4551）。印の Appear は曲線どおりで（0.23 秒で 0.97、0.30 秒で最大 1.055、0.5 秒以降 0.95・不透明度 1）、角度はそれぞれ乱数（131.4°・358.5°・8.9° など）。**カメラの後ろの印は画面の層で折りたたまれ、Slate がティックしないので Appear が 0 のまま進まない**（本家の UMG も Slate のティックでアニメを進めるので同じ。見える向きになったら始まる）。
+- 使ってから 4.10 秒後に足した的には、4.80 秒の検索（0.8 秒ごと）で印が付いた。
+- 9.00 秒を過ぎた最初のフレームで Telepathy のアクタが消え、同じフレームで使用中が外れた。印は Disappear（0.1 秒で最大 1.127、0.27 秒で 0.065・不透明度 0.017）を経て、9.50 秒を過ぎたフレームで全部消えた。15.51 秒で使える状態に戻った。ゲージは 2 秒で 0.777、4.5 秒で 0.498、8.9 秒で 0.010、再使用の 0.50 秒で 0.077、3.24 秒で 0.499、15.4 秒で 0.984（1 → 0 を 9 秒、0 → 1 を 6.5 秒）。
+- 画面（gdigrab で 60 fps 収録。`observations/ours/pie-telepathy-*`）: 印は壁や的に隠れずに赤い丸として重なって出た。縁のぼけた赤い円で、中はほぼ飽和し、ノイズの模様は薄い（**材質は推定。本家と見比べていない**）。正面 800 cm の印の直径は約 110〜120 px（ビューポート 884 × 596。DPI の拡大率は約 0.55 なので、500 × 0.468 × 0.95 × 0.55 ≈ 122 px と合う）。30 m 先の印は正面の印の後ろに重なって見えない（近いものが上）。出るときに膨らみ、終わりに一度膨らんでから 0.3 秒で消えた。
+- PIE の間、この仕組みの警告やエラーは無かった（ログのエラーは計測のスクリプトの書き損じだけ）。音はユーザーのスピーカーで確かめていない。PIE は止めた。
+
 ## 既知の制約・注意点
-- **Telepathy・Telekinesis は中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
+- **Telekinesis は中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
+- **Telepathy の印の材質 `M_DD_Telepathy` はグラフが推定**（ノイズのつなぎ方・パンの速さ・`Gain` は仮の値）。印の画面上の大きさ（500 × 500 の枠に広がること、DPI の拡大率）も本家と見比べていない。進捗記録のステップ 11 で最新版の病院（ナースが出る）と見比べる。敵（M4）が無いので、印は仮の的でしか確かめていない。
+- Telepathy の印の `Appear` が角度を触らないこと（2D 変換のトラックはデータのあるチャンネルだけを書く）と、アニメの最後の評価の時刻は UE 5.8 のソースに拠る。UE 4.24 のソースは手元に無い（本家も乱数の角度を入れているので、角度は残る前提）。
+- ユニティビルドで無名名前空間の名前がぶつからないよう、定数や補助の名前はファイルごとに固有にする（ステップ 8 でファイルが増えてまとまり方が変わり、Vanish と Primal の定数がぶつかった）。
 - **Vanish の煙の材質 `M_DD_LoopingSmoke` とビネットの材質 `M_DD_WobblyVignette` はグラフが推定**（ビネットのパンの速さ・周期・強さは仮の値）。進捗記録のステップ 11 で最新版の病院と見比べる。敵（M4）が無いので、見えない扱いは応答の値と仮の的への `PlayerVanish` でしか確かめていない。
 - **Primal Fear の球の材質 `M_DD_Primal` はグラフが推定**（パンの速さも仮の値）。ポストプロセスの値は原作どおりだが、UE 5.8 のトーンマッパーで同じ見え方になるかは未確認。進捗記録のステップ 11 で最新版の病院と見比べる。
 - 敵（M4）がまだ無いので、Primal の気絶は仮の的でしか確かめていない。
@@ -426,6 +486,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: Telepathy（`AWasamiTelepathyPower`〈0.8 秒ごとにレベルの全敵に印、時間で全部外す〉、`AWasamiTelepathyTracker`〈画面空間のウィジェットで敵を追い、距離で大きさ〉、`UWasamiTelepathyTrackerWidget`〈赤い煙の円、Appear / Disappear〉、開始と終わりの音、シェイク、9 秒と再使用 6.5 秒）とテスト `Wasami.Powers.TelepathyTracker`・`TelepathyTargets` を足した。印の材質は推定。ユニティビルドでぶつかった Vanish の無名名前空間の名前を変えた
 - 2026-09-17: Vanish（`AWasamiVanishPower`〈紫と白の一瞬の演出・煙 `PPP_VanishPuff`・音・全敵への `PlayerVanish`〉、`UWasamiVanishWidget`〈紫の揺らぐビネット、15 秒で出て消える〉、カプセルの `Camera` 応答の切り替え、15 秒と再使用 15 秒、リセット）とテスト `Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget` を足した。煙とビネットの材質は推定
 - 2026-09-17: 一瞬の演出の基底 `AWasamiPowerBurst`（全画面のポストプロセス 2 つと 2 秒のタイムライン）と Primal Fear（`AWasamiPrimalPower`。半径の中の敵に気絶を 1 回、赤い球、音、シェイク、再使用 23 秒）、仮の的 `AWasamiTestEnemy`、テスト `Wasami.Powers.PrimalTimeline`・`PrimalStun` を足した。球の材質は推定
 - 2026-09-17: テレポートの照準の見た目を足した（デカールの材質 `M_Decal_Teleport`〈推定〉と、デカールの子のパーティクル `P_ky_cutter2`〈原作の書き出しを Cascade に写したもの〉。斬撃と火花の材質は推定）

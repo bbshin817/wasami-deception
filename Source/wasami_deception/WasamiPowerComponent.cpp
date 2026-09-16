@@ -14,6 +14,8 @@
 #include "WasamiPrimalPower.h"
 #include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
+#include "WasamiTelepathyPower.h"
+#include "WasamiTelepathyTrackerWidget.h"
 #include "WasamiTeleportAim.h"
 #include "WasamiVanishPower.h"
 #include "WasamiVanishWidget.h"
@@ -47,6 +49,12 @@ namespace
 	constexpr float TeleportAimVolume = 1.75f;
 	constexpr float TeleportGaugeDropSeconds = 0.05f;
 	const FVector TeleportAimSpawnOffset(0., 0., -5000.);
+	// The telepathy: its start's volume, its end's volume and pitch (Teleport_Mode_Entered), the shake's scale, and the
+	// spawn at the world's origin.
+	constexpr float TelepathyVolume = 0.6f;
+	constexpr float TelepathyEndVolume = 1.f;
+	constexpr float TelepathyEndPitch = 1.5f;
+	constexpr float TelepathyShakeScale = 1.f;
 	// Primal Fear: the icon's drop, the spawn 50 m under the player, and the delay before the cooldown starts.
 	constexpr float PrimalGaugeDropSeconds = 0.05f;
 	const FVector PrimalSpawnOffset(0., 0., -5000.);
@@ -73,6 +81,10 @@ UWasamiPowerComponent::UWasamiPowerComponent()
 	BoostWidgetClass = UWasamiSpeedBoostWidget::StaticClass();
 	TeleportAimSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered")));
 	TeleportAimClass = AWasamiTeleportAim::StaticClass();
+	TelepathySound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/Telepathy")));
+	TelepathyEndSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered")));
+	TelepathyShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak")));
+	TelepathyPowerClass = AWasamiTelepathyPower::StaticClass();
 	PrimalPowerClass = AWasamiPrimalPower::StaticClass();
 	VanishPowerClass = AWasamiVanishPower::StaticClass();
 	VanishWidgetClass = UWasamiVanishWidget::StaticClass();
@@ -90,6 +102,10 @@ void UWasamiPowerComponent::BeginPlay()
 	UWasamiSpeedBoostWidget::LoadAssets(LoadedBoostWidgetAssets);
 	LoadedTeleportAimSound = TeleportAimSound.LoadSynchronous();
 	AWasamiTeleportAim::LoadAssets(LoadedTeleportAimAssets);
+	LoadedTelepathySound = TelepathySound.LoadSynchronous();
+	LoadedTelepathyEndSound = TelepathyEndSound.LoadSynchronous();
+	LoadedTelepathyShake = TelepathyShakeClass.LoadSynchronous();
+	UWasamiTelepathyTrackerWidget::LoadAssets(LoadedTelepathyAssets);
 	AWasamiPrimalPower::LoadAssets(LoadedPrimalAssets);
 	AWasamiVanishPower::LoadAssets(LoadedVanishAssets);
 	UWasamiVanishWidget::LoadAssets(LoadedVanishAssets);
@@ -223,6 +239,9 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 			break;
 		case EWasamiPower::Teleport:
 			UseTeleport(bLeft);
+			break;
+		case EWasamiPower::Telepathy:
+			UseTelepathy();
 			break;
 		case EWasamiPower::PrimalFear:
 			UsePrimal();
@@ -458,6 +477,40 @@ void UWasamiPowerComponent::ResetTeleport()
 	}
 	UsedTeleport();
 	Gauge(EWasamiPower::Teleport).Stop();
+}
+
+void UWasamiPowerComponent::UseTelepathy()
+{
+	AWasamiPlayerCharacter* Player = GetPlayer();
+	const float Duration = GetTuning(EWasamiPower::Telepathy).TelepathyDuration;
+	ActivePowers.AddUnique(EWasamiPower::Telepathy);
+	UGameplayStatics::PlaySound2D(this, LoadedTelepathySound, TelepathyVolume);
+	SetPowerAvailable(EWasamiPower::Telepathy, false);
+	const APlayerController* PC = Cast<APlayerController>(Player->GetController());
+	if (PC && PC->PlayerCameraManager && LoadedTelepathyShake)
+	{
+		PC->PlayerCameraManager->StartCameraShake(LoadedTelepathyShake, TelepathyShakeScale, ECameraShakePlaySpace::CameraLocal);
+	}
+
+	// BP_Telepathy comes out at the world's origin, whatever is there, with the level's Time; it counts that time too.
+	const FTransform SpawnTransform = FTransform::Identity;
+	if (AWasamiTelepathyPower* Telepathy = GetWorld()->SpawnActorDeferred<AWasamiTelepathyPower>(TelepathyPowerClass,
+		SpawnTransform))
+	{
+		Telepathy->Time = Duration;
+		Telepathy->FinishSpawning(SpawnTransform);
+	}
+	Gauge(EWasamiPower::Telepathy).SetDelay(Duration, false);
+	Delay(TelepathyEndTimer, Duration, &UWasamiPowerComponent::EndTelepathy);
+}
+
+void UWasamiPowerComponent::EndTelepathy()
+{
+	ActivePowers.Remove(EWasamiPower::Telepathy);
+	UGameplayStatics::PlaySound2D(this, LoadedTelepathyEndSound, TelepathyEndVolume, TelepathyEndPitch);
+	const float Cooldown = GetTuning(EWasamiPower::Telepathy).TelepathyCooldown;
+	Gauge(EWasamiPower::Telepathy).SetDelay(Cooldown, false);
+	Delay(TelepathyRefillTimer, Cooldown, &UWasamiPowerComponent::RefillTelepathy);
 }
 
 void UWasamiPowerComponent::UsePrimal()

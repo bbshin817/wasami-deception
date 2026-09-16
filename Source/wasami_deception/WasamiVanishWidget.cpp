@@ -11,8 +11,8 @@
 namespace
 {
 	// UMG_Vanish: Image_82 fills the canvas, tinted purple, scaled up about its middle.
-	const FLinearColor VignetteColour(0.27869701385498047f, 0.16055700182914734f, 0.5364580154418945f, 1.f);
-	constexpr float VignetteScale = 1.0499999523162842f;
+	const FLinearColor VanishVignetteColour(0.27869701385498047f, 0.16055700182914734f, 0.5364580154418945f, 1.f);
+	constexpr float VanishVignetteScale = 1.0499999523162842f;
 
 	// The animation Vanish: one RenderOpacity track, cubic keys at ticks 0 / 6000 / 54000 / 60000 (60000 a second) with
 	// the tangents saved per tick, here per second.
@@ -69,8 +69,8 @@ TSharedRef<SWidget> UWasamiVanishWidget::RebuildWidget()
 		WidgetTree->RootWidget = Root;
 		Vignette = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Image_82"));
 		Vignette->SetBrushFromMaterial(VignetteMaterial.LoadSynchronous());
-		Vignette->SetColorAndOpacity(VignetteColour);
-		Vignette->SetRenderScale(FVector2D(VignetteScale));
+		Vignette->SetColorAndOpacity(VanishVignetteColour);
+		Vignette->SetRenderScale(FVector2D(VanishVignetteScale));
 		UCanvasPanelSlot* CanvasSlot = Root->AddChildToCanvas(Vignette);
 		CanvasSlot->SetAnchors(FAnchors(0.f, 0.f, 1.f, 1.f));
 		CanvasSlot->SetOffsets(FMargin(0.f));

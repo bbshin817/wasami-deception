@@ -19,13 +19,13 @@ namespace
 	// The puff's place under the root (the export's RelativeLocation).
 	const FVector PuffLocation(92.42288208007812, -0.00042724609375, -152.14666748046875);
 	// PlaySoundAtLocation(Stun_Wave_Attack_New_04) at the origin (the wave has no attenuation, so it is not placed).
-	constexpr float WaveVolume = 1.f;
-	constexpr float WavePitch = 1.f;
+	constexpr float VanishWaveVolume = 1.f;
+	constexpr float VanishWavePitch = 1.f;
 	// GetAllActorsWithTag.
-	const FName EnemyTag(TEXT("Enemy"));
+	const FName VanishEnemyTag(TEXT("Enemy"));
 
 	// The timeline's float2 track (CurveFloat_1). Its float, desaturation and opacity tracks (Primal's keys) drive nothing.
-	const FWasamiCurveKey FadeKeys[] = {
+	const FWasamiCurveKey VanishFadeKeys[] = {
 		{-0.011600494384765625f, 0.f, RCIM_Cubic, -0.0950283631682396f, -0.09502881020307541f},
 		{0.30000001192092896f, 1.f, RCIM_Cubic, 1.0569698810577393f, 1.0569703578948975f},
 	};
@@ -33,7 +33,7 @@ namespace
 
 const FRichCurve& AWasamiVanishPower::VanishFadeCurve()
 {
-	static const FRichCurve Curve = MakeCurve(FadeKeys);
+	static const FRichCurve Curve = MakeCurve(VanishFadeKeys);
 	return Curve;
 }
 
@@ -65,7 +65,7 @@ int32 AWasamiVanishPower::NotifyEnemies(const UObject* WorldContextObject)
 {
 	// Every tagged actor, cast to the interface: a tagged actor without it (the original's Zone 2 matron) is not told.
 	TArray<AActor*> Tagged;
-	UGameplayStatics::GetAllActorsWithTag(WorldContextObject, EnemyTag, Tagged);
+	UGameplayStatics::GetAllActorsWithTag(WorldContextObject, VanishEnemyTag, Tagged);
 	int32 Told = 0;
 	for (AActor* Each : Tagged)
 	{
@@ -89,6 +89,6 @@ void AWasamiVanishPower::StartPower()
 	{
 		SetActorLocation(Player->GetActorLocation());
 	}
-	UGameplayStatics::PlaySoundAtLocation(this, WaveSound.LoadSynchronous(), FVector::ZeroVector, WaveVolume, WavePitch);
+	UGameplayStatics::PlaySoundAtLocation(this, WaveSound.LoadSynchronous(), FVector::ZeroVector, VanishWaveVolume, VanishWavePitch);
 	NotifyEnemies(this);
 }

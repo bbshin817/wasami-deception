@@ -11,6 +11,7 @@ class USoundBase;
 class UWasamiCameraAnim;
 class AWasamiTeleportAim;
 class AWasamiPrimalPower;
+class AWasamiTelepathyPower;
 class AWasamiVanishPower;
 class UWasamiSpeedBoostWidget;
 class UWasamiVanishWidget;
@@ -21,8 +22,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPo
  * The tablet's powers, after Dark Deception's BP_DD_PlayerCharacter, BP_Powers and UMG_TabletPowers (pak_reference_2),
  * which each hold a part of it for the one player: the unlocked powers and the two sockets that point into them, Q / E
  * to use a socket and 1 / 2 to cycle it, each power's gauge on the tablet, the values of the upgrade level, the reset
- * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, Primal Fear,
- * AWasamiPrimalPower, and Vanish, AWasamiVanishPower). The tablet's screen only shows what this holds.
+ * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, the telepathy,
+ * AWasamiTelepathyPower, Primal Fear, AWasamiPrimalPower, and Vanish, AWasamiVanishPower). The tablet's screen only
+ * shows what this holds.
  */
 UCLASS(ClassGroup = (Wasami), meta = (BlueprintSpawnableComponent))
 class WASAMI_DECEPTION_API UWasamiPowerComponent : public UActorComponent
@@ -138,6 +140,22 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<AWasamiTeleportAim> TeleportAimClass;
 
+	/** Telepathy: the telepathy starts. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSoftObjectPtr<USoundBase> TelepathySound;
+
+	/** Teleport_Mode_Entered: the telepathy ends. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSoftObjectPtr<USoundBase> TelepathyEndSound;
+
+	/** BP_CameraShake_Streak: the telepathy starts. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSoftClassPtr<UCameraShakeBase> TelepathyShakeClass;
+
+	/** BP_Telepathy: what the telepathy spawns. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<AWasamiTelepathyPower> TelepathyPowerClass;
+
 	/** BP_PrimalPower: what Primal Fear spawns. */
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<AWasamiPrimalPower> PrimalPowerClass;
@@ -182,6 +200,12 @@ private:
 	void RefillTeleport();
 	/** Reset Teleport with BP_Powers' Stop Teleport Timeline: a take-back, or the reset on death. */
 	void ResetTeleport();
+
+	void UseTelepathy();
+	/** After the telepathy's time: its end sound, and the cooldown starts. */
+	void EndTelepathy();
+	/** The end of the cooldown (the Gate before it always lets it through). */
+	void RefillTelepathy() { Refill(EWasamiPower::Telepathy); }
 
 	void UsePrimal();
 	/** 0.06 s after a use: the cooldown starts. */
@@ -228,6 +252,19 @@ private:
 	/** The spawned BP_Power_Teleport (the original keeps the spawn's return value; a destroyed one stays in it). */
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiTeleportAim> TeleportAim;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedTelepathySound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedTelepathyEndSound;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UCameraShakeBase> LoadedTelepathyShake;
+
+	/** What the telepathy's markers show, held from the start. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UObject>> LoadedTelepathyAssets;
 
 	/** What Primal Fear's actor uses, held from the start. */
 	UPROPERTY(Transient)
@@ -280,6 +317,9 @@ private:
 	/** DoOnce_5 (its refill): starts closed and opens on a use. */
 	bool bTeleportRefillOpen = false;
 	FTimerHandle TeleportRefillTimer;
+
+	FTimerHandle TelepathyEndTimer;
+	FTimerHandle TelepathyRefillTimer;
 
 	FTimerHandle PrimalCooldownTimer;
 	FTimerHandle PrimalRefillTimer;

@@ -1,7 +1,8 @@
 """Dark Deception's tablet powers: the sounds, camera shakes, camera anims, textures, materials and particle systems
 the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim), Primal Fear (AWasamiPrimalPower),
 Vanish (AWasamiVanishPower, UWasamiVanishWidget) and the player's FX (UWasamiChameleonComponent) use. The icons on the
-tablet's sockets are the tablet's own (dd_tablet).
+tablet's sockets are the tablet's own (dd_tablet). The telepathy's markers (UWasamiTelepathyTrackerWidget) show
+MM_Telepathy_Inst.
 
   M_Speedlines                  the original's graph, node for node (FlipBook at its defaults → T_Speedlines)
   M_DD_ChameleonCameraShake     the Chameleon pack's M_CameraShake, estimated (its graph is cooked away)
@@ -13,6 +14,9 @@ tablet's sockets are the tablet's own (dd_tablet).
                                 estimated masters of Vanish's puff (M_LoopingSmoke1_Sheet) and vignette
                                 (MM_WobblyVignette), whose graphs are cooked away; instances of them sit at the original's
                                 paths
+  M_DD_Telepathy                the estimated master of the telepathy's marker (MM_Telepathy's graph is cooked away);
+                                MM_Telepathy is an instance of it and MM_Telepathy_Inst an instance of that, as the
+                                original's
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the powers follow except the teleport (pak_reference).
 """
@@ -32,6 +36,7 @@ SOUNDS = (
     (1, "Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227"),
     (1, "/Engine/VREditor/Sounds/UI/Teleport_Committed"),
     (2, "Audio/SharedGameplay/Stun_Wave_Attack_New_04"),  # Primal Fear
+    (2, "Audio/SharedGameplay/Telepathy"),  # the telepathy starts (it ends with Teleport_Mode_Entered, the same file)
 )
 CAMERA_SHAKES = (
     (2, "UI/Menu/Streaks/BP_CameraShake_Streak"),  # the speed boost starts, the teleport moves (the same in both versions)
@@ -48,6 +53,9 @@ TEXTURES = (
     (2, "Textures/05_Circus/T_05_PortalMaps"),  # Primal Fear's sphere (R sparkles, G a centred glow, B cloudy noise)
     (2, "Particles/Shared/SmokeTest/T_LoopingSmoke_8x8"),  # Vanish's puff (8 × 8 frames of grey smoke over alpha)
     (2, "Textures/FX_Textures/T_perlinnoise"),  # MM_WobblyVignette's noise (grey, linear)
+    # MM_Telepathy's noises: smoky R, streaky G, blotchy B (linear); cloudy in each channel (sRGB)
+    (2, "ThirdParty/AdvancedMagicFX13/Textures/T_ky_noise16"),
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise"),
 )
 # Cascade systems (dd_particles), made after the materials they use.
 PARTICLE_SYSTEMS = (
@@ -104,6 +112,22 @@ WOBBLE_PAN_A = (0.03, 0.02)
 WOBBLE_PAN_B = (-0.02, 0.03)
 WOBBLE_PERIOD = 2.0
 WOBBLE_GAIN = 2.0
+
+# The telepathy's marker (pak_reference_2): the original's master and its instance, and the master holding our estimate.
+TELEPATHY = "Blueprints/Main/Powers/Telepathy/MM_Telepathy"
+TELEPATHY_INST = "Blueprints/Main/Powers/Telepathy/MM_Telepathy_Inst"
+TELEPATHY_MASTER = "/Game/Pipeline/Materials/M_DD_Telepathy"
+TELEPATHY_NOISE_A = "ThirdParty/AdvancedMagicFX13/Textures/T_ky_noise16"
+TELEPATHY_NOISE_B = "ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise"
+# The export keeps the samples' Panners (Panner_0, Panner_1) without their speeds, and nothing of how the noises and
+# the radial gradient make the opacity: placeholders until the marker is compared with the latest version (the speeds,
+# and the gain that makes the dim noises show).
+TELEPATHY_PAN_A = (0.05, -0.1)
+TELEPATHY_PAN_B = (-0.04, -0.15)
+TELEPATHY_GAIN = 3.0
+# MM_Telepathy_Inst's values its parent has (its Size is not one of MM_Telepathy's parameters, and
+# RefractionDepthBias is the engine's, which a UI material does not use).
+TELEPATHY_INST_SCALARS = ("Speed",)
 
 
 def _connect(a, a_pin, b, b_pin):
@@ -331,6 +355,58 @@ def _build_wobbly_vignette(mat):
     g.out(clamped, "", unreal.MaterialProperty.MP_OPACITY)
 
 
+def _build_telepathy(mat):
+    """MM_Telepathy (pak_reference_2), estimated (see TELEPATHY_*). The cook kept its settings (the UI domain,
+    additive), its emissive colour (the Color parameter's RGB, red), the parameters Tiling and Speed, a sample of
+    T_ky_noise16 (linear) at Panner_0 and one of T_ky_noise at Panner_1, and a RadialGradientExponential call, of 21
+    expressions (the ExponentialDensity it lists is the gradient's own). The estimate: both noises read at TexCoord 0 ×
+    Tiling, panning by Time × Speed, and an opacity of saturate((the noises' R summed) × the gradient × a gain). UI
+    additive blending adds the colour × the opacity (× the widget's opacity)."""
+    g = dd_stage._Graph(mat)
+    g.out(g.vector("Color", (1.0, 0.0, 0.0, 1.0), -600, -350), "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    coords = g.node(unreal.MaterialExpressionTextureCoordinate, -1700, 0)
+    tiled = g.multiply(coords, "", g.scalar("Tiling", 1.0, -1700, 100), "", -1500, 50)
+    time = g.node(unreal.MaterialExpressionTime, -1700, 250)
+    flow = g.multiply(time, "", g.scalar("Speed", 1.0, -1700, 350), "", -1500, 300)
+    noises = []
+    for rel, sampler, speed, y in ((TELEPATHY_NOISE_A, unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR, TELEPATHY_PAN_A, -100),
+                                   (TELEPATHY_NOISE_B, unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, TELEPATHY_PAN_B, 200)):
+        pan = g.node(unreal.MaterialExpressionPanner, -1300, y)
+        pan.set_editor_property("speed_x", speed[0])
+        pan.set_editor_property("speed_y", speed[1])
+        _connect(tiled, "", pan, "Coordinate")
+        _connect(flow, "", pan, "Time")
+        sample = g.node(unreal.MaterialExpressionTextureSample, -1100, y)
+        sample.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(rel)))
+        sample.set_editor_property("sampler_type", sampler)
+        _connect(pan, "", sample, "UVs")
+        noises.append(sample)
+    smoke = g.binary(unreal.MaterialExpressionAdd, noises[0], "R", noises[1], "R", -850, 50)
+    gradient = _function(g, "Gradient/RadialGradientExponential", -1100, 450)
+    shaped = g.multiply(smoke, "", gradient, "RadialGradientExponential", -650, 150)
+    gained = g.multiply(shaped, "", g.scalar("Gain", TELEPATHY_GAIN, -850, 300), "", -450, 200)
+    clamped = g.node(unreal.MaterialExpressionSaturate, -300, 200)
+    _connect(gained, "", clamped, "")
+    g.out(clamped, "", unreal.MaterialProperty.MP_OPACITY)
+
+
+def make_telepathy_materials():
+    """The telepathy's marker: the estimated master, MM_Telepathy as an instance of it with the original's parameter
+    values, and MM_Telepathy_Inst as an instance of MM_Telepathy with its own."""
+    master = dd_assets.material(TELEPATHY_MASTER, _build_telepathy, domain=unreal.MaterialDomain.MD_UI,
+                                blend_mode=unreal.BlendMode.BLEND_ADDITIVE)
+    scalars, vectors = parameter_defaults(TELEPATHY, 2)
+    base = dd_assets.material_instance(dd_assets.asset_path(TELEPATHY), master, scalars=scalars, vectors=vectors)
+    inst = dd_assets.main_export(dd_assets.export_json(TELEPATHY_INST, 2), TELEPATHY_INST)["props"]
+    inst_scalars = {v["ParameterInfo"]["Name"]: v["ParameterValue"] for v in inst.get("ScalarParameterValues", [])
+                    if v["ParameterInfo"]["Name"] in TELEPATHY_INST_SCALARS}
+    marker = dd_assets.material_instance(dd_assets.asset_path(TELEPATHY_INST), base, scalars=inst_scalars)
+    made = [master, base, marker]
+    for asset in made:
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return [a.get_path_name() for a in made]
+
+
 def parameter_defaults(rel, version):
     """A material's scalar and vector parameter defaults from its export ({name: value}, {name: [r, g, b, a]}); a
     default the export leaves out is the engine's (0, or black)."""
@@ -407,7 +483,7 @@ def make_materials():
                                     domain=unreal.MaterialDomain.MD_UI, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
     shake = dd_assets.material(CAMERA_SHAKE_MASTER, _build_camera_shake, domain=unreal.MaterialDomain.MD_POST_PROCESS)
     return ([speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials() + make_primal_material()
-            + make_vanish_materials())
+            + make_vanish_materials() + make_telepathy_materials())
 
 
 def import_all():
