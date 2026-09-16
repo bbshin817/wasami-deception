@@ -97,7 +97,7 @@ updated: 2026-09-16
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
 - `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
-- `ue_props`: UE のプロパティ名 → Python 名（`CameraISO` → `camera_iso`、`bOverride_X` → `override_x`）、書き出しの値 → Python の値（辞書の Vector / Vector4 / Color / LinearColor、**`pak_reference_2` が色やベクトルに使う配列**〈`[183, 163, 145, 255]`〉、列挙）、構造体は中身だけを再帰的に入れる（`apply`）。読めなかったものは `failures` に積む。**UE の版で名前が変わったプロパティは `RENAMED` で読み替える**（`FogInscatteringColor` → `FogInscatteringLuminance`、`DirectionalInscatteringColor` → `DirectionalInscatteringLuminance`。どちらも同じ LinearColor の改名なので値はそのまま）。
+- `ue_props`: UE のプロパティ名 → Python 名（`CameraISO` → `camera_iso`、`bOverride_X` → `override_x`）、書き出しの値 → Python の値（辞書の Vector / Vector4 / Color / LinearColor、**`pak_reference_2` が色やベクトルに使う配列**〈`[183, 163, 145, 255]`〉、列挙）、構造体は中身だけを再帰的に入れる（`apply`）。**整数 4 つの配列の色（FColor）は [B, G, R, A] の順として読む**（エンジンは FColor を uint32 のまま書き〈`Color.h` の `Ar << DWColor()`〉、リトルエンディアンでバイトは B,G,R,A。書き出しの道具 `ue4.py` の `'Color': ('u8', 4)` はその順のまま出す。`pak_reference` も同じ）。浮動小数の配列（LinearColor）と、名前つきの辞書の色は並べ替えない。読めなかったものは `failures` に積む。**UE の版で名前が変わったプロパティは `RENAMED` で読み替える**（`FogInscatteringColor` → `FogInscatteringLuminance`、`DirectionalInscatteringColor` → `DirectionalInscatteringLuminance`。どちらも同じ LinearColor の改名なので値はそのまま）。
 
 ### 本家のアセット（`pipeline/dd_assets.py`）
 - `pak_reference/_assets/DDeception/Content/<パス>.json` の `Default__*` のプロパティを、`LegacyCameraShake` を親にした Blueprint の CDO に入れる（UE4 の `UCameraShake` がそのまま `LegacyCameraShake` なので、振幅・周波数・ブレンドの意味が一致する）。
@@ -148,6 +148,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: 書き出しの FColor（整数 4 つの配列）を [B, G, R, A] として読むようにした（`ue_props.value`）。それまでは R と B を取り違えていて、Zone 1 の天井灯 294 個が本来の (200, 251, 255) の青白い光ではなく (255, 251, 200) の黄色に、扉枠の灯 234 個が本来の (255, 57, 74) の赤ではなく (74, 57, 255) の青になっていた（実機の開始地点の床の色の比と、廊下の扉枠の赤い光で確かめた）。両ゾーンのレベルを組み立て直した
 - 2026-09-16: `T_DD_DefaultPacked` を `TC_Masks` から `TC_Default`・リニアに直した（Packed のノードは `LINEAR_COLOR` なので型が合わず、`M_DD_Substance` のコンパイルが失敗して、インスタンスがすべて既定のマテリアルの市松で描かれていた）。`ensure_default_packed` が既存のアセットも直し、`ensure_masters` がそのときマスターを再コンパイルするようにした
 - 2026-09-16: 原作で焼かれていた（Static の）灯の `VolumetricScatteringIntensity` を 0 にするようにした。原作では効いていなかった値がそのまま効いて、Zone 1 の画面が暖色のもやに覆われていた（切り分けは `capture_pose` の A/B。霧を切ると平均輝度が 18.7 → 9.9 になり、もやが霧由来と分かった）
 - 2026-09-16: `WasamiDevTools.capture_pose` を足した（エディタが前面でなくても見た目を撮れるようにするため）

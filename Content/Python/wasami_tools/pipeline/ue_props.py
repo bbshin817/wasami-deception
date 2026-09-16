@@ -38,11 +38,13 @@ def value(raw, current):
                 return unreal.Color(r=int(raw["R"]), g=int(raw["G"]), b=int(raw["B"]), a=int(raw.get("A", 255)))
             return unreal.LinearColor(raw["R"], raw["G"], raw["B"], raw.get("A", 1.0))
         return None
-    # pak_reference_2 writes colours and vectors as arrays ([183, 163, 145, 255], [0.27, 0.33, 0.44, 1.0])
+    # pak_reference and pak_reference_2 write colours and vectors as arrays ([183, 163, 145, 255], [0.27, 0.33, 0.44, 1.0])
     if isinstance(raw, (list, tuple)) and 2 <= len(raw) <= 4 and all(isinstance(v, (int, float)) for v in raw):
         n = [float(v) for v in raw]
         if isinstance(current, unreal.Color):
-            return unreal.Color(r=int(n[0]), g=int(n[1]), b=int(n[2]), a=int(n[3]) if len(n) > 3 else 255)
+            # An FColor array is in file order, B G R A: UE serialises FColor as its uint32 (Color.h, `Ar << DWColor()`),
+            # whose bytes are B, G, R, A on little-endian, and the exporter (ue4.py, 'Color': ('u8', 4)) keeps that order.
+            return unreal.Color(r=int(n[2]), g=int(n[1]), b=int(n[0]), a=int(n[3]) if len(n) > 3 else 255)
         if isinstance(current, unreal.LinearColor):
             return unreal.LinearColor(n[0], n[1], n[2], n[3] if len(n) > 3 else 1.0)
         if isinstance(current, unreal.Vector) and len(n) >= 3:
