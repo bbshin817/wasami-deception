@@ -133,6 +133,9 @@ updated: 2026-09-16
 - 起動の完了は**リモート実行が答えるか**で見る（`editor_answers`）。この PC では Docker Desktop が 127.0.0.1:8000 を掴んでいるため、MCP のポートに繋がってもエディタが起きているとは限らない。
 - Zone 2 のポストプロセスボリュームの **`ColorGradingLUT` と `WeightedBlendables` は入れていない**。前者は書き出しがアセットのパスの文字列（`/Game/ThirdParty/Chameleon/LUTs/LUT_Classic8`）で、取り込んだテクスチャに解決する仕組みがまだない。後者はポストプロセスのマテリアル（`M_SharpenFilter_Inst`）で、マスターの式が cook で消えている。**このボリュームは `ColorGradingIntensity` が 0 なので、LUT の見た目への寄与は無い**。
 - スカイライトのキューブマップ（`HDRI_Epic_Courtyard_Daylight`・`TC_HDR01`）は**回収できていない**。原作は TextureCube だが、書き出しは 512×512 の平面 PNG 1 面（float の階調は落ちている）で、UE に取り込むと Texture2D になる。いまはシーンのキャプチャに任せている。実測でも**寄与はほとんど無い**（Zone 1 の廊下で強度を 0 / 0.5 / 5 / 50 と振って撮ると、原作の 0.5 では平均が 0.05 も動かない。暗い屋内をキャプチャしているため）。同じアセットは Epic の StarterContent のものだが、この PC の UE 5.8 には入っていない（`Engine/Content/StarterContent` にテクスチャが 1 枚だけ、`FeaturePacks/` にも無い）。
+- **焼き込みの警告は原作どおりなので直さない**（2026-09-16、High 品質で両ゾーンを焼いたとき。00 記録の「灯の焼き込み」）:
+  - インポータンスボリュームが無い — 原作の Zone 1・Zone 2 にも `LightmassImportanceVolume` は無い（Zone 1 のボリュームは AudioVolume 2・BlockingVolume 7・NavMeshBoundsVolume 2・TriggerVolume 2、Zone 2 は BlockingVolume 10・NavMeshBoundsVolume 29・NavModifierVolume 30・PostProcessVolume 1）。
+  - ライトマップ UV の重なり — Zone 1 は `hospital_bed_02` 1.1 %・`hospital_pill_sign` 28.6 %・`hospital_ambulance_new` 49.3 %・`hospital_zone_01_tiles_tile_tunnel` 97.1 %、Zone 2 は `hospital_electricChair_01` 33.1 %・`hospital_ambulance_new`（と `_complexcollision`）49.3 %・`hospital_zone_02_holdingCell_01_jail_door` 1.5 %・`hospital_zone_02_CCTVset` 66.7 %。**原作の UV のまま**出ている: 取り込みに使った glTF（`Intermediate/Pipeline/dd/meshes/`）の原作の `LightMapCoordinateIndex` の UV を、原作の `LightMapResolution` のテクセルに塗って重なりを数えると（UE とは数え方が違うので値は一致しない）、64 メッシュのうち重なりの多い上位 8 個のうち 7 個がこの 7 メッシュだった（残る `spike_brush_StaticMesh` はライトマップの値が無く、Zone 2 に Movable で置かれているので焼き込みに入らない）。`_complexcollision` も原作の Zone 2 で見えるメッシュとして置かれている（`hospital_ambulance_new9`）。原作の値を写す方針なので UV は作り直さない。
 - **ボリューメトリック フォグの間接光**: 原作は焼き込みがあるので、フォグはボリュメトリック ライトマップ経由で `VolumetricFogStaticLightingScatteringIntensity`（Zone 1 は既定の 1.0）の分だけ焼かれた間接光を受け取る。本作も 2026-09-16 から焼いているので同じ経路がある（それより前は何も焼かず、Lumen はフォグに同じようには寄与しなかった）。
 - 原作の cook されたデータは、既定値と同じプロパティを持たない。ポストプロセスの override が立っていて値が無いのは「既定値で上書き」の意味。
 - MCP のポートは Docker Desktop と衝突しうる（`.claude/guides/unreal-workflow.md`）。MCP が使えないときは `Tools/ue_remote.py` で作業できる。
@@ -149,6 +152,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: 焼き込みの警告（インポータンスボリュームが無い・ライトマップ UV の重なり）がどちらも原作どおりであることを「既知の制約・注意点」に書いた（ソースは変えていない）
 - 2026-09-16: `apply_texture_settings` が、UE が sRGB を切る圧縮（HDR など）で sRGB を求めないようにした（HDR の空 2 枚が `refresh_settings` のたびに変わったと数えられていた）
 - 2026-09-16: ライトマップの解像度と UV の番号を原作のメッシュの値から取るようにし（`Export.lightmap`）、UV1 を持たないメッシュにも UE の展開を作らせないようにした（`setup_lightmap`。`refresh_settings` が既存のメッシュにもかけ直す）。それまでは解像度を表面積から決め（最大 2048）、番号を 1 に決め打ちし、結合メッシュに UV を作らせていたため、原作では 1 点の値だったステージ本体の間接光が面ごとに焼かれ、壁と床が実機より明るかった。表面積の計測（`gltf_surface`・`areaM2`・`lightmapUvUsed`）は使わなくなったので外した
 - 2026-09-16: 配置の `bCastShadowAsTwoSided` を取り込むようにした（Zone 1 のステージ本体 5 個。無いと片面の天井が平行光源の影にならず、焼き込みでも光が壁を抜けていた）。Zone 1 を組み立て直した

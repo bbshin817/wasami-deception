@@ -61,8 +61,9 @@
 | `zone1-start-pie-fixedcolor.png` | 同上 | 灯の色も直して焼き直した後 |
 | `zone1-start-pie-twosided-baked.png`（`-2` は同じ条件の撮り直し） | 同上 | 灯を Stationary にし、ステージ本体の両面の影を入れて焼き直した後（ライトマップは 1 テクセル 20 cm のまま） |
 | `zone1-start-pie-sd-base.png`・`zone1-start-pie-sd-off-<フラグ>.png` | 同上＋`ShowFlag.<フラグ> 0` | 同じ状態で表示フラグを 1 つずつ切ったもの（下の表） |
-| `zone1-start-pie-origlm.png`・`…-origlm-off-GI.png` | 同上 | **原作のライトマップの解像度と UV に揃えて焼き直した後**（2026-09-16 時点のいちばん新しい絵）と、その `GlobalIllumination 0` |
+| `zone1-start-pie-origlm.png`・`…-origlm-off-GI.png` | 同上 | **原作のライトマップの解像度と UV に揃えて焼き直した後**（Preview 品質）と、その `GlobalIllumination 0` |
 | `zone1-start-pie-origlm-doorblock.png` | 同上 | 同じ状態で、PIE の中だけ遠くのエレベーターの扉 2 枚を正面の両開き扉の位置 (-25, 2699) へ動かしたもの（実機で扉がふさいでいる奥を隠す） |
+| `zone1-start-pie-origlm-high.png`・`…-origlm-high-doorblock.png` | 同上 | 同じ設定を**原作と同じ High 品質**で焼き直した後（2026-09-16 時点のいちばん新しい絵）と、その扉の位置をふさいだもの |
 
 **`zone1-start-pie-fixedmat.png` より前の本作の絵は、すべて病院の壁・床が既定のマテリアル（灰色の市松）で描かれている**（`M_DD_Substance` のコンパイル失敗）。
 **`zone1-start-pie-fixedcolor.png` より前の本作の絵は、灯の色の R と B が入れ替わっている**（天井灯が黄色、扉枠の灯が青。本来は青白と赤）。どちらも 01 記録。
@@ -75,6 +76,7 @@
 | `tools/pie_pose.py` | PIE 中に `python Tools/ue_remote.py observations/tools/pie_pose.py`。視点をヨー -90 にし、プレイヤーから 8 m 以内のエレベーターの扉を隠す（実機の「開いた」状態に合わせる） |
 | `tools/cmp.py` | `python observations/tools/cmp.py <画像> <画像> …`（3440x1440）。画面全体・床・壁・天井・天井灯の面・エレベーターの壁・廊下の奥の中央値と平均輝度を並べる |
 | `tools/bake_zone1.py` | `python Tools/ue_remote.py observations/tools/bake_zone1.py`。`L_Hospital_Zone1` を開いた状態で Preview 品質で焼き、反射キャプチャを撮り直して保存する（原作の解像度に揃えた後は 30 秒ほど） |
+| `tools/bake_level.py` | `python Tools/ue_remote.py -c "$(cat observations/tools/bake_level.py; echo; echo "main('L_Hospital_Zone1', 'QUALITY_HIGH')")"`。`bake_zone1.py` のレベルと品質を指定できる形（レベルを開いてから焼く）。**原作と同じ High 品質**で Zone 1 は 106 秒、Zone 2 は 48 秒。出力の最後に `bake ok True` と秒数 |
 | `tools/pie_cmd.py` | `python observations/tools/pie_cmd.py [--shot <名前>] "<コマンド>" …`。PIE のゲームのワールドでコンソールコマンドを打ち、`--shot` なら `HighResShot 3440x1440` を撮って `ours/<名前>.png` に写す。`ShowFlag.*` は全体に効く cvar なので、切ったら `2` に戻す |
 | `tools/pie_frametime.py` | PIE 中に `python Tools/ue_remote.py observations/tools/pie_frametime.py`。フレーム時間を 5 秒集めて `Saved/pie_frametime.txt` に書く（エディタの描画込み。同じ条件での比較用） |
 
@@ -90,12 +92,15 @@ PIE の手順: MCP の `EditorAppToolset.StartPIE`（`startTransform` = (-25, 37
 | 実機 | 58.1 | 57.4 | 49.0 | 31.9 | 66.2 | 183.3 | 170.3 | 44.2 | 58.6 |
 | 揃える前（`twosided-baked`） | 96.8 | 114.4 | 134.0 | 68.3 | 119.2 | 201.2 | 185.3 | 81.1 | 89.7 |
 | 揃える前の `GlobalIllumination 0`（`sd-off-GlobalIllumination`） | 62.1 | 76.5 | 97.5 | 36.3 | 71.0 | 194.9 | 172.7 | 44.9 | 58.7 |
-| **揃えた後（`origlm`）** | **68.4** | **75.5** | 95.2 | **38.1** | **71.1** | 194.8 | **172.5** | 55.5 | 67.3 |
+| **揃えた後（`origlm`、Preview）** | **68.4** | **75.5** | 95.2 | **38.1** | **71.1** | 194.8 | **172.5** | 55.5 | 67.3 |
 | 揃えた後・扉の位置をふさぐ（`origlm-doorblock`） | 67.1 | 71.8 | **52.6** | 34.6 | 70.8 | 194.4 | 172.6 | 56.2 | 67.9 |
+| **High 品質で焼き直す（`origlm-high`）** | 68.7 | 76.7 | 97.2 | 37.7 | 70.7 | 194.6 | 172.4 | 56.2 | 67.9 |
+| High・扉の位置をふさぐ（`origlm-high-doorblock`） | 67.1 | 71.8 | 52.0 | 34.6 | 71.0 | 194.3 | 172.7 | 56.2 | 67.9 |
 
 揃える前の表示フラグの表（`sd-off-*`）では、`GlobalIllumination 0`（焼き込みの間接光を切る）だけで壁とエレベーターの壁が実機と一致した。
 ほかのフラグは、`PointLights 0` で天井が 201 → 83、`DirectLighting 0` で 124、`Specular 0` でエレベーターの壁が 0.5・12、`DynamicShadows 0` で床の手前が 145 に動いた（残りは ±5 以内）。
 揃えた後は `GlobalIllumination 0` にしても床と壁はほとんど動かない（ステージ本体の間接光は 1 点の値）。床の中ほどの差は、扉が無くて明るい廊下の奥が床に映るためだった。
+焼き込みを原作と同じ High 品質にしても、どの領域も ±2 以内しか動かない。残りの 1〜2 割の差（床の手前・エレベーターの壁・天井）は焼き込みの品質によらない。
 
 ### 表示フラグを 1 つずつ切った開始地点（2026-09-16、灯を Static として焼いていたとき）
 
