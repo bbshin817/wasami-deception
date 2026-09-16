@@ -1,20 +1,20 @@
 {
   "00-overview.md": {
     "wasami_deception.uproject": "0f6eeeb069413c61c7e744c3d5df63f67944e65d",
-    ".mcp.json": "1c3c91408b62529156b59bb2c6ddca2a4e4a13d8",
-    "Config/DefaultEngine.ini": "d08c5a739de003e3032fa98ec4d628fb528eccde",
-    "Config/DefaultGame.ini": "2beb9d194a9299e54dc5f46f4f5f408654c961e3",
-    "Config/DefaultInput.ini": "2ae3b7f5c94270ef2992bdfeb9ab14b20606392d",
+    ".mcp.json": "d2e3ee5c9642aabc67459c39080c1497ba12eaec",
+    "Config/DefaultEngine.ini": "8bd2c68123ce2da2f58eaaaac27259fc2994c189",
+    "Config/DefaultGame.ini": "5296cbc0324f0571ac878ec809d11727ddd262a8",
+    "Config/DefaultInput.ini": "a919105de6016a7a1094346d603c99a3274d5083",
     "Config/DefaultEditor.ini": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-    "Config/DefaultEditorPerProjectUserSettings.ini": "39b58ea1f14781d1be7ad6489681f2e7bfa75433",
-    "Source/wasami_deception.Target.cs": "470a1b2d233e03d03db4ed0f1e4674805dde709f",
-    "Source/wasami_deceptionEditor.Target.cs": "36aecc2285837e138c16cc934292d25a46798d42",
-    "Source/wasami_deception/wasami_deception.Build.cs": "5b314876baca1d8e869619e404c7144e55bf5602",
-    "Source/wasami_deception/wasami_deception.cpp": "b0124926b022a1fe89a7e83db128bb2895e66727",
-    "Source/wasami_deception/wasami_deception.h": "73cb863cf321f93664126321d4dd3ebaa1100368"
+    "Config/DefaultEditorPerProjectUserSettings.ini": "d8862707d73e7faf99ca9c07d761499418a11371",
+    "Source/wasami_deception.Target.cs": "afe6f0d5169b2cb6491d7de438ab465dadbe6d35",
+    "Source/wasami_deceptionEditor.Target.cs": "096e1e8454e881aebc9d2cfe365add216de13167",
+    "Source/wasami_deception/wasami_deception.Build.cs": "fad92a2716bf602b3f0674b66e17d38079081dd0",
+    "Source/wasami_deception/wasami_deception.cpp": "2107f18ca549210efe63277f953523bbc45df68f",
+    "Source/wasami_deception/wasami_deception.h": "677c8e25baf2999c23674260b43a50272cad2594"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "f578968058acf6daee465f712872405f0ccdbb19",
+    "Tools/dd/prepare_stage.py": "fdd1dd2907b1690498b4a95b8f9b82026e291608",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "221400d9dfbdfa8ec81e6c8e00704585c2ee42fd",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
@@ -22,13 +22,13 @@
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
     "Content/Python/wasami_tools/toolsets/dd.py": "1f778afc1d76bf049f75b01c718681e120145970",
     "Content/Python/wasami_tools/toolsets/dev.py": "cf42b1539f9c7b4a770839efe2d1c21f879fc89c",
-    "Content/Python/wasami_tools/toolsets/stage.py": "c346b48fe202cd7d0bb5697670b916e26495b872",
+    "Content/Python/wasami_tools/toolsets/stage.py": "6faa09e265ff98b82f71d0d08403aa0fe365e5d7",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
-    "Content/Python/wasami_tools/pipeline/paths.py": "7f429f3fe5f0172e7e6390c5df493258f5f7151b",
-    "Content/Python/wasami_tools/pipeline/ue_props.py": "9b7e56da2dc4e94257cddd5e008ca0d6f21768c6",
+    "Content/Python/wasami_tools/pipeline/paths.py": "55c21f8674f2a9da94db432266578dfb9b1709e2",
+    "Content/Python/wasami_tools/pipeline/ue_props.py": "efd1aaa65c4a5bb95eb84568f48574823132b245",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "9e4fa76e3734a062313b9eb276ae9e368fcf5888",
-    "Content/Python/wasami_tools/pipeline/dd_stage.py": "48b60fb2980fecb208453b3b33909050445ffcba",
-    "Content/Python/wasami_tools/pipeline/dd_level.py": "c9938f89ba36d1a296c16a4fbb575d64ef26fc25"
+    "Content/Python/wasami_tools/pipeline/dd_stage.py": "35c8556de72d771d292c331e9ad65f889eda295c",
+    "Content/Python/wasami_tools/pipeline/dd_level.py": "778753cd611710a7f85b65a632e2951ed993e93d"
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "115f365754cd25cdf1f21a2bca66b9213535e3cc",
