@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-16 23:40
+updated: 2026-09-17 01:40
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -25,21 +25,21 @@ updated: 2026-09-16 23:40
 - [x] 3. スピードブーストの演出 … 2026-09-16 完了。`CameraAnim_SpeedBoost` の赤い色調（UE4 の CameraAnim を C++ で再生する `UWasamiCameraAnim` / `UWasamiCameraAnimModifier` を新設）、`UMG_SpeedBoost`（`UWasamiSpeedBoostWidget`、原作のグラフどおりの `M_Speedlines` と `T_VignetteNew`）、FX（`UWasamiChameleonComponent`、推定の `M_DD_ChameleonCameraShake`）。放射ブラーは本家で無効なので作らない。取り込みのテクスチャとマスターの作り方を `dd_assets` に共通化。実装記録は 01〜04 と索引を直した
 - [x] 4a. テレポーテーションの仕組み（旧版）… 2026-09-16 完了。Teleport チャンネル（旧版の既定 Overlap）、病院のゾーン（床のメッシュと救急車の屋根の箱をクラスの `Cube` の値で。前処理の `teleport_zones`・組み立ての `_set_collision`）、照準のアクタ `AWasamiTeleportAim`（SpringArm のラグ・500 cm の下向きトレース・ホイール・左クリック。デカールは UE の既定の材質のまま）、0.12 s 後のスイープ移動、シェイク、音 3 つ（エンジンの音は `/Game/DD/_Engine/…`）、同じ側の Q / E での取り消し、再使用 5 s、死亡のリセット、テスト `Wasami.Powers.TeleportDistance`。両ゾーンを組み立て直して High で焼き直した。実装記録は 00・01・02・04 と索引、検証のガイドを直した
 - [x] 4b. テレポーテーションのカメラアニメ … 2026-09-16 完了。**旧版の実機で FOV の基準を決めた**（60 fps の収録。開始時のキー 90 が基準で `BaseFOV` 137.24 ではない）。`UWasamiCameraAnim` の FOV のトラックの再生（開始時のキーからの変化 × 重み、5〜170°）、`AWasamiTeleportAim::Confirm` での `CameraAnim_Teleport` の再生、取り込み、テスト `Wasami.CameraAnim.FieldOfView`。+100 EV の閃光の後に UE 5.8 のプリ露出で黒いフレームが出たので、ユーザーの決定で `r.EyeAdaptation.PreExposureOverride=1` を ini に入れた。操作エージェントに画面の収録 `record` を足した。実装記録 00・01・04 と索引、検証のガイド、調査 02 を直した
-- [ ] 5. テレポーテーションの見た目: デカール `M_Decal_Teleport`（推定）、パーティクル `P_ky_cutter2`（Cascade を Python で組めるか確かめる。だめなら Niagara）
+- [x] 5. テレポーテーションの見た目 … 2026-09-17 完了。**パーティクルは Cascade のまま原作の値を写した**（C++ の道具 `UWasamiCascadeLibrary` が構造を作り、`pipeline/dd_particles.py` が書き出しの焼き込み済みの分布の表をそのまま書く。テスト `Wasami.Cascade.Build`）。`P_ky_cutter2` をデカールの子に付け、デカールに `M_Decal_Teleport` を入れた。材質 3 つ（斬撃・火花・デカール）はグラフが cook で消えているので推定のマスター（`/Game/Pipeline/Materials/M_DD_*`）を作り、原作のパスにそのインスタンスを置いた。**旧版の実機で照準を撮り直し**、デカールが 1 秒周期で明滅する縁の鋭い円（加算）であることを見つけて形・大きさ・周期を合わせ、PIE で斬撃の輪との比が旧版と同じになることを確かめた。デカールの色と明るさ、斬撃と火花の見え方はステップ 11 で最新版の病院と見比べる。実装記録 01・04 と索引、調査 02、observations/README を直した
 - [ ] 6. 一瞬の演出の共通部品（全画面のポストプロセス 2 つとカーブ）と Primal Fear（半径 3500 の重なり判定で敵に `Set State(Stun)`、球 `M_05_Primal`、シェイク `ElevatorShakeStop` ×25、`Stun_Wave_Attack_New_04`、再使用 23 s）
 - [ ] 7. Vanish（カプセルの Camera 応答、`Player Vanish` の通知、`UMG_Vanish` と `MM_WobblyVignette`、ポストプロセス、煙 `PPP_VanishPuff`、15 s・再使用 15 s）
 - [ ] 8. Telepathy（`BP_Telepathy` とトラッカー、`UMG_TelepathyTracker` と `MM_Telepathy`、開始と終わりの音、シェイク、9 s・再使用 6.5 s）
 - [ ] 9. シャードの最小限（M3 の前倒し。最新版の `BP_Shard`）: 病院の配置（Zone 1 は 337、Zone 2 は 342）、回収（数・音 `Soul_Shard_Pickup_v2_Cue` と同時発音 `OnlyFew`・シェイク `BP_CameraShake_ShardCollect`・閃光 `P_ky_flash3`）、`Activate` の引き寄せ（`Shard Pull`、ExpoIn）、タブレットの数と地図
 - [ ] 10. テレキネシス（半径 3000 の重なり判定、`P_ky_forceField_Telekinesis`、ポストプロセス、シェイク、音、再使用 8 s）
-- [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（エディタの PIE と本家の起動はユーザーの確認を取る）
+- [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（エディタの PIE と本家の起動はユーザーの確認を取る）。テレポートの照準は**最新版の病院**で見比べる（材質は両版で同じ。旧版の Manor はポストプロセスが強く色と明るさを戻せない）: デカールの `Color`・`PulseLow`・`PulseHigh`（`dd_powers.DECAL_*`）、斬撃の色の出方、火花の大きさと数（PIE のほうが大きく多く見える）
 - [ ] 12. 仕上げ: 実装記録（04 はステップ 2 で新設し、各ステップで書き足す）、handover の「現状と次の一歩」、main へマージして push、この記録を消す
 
 ## 次にやること
 
-ステップ 5（テレポーテーションの見た目: デカールとパーティクル）。まず `.claude/references/powers/02-teleport.md` の §0-5、§2（コンポーネントの構成とワールド変換）、§5.3（`M_Decal_Teleport`。定数は回収できていない）、§5.4（`P_ky_cutter2` の 2 エミッタの全モジュールの値）、§7-4・§7-5・§7-10、§8 と、実装記録 `04-powers.md` の「テレポーテーション」を読む。
-1. **パーティクル `P_ky_cutter2`**: UE 5.8 の Cascade（`UParticleSystem`）を Python から組めるか確かめる（`unreal.ParticleSystem` の作成、エミッタとモジュールの追加・値の設定ができるか）。組めれば原作の値で Cascade のまま作る（§7-4。方針「UE に同じ仕組みがあれば値を写す」）。組めなければ C++ か Niagara で作る案を比べてユーザーに確認する。テクスチャ `T_ky_slash01_4x4` などとマテリアル `M_ky_slash01_4x4`（グラフは cook で消えている = 推定）の取り込みが要る。照準のアクタのデカールの子に付ける（相対の変換は §2.1）。
-2. **デカール `M_Decal_Teleport`**: 推定で作る（Deferred Decal・Translucent・Emissive だけ。`RadialGradientExponential`・`CheapContrast`・`LinearGradient` を使う形）。色と輪の半径・鋭さは、旧版の実機の静止画と動画（`observations/classic/teleport-aim-01-full.png`・`teleport-aim-02-full.png`・`aim-02.mkv`。2026-09-16 に撮った）から測る。足りなければ旧版を起動して撮り直す（エディタを閉じる・本家を起動するのはユーザーの確認を取る）。
-3. 取り込み（`dd_powers` か新しいモジュール）→ ビルド（C++ を変えたら `python Tools/editor_cycle.py`。閉じる前にユーザーの確認）→ テスト → PIE で照準の絵を撮り、旧版の静止画と並べる（PIE と入力はユーザーの確認を取る）。
+ステップ 6（一瞬の演出の共通部品と Primal Fear）。まず `.claude/references/powers/04-primal-telepathy.md` の §0・§2（2.1〜2.10。`BP_PrimalPower` の構成・処理・タイムラインのキー・見た目・音・敵への通知・強化段階）と §7 付近の「UE5.8 で再現するときの注意」（ポストプロセス 2 つ、`BlendWeight` のカーブ）、`README.md` の「全パワー共通の仕組み」、実装記録 `04-powers.md`（`UWasamiPowerComponent` の `UsePower` と、Primal の枠・充填・リセットがどうなっているか）を読む。
+1. 全画面のポストプロセス 2 つ（`UPostProcessComponent` の `bUnbound`、`BlendWeight` をタイムラインのカーブで動かす）を、Primal・Telekinesis・Vanish で使い回せる形で作る（`UPostProcessComponent` は MinimalAPI で継げない。ステップ 3 の Chameleon と同じく、アクタが持つ）。カーブのキーは書き出しの値を `FRichCurve` / `FInterpCurve` にそのまま入れる。
+2. `BP_PrimalPower` にあたるアクタ（半径 `Range`〈Lv5 で 3500〉の `SphereOverlapActors` で Pawn を集め、`IWasamiEnemyInterface` を実装する敵に `Set State(Stun)` を 1 回）、赤い球 `M_05_Primal`（推定。取り込みは `dd_powers`。粒子や材質が要れば `dd_particles` / 推定のマスター）、シェイク `ElevatorShakeStop` × 25、音 `Stun_Wave_Attack_New_04`、再使用 23 s を足す。敵はまだ無いので、インターフェースを実装した仮の的で確かめる（決定事項）。
+3. 取り込み → ビルド（C++ を変えたら `python Tools/editor_cycle.py`。閉じる前にユーザーの確認）→ テスト → PIE（エディタへの入力と PIE はユーザーの確認を取る）。
 
 ## 決定事項
 
@@ -81,8 +81,21 @@ updated: 2026-09-16 23:40
 - 2026-09-16（ステップ 4b、**旧版の実機で観察**、Deadly Decadence の入口の噴水、テレポート 2 回を 60 fps で収録）: **FOV の基準は t=0 のキー（90）で、`BaseFOV` 137.24 ではない**。クリックの直後は画面が広がり（輪と池の縁が小さくなる）、閃光（アニメの t≈0.135。1 フレームだけ画面全体が (234, 245, 244)）の後の t≈0.24〜0.40 のフレームは、アニメが終わった後のフレームに対して拡大率 1.26 → 1.30 → 1.14 → 1.06（画角 ≈ 103° → 93°）、終わった後は 0.98 のまま跳ばない。137.24 が基準なら t≈0.28〜0.40 は画角 43〜51°（拡大率 0.39〜0.48）で、終わりで 90° へ跳ぶはず。予測（90 基準で 1.0〜1.16）より少し大きいのは表示の遅れと落下による。→ **`POV.FOV += (key(t) − key(開始時刻)) × 重み`、5〜170 に収める**。UE4 の説明「キーは開始時からの差分だけが効く」とも合う（このアセットでは key(0) = 90 = カメラの既定なので、どちらと読んでも同じ値）。収録と要のフレームは `observations/classic/`。
 - 2026-09-16（ステップ 4b、PIE で見つけた問題）: 閃光の 1〜2 フレーム後に真っ黒なフレームが出た。UE 5.8 はプリ露出に読み戻しの露出（2^100）を使い、シーンカラーが溢れるため。原作は `r.UsePreExposure=False` で起きない。**ユーザーの回答: `r.EyeAdaptation.PreExposureOverride=1` を `Config/DefaultEngine.ini` に入れる**（シェーダーの再コンパイル不要。露出は固定の 1.0 なので、ふだんの絵は平均 0.02 以内で同じ。白が出た回でも黒は出なくなった）。
 - 2026-09-16（ステップ 4b）: FOV のトラックの基準は「`Play` の時点のキーの値」とし、`BaseFOV` は持つだけにする。`bRelativeToInitialFOV` が偽の場合は、本家の 2 つのアニメに無いので作らない。
+- 2026-09-16（ステップ 5 の調査）: **Cascade は Python だけでは組めない**。`UParticleSystem::Emitters`・`UParticleEmitter::LODLevels`・`UParticleLODLevel::Modules` / `RequiredModule` は `UPROPERTY(instanced)` だけで Python から読めず（`emitters` は protected と出る）、`ParticleSpriteEmitter`・`ParticleModule*`・`Distribution*` の型も `unreal` に無い（エディタで確かめた）。UE 5.8 の Cascade は描画も含めて残っており、クラスに非推奨の印は無い（`fx.Cascade.*` の cvar で描画を切れるだけ）。Cascade のクラスは MinimalAPI なので、C++ から呼べるのは `ENGINE_API` の関数（`CreateLODLevel`・`BuildEmitters` など）と仮想関数（`UpdateModuleLists` など）だけ。
+- 2026-09-16（ユーザーの回答、ステップ 5）: **パーティクルは C++ の小さな道具で Cascade のまま組む**（エミッタ・LOD・モジュール・分布の作成と、名前を指定した値の書き込みだけを C++ に置き、値は Python が `_particles.json` から入れる）。ステップ 7・9・10 のパーティクルもこの道具で作る。書き出しの分布は焼き込まれた参照表（定数・乱数の範囲・等間隔の標本）なので、UE の分布（定数・一様乱数・直線の曲線）に戻して入れる（実行時は参照表を線形に補間するので同じ値になる）。
+- 2026-09-16（ユーザーの回答、ステップ 5）: エディタを閉じてビルドし開き直すこと、取り込み・テスト・PIE の確認（Space・1・Q・左クリック・ホイールの入力と照準の撮影）まで進めてよい。エディタを閉じたときに**旧版を起動し、照準を真上に近い角度で撮り直してよい**（デカールの色・半径・ぼかしを測るため。いまの収録は斜めの遠い絵だけ）。終わったら本家を閉じてエディタを開き直す。
+- 2026-09-17（ステップ 5、C++ の道具の作り）: **書き出しの分布は、焼き込まれた参照表（`Table`・`MinValue`・`MaxValue`）をそのまま写し、分布オブジェクトは作らない**（cook と同じ形。UE 5.8 の `FRawDistributionFloat::GetValue` は表があれば表を使い、エディタが表を作り直すのは分布オブジェクトがあるときだけ）。cook が残した分布オブジェクト（`BurstScaleDistribution`、粒子パラメータ）はその値で作る。モジュールが生成時に自分で作る分布（`DistributionStartSize` など）は、使われなくなったら仕上げでパッケージの外へ出す。値は UE のテキスト形式でプロパティ名ごとに書き（`ImportText`）、構造体の未知のメンバーは UE が黙って読み飛ばす（`LogExec` の Verbose）ので、道具が先に照合して断る。
+- 2026-09-17（ステップ 5）: **エミッタの `DetailModeBitmask` は、High のビットがあれば Epic のビットを足す**（UE 5.8 の `UParticleEmitter::PostLoad` が `AddEpicDetailMode` より前の資産に行う変換。原作の資産は unversioned の cook で版を持たないが、4.21 / 4.24 は UE 5 の Epic の詳細度より前）。Effects の品質が Epic だと `r.DetailMode=3`（`BaseScalability.ini`）で、Epic のビットが無いエミッタは出ない。
+- 2026-09-17（ステップ 5、推定のマテリアルの置き場所）: 推定したグラフは `/Game/Pipeline/Materials/M_DD_*` のマスターに置き、原作のパス（`/Game/DD/…`）にはそのマテリアルインスタンスを置いて原作のパラメータの値を入れる（病院のステージと同じ形）。パーティクルとデカールは原作のパスを参照する。
+- 2026-09-17（ステップ 5、**旧版の実機で観察**、Deadly Decadence の噴水の前の芝、照準を最短 250 cm にして 60 fps で 3 秒 + 取り消した後の背景 1.5 秒。`observations/classic/aim-top-a*.mkv`・`aim-top-a-min.png`・`aim-top-a-bg.png`）: (1) **デカールは 1 秒周期で明滅する**（内側の表示値 R が約 50 ↔ 177、なめらかで対称。書き出しで消えた `Time` と `Sine`〈周期 1〉の形）。(2) 内側はほぼ一様で、**縁が鋭い円**（縁の幅は半径の 1 割ほど）。半径は約 60〜73 cm（カメラの幾何と斬撃の輪との比から。`RadialGradientExponential` の既定〈半径 0.5・密度 2.333〉を `CheapContrast` で切ると約 70 cm で、これと合う）。PIE では「デカールの縁の半径 ÷ 斬撃の明るい帯の半径」が旧版の 368 px ÷ 約 545 px（= 0.68）になるかで確かめる（同じ粒子系なのでトーンマップに依らない）。(3) 加算で光る（芝の模様が残る。UE 5.8 の Emissive だけのデカールも `SourceAlpha, One` の加算）。(4) 光る部分に直線の縁が出るのは材質ではなく**床の起伏**（デカールの箱は上下 ±10 cm、当たるのはゾーンの箱の上面。向きを変えると縁の向きが変わり、砂利道には映らない）。`LinearGradient` は観察では効いていないので使わない。(5) 斬撃のスプライトは暗い部分でも背景を暗くする（不透明度が R から、色は R の累乗、という推定と合う）。(6) **Manor はポストプロセスの色の補正が強い**（`ColorGain` (1.43, 0, 0.56)・LUT `LUT_U1_Filmic_Cold_Blood_Murderer` 0.9・ブルーム 2.5 / しきい値 −0.49）ので、表示値から明るさと色は戻せない。**デカールの色と明るさは仮の値で置き、ステップ 11 で最新版の病院（同じ材質。ポストプロセスは本作と同じく無し）と見比べて決める。**
 
 ## 再開時の注意
+
+- **2026-09-17 01:40（ステップ 5 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは止めた。旧版は閉じた。ビルドは最新（警告なし）。
+- **PIE で照準の絵を撮る手順**（5 で使った）: `LevelEditorSubsystem.editor_request_begin_play()` で PIE を始め、`GameplayStatics.get_player_character` のプレイヤーを `set_actor_location((15, 385, 90.15), False, True)`、コントローラを `set_control_rotation(pitch −33.3, yaw −90)`。PIE を始めると Automation のログの小窓（メッセージログ）が前に出るので、× (2208, 410) で閉じる（エディタの窓が今の位置のとき）。ビューポート (2620, 600) をクリックしてから Space・1・Space・Q。距離は照準のアクタの `adjust_distance(−1)` を 8 回。ビューポートは画面の (2040, 216)〜(3200, 870)。`desktop.py record` の後、`ffmpeg -vf crop=1160:654:2040:216` で切り出す。照準のアクタの部品は `get_components_by_class(unreal.DecalComponent)` などで読む（`GetDecal` は C++ だけ）。
+- **旧版で照準を撮る手順**（5 で使った）: 左の枠をテレポートにして Q、ホイールを手前へ 7 回（`desktop.py scroll --dx -120`）で 250 cm。`look --dy` はマウスの加速で量が一定でないので、撮っては直す（噴水の前の芝、`look --dy 400` → `+250` → `−470` → `+190` で照準が画面の中ほどに来た）。デカールはゾーンの箱の上面から上下 10 cm にしか映らないので、芝の起伏で半分しか映らない場所がある。
+- UE の Python は「bool を返し出力引数を持つ UFUNCTION」を、失敗なら `None`・成功なら出力引数だけを返す形にする（`SetPropertyText` はそのため理由の文字列を返す形にした）。
+- `dd_particles` は知らない値の形で例外にする。ステップ 7・9・10 の粒子（最新版の `PPP_VanishPuff`・`P_ky_flash3`・`P_ky_forceField_Telekinesis`）では、`BurstList`・`DynamicParams`・`ConstantCurve` などを足す必要がある（両版の粒子の書き出しの値の形の一覧は、`_assets` の `P_*.json` を集計して作れる）。
 
 - **2026-09-16 23:40（ステップ 4b の終わり）**: エディタは起動している（PID 18420、セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし、MCP はつながっている）。操作エージェントは止めた。`r.EyeAdaptation.PreExposureOverride=1` は ini に入れた（このエディタには実行中に同じ値を入れてある。次の起動からは ini で効く）。旧版は閉じた。
 - **本家を観察するときの手順**（4b で使った）: エディタを `python Tools/editor_cycle.py --quit-only` で閉じ、`python Tools/console_session.py --wait DDeception-Win64-Shipping.exe "C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd"` で旧版を起動する（約 20 秒でタイトル）。タイトルの REPLAY は (287, 910)、Deadly Decadence は (1720, 363)、確認の YES は (1610, 953)（3440x1440）。入口の噴水の周りがテレポートのゾーン。左右の枠は起動時に両方 Speed Boost なので、Space でタブレットを出して 1。終わりは Esc → QUIT (1717, 1013) → QUIT TO DESKTOP (1717, 1010)。一瞬の演出は `desktop.py record` で撮る（検証のガイド）。**本家が動いたまま中断していたら、エディタを起動する前に本家を閉じる**（`tasklist | grep -i DDeception`）。
@@ -104,6 +117,8 @@ updated: 2026-09-16 23:40
 - 画面の撮影 1 回に数秒かかるので、時間に依存する確認は `unreal.GameplayStatics.get_time_seconds` と一緒に読む（scratchpad の `probe_powers.py` がパワーの状態を読む。scratchpad はセッションごとなので、要るときは作り直す）。
 
 ## 検証
+
+- ステップ 5: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 8 件成功（`Wasami.Cascade.Build` を新設）、check_records OK、取り込み `import_dd_powers` を通しで（音 5・シェイク 1・カメラアニメ 2・テクスチャ 3・マテリアル 8・パーティクル 1。`Failed to compile` なし）、`P_ky_cutter2` の構造と `LODValidity` を書き出しと突き合わせ、分布の表・分布オブジェクト・材質のパラメータを読み戻した。旧版の実機で照準を撮り、PIE で同じ手順で撮って比べた（円の大きさ・縁・明滅の周期が合う。色と明るさ・火花はステップ 11）。照準からの移動も確かめた（詳細は 04 記録の「確かめたこと」）
 
 - ステップ 4b: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 7 件成功（`Wasami.CameraAnim.FieldOfView` を新設）、check_records OK、取り込み `import_dd_powers`（`camera_anims` 2。`CameraAnim_Teleport` のトラックとキーを読み戻して原作どおり）、旧版の実機の収録で FOV の基準を決定、PIE で FOV の毎フレームの値（91.1 → 149.9 → 移動 → 81.7 → 102.0 → 90）と、収録の広がり・白・赤・戻りを確かめ、黒いフレームを見つけて `PreExposureOverride` で消えることを確かめた（詳細は 04 記録の「確かめたこと」）
 

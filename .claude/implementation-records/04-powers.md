@@ -17,13 +17,13 @@ sources:
   - Source/wasami_deception/WasamiTeleportAim.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
   - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）とテレポーテーション（照準・移動・取り消し・再使用・カメラアニメ。デカールの材質とパーティクルはまだ）で、ほかの 4 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 5〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）とテレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）で、ほかの 4 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 5〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -47,8 +47,9 @@ updated: 2026-09-16
 - `OnUsed`（BlueprintAssignable、引数なし）… 本家の `Used`。プレイヤーを動かした直後、自分を消す直前に出す。
 - `MaxDistance`（既定 1000。`ExposeOnSpawn`。パワーが出すときに強化段階の値を入れる）、読み出し用の `Distance`（既定 1000）・`Alpha`（既定 0.6）・`Location`（移動先）。
 - static: `DistanceFor(Alpha, MaxDistance)` = `Lerp(250, MaxDistance, Alpha)`、`StepAlpha(Alpha, AxisValue)` = `Clamp(AxisValue / 10 + Alpha, 0, 1)`、`LoadAssets(Out)`。
-- 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`ConfirmCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_Teleport`。
-- コンポーネント（本家と同じ木）: `DefaultSceneRoot` → `SpringArm`（`TargetArmLength` 0 だけ変える。ほかは UE の既定＝位置ラグの速さ 10・サブステップあり）→ `Decal`（`DecalSize` (3, 100, 100)、相対回転 (P −90, Y 0, R 5.46e-5)、拡縮 (3.3264, 1, 1)。ソケット名なしでアームに付くので、アームの先〈ラグで遅れる位置〉に付いていく）、`DefaultSceneRoot` → `Audio`（音量 0.65、減衰なし）。本家の `Arrow`（エディタの表示用）と、デカールの子の `ParticleSystem`（ステップ 5）は置いていない。`GetSpringArm()`・`GetDecal()`。
+- 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`ConfirmCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_Teleport`、`DecalMaterial` `/Game/DD/Blueprints/Main/Powers/M_Decal_Teleport`、`AimParticles` `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2`（`UParticleSystem`）。
+- コンポーネント（本家と同じ木）: `DefaultSceneRoot` → `SpringArm`（`TargetArmLength` 0 だけ変える。ほかは UE の既定＝位置ラグの速さ 10・サブステップあり）→ `Decal`（`DecalSize` (3, 100, 100)、相対回転 (P −90, Y 0, R 5.46e-5)、拡縮 (3.3264, 1, 1)。ソケット名なしでアームに付くので、アームの先〈ラグで遅れる位置〉に付いていく）、`Decal` → `ParticleSystem`（`UParticleSystemComponent`。相対位置 (−4.13494, −0.000263, 2.3e-6)・回転 (P 90, Y 0.91133, R −359.08875)・拡縮 0.2。UE の既定の `bAutoActivate` のまま）、`DefaultSceneRoot` → `Audio`（音量 0.65、減衰なし）。本家の `Arrow`（エディタの表示用）は置いていない。`GetSpringArm()`・`GetDecal()`・`GetParticleSystem()`（C++ だけ）。
+- 見た目: `BeginPlay` でデカールに `DecalMaterial` を入れ、パーティクルに `AimParticles` を `SetTemplate` する（登録済みで `bAutoActivate` なので、その場で動き出す。本家はコンポーネントのテンプレートとして持ち、スポーンで自動で始まる）。合成したワールド変換は調査 02 §2.1 どおり（PIE で読み戻し: 粒子の原点は当たった点の 13.754 cm 上、拡縮 (0.665276, 0.2, 0.2)、回転 ≈ 0）。
 
 ### `UWasamiCameraAnim : UDataAsset`（`WasamiCameraAnim.h`）
 本家の `CameraAnim`（UE4 の `UCameraAnim`。UE 5 には無い）を取り込みが写したもの（01 記録の `dd_assets.camera_anim`）。`AnimLength`（既定 3）・`BaseFOV`（既定 90。書き出しの値を持つだけで、再生には使わない）・`BasePostProcessSettings`（上書きフラグごと）・`BasePostProcessBlendWeight`（既定 0 = PP が効かない。UE4 と同じ）・`FloatTracks` / `ColorTracks`（`FWasamiCameraAnimFloatTrack` / `FWasamiCameraAnimColorTrack` = `PropertyName`〈`CameraComponent.PostProcessSettings.SceneColorTint` のような原作の名前〉と Matinee の曲線 `FInterpCurveFloat` / `FInterpCurveLinearColor`）。
@@ -137,6 +138,7 @@ updated: 2026-09-16
   - ホイール（`AdjustDistance`）: `Alpha = StepAlpha(Alpha, 値)`、`Distance = DistanceFor(Alpha, MaxDistance)`。照準のたびに 0.6 から。1 目盛りは Lv5 で 125 cm、範囲は 250〜1500 cm。
   - 左クリック（`Confirm`）: `Location = デカールのワールド位置 + (0, 0, 125)` を**先に**書き、DoOnce（`bConfirmed`）を通ったら、プレイヤーのカプセルの `WorldDynamic` と `Pawn` の応答を Ignore にし、0.12 秒後に移動（`Commit`）。移動の前の 2 回目のクリックは移動先だけを変える。DoOnce を通った瞬間に、`GetPlayerCameraManager(0)` の `UWasamiCameraAnimModifier` で `CameraAnim_Teleport` を `Play(…, Rate 1, Scale 1, BlendIn 0, BlendOut 0, ループなし, Duration 0)` する（本家の @641。再生空間 CameraLocal は移動のトラックが原点だけなので扱わない）。0.5 秒で自然に終わり、取り消し・照準の破棄・死亡のリセットでは止めない（本家もカメラマネージャが持ち続ける）。
   - 移動（`Commit`）: `BP_CameraShake_Streak` を倍率 1・`CameraLocal` → `Teleport_Committed` を `PlaySound2D`（音量 1）→ `SetActorLocation(Location, スイープあり, TeleportPhysics)`（壁などで止まる。カプセルの中心を床 + 125 cm に置くので、立ち姿の 88 cm まで約 37 cm 落ちる）→ カプセルの `Pawn` と `WorldDynamic` を Block に戻す → `OnUsed` → 自分を消す。
+  - 見た目（`BeginPlay`。下の「作るアセット」）: 2 m 四方のデカールに、1 秒周期で明滅する縁の鋭い赤い円（半径約 70 cm）を加算で出す。デカールの子のパーティクル `P_ky_cutter2` が、回る斬撃（大きさ 199.6 cm の正方形のスプライトが寿命 1 秒で 2 倍に広がり、4 × 4 のコマを進める）と上へ昇る赤い火花（毎秒 30、寿命 2 秒）を出す。粒子はローカル空間なので、アームのラグと一緒に動く。
   - `EndPlay` で 2 つのタイマー（ラグの有効化・移動）を止める（UE 5.8 のアクタは消えるときに自分のタイマーを消さない。本家の Delay はアクタと一緒に消える）。
 - 移動の後（`UsedTeleport`。本家の @30854）: 使った側の `bCanCycle*` を真 → `Active Powers` から外す → ゲージの `SetDelay(5)`（アイコンが 0 → 1 を 5 秒）→ Gate が開いていれば `Delay(5)` の後に `RefillTeleport`。再使用は段階によらず 5 秒（本家の `00_Ballroom` だけの 1 秒は病院に無い）。
 - 充填（`RefillTeleport`）: 充填の DoOnce が開いていれば閉じて `Refill`（`power_refilled` 0.5・使える状態）。
@@ -204,6 +206,14 @@ updated: 2026-09-16
 | `/Game/DD/UI/Main/Powers/T_Speedlines` | 集中線（3841 × 5404、2 列 × 5 段のコマ。sRGB・`TC_Default`・`TEXTUREGROUP_UI`。原作の cook も非圧縮 BGRA8・ミップ 1 で、本作の実測も約 81 MB〈`blueprint_get_memory_size` 84,934,656〉） |
 | `/Game/DD/UI/Menu/Streaks/T_VignetteNew` | ビネット（1024²、白地にアルファで縁。sRGB・`TC_EditorIcon`・`TEXTUREGROUP_UI`。本作は 4 MB〈ミップなし。原作の cook は 11 段のミップあり。全面に引き伸ばすだけなので見た目は同じ〉） |
 | `/Game/DD/UI/Main/Powers/M_Speedlines` | 原作のグラフどおり。User Interface・Translucent。`/Engine/Functions/Engine_MaterialFunctions02/Texturing/FlipBook` の呼び出し（入力はすべて既定 = 2 列 × 2 段、位相 `Time`、`TexCoord 0`）の出力 2 番（`UVs`）を `T_Speedlines` の `TextureSample` の UV に、その RGB を Emissive に。Opacity は未接続（1）。UE 5.8 の FlipBook は 4.24 の書き出しと同じ 38 ノードで、出力の並びは `SortPriority` だけで決まる（`MaterialExpressions.cpp` の `GetInputsAndOutputs`）ので、出力 2 番は原作と同じ `UVs`（取り込みのログで確認）。2 × 5 のシートを 2 × 2 で読むので、1 コマは 1 列 × 2.5 段ぶんが 1 秒に 4 コマで流れる（原作のまま） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX13/Textures/T_ky_slash01_4x4` | テレポートの斬撃（**旧版**。2048 × 2048 の 4 × 4 コマ、R に三日月・G にその明るい縁・B に X 字〈本家の画面には出ない〉。sRGB なし・`TC_Default`〈DXT1〉・`TEXTUREGROUP_Effects`。原作の cook も DXT1・sRGB なし・12 ミップ） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2` | テレポートの照準の粒子（**旧版**。`dd_particles` が書き出しの値をそのまま写した Cascade。LOD 距離 0 / 2500 / 5000、固定のバウンズ ±150 × ±150 × ±50。エミッタ `cutter`〈斬撃。LOD0: 毎秒 10 と 50 cm 動くごとに 1、寿命 1、大きさ 300、寿命で 1 → 2 倍、色は粒子パラメータ `color`〈既定 (13, 0, 0.216663)〉・アルファ 1 → 0、コマ番号の 16 段の表、回転 0〜1 回転・毎秒 0.5〜1 回転、Z 軸に寝かせる、位置 Z 0〜5。`bUseLegacySpawningBehavior` 真〉とエミッタ `Particle Emitter`〈火花。毎秒 30、寿命 2、大きさ 5〜15 / 25、速さ (±5, ±5, 300〜500)、色 (5, 0, 0) → (1, 0, 0)・アルファ 1 → 0、位置 ±170 × ±170〉。どちらも詳細度は Low〜Epic〈書き出しの 7 に Epic を足した 15〉。材質は下の 2 つ） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX13/Materials/M_ky_slash01_4x4` | `M_DD_KySlash` のインスタンス。原作のパラメータ `alphaDensity` 1.5・`colorCorrect` 2.0・`depthFade` 100・`hilightColor` (3.9051919, 4.0955548, 5.0, 1.0)・`Texture` = `T_ky_slash01_4x4` |
+| `/Game/DD/PyroParticlePack/Materials/PPP_Radial_Gradient_Doffed` | `M_DD_PPPRadialGradient` のインスタンス（原作にパラメータは無い） |
+| `/Game/DD/Blueprints/Main/Powers/M_Decal_Teleport` | `M_DD_DecalTeleport` のインスタンス（原作にパラメータは無い） |
+| `/Game/Pipeline/Materials/M_DD_KySlash` | **推定**（`M_ky_slash01_4x4`。cook に残るのは設定〈Translucent・Unlit・両面・スプライトとメッシュ粒子〉、`ParticleSubUV`〈`T_ky_slash01_4x4`・Linear Color〉、4 つのパラメータ、Emissive が `Lerp` から来ることだけ）。`TextureSampleParameterSubUV`（`Texture`）の R の `colorCorrect` 乗 × 粒子の色を、G で `hilightColor` へ `Lerp` して Emissive に。Opacity は `saturate(R × alphaDensity) × 粒子のアルファ` を `DepthFade`（`depthFade`）に通したもの |
+| `/Game/Pipeline/Materials/M_DD_PPPRadialGradient` | **推定**（`PPP_Radial_Gradient_Doffed`。cook に残るのは設定〈Translucent・Unlit・Responsive AA・分離透過なし・スプライト / ビーム / 静的ライティング〉、Emissive = `ParticleColor` の RGB〈原作どおり〉、関数 `RadialGradient`・`CameraDepthFade`）。Opacity = `RadialGradient`（既定。硬さ 0 の `SphereMask`）× `CameraDepthFade`（既定。長さ 512・オフセット 24）× 粒子のアルファ。UE 4 の「分離透過なし」は UE 5 の `TranslucencyPass` = `MTP_BeforeDOF` |
+| `/Game/Pipeline/Materials/M_DD_DecalTeleport` | **推定**（`M_Decal_Teleport`。cook に残るのは設定〈Deferred Decal・Translucent・DBM_Emissive〉、関数 `RadialGradientExponential`・`CheapContrast`・`LinearGradient`、Emissive が `Multiply` から来ることだけ）。Emissive = `Color` (1.0, 0.105, 0.09) × `Intensity` 1 × `saturate(CheapContrast(RadialGradientExponential〈既定: 中心 0.5・半径 0.5・密度 2.333〉, Contrast 5))` × `Lerp(PulseLow 0.04, PulseHigh 0.6, sin(2π 時刻) / 2 + 1/2)`。Emissive だけをつなぐので UE 5.8 では加算のデカール（`SourceAlpha, One`）。`LinearGradient` は使わない（下の「確かめたこと」）。**色と明るさ（`Color`・`PulseLow`・`PulseHigh`）は仮の値**で、進捗記録のステップ 11 で最新版の病院と見比べて決める |
 | `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` | **推定**。Chameleon の `M_CameraShake`（Post Process）。書き出しに残るのはパラメータ `ShakePower`（既定 0.01）・`ShakeFQ`（既定 50）と `MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking` だけで、HLSL・数式・シーンテクスチャは無い。本作は `ScreenPosition.ViewportUV + Append(sin(Time × ShakeFQ), cos(Time × ShakeFQ)) × ShakePower` で `PostProcessInput0` を読み、その色を Emissive に出す（UE の Sine / Cosine は周期 1 = `ShakeFQ` 回/秒の円）。ブレンドの位置は既定（トーンマップの後）。実機との見比べは進捗記録のステップ 11 |
 
 ## 原作データの根拠
@@ -218,7 +228,8 @@ updated: 2026-09-16
 - UE 5.8 の挙動: `Engine/Plugins/Cameras/EngineCameras/Source/EngineCameras/Private/Animations/CameraAnimationCameraModifier.cpp`（ブレンドの形・PP の重ね方）、`Engine/Source/Runtime/Engine/Classes/Camera/CameraModifier.h`・`Private/Camera/CameraModifier.cpp`（`ModifyCamera` → `AddCachedPPBlend`）、`Private/PlayerCameraManager.cpp`（`ApplyCameraModifiers` が先に PP の蓄えを空にする）、`Core/Public/Math/InterpCurve.h`（`Eval`）、`Shaders/Private/SlateElementPixelShader.usf`（UI マテリアルの色 × 頂点カラー）、`Classes/Components/PostProcessComponent.h`（MinimalAPI、`AddOrUpdateBlendable` は inline）。
 
 - テレポーテーション（旧版）: `pak_reference/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_Power_Teleport.txt`（BeginPlay @1060、Tick @1525、ホイール @1279、クリック @2342 → @547、移動 @15）、`_assets/…/Powers/BP_Power_Teleport.json`（コンポーネントの値、入力の束縛）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @10017〜@11623、使えないときの取り消し @14489〜@14826、`UsedTeleport` @30854、充填 @4045、`Reset Teleport` @31827）、`UI/BP_Powers.txt`（`Set Delay Teleport` @1746、`Stop Teleport Timeline` @2322）、音の書き出し（`_assets/…/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227.json` の `bLooping`、`_assets/Engine/Content/VREditor/Sounds/UI/*.json`）。まとめは `.claude/references/powers/02-teleport.md`。
-- UE 5.8 の挙動（テレポート）: `Engine/Source/Runtime/Engine/Private/GameFramework/SpringArmComponent.cpp`（ラグ、`GetSocketTransform` がソケット名を見ないこと、長さ 0 ではトレースしないこと）、`Private/Components/DecalComponent.cpp`（材質が無いデカールは既定のデカール材で描く）、`Private/KismetSystemLibrary.cpp`・`KismetTraceUtils.cpp`（`LineTraceSingleForObjects` の中身）。
+- テレポートの見た目（旧版）: `pak_reference/_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2.json`（粒子。01 記録の `dd_particles`）、`…/Materials/M_ky_slash01_4x4.json`・`_assets/DDeception/Content/PyroParticlePack/Materials/PPP_Radial_Gradient_Doffed.json`・`Blueprints/Main/Powers/M_Decal_Teleport.json`（材質の設定と残った式）、`_textures.json`（`T_ky_slash01_4x4`）、`BP_Power_Teleport.json` の `ParticleSystem_GEN_VARIABLE`・`Decal_GEN_VARIABLE`。まとめは `.claude/references/powers/02-teleport.md` §2・§5.3・§5.4。推定の材質の形は旧版の実機の収録から決めた（下の「確かめたこと」）。関数の中身は UE 5.8 のもの（`RadialGradient` は原作と同じ StateId）。
+- UE 5.8 の挙動（テレポート）: `Engine/Source/Runtime/Engine/Private/GameFramework/SpringArmComponent.cpp`（ラグ、`GetSocketTransform` がソケット名を見ないこと、長さ 0 ではトレースしないこと）、`Private/Components/DecalComponent.cpp`（材質が無いデカールは既定のデカール材で描く）、`Renderer/Private/DecalRenderingCommon.cpp`（Emissive だけのデカールは `BO_Add, BF_SourceAlpha, BF_One` の加算）、`Private/Particles/ParticleSystemComponent.cpp`（`SetTemplate` は登録済みで `bAutoActivate` なら動き出す）、`Private/KismetSystemLibrary.cpp`・`KismetTraceUtils.cpp`（`LineTraceSingleForObjects` の中身）。
 
 ## 依存関係
 - `AWasamiPlayerCharacter`（02 記録）: `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()`・コントローラのカメラマネージャ。プレイヤーがこのコンポーネントを作り、入力を結び、毎フレーム画面へ値を渡す。
@@ -228,7 +239,7 @@ updated: 2026-09-16
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（7 件）。
+`Automation RunTests Wasami`（8 件。うち `Wasami.Cascade.Build` は 01 記録）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
@@ -271,9 +282,15 @@ updated: 2026-09-16
 - 収録（60 fps）: 広がり → 白 (252, 252, 251) → 赤 (88, 6, 0) → 戻り、が出た。**最初の回は白の直後に真っ黒なフレームが 1 枚出た**（UE 5.8 のプリ露出が +100 EV を 1〜2 フレーム遅れて使い、シーンカラーが溢れる。00 記録）。`r.EyeAdaptation.PreExposureOverride=1` を入れると、白が出た回でも黒は出ず、白 → 赤 (61, 5, 0) → 戻り になった。閃光は 9 ms ほどしか続かないので、フレームの刻みによっては白が出ない回がある（PIE の 6 回のうち 2 回で出た。旧版の 2 回はどちらも出た）。
 - PIE の間、`LogWasamiCameraAnim` の警告は無かった。PIE は止めた。
 
+### テレポートの見た目（2026-09-17）
+- **旧版の実機で観察**（Deadly Decadence の噴水の前の芝、照準を最短 250 cm にし、動かないカメラで 60 fps・3 秒、取り消した後の背景を 1.5 秒。`observations/classic/aim-top-a*.mkv`。フレームごとの最小値で動く斬撃と火花を消して背景と比べた）: (1) デカールは **1 秒周期で明滅する**（内側の表示値 R が約 50 ↔ 177。なめらかで、山が広く谷が鋭い）。(2) **縁の鋭い円**で、内側はほぼ一様、縁の幅は半径の 1 割ほど。(3) 加算で光る（芝の模様が残る）。(4) 光る部分に出る直線の縁は床の起伏（箱は上下 ±10 cm。向きを変えると縁の向きが変わり、砂利道には映らない）で、材質の `LinearGradient` の効きは見えない。(5) 斬撃は暗い部分でも背景を暗くする。(6) Manor はポストプロセスの色の補正が強く（`ColorGain` (1.43, 0, 0.56)・LUT 0.9・ブルーム 2.5）、表示値から色と明るさは戻せない。
+- **PIE で比べた**（`L_Hospital_Zone1`、プレイヤーを (15, 385, 90.15)・ヨー −90・ピッチ −33.3 に置き、ユーザーの了承のうえで Space・1・Space・Q を送り、距離は `AdjustDistance(−1)` × 8 で 250 cm に。同じ手順で収録。`observations/ours/pie-aim-a*.mkv`・`teleport-aim-classic-vs-pie.png`）: 円の半径を 1 とした正規化で、斬撃の光の外端は旧版 1.97〜2.04・PIE 1.97〜2.06、明るい帯は旧版 1.36〜1.63・PIE 1.31〜1.69（同じ粒子系なので、デカールの大きさが合っている）。縁は PIE でも ρ 0.94〜1.10 で落ちる（旧版 0.9〜1.1）。明滅は 1 秒周期で、山が広く谷が鋭い形も同じ。表示値の R は背景 62 に対して 90 ↔ 211（色と明るさは仮の値）。**火花は PIE のほうが大きく多く見える**（旧版は Manor のポストプロセスで暗い部分が削られている可能性があり、材質の違いと切り分けられない）。
+- 照準からの移動（左クリック）は見た目を足した後も働いた（(15, 385) → (15, −615)、照準は消えた）。PIE の間、この仕組みの警告は無かった。PIE は止めた。
+
 ## 既知の制約・注意点
 - **スピードブーストとテレポート以外のパワーは中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
-- テレポートの**デカールの材質とパーティクルはまだ無い**（ステップ 5）。いまのデカールは UE の既定のデカール材で描かれる。
+- **テレポートの照準の材質 3 つはグラフが推定**（原作のグラフは cook で消えている）。デカールの色と明るさは仮の値、斬撃の色の出方と火花の大きさは旧版の Manor と違って見える。進捗記録のステップ 11 で、最新版の病院（同じ材質。ポストプロセスは本作と同じく無し）と見比べて決める。粒子の値そのものは原作の書き出しどおり。
+- 粒子の詳細度のビットは、UE 5.8 が古い資産を読むときと同じく Epic を足している（01 記録）。
 - 本家では照準のアクタがクリックを受け、入力を消費しないので、プレイヤー自身の左クリック（調べる）も同時に走る。本作のプレイヤーにはまだ調べる処理が無い（02 記録）。
 - ゲームパッドでの確定（最新版の `Gamepad_FaceButton_Bottom`）は旧版に無いので入れていない。
 - 本家は `Check` を `Delay 0.2` の後に行うが、本作は `BeginPlay` ですぐ作る。
@@ -290,6 +307,7 @@ updated: 2026-09-16
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: テレポートの照準の見た目を足した（デカールの材質 `M_Decal_Teleport`〈推定〉と、デカールの子のパーティクル `P_ky_cutter2`〈原作の書き出しを Cascade に写したもの〉。斬撃と火花の材質は推定）
 - 2026-09-16: テレポートのクリックで `CameraAnim_Teleport`（旧版）を再生するようにし、カメラアニメの FOV のトラックの再生（開始時のキーからの変化を足す。基準は旧版の実機で決めた）とテスト `Wasami.CameraAnim.FieldOfView` を足した
 - 2026-09-16: テレポーテーションの仕組みを足した（旧版。`AWasamiTeleportAim`、使った瞬間・照準・ホイール・クリック・0.12 秒後のスイープ移動・再使用 5 秒・同じ側の Q / E での取り消し・死亡のリセット、音 3 つ、テスト `Wasami.Powers.TeleportDistance`）。カメラアニメと見た目はまだ
 - 2026-09-16: スピードブーストの演出を足した（`CameraAnim_SpeedBoost` の赤い色調、`UMG_SpeedBoost` の集中線とビネット、FX の画面の揺れ。放射ブラーは本家で無効なので作らない）。UE4 の CameraAnim の再生（`UWasamiCameraAnim`・`FWasamiCameraAnimPlayback`・`UWasamiCameraAnimModifier`）、FX（`UWasamiChameleonComponent`）、`UWasamiSpeedBoostWidget`、テスト `Wasami.CameraAnim` 2 件を足した

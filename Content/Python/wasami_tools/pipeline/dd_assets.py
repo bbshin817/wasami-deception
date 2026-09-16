@@ -183,13 +183,35 @@ def material(asset_path, build, domain=None, blend_mode=None):
     else:
         folder, name = paths.split(asset_path)
         mat = _tools().create_asset(name, folder, unreal.Material, unreal.MaterialFactoryNew())
-    if domain is not None:
-        mat.set_editor_property("material_domain", domain)
+    # The blend mode first: each change recompiles, and a decal domain over an opaque blend fails to compile.
     if blend_mode is not None:
         mat.set_editor_property("blend_mode", blend_mode)
+    if domain is not None:
+        mat.set_editor_property("material_domain", domain)
     build(mat)
     MEL.recompile_material(mat)
     return mat
+
+
+def material_instance(asset_path, parent, scalars=None, vectors=None, textures=None):
+    """Loads or creates a MaterialInstanceConstant of parent and sets its parameters ({name: value}; a vector is 4
+    numbers, a texture an asset path); the parameters it had before are cleared first. Returns the instance."""
+    if EAL.does_asset_exist(asset_path):
+        mic = unreal.load_asset(asset_path)
+    else:
+        folder, name = paths.split(asset_path)
+        mic = _tools().create_asset(name, folder, unreal.MaterialInstanceConstant,
+                                    unreal.MaterialInstanceConstantFactoryNew())
+    MEL.set_material_instance_parent(mic, parent)
+    MEL.clear_all_material_instance_parameters(mic)
+    for key, value in (scalars or {}).items():
+        MEL.set_material_instance_scalar_parameter_value(mic, key, float(value))
+    for key, value in (vectors or {}).items():
+        MEL.set_material_instance_vector_parameter_value(mic, key, unreal.LinearColor(*[float(v) for v in value]))
+    for key, value in (textures or {}).items():
+        MEL.set_material_instance_texture_parameter_value(mic, key, unreal.load_asset(value))
+    MEL.update_material_instance(mic)
+    return mic
 
 
 def _curve_points(points, point_cls, convert):

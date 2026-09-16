@@ -8,6 +8,9 @@ class AWasamiPlayerCharacter;
 class UAudioComponent;
 class UCameraShakeBase;
 class UDecalComponent;
+class UMaterialInterface;
+class UParticleSystem;
+class UParticleSystemComponent;
 class USoundBase;
 class USpringArmComponent;
 class UWasamiCameraAnim;
@@ -18,7 +21,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiTeleportUsedSignature);
  * The teleport's aim, after Dark Deception's BP_Power_Teleport (pak_reference, the version the user chose for the
  * teleport). The power spawns it 50 m under the player; every tick it traces 500 cm straight down from Distance in
  * front of the player for the Teleport object channel (the levels' teleport zones) and moves its spring arm onto the
- * hit, and the decal on the arm trails after it once the arm's lag comes on. The mouse wheel sets the distance and a
+ * hit, and the decal on the arm (with the slashes and sparks over it) trails after it once the arm's lag comes on.
+ * The mouse wheel sets the distance and a
  * left click confirms, playing CameraAnim_Teleport: 0.12 s later the player is swept to the decal's spot, and the aim
  * reports Used and goes away.
  * The player forwards the wheel and the click (the original's actor takes them itself, without consuming them).
@@ -55,6 +59,7 @@ public:
 
 	USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	UDecalComponent* GetDecal() const { return Decal; }
+	UParticleSystemComponent* GetParticleSystem() const { return ParticleSystem; }
 
 	/** Used: the player has been moved; the aim is destroyed right after. */
 	UPROPERTY(BlueprintAssignable, Category = "Teleport")
@@ -92,6 +97,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Teleport|Assets")
 	TSoftObjectPtr<UWasamiCameraAnim> ConfirmCameraAnim;
 
+	/** M_Decal_Teleport: the mark's glow (its graph is an estimate: the cook dropped the original's). */
+	UPROPERTY(EditAnywhere, Category = "Teleport|Assets")
+	TSoftObjectPtr<UMaterialInterface> DecalMaterial;
+
+	/** P_ky_cutter2: the turning slashes and the rising red sparks over the mark. */
+	UPROPERTY(EditAnywhere, Category = "Teleport|Assets")
+	TSoftObjectPtr<UParticleSystem> AimParticles;
+
 protected:
 	virtual void BeginPlay() override;
 	/** A destroyed aim's pending delays go with it (a take-back before the move cancels the move). */
@@ -103,9 +116,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport")
 	TObjectPtr<USpringArmComponent> SpringArm;
 
-	/** The mark on the floor, on the arm's end. Its material comes with the teleport's look (until then UE's default). */
+	/** The mark on the floor, on the arm's end. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport")
 	TObjectPtr<UDecalComponent> Decal;
+
+	/** The slashes and sparks, on the decal; it starts with the aim (auto-activated as the template is set). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport")
+	TObjectPtr<UParticleSystemComponent> ParticleSystem;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport")
 	TObjectPtr<UAudioComponent> Audio;

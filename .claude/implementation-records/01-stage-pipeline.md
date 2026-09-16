@@ -21,7 +21,11 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_level.py
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
   - Content/Python/wasami_tools/pipeline/dd_powers.py
-updated: 2026-09-16
+  - Content/Python/wasami_tools/pipeline/dd_particles.py
+  - Source/wasami_deception/WasamiCascadeLibrary.h
+  - Source/wasami_deception/WasamiCascadeLibrary.cpp
+  - Source/wasami_deception/Tests/WasamiCascadeTests.cpp
+updated: 2026-09-17
 ---
 
 # 取り込みの仕組み
@@ -40,7 +44,7 @@ updated: 2026-09-16
 | `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する |
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
 | `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ・6 パワーのアイコン）を `/Game/DD` に作る（中身は 03 記録） |
-| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアルを作る（中身は 04 記録） |
+| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアル、テレポートの照準のマテリアルと Cascade のパーティクルを作る（中身は 04 記録）。戻り値は種類ごとの数（`particle_systems` を含む） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
@@ -51,6 +55,15 @@ updated: 2026-09-16
 | `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、**対話デスクトップで**開き直して、リモート実行が応答するまで待つ |
 | `python Tools/console_session.py <exe> [args] [--wait <画像名>]` | 任意のプログラムを**対話デスクトップ（コンソールのセッション）で**起動する。Claude はセッション 0 にいて GPU の出力が見えないので、GUI のプログラムは一度きりのスケジュールタスク（ログオン中のユーザーの SID・`LogonType Interactive`）経由で起動する。起動したらタスクを消す。本家のゲームのランチャを動かすのに使う（`.claude/guides/verification.md`） |
 | `python Tools/desktop.py <start\|shot\|click\|key\|hold\|look\|record\|record_status\|stop\|…>` | 対話デスクトップの画面を撮り、入力を送る。セッション 1 に常駐する `Tools/desktop_agent.py`（`pythonw.exe`、`console_session.py` が起動）と `Intermediate/DesktopAgent/` の JSON でやり取りする。入力は前面の窓が許可した対象（既定は本家のゲーム）のときだけ届き、OS 全体に効くキーは断る。`record --seconds N --name x.mkv` は画面を 60 fps の動画に撮り始めてすぐ返る（エージェントが ffmpeg の `ddagrab` → `h264_nvenc` をバックグラウンドで起動する。1 枚数秒の `shot` では撮れない一瞬の演出のため）。`record_status` で終わりと終了コードを見る。使い方と枠は `.claude/guides/verification.md` の「画面を操作する」 |
+
+| C++（`UWasamiCascadeLibrary`、エディタだけ。Python からは `unreal.WasamiCascadeLibrary`） | 内容 |
+| --- | --- |
+| `ResetParticleSystem(System)` | システムの中のエミッタ・LOD・モジュール・分布をパッケージの外へ出し（`GetTransientOuterForRename` の外側へ一意な名前で `Rename`。Cascade のカーブエディタの一覧からも外す）、`Emitters`・`LODDistances`・`LODSettings` を空にする |
+| `MakeObject(Outer, ClassName, Name)` | Cascade のクラス（エミッタ・LOD・モジュール・分布。抽象クラスとそれ以外は断ってエラーを出す）を、クラスの既定値のまま `Outer` の中に `Name` で作る。同じ名前のものがあれば、同じクラスの既定のサブオブジェクトならそのまま使い（書き出しの値はそのテンプレートからの差分）、それ以外は外へ出してから作る（書き出しの値はクラスの既定からの差分） |
+| `AddEmitter(System, Emitter)`・`AddLODLevel(Emitter, LOD, Required, Spawn, Modules)` | エミッタをシステムの末尾に、LOD をエミッタの末尾に、そのモジュールと一緒に足す（外側が違うものは断る） |
+| `FinishParticleSystem(System)` | モジュールが使わなくなった分布オブジェクトを外へ出し、`SetupLODValidity` → 各エミッタの `UpdateModuleLists`（LOD の一覧と `Build`）→ `UpdateAllModuleLists` → `CalculateMaxActiveParticleCounts` → `SetupSoloing` → `PostEditChange` |
+| `SetPropertyText(Object, Name, Text)` | プロパティ `Name`（固定長配列の要素は `ParamModes[1]`）に UE のテキスト形式の値を `ImportText` で書く。書けたら空文字、書けなければ理由を返す（プロパティが無い、構造体に無いメンバー、テキストの残り、エラー出力） |
+| `GetPropertyText`・`GetPropertyType`（配列は要素の型まで。`TArray<float>`）・`GetEmitters`・`GetLODLevels`・`GetLODModules`（`Required`・`Spawn`・残りの順） | 読み戻し |
 
 ## 内部構造と処理の流れ
 
@@ -100,7 +113,17 @@ updated: 2026-09-16
 `import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 25・フォント・音 3・ミニマップのレンダーターゲットとマテリアル・パワーのアイコンのインスタンス 6 を `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_mesh` / `ensure_masters` / `_Graph` と、`dd_assets` の `pak` / `export_json` / `main_export` / `sound` / `texture` / `material` を使い回す。メッシュは原作の `StaticMesh` のライトマップの値（`LightMapResolution` 64・`LightMapCoordinateIndex` 2）を `import_mesh` に渡す。
 
 ### パワーの素材（`pipeline/dd_powers.py`）
-`import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`。テレポートの `CameraAnim_Teleport` は `pak_reference`、ブーストのものは `pak_reference_2`）・テクスチャ（`TEXTURES`）を `dd_assets` で作り、マテリアル 2 つ（`make_materials`: 原作のグラフが残っている `M_Speedlines` と、推定の `M_DD_ChameleonCameraShake`）を `dd_assets.material` で建て、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` / `camera_shakes` / `camera_anims` / `textures` / `materials` の数。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
+`import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`。テレポートの `CameraAnim_Teleport` は `pak_reference`、ブーストのものは `pak_reference_2`）・テクスチャ（`TEXTURES`。テレポートの斬撃の `T_ky_slash01_4x4` は `pak_reference`）を `dd_assets` で作り、マテリアル（`make_materials`: 原作のグラフが残っている `M_Speedlines`、推定の `M_DD_ChameleonCameraShake`、`make_teleport_materials` の推定のマスター 3 つとそのインスタンス 3 つ）を建て、パーティクル（`PARTICLE_SYSTEMS`: `P_ky_cutter2`、`pak_reference`）を `dd_particles` で作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` 5 / `camera_shakes` 1 / `camera_anims` 2 / `textures` 3 / `materials` 8 / `particle_systems` 1。斬撃のインスタンスのパラメータとテクスチャは、原作のマテリアルの書き出しに残るパラメータの式と `ParticleSubUV` から読む（`slash_parameters`）。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
+
+### Cascade のパーティクル（`pipeline/dd_particles.py`、`UWasamiCascadeLibrary`）
+Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced)` だけで Python から見えず、モジュールと分布のクラスも Python に出ていない。そこで**構造を C++ の道具で作り、値はすべてプロパティ名ごとに UE のテキスト形式で書く**。`particle_system(rel, version)` は原作のパッケージの書き出し（`_assets/…/P_*.json`。要約の `_particles.json` には無い値〈`bUseLegacySpawningBehavior` など〉も持つ）を読み、次の順に作る。
+1. アセットを読むか `ParticleSystemFactoryNew` で作り、`ResetParticleSystem` で空にする。システムの値（`LODDistances`・`LODSettings`・`bUseFixedRelativeBoundingBox`・`FixedRelativeBoundingBox`・`bShouldResetPeakCounts`・`CustomOcclusionBounds` など、書き出しにあるもの）を書く。
+2. `Emitters` の順にエミッタを `MakeObject` で作り（書き出しと同じ名前）、値を書いて `AddEmitter`。**`DetailModeBitmask` は High のビットがあれば Epic のビットを足す**（UE 5.8 の `UParticleEmitter::PostLoad` が `AddEpicDetailMode` より前の資産に行う変換。Effects の品質が Epic だと `r.DetailMode=3` で、ビットが無いエミッタは出ない）。
+3. `LODLevels` の順に LOD を作って値（`Level`・`PeakActiveParticles` など）を書き、`RequiredModule`・`SpawnModule`・`Modules` をモジュールの名前ごとに 1 度だけ作る（LOD 間で共有されているものは同じオブジェクト）。モジュールの値を書く前に、値が指す分布オブジェクト（cook が残したもの: `RequiredDistributionSpawnRate`・`BurstScaleDistribution`・粒子パラメータ）をそのモジュールの中に作り、その値を書く。`TypeDataModule` を持つ LOD はまだ扱わない（例外）。
+4. `FinishParticleSystem`、構造（エミッタ・LOD・モジュールの並び）と各モジュールの `LODValidity` を書き出しと突き合わせ（違えば例外）、保存する。
+- **分布は cook が焼き込んだ参照表をそのまま写す**（`FRawDistributionFloat/Vector` の `MinValue`・`MaxValue`・`MinValueVec`・`MaxValueVec`・`Table`〈`TimeScale`・`TimeBias`・`Values`・`Op`・`EntryCount`・`EntryStride`・`SubEntryStride`・`LockFlag`〉・`Distribution`）。書き出しに無いメンバーは既定の 0 で、毎回すべて書く。表があって分布オブジェクトが無い分布は、UE 5.8 でも表のまま読まれる（`FRawDistributionFloat::GetValue`。エディタが表を作り直すのは分布オブジェクトがあるときだけ）ので、本家のゲームと同じ値になる。モジュールが作られたときに自分で作る分布（`DistributionStartSize` など。`InitializeDefaults`）は、表を書くと使われなくなり、仕上げで外へ出る。
+- 値の形（`_text`）: `bool`（ビットフィールドは型名が `uint8` と出る）、数、名前・列挙・文字列（引用符つき）、`FVector`、`FBox`（書き出しは 7 つの数で、7 つ目の float の下位バイトが `IsValid`）、数の配列、既定のままの構造体の配列（`LODSettings`）、オブジェクト（このパッケージの中のものは作ったもののパス、原作の `/Game/…` は `/Game/DD/…`〈先に作ってあること〉）。ほかの形が来たら例外にする（新しいシステムを足すときに広げる）。書き出しの `LODValidity` は書かずに比べるだけ、`CurveEdSetup` と分布の `bIsDirty`（UE 5 では保存されない）は書かない。
+- `describe(asset_path)` は作ったシステムのエミッタ・LOD・モジュールの一覧を返す（確認用）。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
 - `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
@@ -112,7 +135,8 @@ updated: 2026-09-16
 - `sound(rel, version)`: `<パス>.ogg` を `SoundFactory` で取り込み、SoundWave の書き出しの `Volume` と `Pitch`（`SOUND_DEFAULTS`。書き出しに無ければ UE の既定の 1.0 を入れ直す）と `ConcurrencySet` を入れる。同時発音の設定は `sound_concurrency` で作る。チャンネル数・レート・長さはファイルから来る。`SoundClassObject`（本家の `DD_SoundClass_SFX`）はまだ作っていないので入れない。
 - `asset_path(rel)`: 原作の `/Game/<rel>` → `/Game/DD/<rel>`。
 - `texture(rel, version)`: `<パス>.png` を `dd_stage.import_texture` で取り込み、`_textures.json` の sRGB・圧縮・LOD グループを入れる（2026-09-16 に `dd_tablet` から移した）。
-- `material(asset_path, build, domain, blend_mode)`: マテリアルを読み込むか作り、式を全部消してドメインとブレンドを入れ、`build(mat)` にグラフを作らせて再コンパイルする（自前のマスター用。2026-09-16 に `dd_tablet` の `_master` から移した）。
+- `material(asset_path, build, domain, blend_mode)`: マテリアルを読み込むか作り、式を全部消してブレンドとドメインを**この順で**入れ（変えるたびにコンパイルされ、デカールのドメインに不透明のブレンドが重なる瞬間はコンパイルに失敗してログに出るため）、`build(mat)` にグラフを作らせて再コンパイルする（自前のマスター用。2026-09-16 に `dd_tablet` の `_master` から移した）。
+- `material_instance(asset_path, parent, scalars, vectors, textures)`: `MaterialInstanceConstant` を読むか作り、親を入れ、前のパラメータを消してから、スカラ・ベクトル（4 つの数）・テクスチャ（アセットのパス）を入れる（推定のマスターのインスタンスを原作のパスに置くのに使う。04 記録）。
 - エンジンの素材: `rel` が `/Engine/` で始まれば、書き出しの `Engine/Content/…` から読み、`/Game/DD/_Engine/…` に作る（`_content`・`content_file`・`asset_path`。前処理のテクスチャと同じ置き場所。UE 5.8 のエンジンの同名のものと同一かは分からないので原作のファイルを使う）。`sound` は `bLooping`（`SOUND_FLAGS`）も入れる。
 - `camera_anim(rel, version)`: 本家の `CameraAnim`（UE 5 には無い）を `DataAssetFactory` で `WasamiCameraAnim`（04 記録）に写す。`AnimLength`・`BaseFOV`・`BasePostProcessBlendWeight`（書き出しに無ければ UE4 の `UCameraAnim` の既定 3.0 / 90 / 0。`CAMERA_ANIM_DEFAULTS`）、`BasePostProcessSettings`（`ue_props.apply`。UE 5 に無い `bOverride_FilmWhitePoint` は落とす。原作では既定値の中立でしか使っていない）、`InterpTrackFloatProp` / `InterpTrackLinearColorProp` の `PropertyName` とキー（`InVal`〈Python では `val`〉・`OutVal`・接線・`InterpMode`）を `InterpCurveFloat` / `InterpCurveLinearColor` にそのまま入れる。`InterpTrackMove` は読まない（パワーのアニメは原点の 1 キーだけ）。ほかの種類のトラックがあれば例外にする。
 - `sound_concurrency(rel, version)`: `SoundConcurrencyFactory` で `SoundConcurrency` を作り（あれば読み込み）、書き出しの `Concurrency`（`MaxCount`・`VolumeScale` など、既定と違うものだけ）を `ue_props.apply` で入れる。UE 4.24 と 5.8 の `FSoundConcurrencySettings` の既定は同じ（MaxCount 16・StopFarthestThenOldest・VolumeScale 1.0 など）。
@@ -125,11 +149,15 @@ updated: 2026-09-16
 | `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake`・`_RunShake` | 本家の頭の揺れ（02 記録のプレイヤーが参照する） |
 | `/Game/DD/UI/…`・`/Game/DD/Audio/…`・`/Game/DD/Animation/…` ほか | タブレット（03 記録）とパワー（04 記録）の素材 |
 | `/Game/Pipeline/Interchange/PL_DD_StaticMesh`、`/Game/Pipeline/Materials/M_DD_Substance`・`M_DD_Decal`・`M_DD_Unlit`、`/Game/Pipeline/Textures/T_DD_DefaultPacked` | 取り込みの道具 |
+| `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake`・`M_DD_KySlash`・`M_DD_PPPRadialGradient`・`M_DD_DecalTeleport` | グラフが cook で消えた原作のマテリアルの推定（04 記録）。テレポートの照準の 3 つは、`/Game/DD` の原作のパスにそのインスタンスを置く |
+| `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2` | Cascade のパーティクル（`dd_particles`。エミッタ 2・LOD 3・モジュールは斬撃 16 と火花 11） |
 | `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 924〈うちテレポートのゾーン 2〉・灯 1,120、Zone 2 は配置 820〈同 2〉・灯 751） |
 
 ## 原作データの根拠
 - テレポートのゾーン: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/Powers/BP_Power_Teleport_Zone.json` の `Cube_GEN_VARIABLE`（旧版も同じ値）、`_levels/06_Hospital_Zone_01.full.json`・`06_Hospital_Zone_02.full.json` の `BP_Power_Teleport_Zone*` の部品。まとめは `.claude/references/powers/02-teleport.md` §4。
 - カメラシェイク: `pak_reference/_assets/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter_*Shake.json`。
+- パーティクル: `pak_reference/_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2.json`（システム・エミッタ・LOD・モジュール・分布の書き出し。`_particles.json` はその要約）。分布の表の読み方は `pak_reference/_manifest.json` の `conventions.particle_distribution`。両版のパーティクルの書き出し（328 パッケージ）で、表のキーが上のものだけであることを確かめた（2026-09-17）。
+- UE 5.8 の Cascade: `Engine/Source/Runtime/Engine/Private/Particles/ParticleEmitter.cpp`（`CreateLODLevel`・`UpdateModuleLists`・`PostLoad` の詳細度の変換）、`ParticleSystem.cpp`（`SetupLODValidity`・`UpdateAllModuleLists`・`BuildEmitters`・`PostEditChangeProperty`）、`ParticleModules*.cpp`（`InitializeDefaults`）、`Private/Distributions.cpp`（参照表の扱い）、`Plugins/FX/Cascade/Source/Cascade/Private/Cascade.cpp`（エディタがエミッタとモジュールを足す手順）、`Config/BaseScalability.ini`（`r.DetailMode`）、`CoreUObject/Private/UObject/Property.cpp`（`ImportSingleProperty` が未知のメンバーを `LogExec` の Verbose でしか言わないこと）。
 - 音の設定: 各 SoundWave の書き出し（例: `pak_reference_2/_assets/DDeception/Content/Audio/UI/Shard_Streak_Milestone_V5.json` の `Volume` 0.7・`Pitch` 2.0・`ConcurrencySet`）と、同時発音の `Audio/NewSoundConcurrency.json`（`MaxCount` 2・`VolumeScale` 0.5）。
 - ステージ（これから）: `pak_reference_2/_levels/06_Hospital_Zone_01.scene.json`・`06_Hospital_Zone_02.scene.json`、`_meshes.json`、`_materials.json`、`_textures.json`、`_meshes_gltf/`。
 
@@ -140,6 +168,10 @@ updated: 2026-09-16
 
 ## 既知の制約・注意点
 - 新しいツールセットのクラスを足したときは、`reload_module` では登録されない（明示的に `register_toolset_class` するか、エディタを開き直す）。
+- **UE の Python は「bool を返し出力引数を持つ関数」の形を変える**（失敗なら `None`、成功なら出力引数だけを返す）。理由の文字列が取れないので、`SetPropertyText` は理由を戻り値で返す形にした（2026-09-17）。
+- **UE の `ImportText` は構造体のテキストの知らないメンバーを黙って読み飛ばす**（`FProperty::ImportSingleProperty` は `UE_SUPPRESS(LogExec, Verbose, …)` でしか言わない）。値の取りこぼしを防ぐため、`SetPropertyText` は入れ子の構造体までメンバー名を先に照合する（`CheckStructText`。ネイティブの取り込みを持つ構造体は除く）。
+- Cascade のクラスは `MinimalAPI` なので、C++ から呼べるのは `ENGINE_API` の関数と仮想関数だけ（`UParticleEmitter::Build` は `UpdateModuleLists` 経由で呼ぶ）。`UParticleModule` は `Within=ParticleSystem` で、外へ出すときは `GetTransientOuterForRename` が一時的なシステムを外側にする。
+- `dd_particles` が扱う値の形と、`TypeDataModule`（メッシュ・ビームなど）はまだ限られている。ほかのシステム（最新版の `PPP_VanishPuff`・`P_ky_flash3`・`P_ky_forceField_Telekinesis`）を足すときに、書き出しに合わせて広げる（知らない形は例外で止まる）。
 - **原作のマテリアルの式は cook で消えている**ので、`Normal Flatness`（インスタンスは 1.2〜3.0、マスターの既定は 0）・`Roughness Power` / `Metallic Power` 以外のスカラは適用していない。`Roughness Power` / `Metallic Power` は既定 1.0 が恒等になる pow として実装した（推定）。見え方を原作と比べる段で見直す。
 - **UE の版の違い**: 本家のデカールは `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、UE 5.8 では `decal_blend_mode` が非推奨（No longer used）で Python から読めない。いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないでいる。
 - 当たりはすべて描画のメッシュそのもの（complex as simple）。書き出しのメッシュは `body_setup` を持たない。
@@ -168,7 +200,11 @@ updated: 2026-09-16
 - **絶対の明るさの比較には使えない**。`SceneCapture2D` は Lumen の間接光を本編と同じようには回さず、同じ視点でも PIE の絵より暗く出る（Zone 1 の廊下で中央値 (13,13,0) 対 PIE の (41,38,25)。00 記録の「露出」）。同じ視点で**設定 A と設定 B を比べる**のには使える。**本家の実機と数値を突き合わせるときは PIE の `HighResShot 1280x720`** で撮る（PIE 中なら、エディタが前面でなくても `Saved/Screenshots/WindowsEditor/` に書かれる）。
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
+## テスト（`Tests/WasamiCascadeTests.cpp`）
+- `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
+
 ## 変更履歴
+- 2026-09-17: Cascade のパーティクルを原作の書き出しから作る仕組み（C++ の `UWasamiCascadeLibrary`、`pipeline/dd_particles.py`、テスト `Wasami.Cascade.Build`）を足し、`dd_powers` にテレポートの照準の素材（`T_ky_slash01_4x4`、推定のマスター 3 つとインスタンス 3 つ、`P_ky_cutter2`）を足した。`dd_assets` に `material_instance` を足し、`material` はブレンドをドメインより先に入れるようにした
 - 2026-09-16: `dd_powers` の `CAMERA_ANIMS` に `CameraAnim_Teleport`（`pak_reference`）を足した。操作エージェントに画面の収録 `record` / `record_status` を足した
 - 2026-09-16: テレポートのゾーン（本家の `BP_Power_Teleport_Zone` の `Cube`）を、クラスの値（当たり・非表示・Z 0.05 倍）とレベルの差分で置くようにし、救急車の屋根の箱も置くようにした（`teleport_zones`・`_set_collision`）。前処理のメッシュの登録と材質を `note_mesh`・`slot_materials` に分けた。音の取り込みがエンジンの素材（`/Engine/…` → `/Game/DD/_Engine/…`）と `bLooping` を扱えるようにし、テレポートの音 3 つを `dd_powers` に足した。両ゾーンを組み立て直し、High 品質で焼き直した（Zone 1 は 80.3 秒、Zone 2 は 37.1 秒。BuiltData の大きさは前と同じ）
 - 2026-09-16: スピードブーストの演出の素材（カメラアニメ・テクスチャ 2・マテリアル 2）を `dd_powers` に足した。`dd_assets` に `asset_path` / `texture` / `material` / `camera_anim` を足し、`dd_tablet` のテクスチャとマスターの作り方をそこへ移した。ツールセットは `dd_stage` → `dd_assets` の順に読み直す

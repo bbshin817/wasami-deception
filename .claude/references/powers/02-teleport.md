@@ -367,6 +367,7 @@ Player.Reset Teleport (@31827) の実行順:
 - `MaterialDomain` MD_DeferredDecal、`BlendMode` BLEND_Translucent、`DecalBlendMode` DBM_Emissive。`EmissiveColor` ← `MaterialExpressionMultiply_2`（cook で削除）。
 - 使う関数: `/Engine/Functions/Engine_MaterialFunctions01/Gradient/RadialGradientExponential`、`ImageAdjustment/CheapContrast`、`Gradient/LinearGradient`、`Density/ExponentialDensity`（RadialGradientExponential の中）。テクスチャは無し。スカラー・ベクターのパラメータも無い（インラインのシェーダマップの uniform expression は既定の `SelectionColor`・`RefractionDepthBias` だけ）。
 - **色・半径・密度・コントラストの定数はコンパイル済みシェーダにしか無く、回収できていない**（旧版 `M_Decal_Teleport.uexp` 158 KB には DXBC が無く、共有シェーダコードのアーカイブも展開物に無い）。形と色は観察で決める必要がある（WebGL 版も推定）。
+- **2026-09-17 に旧版の実機で観察**（Deadly Decadence の噴水の前の芝、最短 250 cm、動かないカメラで 60 fps・3 秒と、取り消した後の背景。`observations/classic/aim-top-a*`）: **1 秒周期で明滅する**（表示値 R ≈ 50 ↔ 177。なめらかで山が広い。消えた式に `Time` と `Sine`〈周期 1〉がある形）、**縁の鋭い円**（内側はほぼ一様、縁の幅は半径の約 1 割）、**加算**（芝の模様が残る）。半径は斬撃の輪との比で決め、`RadialGradientExponential` の既定（中心 0.5・半径 0.5・密度 2.333）を `CheapContrast`（5）で切った約 70 cm と、PIE で同じ比になった（実装記録 04）。光る範囲に出る直線の縁は床の起伏（デカールの箱は上下 ±10 cm で、当たるのはゾーンの箱の上面）で、`LinearGradient` の効きは見えない。Manor はポストプロセスの色の補正が強く（`ColorGain` (1.43, 0, 0.56)・LUT `LUT_U1_Filmic_Cold_Blood_Murderer` 0.9・ブルーム 2.5 / しきい値 −0.49）、色と明るさは表示値から戻せない → 最新版の病院で見比べる（同じ材質）。
 
 ### 5.4 `P_ky_cutter2`（`pak_reference/_particles.json` の `/Game/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2`、確定）
 
@@ -409,6 +410,8 @@ Player.Reset Teleport (@31827) の実行順:
 - スプライトの大きさ: `GetParticleSize` が `Size.X × Scale.X`、PSA_Square なら `Size.Y = Size.X`（UE5.8 `ParticleSystemRender.cpp` 373〜384 行）。→ 斬撃は **一辺 199.6 cm の正方形**（寿命の終わりに 399.2 cm）、火花は 3.3〜10.0 cm の正方形。
 - ローカル空間の位置と速度は描画時にコンポーネントの変換（スケール込み）を受ける: 火花の出現範囲 world X ±113.1 cm × world Y ±34 cm、上向き 60〜100 cm/s（寿命 2 s で 1.2〜2.0 m 上昇）。斬撃の出現高さ 0〜1 cm。いずれもパーティクル原点（床 + 13.75 cm）が基準。
 - 推測: 斬撃のテクスチャの三日月はセルの縁（WebGL 版の測定で半径 0.42 セル）にあるので、見える輪の外径は 199.6 × 0.84 ≈ 1.68 m から始まる（WebGL 版の映像の実測「外径約 1.6 m」と合う）。
+
+- 粒子の値は、パッケージの書き出し（`_assets/…/P_ky_cutter2.json`）に焼き込まれた分布の参照表があり、UE 5.8 の Cascade にそのまま写せる（2026-09-17。実装記録 01 の `dd_particles`）。要約の `_particles.json` に無い `bUseLegacySpawningBehavior`（斬撃のエミッタは真）も書き出しにある。`DetailModeBitmask` 7 は、UE 5.8 が古い資産を読むときに Epic のビットを足して 15 になる。
 
 **`M_ky_slash01_4x4`**（`_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Materials/M_ky_slash01_4x4.json`、確定）: BLEND_Translucent、MSM_Unlit、TwoSided、`bUsedWithParticleSprites`・`bUsedWithMeshParticles`。Emissive ← `MaterialExpressionLinearInterpolate_0`（グラフは cook で削除）。残っている式: `ParticleSubUV`（Texture `/Game/ThirdParty/AdvancedMagicFX13/Textures/T_ky_slash01_4x4`、SamplerType LinearColor）、ベクター `hilightColor` (3.9051919, 4.0955548, 5.0, 1.0)、スカラー `alphaDensity` 1.5、`colorCorrect` 2.0、`depthFade` 100.0。→ グラフのつなぎ方は推測で組むしかない。
 - テクスチャ: `C:\Users\User\Desktop\wasami_deception\pak_reference\DDeception\Content\ThirdParty\AdvancedMagicFX13\Textures\T_ky_slash01_4x4.png`（2048 × 2048 RGB、元は PF_DXT1、sRGB false、12 ミップ、`TEXTUREGROUP_Effects`）。
@@ -500,7 +503,7 @@ Player.Reset Teleport (@31827) の実行順:
 ## 9. 未解決・観察が要るもの
 
 1. ~~CameraAnim の FOV の基準（90 か BaseFOV 137.24 か）~~ → 2026-09-16 に旧版の実機で 90（t=0 のキー）と確定。§5.1。
-2. `M_Decal_Teleport` の色・グラデーションの半径と鋭さ、`M_ky_slash01_4x4`・`PPP_Radial_Gradient_Doffed` のグラフ（定数は cook で消えている）。
+2. `M_Decal_Teleport` の**色と明るさ**（形・半径・鋭さ・明滅の周期は 2026-09-17 に旧版で観察して決めた。§5.3）、`M_ky_slash01_4x4`・`PPP_Radial_Gradient_Doffed` のグラフ（定数は cook で消えている。推定で作った。火花は旧版の Manor より PIE のほうが大きく見える）。最新版の病院と見比べる。
 3. UE4.21 のカメラアニメの PP がカメラの PP の上か下か（本作のカメラは PP を上書きしていないので結果は同じはず）。
 4. ~~UE5.8 で +100 EV のプレエクスポージャが問題を起こさないか~~ → 起こした（黒いフレーム）。`r.EyeAdaptation.PreExposureOverride=1` で対処（§7-3）。
 5. Zone 1 の `BP_Power_Teleport_Zone_2.Cube` と救急車の Cube がアーキタイプの Z スケール 0.05 を継ぐこと（書き出しの world scale とは食い違う。本作のパイプラインがアーキタイプの値を補っているかを確認）。
