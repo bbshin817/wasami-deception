@@ -66,7 +66,7 @@ updated: 2026-09-16
 ### 取り込み（`pipeline/dd_stage.py`）
 - `ensure_mesh_pipeline()`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を複製した `/Game/Pipeline/Interchange/PL_DD_StaticMesh`。種類ごとのサブフォルダなし、マテリアルとテクスチャを取り込まない、当たりの自動生成なし。
 - `ensure_masters()`: 本家のマスターマテリアル（式は cook で消えている）を 3 つに作り直す。`MASTER_VERSION` を上げるとその場で作り直す（インスタンスの親は保たれる）。
-  - `/Game/Pipeline/Materials/M_DD_Substance` … `MM_Main_Substance` と派生（Emissive・AlphaColorMask・Translucent・Glass）と分類外のすべて。`Albedo`（sRGB）・`Normal`・`Packed`（R 遮蔽・G 粗さ・B 金属、それぞれ `Roughness Power` / `Metallic Power` の pow を通す）・`Emissive`（× `Emissive Color Multiplier` × `Emissive Intensity`）。静的スイッチ `UseEmissive`・`UseMaskColor`（`Mask Color` を Albedo のアルファで乗せる）。不透明度は Albedo のアルファ × `Opacity Override`。`Packed` の既定は `/Game/Pipeline/Textures/T_DD_DefaultPacked`（遮蔽 1・粗さ 0.5・金属 0 の 4×4 を `_solid_png` が書いて取り込む。マスク用サンプラーは sRGB のテクスチャを受け付けないため）
+  - `/Game/Pipeline/Materials/M_DD_Substance` … `MM_Main_Substance` と派生（Emissive・AlphaColorMask・Translucent・Glass）と分類外のすべて。`Albedo`（sRGB）・`Normal`・`Packed`（R 遮蔽・G 粗さ・B 金属、それぞれ `Roughness Power` / `Metallic Power` の pow を通す）・`Emissive`（× `Emissive Color Multiplier` × `Emissive Intensity`）。静的スイッチ `UseEmissive`・`UseMaskColor`（`Mask Color` を Albedo のアルファで乗せる）。不透明度は Albedo のアルファ × `Opacity Override`。`Packed` の既定は `/Game/Pipeline/Textures/T_DD_DefaultPacked`（遮蔽 1・粗さ 0.5・金属 0 の 4×4 を `_solid_png` が書いて取り込む。**`TC_Default`・リニア**＝ Packed のノードのサンプラー `LINEAR_COLOR` と同じ型。原作の Packed テクスチャも 85 個が `TC_Default`・リニアで `TC_Masks` は 0 個。`ensure_default_packed` は既存のアセットの設定も直し、直したら `ensure_masters` がマスターを再コンパイルする）
   - `M_DD_Decal` … `M_01_Hotel_Decals`。`MD_DeferredDecal`・`BLEND_Translucent`、`Texture` × `Color Multiplier` を基本色に、アルファを不透明度に
   - `M_DD_Unlit` … `MM_Lit`。`MSM_Unlit` で `Light Color` × `Light Multiplier` を発光に
 - `import_mesh()`: Interchange で glTF を取り込み、Nanite を有効（半透明・加算・デカールを使うメッシュだけ無効、`translucent_meshes`）、フォールバックの誤差 0、当たりは `CTF_USE_COMPLEX_AS_SIMPLE`。取り込んだスロット数が書き出しと違えば警告する。最後に `setup_lightmap()`。
@@ -126,6 +126,7 @@ updated: 2026-09-16
 - **原作のマテリアルの式は cook で消えている**ので、`Normal Flatness`（インスタンスは 1.2〜3.0、マスターの既定は 0）・`Roughness Power` / `Metallic Power` 以外のスカラは適用していない。`Roughness Power` / `Metallic Power` は既定 1.0 が恒等になる pow として実装した（推定）。見え方を原作と比べる段で見直す。
 - **UE の版の違い**: 本家のデカールは `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、UE 5.8 では `decal_blend_mode` が非推奨（No longer used）で Python から読めない。いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないでいる。
 - 当たりはすべて描画のメッシュそのもの（complex as simple）。書き出しのメッシュは `body_setup` を持たない。
+- **マテリアルのノードの既定テクスチャは、ノードのサンプラーの型と合わせる**。合わないとマスターのコンパイルが失敗し（`Sampler type is Linear Color, should be Masks for …`）、**そのマスターのインスタンスがすべて UE の `DefaultMaterial`（灰色の市松）で描かれる**。ログには `Failed to compile Material Instance with Base M_DD_Substance for platform PCD3D_SM6, Default Material will be used in game.` が出るだけで、組み立てもビルドも止まらない。2026-09-16 まで `T_DD_DefaultPacked` が `TC_Masks` だったため、**病院の `M_DD_Substance` 系のマテリアル（壁・床・金属など）はずっとこの状態で、それまでの PIE の絵と焼き込みはすべて市松のまま**だった。取り込みや組み立ての後は、ログに `Failed to compile Material` が無いことを確かめる。
 - `editor_cycle.py` は起動時に `sys.stdout` / `sys.stderr` を `errors="replace"` にし直す。ビルドの出力にこの PC のコンソール（cp932）で出せない文字が混ざると、ビルドの失敗を報告する途中で `UnicodeEncodeError` になって落ちていた。
 - **エディタの起動はセッションを跨ぐ**。Claude Code は Windows のセッション 0（サービス側）で動いており、そこには GPU の出力が無い（ログの `LogD3D12RHI: Adapter has … 0 output[s]`）ので、そのまま起動したエディタは D3D12 のスワップチェーンを作れず `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` で即落ちる。`start_editor()` は `ProcessIdToSessionId` と `WTSGetActiveConsoleSessionId` で自分のセッションとコンソールのセッションを比べ、違えば一度きりのスケジュールタスク（`WasamiLaunchEditor`。プリンシパルはログオン中のユーザーを **SID で**指定し、`LogonType Interactive`・`RunLevel Limited`）でログオン中のセッションに起動する。ユーザー名の形（ドメインなしの PC では `WORKGROUP` になる）では登録できないので SID を使う。タスクはエディタが応答したら消す（`drop_task`）。
 - 起動の完了は**リモート実行が答えるか**で見る（`editor_answers`）。この PC では Docker Desktop が 127.0.0.1:8000 を掴んでいるため、MCP のポートに繋がってもエディタが起きているとは限らない。
@@ -147,6 +148,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: `T_DD_DefaultPacked` を `TC_Masks` から `TC_Default`・リニアに直した（Packed のノードは `LINEAR_COLOR` なので型が合わず、`M_DD_Substance` のコンパイルが失敗して、インスタンスがすべて既定のマテリアルの市松で描かれていた）。`ensure_default_packed` が既存のアセットも直し、`ensure_masters` がそのときマスターを再コンパイルするようにした
 - 2026-09-16: 原作で焼かれていた（Static の）灯の `VolumetricScatteringIntensity` を 0 にするようにした。原作では効いていなかった値がそのまま効いて、Zone 1 の画面が暖色のもやに覆われていた（切り分けは `capture_pose` の A/B。霧を切ると平均輝度が 18.7 → 9.9 になり、もやが霧由来と分かった）
 - 2026-09-16: `WasamiDevTools.capture_pose` を足した（エディタが前面でなくても見た目を撮れるようにするため）
 - 2026-09-16: 画面操作の道具（`Tools/desktop.py` と `Tools/desktop_agent.py`）を足した。Claude はセッション 0 にいてセッション 1 の画面を触れないので、セッション 1 に常駐するエージェントとファイル経由でやり取りする（ユーザーの指示で「画面操作も Claude が行う」に変更）

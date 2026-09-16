@@ -96,16 +96,21 @@ def _solid_png(path, rgb):
 
 
 def ensure_default_packed():
-    """The Packed parameter's default: occlusion 1, roughness 0.5, metallic 0, linear with Masks compression (a Masks
-    sampler rejects an sRGB colour texture, and the material then falls back to the default material)."""
-    if EAL.does_asset_exist(paths.DEFAULT_PACKED):
-        return unreal.load_asset(paths.DEFAULT_PACKED)
+    """The Packed parameter's default: occlusion 1, roughness 0.5, metallic 0. Linear with default compression, the
+    Linear Color sampler type the Packed node uses, as the original's packed textures are (TC_Default, not sRGB).
+    A node whose default texture is of another sampler type fails to compile, and every instance of the master then
+    draws the engine's default material. Returns (texture, whether it was made or its settings changed)."""
     png = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "defaults", "packed_4x4.png")
-    _solid_png(png, (255, 128, 0))
-    tex = import_texture({"file": png, "asset": paths.DEFAULT_PACKED, "srgb": False, "compression": "TC_Masks",
-                          "lodGroup": None})
-    EAL.save_asset(paths.DEFAULT_PACKED)
-    return tex
+    entry = {"file": png, "asset": paths.DEFAULT_PACKED, "srgb": False, "compression": None, "lodGroup": None}
+    if EAL.does_asset_exist(paths.DEFAULT_PACKED):
+        tex = unreal.load_asset(paths.DEFAULT_PACKED)
+        if not apply_texture_settings(tex, entry):
+            return tex, False
+    else:
+        _solid_png(png, (255, 128, 0))
+        tex = import_texture(entry)
+    EAL.save_asset(paths.DEFAULT_PACKED, only_if_is_dirty=False)
+    return tex, True
 
 
 # ------------------------------------------------------------------------------------------------ master materials
@@ -124,12 +129,14 @@ def _material(asset_path):
 def ensure_masters():
     """Builds (or rebuilds) the three master materials and returns them by package path."""
     out = {}
+    _, packed_changed = ensure_default_packed()
     for asset_path, build in ((paths.MASTER_SUBSTANCE, _build_substance), (paths.MASTER_DECAL, _build_decal),
                               (paths.MASTER_UNLIT, _build_unlit)):
         mat, needs_build = _material(asset_path)
         if needs_build:
             build(mat)
             EAL.set_metadata_tag(mat, VERSION_TAG, MASTER_VERSION)
+        if needs_build or (packed_changed and asset_path == paths.MASTER_SUBSTANCE):
             MEL.recompile_material(mat)
             EAL.save_asset(asset_path, only_if_is_dirty=False)
         out[asset_path] = mat
@@ -214,7 +221,7 @@ def _build_substance(mat):
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
     black = unreal.load_asset("/Engine/EngineResources/Black") or white
     flat = unreal.load_asset("/Engine/EngineMaterials/DefaultNormal") or white
-    packed_default = ensure_default_packed()
+    packed_default, _ = ensure_default_packed()
     tcs = unreal.MaterialSamplerType
 
     albedo = g.texture("Albedo", white, tcs.SAMPLERTYPE_COLOR, -1400, -650)
