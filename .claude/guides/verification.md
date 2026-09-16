@@ -10,6 +10,20 @@
 - **エディタを 2 つ起動しない**。`Tools/editor_cycle.py` は起動中のエディタを閉じてから開き直す。
 - 長い処理（取り込み、レベルの組み立て、シェーダーのコンパイル、C++ のビルド）はバックグラウンドで走らせ、終わりを待つ間に別の作業をする。進捗記録の「再開時の注意」に、走らせているものを書く。
 
+## 本家のゲームを動かすとき
+
+この PC には遊べる本家（Dark Deception Classic Ch3）が入っている。何を観察できるか、どのステージをどう出すかは `.claude/guides/original-fidelity.md` の「本家のゲームを手元で動かす」。ここには動かし方の作法だけを書く。
+
+- **本家のゲームはユーザーの画面と音を占有する**（`GameUserSettings.ini` は 2211x1247 の `FullscreenMode=1`）。エディタと同じように、**起動する前にユーザーの確認を取る**。観察が終わったら閉じてもらい、出しっぱなしにしない。
+- **Claude が直接起動してもゲームは立ち上がらない**。Claude は Windows のセッション 0 にいて表示出力が無いので、エディタと同じ理由（`DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`）で即落ちる。起動はコンソールのセッションで行う。
+  - 基本は**ユーザーに `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd` を実行してもらう**。
+  - Claude が起動するときは、`Tools/editor_cycle.py` の `start_editor` と同じ手を使う（ログオン中のユーザーの SID を principal にした一度きりのスケジュールタスク、`LogonType Interactive`・`RunLevel Limited`）。起動を確かめたらタスクを消す。
+- **メニューとゲーム内の操作はユーザーの手でやってもらう**（OS 全体の入力を操作しない規則はそのまま）。頼むときは、**REPLAY で選ぶステージ・何をするか・どの画面を見てほしいか**を先に短く伝える。
+- **エディタ（や PIE）と本家を同時に動かさない**。VRAM は 6 GB しかないので、先にエディタを閉じるか PIE を止めてから起動をお願いする（`.claude/guides/performance.md`）。
+- 画面はユーザーに撮ってもらう。シッピングビルドなのでコンソールコマンド（`HighResShot`）は使えない前提で考える。比べるときは本作と**同じ場所・同じ向き**で撮って並べる。
+- ゲームは `-log` 付きで起動するので、ログは `C:\Users\User\AppData\Local\DDeception\Saved\Logs\` に出る（Claude が後から読める）。
+- 遊ぶとセーブ（`Saved\SaveGames\SaveSlot.sav`）は書き換わる。スピードブーストとテレポーテーションは解放済みなのでそのまま遊べる。**Claude はセーブを編集しない**（必要になったらユーザーに確認する）。
+
 ## 見た目の確認
 
 - 静止画は MCP の `EditorToolset.EditorAppToolset.CaptureViewport`（カメラの位置と向きを渡せる）か、PIE 中のコンソールコマンド `HighResShot 1280x720`（`Saved/Screenshots/WindowsEditor/` に出る）。

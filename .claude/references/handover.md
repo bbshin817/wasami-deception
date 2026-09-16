@@ -27,6 +27,7 @@ Babylon.js 9.26 + Havok + Vite/TypeScript の一人称ホラー探索（Dark Dec
 - 原作とファンゲームのロゴ・キャラクターのモデルは使わない。人物の描かれたポスターと落書き 10 枚はワサミの絵に差し替えたものを使う。敵はワサミ。
 - Telekinesis は実装しない。ライフは 3（ファンゲームは 5）。制限時間は無い。
 - 本作独自として保留中の要素（敵がワサミの声で話す、知覚の弱さなど）は `07-wasami-mapping.md` の「保留」の表。
+- 根拠は**原則としてコード（原作データ）**。視覚的な比較が要るときは、この PC に入っている遊べる本家（`pak_reference` と同一のビルド）で観察してよい（2026-09-16 の指示）。
 
 ### 2.2 根拠のデータ（このリポジトリの直下に移した。git の対象外）
 
@@ -34,6 +35,7 @@ Babylon.js 9.26 + Havok + Vite/TypeScript の一人称ホラー探索（Dark Dec
 | --- | --- | --- | --- |
 | 本家の原作データ（UE 4.21） | `pak_reference/` | 2.9 GB | BP バイトコード、全アセットのプロパティ、UMG、カメラ、SoundCue、パーティクル、テクスチャ、音、レベル配置。読み方は同フォルダの README |
 | 本家の新しい版（UE 4.24） | `pak_reference_2/` | 18.3 GB | 後のチャプターと追加の効果。旧版と違うものはユーザーに確認 |
+| 手元で遊べる本家（`pak_reference` と同一のビルド） | `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`（本体は Steam の `Dark Deception Classic Ch3`） | — | 実機。コードで確定できない見え方の観察に使う。REPLAY で 5 ステージ（`01_Hotel`・`02_ElementarySchool`・`03_Manor_Zone1`・`04_Sewer`・`05_Circus_Entrance`）。病院と新しい版のタブレットの効果は入っていない |
 | CC2 の書き出し（UE 5.4） | `cc2_reference/` | 7.5 GB | glb（メッシュ空間は UE そのもの）、usda、png、wav 206、BP の逆コンパイル、umap の全プロパティ |
 | 調査の資料 | `<WEBGL>/.claude/references/` | — | CC2 のゲームの流れと値、本家の用語・敵・仕組み・演出、本作との対応 |
 
