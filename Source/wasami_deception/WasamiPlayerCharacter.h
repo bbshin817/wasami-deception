@@ -109,7 +109,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Tablet")
 	bool bCanUseTablet = true;
 
-	/** What the shard count on the screen counts; empty until the shards exist, and the screen then shows 0. */
+	/** What the shard count on the screen counts and the minimap shows (AWasamiShard); with none, the screen shows 0. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TSubclassOf<AActor> ShardActorClass;
 

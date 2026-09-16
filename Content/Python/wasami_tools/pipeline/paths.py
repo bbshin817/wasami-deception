@@ -10,6 +10,9 @@ PROJECT = os.path.normpath(unreal.Paths.convert_relative_path_to_full(unreal.Pat
 DD_PAK = os.environ.get("PAK_REF", os.path.join(PROJECT, "pak_reference"))
 DD_PAK2 = os.environ.get("PAK_REF2", os.path.join(PROJECT, "pak_reference_2"))
 DD_ROOT = "/Game/DD"
+# This game's own assets: their sources are kept in the repository (SourceArt, Git LFS) and imported under /Game/Wasami.
+SOURCE_ART = os.path.join(PROJECT, "SourceArt")
+WASAMI_ROOT = "/Game/Wasami"
 # The hospital stage, written by Tools/dd/prepare_stage.py.
 DD_STAGE = os.path.join(PROJECT, "Intermediate", "Pipeline", "dd", "stage_ue.json")
 

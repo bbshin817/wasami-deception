@@ -51,6 +51,8 @@
 /Content/DD/
 /Content/Pipeline/
 /Content/Stage/
+# 本作の素材の原本（SourceArt/、Git LFS）から作り直せるもの
+/Content/Wasami/
 /Content/Developers/
 /Content/Collections/
 

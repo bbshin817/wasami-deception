@@ -101,6 +101,35 @@ namespace
 		return Curve;
 	}
 
+	// Count Shake (UMG_Tablet, the same in both versions): cubic keys at ticks 0 / 3000 / 6000 / 12000 (60000 a second)
+	// with their tangents per tick, here per second. The count's 2D transform section keys its translation and scale and
+	// restores its state at the end; Image_41's colour section keys only the alpha.
+	constexpr double CountShakeTicksPerSecond = 60000.;
+	struct FCountShakeKey
+	{
+		double Ticks;
+		float Value;
+		double TangentPerTick;
+	};
+	const FCountShakeKey CountShakeXKeys[] = {{0., 0.f, 0.}, {3000., -14.f, 0.}, {6000., 0.f, 0.0015555555000901222}, {12000., 0.f, 0.}};
+	const FCountShakeKey CountShakeYKeys[] = {{0., 0.f, 0.}, {3000., 9.f, -0.0020000000949949026}, {6000., -12.f, -0.0010000000474974513}, {12000., 0.f, 0.}};
+	const FCountShakeKey CountShakeScaleKeys[] = {{0., 1.f, 0.}, {3000., 1.100000023841858f, 0.}, {6000., 1.f, 0.}};
+	const FCountShakeKey CountShakeFlashKeys[] = {{0., 0.25f, 0.}, {12000., 0.f, 0.}};
+
+	FRichCurve MakeCountShakeCurve(TConstArrayView<FCountShakeKey> Keys)
+	{
+		FRichCurve Curve;
+		for (const FCountShakeKey& Each : Keys)
+		{
+			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(static_cast<float>(Each.Ticks / CountShakeTicksPerSecond), Each.Value));
+			Key.InterpMode = RCIM_Cubic;
+			Key.TangentMode = RCTM_User;
+			Key.ArriveTangent = static_cast<float>(Each.TangentPerTick * CountShakeTicksPerSecond);
+			Key.LeaveTangent = Key.ArriveTangent;
+		}
+		return Curve;
+	}
+
 	UCanvasPanelSlot* PlaceBox(UCanvasPanel* Panel, UWidget* Child, float X, float Y, float Width, float Height)
 	{
 		UCanvasPanelSlot* Slot = Panel->AddChildToCanvas(Child);
@@ -299,8 +328,51 @@ void UWasamiTabletWidget::BounceSocket(bool bLeft)
 	BounceTime[bLeft ? 0 : 1] = 0.f;
 }
 
-void UWasamiTabletWidget::TickSockets(float DeltaSeconds)
+void UWasamiTabletWidget::PlayCountShake()
 {
+	if (!ShardCountText)
+	{
+		return;
+	}
+	// The state a restoring section returns to is taken when the animation first plays, not when it starts again.
+	if (CountShakeTime < 0.f)
+	{
+		CountRestTransform = ShardCountText->GetRenderTransform();
+	}
+	// PlayAnimation puts the first frame on at once.
+	CountShakeTime = 0.f;
+	ApplyCountShake();
+}
+
+void UWasamiTabletWidget::ApplyCountShake()
+{
+	FWidgetTransform Transform = ShardCountText->GetRenderTransform();
+	Transform.Translation = EvaluateCountShakeTranslation(CountShakeTime);
+	const float Scale = EvaluateCountShakeScale(CountShakeTime);
+	Transform.Scale = FVector2D(Scale, Scale);
+	ShardCountText->SetRenderTransform(Transform);
+	if (FlashImage)
+	{
+		FLinearColor Colour = FlashImage->GetColorAndOpacity();
+		Colour.A = EvaluateCountShakeFlash(CountShakeTime);
+		FlashImage->SetColorAndOpacity(Colour);
+	}
+}
+
+void UWasamiTabletWidget::TickAnimations(float DeltaSeconds)
+{
+	if (CountShakeTime >= 0.f && ShardCountText)
+	{
+		// The last frame played is the end's tick (12000), inside the transform section; then it restores.
+		CountShakeTime = FMath::Min(CountShakeTime + DeltaSeconds * CountShakeSpeed, CountShakeLength);
+		ApplyCountShake();
+		if (CountShakeTime >= CountShakeLength)
+		{
+			ShardCountText->SetRenderTransform(CountRestTransform);
+			CountShakeTime = -1.f;
+		}
+	}
+
 	for (bool bLeft : {true, false})
 	{
 		float& Time = BounceTime[bLeft ? 0 : 1];
@@ -317,6 +389,26 @@ void UWasamiTabletWidget::TickSockets(float DeltaSeconds)
 			Time = -1.f;
 		}
 	}
+}
+
+FVector2D UWasamiTabletWidget::EvaluateCountShakeTranslation(float Seconds)
+{
+	static const FRichCurve X = MakeCountShakeCurve(CountShakeXKeys);
+	static const FRichCurve Y = MakeCountShakeCurve(CountShakeYKeys);
+	const float Clamped = FMath::Clamp(Seconds, 0.f, CountShakeLength);
+	return FVector2D(X.Eval(Clamped), Y.Eval(Clamped));
+}
+
+float UWasamiTabletWidget::EvaluateCountShakeScale(float Seconds)
+{
+	static const FRichCurve Curve = MakeCountShakeCurve(CountShakeScaleKeys);
+	return Curve.Eval(FMath::Clamp(Seconds, 0.f, CountShakeLength));
+}
+
+float UWasamiTabletWidget::EvaluateCountShakeFlash(float Seconds)
+{
+	static const FRichCurve Curve = MakeCountShakeCurve(CountShakeFlashKeys);
+	return Curve.Eval(FMath::Clamp(Seconds, 0.f, CountShakeLength));
 }
 
 float UWasamiTabletWidget::EvaluateSocketBounce(float Seconds)

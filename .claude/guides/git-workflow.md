@@ -38,4 +38,5 @@ WebGL 版の同名のルールを UE5 版に合わせたもの（2026-09-16 の�
 
 - 参照データ（`pak_reference/`・`pak_reference_2/`・`cc2_reference/`）と、そこからスクリプトで作り直せる素材（`/Game/DD`・`/Game/Pipeline`・`/Game/Stage`）は `.gitignore` で除外する。作り直す手順は `.claude/guides/unreal-workflow.md`。
 - 手で作るアセット（UI のウィジェット、Blueprint など）は Git LFS で扱う（`.gitattributes` の `*.uasset` / `*.umap`）。GitHub の LFS の無料枠は 1 GB なので、大きな素材を足す前に大きさを確かめる。
+- 本作独自の素材の原本（ワサミ餅の glb など）は `SourceArt/` に置いて Git LFS で追い（`*.glb`）、取り込んだ `/Game/Wasami`（`Content/Wasami/`）は作り直せるので `.gitignore` で除外する（2026-09-17）。
 - 生成するフォルダに手で作ったアセットを置かない（除外されてしまう）。

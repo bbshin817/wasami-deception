@@ -1,7 +1,8 @@
 """Dark Deception (the original, pak_reference / pak_reference_2): its assets rebuilt from the exported data under
 /Game/DD/<the original's path under /Game> — Blueprints of its classes from their class defaults, sounds with the
-SoundWave's own settings, textures with the original's texture settings, and CameraAnims as UWasamiCameraAnim — and the
-master materials we write ourselves (materials whose graphs are cooked away)."""
+SoundWave's own settings, SoundCues with their node trees, textures with the original's texture settings, and
+CameraAnims as UWasamiCameraAnim — and the master materials we write ourselves (materials whose graphs are cooked
+away)."""
 import json
 import os
 
@@ -157,6 +158,62 @@ def sound(rel, version=1):
         wave.set_editor_property(ue_props.snake(key), bool(props.get(key, default)))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
+    return target
+
+
+# SoundCue properties the builder sets itself (the tree) or UE works out from it, and the sound classes, which are not
+# made yet (as for the waves).
+SOUND_CUE_SKIP = ("FirstNode", "SoundClassObject", "Duration", "MaxDistance")
+
+
+def sound_cue(rel, version=1):
+    """A SoundCue with the original's node tree ('Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue'): each node of the export
+    made with UWasamiSoundCueLibrary, its numbers written by name and its inputs linked, the wave players pointing at the
+    waves under /Game/DD (which have to be made first). Returns the package path."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        cue = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        cue = _tools().create_asset(name, folder, unreal.SoundCue, unreal.SoundCueFactoryNew())
+    pkg = export_json(rel, version)
+    exports = {("%s.%s" % (e["outer"], e["name"])) if e.get("outer") else e["name"]: e for e in pkg["exports"]}
+    lib = unreal.WasamiSoundCueLibrary
+    lib.reset_sound_cue(cue)
+    made = {}
+
+    def node(key):
+        if key in made:
+            return made[key]
+        e = exports[key]
+        obj = lib.add_sound_node(cue, e["class"])
+        if obj is None:
+            raise RuntimeError("%s: could not make %s (%s)" % (rel, key, e["class"]))
+        made[key] = obj
+        props = dict(e["props"])
+        wave = props.pop("SoundWaveAssetPtr", None)
+        if wave is not None:
+            loaded = unreal.load_asset(asset_path(game_rel(wave)))
+            if not isinstance(loaded, unreal.SoundWave) or not lib.set_wave(obj, loaded):
+                raise RuntimeError("%s: %s plays %s, which is not made yet" % (rel, key, wave))
+        children = [node(child) for child in props.pop("ChildNodes", [])]
+        for name, value in props.items():
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError("%s: %s.%s has a value this does not write (%r)" % (rel, key, name, value))
+            error = unreal.WasamiCascadeLibrary.set_property_text(obj, name, repr(value))
+            if error is None or error:
+                raise RuntimeError("%s: %s.%s was not written: %s" % (rel, key, name, error))
+        error = lib.set_child_nodes(obj, children)
+        if error is None or error:
+            raise RuntimeError("%s: the inputs of %s were not linked: %s" % (rel, key, error))
+        return obj
+
+    props = main_export(pkg, rel)["props"]
+    lib.finish_sound_cue(cue, node(props["FirstNode"]))
+    failures = ue_props.apply(cue, props, skip=SOUND_CUE_SKIP)
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    EAL.save_asset(target, only_if_is_dirty=False)
     return target
 
 

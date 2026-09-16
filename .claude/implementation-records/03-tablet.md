@@ -4,7 +4,7 @@ sources:
   - Source/wasami_deception/WasamiTabletWidget.h
   - Source/wasami_deception/WasamiTabletWidget.cpp
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # タブレット（画面のウィジェットと素材、ミニマップ）
@@ -16,12 +16,15 @@ updated: 2026-09-16
 
 ### `UWasamiTabletWidget : UUserWidget`
 - `ScreenWidth` 714 / `ScreenHeight` 864（px。原作のウィジェットの大きさで、`UWidgetComponent` の DrawSize もこれ）。
-- `SetShardCount(int32)` … 中央の数字。値が変わったときだけ `SetText` する。
+- `SetShardCount(int32)` … 中央の数字。値が変わったときだけ `SetText` する。`GetShardCount()` は出している数（まだ何も入れていなければ 0）。
+- `PlayCountShake()` … 本家の `PlayAnimation(Count Shake, 0, 1, Forward, 2.0)`。シャードが回収されたときに呼ぶ（06 記録）。下の「Count Shake」。
+- `static EvaluateCountShakeTranslation(Seconds)`・`EvaluateCountShakeScale(Seconds)`・`EvaluateCountShakeFlash(Seconds)` … アニメの秒での値（テストが使う）。定数 `CountShakeLength` 0.2・`CountShakeSpeed` 2。
 - `SetObjective(const FText&)` … 下の帯。大文字にして出す（原作の束縛 `GetText_1` が `TextToUpper`）。
 - `SetPowersVisible(bool)` … 2 つの枠を出す / 隠す（本家の `Check` が、解放済みのパワーが無ければ `UMG_TabletPowers` を隠す）。表示の状態は自前の `bPowersVisible` で持つ（`UWidget::IsVisible` は Slate の実体ができるまで false を返すため）。
 - `ShowSocketPowers(EWasamiPower Left, EWasamiPower Right)` … 本家の `Update Powers`。各枠に、そのパワーのアイコンの MID を `SetBrushFromMaterial` で出す。変わったときだけ書く。`None` は何も出さない（`SetBrushFromMaterial(None)` は白い四角を描くので、ブラシを空にして `SetOpacity(0)`）。
 - `SetPowerPercent(EWasamiPower, float)` … そのパワーのアイコンの `Percent`（1 = 満タン）。本家と同じくアイコン（MID）ごとの値なので、左右が同じパワーなら同じゲージになる。0.001 より小さい変化は無視する。
-- `BounceSocket(bool bLeft)` / `TickSockets(float DeltaSeconds)` … 本家の `Use Left` / `Use Right`。弾みを頭から再生し、プレイヤーのティックで進めて、枠の画像の `SetRenderScale` に入れる（UMG のアニメを C++ で作らない）。
+- `BounceSocket(bool bLeft)` … 本家の `Use Left` / `Use Right`。弾みを頭から再生する。
+- `TickAnimations(float DeltaSeconds)` … 弾みと `Count Shake` をプレイヤーのティックで進める（UMG のアニメを C++ で作らない）。弾みは枠の画像の `SetRenderScale` に入れる。
 - `static EvaluateSocketBounce(float Seconds)` … 弾みの拡縮（テストが使う）。
 - 素材（ソフト参照の UPROPERTY。`RebuildWidget` で読む。00 記録の決まり）: `BackgroundTexture`・`PlayerMarkTexture`・`VignetteTexture`・`MapMaterial`・`PowerMaterials`（6 つ、`EWasamiPower` の順）・`ScreenFont`。
 - `RebuildWidget()` … 初回だけ `BuildScreen` でウィジェットの木を作る。ウィジェット BP を使わないのは、原作の px をそのまま定数で持つため。
@@ -57,7 +60,15 @@ updated: 2026-09-16
 - `BuildScreen` が、`PowerMaterials` の 6 つ（`/Game/DD/Materials/MasterMaterials/MM_Powers_SpeedBoost`・`MM_Powers_Inst_Teleport`・`MM_Powers_Inst_Telepathy`・`MM_Powers_PrimalFear`・`MM_Powers_Inst_Telekinesis`・`MM_Powers_Vanish`）から動的インスタンス `PowerIcons` を作る（本家の `Construct` と同じ 6 つ）。読めなかったものは null のまま（その枠は何も出さない）。
 - 枠の画像は `CanvasPanel_3` / `CanvasPanel_4` いっぱいの矩形に置くので、`RenderTransform` の既定の中心 (0.5, 0.5) で拡縮すると、本家がキャンバスごと拡縮するのと同じになる。
 - **弾み**: 本家のアニメのトラックは `RenderTransform` の Scale（X と Y が同じキー）。キーはティック 0 / 3000 / 9000 / 30000（毎秒 60000。`pak_reference/README.md` の約束）→ 0 / 0.05 / 0.15 / 0.5 秒で 1.0 / 1.25 / 1.10 / 1.0、補間は Cubic（Auto）。書き出しの接線（1 ティックあたり 0 / 1.1111e-5 / −9.2593e-6 / 0）を秒あたり（0 / 0.66667 / −0.55556 / 0）にして `FRichCurve` の User 接線に入れる。接線は前後のキーから求まる自動接線と一致する（(1.1−1.0)/0.15、(1.0−1.25)/0.45）。0.5 秒で 1.0 に戻り、再生を止める（`RestoreState` は偽）。
-- 呼ぶ側（02・04 記録）: プレイヤーが毎フレーム `SetPowersVisible` / `ShowSocketPowers` / `SetPowerPercent` ×6 / `TickSockets` を、パワーのコンポーネントが Q / E で `BounceSocket` を呼ぶ。
+- 呼ぶ側（02・04 記録）: プレイヤーが毎フレーム `SetPowersVisible` / `ShowSocketPowers` / `SetPowerPercent` ×6 / `TickAnimations` を、パワーのコンポーネントが Q / E で `BounceSocket` を呼ぶ。
+
+### Count Shake（シャードの回収）
+- 本家の `UMG_Tablet` のアニメ `Count Shake`（両版で同じ）。再生範囲 [0, 12001)（毎秒 60000 ティック）で、最後に評価されるのはティック 12000 = 0.2 秒。`PlayAnimation` の速さ 2 なので実時間 0.1 秒。
+  - `ShardCount` の 2D 変換の区間（[0, 12000]、**`CompletionMode` RestoreState**）: 移動 X はキー 0 / 3000 / 6000 / 12000 で 0 / −14 / 0 / 0（接線は 1 ティックあたり 0 / 0 / 0.0015556 / 0）、移動 Y は 0 / 9 / −12 / 0（0 / −0.002 / −0.001 / 0）、拡縮 X・Y は 0 / 3000 / 6000 で 1 / 1.1 / 1（接線 0）。どれも Cubic（Auto）で、書き出しの接線は前後のキーの自動接線と一致する。データのある移動と拡縮だけを書き、角度と傾きは触らない。
+  - `Image_41`（`Flash`）の色の区間（[0, 12001)、既定の KeepState）: α だけが 0 / 12000 で 0.25 / 0（接線 0）。RGB は書かない（紫の色合いはブラシの色のまま）。
+- `PlayCountShake` はその場で最初のフレーム（移動 0・拡縮 1・α 0.25）を入れる（UE の `PlayAnimation`。ステップ 8 で確かめた）。再生中にもう一度呼ぶと頭からやり直す。**元に戻す変換は、止まっている状態から再生を始めたときの値**（UE の pre-animated state は最初に取った値を持つ）で、本作の数の変換は `ShardTranslationY` の (0, −12)。
+- `TickAnimations` がアニメの秒を 経過 × 2 だけ進めて値を書き、0.2 秒に達したらその値を書いてから、数の変換を元に戻して止める。α は 0 のまま残る。
+- 版の違い: 旧版の `ShardCount` は `RenderTransform` の移動 (0, −12) を持つが、最新版は持たない（本作の画面は旧版の配置）。どちらもこのアニメの後は元の変換に戻るので、差は変わらない。
 
 ### ミニマップの仕掛け
 原作と同じく **レベルに置いた地図の板をシーンキャプチャで上から撮る**。
@@ -114,7 +125,7 @@ updated: 2026-09-16
 - **ウィジェット BP を使っていない**。原作の配置は px の実数（`47.3467` など）で、手で置くと誤差が出るうえ git の外の LFS 資産になるため、C++ の `WidgetTree->ConstructWidget` で組み立てている。
 - `MaterialExpressionIf` の `ConstAGreaterThanB` などは Python から触れないので、扇形のマスクは `ceil(saturate(…))` で作っている。入力が 1 本のノード（`Frac`・`Saturate`・`Ceil`・`ComponentMask`）は `connect_material_expressions` のピン名を `""` にしないと繋がらない（`"Input"` は失敗し、その場でエラーにならずコンパイル時に「Missing … input」になる）。
 - 原作の `Image_83`（`00_Ballroom` でだけ出す黒い覆い）と `UMG_MiniMap` のウィジェット階層は作っていない（本作のステージは病院だけで、地図は `Map` が直接映す）。
-- シャード回収の閃き（原作の `Count Shake`）と数字の揺れは、まだ再生する側がいない。`Flash` は α 0 で置いてあるだけ。
+- シャード回収の閃き（`Count Shake`）の α は、本作の画面ではプレイヤーのティックで進む（本家は UMG の再生）。回収がプレイヤーの画面の更新より先に起きたフレームでは、最初に表示される値が 1 フレームぶん進んでいる（06 記録の「確かめたこと」）。
 - **素材はコンストラクタで読まない**（ソフト参照）。2026-09-16 まではコンストラクタが `ConstructorHelpers` で `M_DD_MapScreen` と `MM_Powers_*` を読んでおり、エディタの起動時にルートに入ったそれらを `import_dd_tablet` が作り直そうとしてエディタが落ちた（01 記録の注意点）。
 - `MM_Powers` の中で `Percent` をどう描くかは、原作のグラフが無いので WebGL 版の見立て（12 時から時計回り）のまま。最新版の実機で 6 種の枠を見比べるのはステップ 11（進捗記録）。
 - 本家の `UMG_Tablet` の `UI Cooldown`（スピードブーストが放送する）は、結び付け先のウィジェットが木に無く見た目の効果が無いと見られるので作っていない（04 記録）。
@@ -124,6 +135,7 @@ updated: 2026-09-16
 - `UWidgetComponent` は `bTickWhenOffscreen` が false のままなので、画面がビューポートに映っていない間は描き直さない（下ろしている間は描画も止まる）。エディタを背面にして PIE を撮ると、この理由で地図が止まったままになる。
 
 ## 変更履歴
+- 2026-09-17: シャードの回収の `Count Shake`（`PlayCountShake`・`GetShardCount`・評価の静的関数）を足し、`TickSockets` を `TickAnimations` に改めた。テスト `Wasami.Tablet.CountShake`（`Tests/WasamiShardTests.cpp`。06 記録）
 - 2026-09-16: テクスチャの取り込み（`_texture_settings`）とマスターの作り直し（`_master`）を `dd_assets` の `texture` / `material` へ移した（パワーの取り込みと共通にするため。作るものは同じで、取り直しても種類ごとの数は変わらなかった）
 - 2026-09-16: パワーの枠を最新版の `UMG_TabletPowers` に合わせ、6 つのアイコン（MID）を持って、左右の枠が指すパワーを出し分けるようにした（`ShowSocketPowers`・`SetPowerPercent`・`SetPowersVisible`）。Q / E の弾み（`BounceSocket`・`TickSockets`）を足した。`SetPowerCharge` を外した。アイコン 8 枚とインスタンス 4 つを取り込みに足した。素材をソフト参照にし、`RebuildWidget` で読むようにした
 - 2026-09-16: 露出をプロジェクト設定で原作に合わせた（00 記録の「露出」）。タブレットの画面の値の撮り直しは PIE 待ち

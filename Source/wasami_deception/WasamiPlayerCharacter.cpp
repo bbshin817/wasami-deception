@@ -25,6 +25,7 @@
 #include "WasamiChameleonComponent.h"
 #include "WasamiGameMode.h"
 #include "WasamiPowerComponent.h"
+#include "WasamiShard.h"
 #include "WasamiTabletWidget.h"
 
 namespace
@@ -144,6 +145,7 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	// The pipeline's assets, loaded at BeginPlay (WasamiAssets.h says why not here).
 	TabletMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2")));
 	MinimapTarget = TSoftObjectPtr<UTextureRenderTarget2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Minimap/T_NewMap")));
+	ShardActorClass = AWasamiShard::StaticClass();
 	TabletUpSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1")));
 	TabletDownSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v1_1")));
 	ResizeMapSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
@@ -475,7 +477,7 @@ void AWasamiPlayerCharacter::UpdateTablet(float DeltaSeconds)
 			const EWasamiPower Power = static_cast<EWasamiPower>(Index);
 			Screen->SetPowerPercent(Power, Powers->GetGaugePercent(Power));
 		}
-		Screen->TickSockets(DeltaSeconds);
+		Screen->TickAnimations(DeltaSeconds);
 		Screen->SetObjective(WasamiGameMode ? WasamiGameMode->CurrentObjective : FText::GetEmpty());
 	}
 }

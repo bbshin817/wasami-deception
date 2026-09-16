@@ -22,8 +22,11 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
   - Content/Python/wasami_tools/pipeline/dd_powers.py
   - Content/Python/wasami_tools/pipeline/dd_particles.py
+  - Content/Python/wasami_tools/pipeline/dd_shards.py
   - Source/wasami_deception/WasamiCascadeLibrary.h
   - Source/wasami_deception/WasamiCascadeLibrary.cpp
+  - Source/wasami_deception/WasamiSoundCueLibrary.h
+  - Source/wasami_deception/WasamiSoundCueLibrary.cpp
   - Source/wasami_deception/Tests/WasamiCascadeTests.cpp
 updated: 2026-09-17
 ---
@@ -41,10 +44,12 @@ updated: 2026-09-17
 | --- | --- |
 | `WasamiStageTools.import_dd_stage_assets(max_items=40)` | メッシュ → テクスチャ → マテリアルの順に、まだ無いものを `max_items` 件だけ作る。戻り値は `imported` / `remaining` と種類ごとの `*_done` / `*_total` |
 | `WasamiStageTools.refresh_dd_stage_assets()` | マスターマテリアルの版が古ければ作り直し、テクスチャの設定を原作どおりに直し、全マテリアルインスタンスを再コンパイルする |
-| `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する |
+| `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する（シャードも置く。メッシュを作り直すので焼き直しが要る） |
+| `WasamiStageTools.place_dd_shards(zone="Zone1", map_path="")` | そのゾーンのシャード（`WasamiShard`）だけを置き直し、前の組み立てが単独で置いたシャードの灯を外して保存する。ほかは触らず、焼き込みもそのまま（シャードは Movable）。戻り値は `removed_shards` / `removed_lights` / `shards`（Zone 1 は 337、Zone 2 は 342） |
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
 | `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ・6 パワーのアイコン）を `/Game/DD` に作る（中身は 03 記録） |
 | `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアル、テレポートの照準のマテリアルと Cascade のパーティクル、Primal Fear の球のテクスチャとマテリアル、Vanish の煙（テクスチャ・マテリアル・Cascade のパーティクル）とビネットのマテリアル、Telepathy の開始の音と印のテクスチャとマテリアルを作る（中身は 04 記録）。戻り値は種類ごとの数（`particle_systems` を含む） |
+| `WasamiDDTools.import_dd_shards()` | シャードの素材（本作の餅のメッシュ・テクスチャ・材質〈`SourceArt/` から〉、地図の印の材質 `M_Shard`、回収の音・Cue・同時発音・揺れ）を作る（中身は 06 記録）。戻り値は `sounds` 1 / `sound_concurrencies` 1 / `sound_cues` 1 / `camera_shakes` 1 / `materials` 2 / `mochi` 6 |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
@@ -64,6 +69,15 @@ updated: 2026-09-17
 | `FinishParticleSystem(System)` | モジュールが使わなくなった分布オブジェクトを外へ出し、`SetupLODValidity` → 各エミッタの `UpdateModuleLists`（LOD の一覧と `Build`）→ `UpdateAllModuleLists` → `CalculateMaxActiveParticleCounts` → `SetupSoloing` → `PostEditChange` |
 | `SetPropertyText(Object, Name, Text)` | プロパティ `Name`（固定長配列の要素は `ParamModes[1]`）に UE のテキスト形式の値を `ImportText` で書く。書けたら空文字、書けなければ理由を返す（プロパティが無い、構造体に無いメンバー、テキストの残り、エラー出力） |
 | `GetPropertyText`・`GetPropertyType`（配列は要素の型まで。`TArray<float>`）・`GetEmitters`・`GetLODLevels`・`GetLODModules`（`Required`・`Spawn`・残りの順） | 読み戻し |
+
+| C++ の道具（`UWasamiSoundCueLibrary`、エディタだけ） | 内容 |
+| --- | --- |
+| `ResetSoundCue(Cue)` | Cue の節点をすべて外す（`USoundCue::ResetGraph`。グラフは出力の節点だけになる） |
+| `AddSoundNode(Cue, ClassName)` | 音の節点のクラス（`SoundNodeModulator` など。抽象クラスと音の節点でないものは断る）を、既定値のまま、グラフの節点と最初の入力つきで作る（`ConstructSoundNode`） |
+| `SetChildNodes(Node, Children)` | 同じ Cue の節点を順に入力にする（入力は足すだけ。取る数の範囲の外と、今より少ない数は理由を返して断る。外した入力のピンがグラフに残るとリンクが通らないため） |
+| `SetWave(Node, Wave)` | WavePlayer に波形を入れる（`SetSoundWave`） |
+| `FinishSoundCue(Cue, Root)` | 最初の節点を入れ、節点からグラフをつなぎ直し（`LinkGraphNodesFromSoundNodes`。長さなどの集計も）、`PostEditChange` |
+| `GetSoundNodes(Cue)`・`GetChildNodes(Node)` | 読み戻し（最初の節点から深さ優先） |
 
 ## 内部構造と処理の流れ
 
@@ -101,6 +115,7 @@ updated: 2026-09-17
 - 霧・スカイライト: 書き出しのプロパティをそのまま（`ue_props.apply`。UE5 で改名されたものは `ue_props.RENAMED` が読み替える）。スカイライトの `SLS_SpecifiedCubemap` には TextureCube が要るが、書き出しの HDRI は平面の PNG（`PF_FloatRGBA` を 8 bit に落としたもの）なので Texture2D にしかならない。その場合は指定せずシーンのキャプチャに任せ、`failed_settings` に記録する。
 - ポストプロセスボリューム: `bOverride_*` が立っているものだけ入れ、値が書き出しに無いもの（＝既定値のまま上書き）は override だけ立てる。
 - プレイヤースタート: `actors` の `PlayerStart`（変換はその `CollisionCapsule` のもの）。
+- シャード（`_shards`）: `actors` の `BP_Shard_C` の位置・回転・拡縮に `unreal.WasamiShard` を置く（構築時に餅と印の素材を読むので、`import_dd_shards` の後に）。タグ `dd`・`dd_shard`、フォルダ `Hospital/Gameplay/Shards`、ラベルは本家の名前。**シャードの灯はアクタの部品なので、`_lights` は `actorClass` が `BP_Shard_C` の灯を置かない**（2026-09-17 までの組み立ては単独の灯として `Hospital/Lights/BP_Shard_C` に置いていた）。`place_shards` は `_open_level(clear=False)` で開き、タグ `dd_shard` のアクタと、タグ `dd` でそのフォルダにある灯だけを消して置き直す。
 
 ### 登録（`init_unreal.py`、`wasami_tools/__init__.py`）
 - エディタの起動時に `init_unreal.py` が `wasami_tools.register()` を呼び、`Registration([dd.WasamiDDTools, dev.WasamiDevTools])` が ToolsetRegistry に登録する（MCP に出る）。
@@ -114,6 +129,9 @@ updated: 2026-09-17
 
 ### パワーの素材（`pipeline/dd_powers.py`）
 `import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`。テレポートの `CameraAnim_Teleport` は `pak_reference`、ブーストのものは `pak_reference_2`）・テクスチャ（`TEXTURES`。テレポートの斬撃の `T_ky_slash01_4x4` は `pak_reference`。Vanish の `T_LoopingSmoke_8x8`・`T_perlinnoise`、Telepathy の `T_ky_noise16`・`T_ky_noise` を含む）を `dd_assets` で作り、マテリアル（`make_materials`: 原作のグラフが残っている `M_Speedlines`、推定の `M_DD_ChameleonCameraShake`、`make_teleport_materials` の推定のマスター 3 つとそのインスタンス 3 つ、`make_primal_material` の推定のマスター `M_DD_Primal` とそのインスタンス `M_05_Primal`、`make_vanish_materials` の推定のマスター `M_DD_LoopingSmoke`・`M_DD_WobblyVignette` とそのインスタンス `M_LoopingSmoke1_Sheet`・`MM_WobblyVignette`、`make_telepathy_materials` の推定のマスター `M_DD_Telepathy` とそのインスタンス `MM_Telepathy`、さらにそのインスタンス `MM_Telepathy_Inst`〈原作と同じ親子。パラメータは親にある `Speed` だけ写す〉）を建て、パーティクル（`PARTICLE_SYSTEMS`: `P_ky_cutter2`〈`pak_reference`〉、`PPP_VanishPuff`〈`pak_reference_2`〉）を `dd_particles` で作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` 7 / `camera_shakes` 2 / `camera_anims` 2 / `textures` 8 / `materials` 17 / `particle_systems` 2。材質の関数の呼び出し（`_function`）は既定で `Engine_MaterialFunctions01` を、`LinearSine` は `Engine_MaterialFunctions02` を読む。インスタンスのパラメータは、原作のマテリアルの書き出しに残るパラメータの式の既定値から読み（`parameter_defaults`。書き出しに無い既定値は UE の既定 = 0）、斬撃のテクスチャは `ParticleSubUV` から読む（`slash_parameters`）。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
+
+### シャードの素材（`pipeline/dd_shards.py`）
+`import_all()` が回収の音（`SOUNDS`）・同時発音（`SOUND_CONCURRENCIES`）・Cue（`SOUND_CUES`。波形の後に作る）・揺れ（`CAMERA_SHAKES`）を `dd_assets` で作り（どれも `pak_reference_2`）、地図の印の推定のマスター `M_DD_MapMark` とそのインスタンス `M_Shard`（`make_map_mark`）、本作の餅（`import_mochi`: `SourceArt/Wasami/wasami_mochi.glb` の JSON と BIN を読み〈`_glb`〉、材質のテクスチャの JPEG を `Intermediate/Pipeline/wasami/shard/` に書き出して `dd_stage.import_texture` で取り込み、法線は緑を反転し、マスター `M_DD_WasamiMochi` とインスタンス `MI_WasamiMochi` を建て、glb を `dd_stage.import_mesh`〈Nanite〉で取り込んでスロットにインスタンスを入れる）を作って、`/Game/DD`・`/Game/Pipeline`・`/Game/Wasami` を保存する。glb が無ければ（LFS を取っていない）例外にする。中身と根拠は 06 記録。
 
 ### Cascade のパーティクル（`pipeline/dd_particles.py`、`UWasamiCascadeLibrary`）
 Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced)` だけで Python から見えず、モジュールと分布のクラスも Python に出ていない。そこで**構造を C++ の道具で作り、値はすべてプロパティ名ごとに UE のテキスト形式で書く**。`particle_system(rel, version)` は原作のパッケージの書き出し（`_assets/…/P_*.json`。要約の `_particles.json` には無い値〈`bUseLegacySpawningBehavior` など〉も持つ）を読み、次の順に作る。
@@ -139,6 +157,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `material_instance(asset_path, parent, scalars, vectors, textures)`: `MaterialInstanceConstant` を読むか作り、親を入れ、前のパラメータを消してから、スカラ・ベクトル（4 つの数）・テクスチャ（アセットのパス）を入れる（推定のマスターのインスタンスを原作のパスに置くのに使う。04 記録）。
 - エンジンの素材: `rel` が `/Engine/` で始まれば、書き出しの `Engine/Content/…` から読み、`/Game/DD/_Engine/…` に作る（`_content`・`content_file`・`asset_path`。前処理のテクスチャと同じ置き場所。UE 5.8 のエンジンの同名のものと同一かは分からないので原作のファイルを使う）。`sound` は `bLooping`（`SOUND_FLAGS`）も入れる。
 - `camera_anim(rel, version)`: 本家の `CameraAnim`（UE 5 には無い）を `DataAssetFactory` で `WasamiCameraAnim`（04 記録）に写す。`AnimLength`・`BaseFOV`・`BasePostProcessBlendWeight`（書き出しに無ければ UE4 の `UCameraAnim` の既定 3.0 / 90 / 0。`CAMERA_ANIM_DEFAULTS`）、`BasePostProcessSettings`（`ue_props.apply`。UE 5 に無い `bOverride_FilmWhitePoint` は落とす。原作では既定値の中立でしか使っていない）、`InterpTrackFloatProp` / `InterpTrackLinearColorProp` の `PropertyName` とキー（`InVal`〈Python では `val`〉・`OutVal`・接線・`InterpMode`）を `InterpCurveFloat` / `InterpCurveLinearColor` にそのまま入れる。`InterpTrackMove` は読まない（パワーのアニメは原点の 1 キーだけ）。ほかの種類のトラックがあれば例外にする。
+- `sound_cue(rel, version)`: `SoundCueFactoryNew` で Cue を作り（あれば読み込み）、`UWasamiSoundCueLibrary` で空にしてから、書き出しの `FirstNode` からたどって節点を作る（`ChildNodes` を先に作ってつなぐ。同じ節点は 1 つ）。`SoundWaveAssetPtr` は `/Game/DD` の波形（先に作っておく）を `SetWave` で入れ、ほかの数の値は名前ごとに `UWasamiCascadeLibrary::SetPropertyText` で書く（数でない値は例外）。最後に `FinishSoundCue`。Cue 自身の値は `ue_props.apply` で入れ、`FirstNode`・`SoundClassObject`（音のクラスはまだ作っていない）・`Duration`・`MaxDistance`（UE が節点から出す）は書かない（`SOUND_CUE_SKIP`）。**書き出しに無い `VolumeMultiplier` は UE 4.24 と 5.8 の既定の 0.75**（原作の Cue 126 個のうち 20 個だけが別の値を書いている）。
 - `sound_concurrency(rel, version)`: `SoundConcurrencyFactory` で `SoundConcurrency` を作り（あれば読み込み）、書き出しの `Concurrency`（`MaxCount`・`VolumeScale` など、既定と違うものだけ）を `ue_props.apply` で入れる。UE 4.24 と 5.8 の `FSoundConcurrencySettings` の既定は同じ（MaxCount 16・StopFarthestThenOldest・VolumeScale 1.0 など）。
 
 ## 作るアセット
@@ -152,7 +171,8 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 | `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake`・`M_DD_KySlash`・`M_DD_PPPRadialGradient`・`M_DD_DecalTeleport`・`M_DD_Primal`・`M_DD_LoopingSmoke`・`M_DD_WobblyVignette`・`M_DD_Telepathy` | グラフが cook で消えた原作のマテリアルの推定（04 記録）。Chameleon のもの以外は、`/Game/DD` の原作のパスにそのインスタンスを置く |
 | `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2` | Cascade のパーティクル（`dd_particles`。エミッタ 2・LOD 3・モジュールは斬撃 16 と火花 11） |
 | `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff` | Cascade のパーティクル（`dd_particles`。エミッタ 1・LOD 3・モジュール 14 を 3 つの LOD で共有） |
-| `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 924〈うちテレポートのゾーン 2〉・灯 1,120、Zone 2 は配置 820〈同 2〉・灯 751） |
+| `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 924〈うちテレポートのゾーン 2〉・灯 783・シャード 337、Zone 2 は配置 820〈同 2〉・灯 409・シャード 342。灯の数はシャードの灯〈Zone 1 は 337、Zone 2 は 342〉を除いたもの） |
+| `/Game/Wasami/Shard/…`、`/Game/Pipeline/Materials/M_DD_WasamiMochi`・`M_DD_MapMark`、`/Game/DD/Materials/Shared/M_Shard`・`/Game/DD/Audio/…`・`/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect` | シャードの素材（`import_dd_shards`。06 記録）。`/Game/Wasami` は本作の素材の置き場所で、原本は `SourceArt/`（Git LFS）にあり、取り込んだものは git の外 |
 
 ## 原作データの根拠
 - テレポートのゾーン: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/Powers/BP_Power_Teleport_Zone.json` の `Cube_GEN_VARIABLE`（旧版も同じ値）、`_levels/06_Hospital_Zone_01.full.json`・`06_Hospital_Zone_02.full.json` の `BP_Power_Teleport_Zone*` の部品。まとめは `.claude/references/powers/02-teleport.md` §4。
@@ -206,6 +226,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-17: シャードの素材の取り込み（`pipeline/dd_shards.py`、`WasamiDDTools.import_dd_shards`）、Cue の取り込み（`dd_assets.sound_cue` と C++ の `UWasamiSoundCueLibrary`）、シャードの配置（`dd_level._shards`・`place_shards`、`WasamiStageTools.place_dd_shards`）を足した。組み立てはシャードの灯を単独で置かなくなった。`paths` に本作の素材の置き場所（`SOURCE_ART`・`WASAMI_ROOT`）を足した。両ゾーンのシャードを `place_dd_shards` で置いた（組み立て直しはしていない）
 - 2026-09-17: `dd_powers` に Telepathy の素材（開始の音 `Telepathy`、`T_ky_noise16`・`T_ky_noise`、推定のマスター `M_DD_Telepathy` とインスタンス `MM_Telepathy`・`MM_Telepathy_Inst`）を足した
 - 2026-09-17: `dd_powers` に Vanish の素材（`T_LoopingSmoke_8x8`・`T_perlinnoise`、推定のマスター `M_DD_LoopingSmoke`・`M_DD_WobblyVignette` とインスタンス、`PPP_VanishPuff`）を足した。`dd_particles` がバーストの配列（`BurstList`）を書けるようにした
 - 2026-09-17: `dd_assets.camera_shake` が既定値を書いた後にコンパイルし直すようにした（同じセッションで作ったシェイクのインスタンスに値が届いていなかった）。`ue_props.value` が、数でない値を持つ X / Y / Z の辞書（シェイクの `LocOscillation`）をベクトルと取り違えないようにした。`desktop.py` の説明を PIE の新しい決まりに合わせた

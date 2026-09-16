@@ -151,7 +151,7 @@ updated: 2026-09-17
 - `EWasamiEnemyState : uint8` … `Patrol`・`Pursue`・`Stun`・`Teleport`（本家の `Enum_EnemyStates`。表示名の表で値 2 が欠けているが、値 2 が Stun として使われている）。
 
 ### `IWasamiTelekinesisInterface`（`UWasamiTelekinesisInterface`）
-本家の `DD_TelekinesisInterface`。`Activate()`（`BlueprintNativeEvent`、既定は何もしない）。本家では `BP_Shard` が実装し、テレキネシスが届くとプレイヤーへ飛んで回収される。
+本家の `DD_TelekinesisInterface`。`Activate()`（`BlueprintNativeEvent`、既定は何もしない）。本家では `BP_Shard` が実装し、テレキネシスが届くとプレイヤーへ飛んで回収される。本作では `AWasamiShard` が実装する（06 記録）。
 
 ## 内部構造と処理の流れ
 
@@ -486,6 +486,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: テレキネシスのインターフェースを実装するシャード（`AWasamiShard`、06 記録）ができたことを書き足した（ソースは変えていない）
 - 2026-09-17: Telepathy（`AWasamiTelepathyPower`〈0.8 秒ごとにレベルの全敵に印、時間で全部外す〉、`AWasamiTelepathyTracker`〈画面空間のウィジェットで敵を追い、距離で大きさ〉、`UWasamiTelepathyTrackerWidget`〈赤い煙の円、Appear / Disappear〉、開始と終わりの音、シェイク、9 秒と再使用 6.5 秒）とテスト `Wasami.Powers.TelepathyTracker`・`TelepathyTargets` を足した。印の材質は推定。ユニティビルドでぶつかった Vanish の無名名前空間の名前を変えた
 - 2026-09-17: Vanish（`AWasamiVanishPower`〈紫と白の一瞬の演出・煙 `PPP_VanishPuff`・音・全敵への `PlayerVanish`〉、`UWasamiVanishWidget`〈紫の揺らぐビネット、15 秒で出て消える〉、カプセルの `Camera` 応答の切り替え、15 秒と再使用 15 秒、リセット）とテスト `Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget` を足した。煙とビネットの材質は推定
 - 2026-09-17: 一瞬の演出の基底 `AWasamiPowerBurst`（全画面のポストプロセス 2 つと 2 秒のタイムライン）と Primal Fear（`AWasamiPrimalPower`。半径の中の敵に気絶を 1 回、赤い球、音、シェイク、再使用 23 秒）、仮の的 `AWasamiTestEnemy`、テスト `Wasami.Powers.PrimalTimeline`・`PrimalStun` を足した。球の材質は推定

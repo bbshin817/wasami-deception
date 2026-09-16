@@ -5,7 +5,7 @@ sources:
   - Source/wasami_deception/WasamiGameMode.cpp
   - Source/wasami_deception/WasamiPlayerCharacter.h
   - Source/wasami_deception/WasamiPlayerCharacter.cpp
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # プレイヤーとゲームモード
@@ -22,7 +22,7 @@ updated: 2026-09-16
   - オプション: `bToggleSprint`、`MouseSensitivity` 1.0、`bInvertY`、`bHeadBob`（本家の OPTIONS の TOGGLE SPRINT / MOUSE SENSITIVITY / INVERTED Y AXIS / HEAD BOBBING）。
   - カメラ: `BaseFOV` 90、`FastFOV` 115、`FOVSpeedRange` (300, 900)、`FOVInterpSpeed` 0.5。
   - 頭の揺れ: `WalkShakeClass` / `RunShakeClass`（`TSoftClassPtr`。既定は `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake` と `_RunShake` の `_C`）。
-  - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E が見る）、`ShardActorClass`（画面が数えるシャードのクラス。未設定なら 0 を出す）。
+  - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E が見る）、`ShardActorClass`（画面が数え、地図に写すシャードのクラス。既定は `AWasamiShard`〈06 記録〉。空なら 0 を出す）。
   - 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `TabletMesh`（`/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2`）、`MinimapTarget`（`/Game/DD/UI/Minimap/T_NewMap`）、`TabletUpSound`（`/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1`）、`TabletDownSound`（`_v1_1`）、`ResizeMapSound`（`/Game/DD/Audio/UI/UI_Select_V3`）。
   - コンポーネント: `Tablet`（板のスタティックメッシュ）、`TabletScreen`（`UWidgetComponent`、`UWasamiTabletWidget`）、`MinimapCapture`（`USceneCaptureComponent2D`）、`Powers`（`UWasamiPowerComponent`）、`Chameleon`（名前は `FX`。`UWasamiChameleonComponent`、`GetChameleon()`。本家の子アクタ `FX` の Chameleon。本家は Z +2000・拡縮 (5,5,1) に置くが、範囲なしのボリュームなので位置は絵に関係せず、アクタコンポーネントにした。中身は 04 記録）。
 
@@ -62,7 +62,7 @@ updated: 2026-09-16
 - **タブレットの構成**（コンストラクタ）: `Tablet` はカメラの子で（メッシュは `BeginPlay` で入れる）、当たり無し、`bSelfShadowOnly`、初期位置は伏せた状態 (35.39891, −21.994417, −39.701378)・回転 (P0, Y90, R180)。その子の `TabletScreen` は相対位置 (0, 0.8922737, 0.2078171)・回転 (P0, Y90, R0)・スケール (0.28, 0.024465779, 0.024465779)、World 空間、DrawSize 714 × 864、Masked かつ片面（本家が上書きしている `Widget3DPassThrough_Masked_OneSided` が選ばれる）。`MinimapCapture` はカプセルの子で (0, 0, 3000)・ピッチ −90、正射影 `OrthoWidth` 4000、`SCS_BaseColor`、`PRM_UseShowOnlyList`、ターゲットは `MinimapTarget`（`BeginPlay` で入れる）。`bCaptureEveryFrame` は false から始め、タブレットを上げるときに true、下ろし終わったときに false にする（本家は常に撮っているが、下ろしている間は画面が見えないので絵は変わらない。`.claude/guides/performance.md`）。
 - **出し入れ**（`ToggleTablet` / `UpdateTablet` / `ApplyTabletInterp` / `PlaceTablet`）: Space。`bCanMove` と `bCanUseTablet` が両方 true のときだけ効く。上げるときは `05_Tablet_Woosh_v2_1`、下げるときは `05_Tablet_Woosh_v1_1` を音量 0.5・ピッチ 1.5 で鳴らし、それぞれのカーブを頭から再生する（途中で押し直しても頭から。本家の `PlayFromStart` と同じ）。毎フレーム `TabletRaiseCurve`（0.5 秒。0 → 0.3 s で 0.9〈接線 2.0〉→ 0.5 s で 1.0）か `TabletLowerCurve`（0.3 秒。1 → 0.2 s で 0.1〈接線 −0.4674788 / −1.3626982 / −3.1061733〉→ 0.3 s で 0）を評価して `TabletInterp` に入れ、`PlaceTablet` が視点空間の位置の Z を −39.701378 ↔ −4.321648 に線形補間、回転を (P0,Y90,R180) と (P0,Y90,R0) の最短の Slerp にする。板は隠さない（伏せると視界の下に出るだけ）。
 - **地図の拡縮**（`ResizeMap`）: Z。タブレットが上がっているときだけ効き、`UI_Select_V3` を音量 0.5・ピッチ 4.0 で鳴らして `OrthoWidth` を 4000 ↔ 10000 で切り替える。
-- **画面の更新**: `UpdateTablet` が毎フレーム、画面に「パワーが 1 つでもあるか」（`SetPowersVisible`）、左右の枠が指すパワー（`ShowSocketPowers`）、6 つのパワーのゲージ（`SetPowerPercent`）を渡し、枠の弾みを進め（`TickSockets`）、帯にゲームモードの `CurrentObjective` を渡す（どれも値が変わったときだけ画面に書く。03 記録）。`UpdateTabletScreen` は 0.1 秒ごとのタイマーで、`RefreshMinimapContents`（タグ `dd_minimap` のアクタと `ShardActorClass` のアクタを `ShowOnlyActors` に入れ直し、その数を数える）を呼んでからシャード数を渡す。
+- **画面の更新**: `UpdateTablet` が毎フレーム、画面に「パワーが 1 つでもあるか」（`SetPowersVisible`）、左右の枠が指すパワー（`ShowSocketPowers`）、6 つのパワーのゲージ（`SetPowerPercent`）を渡し、枠の弾みとシャードの `Count Shake` を進め（`TickAnimations`）、帯にゲームモードの `CurrentObjective` を渡す（どれも値が変わったときだけ画面に書く。03 記録）。`UpdateTabletScreen` は 0.1 秒ごとのタイマーで、`RefreshMinimapContents`（タグ `dd_minimap` のアクタと `ShardActorClass` のアクタを `ShowOnlyActors` に入れ直し、その数を数える）を呼んでからシャード数を渡す。
 
 ## 原作データの根拠
 - `pak_reference/_assets/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter.json`: `Walking Speed` 300、`Sprinting Speed` 600、`CollisionCylinder` の半径 50 と歩ける斜面 44°、`SpringArm_GEN_VARIABLE`（`TargetArmLength` 0、`bDoCollisionTest` false、`bUsePawnControlRotation` true、`bEnableCameraRotationLag` true、`CameraRotationLagSpeed` 20、`CameraLagSpeed` 8、相対位置 (0, 0, 95)）、`Tablet_GEN_VARIABLE`・`Widget_GEN_VARIABLE`・`SceneCaptureComponent2D_GEN_VARIABLE` の各設定。
@@ -83,11 +83,12 @@ updated: 2026-09-16
 - 入力の実際の手触り（ダッシュ時の FOV の広がり、頭の揺れ、180°）はまだ確かめていない。エディタが背面にあるとティックが 3 fps ほどに落ち、リモートからの疑似操作では確かめられない（`.claude/guides/verification.md`）。2026-09-16 から `Tools/desktop.py` で対話デスクトップに入力を送れるので、PIE でも本家の実機でも同じ操作を送って比べられる（エディタと PIE を触るときはユーザーの確認を取る）。
 - 本家はタブレットをカメラ → `Scene`(0, 0, −94.9577) → `Tablet` と繋いでいるが、タイムラインが入れる相対 Z（−39.70 → −4.32）はカメラ基準の値で、`Scene` を挟むと板はカメラの約 1 m 下に行き画面に映らない。原作の収録から測った画面上の位置（x 4.8〜31.8 %・y 30.3〜91.0 %。WebGL 版 10 記録）は、カメラ相対 (35.399, −21.994, −4.322) に置いた計算（x 4.6〜31.5 %・y 30.0〜91.5 %）と合うので、`Scene` は置かずカメラの直下に付けている。
 - 本家の画面はシャードの数を 0.01 秒ごとに数え直す（`UMG_Tablet` の Construct のループ）。本作は 0.1 秒ごと（数は回収でしか変わらないので見た目は変わらない）。
-- `ShardActorClass` が空の間、シャード数は 0 のまま（シャードは M3）。
+- シャードを回収した瞬間の −1 と `Count Shake` は、シャードが画面に直接書く（06 記録）。0.1 秒ごとの数え直しは、破棄されたシャードを数えない。
 - まだ無いもの: 視線の先の手のマーク（interact）、足音。しゃがみは作らない（本家に無い）。
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-17: `ShardActorClass` の既定を `AWasamiShard` にした。画面のアニメを進める呼び出しを `TickAnimations` に改めた（シャードの `Count Shake` も進める）
 - 2026-09-16: 左クリックとホイールの入力を足し、テレポートの照準（04 記録）へ渡すようにした
 - 2026-09-16: 本家の子アクタ `FX`（Chameleon）にあたる `UWasamiChameleonComponent` を足した（`GetChameleon()`。スピードブーストの画面の揺れが使う）
 - 2026-09-16: スピードブーストを `UWasamiPowerComponent`（04 記録）へ移し、Q / E / 1 / 2 の入力、`bHasInput`・`bCanInteract`、`SetMoveSpeeds`・`GetTabletScreen` を足した。画面にはパワーの枠・ゲージ・弾みを渡すようにした。素材（板・地図のターゲット・音・揺れ）をソフト参照にして `BeginPlay` で読むようにした（コンストラクタで読むとエディタの起動時にルートに入り、パイプラインが作り直すとエディタが落ちる）

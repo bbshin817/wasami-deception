@@ -36,6 +36,16 @@ public:
 	/** How many shards are left in the level (the original counts the BP_Shard actors). */
 	void SetShardCount(int32 Count);
 
+	/** The count the screen shows (0 until one is set). */
+	int32 GetShardCount() const { return FMath::Max(LastShardCount, 0); }
+
+	/**
+	 * Count Shake (a shard collected): the count jolts and grows, and the map flashes purple, at twice the animation's
+	 * speed, from its start each time. At its end the count's transform goes back to what it was before (the transform
+	 * section restores its state); the flash stays out.
+	 */
+	void PlayCountShake();
+
 	/** The game mode's Current Objective; the band shows it in upper case, as the original's binding does. */
 	void SetObjective(const FText& Objective);
 
@@ -51,11 +61,20 @@ public:
 	/** Use Left / Use Right: the socket swells to 1.25 and settles back over 0.5 s, from the start each time. */
 	void BounceSocket(bool bLeft);
 
-	/** Moves the sockets' bounce on by DeltaSeconds. */
-	void TickSockets(float DeltaSeconds);
+	/** Moves the sockets' bounce and the count shake on by DeltaSeconds. */
+	void TickAnimations(float DeltaSeconds);
 
 	/** The bounce's scale at Seconds into it (1 before and after). */
 	static float EvaluateSocketBounce(float Seconds);
+
+	/** Count Shake's length and speed: it ends at its tick 12000 and PlayAnimation plays it at 2. */
+	static constexpr float CountShakeLength = 0.2f;
+	static constexpr float CountShakeSpeed = 2.f;
+
+	/** Count Shake at Seconds of the animation: the count's translation (px) and scale, and the flash's alpha. */
+	static FVector2D EvaluateCountShakeTranslation(float Seconds);
+	static float EvaluateCountShakeScale(float Seconds);
+	static float EvaluateCountShakeFlash(float Seconds);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -86,6 +105,7 @@ protected:
 
 private:
 	void BuildScreen(UCanvasPanel* Root);
+	void ApplyCountShake();
 	UImage* Socket(bool bLeft) const { return bLeft ? LeftSocket : RightSocket; }
 
 	UPROPERTY(Transient)
@@ -114,4 +134,8 @@ private:
 	int32 ShownPower[2] = {-1, -1};
 	/** Seconds into each socket's bounce; negative when it is not playing. */
 	float BounceTime[2] = {-1.f, -1.f};
+	/** Seconds into Count Shake's animation; negative when it is not playing. */
+	float CountShakeTime = -1.f;
+	/** The count's transform before Count Shake began, which its end restores. */
+	FWidgetTransform CountRestTransform;
 };

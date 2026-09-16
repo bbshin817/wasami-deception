@@ -6,3 +6,5 @@
 # ここは後に書く（.gitattributes は後の行が勝つ）ことで、上の text=auto より -text を優先させる
 *.uasset filter=lfs diff=lfs merge=lfs -text
 *.umap filter=lfs diff=lfs merge=lfs -text
+# 本作の手作りの素材の原本（Tools/ と Content/Python/wasami_tools が SourceArt/ から取り込む）
+*.glb filter=lfs diff=lfs merge=lfs -text

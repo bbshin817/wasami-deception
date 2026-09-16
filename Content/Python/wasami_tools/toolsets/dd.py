@@ -66,3 +66,18 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         _module("dd_assets")
         _module("dd_particles")
         return _module("dd_powers").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_dd_shards() -> dict[str, int]:
+        """Imports (or re-imports) what the soul shards (WasamiShard) show and play: this game's mochi (mesh, textures,
+        material; from SourceArt), the minimap mark's material (M_Shard), and the pickup's sound, cue, sound
+        concurrency and camera shake from the original.
+
+        Returns:
+            How many assets of each kind were made ('sounds', 'sound_concurrencies', 'sound_cues', 'camera_shakes',
+            'materials', 'mochi').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_shards").import_all()
