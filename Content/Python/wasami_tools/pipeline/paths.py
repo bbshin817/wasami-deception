@@ -1,27 +1,14 @@
 """Where the pipeline's inputs and this project's generated assets live."""
-import json
 import os
 
 import unreal
 
 PROJECT = os.path.normpath(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()))
-CC2_STAGE = os.path.join(PROJECT, "Intermediate", "Pipeline", "cc2", "stage_ue.json")
-# Dark Deception's exported data (git-ignored at the project root).
+# Dark Deception's exported data (git-ignored at the project root): pak_reference is the original UE 4.21 export,
+# pak_reference_2 the Steam version's UE 4.24 one, which is where the hospital (06_Hospital) lives.
 DD_PAK = os.environ.get("PAK_REF", os.path.join(PROJECT, "pak_reference"))
+DD_PAK2 = os.environ.get("PAK_REF2", os.path.join(PROJECT, "pak_reference_2"))
 DD_ROOT = "/Game/DD"
-
-# Pipeline assets: the Interchange pipeline for the stage's glb meshes and the master material of its materials.
-MESH_PIPELINE = "/Game/Pipeline/Interchange/PL_CC2_StaticMesh"
-MASTER_MATERIAL = "/Game/Pipeline/Materials/M_CC2_Standard"
-DEFAULT_MASKS = "/Game/Pipeline/Textures/T_Default_Masks"
-CC2_ROOT = "/Game/CC2"
-
-
-def load_cc2_stage():
-    if not os.path.exists(CC2_STAGE):
-        raise FileNotFoundError("%s is missing: run python Tools/cc2/prepare_stage.py first." % CC2_STAGE)
-    with open(CC2_STAGE, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def split(asset_path):

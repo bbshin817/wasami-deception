@@ -13,7 +13,7 @@
 ## 見た目の確認
 
 - 静止画は MCP の `EditorToolset.EditorAppToolset.CaptureViewport`（カメラの位置と向きを渡せる）か、PIE 中のコンソールコマンド `HighResShot 1280x720`（`Saved/Screenshots/WindowsEditor/` に出る）。
-- 比べる相手は WebGL 版の画面（`.claude/references/webgl/`、`docs/screenshots/`）と、原作・ファンゲームの収録。**同じ場所・同じ向き**で撮って並べる。ステージの位置は `Intermediate/Pipeline/cc2/stage_ue.json` の `gameplay`（チェックポイント、トリガー）から取る。
+- 比べる相手は原作の収録と、WebGL 版の画面（`.claude/references/webgl/`、`docs/screenshots/`）。**同じ場所・同じ向き**で撮って並べる。ステージの位置は原作データの配置（`pak_reference_2/_levels/06_Hospital_Zone_0*.scene.json` の `world.location`、PlayerStart やトリガー）から取る。
 - 撮った画像は会話に貼る前に縮小する（`CaptureViewport` の戻り値は base64 で大きいので、ファイルに保存してから縮小して読む）。
 
 ## 動きの確認

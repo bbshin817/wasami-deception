@@ -2,7 +2,7 @@
   "00-overview.md": {
     "wasami_deception.uproject": "0f6eeeb069413c61c7e744c3d5df63f67944e65d",
     ".mcp.json": "1c3c91408b62529156b59bb2c6ddca2a4e4a13d8",
-    "Config/DefaultEngine.ini": "96940ca87f3392db83de9f314653df099a540346",
+    "Config/DefaultEngine.ini": "d08c5a739de003e3032fa98ec4d628fb528eccde",
     "Config/DefaultGame.ini": "2beb9d194a9299e54dc5f46f4f5f408654c961e3",
     "Config/DefaultInput.ini": "2ae3b7f5c94270ef2992bdfeb9ab14b20606392d",
     "Config/DefaultEditor.ini": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
@@ -14,20 +14,16 @@
     "Source/wasami_deception/wasami_deception.h": "73cb863cf321f93664126321d4dd3ebaa1100368"
   },
   "01-stage-pipeline.md": {
-    "Tools/cc2/prepare_stage.py": "ac47d2d4814981b3ec9e3115e71a4e147470ca80",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "221400d9dfbdfa8ec81e6c8e00704585c2ee42fd",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
-    "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
+    "Content/Python/wasami_tools/__init__.py": "541ea13582118a96ceaf721a2200d04b576d3b2e",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/stage.py": "f731c6ffff478e3dab8a9fdb35185460f1ca20f5",
     "Content/Python/wasami_tools/toolsets/dd.py": "1f778afc1d76bf049f75b01c718681e120145970",
     "Content/Python/wasami_tools/toolsets/dev.py": "cf42b1539f9c7b4a770839efe2d1c21f879fc89c",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
-    "Content/Python/wasami_tools/pipeline/paths.py": "ba23ad6c99ed2fe2cc3246a88ca4e9ed0e3b4ae8",
+    "Content/Python/wasami_tools/pipeline/paths.py": "39358841cd115a0b9cad8ee5bfad631f9bf880b6",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "dc0434f9a563928efd0c575028cc4e6648f3905a",
-    "Content/Python/wasami_tools/pipeline/cc2_assets.py": "2c1e273330201b4cd5d67c2f8ee3d343a5c58cef",
-    "Content/Python/wasami_tools/pipeline/cc2_level.py": "d85a9e6532d565509cc7374cb70dcc2f4909cae7",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "9e4fa76e3734a062313b9eb276ae9e368fcf5888"
   },
   "02-player.md": {

@@ -48,7 +48,6 @@
 /cc2_reference/
 
 # ---- 参照データからスクリプトで作り直せる素材（Tools/ と Content/Python/wasami_tools が作る） ----
-/Content/CC2/
 /Content/DD/
 /Content/Pipeline/
 /Content/Stage/

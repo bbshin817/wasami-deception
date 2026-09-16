@@ -20,7 +20,7 @@ Babylon.js 9.26 + Havok + Vite/TypeScript の一人称ホラー探索（Dark Dec
 
 `.claude/guides/original-fidelity.md` に移した。要点:
 
-- あらゆる要素は本家（`pak_reference`）に基づく。ステージだけが例外で、CC2 の Zone_1（`cc2_reference`）が根拠。
+- あらゆる要素は本家に基づく。**ステージも 2026-09-16 から本家の病院（`pak_reference_2` の `06_Hospital_Zone_01`・`06_Hospital_Zone_02`）**（ユーザーの指示で CC2 から変更。例外は無くなった）。
 - 本家に無いギミックは複雑にしない。壊せる物は本家のホテルの板張りのバリケード（`BP_01_Woodboards`）のように 1 クリックで崩れて自然に消える。初見で案内なしに遊べる。
 - ファンゲームのしゃがみ・スライディング・パンチ・ロックピックの連打・床の案内の文字は採らない（2026-09-15 の決定）。
 - テレポーテーションとモーションブラーは旧版の `pak_reference`（UE 4.21）に従う。ステージのボリュームのモーションブラー 0 は採らず本家の既定 0.5。
@@ -87,7 +87,7 @@ WebGL 版の多くの工夫は「ブラウザで UE の見た目と挙動を再�
 | # | 内容 | 主な根拠 |
 | --- | --- | --- |
 | M0 | 基盤: 運用ルール、取り込みの仕組み、プロジェクト設定 | — |
-| M1 | ステージ: Zone_1 のメッシュ・マテリアル・灯・ボリューム・霧・空・デカール、当たり、NavMesh | cc2_reference、layout.json |
+| M1 | ステージ: 病院 Zone 1・Zone 2 のメッシュ・マテリアル・灯・霧・空・ポストプロセス、当たり、NavMesh | pak_reference_2 の `_levels/06_Hospital_Zone_0*` |
 | M2 | プレイヤー: 移動・FOV・頭の揺れ・足音・180°・視線の手のマーク、ブースト、テレポーテーション | pak_reference（`BP_DD_PlayerCharacter`、`BP_Power_Teleport`） |
 | M3 | 流れ: シャード、チェックポイントとセーブ、ライフと死亡、障壁、配電盤、脱出、クリア | CC2 のレベル BP、本家の GameMode |
 | M4 | 敵: ワサミ（スケルタル・アニメ）、巡回・発見・追跡・グリッチ・捕獲、特別な敵 | 本家の `BP_Monkey`、WebGL 版 15 記録 |
@@ -108,19 +108,18 @@ WebGL 版の多くの工夫は「ブラウザで UE の見た目と挙動を再�
 できたこと:
 
 - M0: 運用ルール（`CLAUDE.md`、`.claude/guides/`）、参照データの移動、git（main、Git LFS、origin へ push 済み）。
-- ステージの取り込み: `python Tools/cc2/prepare_stage.py` → MCP の `WasamiStageTools` で `/Game/CC2` にメッシュ 68・テクスチャ 286・マテリアル 157、レベル `/Game/Stage/Maps/L_Zone1`（配置 1,242・灯 301・反射キャプチャ 2・ポストプロセスボリューム 2・霧・スカイライト・プレイヤースタート）。ホームの見た目は WebGL 版の画面と同じ色と質感で、Lumen で照らされる。
+- ステージ: CC2 の Zone_1 を取り込んで組み立てるところまで作ったが、**2026-09-16 の方針変更（ステージを本家の病院へ）で削除した**（`/Game/CC2`・`L_Zone1`・`Tools/cc2/`・`WasamiStageTools`・`cc2_assets.py`・`cc2_level.py`）。実装は git 履歴（`f2ad354` 以前）に残っているので、必要なら取り出せる。病院（`06_Hospital_Zone_01`・`06_Hospital_Zone_02`）の取り込みはこれから。
 - M2 の始まり: C++ の `WasamiGameMode` と `WasamiPlayerCharacter`（本家の値: カプセル 50 / 88、SpringArm (0, 0, 95)・長さ 0・回転ラグ 20、歩き 300・ダッシュ 600・ブースト 870 cm/s を 6.75 s・再使用 8.5 s、速さに連動する FOV 90→115〈本家の 0.001 s のタイマー〉、頭の揺れ〈本家の歩き・走りのシェイクを `/Game/DD` に作った LegacyCameraShake〉、中クリックの 180°、マウスの軸〈感度 0.07・UE4 の FOV スケーリング・スムージング〉）。PIE でホームに出て、各値が本家どおりなことを確かめた。
 
 まだ確かめていないこと・課題:
 
 - 実際の入力での動き（歩く・ダッシュ・FOV の広がり・頭の揺れ・180°・ブースト）。エディタが背後にあると 3 fps ほどに落ち、リモートの疑似操作（`LaunchCharacter`）では速さが出ず確かめられなかった。PIE で触るか、入力を流す Automation テストを作る。
 - MCP の再接続: Docker Desktop が `0.0.0.0:8000` を掴んでいるため、エディタを閉じている間に Claude Code の接続が切れる。開き直した後は `/mcp` で再接続する（`.claude/guides/unreal-workflow.md`）。
-- ステージ: デカール（`Chaotic_Customer_Zone_1_Decals.usda` の 112）、当たり（いまはすべて複雑な当たり。階段・柵・扉を PIE で歩いて確かめる）、NavMesh、性能（301 灯の影・Nanite・Lumen をこの PC で計測）。動く部品（扉・柵・障壁・街灯・車・列車）はまだ静的なメッシュとして置いてあるだけ。
-- LUT のテクスチャは `refresh_cc2_asset_settings` のたびに「変わった」と数えられる（設定の読み戻しが違う）。害はない。
+- ステージ（病院）: 前処理・取り込み・組み立てをこれから作る。Zone 1 + Zone 2 でメッシュ 67（glTF 423 MB）・マテリアル 146・テクスチャ 291（PNG 666 MB）・灯 1,873。当たり（タイルは `body_setup` を持たないので描画メッシュ）、NavMesh、性能（この PC で 1,121 灯の影・Nanite・Lumen を計測）は未確認。動く部品（扉 62・除細動器 23・リフト・障壁）も未実装。
 
 次の一歩（おすすめの順）:
 
-1. PIE で歩いて当たりと見た目を確かめ、性能を測る（`stat fps` / `stat unit`）。
-2. M2 の残り: 視線の手のマーク（interact）、テレポーテーション、タブレット（本家の UMG と BP の値）。
-3. M3: シャード（ワサミ餅）301 個、チェックポイントとセーブ、死亡とライフ。
-4. M1 の残り: デカール、NavMesh、ギミックを動く部品として作り直す（M5 の準備）。
+1. M1: 病院の前処理（`Tools/dd/prepare_stage.py`）→ 取り込み（メッシュ・テクスチャ・マテリアル）→ レベルの組み立て（`/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2`）。
+2. PIE で歩いて当たりと見た目を確かめ、性能を測る（`stat fps` / `stat unit`）。
+3. M2 の残り: 視線の手のマーク（interact）、テレポーテーション、タブレット（本家の UMG と BP の値）。
+4. M3: シャード（ワサミ餅）337 個、チェックポイントとセーブ、死亡とライフ、ゾーンの障壁、Zone 2 への移動。

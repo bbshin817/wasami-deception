@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/hospital-stage
 base: f2ad354
 started: 2026-09-16 09:01
-updated: 2026-09-16 09:01
+updated: 2026-09-16 09:11
 ---
 
 # ステージを CC2 から本家の病院（06_Hospital Zone 1・Zone 2）へ差し替える
@@ -21,17 +21,18 @@ updated: 2026-09-16 09:01
 ## 計画
 
 - [x] 1. 作業ブランチ `feature/hospital-stage` を作り、この記録を作る
-- [ ] 2. CC2 の撤去 ← 作業中
-  - 変更予定: `Tools/cc2/`（削除）、`Content/Python/wasami_tools/pipeline/cc2_assets.py`・`cc2_level.py`（削除）、`pipeline/paths.py`、`toolsets/stage.py`、`Config/DefaultEngine.ini`（既定マップ）、`.gitignore`、`CLAUDE.md`、`.claude/guides/*`、`.claude/implementation-records/01-stage-pipeline.md`・`_index.md`
-  - 消すアセット: `/Game/CC2`（511 アセット・733 MB）、`/Game/Stage/Maps/L_Zone1`、`/Game/Pipeline/Materials/M_CC2_Standard`・`/Game/Pipeline/Interchange/PL_CC2_StaticMesh`（病院用に作り直す）
-- [ ] 3. 前処理 `Tools/dd/prepare_stage.py`: `pak_reference_2` の `_levels/06_Hospital_Zone_0{1,2}.scene.json`・`_meshes.json`・`_materials.json`・`_textures.json` から `Intermediate/Pipeline/dd/stage_ue.json` を作る
+- [x] 2. CC2 の撤去
+  - 消したアセット: `/Game/CC2`（511 アセット・733 MB）、`/Game/Stage/Maps/L_Zone1`、`/Game/Pipeline/Materials/M_CC2_Standard`、`/Game/Pipeline/Interchange/PL_CC2_StaticMesh`。空のレベル `/Game/Stage/Maps/L_Hospital_Zone1` を作って開いた（`/Game/Pipeline/Textures/T_Default_Masks` は病院でも使うので残した）
+  - 消したコード: `Tools/cc2/prepare_stage.py`、`pipeline/cc2_assets.py`、`pipeline/cc2_level.py`、`toolsets/stage.py`（`WasamiStageTools`）
+  - 直したもの: `pipeline/paths.py`（CC2 の定数を外し `DD_PAK2` を追加）、`wasami_tools/__init__.py`、`Config/DefaultEngine.ini`（既定マップ → `L_Hospital_Zone1`）、`.gitignore`、`CLAUDE.md`、ガイド 6 件、実装記録 00・01・`_index`、`handover.md`
+- [ ] 3. 前処理 `Tools/dd/prepare_stage.py`: `pak_reference_2` の `_levels/06_Hospital_Zone_0{1,2}.scene.json`・`_meshes.json`・`_materials.json`・`_textures.json` から `Intermediate/Pipeline/dd/stage_ue.json` を作る ← 作業中
 - [ ] 4. 取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py`: メッシュ 67・テクスチャ 291・マテリアル 146 を `/Game/DD/…` に。マスターマテリアル `M_DD_Standard`（本家の `MM_Main_Substance` 系を写す）
 - [ ] 5. 組み立て `pipeline/dd_level.py`: `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2`（配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセス・プレイヤースタート）
 - [ ] 6. PIE で歩いて当たりと見た目を確かめ、性能を測る。実装記録（01）とガイド・CLAUDE.md を病院に合わせて直し、`check_records.py --update` を通す
 
 ## 次にやること
 
-ステップ 2。まずエディタで `/Game/CC2` と `/Game/Stage/Maps/L_Zone1` を消す前に、`Config/DefaultEngine.ini` の `EditorStartupMap` / `GameDefaultMap` が `L_Zone1` を指しているので、空のレベルか新しい病院のレベルに向け直す（開いているレベルが消えると困る）。コードと記述の書き換えはその後。
+ステップ 3。`Tools/dd/prepare_stage.py` を書く。入力は `pak_reference_2` の `_levels/06_Hospital_Zone_01.scene.json`・`06_Hospital_Zone_02.scene.json`・`_meshes.json`・`_materials.json`・`_textures.json`、出力は `Intermediate/Pipeline/dd/stage_ue.json`（メッシュ・テクスチャ・マテリアル・配置・灯・反射キャプチャ・霧・空・ポストプロセス・ゲームの部品）。CC2 と違い座標変換は不要で、glTF はそのまま取り込める（区画ごとに分ける必要もない。マテリアル名がスロット名なので順序で対応が取れる）。
 
 ## 決定事項
 

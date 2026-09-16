@@ -2,9 +2,9 @@
 pipeline they run (wasami_tools.pipeline)."""
 from toolset_registry.registration import Registration
 
-from wasami_tools.toolsets import dd, dev, stage
+from wasami_tools.toolsets import dd, dev
 
-_registration = Registration([stage.WasamiStageTools, dd.WasamiDDTools, dev.WasamiDevTools])
+_registration = Registration([dd.WasamiDDTools, dev.WasamiDevTools])
 
 
 def register() -> bool:
