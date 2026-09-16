@@ -110,17 +110,19 @@ WebGL 版の多くの工夫は「ブラウザで UE の見た目と挙動を再�
 - M0: 運用ルール（`CLAUDE.md`、`.claude/guides/`）、参照データの移動、git（main、Git LFS、origin へ push 済み）。
 - ステージ: CC2 の Zone_1 を取り込んで組み立てるところまで作ったが、**2026-09-16 の方針変更（ステージを本家の病院へ）で削除した**（`/Game/CC2`・`L_Zone1`・`Tools/cc2/`・`cc2_assets.py`・`cc2_level.py`）。実装は git 履歴（`f2ad354` 以前）に残っているので、必要なら取り出せる。
 - M1（病院のステージ）: `python Tools/dd/prepare_stage.py` → `WasamiStageTools` で `/Game/DD` にメッシュ 64・テクスチャ 282・マテリアル 143（マスターは `M_DD_Substance`・`M_DD_Decal`・`M_DD_Unlit`）、レベル `L_Hospital_Zone1`（アクタ 2,059 = 配置 923・灯 1,120・反射キャプチャ 10・霧・スカイライト・プレイヤースタート 4）と `L_Hospital_Zone2`（配置 819・灯 751）。PIE での確認はユーザーが実施し「概ね問題なし」（2026-09-16）。
+- M2: タブレット（2026-09-16）。板（本家のメッシュ、カメラの子、出し入れは本家の 2 本のタイムラインのカーブそのまま）、画面（`UWasamiTabletWidget`。本家 `UMG_Tablet` の px で背景・シャード数・パワー枠・地図・プレイヤーの印・目的の帯・Z）、ミニマップ（レベルに置いた地図の板をプレイヤーのシーンキャプチャが撮り、`T_NewMap` を画面に映す。Z で `OrthoWidth` 4000 ↔ 10000）。素材は `WasamiDDTools.import_dd_tablet` が `/Game/DD` に 30 個作る。PIE で画面の位置・色・パワー枠の扇形・地図の拡縮を確かめた（03 記録）。
 - M2 の始まり: C++ の `WasamiGameMode` と `WasamiPlayerCharacter`（本家の値: カプセル 50 / 88、SpringArm (0, 0, 95)・長さ 0・回転ラグ 20、歩き 300・ダッシュ 600・ブースト 870 cm/s を 6.75 s・再使用 8.5 s、速さに連動する FOV 90→115〈本家の 0.001 s のタイマー〉、頭の揺れ〈本家の歩き・走りのシェイクを `/Game/DD` に作った LegacyCameraShake〉、中クリックの 180°、マウスの軸〈感度 0.07・UE4 の FOV スケーリング・スムージング〉）。PIE でホームに出て、各値が本家どおりなことを確かめた。
 
 まだ確かめていないこと・課題:
 
-- 実際の入力での動き（歩く・ダッシュ・FOV の広がり・頭の揺れ・180°・ブースト）。エディタが背後にあると 3 fps ほどに落ち、リモートの疑似操作（`LaunchCharacter`）では速さが出ず確かめられなかった。PIE で触るか、入力を流す Automation テストを作る。
+- 実際の入力での動き（歩く・ダッシュ・FOV の広がり・頭の揺れ・180°・ブースト・タブレットの出し入れと音）。エディタが背後にあると 3 fps ほどに落ち、ビューポートが描かれないので `UWidgetComponent` も描き直されない。リモートの疑似操作（`LaunchCharacter`）では速さが出ず確かめられなかった。PIE で触るか、入力を流す Automation テストを作る。
+- **Zone 1 の露出**: ポストプロセスボリュームが 0 個で自動露出が約 8.7 倍まで持ち上がっており、壁もタブレットの画面も白っぽく見える（03 記録の測定）。本家の絵に合わせるには露出の設定が要る。
 - MCP の再接続: Docker Desktop が `0.0.0.0:8000` を掴んでいるため、エディタを閉じている間に Claude Code の接続が切れる。開き直した後は `/mcp` で再接続する（`.claude/guides/unreal-workflow.md`）。
 - ステージ（病院）の残り: NavMesh（`NavMeshBoundsVolume` はブラシの形が書き出しに無いので置いていない）、性能の計測（`stat fps` / `stat unit`。灯は Zone 1 だけで 1,120）、動く部品（両開き扉 62・除細動器 23・ガレージリフト・ゾーンの障壁・スピードバリア 4）はまだ静的な配置か未実装。スカイライトと反射キャプチャのキューブマップ（書き出しが平面 PNG で回収不能）と Zone 2 の `ColorGradingLUT`（寄与 0）・`WeightedBlendables` は未対応。マテリアルの `Normal Flatness` は式が cook で消えていて適用していない。
 
 次の一歩（おすすめの順）:
 
-1. 性能を測る（`stat fps` / `stat unit`）。重ければ灯の影・Lumen の品質・Nanite の対象で落とす。
+1. 性能と露出を見る（`stat fps` / `stat unit` / `stat RHI`。運用は `.claude/guides/performance.md`）。重ければ灯の影・Lumen の品質・Nanite の対象で落とす。露出はポストプロセスボリュームで決める。
 2. M3: シャード（ワサミ餅）337 個、チェックポイントとセーブ、死亡とライフ、ゾーンの障壁とシャードチェッカー、ガレージリフトで Zone 2 へ。配置はすべて `stage_ue.json` の `actors` にある。
-3. M2 の残り: 視線の手のマーク（interact）、テレポーテーション（範囲は `hospital_zone_01_teleport` メッシュ）、タブレット（本家の UMG と BP の値）。
+3. M2 の残り: 視線の手のマーク（interact）、テレポーテーション（範囲は `hospital_zone_01_teleport` メッシュ）。
 4. M1 の残り: NavMesh、動く部品（扉・リフト・障壁）を静的な配置から作り直す（M5 の準備）。

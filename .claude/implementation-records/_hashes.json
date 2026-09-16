@@ -35,7 +35,7 @@
     "Source/wasami_deception/WasamiGameMode.h": "a1271ddcb0d06113947b55c45a483ae86d3fccb9",
     "Source/wasami_deception/WasamiGameMode.cpp": "f0be668d22ce3427c581f1ce5fcf903cb1f610b7",
     "Source/wasami_deception/WasamiPlayerCharacter.h": "8cd9b02b02cba4e2095e2d50571d00e460e7bb97",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "0d1a129144516cb2749c8ed7b251e351c07c89f9"
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "2b768463d02af71a876162feb77aae885de8455f"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "31716632e9df9e61aeda48e29de1492a42db53ac",

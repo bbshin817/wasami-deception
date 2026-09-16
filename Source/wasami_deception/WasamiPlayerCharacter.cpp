@@ -132,6 +132,9 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	MinimapCapture->OrthoWidth = MinimapOrthoWidth;
 	MinimapCapture->CaptureSource = ESceneCaptureSource::SCS_BaseColor;
 	MinimapCapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	// The original captures every frame; here it only runs while the tablet is up, where the map can be seen
+	// (.claude/guides/performance.md — what draws every frame has to earn it). The picture is the same either way.
+	MinimapCapture->bCaptureEveryFrame = false;
 	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> MinimapTarget(TEXT("/Game/DD/UI/Minimap/T_NewMap"));
 	MinimapCapture->TextureTarget = MinimapTarget.Object;
 
@@ -383,6 +386,10 @@ void AWasamiPlayerCharacter::ToggleTablet()
 	bTabletUp = !bTabletUp;
 	bTabletMoving = true;
 	TabletTime = 0.f;
+	if (bTabletUp)
+	{
+		MinimapCapture->bCaptureEveryFrame = true;
+	}
 	UGameplayStatics::PlaySound2D(this, bTabletUp ? TabletUpSound : TabletDownSound, WooshVolume, WooshPitch);
 }
 
@@ -419,6 +426,10 @@ void AWasamiPlayerCharacter::UpdateTablet(float DeltaSeconds)
 		{
 			TabletTime = Length;
 			bTabletMoving = false;
+			if (!bTabletUp)
+			{
+				MinimapCapture->bCaptureEveryFrame = false;
+			}
 		}
 		ApplyTabletInterp(Curve.Eval(TabletTime));
 	}

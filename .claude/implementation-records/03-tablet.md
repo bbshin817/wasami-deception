@@ -84,6 +84,13 @@ updated: 2026-09-16
 - `dd_tablet.py` は `dd_stage` の `import_texture` / `import_mesh` / `ensure_masters` / `_Graph` と `paths` を使う。
 - 使う側: `AWasamiPlayerCharacter`（02 記録）が `UWidgetComponent` にこのクラスを載せ、毎フレーム `SetPowerCharge` と `SetObjective`、0.1 秒ごとに `SetShardCount` を呼ぶ。`dd_level.py`（01 記録）が地図の板を置く。
 
+## 確かめたこと（2026-09-16、PIE の 1280 × 720 の撮影）
+- 画面上の板の占める範囲は x 約 4〜32 %・y 約 28〜93 %。原作の収録（1080p60、静止時）の x 4.8〜31.8 %・y 30.3〜91.0 % とおおむね合う。
+- 画面の色は原作どおり。**ただしステージの露出が効いている**: 撮影では地図の黒が (4, 3, 2) なのに目的の帯が 165、上の帯が 162 と明るく出る。帯の色（線形 0.043735 = sRGB 59）から逆算した露出は約 8.7 倍で、165 / 8.7 は sRGB 59、162 / 8.7 は sRGB 76（原作の帯の灰 67〜97）と一致する。板そのものも 126 / 8.7 = sRGB 43 で、`Tablet_Front_D`（ほぼ真っ黒）どおり暗い。**明るく見えるのはタブレットではなくステージの側の問題**（Zone 1 にポストプロセスボリュームが無く、自動露出が持ち上げている。M1 の残り）。
+- パワー枠の扇形: `Percent` を 1.0 / 0.75 / 0.25 / 0.0 にしてマテリアルを 128 × 128 に描き、12 時から時計回りの象限ごとに色つきの画素を数えた。1.0 = 4 象限すべて、0.75 = 12・3・6 時が色つきで 9 時だけ灰色、0.25 = 12 時だけ、0.0 = なし。原作の向きどおり。
+- ミニマップ: `T_NewMap` を書き出して確認。`OrthoWidth` 4000 と 10000 で写る範囲が変わる（地図の線は輝度 38 の灰、背景は黒、α は 0）。
+- 画面が毎フレーム描き直されることは確かめていない（エディタが背面だとビューポートが描かれず、`UWidgetComponent` が描き直さない。`.claude/guides/verification.md`）。出し入れの手触りと音も同じ理由で未確認。
+
 ## 既知の制約・注意点
 - **ウィジェット BP を使っていない**。原作の配置は px の実数（`47.3467` など）で、手で置くと誤差が出るうえ git の外の LFS 資産になるため、C++ の `WidgetTree->ConstructWidget` で組み立てている。
 - `MaterialExpressionIf` の `ConstAGreaterThanB` などは Python から触れないので、扇形のマスクは `ceil(saturate(…))` で作っている。入力が 1 本のノード（`Frac`・`Saturate`・`Ceil`・`ComponentMask`）は `connect_material_expressions` のピン名を `""` にしないと繋がらない（`"Input"` は失敗し、その場でエラーにならずコンパイル時に「Missing … input」になる）。
@@ -91,6 +98,8 @@ updated: 2026-09-16
 - シャード回収の閃き（原作の `Count Shake`）と数字の揺れは、まだ再生する側がいない。`Flash` は α 0 で置いてあるだけ。
 - Zone 2 の地図は原作では `BP_MapTexture_MultiFloor` で階ごとに `T_06_Zone2` / `T_06_Zone2_02` を切り替える。本作は 1 階ぶん（`MM_Map_06_Zone2`）だけを置いている。
 - 地図の板は UE5 の `bVisibleInSceneCaptureOnly` を立てて本編の描画と Lumen から外している（原作は床下に置いてベイク済みライティングで済ませていた）。
+- シーンキャプチャは**タブレットを上げている間だけ**描く（`bCaptureEveryFrame`）。原作は常に描いているが、下ろしている間は画面が見えないので絵は変わらない（`.claude/guides/performance.md`）。
+- `UWidgetComponent` は `bTickWhenOffscreen` が false のままなので、画面がビューポートに映っていない間は描き直さない（下ろしている間は描画も止まる）。エディタを背面にして PIE を撮ると、この理由で地図が止まったままになる。
 
 ## 変更履歴
 - 2026-09-16: 初版（画面のウィジェット、素材の取り込み、ミニマップの仕掛けを記録）
