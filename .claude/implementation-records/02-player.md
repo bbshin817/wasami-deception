@@ -32,6 +32,22 @@ updated: 2026-09-16
   - 移動: W / ↑（Swizzle で Y に）、S / ↓（Swizzle + Negate）、D / →、A / ←（Negate）。`Move` は操作の向き（ヨーだけ）の前と右へ `AddMovementInput`。
   - 視点: `EKeys::Mouse2D` に Smooth → Scalar 0.07 → FOVScaling（`FOVScale` 0.01111、`UE4_BackCompat`）の順で修飾子を付ける（本家の `DefaultInput.ini` の `MouseX/Y` の感度 0.07、UE4 のマウススムージングと FOV スケーリングと同じ）。`Look` は `AddControllerYawInput` / `AddControllerPitchInput`（`bInvertY` でなければ Y を反転）。コントローラ側の 2.5 / −2.5 は `bEnableLegacyInputScales=True` により掛かる。
   - Shift（ダッシュ）、中クリック（180° ターン）、E（スピードブースト）。
+  - 本家の割り当ての全体（`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini` の `ActionMappings` / `AxisMappings`。2026-09-16 に実機 v1.9.6 でも同じことを確認）:
+
+    | 本家の操作 | キー | 本作 |
+    | --- | --- | --- |
+    | Forward / Left | W・S（−1）/ A（−1）・D | 同じ |
+    | LookHorizontal / LookVertical | MouseX / MouseY | 同じ |
+    | Sprint | LeftShift | 同じ |
+    | Interact / Interact (Secondary) | F / 左クリック | M2 で実装予定 |
+    | Toggle Tablet | SpaceBar | 同じ |
+    | Resize Map | Z | 同じ |
+    | Use Power | R | 未実装 |
+    | Use Power Left / Right | Q / E | 本作はスピードブーストに E |
+    | Cycle Power Left / Right | 1 / 2 | 未実装 |
+    | 180 Turn | 中クリック | 同じ |
+    | Skip Cutscene | P | 未実装 |
+    | Buy Upgrade | E | 未実装 |
 - **速さ**（`ApplySpeed`）: ブースト中は `BoostSpeed`、それ以外はダッシュの有無で `SprintingSpeed` / `WalkingSpeed` を `MaxWalkSpeed` に入れる。加減速は UE の既定のまま（本家も `MaxWalkSpeed` しか上書きしていない）。
 - **ダッシュ**: Shift の押下で入り、離すと戻る。`bToggleSprint` のときは押すたびに反転（本家の TOGGLE SPRINT）。向きは問わない。
 - **FOV**（`UpdateFOV`）: `BeginPlay` で 0.001 秒のループタイマーを張り、毎回 `FInterpTo(現在, MapRangeClamped(速さ, 300→900, 90→115), フレームの delta, 0.5)`。本家の `FOV Multiplier` と同じ仕組み（タイマーが 1 フレームに何度も呼ばれるので、追従の速さはフレームレートで変わる）。
@@ -58,7 +74,7 @@ updated: 2026-09-16
 
 ## 既知の制約・注意点
 - `ULegacyCameraShake` は `MinimalAPI` なので C++ で派生できない。本家のシェイクは Blueprint として作っている（01 記録の `WasamiDDTools`）。
-- 入力の実際の手触り（ダッシュ時の FOV の広がり、頭の揺れ、180°、ブースト）はまだ確かめていない。エディタが背面にあるとティックが 3 fps ほどに落ち、リモートからの疑似操作では確かめられない（`.claude/guides/verification.md`）。
+- 入力の実際の手触り（ダッシュ時の FOV の広がり、頭の揺れ、180°、ブースト）はまだ確かめていない。エディタが背面にあるとティックが 3 fps ほどに落ち、リモートからの疑似操作では確かめられない（`.claude/guides/verification.md`）。2026-09-16 から `Tools/desktop.py` で対話デスクトップに入力を送れるので、PIE でも本家の実機でも同じ操作を送って比べられる（エディタと PIE を触るときはユーザーの確認を取る）。
 - 本家はタブレットをカメラ → `Scene`(0, 0, −94.9577) → `Tablet` と繋いでいるが、タイムラインが入れる相対 Z（−39.70 → −4.32）はカメラ基準の値で、`Scene` を挟むと板はカメラの約 1 m 下に行き画面に映らない。原作の収録から測った画面上の位置（x 4.8〜31.8 %・y 30.3〜91.0 %。WebGL 版 10 記録）は、カメラ相対 (35.399, −21.994, −4.322) に置いた計算（x 4.6〜31.5 %・y 30.0〜91.5 %）と合うので、`Scene` は置かずカメラの直下に付けている。
 - 本家の画面はシャードの数を 0.01 秒ごとに数え直す（`UMG_Tablet` の Construct のループ）。本作は 0.1 秒ごと（数は回収でしか変わらないので見た目は変わらない）。
 - `ShardActorClass` が空の間、シャード数は 0 のまま（シャードは M3）。左のパワー枠は常に `Percent` 1（テレポーテーションは未実装）。
