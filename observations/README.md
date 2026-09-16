@@ -71,9 +71,31 @@
 | `tools/pie_pose.py` | PIE 中に `python Tools/ue_remote.py observations/tools/pie_pose.py`。視点をヨー -90 にし、プレイヤーから 8 m 以内のエレベーターの扉を隠す（実機の「開いた」状態に合わせる） |
 | `tools/cmp.py` | `python observations/tools/cmp.py <画像> <画像> …`（3440x1440）。画面全体・床・壁・天井・天井灯の面・エレベーターの壁・廊下の奥の中央値と平均輝度を並べる |
 | `tools/bake_zone1.py` | `python Tools/ue_remote.py observations/tools/bake_zone1.py`。`L_Hospital_Zone1` を開いた状態で Preview 品質で焼き、反射キャプチャを撮り直して保存する（2 分ほど） |
+| `tools/pie_cmd.py` | `python observations/tools/pie_cmd.py [--shot <名前>] "<コマンド>" …`。PIE のゲームのワールドでコンソールコマンドを打ち、`--shot` なら `HighResShot 3440x1440` を撮って `ours/<名前>.png` に写す。`ShowFlag.*` は全体に効く cvar なので、切ったら `2` に戻す |
+| `tools/pie_frametime.py` | PIE 中に `python Tools/ue_remote.py observations/tools/pie_frametime.py`。フレーム時間を 5 秒集めて `Saved/pie_frametime.txt` に書く（エディタの描画込み。同じ条件での比較用） |
 
 PIE の手順: MCP の `EditorAppToolset.StartPIE`（`startTransform` = (-25, 3735, 97)・ヨー -90、`warmupSeconds` 3）→ `tools/pie_pose.py` → ゲームのワールドで `HighResShot 3440x1440`
 （`unreal.SystemLibrary.execute_console_command(get_game_world(), …)`）→ `Saved/Screenshots/WindowsEditor/` の最新を `ours/` へ写す → `StopPIE`。
+
+### 表示フラグを 1 つずつ切った開始地点（2026-09-16、灯を Static として焼いていたとき）
+
+`ours/zone1-start-pie-base.png` と `ours/zone1-start-pie-off-<フラグ>.png`（`ShowFlag.<フラグ> 0`）。平均輝度:
+
+| | 画面全体 | 床の手前 | 床の中ほど | 右の壁 | 左の壁 | 天井の中央 | エレベーター左 | エレベーター右 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 実機 | 58.1 | 57.4 | 49.0 | 31.9 | 66.2 | 183.3 | 44.2 | 58.6 |
+| 本作（そのまま） | 83.9 | 135.8 | 144.2 | 69.4 | 110.2 | 169.3 | 57.8 | 59.0 |
+| ReflectionEnvironment 0 | 62.4 | 134.8 | 142.1 | 62.8 | 103.4 | 165.0 | 19.9 | 39.1 |
+| ScreenSpaceReflections 0 | 78.1 | 132.4 | 141.2 | 64.6 | 109.8 | 169.0 | 57.1 | 49.5 |
+| Specular 0 | 43.9 | 128.8 | 128.1 | 54.1 | 95.6 | 162.5 | 0.0 | 12.3 |
+| **GlobalIllumination 0**（焼き込み） | 26.0 | **70.1** | 70.9 | **13.7** | 1.8 | 1.4 | 17.5 | 12.9 |
+| LightMaps 0 | 83.9 | 134.9 | 142.6 | 68.7 | 110.4 | 168.8 | 57.9 | 59.5 |
+| **DirectLighting 0**（動的な灯） | 73.6 | **103.0** | 116.2 | 60.9 | 110.3 | 169.5 | 46.5 | 53.7 |
+| Fog 0 / VolumetricFog 0 / SkyLighting 0 | 84〜85 | 136 | 144〜145 | 69〜71 | 111 | 169〜170 | 58〜59 | 61 |
+| AmbientOcclusion 0 | 87.3 | 136.3 | 146.4 | 75.2 | 117.4 | 173.9 | 59.2 | 63.0 |
+| Bloom 0 | 80.4 | 130.5 | 139.5 | 65.5 | 106.0 | 165.3 | 55.1 | 57.2 |
+
+床と壁の大半は焼き込みから来ていた。原因は、原作では Stationary（直接光は毎フレーム描く）の灯 669 個を、本作が Static として直接光まで焼いていたこと（01 記録の「Mobility は土台の値で補う」）。
 
 ### 開始地点の比較（2026-09-16、マテリアルと灯の色を直した後）
 

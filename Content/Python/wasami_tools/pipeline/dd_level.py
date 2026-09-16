@@ -17,13 +17,14 @@ LIGHT_CLASS = {
 # UE 4.24's default for a local light's IntensityUnits is Unitless, UE 5's is Candelas, and the export leaves out any
 # property that is at its default — so a light the export says nothing about has to be set to Unitless explicitly.
 DEFAULT_LIGHT_UNITS = "ELightUnits::Unitless"
-SKIP_LIGHT_PROPS = ("LightGuid", "MapBuildDataId", "MaxDrawDistance", "MaxDistanceFadeRange")
-# A property the export leaves out is at UE's default, and a light's default Mobility is Static — which is what
-# 1,015 of Zone 1's 1,120 lights are. Those are the original's baked lights: the renderer never draws a static light
-# whose lighting is built (FLightSceneInfo::ShouldRenderLightViewIndependent, LightSceneInfo.cpp:245), which also
-# keeps it out of the volumetric fog's light injection (VolumetricFog.cpp:1543), so their VolumetricScatteringIntensity
-# — 20 on the hospital's 294 ceiling lights, 2.5 on the 337 shards — is inert in the original and is here too.
-DEFAULT_LIGHT_MOBILITY = unreal.ComponentMobility.STATIC
+# IESTexture: the original's light profiles are not in the export (the hospital's 6 lights using one are the
+# ambulance's spot lights, at intensity 0).
+SKIP_LIGHT_PROPS = ("LightGuid", "MapBuildDataId", "IESTexture")
+# Every component's Mobility comes from the preprocessing, which reads a left-out one as its archetype's
+# (Tools/dd/prepare_stage.py NATIVE_MOBILITY): most of the hospital's lights are Stationary (Zone 1: 669, the rest
+# Movable), so their direct light is drawn every frame over baked indirect light, and their
+# VolumetricScatteringIntensity (20 on the 294 ceiling lights) lights the volumetric fog as in the original.
+# A component the preprocessing says nothing about keeps what the spawned actor gave it, which is the same rule.
 # The minimap's plane: the original's BP_MapTexture (Zone 1) and BP_MapTexture_MultiFloor (Zone 2) put
 # /Engine/BasicShapes/Plane under the level with the zone's baked map on it, and the player's scene capture draws it
 # into T_NewMap. The material is each actor's OverrideMaterials in the export.
@@ -45,10 +46,11 @@ def _rot(q):
     return unreal.Quat(float(q[0]), float(q[1]), float(q[2]), float(q[3])).rotator()
 
 
-def _mobility(props, default=DEFAULT_LIGHT_MOBILITY):
-    """The component's Mobility as the export gives it — a missing one means UE's default, which is Static."""
+def _set_mobility(comp, props):
+    """Sets the component's Mobility as the preprocessing gives it; without one, the spawned actor's stays."""
     value = props.get("Mobility")
-    return ue_props.enum_member(unreal.ComponentMobility, value.split("::")[-1]) if value else default
+    if value:
+        comp.set_mobility(ue_props.enum_member(unreal.ComponentMobility, value.split("::")[-1]))
 
 
 def _tag(actor, label, folder, *tags):
@@ -99,7 +101,7 @@ def _meshes(eas, stage, zone, counts, failures):
                 comp.set_material(i, asset(m["asset"]))
                 decal = decal or m["master"] == "decal"
             props = dict(p["props"])
-            comp.set_mobility(_mobility(props))
+            _set_mobility(comp, props)
             if decal:
                 comp.set_collision_profile_name("NoCollision")   # the original's decals are planes, not colliders
             elif props.get("CollisionProfileName"):
@@ -126,7 +128,7 @@ def _lights(eas, zone, counts, failures):
                 continue
             actor = eas.spawn_actor_from_class(cls, _vec(lt["world"]["location"]), _rot(lt["world"]["quat_xyzw"]))
             c = actor.get_editor_property("light_component")
-            c.set_mobility(_mobility(lt["props"]))
+            _set_mobility(c, lt["props"])
             props = {k: v for k, v in lt["props"].items() if k not in SKIP_LIGHT_PROPS}
             units = props.pop("IntensityUnits", None if cls is unreal.DirectionalLight else DEFAULT_LIGHT_UNITS)
             if units:                                    # before Intensity: the units decide what the number means
@@ -179,8 +181,8 @@ def _environment(eas, zone, stage, counts, failures):
     if sky:
         actor = eas.spawn_actor_from_class(unreal.SkyLight, _vec(sky["world"]["location"]), unreal.Rotator())
         c = actor.get_editor_property("light_component")
-        c.set_mobility(_mobility(sky["props"]))
-        props = {k: v for k, v in sky["props"].items() if k not in ("Cubemap", "SourceType")}
+        _set_mobility(c, sky["props"])
+        props = {k: v for k, v in sky["props"].items() if k not in ("Cubemap", "SourceType", "Mobility")}
         ue_props.apply(c, props, placement, failures)
         _cubemap(c, sky["props"].get("SourceType"), sky.get("cubemapFile"), stage, failures, sky["path"])
         c.recapture_sky()

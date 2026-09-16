@@ -61,9 +61,30 @@ TEX_KIND = {
 SKIP_ACTOR_CLASSES = {"StaticMeshActor", "PointLight", "SpotLight", "RectLight", "DirectionalLight", "SkyLight",
                       "ExponentialHeightFog", "SphereReflectionCapture", "BoxReflectionCapture", "Level", "World",
                       "WorldSettings", "RecastNavMesh", "LevelBounds"}
+# The export leaves out every property that equals the component's archetype, so a component without a Mobility has
+# its archetype's. UE's light actors make their light Stationary (UE 5.8 Light.cpp:190 APointLight, :244
+# ADirectionalLight, SpotLight.cpp:27, RectLight.cpp:12 — the same since UE4), a sky light component is Stationary by
+# itself (SkyLightComponent.cpp:312), AStaticMeshActor makes its mesh Static (StaticMeshActor.cpp:34) and any other
+# component starts Movable (SceneComponent.cpp:124). Across all of the original's levels a PointLight's light leaves
+# Mobility out 1,342 times, says Movable 779 and Static 193, and never says Stationary.
+STATIONARY, STATIC, MOVABLE = ("EComponentMobility::Stationary", "EComponentMobility::Static",
+                               "EComponentMobility::Movable")
+NATIVE_MOBILITY = {
+    ("PointLight", "LightComponent0"): STATIONARY, ("SpotLight", "LightComponent0"): STATIONARY,
+    ("RectLight", "LightComponent0"): STATIONARY, ("DirectionalLight", "LightComponent0"): STATIONARY,
+    ("SkyLight", "SkyLightComponent0"): STATIONARY, ("StaticMeshActor", "StaticMeshComponent0"): STATIC,
+}
+COMPONENT_MOBILITY = {"SkyLightComponent": STATIONARY}
+# A light component's properties that are not the light (the transform, the attachment, editor bookkeeping).
+LIGHT_BOOKKEEPING = ("LightGuid", "MapBuildDataId", "PreviewInfluenceRadius", "AttachParent", "UCSModifiedProperties",
+                     "CreationMethod", "bNetAddressable")
+RELATIVE = ("RelativeLocation", "RelativeRotation", "RelativeScale3D")
 # Component properties of a placement worth carrying over (the rest is either the transform or editor bookkeeping).
+# bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
+# seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's
+# shadows and in Lightmass.
 KEEP_COMPONENT_PROPS = ("bVisible", "bHiddenInGame", "CastShadow", "bCastDynamicShadow", "bCastStaticShadow",
-                        "bReceivesDecals", "Mobility", "CollisionProfileName", "CustomDepthStencilValue",
+                        "bCastShadowAsTwoSided", "bReceivesDecals", "Mobility", "CollisionProfileName", "CustomDepthStencilValue",
                         "bRenderCustomDepth", "LightmassSettings", "OverriddenLightMapRes", "bOverrideLightMapRes")
 
 
@@ -272,7 +293,11 @@ class Export:
 
     @staticmethod
     def parent_class(bp, class_name):
-        """A Blueprint's parent class ('BP_08_RingPiece_C'), read from its import table."""
+        """A Blueprint's parent class — a Blueprint ('BP_08_RingPiece_C') or a native class ('PointLight') — read from
+        the class's super, else guessed from the import table."""
+        for x in bp.get("exports", []):
+            if x.get("name") == class_name and x.get("super"):
+                return x["super"].rsplit(".", 1)[-1]
         imports = [i for i in (bp.get("imports") or []) if isinstance(i, str)]
         names = set(imports)
         for i in imports:
@@ -297,7 +322,30 @@ class Export:
             if str(x.get("class", "")).endswith("LightComponent"):
                 return x.get("props") or {}
         parent = self.parent_class(bp, class_name)
-        return self.light_template(parent, comp_name, depth + 1) if parent else None
+        return self.light_template(parent, comp_name, depth + 1) if parent and parent.endswith("_C") else None
+
+    def default_mobility(self, class_name, comp_name, comp_class, depth=0):
+        """The Mobility of an actor's component when the level leaves it out: its archetype's. In a Blueprint that is
+        the class's own record of the component (the CDO's subobject, or the construction script's <name>_GEN_VARIABLE),
+        then whatever that record was made from — a native actor's subobject, a component class's defaults, or the
+        parent Blueprint's record."""
+        if not class_name or not class_name.endswith("_C"):
+            return NATIVE_MOBILITY.get((class_name, comp_name)) or COMPONENT_MOBILITY.get(comp_class, MOVABLE)
+        bp = self.blueprint(class_name)
+        if not bp or depth > 6:
+            return COMPONENT_MOBILITY.get(comp_class, MOVABLE)
+        for x in bp.get("exports", []):
+            if x.get("name") == comp_name + "_GEN_VARIABLE" or (
+                    x.get("name") == comp_name and (x.get("outer") or "").startswith("Default__")):
+                if (x.get("props") or {}).get("Mobility"):
+                    return x["props"]["Mobility"]
+                native = re.match(r"^/Script/\w+\.Default__(\w+?)(?:\.(\w+))?$", x.get("template") or "")
+                if native and native.group(2):
+                    return self.default_mobility(native.group(1), native.group(2), comp_class, depth + 1)
+                if native:
+                    return COMPONENT_MOBILITY.get(native.group(1), MOVABLE)
+                break                                  # made from the parent Blueprint's record
+        return self.default_mobility(self.parent_class(bp, class_name), comp_name, comp_class, depth + 1)
 
 
 # ------------------------------------------------------------------------------------------------ materials
@@ -442,6 +490,9 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
                 continue
             used.append(resolve_material(ex, m, materials, problems) if m.startswith("/Game/") else None)
         props = {k: v for k, v in ((by_path.get(e["path"]) or {}).get("props") or {}).items() if k in KEEP_COMPONENT_PROPS}
+        if not props.get("Mobility"):
+            props["Mobility"] = ex.default_mobility(actor_class.get(actor_of(e["path"])), e["path"].rsplit(".", 1)[-1],
+                                                    by_path.get(e["path"], {}).get("class") or "StaticMeshComponent")
         body = ((by_path.get(e["path"]) or {}).get("props") or {}).get("BodyInstance") or {}
         if isinstance(body, dict) and body.get("CollisionProfileName"):
             props["CollisionProfileName"] = body["CollisionProfileName"]
@@ -453,29 +504,36 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     # ---------------------------------------------------------------- lights (the sky light comes in this list too)
     lights, sky = [], None
     for e in scene["lights"]:
-        props = dict(e.get("light") or {})
+        # the component's own values in the level (scene.json's "light" is only a part of them: it has no
+        # SoftSourceRadius, LightingChannels, SourceWidth/Height or MaxDrawDistance)
+        own = dict((by_path.get(e["path"]) or {}).get("props") or {}) or dict(e.get("light") or {})
         actor = actor_of(e["path"])
         owner = actor_class.get(actor)
+        comp_name = e["path"].rsplit(".", 1)[-1]
         world = world_of(e)
-        if e["class"] == "SkyLightComponent":
-            props.update({k: v for k, v in ((by_path.get(e["path"]) or {}).get("props") or {}).items()
-                          if not k.startswith("Relative") and k != "LightGuid"})
-            sky = {"path": e["path"], "world": world, "props": props}
-            continue
-        if not props and owner:                       # a light inside a Blueprint: its values are the class defaults
-            found = ex.light_template(owner, e["path"].split(".")[-1])
+        props = own
+        if owner and owner.endswith("_C"):            # a light inside a Blueprint: the class defaults, then the level's
+            found = ex.light_template(owner, comp_name)
             if found is None:
                 problems.append("no light defaults for %s in %s" % (e["path"], owner))
             else:
-                props = dict(found)
-                rel_loc = props.pop("RelativeLocation", None)
-                rel_rot = props.pop("RelativeRotation", None)
-                rel_scale = props.pop("RelativeScale3D", None)
-                if world and (rel_loc or rel_rot or rel_scale):
-                    world = compose(world, rel_loc or [0, 0, 0], rel_rot or [0, 0, 0], rel_scale or [1, 1, 1])
-        for k in ("LightGuid", "MapBuildDataId", "PreviewInfluenceRadius", "AttachParent", "UCSModifiedProperties",
-                  "CreationMethod", "bNetAddressable", "RelativeLocation", "RelativeRotation", "RelativeScale3D"):
+                props = {k: v for k, v in found.items() if k not in RELATIVE}
+                props.update(own)
+                # the export's world holds the level's relative transform only; the class's counts where the level
+                # has none of its own
+                rel = {k: found[k] for k in RELATIVE if k in found and k not in own}
+                if world and rel:
+                    if any(k in own for k in RELATIVE):
+                        problems.append("%s: relative transform split between the level and %s" % (e["path"], owner))
+                    world = compose(world, rel.get("RelativeLocation") or [0, 0, 0],
+                                    rel.get("RelativeRotation") or [0, 0, 0], rel.get("RelativeScale3D") or [1, 1, 1])
+        if not props.get("Mobility"):
+            props["Mobility"] = ex.default_mobility(owner, comp_name, e["class"])
+        for k in LIGHT_BOOKKEEPING + RELATIVE:
             props.pop(k, None)
+        if e["class"] == "SkyLightComponent":
+            sky = {"path": e["path"], "world": world, "props": props}
+            continue
         lights.append({"path": e["path"], "actor": actor, "actorClass": owner, "class": e["class"],
                        "world": world, "props": props})
 

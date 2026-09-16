@@ -71,7 +71,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - `pak_reference_2/_raw/DDeception/Config/DefaultEngine.ini`（UE 4.24）の `[/Script/Engine.RendererSettings]` に `r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`r.UsePreExposure=False`・`r.DefaultFeature.MotionBlur=False`・`r.DefaultFeature.LensFlare=False`・`r.DefaultFeature.LightUnits=1`。
 - UE 5.8 でも同じ cvar が効く。`r.DefaultFeature.AutoExposure=0` は `AutoExposureMinBrightness` と `MaxBrightness` を 1 にする（`Engine/Source/Runtime/Engine/Private/SceneView.cpp:2060`）。旧レンジでは `MinWhitePointLuminance = MaxWhitePointLuminance = 1` になり（`PostProcessEyeAdaptation.cpp:665`）、露出 = `2^AutoExposureBias` に固定される。
 - UE 4.24 の `AutoExposureBias` の既定は **0.0**。原作に入っている第三者プラグイン 2 つ（`ThirdParty/Chameleon/Chameleon`、`ThirdParty/LightProbes/Blueprints/Light_ProbeController`）が、上書きしていない `FPostProcessSettings` をそのまま持っており、どちらも `AutoExposureBias 0.0`・`LowPercent 80`・`HighPercent 98.3`・`MinBrightness 0.03`・`MaxBrightness 2.0` と同じ値を示す。UE 5 の既定は `r.DefaultFeature.AutoExposure.Bias` が 1.0（= 2 倍明るい）なので、**0.0 を明示する**。
-- 灯の単位は取り込みのままでよい。`r.DefaultFeature.LightUnits` はエディタで灯を置く工場（`ActorFactoryPointLight.cpp:23` ほか）でしか読まれず、`ULocalLightComponent` の CDO の既定は `Unitless`（`LocalLightComponent.cpp:14`）。原作の Zone 1 の灯 1,121 個はすべて `IntensityUnits` を書き出していない = Unitless で、`dd_level.py` の `DEFAULT_LIGHT_UNITS` と一致する。
+- 灯の単位は取り込みのままでよい。`r.DefaultFeature.LightUnits` はエディタで灯を置く工場（`ActorFactoryPointLight.cpp:23` ほか）でしか読まれず、`ULocalLightComponent` の CDO の既定は `Unitless`（`LocalLightComponent.cpp:14`）。原作の Zone 1 の灯のうち単位を書き出している 419 個はすべて Candelas で、BP の天井灯 294 個もクラス既定が Candelas（書き出しをそのまま入れる）。単位の無い灯は UE 4.24 の既定の Unitless で、`dd_level.py` の `DEFAULT_LIGHT_UNITS` がそれを明示する（2026-09-16 に「1,121 個すべて単位なし」と書いていたのは誤り）。
 
 効果（同じ場所・同じ向き〈Zone 1 の廊下 (1801, −9601)・ヨー 90、目の高さ 187〉の 1280 × 720。画像は `observations/ours/`）:
 
@@ -100,7 +100,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 原作が焼いている証拠:
 - 原作の `DefaultEngine.ini`（UE 4.24）は `r.AllowStaticLighting=True`・`r.GenerateMeshDistanceFields=False`・`r.PrecomputedVisibilityWarning=False`。
 - `06_Hospital_Zone_01` の StaticMeshComponent 963 個が `VisibilityId` を持つ（プリコンピューテッド ビジビリティはライティングビルドで作られる）。PointLightComponent 665 個が `LightGuid` を持つ。
-- Zone 1 の灯 1,120 個のうち 1,015 個が Static（書き出しに `Mobility` が無い＝ UE の既定）。Static の灯は焼く以外に意味がない。
+- Zone 1 の灯 1,120 個のうち 669 個が Stationary（書き出しに `Mobility` が無い＝土台の `APointLight` などの既定。01 記録）。Stationary の灯は間接光と影を焼き、直接光は毎フレーム描く。
 - 書き出しには原作のライトマップそのものは入っていない（`_manifest.json` の `not_recovered`: "Baked lighting (MapBuildDataRegistry lightmaps are not exported)"）ので、焼き直す。
 
 **Lumen が使えない理由**（2026-09-16 に実測）: ステージの本体は結合された巨大なメッシュで（`hospital_zone_01_tiles_tile_tunnel` は 270 m、`tiles_tile_01` は 138 m）、
@@ -110,7 +110,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 
 本作の焼き方（取り込みは 01 記録）:
 - `Config/DefaultEngine.ini`: `r.AllowStaticLighting=True`、`r.GenerateMeshDistanceFields=False`、`r.DynamicGlobalIlluminationMethod=0`、`r.ReflectionMethod=2`（SSR + レベルの反射キャプチャ 10 個。原作と同じ構成）。
-- 灯・メッシュ・スカイライトの `Mobility` は書き出しのまま（Zone 1 は灯が Static 1,015・Movable 105、メッシュが Static 918・Movable 6）。
+- 灯・メッシュ・スカイライトの `Mobility` は書き出しの値、無ければ土台の値（Zone 1 は灯が Stationary 669・Movable 451、スカイライトが Stationary、メッシュが Static 916・Movable 7）。**2026-09-16 の途中までは省略を Static と読み、1,015 個の灯の直接光まで焼いていた**（下の表の「灯の色も直した後」の列までがその状態）。
 - ライトマップ UV は、原作が持っているものはそのまま使い、結合されたステージのメッシュ 7 個（`TEXCOORD_1` が全頂点 0）だけ UE に作らせる。解像度は表面積から 1 テクセル 20 cm で決める。
 - ビルドは `LevelEditorSubsystem.build_light_maps(QUALITY_PREVIEW, True)`。**Zone 1 で 122 秒**（918 メッシュ、ライトマップのテクスチャ 45.2 MB）。Swarm と UnrealLightmass が動く（RAM 3.4 GB ほど）。
 
