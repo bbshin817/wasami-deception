@@ -9,6 +9,7 @@ class AWasamiPlayerCharacter;
 class UCameraShakeBase;
 class USoundBase;
 class UWasamiCameraAnim;
+class AWasamiTeleportAim;
 class UWasamiSpeedBoostWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPower, Power);
@@ -17,7 +18,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPo
  * The tablet's powers, after Dark Deception's BP_DD_PlayerCharacter, BP_Powers and UMG_TabletPowers (pak_reference_2),
  * which each hold a part of it for the one player: the unlocked powers and the two sockets that point into them, Q / E
  * to use a socket and 1 / 2 to cycle it, each power's gauge on the tablet, the values of the upgrade level, the reset
- * on death, and the speed boost itself. The tablet's screen only shows what this holds.
+ * on death, and the powers themselves (the speed boost, and the teleport with its aim, AWasamiTeleportAim). The
+ * tablet's screen only shows what this holds.
  */
 UCLASS(ClassGroup = (Wasami), meta = (BlueprintSpawnableComponent))
 class WASAMI_DECEPTION_API UWasamiPowerComponent : public UActorComponent
@@ -39,9 +41,22 @@ public:
 	void CyclePowerLeft() { CyclePower(true); }
 	void CyclePowerRight() { CyclePower(false); }
 
+	/** A left click: confirms the teleport's aim, when there is one (the original's aim takes the click itself). */
+	UFUNCTION(BlueprintCallable, Category = "Powers")
+	void ConfirmTeleport();
+
+	/** The mouse wheel (±1 a notch): moves the teleport's aim, when there is one. */
+	UFUNCTION(BlueprintCallable, Category = "Powers")
+	void AdjustTeleportDistance(float AxisValue);
+
+	/** The teleport's aim while one is out (between Q / E and the move, or the take-back). */
+	UFUNCTION(BlueprintPure, Category = "Powers")
+	AWasamiTeleportAim* GetTeleportAim() const;
+
 	/**
 	 * Use Power: with Can Use Tablet? and Has Input, bounces the socket, then uses its power if it can be used and no
-	 * power was used in the last 0.5 s. A power that cannot be used does nothing else and makes no sound.
+	 * power was used in the last 0.5 s. A power that cannot be used does nothing else and makes no sound, except that
+	 * the side a teleport is aiming from takes the teleport back.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Powers")
 	void UsePower(bool bLeft);
@@ -112,6 +127,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<UWasamiSpeedBoostWidget> BoostWidgetClass;
 
+	/** Teleport_Mode_Entered: the teleport starts aiming. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSoftObjectPtr<USoundBase> TeleportAimSound;
+
+	/** BP_Power_Teleport: the aim the teleport spawns. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<AWasamiTeleportAim> TeleportAimClass;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -137,6 +160,14 @@ private:
 	/** Sprinting Effects: the FX's camera shake follows the speed. */
 	void UpdateSprintingEffects();
 
+	void UseTeleport(bool bLeft);
+	/** UsedTeleport: the aim's Used (and the end of a take-back): the side cycles again and the cooldown starts. */
+	UFUNCTION()
+	void UsedTeleport();
+	void RefillTeleport();
+	/** Reset Teleport with BP_Powers' Stop Teleport Timeline: a take-back, or the reset on death. */
+	void ResetTeleport();
+
 	UPROPERTY(Transient)
 	TArray<FWasamiPowerSlot> Powers;
 
@@ -158,6 +189,17 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UWasamiCameraAnim> LoadedBoostCameraAnim;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedTeleportAimSound;
+
+	/** What the teleport's aim uses, held from the start. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UObject>> LoadedTeleportAimAssets;
+
+	/** The spawned BP_Power_Teleport (the original keeps the spawn's return value; a destroyed one stays in it). */
+	UPROPERTY(Transient)
+	TObjectPtr<AWasamiTeleportAim> TeleportAim;
 
 	/** What the boost's widget shows, held from the start. */
 	UPROPERTY(Transient)
@@ -190,4 +232,12 @@ private:
 	FTimerHandle SprintingEffectsTimer;
 	/** CallFunc_PlayCameraAnim_ReturnValue: the boost's camera anim, which the reset stops. */
 	int32 BoostCameraAnimHandle = 0;
+
+	/** CurrentSide: the teleport was used from the left socket. */
+	bool bTeleportLeft = false;
+	/** The Gate before the teleport's cooldown delay: a use opens it, a take-back closes it. */
+	bool bTeleportGateOpen = false;
+	/** DoOnce_5 (its refill): starts closed and opens on a use. */
+	bool bTeleportRefillOpen = false;
+	FTimerHandle TeleportRefillTimer;
 };

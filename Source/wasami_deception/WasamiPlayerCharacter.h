@@ -191,6 +191,8 @@ private:
 	void SprintPressed();
 	void SprintReleased();
 	void TurnAround();
+	void LeftMousePressed();
+	void MouseWheel(const FInputActionValue& Value);
 	void ApplySpeed();
 	void ApplyTabletInterp(float Value);
 	void PlaceTablet();
@@ -233,6 +235,13 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> ResizeMapAction;
+
+	/** The left mouse button and the wheel, which the original's teleport aim takes straight from the keys. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> LeftMouseAction;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> MouseWheelAction;
 
 	/** The sounds and shakes above, loaded at BeginPlay. */
 	UPROPERTY(Transient)

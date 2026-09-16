@@ -1,5 +1,5 @@
 ---
-title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・カメラアニメ・FX）
+title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・カメラアニメ・FX）
 sources:
   - Source/wasami_deception/WasamiPowerTypes.h
   - Source/wasami_deception/WasamiPowerTypes.cpp
@@ -13,6 +13,8 @@ sources:
   - Source/wasami_deception/WasamiChameleonComponent.cpp
   - Source/wasami_deception/WasamiSpeedBoostWidget.h
   - Source/wasami_deception/WasamiSpeedBoostWidget.cpp
+  - Source/wasami_deception/WasamiTeleportAim.h
+  - Source/wasami_deception/WasamiTeleportAim.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
   - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
 updated: 2026-09-16
@@ -21,7 +23,7 @@ updated: 2026-09-16
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）だけで、ほかの 5 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 4〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）とテレポーテーションの仕組み（照準・移動・取り消し・再使用。カメラアニメと見た目はまだ）で、ほかの 4 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 4b〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -32,12 +34,21 @@ updated: 2026-09-16
 - `FWasamiPowerGauge` … `BP_Powers` のタイムライン 1 本と、それがアイコンに書く `Percent`。`SetDelay(Seconds, bTeleport)`・`Stop()`・`Tick(DeltaSeconds)`・`IsPlaying()`・`Percent`。
 
 ### `UWasamiPowerComponent : UActorComponent`（`AWasamiPlayerCharacter` の `Powers`）
-- 入力: `UsePowerLeftPressed()` / `UsePowerRightPressed()`（Q / E）、`CyclePower(bool bLeft)`（BlueprintCallable）と `CyclePowerLeft()` / `CyclePowerRight()`（1 / 2）。プレイヤーの入力が直に結ぶ（02 記録）。
+- 入力: `UsePowerLeftPressed()` / `UsePowerRightPressed()`（Q / E）、`CyclePower(bool bLeft)`（BlueprintCallable）と `CyclePowerLeft()` / `CyclePowerRight()`（1 / 2）。プレイヤーの入力が直に結ぶ（02 記録）。`ConfirmTeleport()`（左クリック）・`AdjustTeleportDistance(AxisValue)`（ホイール）は BlueprintCallable で、照準が出ているときだけそれへ渡す（プレイヤーが呼ぶ）。
 - `UsePower(bool bLeft)`・`ResetPowers()`（BlueprintCallable）。
-- 読み出し（BlueprintPure）: `GetSocketPower(bLeft)`（枠が解放済みの範囲の外なら `None`）、`GetGaugePercent(Power)`、`IsPowerAvailable(Power)`、`IsUsingPower(Power)`（本家の `Is Player Using Power ?`。`Active Powers` に入っているか）、`HasPowers()`、`GetUpgradeLevel(Power)`。C++ だけの `GetTuning(Power)`。
+- 読み出し（BlueprintPure）: `GetTeleportAim()`（出ている照準。無ければ null）、`GetSocketPower(bLeft)`（枠が解放済みの範囲の外なら `None`）、`GetGaugePercent(Power)`、`IsPowerAvailable(Power)`、`IsUsingPower(Power)`（本家の `Is Player Using Power ?`。`Active Powers` に入っているか）、`HasPowers()`、`GetUpgradeLevel(Power)`。C++ だけの `GetTuning(Power)`。
 - `OnPowerUsed(EWasamiPower)`（BlueprintAssignable）… 本家の `UsedPower`（と、パワーごとの `UsedTelepathy` などをまとめたもの）。
 - 設定（EditAnywhere）: `UnlockedPowers`（既定は 6 種すべてを並び順に）、`UpgradeLevel`（既定 5。0〜5）。
-- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）。`BeginPlay` でウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがウィジェットのクラスを参照しているので、素材は最初から読まれている。最初のブーストで読み込み待ちを出さないため）。
+- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）と照準の素材（`AWasamiTeleportAim::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
+
+### `AWasamiTeleportAim : AActor`（`WasamiTeleportAim.h`）
+本家の `BP_Power_Teleport`（旧版）。パワーが出し、移動か取り消しで消える。
+- `AdjustDistance(AxisValue)`・`Confirm()`（BlueprintCallable。ホイールと左クリック）。
+- `OnUsed`（BlueprintAssignable、引数なし）… 本家の `Used`。プレイヤーを動かした直後、自分を消す直前に出す。
+- `MaxDistance`（既定 1000。`ExposeOnSpawn`。パワーが出すときに強化段階の値を入れる）、読み出し用の `Distance`（既定 1000）・`Alpha`（既定 0.6）・`Location`（移動先）。
+- static: `DistanceFor(Alpha, MaxDistance)` = `Lerp(250, MaxDistance, Alpha)`、`StepAlpha(Alpha, AxisValue)` = `Clamp(AxisValue / 10 + Alpha, 0, 1)`、`LoadAssets(Out)`。
+- 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）。
+- コンポーネント（本家と同じ木）: `DefaultSceneRoot` → `SpringArm`（`TargetArmLength` 0 だけ変える。ほかは UE の既定＝位置ラグの速さ 10・サブステップあり）→ `Decal`（`DecalSize` (3, 100, 100)、相対回転 (P −90, Y 0, R 5.46e-5)、拡縮 (3.3264, 1, 1)。ソケット名なしでアームに付くので、アームの先〈ラグで遅れる位置〉に付いていく）、`DefaultSceneRoot` → `Audio`（音量 0.65、減衰なし）。本家の `Arrow`（エディタの表示用）と、デカールの子の `ParticleSystem`（ステップ 5）は置いていない。`GetSpringArm()`・`GetDecal()`。
 
 ### `UWasamiCameraAnim : UDataAsset`（`WasamiCameraAnim.h`）
 本家の `CameraAnim`（UE4 の `UCameraAnim`。UE 5 には無い）を取り込みが写したもの（01 記録の `dd_assets.camera_anim`）。`AnimLength`（既定 3）・`BaseFOV`（既定 90）・`BasePostProcessSettings`（上書きフラグごと）・`BasePostProcessBlendWeight`（既定 0 = PP が効かない。UE4 と同じ）・`FloatTracks` / `ColorTracks`（`FWasamiCameraAnimFloatTrack` / `FWasamiCameraAnimColorTrack` = `PropertyName`〈`CameraComponent.PostProcessSettings.SceneColorTint` のような原作の名前〉と Matinee の曲線 `FInterpCurveFloat` / `FInterpCurveLinearColor`）。
@@ -83,11 +94,12 @@ updated: 2026-09-16
 1. プレイヤーの `bCanUseTablet` と `bHasInput` が両方真でなければ終わる（タブレットを構えている必要は無い）。
 2. **枠を弾ませる**（`UWasamiTabletWidget::BounceSocket`）。使えるかの判定より前なので、使えないときも弾む。
 3. 枠のパワーを取る（添字が範囲外なら構造体の既定 = 使えない）。`bAvailable` が偽なら終わる。**音も何も出さない**（最新版どおり。旧版は `power_not_ready` を鳴らしていた。ユーザーの回答）。
-4. `Use Power` 側の DoOnce（`bUseClosed`）を通ったら、`OnPowerUsed` を出し、パワーごとの処理へ（いまは `SpeedBoost` だけ。ほかは何もしない）。
+   - **例外（旧版から採る。ユーザーの回答）**: 解放済みが 1 つ以上あり、テレポートを使用中（`Active Powers` にある）で、押した側がテレポートを使った側（`bTeleportLeft`。本家の `CurrentSide`）なら、テレポートを取り消す（`ResetTeleport`）。枠のパワーが何かは見ない（使った側の枠は照準中に切り替えられないので、ふつうはテレポートのまま）。キーごとの 0.5 秒の連打防止を通った後なので、照準を出してから 0.5 秒は取り消せない。
+4. `Use Power` 側の DoOnce（`bUseClosed`）を通ったら、`OnPowerUsed` を出し、パワーごとの処理へ（いまは `SpeedBoost` と `Teleport`。ほかは何もしない）。
 5. 最後に 0.5 秒の Delay で DoOnce を戻す。**連打防止は Q / E ごとと、発動全体の 2 段**。
 
 ### 1 / 2（`CyclePower`）
-**タブレットを構えているとき**（`IsTabletUp()`）で、その側の `bCanCycleLeft` / `bCanCycleRight`（テレポートの照準中だけ偽になる。ステップ 4）が真のときだけ効く。解放済みが 1 つ以上なら `UI_Select_V3` を音量 1.5・ピッチ 2.0 で鳴らし、添字が末尾なら 0、そうでなければ `Clamp(添字 + 1, 0, 5)`。使えるかどうかにはよらない。
+**タブレットを構えているとき**（`IsTabletUp()`）で、その側の `bCanCycleLeft` / `bCanCycleRight`（テレポートを使った側だけ、照準を出してから移動か取り消しまで偽になる）が真のときだけ効く。解放済みが 1 つ以上なら `UI_Select_V3` を音量 1.5・ピッチ 2.0 で鳴らし、添字が末尾なら 0、そうでなければ `Clamp(添字 + 1, 0, 5)`。使えるかどうかにはよらない。
 
 ### Delay（`Delay`）
 本家の Blueprint の `Delay` ノードは、数えている間にもう一度呼ばれても無視される。`FTimerManager` で「そのハンドルのタイマーが動いていなければ仕掛ける」として写す。原作の癖（死亡のリセットの後に古い Delay が残って早く切れるなど）もそのまま出る。
@@ -113,6 +125,22 @@ updated: 2026-09-16
 - 終わり: 速さ・`Active Powers` の後に、タイマーを止め、FX の `bCameraShake = false`、ウィジェットを外す（`RemoveFromParent`）。**カメラアニメは止めない**（効果時間と同じ長さで自然に終わる）。
 - 死亡のリセット（本家の `Reset Speed Boost 1` = @37067）は、カメラアニメを `Stop(immediate)` で即座に止めてから終わりの処理へ進む。
 
+### テレポーテーション（`UseTeleport` → 照準 → `UsedTeleport` → `RefillTeleport`、取り消しは `ResetTeleport`）
+**旧版（`pak_reference`）に従う**（ユーザーの指示）。共通の仕組み（Q / E の連打防止、使えないときの無音など）は最新版のまま。
+- 使った瞬間（`UseTeleport`。本家の @10017〜@11623）: `bTeleportLeft` を覚える → `Active Powers` に足す → `Teleport_Mode_Entered` を `PlaySound2D` の音量 1.75 → 使えない状態 → ゲージの `SetDelay(0.05)`（アイコンが 0.05 秒で 0 になる）→ 照準をプレイヤーの位置の **50 m 下**に回転 0・`AlwaysSpawn` で遅延スポーンし、`MaxDistance` に強化段階の値（Lv5 で 1500）を入れてから `FinishSpawning`、`OnUsed` に `UsedTeleport` を結ぶ → 使った側の `bCanCycle*` を偽 → クールダウンの Gate（`bTeleportGateOpen`）と充填の DoOnce（`bTeleportRefillOpen`。本家の DoOnce_5、最初は閉じている）を開く。
+- 照準（`AWasamiTeleportAim`）:
+  - `BeginPlay`: 照準ループの音をかけて再生（アクタが消えると止まる）。`Distance = DistanceFor(Alpha, MaxDistance)`（本家はホイールの軸の束縛が毎フレーム `Distance` を書くので、最初のフレームからこの値。Lv5 では本家のクラス既定の 1000 と同じ）。0.5 秒後にアームの位置ラグを有効にする。
+  - 毎ティック: プレイヤー（`GetPlayerCharacter(0)`）のアクタ位置（カプセルの中心）+ アクタの前方（ヨーだけ）× `Distance` から真下へ 500 cm、`ECC_GameTraceChannel1`（`Teleport`。00 記録）の**オブジェクトのトレース**を複雑コリジョンで行い（自分は除く）、当たったらアームを `SetWorldLocation(当たった点, スイープなし, TeleportPhysics)` で動かす。当たらなければアームはそのまま。オブジェクトのトレースは応答を見ず、「オブジェクトの種類が Teleport で、クエリが有効」なものに当たる（病院のゾーン。01 記録）。
+  - ラグ: 最初の 0.5 秒はアームの先が当たった点に即座に付き、以後は UE の SpringArm の `VInterpTo`（速さ 10、1/60 秒ずつのサブステップ）で遅れて付いていく。**0.5 秒より後に初めて床を捉えたときは、スポーン位置（50 m 下）から追ってくる**（本家どおり。テレポートのフラグではラグは戻らない）。
+  - ホイール（`AdjustDistance`）: `Alpha = StepAlpha(Alpha, 値)`、`Distance = DistanceFor(Alpha, MaxDistance)`。照準のたびに 0.6 から。1 目盛りは Lv5 で 125 cm、範囲は 250〜1500 cm。
+  - 左クリック（`Confirm`）: `Location = デカールのワールド位置 + (0, 0, 125)` を**先に**書き、DoOnce（`bConfirmed`）を通ったら、プレイヤーのカプセルの `WorldDynamic` と `Pawn` の応答を Ignore にし、0.12 秒後に移動（`Commit`）。移動の前の 2 回目のクリックは移動先だけを変える。本家はクリックの瞬間にカメラアニメ `CameraAnim_Teleport` を再生するが、それはステップ 4b で足す。
+  - 移動（`Commit`）: `BP_CameraShake_Streak` を倍率 1・`CameraLocal` → `Teleport_Committed` を `PlaySound2D`（音量 1）→ `SetActorLocation(Location, スイープあり, TeleportPhysics)`（壁などで止まる。カプセルの中心を床 + 125 cm に置くので、立ち姿の 88 cm まで約 37 cm 落ちる）→ カプセルの `Pawn` と `WorldDynamic` を Block に戻す → `OnUsed` → 自分を消す。
+  - `EndPlay` で 2 つのタイマー（ラグの有効化・移動）を止める（UE 5.8 のアクタは消えるときに自分のタイマーを消さない。本家の Delay はアクタと一緒に消える）。
+- 移動の後（`UsedTeleport`。本家の @30854）: 使った側の `bCanCycle*` を真 → `Active Powers` から外す → ゲージの `SetDelay(5)`（アイコンが 0 → 1 を 5 秒）→ Gate が開いていれば `Delay(5)` の後に `RefillTeleport`。再使用は段階によらず 5 秒（本家の `00_Ballroom` だけの 1 秒は病院に無い）。
+- 充填（`RefillTeleport`）: 充填の DoOnce が開いていれば閉じて `Refill`（`power_refilled` 0.5・使える状態）。
+- 取り消し・死亡のリセット（`ResetTeleport`。本家の `Reset Teleport` @31827 と `BP_Powers` の `Stop Teleport Timeline`）: Gate を閉じる → `RefillTeleport`（使った後なら即座に充填・音）→ 照準があれば消す → `UsedTeleport`（Gate が閉じているので `Delay` は始まらない）→ ゲージを止めて 1。結果、すぐ使える・アイコンは 1・`power_refilled` が 1 回。
+  - **クリックから移動までの 0.12 秒の間に取り消すと、移動は起きず、カプセルは `Pawn` と `WorldDynamic` を無視したまま残る**（本家どおり。次のテレポートの移動で戻る）。
+
 ### カメラアニメの再生（`UWasamiCameraAnimModifier::ModifyCamera`）
 - 毎フレーム、再生中の各アニメを `Advance` し、終わっていなければ `BasePostProcessSettings` の写しにトラックの値を書き、重み `BasePostProcessBlendWeight × Weight` で `AddCachedPPBlend(…, VTBlendOrder_Base)` する（UE4 はカメラアニメの PP を通常のカメラの PP の下に重ねた。UE 5.8 の後継も `r.CameraAnimation.LegacyPostProcessBlending`〈既定 true〉で同じ位置に置く）。終わったものは外す。PP の値の重ね合わせ（`SceneColorTint` は重みで線形補間）はエンジンが行う。
 - `Advance`（UE 5.8 の後継 `CameraAnimationCameraModifier.cpp` の `TickAnimation` と同じ形。UE4 の `CameraAnimInst.cpp` は手元に無い）: 時間を `Delta × Rate` 進め、ブレンドの経過も進める。ループしないアニメは「長さ − BlendOut × Rate」を過ぎたらブレンドアウトを始め、長さを過ぎたら終わる。ブレンドインは経過が BlendIn を超えたら終わる。ブレンドアウトの経過が BlendOut を超えたら終わる。重みは `min(ブレンドインの経過 / BlendIn, 1 − ブレンドアウトの経過 / BlendOut) × Scale`（どちらも直線）。`Duration` が正なら、`Duration − BlendOut` を数え終えたところで `Stop(false)`（ブレンドアウト）を呼ぶ。**`Duration` はブレンドアウトを含む長さ**（UE 5.8 の `FCameraAnimationParams::DurationOverride` の説明「including blends」。後継はこの値を使っていない）。
@@ -135,7 +163,7 @@ updated: 2026-09-16
 
 ### 死亡のリセット（`ResetPowers`。本家の `BP_Powers.Reset All Powers`）
 1. スピードブースト: 終わりの処理（効果中なら即座に終わり、再使用のゲージが始まる）→ 充填の処理（使った後なら即座に充填）→ ゲージを止めて 1。
-2. テレポート: ゲージを止めて 1（照準のアクタを消す・充填・`UsedTeleport` はテレポートの実装で足す）。
+2. テレポート: `ResetTeleport`（上の「テレポーテーション」）。
 3. Primal Fear: ゲージを止めて 1 → 充填。
 4. Vanish: ゲージを止めて 1 → 充填（ウィジェットを消す処理は Vanish の実装で足す）。
 - **Primal と Vanish は、使っていなくても充填を通るので `power_refilled` が鳴る**（本家の `Reset Primal` = @37261: Push @6444 → @27788 の Gate の Close。`Reset Vanish` = @37737 も同じ形）。Telepathy と Telekinesis はリセットしない。
@@ -165,7 +193,10 @@ updated: 2026-09-16
 | `/Game/DD/Audio/UI/power_refilled` | 充填の音（1.515 秒、48 kHz） |
 | `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5` | ブーストの音（1.058 秒。SoundWave の Volume 0.7・Pitch 2.0・ConcurrencySet `NewSoundConcurrency`） |
 | `/Game/DD/Audio/NewSoundConcurrency` | 同時発音（MaxCount 2・VolumeScale 0.5、ほかは既定） |
-| `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak` | ブーストのシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.25、回転 Pitch 0.25/30・Yaw 0.25/40・Roll 0.5/35、FOV 2.0/10） |
+| `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered` | テレポートの照準の開始（旧版。1.956 秒、48 kHz、エンジンの音。SoundWave の値は既定のまま） |
+| `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227` | 照準のループ（旧版。3.733 秒、`bLooping`） |
+| `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed` | テレポートの移動（旧版。1.543 秒） |
+| `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak` | ブーストとテレポートの移動のシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.25、回転 Pitch 0.25/30・Yaw 0.25/40・Roll 0.5/35、FOV 2.0/10） |
 | `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost` | `WasamiCameraAnim`。長さ 24.503 秒、`BaseFOV` 137.24、`BasePostProcessBlendWeight` 1.0、基準の PP は `bOverride_WhiteTemp`・`WhiteTint`・`SceneColorTint` が真（WhiteTemp 6500・WhiteTint 0 は中立）で `SceneColorTint` (2.0, 0.583955, 0.498, 1)、色のトラック 1 本（−0.0017948 秒に同じ色の 1 キー、`CIM_CurveAutoClamped`） |
 | `/Game/DD/UI/Main/Powers/T_Speedlines` | 集中線（3841 × 5404、2 列 × 5 段のコマ。sRGB・`TC_Default`・`TEXTUREGROUP_UI`。原作の cook も非圧縮 BGRA8・ミップ 1 で、本作の実測も約 81 MB〈`blueprint_get_memory_size` 84,934,656〉） |
 | `/Game/DD/UI/Menu/Streaks/T_VignetteNew` | ビネット（1024²、白地にアルファで縁。sRGB・`TC_EditorIcon`・`TEXTUREGROUP_UI`。本作は 4 MB〈ミップなし。原作の cook は 11 段のミップあり。全面に引き伸ばすだけなので見た目は同じ〉） |
@@ -183,6 +214,9 @@ updated: 2026-09-16
 - Chameleon: `_bytecode/DDeception/Content/ThirdParty/Chameleon/Chameleon.txt`（`InitChameleon`・`Radial Blur Func`・`Camera Shake Func`・`Set Advanced Effect Features`・`ApplyChameleonSettings`）、`_assets/…/ThirdParty/Chameleon/Chameleon.json`（CDO: `Enabled`・`Unbound`、揺れの既定、`Camera Shake - Advanced`、`Native Post Process`）、`Enums/BlendModes.json`（`NewEnumerator0` = `0 - Normal`）、`Materials/M_CameraShake.json`・`M_RadialBlurHLSL.json`、`BP_DD_PlayerCharacter.json` の `FX_GEN_VARIABLE`（テンプレート）。放射ブラーの有効フラグを書くコードが無いことは `_bytecode` 全体の検索で確かめた（`Chameleon_C.Radial Blur`・`Camera Shake` を書くのはプレイヤーとカットシーン `Cutscene_01_Exterior` だけ）。
 - UE 5.8 の挙動: `Engine/Plugins/Cameras/EngineCameras/Source/EngineCameras/Private/Animations/CameraAnimationCameraModifier.cpp`（ブレンドの形・PP の重ね方）、`Engine/Source/Runtime/Engine/Classes/Camera/CameraModifier.h`・`Private/Camera/CameraModifier.cpp`（`ModifyCamera` → `AddCachedPPBlend`）、`Private/PlayerCameraManager.cpp`（`ApplyCameraModifiers` が先に PP の蓄えを空にする）、`Core/Public/Math/InterpCurve.h`（`Eval`）、`Shaders/Private/SlateElementPixelShader.usf`（UI マテリアルの色 × 頂点カラー）、`Classes/Components/PostProcessComponent.h`（MinimalAPI、`AddOrUpdateBlendable` は inline）。
 
+- テレポーテーション（旧版）: `pak_reference/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_Power_Teleport.txt`（BeginPlay @1060、Tick @1525、ホイール @1279、クリック @2342 → @547、移動 @15）、`_assets/…/Powers/BP_Power_Teleport.json`（コンポーネントの値、入力の束縛）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @10017〜@11623、使えないときの取り消し @14489〜@14826、`UsedTeleport` @30854、充填 @4045、`Reset Teleport` @31827）、`UI/BP_Powers.txt`（`Set Delay Teleport` @1746、`Stop Teleport Timeline` @2322）、音の書き出し（`_assets/…/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227.json` の `bLooping`、`_assets/Engine/Content/VREditor/Sounds/UI/*.json`）。まとめは `.claude/references/powers/02-teleport.md`。
+- UE 5.8 の挙動（テレポート）: `Engine/Source/Runtime/Engine/Private/GameFramework/SpringArmComponent.cpp`（ラグ、`GetSocketTransform` がソケット名を見ないこと、長さ 0 ではトレースしないこと）、`Private/Components/DecalComponent.cpp`（材質が無いデカールは既定のデカール材で描く）、`Private/KismetSystemLibrary.cpp`・`KismetTraceUtils.cpp`（`LineTraceSingleForObjects` の中身）。
+
 ## 依存関係
 - `AWasamiPlayerCharacter`（02 記録）: `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()`・コントローラのカメラマネージャ。プレイヤーがこのコンポーネントを作り、入力を結び、毎フレーム画面へ値を渡す。
 - `UWasamiTabletWidget`（03 記録）: `BounceSocket`。
@@ -191,10 +225,11 @@ updated: 2026-09-16
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（5 件、2026-09-16 にすべて成功）。
+`Automation RunTests Wasami`（6 件、2026-09-16 にすべて成功）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
+- `Wasami.Powers.TeleportDistance` … Lv5 の最初の距離 1000（強化なしなら 700）、`Alpha` 0 / 1 の端、1 目盛りで +0.1（Lv5 で +125 cm）、1 フレームに 2 目盛り、0 と 1 での切り詰め。
 - `Wasami.CameraAnim.Playback`（`Tests/WasamiCameraAnimTests.cpp`）… ブーストの再生（0.25 秒で 0.5、0.5 秒で 1、9.25 秒でブレンドアウトが始まり 9.5 秒で 0.5、9.75 秒で 0、その次で終わり）、即座の停止、ブレンドの無い 0.5 秒のアニメが長さで終わること、ブレンドイン中の停止が小さい方の重みで続くこと。
 - `Wasami.CameraAnim.Tracks` … ブーストの 1 キーの色が保たれ上書きフラグを触らないこと、`CameraAnim_Teleport`（旧版）のキーと接線で、書き出しの 60 fps の標本（`CameraAnim_Teleport.csv`）と同じ値になること（0.1 秒の露出 1.149884・色調 (1.528122, 0.532324, 0.471878)、0.05 秒、8/60 秒の露出の山 67.69149）。FOV のトラックは PP を変えない。
 
@@ -215,8 +250,21 @@ updated: 2026-09-16
 - ブースト中に `ResetPowers`: 1.4 秒後の絵の平均が色調の無い状態と同じ (67.1, 84.1, 85.4) で、カメラアニメが即座に止まった。揺れ偽・ウィジェット 0・使える。
 - PIE の開始以降、ログに警告もエラーも無かった。エンジンの起動時の `LogAutomationTest: Error: Condition failed` 19 件は前回の起動にも同じ数あり、エンジン自身の自己テストのもの。
 
+### テレポーテーション（2026-09-16、PIE、`L_Hospital_Zone1`、ユーザーの了承のうえで `Tools/desktop.py` から Space・1・2・Q・E・左クリック・ホイールを送り、値はエディタの Python で読んだ）
+- 組み立て直したレベルのゾーン（床のメッシュと救急車の屋根の箱）は、オブジェクトの種類 `Teleport`・`QueryOnly`・全チャンネル Overlap・プロファイル `Custom`・ゲームで非表示・影なしで、開き直しても保たれていた（01 記録）。
+- プレイヤースタート (15, 385)・南向きで、タブレットを上げて 1 → 左の枠が Teleport。Q で照準が出て、使えない状態・使用中・ゲージ 0、照準ループが鳴り、アームとデカールが 10 m 先の床（Z 0）に付いた（`Distance` 1000・`Alpha` 0.6・`MaxDistance` 1500）。画面には 2 m 四方のデカール（UE の既定の材質）が見えた。
+- 照準中の 1 では左の枠が変わらず、取り消した後は変わった。
+- ホイールを奥へ 1 目盛りで `Distance` 1125（アームも −740 へ）、手前へ 2 目盛りで 875（−490）。
+- 左クリック: 毎フレームの記録で、クリックのフレームにカプセルの `Pawn`・`WorldDynamic` が Ignore になり、約 0.13 秒後（0.12 秒 + 1 フレーム）にプレイヤーが (15, −490, 125)（デカール + 125 cm）へ移り、同じフレームで Block に戻って照準が消えた。次のフレームで床の高さ（90.1）へ下りた（UE の歩行の床合わせ）。ゲージは 3 秒後に 0.593（3 / 5 = 0.6）、7 秒後には使える・ゲージ 1。
+- 右の枠も Teleport にして左から照準を出し、E を押しても取り消されない（無音）。Q で取り消すと即座に使える・ゲージ 1・照準が消えた。
+- 照準中に `ResetPowers` を呼ぶと、照準が消えて使える・ゲージ 1。クリックの直後（移動の前）に `ResetPowers` を呼ぶと、移動は起きずカプセルが Ignore のまま残り（本家どおり）、次のテレポートの移動で Block に戻った。
+- PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」2 件は前のセッションのログにも出ていたもの）。音はユーザーのスピーカーで確かめていない（照準ループが再生中であることは読んだ）。
+
 ## 既知の制約・注意点
-- **スピードブースト以外のパワーは中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。テレポートの照準中の `bCanCycleLeft/Right` も、まだ偽にする側がいない。
+- **スピードブーストとテレポート以外のパワーは中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
+- テレポートの**カメラアニメ（`CameraAnim_Teleport`）はまだ再生しない**（ステップ 4b。FOV の基準を本家の実機で決めてから）。**デカールの材質とパーティクルもまだ無い**（ステップ 5）。いまのデカールは UE の既定のデカール材で描かれる。
+- 本家では照準のアクタがクリックを受け、入力を消費しないので、プレイヤー自身の左クリック（調べる）も同時に走る。本作のプレイヤーにはまだ調べる処理が無い（02 記録）。
+- ゲームパッドでの確定（最新版の `Gamepad_FaceButton_Bottom`）は旧版に無いので入れていない。
 - 本家は `Check` を `Delay 0.2` の後に行うが、本作は `BeginPlay` ですぐ作る。
 - 本家の `Power` 配列は解放フラグ（セーブ）から作るが、本作はすべて解放済み（`UnlockedPowers`）。選んだ枠をレベルをまたいで残す本家の仕組み（GameInstance）は、ステージが病院だけなので作っていない。
 - 本家のパワーの放送（`UsedTeleportPower`・`UsedPrimal` など）を購読するのは本家のチュートリアルや台本のレベルだけで、病院には無い。本作は `OnPowerUsed` 1 つにまとめた。
@@ -230,5 +278,6 @@ updated: 2026-09-16
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-16: テレポーテーションの仕組みを足した（旧版。`AWasamiTeleportAim`、使った瞬間・照準・ホイール・クリック・0.12 秒後のスイープ移動・再使用 5 秒・同じ側の Q / E での取り消し・死亡のリセット、音 3 つ、テスト `Wasami.Powers.TeleportDistance`）。カメラアニメと見た目はまだ
 - 2026-09-16: スピードブーストの演出を足した（`CameraAnim_SpeedBoost` の赤い色調、`UMG_SpeedBoost` の集中線とビネット、FX の画面の揺れ。放射ブラーは本家で無効なので作らない）。UE4 の CameraAnim の再生（`UWasamiCameraAnim`・`FWasamiCameraAnimPlayback`・`UWasamiCameraAnimModifier`）、FX（`UWasamiChameleonComponent`）、`UWasamiSpeedBoostWidget`、テスト `Wasami.CameraAnim` 2 件を足した
 - 2026-09-16: 初版（パワーの土台: 枠・Q/E/1/2・2 段の連打防止・ゲージ・強化段階の表・死亡のリセット・スピードブースト、敵とシャードのインターフェース、テスト）

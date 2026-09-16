@@ -226,6 +226,8 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(CyclePowerRightAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::CyclePowerRight);
 	Input->BindAction(TabletAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ToggleTablet);
 	Input->BindAction(ResizeMapAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ResizeMap);
+	Input->BindAction(LeftMouseAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::LeftMousePressed);
+	Input->BindAction(MouseWheelAction, ETriggerEvent::Triggered, this, &AWasamiPlayerCharacter::MouseWheel);
 }
 
 void AWasamiPlayerCharacter::CreateInput()
@@ -251,6 +253,8 @@ void AWasamiPlayerCharacter::CreateInput()
 	CyclePowerRightAction = NewAction(TEXT("IA_CyclePowerRight"), EInputActionValueType::Boolean);
 	TabletAction = NewAction(TEXT("IA_ToggleTablet"), EInputActionValueType::Boolean);
 	ResizeMapAction = NewAction(TEXT("IA_ResizeMap"), EInputActionValueType::Boolean);
+	LeftMouseAction = NewAction(TEXT("IA_LeftMouseButton"), EInputActionValueType::Boolean);
+	MouseWheelAction = NewAction(TEXT("IA_MouseWheelAxis"), EInputActionValueType::Axis1D);
 
 	InputContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Player"));
 	auto Map = [this](const UInputAction* Action, const FKey& Key, const TArray<UInputModifier*>& Modifiers = {})
@@ -298,6 +302,22 @@ void AWasamiPlayerCharacter::CreateInput()
 	Map(CyclePowerRightAction, EKeys::Two);
 	Map(TabletAction, EKeys::SpaceBar);
 	Map(ResizeMapAction, EKeys::Z);
+	// Pressed, and the wheel's value (±1 a notch; the original's MouseWheelAxis has sensitivity 1). An Axis1D only
+	// triggers on a frame the wheel moves, which is when the original's every-frame binding changes anything.
+	Map(LeftMouseAction, EKeys::LeftMouseButton);
+	Map(MouseWheelAction, EKeys::MouseWheelAxis);
+}
+
+void AWasamiPlayerCharacter::LeftMousePressed()
+{
+	// The teleport's aim takes the click without consuming it; the player's own use of the click (Interact) comes with
+	// the things to interact with.
+	Powers->ConfirmTeleport();
+}
+
+void AWasamiPlayerCharacter::MouseWheel(const FInputActionValue& Value)
+{
+	Powers->AdjustTeleportDistance(Value.Get<float>());
 }
 
 void AWasamiPlayerCharacter::Move(const FInputActionValue& Value)

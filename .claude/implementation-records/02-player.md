@@ -34,6 +34,7 @@ updated: 2026-09-16
   - 視点: `EKeys::Mouse2D` に Smooth → Scalar 0.07 → FOVScaling（`FOVScale` 0.01111、`UE4_BackCompat`）の順で修飾子を付ける（本家の `DefaultInput.ini` の `MouseX/Y` の感度 0.07、UE4 のマウススムージングと FOV スケーリングと同じ）。`Look` は `AddControllerYawInput` / `AddControllerPitchInput`（`bInvertY` でなければ Y を反転）。コントローラ側の 2.5 / −2.5 は `bEnableLegacyInputScales=True` により掛かる。
   - Shift（ダッシュ）、中クリック（180° ターン）、Space（タブレット）、Z（地図の拡縮）。
   - Q / E / 1 / 2（本家の `Use Power Left` / `Use Power Right` / `Cycle Power Left` / `Cycle Power Right`）は `Powers` の `UsePowerLeftPressed` / `UsePowerRightPressed` / `CyclePowerLeft` / `CyclePowerRight` に直に結ぶ（中身は 04 記録）。本家の `Use Power`（R）はどの BP も受けていないので割り当てない。
+  - 左クリック（`IA_LeftMouseButton`、押した瞬間 = `Started`）とホイール（`IA_MouseWheelAxis`、`EKeys::MouseWheelAxis` の Axis1D、1 目盛り ±1）は、`LeftMousePressed` / `MouseWheel` から `Powers` の `ConfirmTeleport` / `AdjustTeleportDistance` へ渡す（テレポートの照準が出ているときだけ効く。04 記録）。本家では照準のアクタ（`BP_Power_Teleport`）がキーを直に受け、入力を消費しない。本家のプレイヤー自身の左クリック（手持ちの `Use` か前方 200 cm の `InteractWithObject`）は、調べる物ができたとき（M2）にここへ足す。ホイールの Axis1D は値が 0 のフレームでは呼ばれないが、本家の毎フレームの軸の束縛も値が変わるフレームでしか結果が変わらないので同じ。どちらも `bCanMove` などの条件を見ない（本家の照準のアクタも見ない）。
   - 本家の割り当ての全体（`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini` の `ActionMappings` / `AxisMappings`。2026-09-16 に実機 v1.9.6 でも同じことを確認）:
 
     | 本家の操作 | キー | 本作 |
@@ -41,7 +42,8 @@ updated: 2026-09-16
     | Forward / Left | W・S（−1）/ A（−1）・D | 同じ |
     | LookHorizontal / LookVertical | MouseX / MouseY | 同じ |
     | Sprint | LeftShift | 同じ |
-    | Interact / Interact (Secondary) | F / 左クリック | M2 で実装予定 |
+    | Interact / Interact (Secondary) | F / 左クリック | M2 で実装予定（左クリックはテレポートの確定に使っている） |
+    | （テレポートの照準のアクタがキーを直に受ける） | 左クリック / マウスホイール | 同じ（04 記録） |
     | Toggle Tablet | SpaceBar | 同じ |
     | Resize Map | Z | 同じ |
     | Use Power | R | 割り当てない（本家でも何もしない） |
@@ -86,6 +88,7 @@ updated: 2026-09-16
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-16: 左クリックとホイールの入力を足し、テレポートの照準（04 記録）へ渡すようにした
 - 2026-09-16: 本家の子アクタ `FX`（Chameleon）にあたる `UWasamiChameleonComponent` を足した（`GetChameleon()`。スピードブーストの画面の揺れが使う）
 - 2026-09-16: スピードブーストを `UWasamiPowerComponent`（04 記録）へ移し、Q / E / 1 / 2 の入力、`bHasInput`・`bCanInteract`、`SetMoveSpeeds`・`GetTabletScreen` を足した。画面にはパワーの枠・ゲージ・弾みを渡すようにした。素材（板・地図のターゲット・音・揺れ）をソフト参照にして `BeginPlay` で読むようにした（コンストラクタで読むとエディタの起動時にルートに入り、パイプラインが作り直すとエディタが落ちる）
 - 2026-09-16: 初版（移動・視点・FOV・頭の揺れ・180°・ブーストを記録）

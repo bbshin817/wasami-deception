@@ -18,9 +18,13 @@ MEL = unreal.MaterialEditingLibrary
 SOUNDS = (
     (2, "Audio/UI/power_refilled"),             # a power is ready again
     (2, "Audio/UI/Shard_Streak_Milestone_V5"),  # the speed boost starts
+    # the teleport (pak_reference): aiming starts, the aim's loop, the move
+    (1, "/Engine/VREditor/Sounds/UI/Teleport_Mode_Entered"),
+    (1, "Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227"),
+    (1, "/Engine/VREditor/Sounds/UI/Teleport_Committed"),
 )
 CAMERA_SHAKES = (
-    (2, "UI/Menu/Streaks/BP_CameraShake_Streak"),  # the speed boost starts
+    (2, "UI/Menu/Streaks/BP_CameraShake_Streak"),  # the speed boost starts, the teleport moves (the same in both versions)
 )
 CAMERA_ANIMS = (
     (2, "Animation/Camera/CameraAnim_SpeedBoost"),  # the view turns red while the speed boost lasts

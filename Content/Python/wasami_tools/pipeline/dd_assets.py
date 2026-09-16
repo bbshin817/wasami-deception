@@ -16,6 +16,12 @@ MEL = unreal.MaterialEditingLibrary
 # leaves them out (it keeps only what differs from the defaults). Channels, rate and duration come with the file; the
 # original's sound classes are not made (yet), so SoundClassObject is not written.
 SOUND_DEFAULTS = {"Volume": 1.0, "Pitch": 1.0}
+SOUND_FLAGS = {"bLooping": False}
+
+# The engine's own content the original uses ('/Engine/VREditor/Sounds/UI/Teleport_Committed') is exported under
+# Engine/Content and lives under /Game/DD/_Engine here (UE 5.8's copies are not known to be the same).
+ENGINE_REL = "/Engine/"
+ENGINE_FOLDER = "_Engine"
 
 # UCameraAnim's defaults for what its export leaves out (UE4's UCameraAnim constructor; the blend weight is zeroed).
 CAMERA_ANIM_DEFAULTS = {"AnimLength": 3.0, "BaseFOV": 90.0, "BasePostProcessBlendWeight": 0.0}
@@ -28,16 +34,33 @@ def pak(version):
     return paths.DD_PAK if version == 1 else paths.DD_PAK2
 
 
+def _content(rel):
+    """The project folder of the export ('DDeception' or 'Engine') and the path under its Content: a rel is the
+    original's /Game/<rel>, or an engine asset's whole path ('/Engine/VREditor/...')."""
+    if rel.startswith(ENGINE_REL):
+        return "Engine", rel[len(ENGINE_REL):]
+    return "DDeception", rel
+
+
+def content_file(rel, version, extension):
+    """The exported file of /Game/<rel> (or an engine asset) with that extension ('.ogg', '.png')."""
+    project, sub = _content(rel)
+    return os.path.join(pak(version), project, "Content", *sub.split("/")) + extension
+
+
 def asset_path(rel):
-    """The original's /Game/<rel> under our /Game/DD."""
-    return paths.DD_ROOT + "/" + rel
+    """The original's /Game/<rel> under our /Game/DD (an engine asset under /Game/DD/_Engine)."""
+    project, sub = _content(rel)
+    return paths.DD_ROOT + "/" + (sub if project == "DDeception" else ENGINE_FOLDER + "/" + sub)
 
 
 def export_json(rel, version=1):
-    """The exported package of the original's /Game/<rel> ('Blueprints/Main/BP_DD_PlayerCharacter_WalkShake')."""
-    path = os.path.join(pak(version), "_assets", "DDeception", "Content", *rel.split("/")) + ".json"
+    """The exported package of the original's /Game/<rel> ('Blueprints/Main/BP_DD_PlayerCharacter_WalkShake'), or of an
+    engine asset ('/Engine/VREditor/Sounds/UI/Teleport_Committed')."""
+    project, sub = _content(rel)
+    path = os.path.join(pak(version), "_assets", project, "Content", *sub.split("/")) + ".json"
     if not os.path.exists(path):
-        raise FileNotFoundError("no export of /Game/%s in %s" % (rel, pak(version)))
+        raise FileNotFoundError("no export of %s in %s" % (rel, pak(version)))
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
@@ -102,9 +125,10 @@ def sound_concurrency(rel, version=1):
 
 
 def sound(rel, version=1):
-    """Imports the original's /Game/<rel>.ogg as a SoundWave under /Game/DD and writes the export's Volume, Pitch and
-    ConcurrencySet onto it (making the concurrency assets it names). Returns the package path."""
-    ogg = os.path.join(pak(version), "DDeception", "Content", *rel.split("/")) + ".ogg"
+    """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
+    export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names). Returns the
+    package path."""
+    ogg = content_file(rel, version, ".ogg")
     if not os.path.exists(ogg):
         raise FileNotFoundError(ogg)
     target = asset_path(rel)
@@ -125,6 +149,8 @@ def sound(rel, version=1):
     props = main_export(export_json(rel, version), rel)["props"]
     for key, default in SOUND_DEFAULTS.items():
         wave.set_editor_property(ue_props.snake(key), float(props.get(key, default)))
+    for key, default in SOUND_FLAGS.items():
+        wave.set_editor_property(ue_props.snake(key), bool(props.get(key, default)))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
     return target
@@ -139,7 +165,7 @@ def texture(rel, version=1):
     entry = table.get(key)
     if entry is None:
         raise KeyError("no texture %s in %s/_textures.json" % (key, pak(version)))
-    png = os.path.join(pak(version), "DDeception", "Content", *rel.split("/")) + ".png"
+    png = content_file(rel, version, ".png")
     if not os.path.exists(png):
         raise FileNotFoundError(png)
     target = asset_path(rel)

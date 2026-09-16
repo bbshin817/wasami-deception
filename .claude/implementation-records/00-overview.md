@@ -61,6 +61,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
   - `[/Script/Engine.LocalPlayer]`: `AspectRatioAxisConstraint=AspectRatio_MaintainXFOV`（2026-09-16）。カメラの FOV 90 は原作では**水平**（UE 4.24 のエンジン既定が `MaintainXFOV` で、原作のプロジェクト設定は上書きしていない）。UE 5 の既定は `MaintainYFOV` に変わっており、そのままだとこの PC の 21:9（3440x1440）で水平 107° になって何もかも小さく写る。16:9 ではどちらでも同じ。
   - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。根拠と効果は下の「露出」。
   - `[/Script/WindowsTargetPlatform.WindowsTargetSettings]`: DX12 / SM6、音声 48 kHz。
+  - `[/Script/Engine.CollisionProfile]`（2026-09-16）: 独自のオブジェクトチャンネル **`Teleport`**（`ECC_GameTraceChannel1`、既定の応答 **Overlap**）。本家の旧版 `DefaultEngine.ini` の値（最新版は既定 Ignore。テレポーテーションは旧版に従う）。テレポートの照準が病院のゾーンをこのチャンネルで探す（04 記録）。旧版のもう 1 つの `Malak`（`ECC_GameTraceChannel2`、Block）は別の章の敵のものなので写していない。チャンネルの設定はエディタの起動時に読まれる。
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
@@ -160,4 +161,5 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - 2026-09-16: 露出を原作のプロジェクト設定に合わせた（「露出」の節）。写していない 2 つの設定を「既知の制約・注意点」に足した
 - 2026-09-16: 「灯の焼き込み」の結果を、マテリアルのコンパイル失敗と灯の色の取り違え（01 記録）を直した後の値に書き換えた
 - 2026-09-16: 「灯の焼き込み」を、灯の Mobility・両面の影・原作のライトマップの解像度と UV に揃えた後の値に書き換え、床の残りの差が扉の不在による映り込みであることと、開始地点のフレーム時間と VRAM を足した
+- 2026-09-16: 当たりのチャンネル `Teleport`（旧版の既定 Overlap）を足した
 - 2026-09-16: 焼き込みを原作と同じ High 品質にし（Zone 1 は 105.7 秒、Zone 2 は 48.0 秒で初めて焼いた）、結果の表に High の列を足した。残りの差は品質によらないこと、焼き込みの警告が原作どおりであることを書いた

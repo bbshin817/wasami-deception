@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 #include "../WasamiPowerTypes.h"
 #include "../WasamiTabletWidget.h"
+#include "../WasamiTeleportAim.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -73,6 +74,27 @@ bool FWasamiSocketBounceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("between the middle keys"), UWasamiTabletWidget::EvaluateSocketBounce(0.1f), 1.19028f, 1e-3f);
 	TestEqual(TEXT("back to 1 at 0.5 s"), UWasamiTabletWidget::EvaluateSocketBounce(0.5f), 1.f, 1e-4f);
 	TestEqual(TEXT("stays at 1 after the end"), UWasamiTabletWidget::EvaluateSocketBounce(2.f), 1.f, 1e-4f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiTeleportDistanceTest, "Wasami.Powers.TeleportDistance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiTeleportDistanceTest::RunTest(const FString& Parameters)
+{
+	// Lerp(250, Max Distance, Alpha): every aim starts at Alpha 0.6, which at level 5 (1500) is the class's own 1000.
+	const float Max = FWasamiPowerTuning::ForLevel(5).TeleportDistance;
+	TestEqual(TEXT("the first distance at level 5"), AWasamiTeleportAim::DistanceFor(0.6f, Max), 1000.f, 1e-3f);
+	TestEqual(TEXT("the first distance without upgrades"), AWasamiTeleportAim::DistanceFor(0.6f, 1000.f), 700.f, 1e-3f);
+	TestEqual(TEXT("Alpha 0 is 250 cm"), AWasamiTeleportAim::DistanceFor(0.f, Max), 250.f, 1e-3f);
+	TestEqual(TEXT("Alpha 1 is the maximum"), AWasamiTeleportAim::DistanceFor(1.f, Max), Max, 1e-3f);
+	// A wheel notch (±1) moves Alpha by a tenth, 125 cm at level 5, within 0 to 1.
+	const float Up = AWasamiTeleportAim::StepAlpha(0.6f, 1.f);
+	TestEqual(TEXT("a notch up"), Up, 0.7f, 1e-5f);
+	TestEqual(TEXT("a notch up is 125 cm further"), AWasamiTeleportAim::DistanceFor(Up, Max), 1125.f, 1e-2f);
+	TestEqual(TEXT("two notches down in a frame"), AWasamiTeleportAim::StepAlpha(0.6f, -2.f), 0.4f, 1e-5f);
+	TestEqual(TEXT("clamped at 1"), AWasamiTeleportAim::StepAlpha(0.95f, 1.f), 1.f, 1e-5f);
+	TestEqual(TEXT("clamped at 0"), AWasamiTeleportAim::StepAlpha(0.05f, -1.f), 0.f, 1e-5f);
 	return true;
 }
 

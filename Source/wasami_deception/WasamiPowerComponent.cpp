@@ -12,6 +12,7 @@
 #include "WasamiPlayerCharacter.h"
 #include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
+#include "WasamiTeleportAim.h"
 
 namespace
 {
@@ -37,6 +38,11 @@ namespace
 	constexpr float ShakeFullSpeed = 870.f;
 	constexpr float ShakeMaxFrequency = 15.f;
 	constexpr float ShakeMaxPower = 0.003f;
+	// The teleport (pak_reference): Teleport_Mode_Entered's volume, the icon's drop when the aim comes out, and the aim's
+	// spawn 50 m under the player.
+	constexpr float TeleportAimVolume = 1.75f;
+	constexpr float TeleportGaugeDropSeconds = 0.05f;
+	const FVector TeleportAimSpawnOffset(0., 0., -5000.);
 }
 
 UWasamiPowerComponent::UWasamiPowerComponent()
@@ -54,6 +60,8 @@ UWasamiPowerComponent::UWasamiPowerComponent()
 	BoostShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak")));
 	BoostCameraAnim = TSoftObjectPtr<UWasamiCameraAnim>(WasamiAssets::Path(TEXT("/Game/DD/Animation/Camera/CameraAnim_SpeedBoost")));
 	BoostWidgetClass = UWasamiSpeedBoostWidget::StaticClass();
+	TeleportAimSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered")));
+	TeleportAimClass = AWasamiTeleportAim::StaticClass();
 }
 
 void UWasamiPowerComponent::BeginPlay()
@@ -66,6 +74,8 @@ void UWasamiPowerComponent::BeginPlay()
 	LoadedBoostShake = BoostShakeClass.LoadSynchronous();
 	LoadedBoostCameraAnim = BoostCameraAnim.LoadSynchronous();
 	UWasamiSpeedBoostWidget::LoadAssets(LoadedBoostWidgetAssets);
+	LoadedTeleportAimSound = TeleportAimSound.LoadSynchronous();
+	AWasamiTeleportAim::LoadAssets(LoadedTeleportAimAssets);
 
 	// UMG_TabletPowers' Check: every unlocked power, ready. The sockets keep their indices (0 and 0 on a new game, as the
 	// original's GameInstance starts them).
@@ -137,6 +147,27 @@ void UWasamiPowerComponent::CyclePower(bool bLeft)
 	Index = Index == Powers.Num() - 1 ? 0 : FMath::Clamp(Index + 1, 0, WasamiPowerCount - 1);
 }
 
+AWasamiTeleportAim* UWasamiPowerComponent::GetTeleportAim() const
+{
+	return IsValid(TeleportAim) ? TeleportAim.Get() : nullptr;
+}
+
+void UWasamiPowerComponent::ConfirmTeleport()
+{
+	if (AWasamiTeleportAim* Aim = GetTeleportAim())
+	{
+		Aim->Confirm();
+	}
+}
+
+void UWasamiPowerComponent::AdjustTeleportDistance(float AxisValue)
+{
+	if (AWasamiTeleportAim* Aim = GetTeleportAim())
+	{
+		Aim->AdjustDistance(AxisValue);
+	}
+}
+
 void UWasamiPowerComponent::UsePower(bool bLeft)
 {
 	AWasamiPlayerCharacter* Player = GetPlayer();
@@ -155,6 +186,12 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 	const FWasamiPowerSlot ToUse = Powers.IsValidIndex(Index) ? Powers[Index] : FWasamiPowerSlot();
 	if (!ToUse.bAvailable)
 	{
+		// The latest version stays silent here; the take-back of an aiming teleport by its own side is the old
+		// version's (pak_reference), which the teleport follows.
+		if (Powers.Num() > 0 && IsUsingPower(EWasamiPower::Teleport) && bLeft == bTeleportLeft)
+		{
+			ResetTeleport();
+		}
 		return;
 	}
 
@@ -166,6 +203,9 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 		{
 		case EWasamiPower::SpeedBoost:
 			UseSpeedBoost();
+			break;
+		case EWasamiPower::Teleport:
+			UseTeleport(bLeft);
 			break;
 		default:
 			break;
@@ -188,7 +228,7 @@ void UWasamiPowerComponent::ResetPowers()
 	RefillSpeedBoost();
 	Gauge(EWasamiPower::SpeedBoost).Stop();
 
-	Gauge(EWasamiPower::Teleport).Stop();
+	ResetTeleport();
 
 	// Reset Primal and Reset Vanish close a Gate that every refill opens again, and refill: they refill (and play
 	// power_refilled) whether or not the power was used. The telepathy and the telekinesis are not reset.
@@ -329,4 +369,69 @@ void UWasamiPowerComponent::RefillSpeedBoost()
 	}
 	bBoostRefillOpen = false;
 	Refill(EWasamiPower::SpeedBoost);
+}
+
+void UWasamiPowerComponent::UseTeleport(bool bLeft)
+{
+	AWasamiPlayerCharacter* Player = GetPlayer();
+	bTeleportLeft = bLeft;
+	ActivePowers.AddUnique(EWasamiPower::Teleport);
+	UGameplayStatics::PlaySound2D(this, LoadedTeleportAimSound, TeleportAimVolume);
+	SetPowerAvailable(EWasamiPower::Teleport, false);
+	Gauge(EWasamiPower::Teleport).SetDelay(TeleportGaugeDropSeconds, true);
+
+	// The aim comes out 50 m under the player, unrotated, whatever is there, with the level's Max Distance.
+	const FTransform SpawnTransform(FRotator::ZeroRotator, Player->GetActorLocation() + TeleportAimSpawnOffset);
+	AWasamiTeleportAim* Aim = GetWorld()->SpawnActorDeferred<AWasamiTeleportAim>(TeleportAimClass, SpawnTransform,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (Aim)
+	{
+		Aim->MaxDistance = GetTuning(EWasamiPower::Teleport).TeleportDistance;
+		Aim->FinishSpawning(SpawnTransform);
+		Aim->OnUsed.AddDynamic(this, &UWasamiPowerComponent::UsedTeleport);
+	}
+	TeleportAim = Aim;
+
+	// The side it was used from cannot cycle until it is over; the cooldown's Gate and refill open.
+	(bLeft ? bCanCycleLeft : bCanCycleRight) = false;
+	bTeleportGateOpen = true;
+	bTeleportRefillOpen = true;
+}
+
+void UWasamiPowerComponent::UsedTeleport()
+{
+	(bTeleportLeft ? bCanCycleLeft : bCanCycleRight) = true;
+	ActivePowers.Remove(EWasamiPower::Teleport);
+	// The same at every level (the original's 1 s is for its ballroom only).
+	const float Cooldown = FWasamiPowerTuning::TeleportCooldown;
+	Gauge(EWasamiPower::Teleport).SetDelay(Cooldown, true);
+	if (bTeleportGateOpen)
+	{
+		Delay(TeleportRefillTimer, Cooldown, &UWasamiPowerComponent::RefillTeleport);
+	}
+}
+
+void UWasamiPowerComponent::RefillTeleport()
+{
+	if (!bTeleportRefillOpen)
+	{
+		return;
+	}
+	bTeleportRefillOpen = false;
+	Refill(EWasamiPower::Teleport);
+}
+
+void UWasamiPowerComponent::ResetTeleport()
+{
+	// Close the Gate, refill at once (only after a use), destroy the aim — its move, if a click already started it, goes
+	// with it and the capsule keeps ignoring pawns and world-dynamic things, as in the original — then run UsedTeleport,
+	// whose cooldown delay the closed Gate holds back; BP_Powers stops the icon at 1 last.
+	bTeleportGateOpen = false;
+	RefillTeleport();
+	if (IsValid(TeleportAim))
+	{
+		TeleportAim->Destroy();
+	}
+	UsedTeleport();
+	Gauge(EWasamiPower::Teleport).Stop();
 }

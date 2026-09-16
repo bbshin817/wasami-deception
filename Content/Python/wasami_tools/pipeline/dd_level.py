@@ -1,6 +1,7 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
-placed meshes, the lights, the reflection captures, the fog, the sky light, the post process volumes, the player
-starts and the minimap's map plane. Every actor it places carries the tag 'dd', which a rebuild removes first."""
+placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
+fog, the sky light, the post process volumes, the player starts and the minimap's map plane. Every actor it places
+carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -34,6 +35,9 @@ MAP_PLANE_MATERIAL = {"Zone1": "/Game/DD/UI/Minimap/MM_Map_06_Zone01", "Zone2": 
 # WasamiPlayerCharacter's scene capture shows only the actors with this tag and the shards.
 MINIMAP_TAG = "dd_minimap"
 
+# The original's custom collision channels by slot, as Config/DefaultEngine.ini names them.
+CUSTOM_CHANNELS = {"ECC_GameTraceChannel1": "ECC_Teleport"}
+
 # Component properties the placement handles itself.
 SKIP_COMPONENT_PROPS = ("Mobility", "CollisionProfileName", "bVisible", "bHiddenInGame")
 
@@ -51,6 +55,24 @@ def _set_mobility(comp, props):
     value = props.get("Mobility")
     if value:
         comp.set_mobility(ue_props.enum_member(unreal.ComponentMobility, value.split("::")[-1]))
+
+
+def _channel(name):
+    """An exported channel ('ECC_WorldStatic', 'ECC_GameTraceChannel1') as the Python enum member; Python names a custom
+    channel by its name in the project's collision settings (Config/DefaultEngine.ini), not by its slot."""
+    return ue_props.enum_member(unreal.CollisionChannel, CUSTOM_CHANNELS.get(name, name))
+
+
+def _set_collision(comp, collision):
+    """A custom collision from the preprocessing (the teleport zones'): the object type, what the body takes part in
+    and each channel's response. Setting them makes the profile 'Custom', as in the original. A StaticMeshActor's
+    component takes the mesh's own collision (bUseDefaultCollision, StaticMeshActor.cpp) until that is turned off."""
+    comp.set_editor_property("use_default_collision", False)
+    comp.set_collision_object_type(_channel(collision["objectType"]))
+    comp.set_collision_enabled(ue_props.enum_member(unreal.CollisionEnabled, collision["enabled"].split("::")[-1]))
+    for channel, response in collision["responses"].items():
+        comp.set_collision_response_to_channel(_channel("ECC_" + channel),
+                                               ue_props.enum_member(unreal.CollisionResponseType, response))
 
 
 def _tag(actor, label, folder, *tags):
@@ -104,6 +126,8 @@ def _meshes(eas, stage, zone, counts, failures):
             _set_mobility(comp, props)
             if decal:
                 comp.set_collision_profile_name("NoCollision")   # the original's decals are planes, not colliders
+            elif p.get("collision"):
+                _set_collision(comp, p["collision"])
             elif props.get("CollisionProfileName"):
                 comp.set_collision_profile_name(props["CollisionProfileName"])
             if props.get("bVisible") is False:
