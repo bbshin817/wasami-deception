@@ -8,7 +8,6 @@ material settings survive):
   M_DD_Decal      M_01_Hotel_Decals — a deferred decal material, which the level puts on plane meshes (mesh decals)
   M_DD_Unlit      MM_Lit — an unlit colour times a multiplier
 """
-import math
 import os
 import struct
 import zlib
@@ -19,12 +18,6 @@ from wasami_tools.pipeline import paths, ue_props
 
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
-
-# Baked lighting: one lightmap texel per this many cm, how much of the lightmap square UE's layout fills, and the
-# range of resolutions to stay inside. 20 cm over Zone 1 and 2 comes to about 52 MB of lightmaps for the 65 meshes.
-LIGHTMAP_TEXEL_CM = 20.0
-LIGHTMAP_PACKING = 0.5
-LIGHTMAP_RESOLUTION = (32, 2048)
 
 # Bump when a master material's graph changes: ensure_masters rebuilds it in place (its instances keep it).
 MASTER_VERSION = "1"
@@ -59,6 +52,9 @@ BLEND = {
     "BLEND_Modulate": unreal.BlendMode.BLEND_MODULATE,
     "BLEND_AlphaComposite": getattr(unreal.BlendMode, "BLEND_ALPHA_COMPOSITE", unreal.BlendMode.BLEND_TRANSLUCENT),
 }
+# Compressions UE keeps linear whatever SRGB says (UTexture::PostEditChangeProperty, Texture.cpp:772).
+NO_SRGB_COMPRESSION = ("TC_Alpha", "TC_Normalmap", "TC_Masks", "TC_HDR", "TC_HDR_F32", "TC_HDR_Compressed",
+                       "TC_HalfFloat", "TC_SingleFloat")
 TRANSLUCENT_BLENDS = ("BLEND_Translucent", "BLEND_Additive", "BLEND_Modulate", "BLEND_AlphaComposite")
 
 
@@ -316,33 +312,24 @@ def import_mesh(entry, nanite):
     return mesh
 
 
-def lightmap_resolution(area_m2):
-    """The lightmap resolution for a mesh of this surface area, as a power of two within LIGHTMAP_RESOLUTION.
-
-    The original's own resolutions are not in the export (the pak has no MapBuildDataRegistry), so they are derived
-    from a texel size instead: LIGHTMAP_TEXEL_CM per texel, with LIGHTMAP_PACKING for how much of the square UE's
-    layout actually fills. Zone 1's corridors (hospital_zone_01_tiles_tile_01, 21,271 m²) land on 1024."""
-    texels = max(area_m2, 0.0) * 10000.0 / (LIGHTMAP_TEXEL_CM * LIGHTMAP_TEXEL_CM) / LIGHTMAP_PACKING
-    side = 2 ** round(math.log2(max(math.sqrt(texels), 1.0)))
-    return int(min(max(side, LIGHTMAP_RESOLUTION[0]), LIGHTMAP_RESOLUTION[1]))
-
-
 def setup_lightmap(mesh, entry):
-    """Points the mesh at its lightmap UV and gives it a resolution, for the baked lighting the original uses.
+    """Gives the mesh the original's lightmap resolution and UV channel, for the baked lighting the original uses.
+    Returns whether anything changed (changing the build settings rebuilds the mesh).
 
-    Most of the original's meshes carry their own unwrap in UV1. The merged stage meshes (Zone 1 and 2's tiles, Zone
-    2's miniboss room) do not — their TEXCOORD_1 is (0,0) everywhere — so UE lays one out for those at import."""
-    res = lightmap_resolution(entry.get("areaM2") or 0.0)
-    if not entry.get("lightmapUvUsed"):
-        sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
-        build = sub.get_lod_build_settings(mesh, 0)
-        build.set_editor_property("generate_lightmap_u_vs", True)
-        build.set_editor_property("src_lightmap_index", 0)
-        build.set_editor_property("dst_lightmap_index", 1)
-        build.set_editor_property("min_lightmap_resolution", res)
+    No lightmap UV is laid out by UE, even where the original has none: the merged stage meshes (Zone 1 and 2's tiles,
+    Zone 2's miniboss room) carry a TEXCOORD_1 that is (0,0) everywhere, so the original baked them to a single texel."""
+    changed = False
+    sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    build = sub.get_lod_build_settings(mesh, 0)
+    if build.get_editor_property("generate_lightmap_u_vs"):
+        build.set_editor_property("generate_lightmap_u_vs", False)
         sub.set_lod_build_settings(mesh, 0, build)
-    mesh.set_editor_property("light_map_resolution", res)
-    mesh.set_editor_property("light_map_coordinate_index", 1)
+        changed = True
+    for prop, value in (("light_map_resolution", entry["lightmapResolution"]), ("light_map_coordinate_index", entry["lightmapUv"])):
+        if mesh.get_editor_property(prop) != value:
+            mesh.set_editor_property(prop, value)
+            changed = True
+    return changed
 
 
 def translucent_meshes(stage):
@@ -360,11 +347,14 @@ def translucent_meshes(stage):
 
 # ------------------------------------------------------------------------------------------------ textures
 def apply_texture_settings(tex, entry):
-    """Sets the compression, sRGB and LOD group the original's texture had. Returns whether anything changed."""
+    """Sets the compression, sRGB and LOD group the original's texture had. Returns whether anything changed.
+
+    sRGB stays off where UE turns it off anyway (Texture.cpp: alpha, normal map, masks and the HDR compressions) — the
+    export keeps it on for two HDR skies, and asking for it again would count them as changed on every refresh."""
+    compression = entry.get("compression") or "TC_Default"
     want = {
-        "compression_settings": (ue_props.enum_member(unreal.TextureCompressionSettings, entry["compression"])
-                                 if entry.get("compression") else unreal.TextureCompressionSettings.TC_DEFAULT),
-        "srgb": bool(entry.get("srgb")),
+        "compression_settings": ue_props.enum_member(unreal.TextureCompressionSettings, compression),
+        "srgb": bool(entry.get("srgb")) and compression not in NO_SRGB_COMPRESSION,
         "lod_group": (ue_props.enum_member(unreal.TextureGroup, entry["lodGroup"])
                       if entry.get("lodGroup") else unreal.TextureGroup.TEXTUREGROUP_WORLD),
     }
@@ -485,7 +475,7 @@ def import_batch(max_items):
 
 def refresh_settings():
     """Brings the already imported assets up to this module: rebuilds a master material whose graph version is old,
-    re-applies each texture's settings, and recompiles every material instance (an instance with static switches keeps
+    re-applies each texture's settings and each mesh's lightmap settings, and recompiles every material instance (an instance with static switches keeps
     a failed shader map from an older master until it is updated)."""
     stage = paths.load_dd_stage()
     rebuilt = 0
@@ -500,6 +490,14 @@ def refresh_settings():
             tex = unreal.load_asset(t["asset"]) if EAL.does_asset_exist(t["asset"]) else None
             if tex is not None and apply_texture_settings(tex, t):
                 changed += 1
+    lightmaps = 0
+    meshes = [m for m in stage["meshes"].values() if not m["engine"] and EAL.does_asset_exist(m["asset"])]
+    with unreal.ScopedSlowTask(len(meshes), "Updating the stage's lightmap settings") as task:
+        for m in meshes:
+            task.enter_progress_frame(1, m["asset"])
+            mesh = unreal.load_asset(m["asset"])
+            if isinstance(mesh, unreal.StaticMesh) and setup_lightmap(mesh, m):
+                lightmaps += 1
     updated = 0
     with unreal.ScopedSlowTask(len(stage["materials"]), "Recompiling the stage's material instances") as task:
         for m in stage["materials"].values():
@@ -510,4 +508,4 @@ def refresh_settings():
                 updated += 1
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     EAL.save_directory(paths.PIPELINE_ROOT, only_if_is_dirty=True, recursive=True)
-    return {"masters_rebuilt": rebuilt, "textures_updated": changed, "materials_updated": updated}
+    return {"masters_rebuilt": rebuilt, "textures_updated": changed, "lightmaps_updated": lightmaps, "materials_updated": updated}
