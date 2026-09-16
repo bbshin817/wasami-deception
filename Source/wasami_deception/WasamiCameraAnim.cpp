@@ -8,6 +8,10 @@ namespace
 {
 	// The tracks' property paths start with this; what follows is a member of FPostProcessSettings.
 	const TCHAR* const PostProcessPrefix = TEXT("CameraComponent.PostProcessSettings.");
+	const TCHAR* const FieldOfViewProperty = TEXT("CameraComponent.FieldOfView");
+	// UE4's CameraAnimInst kept the animated FOV within these.
+	constexpr float MinFOV = 5.f;
+	constexpr float MaxFOV = 170.f;
 
 	/** The FPostProcessSettings member a track animates, or null for a track that is not a post-process one. */
 	FProperty* FindPostProcessProperty(const FString& PropertyName)
@@ -40,6 +44,11 @@ void UWasamiCameraAnim::ApplyPostProcessTracks(float Time, FPostProcessSettings&
 			*Value = Track.Curve.Eval(Time, *Value);
 		}
 	}
+}
+
+const FWasamiCameraAnimFloatTrack* UWasamiCameraAnim::FindFieldOfViewTrack() const
+{
+	return FloatTracks.FindByPredicate([](const FWasamiCameraAnimFloatTrack& Track) { return Track.PropertyName == FieldOfViewProperty; });
 }
 
 void FWasamiCameraAnimPlayback::Start(float InAnimLength, float InRate, float InScale, float InBlendInTime, float InBlendOutTime, bool bInLoop, float Duration)
@@ -160,9 +169,9 @@ int32 UWasamiCameraAnimModifier::Play(UWasamiCameraAnim* Anim, float Rate, float
 	}
 	for (const FWasamiCameraAnimFloatTrack& Track : Anim->FloatTracks)
 	{
-		if (!FindPostProcessProperty(Track.PropertyName))
+		if (Track.PropertyName != FieldOfViewProperty && !FindPostProcessProperty(Track.PropertyName))
 		{
-			UE_LOG(LogWasamiCameraAnim, Warning, TEXT("%s: the track of %s is not played (only post-process tracks are)."), *Anim->GetName(), *Track.PropertyName);
+			UE_LOG(LogWasamiCameraAnim, Warning, TEXT("%s: the track of %s is not played (only post-process and field of view tracks are)."), *Anim->GetName(), *Track.PropertyName);
 		}
 	}
 
@@ -170,6 +179,10 @@ int32 UWasamiCameraAnimModifier::Play(UWasamiCameraAnim* Anim, float Rate, float
 	Instance.Anim = Anim;
 	Instance.Handle = NextHandle++;
 	Instance.Playback.Start(Anim->AnimLength, Rate, Scale, BlendInTime, BlendOutTime, bLoop, Duration);
+	if (const FWasamiCameraAnimFloatTrack* FieldOfView = Anim->FindFieldOfViewTrack())
+	{
+		Instance.InitialFOV = FieldOfView->Curve.Eval(Instance.Playback.CurTime, Anim->BaseFOV);
+	}
 	return Instance.Handle;
 }
 
@@ -190,6 +203,11 @@ bool UWasamiCameraAnimModifier::IsPlaying(int32 Handle) const
 	return Instances.ContainsByPredicate([Handle](const FWasamiCameraAnimInstance& Each) { return Each.Handle == Handle && !Each.Playback.bFinished; });
 }
 
+float UWasamiCameraAnimModifier::AddFieldOfView(float ViewFOV, float TrackFOV, float InitialFOV, float Weight)
+{
+	return FMath::Clamp(ViewFOV + (TrackFOV - InitialFOV) * Weight, MinFOV, MaxFOV);
+}
+
 bool UWasamiCameraAnimModifier::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV)
 {
 	Super::ModifyCamera(DeltaTime, InOutPOV);
@@ -197,14 +215,22 @@ bool UWasamiCameraAnimModifier::ModifyCamera(float DeltaTime, FMinimalViewInfo& 
 	{
 		FWasamiCameraAnimPlayback& Playback = Instance.Playback;
 		Playback.Advance(DeltaTime);
-		const float Weight = Instance.Anim ? Instance.Anim->BasePostProcessBlendWeight * Playback.Weight : 0.f;
-		if (Playback.bFinished || Weight <= 0.f || !CameraOwner)
+		const UWasamiCameraAnim* Anim = Instance.Anim;
+		if (Playback.bFinished || Playback.Weight <= 0.f || !Anim)
 		{
 			continue;
 		}
-		FPostProcessSettings Settings = Instance.Anim->BasePostProcessSettings;
-		Instance.Anim->ApplyPostProcessTracks(Playback.CurTime, Settings);
-		CameraOwner->AddCachedPPBlend(Settings, Weight, VTBlendOrder_Base);
+		if (const FWasamiCameraAnimFloatTrack* FieldOfView = Anim->FindFieldOfViewTrack())
+		{
+			InOutPOV.FOV = AddFieldOfView(InOutPOV.FOV, FieldOfView->Curve.Eval(Playback.CurTime, Instance.InitialFOV), Instance.InitialFOV, Playback.Weight);
+		}
+		const float PostProcessWeight = Anim->BasePostProcessBlendWeight * Playback.Weight;
+		if (PostProcessWeight > 0.f && CameraOwner)
+		{
+			FPostProcessSettings Settings = Anim->BasePostProcessSettings;
+			Anim->ApplyPostProcessTracks(Playback.CurTime, Settings);
+			CameraOwner->AddCachedPPBlend(Settings, PostProcessWeight, VTBlendOrder_Base);
+		}
 	}
 	Instances.RemoveAll([](const FWasamiCameraAnimInstance& Each) { return Each.Playback.bFinished; });
 	return false;

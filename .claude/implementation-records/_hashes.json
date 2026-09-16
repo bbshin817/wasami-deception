@@ -2,7 +2,7 @@
   "00-overview.md": {
     "wasami_deception.uproject": "0f6eeeb069413c61c7e744c3d5df63f67944e65d",
     ".mcp.json": "d2e3ee5c9642aabc67459c39080c1497ba12eaec",
-    "Config/DefaultEngine.ini": "451fe9a18943ce913aa2cf03ef50ced95b25b29c",
+    "Config/DefaultEngine.ini": "44f2cc02921a69646ce53a150a3250fba508dc74",
     "Config/DefaultGame.ini": "5296cbc0324f0571ac878ec809d11727ddd262a8",
     "Config/DefaultInput.ini": "a919105de6016a7a1094346d603c99a3274d5083",
     "Config/DefaultEditor.ini": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
@@ -19,8 +19,8 @@
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "0252f069d3c45d94f410928fe292e577c8c2b3c5",
     "Tools/console_session.py": "79504ece5845d94fa038c18ab4f20d73945363fa",
-    "Tools/desktop.py": "ebbfb9184e9b70dec18e1319c1c55edb6526c3f1",
-    "Tools/desktop_agent.py": "29eab4d70d33ec4012a41d9613aeb32e70d329a4",
+    "Tools/desktop.py": "33078517ba1abff44fa5a068f44b9799b2546b2a",
+    "Tools/desktop_agent.py": "133a80e79b8eb1194be6a8b065d5895fffeb6020",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
@@ -34,7 +34,7 @@
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "c49867504611d05c4a85b11a48d937bdeb01acbb",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "0802fde699f1386918ceb3a18e52d45af618c0bb",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "c4ad6486b3e11293c30a85c427184e2535763b62",
-    "Content/Python/wasami_tools/pipeline/dd_powers.py": "9d2d4b8b4a58e8eb0f64d02930c74e5061b26a59"
+    "Content/Python/wasami_tools/pipeline/dd_powers.py": "e1e5b92f46d3752b0b58f6c37accb9252d54bb1e"
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "a1271ddcb0d06113947b55c45a483ae86d3fccb9",
@@ -54,15 +54,15 @@
     "Source/wasami_deception/WasamiPowerComponent.cpp": "9b6b6c4796f535d967f383be205101ec55a371b4",
     "Source/wasami_deception/WasamiEnemyInterface.h": "2f02527241393d4ff49482cd9f903b1e6b5d6a2a",
     "Source/wasami_deception/WasamiTelekinesisInterface.h": "760d20e7f68dde290f4a1f9565120894396f6912",
-    "Source/wasami_deception/WasamiCameraAnim.h": "2bf9a3a4e15313252e9da636ed9283d15904b243",
-    "Source/wasami_deception/WasamiCameraAnim.cpp": "8c06515f1575c14ad311b0e9003e03e7f797da0a",
+    "Source/wasami_deception/WasamiCameraAnim.h": "877a9f12d76ea992142b0023885f67b43593e898",
+    "Source/wasami_deception/WasamiCameraAnim.cpp": "ff824f8c7293785859045ea82fa690dccba05d81",
     "Source/wasami_deception/WasamiChameleonComponent.h": "1f39a955230539fe5fd196dfabd583289db76159",
     "Source/wasami_deception/WasamiChameleonComponent.cpp": "3aaa33b231c8903acfde95c6eb04ae29010b39d6",
     "Source/wasami_deception/WasamiSpeedBoostWidget.h": "95cfa89ba3d7490ce16a01046b5947acca5edcb3",
     "Source/wasami_deception/WasamiSpeedBoostWidget.cpp": "036a0b3f800d620ba2aefc5bed0f578c6fdb20b9",
-    "Source/wasami_deception/WasamiTeleportAim.h": "1499d5daa4f46bd357b9fd0ec1d3aa3825d6763b",
-    "Source/wasami_deception/WasamiTeleportAim.cpp": "9891d86919d2e87a583a194962164aa3b6dbd341",
+    "Source/wasami_deception/WasamiTeleportAim.h": "d058451bc61720a597e2f1f68e7f9de8b63c47a8",
+    "Source/wasami_deception/WasamiTeleportAim.cpp": "344f36aa437a6a04931dcd43afd217d9d9418e9d",
     "Source/wasami_deception/Tests/WasamiPowerTests.cpp": "a9d76d7dbba75fab626f20218baf01342c7b09a7",
-    "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "e5117ede055f44f4f27944910e4a4f13782d3ce9"
+    "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "956a79e018c51e07c01b0937d1cf1788c9d22f86"
   }
 }

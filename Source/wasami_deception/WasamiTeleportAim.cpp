@@ -13,6 +13,7 @@
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiCameraAnim.h"
 #include "WasamiPlayerCharacter.h"
 
 namespace
@@ -33,6 +34,13 @@ namespace
 	constexpr float AimingLoopVolume = 0.6499999761581421f;
 	constexpr float CommittedVolume = 1.f;
 	constexpr float CommittedShakeScale = 1.f;
+	// PlayCameraAnim(CameraAnim_Teleport, Rate, Scale, BlendInTime, BlendOutTime, bLoop, bRandomStartTime false,
+	// Duration) on the click.
+	constexpr float ConfirmAnimRate = 1.f;
+	constexpr float ConfirmAnimScale = 1.f;
+	constexpr float ConfirmAnimBlendTime = 0.f;
+	constexpr bool bConfirmAnimLoop = false;
+	constexpr float ConfirmAnimDuration = 0.f;
 	// The decal: DecalSize (half extents, X along the projection) and its transform on the arm.
 	const FVector DecalSize(3.f, 100.f, 100.f);
 	const FRotator DecalRotation(-90.f, 0.f, 5.4641506721964106e-05f);
@@ -66,6 +74,7 @@ AWasamiTeleportAim::AWasamiTeleportAim()
 	AimingLoopSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227")));
 	CommittedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed")));
 	CommittedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak")));
+	ConfirmCameraAnim = TSoftObjectPtr<UWasamiCameraAnim>(WasamiAssets::Path(TEXT("/Game/DD/Animation/Camera/CameraAnim_Teleport")));
 }
 
 void AWasamiTeleportAim::LoadAssets(TArray<TObjectPtr<UObject>>& Out)
@@ -74,6 +83,7 @@ void AWasamiTeleportAim::LoadAssets(TArray<TObjectPtr<UObject>>& Out)
 	Out.Add(Defaults->AimingLoopSound.LoadSynchronous());
 	Out.Add(Defaults->CommittedSound.LoadSynchronous());
 	Out.Add(Defaults->CommittedShakeClass.LoadSynchronous());
+	Out.Add(Defaults->ConfirmCameraAnim.LoadSynchronous());
 }
 
 float AWasamiTeleportAim::DistanceFor(float InAlpha, float InMaxDistance)
@@ -91,6 +101,7 @@ void AWasamiTeleportAim::BeginPlay()
 	Super::BeginPlay();
 	LoadedCommittedSound = CommittedSound.LoadSynchronous();
 	LoadedCommittedShake = CommittedShakeClass.LoadSynchronous();
+	LoadedConfirmCameraAnim = ConfirmCameraAnim.LoadSynchronous();
 	Audio->SetSound(AimingLoopSound.LoadSynchronous());
 	Audio->Play();
 
@@ -154,6 +165,12 @@ void AWasamiTeleportAim::Confirm()
 		return;
 	}
 	bConfirmed = true;
+	// On the first player's camera; a take-back or the aim's end leaves it playing.
+	if (UWasamiCameraAnimModifier* Anims = UWasamiCameraAnimModifier::Get(UGameplayStatics::GetPlayerCameraManager(this, 0)))
+	{
+		Anims->Play(LoadedConfirmCameraAnim, ConfirmAnimRate, ConfirmAnimScale, ConfirmAnimBlendTime, ConfirmAnimBlendTime,
+			bConfirmAnimLoop, ConfirmAnimDuration);
+	}
 	// While the player moves, its capsule passes through world-dynamic things and pawns.
 	if (const AWasamiPlayerCharacter* Player = GetPlayer())
 	{

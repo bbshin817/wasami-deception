@@ -16,6 +16,8 @@ import ctypes
 import ctypes.wintypes as wt
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
 
@@ -252,6 +254,39 @@ def do_wait(req):
     return {"waited_ms": req.get("ms", 100)}
 
 
+RECORDINGS = {}
+
+
+def do_record(req):
+    """Starts recording the screen to a video in the background (a single screenshot takes seconds, which is too slow
+    for effects that last a fraction of a second). ffmpeg's Desktop Duplication grabber hands GPU frames straight to
+    NVENC, so the game being watched keeps its frame rate. Returns at once; input commands can follow while it runs."""
+    ffmpeg = shutil.which("ffmpeg") or r"C:\ffmpeg\bin\ffmpeg.exe"
+    seconds, fps = float(req.get("seconds", 10)), int(req.get("fps", 60))
+    name = req.get("name") or ("rec-%s.mkv" % time.strftime("%H%M%S"))
+    path = os.path.join(SHOT_DIR, name)
+    cmd = [ffmpeg, "-hide_banner", "-loglevel", "warning", "-y", "-f", "lavfi", "-i",
+           "ddagrab=output_idx=0:draw_mouse=0:framerate=%d" % fps, "-t", "%.3f" % seconds,
+           "-c:v", "h264_nvenc", "-preset", "p1", "-rc", "constqp", "-qp", str(int(req.get("qp", 20))), path]
+    errors = open(path + ".log", "w", encoding="utf-8")
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=errors, stderr=errors,
+                            creationflags=subprocess.CREATE_NO_WINDOW)
+    RECORDINGS[proc.pid] = (proc, errors)
+    return {"path": path, "pid": proc.pid, "seconds": seconds, "fps": fps, "started": time.time()}
+
+
+def do_record_status(req):
+    """Reports the recordings started by this agent: still running, or the exit code."""
+    result = []
+    for pid, (proc, errors) in list(RECORDINGS.items()):
+        code = proc.poll()
+        if code is not None:
+            errors.close()
+            del RECORDINGS[pid]
+        result.append({"pid": pid, "running": code is None, "exit_code": code, "path": proc.args[-1]})
+    return {"recordings": result}
+
+
 def do_ping(req):
     ours = ctypes.c_ulong()
     kernel32.ProcessIdToSessionId(ctypes.c_ulong(os.getpid()), ctypes.byref(ours))
@@ -260,7 +295,8 @@ def do_ping(req):
 
 
 HANDLERS = {"ping": do_ping, "shot": do_shot, "click": do_click, "key": do_key, "combo": do_combo, "hold": do_hold,
-            "look": do_look, "type": do_type, "scroll": do_scroll, "wait": do_wait}
+            "look": do_look, "type": do_type, "scroll": do_scroll, "wait": do_wait, "record": do_record,
+            "record_status": do_record_status}
 
 
 def log(line):

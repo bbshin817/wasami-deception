@@ -14,7 +14,7 @@
 3. **照準中の Q（確定）**: 「使用中の一覧に Teleport がある」かつ「押した側 == 使った側」なら `BP_Powers.Reset Teleport` → プレイヤーの `Reset Teleport`（`power_refilled` 0.5・使用可能に戻す・アクタ破棄）→ 枠を 1.0 に。クールダウンは付かない。それ以外の使えない Q は `power_not_ready`（0.35）。
 4. **新しい発見（WebGL 版の記録に無い）**: (a) 使用可能なパワーを発動すると 0.5 s は**どちらの枠のパワーも**発動できない共有の DoOnce がある（プレイヤー @9729〜・@14412）。(b) 確定の DoOnce は `Location` の代入の**後ろ**にあるので、0.12 s の間の 2 回目のクリックは移動先だけを更新する。(c) 床を 0.5 s 以内に捉えなかった場合、以後に捉えた床へデカールはスポーン位置（50 m 下）からラグで追ってくる。(d) クリックは入力を消費しないので、プレイヤーの左クリック（手持ちアイテムの Use / カメラ前方 200 cm の InteractWithObject）も同時に走る。
 5. **照準の輪の見た目（確定、WebGL 版の記録の訂正）**: パーティクルコンポーネントのワールド変換は「回転 ≒ 恒等（world 軸）、スケール (0.66528, 0.2, 0.2)、デカール原点（当たった点）の **13.75 cm 上**」。斬撃のスプライトは `PSA_Square` なので**正方形**（一辺 300 × 0.665 = 199.6 cm、寿命で 1→2 倍）で、WebGL 版の「楕円 300 × (0.665, 0.2)」ではない（UE の `GetParticleSize` は PSA_Square で Size.Y = Size.X）。火花の出現範囲・速さはスケールを受ける（±113 × ±34 cm、上向き 60〜100 cm/s）。
-6. **CameraAnim の FOV（要注意・未確定点）**: アセットの `BaseFOV` は 137.24 だが、UE4 の CameraAnim は「time 0.0 からの差分だけを加算する」（公式ドキュメント、検索結果の要約）ので、実効は `POV.FOV + (key(t) − 90)` と判断する（WebGL 版の実測とも合う）。UE 4.21 のソースは手元に無く、`InitialFOV` の代入元は未確認。
+6. **CameraAnim の FOV（2026-09-16 に旧版の実機で確定）**: アセットの `BaseFOV` は 137.24 だが、実効は `POV.FOV + (key(t) − key(0)) × 重み`（key(0) = 90）。旧版の 60 fps の収録で、クリックの直後に広がり、終わりで跳ばないことを確かめた（§5.1）。UE 4.21 のソースは手元に無く、`InitialFOV` の代入元は未確認のまま。
 7. **UE5.8（確定）**: `UCameraAnim`/`UCameraAnimInst`/`PlayCameraAnim` は無い（5.8 のソースに無い）。`ULegacyCameraShake`（EngineCameras プラグイン、既定で有効。`MatineeCameraShake.h` は 5.5 で非推奨の別名）と Cascade（`UParticleSystem`、Cascade エディタ、`CascadeToNiagaraConverter`）は残っている。`FInterpCurve::Eval` の三次エルミートは UE4 と同じ式。SpringArm のラグの実装も同じで、`SetWorldLocation(teleport=true)` でラグはリセットされない。デカールの `DecalBlendMode` は UE5 で廃止（出力ピンから推定）。
 
 ---
@@ -349,7 +349,8 @@ Player.Reset Teleport (@31827) の実行順:
 **UE4 での適用のされ方（要注意）**
 - 位置・回転・FOV はプレイヤーのカメラへの加算。PostProcess は `AnimCamera.PostProcessSettings` を重み `PostProcessBlendWeight × ブレンド重み`（= 1）で**上書き**合成（`bOverride_*` の項目だけ。レベルのボリュームと同じ補間の「上書き」）。4.21 では UE4 の `LocalPlayer::CalcSceneView` がカメラアニメの PP を**カメラコンポーネントの PP の後に**適用する（推測: 4.21 のソースは手元に無い。UE5.8 の `LocalPlayer.cpp` 948〜981 行は「Base（カメラの下）/ Override（カメラの上）」の 2 段で、`r.CameraAnimation.LegacyPostProcessBlending`（既定 true）はカメラアニメの PP を Base 側に置く）。
 - 病院の PP ボリューム（Zone 2 の `PostProcessVolume_1`、`06_Hospital` の `PostProcessVolume_1`）は AutoExposureBias・SceneColorTint・WhiteTemp・FilmWhitePoint を上書きしていない（確定）。本作の `Config/DefaultEngine.ini` も自動露出オフ・Bias 0。したがって上書きでも加算でも結果は同じ（EV は `0 + トラック値`）。
-- **FOV の基準（未確定）**: `bRelativeToInitialFOV` が既定（true）なら `POV.FOV += (AnimCam.FieldOfView − InitialFOV) × Scale` で 5〜170 に収める（Web 検索の要約で `CameraAnimInst.cpp` の式として出てくる。行は未確認）。`InitialFOV` の出どころは確認できなかったが、UE4.27 の公式ドキュメント「CameraAnims」は「キーは relative to initial で、アニメの time 0.0 からの差分だけが適用される」と説明している（検索結果の要約。ページ本体は 403 で取得できず）。→ **採用案: FOV = プレイヤーの FOV + (key(t) − 90)**。WebGL 版の収録の実測（広がる → 白 → 狭まる → 戻る）とも合う。もし `InitialFOV = BaseFOV (137.24)` なら t=0 で −47.2°（歩きの 90° が 42.8° に）と大きく縮むはずで、これは手元の旧版（`Launch-Classic-Ch3.cmd`）の 60fps 収録で一目で判別できる（観察は要確認）。
+- **FOV の基準（未確定）**: `bRelativeToInitialFOV` が既定（true）なら `POV.FOV += (AnimCam.FieldOfView − InitialFOV) × Scale` で 5〜170 に収める（Web 検索の要約で `CameraAnimInst.cpp` の式として出てくる。行は未確認）。`InitialFOV` の出どころは確認できなかったが、UE4.27 の公式ドキュメント「CameraAnims」は「キーは relative to initial で、アニメの time 0.0 からの差分だけが適用される」と説明している（検索結果の要約。ページ本体は 403 で取得できず）。→ **採用案: FOV = プレイヤーの FOV + (key(t) − 90)**。WebGL 版の収録の実測（広がる → 白 → 狭まる → 戻る）とも合う。もし `InitialFOV = BaseFOV (137.24)` なら t=0 で −47.2°（歩きの 90° が 42.8° に）と大きく縮むはずで、これは手元の旧版（`Launch-Classic-Ch3.cmd`）の 60fps 収録で一目で判別できる。
+- **旧版の実機で観察（2026-09-16）**: Deadly Decadence の入口の噴水でテレポートを 2 回、60 fps で収録した（`observations/classic/tp-01.mkv`・`tp-02.mkv`）。クリックの直後に画面が広がり（輪と池の縁が小さくなる）、閃光（1 フレームだけ全面 (234, 245, 244)）の後の t≈0.24〜0.40 のフレームは、アニメの後のフレームに対して拡大率 1.26 → 1.30 → 1.14 → 1.06（画角 ≈ 103° → 93°）、アニメの後は 0.98 のまま跳ばない。`BaseFOV` 基準なら t≈0.28〜0.40 は 43〜51°（拡大率 0.39〜0.48）で、終わりで 90° へ跳ぶはず。→ **基準は t=0 のキー（90）で確定**（このアセットでは key(0) = 90 = カメラの既定 FOV なので、どちらと読んでも同じ値）。
 - 参考: 最新版の `wtfUE4` は `BaseFOV`・`BasePostProcessBlendWeight` が書き出しに無い（クラス既定）。推測: 既定の BasePostProcessBlendWeight が 0 だと SceneColorTint トラックが効かないので、最新版は赤を別の PostProcess コンポーネントで出すようにした可能性がある（名前の "wtf" も含め推測）。
 
 ### 5.2 `BP_CameraShake_Streak`（`pak_reference/_assets/DDeception/Content/UI/Menu/Streaks/BP_CameraShake_Streak.json`、確定。両版で同じ）
@@ -460,7 +461,8 @@ Player.Reset Teleport (@31827) の実行順:
    - PP は `r.CameraAnimation.LegacyPostProcessBlending`（既定 true）で Base 側（カメラの PP の下）に入る。
    → **推奨（推測）**: C++ の `UCameraModifier` を 1 つ作り、`FInterpCurveFloat`／`FInterpCurveLinearColor` に原作のキー（時刻・値・Arrive/Leave 接線・`CIM_CurveAutoClamped`）をそのまま入れて `Eval` し、FOV に `(key − 90)` を足して 5〜170 に収め、`CameraOwner->AddCachedPPBlend(PP, 1.0, VTBlendOrder_Override)` で `bOverride_AutoExposureBias`・`bOverride_SceneColorTint`（と中立値の WhiteTemp/WhiteTint/FilmWhitePoint）を渡す。時間は `dt × Rate(1.0)` で進め、0.5 s で終わる（ブレンドなし）。
 2. **カメラシェイク**: `ULegacyCameraShake`（`Plugins/Cameras/EngineCameras`、`EnabledByDefault` true、依存に TemplateSequence）。C++ から型を使うなら Build.cs に `EngineCameras` を足す。再生は `APlayerCameraManager::StartCameraShake(Class, 1.0, ECameraShakePlaySpace::CameraLocal)`。`MatineeCameraShake.h` は 5.5 で非推奨の別名。
-3. **露出 +100 EV（要検証、推測）**: UE5.8 のプレエクスポージャは前フレームの目の順応値の読み戻し（`GetLastEyeAdaptationExposure`）を使う（`PostProcessEyeAdaptation.cpp` 1504〜1580 行）。自動露出オフでも方式は Histogram のままで固定露出扱いにならないため、2^100 の露出が数フレーム遅れてプレエクスポージャに入り、シーンカラーの float が溢れる／TSR・TAA の履歴に inf が残る恐れがある。露出補正そのものは順応の平滑化の**後**に掛かる（`PostProcessEyeAdaptation.usf` 179〜193 行）ので、1 フレームの白は再現できる。PIE で確認し、問題があれば `r.EyeAdaptation.PreExposureOverride` などの対処をユーザーと相談。
+3. **露出 +100 EV（2026-09-16 に PIE で確認、問題あり → 対処済み）**: UE5.8 のプレエクスポージャは前フレームの目の順応値の読み戻し（`GetLastEyeAdaptationExposure`）を使う（`PostProcessEyeAdaptation.cpp` 1504〜1580 行）。自動露出オフでも方式は Histogram のままで固定露出扱いにならないため、2^100 の露出が数フレーム遅れてプレエクスポージャに入り、シーンカラーの float が溢れる／TSR・TAA の履歴に inf が残る恐れがある。露出補正そのものは順応の平滑化の**後**に掛かる（`PostProcessEyeAdaptation.usf` 179〜193 行）ので、1 フレームの白は再現できる。PIE で確認し、問題があれば `r.EyeAdaptation.PreExposureOverride` などの対処をユーザーと相談。
+   → **結果**: PIE の 60 fps の収録で、白の 1〜2 フレーム後に**真っ黒なフレームが 1 枚**出た（`FViewInfo::UpdatePreExposure` が Histogram の方式では読み戻しの露出をプリ露出に使うため、2^100 でシーンカラーが溢れる）。原作は `r.UsePreExposure=False` なのでこの黒は出ない。ユーザーの決定で `r.EyeAdaptation.PreExposureOverride=1` を `Config/DefaultEngine.ini` に入れ、黒が消えたこと・ふだんの絵が変わらないことを確かめた（実装記録 00・04）。
 4. **Cascade**: `UParticleSystem`（`Engine/Classes/Particles`）、全モジュール、Cascade エディタ（`Source/Editor/Cascade`）、`UParticleSystemFactoryNew`、`Plugins/FX/CascadeToNiagaraConverter` がある。`P_ky_cutter2` は Cascade のまま原作の値で組める。本作の方針（UE に同じ仕組みがあれば値を写す）なら Cascade が素直。
 5. **デカール**: UE5 で `DecalBlendMode` は廃止（`FUE5MainStreamObjectVersion::RemoveDecalBlendMode`、`Material.cpp` 3114 行）。Deferred Decal ドメイン・Translucent で Emissive だけをつなげば DBM_Emissive 相当。`DecalSize` は半径（`CalcBounds` が `FBoxSphereBounds(0, DecalSize, …)`）で UE4 と同じ。
 6. **SpringArm**: 5.8 でも既定値・ラグの式・`GetSocketTransform` は同じ（§2.2）。`SetWorldLocation(..., ETeleportType::TeleportPhysics)` でもラグはリセットされない。
@@ -497,10 +499,10 @@ Player.Reset Teleport (@31827) の実行順:
 
 ## 9. 未解決・観察が要るもの
 
-1. CameraAnim の FOV の基準（90 か BaseFOV 137.24 か）。§5.1。旧版の 60fps 収録の最初の数フレームで判別できる（本家の起動はユーザーの確認が要る）。
+1. ~~CameraAnim の FOV の基準（90 か BaseFOV 137.24 か）~~ → 2026-09-16 に旧版の実機で 90（t=0 のキー）と確定。§5.1。
 2. `M_Decal_Teleport` の色・グラデーションの半径と鋭さ、`M_ky_slash01_4x4`・`PPP_Radial_Gradient_Doffed` のグラフ（定数は cook で消えている）。
 3. UE4.21 のカメラアニメの PP がカメラの PP の上か下か（本作のカメラは PP を上書きしていないので結果は同じはず）。
-4. UE5.8 で +100 EV のプレエクスポージャが問題を起こさないか（§7-3）。
+4. ~~UE5.8 で +100 EV のプレエクスポージャが問題を起こさないか~~ → 起こした（黒いフレーム）。`r.EyeAdaptation.PreExposureOverride=1` で対処（§7-3）。
 5. Zone 1 の `BP_Power_Teleport_Zone_2.Cube` と救急車の Cube がアーキタイプの Z スケール 0.05 を継ぐこと（書き出しの world scale とは食い違う。本作のパイプラインがアーキタイプの値を補っているかを確認）。
 
 ## 参照したファイル（主なもの）

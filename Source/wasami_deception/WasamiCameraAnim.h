@@ -39,7 +39,7 @@ struct FWasamiCameraAnimColorTrack
 /**
  * One of Dark Deception's CameraAnims (UE4's UCameraAnim, which UE 5 no longer has), copied by the pipeline from the
  * export: its length, the post-process settings its camera starts from and their weight, and the tracks that animate
- * those settings. UWasamiCameraAnimModifier plays it.
+ * those settings and the field of view. UWasamiCameraAnimModifier plays it.
  */
 UCLASS(BlueprintType)
 class WASAMI_DECEPTION_API UWasamiCameraAnim : public UDataAsset
@@ -50,11 +50,17 @@ public:
 	/** Writes every post-process track's value at Time into Settings (the tracks leave the bOverride flags alone). */
 	void ApplyPostProcessTracks(float Time, FPostProcessSettings& Settings) const;
 
+	/** The field of view track ('CameraComponent.FieldOfView'), or null when the anim has none. */
+	const FWasamiCameraAnimFloatTrack* FindFieldOfViewTrack() const;
+
 	/** AnimLength (s). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Anim")
 	float AnimLength = 3.f;
 
-	/** BaseFOV: the FOV the anim's camera starts from. */
+	/**
+	 * BaseFOV, as the export has it. The field of view track does not count from it: the original classic build, watched
+	 * playing CameraAnim_Teleport (BaseFOV 137.24), widens from the player's FOV instead of narrowing to 43°.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Anim")
 	float BaseFOV = 90.f;
 
@@ -117,12 +123,16 @@ struct FWasamiCameraAnimInstance
 
 	int32 Handle = 0;
 	FWasamiCameraAnimPlayback Playback;
+	/** The field of view track's value when the anim started: the track adds only its change from there. */
+	float InitialFOV = 0.f;
 };
 
 /**
  * Plays UWasamiCameraAnims on a player's camera, in place of UE4's APlayerCameraManager::PlayCameraAnim. Each frame
  * every anim's post-process settings go to the camera manager at the anim's weight, under the view target's own
- * (VTBlendOrder_Base, where UE 4 put camera anims and where UE 5's successor still does by default).
+ * (VTBlendOrder_Base, where UE 4 put camera anims and where UE 5's successor still does by default), and its field of
+ * view track adds its change since the start, times the weight, to the view's FOV (UE4's bRelativeToInitialFOV, which
+ * the exports leave at its default).
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiCameraAnimModifier : public UCameraModifier
@@ -142,6 +152,9 @@ public:
 	bool IsPlaying(int32 Handle) const;
 
 	virtual bool ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV) override;
+
+	/** The view's FOV with a field of view track's value added as its change from InitialFOV: 5–170°, as UE4 kept it. */
+	static float AddFieldOfView(float ViewFOV, float TrackFOV, float InitialFOV, float Weight);
 
 private:
 	UPROPERTY(Transient)

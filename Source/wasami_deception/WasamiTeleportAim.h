@@ -10,6 +10,7 @@ class UCameraShakeBase;
 class UDecalComponent;
 class USoundBase;
 class USpringArmComponent;
+class UWasamiCameraAnim;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiTeleportUsedSignature);
 
@@ -18,7 +19,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiTeleportUsedSignature);
  * teleport). The power spawns it 50 m under the player; every tick it traces 500 cm straight down from Distance in
  * front of the player for the Teleport object channel (the levels' teleport zones) and moves its spring arm onto the
  * hit, and the decal on the arm trails after it once the arm's lag comes on. The mouse wheel sets the distance and a
- * left click confirms: 0.12 s later the player is swept to the decal's spot, and the aim reports Used and goes away.
+ * left click confirms, playing CameraAnim_Teleport: 0.12 s later the player is swept to the decal's spot, and the aim
+ * reports Used and goes away.
  * The player forwards the wheel and the click (the original's actor takes them itself, without consuming them).
  */
 UCLASS()
@@ -86,6 +88,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Teleport|Assets")
 	TSoftClassPtr<UCameraShakeBase> CommittedShakeClass;
 
+	/** CameraAnim_Teleport (pak_reference): the click; the view widens, flashes white and red, and settles in 0.5 s. */
+	UPROPERTY(EditAnywhere, Category = "Teleport|Assets")
+	TSoftObjectPtr<UWasamiCameraAnim> ConfirmCameraAnim;
+
 protected:
 	virtual void BeginPlay() override;
 	/** A destroyed aim's pending delays go with it (a take-back before the move cancels the move). */
@@ -115,6 +121,9 @@ private:
 
 	UPROPERTY(Transient)
 	TSubclassOf<UCameraShakeBase> LoadedCommittedShake;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiCameraAnim> LoadedConfirmCameraAnim;
 
 	FTimerHandle LagTimer;
 	FTimerHandle CommitTimer;

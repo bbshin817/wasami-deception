@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-16 22:52
+updated: 2026-09-16 23:40
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -24,7 +24,7 @@ updated: 2026-09-16 22:52
 - [x] 2. パワーの土台（C++）… 2026-09-16 完了。`UWasamiPowerComponent`（枠・Q/E/1/2・2 段の連打防止・ゲージ・強化段階の表・死亡のリセット・スピードブースト Lv5）、敵とシャードのインターフェース、タブレットの 6 アイコンと弾み、パワーの音とシェイクの取り込み、パイプラインの素材のソフト参照化（エディタが落ちた件の対策）。実装記録は 04 を新設し、00〜03 を直した
 - [x] 3. スピードブーストの演出 … 2026-09-16 完了。`CameraAnim_SpeedBoost` の赤い色調（UE4 の CameraAnim を C++ で再生する `UWasamiCameraAnim` / `UWasamiCameraAnimModifier` を新設）、`UMG_SpeedBoost`（`UWasamiSpeedBoostWidget`、原作のグラフどおりの `M_Speedlines` と `T_VignetteNew`）、FX（`UWasamiChameleonComponent`、推定の `M_DD_ChameleonCameraShake`）。放射ブラーは本家で無効なので作らない。取り込みのテクスチャとマスターの作り方を `dd_assets` に共通化。実装記録は 01〜04 と索引を直した
 - [x] 4a. テレポーテーションの仕組み（旧版）… 2026-09-16 完了。Teleport チャンネル（旧版の既定 Overlap）、病院のゾーン（床のメッシュと救急車の屋根の箱をクラスの `Cube` の値で。前処理の `teleport_zones`・組み立ての `_set_collision`）、照準のアクタ `AWasamiTeleportAim`（SpringArm のラグ・500 cm の下向きトレース・ホイール・左クリック。デカールは UE の既定の材質のまま）、0.12 s 後のスイープ移動、シェイク、音 3 つ（エンジンの音は `/Game/DD/_Engine/…`）、同じ側の Q / E での取り消し、再使用 5 s、死亡のリセット、テスト `Wasami.Powers.TeleportDistance`。両ゾーンを組み立て直して High で焼き直した。実装記録は 00・01・02・04 と索引、検証のガイドを直した
-- [ ] 4b. テレポーテーションのカメラアニメ: `CameraAnim_Teleport`（旧版）の取り込みと再生（ステップ 3 の `UWasamiCameraAnimModifier`。露出・色調はそのまま動く）、FOV のトラックの再生（基準が `BaseFOV` 137.24 か t=0 のキーかを決める）、+100 EV の白が UE 5.8 で壊れないかの確認、PIE での通しの確認
+- [x] 4b. テレポーテーションのカメラアニメ … 2026-09-16 完了。**旧版の実機で FOV の基準を決めた**（60 fps の収録。開始時のキー 90 が基準で `BaseFOV` 137.24 ではない）。`UWasamiCameraAnim` の FOV のトラックの再生（開始時のキーからの変化 × 重み、5〜170°）、`AWasamiTeleportAim::Confirm` での `CameraAnim_Teleport` の再生、取り込み、テスト `Wasami.CameraAnim.FieldOfView`。+100 EV の閃光の後に UE 5.8 のプリ露出で黒いフレームが出たので、ユーザーの決定で `r.EyeAdaptation.PreExposureOverride=1` を ini に入れた。操作エージェントに画面の収録 `record` を足した。実装記録 00・01・04 と索引、検証のガイド、調査 02 を直した
 - [ ] 5. テレポーテーションの見た目: デカール `M_Decal_Teleport`（推定）、パーティクル `P_ky_cutter2`（Cascade を Python で組めるか確かめる。だめなら Niagara）
 - [ ] 6. 一瞬の演出の共通部品（全画面のポストプロセス 2 つとカーブ）と Primal Fear（半径 3500 の重なり判定で敵に `Set State(Stun)`、球 `M_05_Primal`、シェイク `ElevatorShakeStop` ×25、`Stun_Wave_Attack_New_04`、再使用 23 s）
 - [ ] 7. Vanish（カプセルの Camera 応答、`Player Vanish` の通知、`UMG_Vanish` と `MM_WobblyVignette`、ポストプロセス、煙 `PPP_VanishPuff`、15 s・再使用 15 s）
@@ -36,11 +36,10 @@ updated: 2026-09-16 22:52
 
 ## 次にやること
 
-ステップ 4b（テレポーテーションのカメラアニメ）。まず `.claude/references/powers/02-teleport.md` の §5.1（`CameraAnim_Teleport` のキーと「FOV の基準（未確定）」）と §7-1・§7-3、実装記録 `04-powers.md` の「カメラアニメの再生」「テレポーテーション」を読む。
-1. **FOV の基準を手元の旧版で決める**（ユーザーの回答）: エディタを閉じて（`python Tools/editor_cycle.py --quit-only`。閉じる前にユーザーの確認）、`python Tools/console_session.py C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd` で旧版を起動し（起動もユーザーの確認を取る。`.claude/guides/verification.md`・`original-fidelity.md` の「本家のゲームを手元で動かす」）、テレポーテーションを使った最初の数フレームを撮って、t=0 で画面が急に狭まる（FOV 90 → 約 43。`BaseFOV` 137.24 が基準）か、広がり始める（90 → 150。t=0 のキー 90 が基準）かを見る。撮影は 1 回に数秒かかるので、`desktop.py shot` を連続で撮るか、画面収録の手段を先に考える。
-2. `dd_powers` の `CAMERA_ANIMS` に `(1, "Animation/Camera/CameraAnim_Teleport")` を足して取り込む。`UWasamiCameraAnim` に FOV のトラックの再生を足す（基準の決め方は 1 の結果。`UWasamiCameraAnimModifier::ModifyCamera` で `POV.FOV += (キー − 基準) × 重み`、5〜170 に収める。いまの `Play` は FOV のトラックがあると警告を出す）。
-3. `AWasamiTeleportAim::Confirm` の DoOnce の中で `Play(CameraAnim_Teleport, 1, 1, 0, 0, loop なし, Duration 0)`（CameraLocal）。取り消しでもカメラアニメは止めない（カメラマネージャ側。本家どおり）。
-4. PIE で通し（+100 EV の白が UE 5.8 のプレエクスポージャや TSR の履歴で壊れないか。02-teleport.md §7-3）。テストに FOV の値を足す。
+ステップ 5（テレポーテーションの見た目: デカールとパーティクル）。まず `.claude/references/powers/02-teleport.md` の §0-5、§2（コンポーネントの構成とワールド変換）、§5.3（`M_Decal_Teleport`。定数は回収できていない）、§5.4（`P_ky_cutter2` の 2 エミッタの全モジュールの値）、§7-4・§7-5・§7-10、§8 と、実装記録 `04-powers.md` の「テレポーテーション」を読む。
+1. **パーティクル `P_ky_cutter2`**: UE 5.8 の Cascade（`UParticleSystem`）を Python から組めるか確かめる（`unreal.ParticleSystem` の作成、エミッタとモジュールの追加・値の設定ができるか）。組めれば原作の値で Cascade のまま作る（§7-4。方針「UE に同じ仕組みがあれば値を写す」）。組めなければ C++ か Niagara で作る案を比べてユーザーに確認する。テクスチャ `T_ky_slash01_4x4` などとマテリアル `M_ky_slash01_4x4`（グラフは cook で消えている = 推定）の取り込みが要る。照準のアクタのデカールの子に付ける（相対の変換は §2.1）。
+2. **デカール `M_Decal_Teleport`**: 推定で作る（Deferred Decal・Translucent・Emissive だけ。`RadialGradientExponential`・`CheapContrast`・`LinearGradient` を使う形）。色と輪の半径・鋭さは、旧版の実機の静止画と動画（`observations/classic/teleport-aim-01-full.png`・`teleport-aim-02-full.png`・`aim-02.mkv`。2026-09-16 に撮った）から測る。足りなければ旧版を起動して撮り直す（エディタを閉じる・本家を起動するのはユーザーの確認を取る）。
+3. 取り込み（`dd_powers` か新しいモジュール）→ ビルド（C++ を変えたら `python Tools/editor_cycle.py`。閉じる前にユーザーの確認）→ テスト → PIE で照準の絵を撮り、旧版の静止画と並べる（PIE と入力はユーザーの確認を取る）。
 
 ## 決定事項
 
@@ -76,8 +75,19 @@ updated: 2026-09-16 22:52
 - 2026-09-16（ステップ 4 の分け方）: 規模が大きいので 4a（仕組み）と 4b（カメラアニメと FOV）に分ける。FOV の基準が未確定なので、それに依らない部分を先に 1 コミットにする。
 - 2026-09-16（ステップ 4）: FOV の基準（`CameraAnim_Teleport` の `BaseFOV` 137.24 か t=0 のキー 90 か）は、UE 4.21 の `CameraAnimInst.cpp` が手元に無く（`pak_reference`・`pak_reference_2` の C++ は書き出しの道具 cue4parse の同梱物だけ。`gh` も無い）、Epic の API ドキュメントは 403、Web の要約は「time 0.0 からの差分」とだけ言うので決まらない。**ユーザーの回答: ステップ 4b で手元の旧版を観察して決める**（エディタを閉じてから `Launch-Classic-Ch3.cmd`。起動はその時にもう一度確認する）。
 - 2026-09-16（ユーザーの回答、ステップ 4a）: エディタを閉じてビルドし開き直すこと、取り込みと病院の 2 つのレベルの組み立て直し、テストと PIE の確認（エディタへの Q・左クリック・ホイールの入力を含む）まで進めてよい。
+- 2026-09-16（ユーザーの回答、ステップ 4b）: エディタを閉じて旧版を起動し、REPLAY → Deadly Decadence でテレポートを使って 60 fps で収録してよい（メニューとゲームの操作は Claude が送る）。同じ起動の中で、ステップ 5 のためにデカールと斬撃の絵も撮る。終わったら本家を閉じてエディタを開き直す。
+- 2026-09-16（ユーザーの回答、ステップ 4b の検証）: エディタの窓をクリックして前面にし（VS Code が前面なら `--allow Code.exe` も付ける）、Automation テストを走らせ、PIE を始めて Space・1・Q・左クリックを送り、収録してよい。終わったら PIE を止める。
+- 2026-09-16（ステップ 4b）: 0.5 秒のアニメは 1 枚数秒の撮影では撮れないので、操作エージェントに `record`（ffmpeg の `ddagrab` → `h264_nvenc`、バックグラウンド）を足した。画面が変わらない間はフレームが間引かれるので、時刻は各フレームの pts で読む（`ffmpeg -fps_mode passthrough` で取り出す。付けないと一定の速さに複製されて pts と組にならない）。
+- 2026-09-16（ステップ 4b、**旧版の実機で観察**、Deadly Decadence の入口の噴水、テレポート 2 回を 60 fps で収録）: **FOV の基準は t=0 のキー（90）で、`BaseFOV` 137.24 ではない**。クリックの直後は画面が広がり（輪と池の縁が小さくなる）、閃光（アニメの t≈0.135。1 フレームだけ画面全体が (234, 245, 244)）の後の t≈0.24〜0.40 のフレームは、アニメが終わった後のフレームに対して拡大率 1.26 → 1.30 → 1.14 → 1.06（画角 ≈ 103° → 93°）、終わった後は 0.98 のまま跳ばない。137.24 が基準なら t≈0.28〜0.40 は画角 43〜51°（拡大率 0.39〜0.48）で、終わりで 90° へ跳ぶはず。予測（90 基準で 1.0〜1.16）より少し大きいのは表示の遅れと落下による。→ **`POV.FOV += (key(t) − key(開始時刻)) × 重み`、5〜170 に収める**。UE4 の説明「キーは開始時からの差分だけが効く」とも合う（このアセットでは key(0) = 90 = カメラの既定なので、どちらと読んでも同じ値）。収録と要のフレームは `observations/classic/`。
+- 2026-09-16（ステップ 4b、PIE で見つけた問題）: 閃光の 1〜2 フレーム後に真っ黒なフレームが出た。UE 5.8 はプリ露出に読み戻しの露出（2^100）を使い、シーンカラーが溢れるため。原作は `r.UsePreExposure=False` で起きない。**ユーザーの回答: `r.EyeAdaptation.PreExposureOverride=1` を `Config/DefaultEngine.ini` に入れる**（シェーダーの再コンパイル不要。露出は固定の 1.0 なので、ふだんの絵は平均 0.02 以内で同じ。白が出た回でも黒は出なくなった）。
+- 2026-09-16（ステップ 4b）: FOV のトラックの基準は「`Play` の時点のキーの値」とし、`BaseFOV` は持つだけにする。`bRelativeToInitialFOV` が偽の場合は、本家の 2 つのアニメに無いので作らない。
 
 ## 再開時の注意
+
+- **2026-09-16 23:40（ステップ 4b の終わり）**: エディタは起動している（PID 18420、セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし、MCP はつながっている）。操作エージェントは止めた。`r.EyeAdaptation.PreExposureOverride=1` は ini に入れた（このエディタには実行中に同じ値を入れてある。次の起動からは ini で効く）。旧版は閉じた。
+- **本家を観察するときの手順**（4b で使った）: エディタを `python Tools/editor_cycle.py --quit-only` で閉じ、`python Tools/console_session.py --wait DDeception-Win64-Shipping.exe "C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd"` で旧版を起動する（約 20 秒でタイトル）。タイトルの REPLAY は (287, 910)、Deadly Decadence は (1720, 363)、確認の YES は (1610, 953)（3440x1440）。入口の噴水の周りがテレポートのゾーン。左右の枠は起動時に両方 Speed Boost なので、Space でタブレットを出して 1。終わりは Esc → QUIT (1717, 1013) → QUIT TO DESKTOP (1717, 1010)。一瞬の演出は `desktop.py record` で撮る（検証のガイド）。**本家が動いたまま中断していたら、エディタを起動する前に本家を閉じる**（`tasklist | grep -i DDeception`）。
+- **エディタを前面にする**: 起動直後に「メッセージログ」（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告。前からあるもの）が出て、テストの後には Automation のログの小窓が出る。どちらもビューポートの左に重なるので、PIE の前に × で閉じる。前面にするのはタイトルバーの空き (2957, 95) のクリック（エディタの窓が今の位置のとき）。
+- **PIE で毎フレームの値を読む**: `unreal.register_slate_post_tick_callback` に値を配列へ足す関数を入れ、`builtins` に持たせて、あとでファイルへ書き出す（4b の scratchpad の `fov_probe.py`。scratchpad はセッションごとに消えるので、要るときは作り直す）。プレイヤースタートはランダムなので、見たい場所へは `set_actor_location(…, False, True)` と `set_control_rotation` で動かす（(−25, 3000)・ヨー −90 で廊下の奥が見える）。
 
 - **2026-09-16 22:52（ステップ 4a の終わり）**: エディタは起動している（PID 28356、セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは止めた。MCP は開き直しで切れたまま（`Tools/ue_remote.py` で同じことができる）。両ゾーンは組み立て直して High で焼いてある（Zone 1 は 80.3 秒、Zone 2 は 37.1 秒）。PIE のプレイヤースタートは 4 つからランダムに選ばれる（今回は (−25, 3735) や (15, 385)・南向き。前回の記録の (5620, −23410) とは限らない）。
 - **組み立て直すと焼き込みが外れる**（メッシュを作り直すため）。`build_dd_stage_level` の後は `observations/tools/bake_level.py` で High 品質で焼き直す。
@@ -94,6 +104,8 @@ updated: 2026-09-16 22:52
 - 画面の撮影 1 回に数秒かかるので、時間に依存する確認は `unreal.GameplayStatics.get_time_seconds` と一緒に読む（scratchpad の `probe_powers.py` がパワーの状態を読む。scratchpad はセッションごとなので、要るときは作り直す）。
 
 ## 検証
+
+- ステップ 4b: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 7 件成功（`Wasami.CameraAnim.FieldOfView` を新設）、check_records OK、取り込み `import_dd_powers`（`camera_anims` 2。`CameraAnim_Teleport` のトラックとキーを読み戻して原作どおり）、旧版の実機の収録で FOV の基準を決定、PIE で FOV の毎フレームの値（91.1 → 149.9 → 移動 → 81.7 → 102.0 → 90）と、収録の広がり・白・赤・戻りを確かめ、黒いフレームを見つけて `PreExposureOverride` で消えることを確かめた（詳細は 04 記録の「確かめたこと」）
 
 - ステップ 4a: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 6 件成功（`Wasami.Powers.TeleportDistance` を新設）、check_records OK（00〜04）、前処理の差分はゾーンの 4 か所だけ、取り込み `import_dd_powers`（音 5。テレポートの 3 つの長さ・ループを読み戻した）、両ゾーンの組み立て直し（Zone 1 は配置 924、Zone 2 は 820）とゾーンの当たりの読み戻し（開き直しても保たれる）、High での焼き直し、PIE で照準・切り替えの停止・ホイール・クリックでの移動（0.12 s + 1 フレーム、カプセルの Ignore → Block）・再使用 5 s・同じ側での取り消し・逆側では取り消さない・リセット（照準中、クリックの直後）を確かめた（詳細は 04 記録の「確かめたこと」）
 

@@ -41,6 +41,7 @@
 | `shot --scale 0.3 --name x.png` | 画面を撮って PNG に保存（`--region LEFT TOP RIGHT BOTTOM` で範囲） |
 | `click X Y` / `look --dx N --dy N` / `scroll` | 絶対座標のクリック・相対のマウス移動（視点）・ホイール |
 | `key esc enter` / `combo ctrl s` / `hold shift w --ms 1500` / `type "text"` | キーを順に・同時に・押しっぱなし・文字入力 |
+| `record --seconds 5 --name x.mkv` / `record_status` | 画面を 60 fps の動画に撮る（バックグラウンド。すぐ返るので、続けて入力を送れる）・終わったか |
 
 - **入力は許可した窓にだけ届く**。前面の窓の実行ファイルが許可の一覧に無ければエージェントが断る。既定は本家のゲーム（`DDeception-Win64-Shipping.exe`・`DDeception.exe`）だけ。**エディタや PIE に送るときは、その都度ユーザーの確認を取ってから** `--allow UnrealEditor.exe` を付ける。
 - **OS 全体に効くものは送らない**（Win キー、Alt+Tab、Alt+F4 はエージェントが断る）。
@@ -48,6 +49,7 @@
 - **Automation テストを始めると、エンジンが PIE を止める**。テストと PIE の確認は続けて行い、同時には走らせない。テストはエディタが前面で 10 fps を超えるまで待つ（背面では 3 fps のまま最大 600 秒待つ）。
 - **PIE にキーを送るときは、先にビューポートを 1 回クリックして焦点を渡す**（PIE を始めただけではキーが届かなかった。2026-09-16）。PIE でないときにビューポートをクリックすると、エディタでアクタを選んでしまう（選択だけならレベルは汚れない）。PIE を始める前に前面にある小窓（Automation のログなど）は閉じておく。撮影は 1 回に数秒かかるので、時間に依存する値は `unreal.GameplayStatics.get_time_seconds` と一緒にリモート実行で読む。
 - **ユーザーが操作している間は送らない**。ユーザーがマウスやキーボードを使う必要が出たら、先に `stop` する（入力がぶつかる）。エージェントは 30 分何も来なければ自分で終了する。
+- **一瞬の演出（カメラアニメ、閃光など）は `record` で撮る**（2026-09-16）。`shot` は 1 枚に数秒かかる。`record` を始めて 1 秒ほど待ち（ffmpeg の起動）、入力を送り、終わってから `ffprobe -show_entries frame=pts_time` で各フレームの時刻を、`ffmpeg -fps_mode passthrough` でフレームを取り出す（付けないと一定の速さに複製され、時刻と組にならない）。画面が変わらない間はフレームが間引かれる。入力の瞬間は絵の変化（明るさの急変など）から逆算する。動画は `Intermediate/DesktopAgent/shots/`（本家のものは `observations/` へ写す）。
 - この PC の画面は **3440x1440**。座標は物理ピクセル（エージェントは DPI 対応済み）。撮った PNG は `--scale 0.2`〜`0.35` に縮めて読む（原寸は 5〜6 MB になるので会話に読み込まない。比較用に原寸を残すときは `--scale 1.0` で保存だけする）。
 - 何を送ったかは `Intermediate/DesktopAgent/agent.log` に残る（前面の窓の名前つき）。
 
@@ -71,7 +73,7 @@ Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの�
 
 - **エディタが背面にあるとティックが 3 fps ほどに落ちる**（`Use Less CPU when in Background`）。リモート実行から `LaunchCharacter` などで動かしても速さが出ず、時間に依存する確認（FOV の追従、頭の揺れ、クールダウン）はあてにならない。
   - 入力を伴う確認は、ユーザーに PIE で触ってもらうか、入力を流す Automation テスト（`AutomationTestToolset`）を書く。
-  - どうしてもリモートで確かめるときは、エディタを前面にしてもらうか、`Use Less CPU when in Background` を切ってから行い、確認後に戻す。
+  - どうしてもリモートで確かめるときは、エディタを前面にしてもらうか、`Use Less CPU when in Background` を切ってから行い、確認後に戻す。（2026-09-16: この設定は Python から見えず、コンソールの `set EditorPerformanceSettings bThrottleCPUWhenNotForeground False` も効かなかった。前面にするのは上の「画面を操作する」のクリックで行う）
 - **PIE で動いている最中の絵を撮る**（2026-09-16）: `desktop.py hold w` の間はエージェントが撮影できない。エディタが前面のまま、エディタの Python で `unreal.register_slate_post_tick_callback` に `player.add_movement_input(前方, 1.0, False)` を入れて毎フレーム前進させ、その間に `desktop.py shot` で撮り、終わったら `unregister_slate_post_tick_callback` で外す。PIE の `shot showui` はエディタの窓全体を撮ってビューポートが黒くなるので使えない（UI を含む絵はエージェントで撮る）。
 - ゲームの音はユーザーのスピーカーから鳴る。音を確かめる必要がないときは PIE の音量を上げない。
 

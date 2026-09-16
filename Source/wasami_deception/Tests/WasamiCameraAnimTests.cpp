@@ -130,4 +130,50 @@ bool FWasamiCameraAnimTracksTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiCameraAnimFieldOfViewTest, "Wasami.CameraAnim.FieldOfView",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiCameraAnimFieldOfViewTest::RunTest(const FString& Parameters)
+{
+	// CameraAnim_Teleport's field of view (pak_reference), played as the teleport's click plays it.
+	UWasamiCameraAnim* Teleport = NewObject<UWasamiCameraAnim>();
+	Teleport->AnimLength = 0.5f;
+	Teleport->BaseFOV = 137.24078f;
+	FWasamiCameraAnimFloatTrack& FieldOfView = Teleport->FloatTracks.AddDefaulted_GetRef();
+	FieldOfView.PropertyName = TEXT("CameraComponent.FieldOfView");
+	AddFloatKey(FieldOfView.Curve, 0.f, 90.f, 0.f);
+	AddFloatKey(FieldOfView.Curve, 0.13f, 150.f, 0.f);
+	AddFloatKey(FieldOfView.Curve, 0.18f, 80.f, 0.f);
+	AddFloatKey(FieldOfView.Curve, 0.25f, 100.f, 0.f);
+	AddFloatKey(FieldOfView.Curve, 0.4f, 90.f, 0.f);
+	TestNotNull(TEXT("the field of view track is found"), Teleport->FindFieldOfViewTrack());
+	FPostProcessSettings Untouched;
+	Teleport->ApplyPostProcessTracks(0.13f, Untouched);
+	TestEqual(TEXT("the field of view is no post-process setting"), Untouched.AutoExposureBias, FPostProcessSettings().AutoExposureBias);
+
+	UWasamiCameraAnimModifier* Anims = NewObject<UWasamiCameraAnimModifier>();
+	const int32 Handle = Anims->Play(Teleport, 1.f, 1.f, 0.f, 0.f, false, 0.f);
+	// The track counts from its value at the start (90), not from BaseFOV: the classic build widens at once.
+	FMinimalViewInfo View;
+	View.FOV = 90.f;
+	Anims->ModifyCamera(1.f / 60.f, View);
+	TestEqual(TEXT("the export's first 60 fps sample"), View.FOV, 92.706f, 1e-2f);
+	// A view whose FOV is not 90 gets the same change.
+	View.FOV = 100.f;
+	Anims->ModifyCamera(0.05f - 1.f / 60.f, View);
+	TestEqual(TEXT("the change at 0.05 s on a 100° view"), View.FOV, 119.7997f, 1e-2f);
+	View.FOV = 90.f;
+	Anims->ModifyCamera(0.08f, View);
+	TestEqual(TEXT("the widest at 0.13 s"), View.FOV, 150.f, 1e-2f);
+	View.FOV = 90.f;
+	Anims->ModifyCamera(0.4f, View);
+	TestFalse(TEXT("over after 0.5 s"), Anims->IsPlaying(Handle));
+	TestEqual(TEXT("an ended anim leaves the view alone"), View.FOV, 90.f);
+
+	TestEqual(TEXT("kept under 170°"), UWasamiCameraAnimModifier::AddFieldOfView(165.f, 150.f, 90.f, 1.f), 170.f);
+	TestEqual(TEXT("kept over 5°"), UWasamiCameraAnimModifier::AddFieldOfView(10.f, 80.f, 90.f, 1.f), 5.f);
+	TestEqual(TEXT("scaled by the weight"), UWasamiCameraAnimModifier::AddFieldOfView(90.f, 150.f, 90.f, 0.5f), 120.f);
+	return true;
+}
+
 #endif

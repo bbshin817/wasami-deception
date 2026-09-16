@@ -23,7 +23,7 @@ updated: 2026-09-16
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）とテレポーテーションの仕組み（照準・移動・取り消し・再使用。カメラアニメと見た目はまだ）で、ほかの 4 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 4b〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）とテレポーテーション（照準・移動・取り消し・再使用・カメラアニメ。デカールの材質とパーティクルはまだ）で、ほかの 4 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 5〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -47,11 +47,12 @@ updated: 2026-09-16
 - `OnUsed`（BlueprintAssignable、引数なし）… 本家の `Used`。プレイヤーを動かした直後、自分を消す直前に出す。
 - `MaxDistance`（既定 1000。`ExposeOnSpawn`。パワーが出すときに強化段階の値を入れる）、読み出し用の `Distance`（既定 1000）・`Alpha`（既定 0.6）・`Location`（移動先）。
 - static: `DistanceFor(Alpha, MaxDistance)` = `Lerp(250, MaxDistance, Alpha)`、`StepAlpha(Alpha, AxisValue)` = `Clamp(AxisValue / 10 + Alpha, 0, 1)`、`LoadAssets(Out)`。
-- 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）。
+- 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`ConfirmCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_Teleport`。
 - コンポーネント（本家と同じ木）: `DefaultSceneRoot` → `SpringArm`（`TargetArmLength` 0 だけ変える。ほかは UE の既定＝位置ラグの速さ 10・サブステップあり）→ `Decal`（`DecalSize` (3, 100, 100)、相対回転 (P −90, Y 0, R 5.46e-5)、拡縮 (3.3264, 1, 1)。ソケット名なしでアームに付くので、アームの先〈ラグで遅れる位置〉に付いていく）、`DefaultSceneRoot` → `Audio`（音量 0.65、減衰なし）。本家の `Arrow`（エディタの表示用）と、デカールの子の `ParticleSystem`（ステップ 5）は置いていない。`GetSpringArm()`・`GetDecal()`。
 
 ### `UWasamiCameraAnim : UDataAsset`（`WasamiCameraAnim.h`）
-本家の `CameraAnim`（UE4 の `UCameraAnim`。UE 5 には無い）を取り込みが写したもの（01 記録の `dd_assets.camera_anim`）。`AnimLength`（既定 3）・`BaseFOV`（既定 90）・`BasePostProcessSettings`（上書きフラグごと）・`BasePostProcessBlendWeight`（既定 0 = PP が効かない。UE4 と同じ）・`FloatTracks` / `ColorTracks`（`FWasamiCameraAnimFloatTrack` / `FWasamiCameraAnimColorTrack` = `PropertyName`〈`CameraComponent.PostProcessSettings.SceneColorTint` のような原作の名前〉と Matinee の曲線 `FInterpCurveFloat` / `FInterpCurveLinearColor`）。
+本家の `CameraAnim`（UE4 の `UCameraAnim`。UE 5 には無い）を取り込みが写したもの（01 記録の `dd_assets.camera_anim`）。`AnimLength`（既定 3）・`BaseFOV`（既定 90。書き出しの値を持つだけで、再生には使わない）・`BasePostProcessSettings`（上書きフラグごと）・`BasePostProcessBlendWeight`（既定 0 = PP が効かない。UE4 と同じ）・`FloatTracks` / `ColorTracks`（`FWasamiCameraAnimFloatTrack` / `FWasamiCameraAnimColorTrack` = `PropertyName`〈`CameraComponent.PostProcessSettings.SceneColorTint` のような原作の名前〉と Matinee の曲線 `FInterpCurveFloat` / `FInterpCurveLinearColor`）。
+- `FindFieldOfViewTrack()` … `CameraComponent.FieldOfView` のトラック（無ければ null）。
 - `ApplyPostProcessTracks(Time, Settings)` … `CameraComponent.PostProcessSettings.` で始まるトラックの値を、`FPostProcessSettings` の同名のメンバー（float か `FLinearColor`）へ書く。上書きフラグは触らない（UE4 でもトラックは値だけを動かし、フラグは基準の設定のまま）。評価は `FInterpCurve::Eval`（保存された接線のまま。UE4 の Matinee と同じ式）。
 
 ### `FWasamiCameraAnimPlayback`（`WasamiCameraAnim.h`）
@@ -60,6 +61,7 @@ updated: 2026-09-16
 ### `UWasamiCameraAnimModifier : UCameraModifier`（`WasamiCameraAnim.h`）
 - `Get(PlayerCameraManager)` … カメラマネージャのこのモディファイアを返す（無ければ足す）。
 - `Play(Anim, Rate, Scale, BlendInTime, BlendOutTime, bLoop, Duration)` → ハンドル（本家の `PlayCameraAnim`。`bRandomStartTime` は常に false、再生空間は CameraLocal 相当で、移動も回転もしない）、`Stop(Handle, bImmediate)`、`IsPlaying(Handle)`。
+- static `AddFieldOfView(ViewFOV, TrackFOV, InitialFOV, Weight)` = `Clamp(ViewFOV + (TrackFOV − InitialFOV) × Weight, 5, 170)`。
 
 ### `UWasamiChameleonComponent : UActorComponent`（`AWasamiPlayerCharacter` の `FX`）
 本家のプレイヤーの子アクタ `FX`（`/Game/ThirdParty/Chameleon/Chameleon`。ポストプロセスの効果集）。
@@ -133,7 +135,7 @@ updated: 2026-09-16
   - 毎ティック: プレイヤー（`GetPlayerCharacter(0)`）のアクタ位置（カプセルの中心）+ アクタの前方（ヨーだけ）× `Distance` から真下へ 500 cm、`ECC_GameTraceChannel1`（`Teleport`。00 記録）の**オブジェクトのトレース**を複雑コリジョンで行い（自分は除く）、当たったらアームを `SetWorldLocation(当たった点, スイープなし, TeleportPhysics)` で動かす。当たらなければアームはそのまま。オブジェクトのトレースは応答を見ず、「オブジェクトの種類が Teleport で、クエリが有効」なものに当たる（病院のゾーン。01 記録）。
   - ラグ: 最初の 0.5 秒はアームの先が当たった点に即座に付き、以後は UE の SpringArm の `VInterpTo`（速さ 10、1/60 秒ずつのサブステップ）で遅れて付いていく。**0.5 秒より後に初めて床を捉えたときは、スポーン位置（50 m 下）から追ってくる**（本家どおり。テレポートのフラグではラグは戻らない）。
   - ホイール（`AdjustDistance`）: `Alpha = StepAlpha(Alpha, 値)`、`Distance = DistanceFor(Alpha, MaxDistance)`。照準のたびに 0.6 から。1 目盛りは Lv5 で 125 cm、範囲は 250〜1500 cm。
-  - 左クリック（`Confirm`）: `Location = デカールのワールド位置 + (0, 0, 125)` を**先に**書き、DoOnce（`bConfirmed`）を通ったら、プレイヤーのカプセルの `WorldDynamic` と `Pawn` の応答を Ignore にし、0.12 秒後に移動（`Commit`）。移動の前の 2 回目のクリックは移動先だけを変える。本家はクリックの瞬間にカメラアニメ `CameraAnim_Teleport` を再生するが、それはステップ 4b で足す。
+  - 左クリック（`Confirm`）: `Location = デカールのワールド位置 + (0, 0, 125)` を**先に**書き、DoOnce（`bConfirmed`）を通ったら、プレイヤーのカプセルの `WorldDynamic` と `Pawn` の応答を Ignore にし、0.12 秒後に移動（`Commit`）。移動の前の 2 回目のクリックは移動先だけを変える。DoOnce を通った瞬間に、`GetPlayerCameraManager(0)` の `UWasamiCameraAnimModifier` で `CameraAnim_Teleport` を `Play(…, Rate 1, Scale 1, BlendIn 0, BlendOut 0, ループなし, Duration 0)` する（本家の @641。再生空間 CameraLocal は移動のトラックが原点だけなので扱わない）。0.5 秒で自然に終わり、取り消し・照準の破棄・死亡のリセットでは止めない（本家もカメラマネージャが持ち続ける）。
   - 移動（`Commit`）: `BP_CameraShake_Streak` を倍率 1・`CameraLocal` → `Teleport_Committed` を `PlaySound2D`（音量 1）→ `SetActorLocation(Location, スイープあり, TeleportPhysics)`（壁などで止まる。カプセルの中心を床 + 125 cm に置くので、立ち姿の 88 cm まで約 37 cm 落ちる）→ カプセルの `Pawn` と `WorldDynamic` を Block に戻す → `OnUsed` → 自分を消す。
   - `EndPlay` で 2 つのタイマー（ラグの有効化・移動）を止める（UE 5.8 のアクタは消えるときに自分のタイマーを消さない。本家の Delay はアクタと一緒に消える）。
 - 移動の後（`UsedTeleport`。本家の @30854）: 使った側の `bCanCycle*` を真 → `Active Powers` から外す → ゲージの `SetDelay(5)`（アイコンが 0 → 1 を 5 秒）→ Gate が開いていれば `Delay(5)` の後に `RefillTeleport`。再使用は段階によらず 5 秒（本家の `00_Ballroom` だけの 1 秒は病院に無い）。
@@ -142,11 +144,11 @@ updated: 2026-09-16
   - **クリックから移動までの 0.12 秒の間に取り消すと、移動は起きず、カプセルは `Pawn` と `WorldDynamic` を無視したまま残る**（本家どおり。次のテレポートの移動で戻る）。
 
 ### カメラアニメの再生（`UWasamiCameraAnimModifier::ModifyCamera`）
-- 毎フレーム、再生中の各アニメを `Advance` し、終わっていなければ `BasePostProcessSettings` の写しにトラックの値を書き、重み `BasePostProcessBlendWeight × Weight` で `AddCachedPPBlend(…, VTBlendOrder_Base)` する（UE4 はカメラアニメの PP を通常のカメラの PP の下に重ねた。UE 5.8 の後継も `r.CameraAnimation.LegacyPostProcessBlending`〈既定 true〉で同じ位置に置く）。終わったものは外す。PP の値の重ね合わせ（`SceneColorTint` は重みで線形補間）はエンジンが行う。
+- 毎フレーム、再生中の各アニメを `Advance` し、終わっていなければ、FOV のトラックがあれば視点の FOV に `AddFieldOfView(視点の FOV, キーの値, InitialFOV, Weight)` を入れ、`BasePostProcessSettings` の写しにトラックの値を書き、重み `BasePostProcessBlendWeight × Weight` が正なら `AddCachedPPBlend(…, VTBlendOrder_Base)` する（UE4 はカメラアニメの PP を通常のカメラの PP の下に重ねた。UE 5.8 の後継も `r.CameraAnimation.LegacyPostProcessBlending`〈既定 true〉で同じ位置に置く）。終わったものは外す。PP の値の重ね合わせ（`SceneColorTint` は重みで線形補間）はエンジンが行う。
 - `Advance`（UE 5.8 の後継 `CameraAnimationCameraModifier.cpp` の `TickAnimation` と同じ形。UE4 の `CameraAnimInst.cpp` は手元に無い）: 時間を `Delta × Rate` 進め、ブレンドの経過も進める。ループしないアニメは「長さ − BlendOut × Rate」を過ぎたらブレンドアウトを始め、長さを過ぎたら終わる。ブレンドインは経過が BlendIn を超えたら終わる。ブレンドアウトの経過が BlendOut を超えたら終わる。重みは `min(ブレンドインの経過 / BlendIn, 1 − ブレンドアウトの経過 / BlendOut) × Scale`（どちらも直線）。`Duration` が正なら、`Duration − BlendOut` を数え終えたところで `Stop(false)`（ブレンドアウト）を呼ぶ。**`Duration` はブレンドアウトを含む長さ**（UE 5.8 の `FCameraAnimationParams::DurationOverride` の説明「including blends」。後継はこの値を使っていない）。
 - `Stop(bImmediate)`: 即座なら（または BlendOut が 0 なら）終わり・重み 0、そうでなければブレンドアウトを始める（既に始まっていれば続ける）。
 - スピードブーストでは: 0〜0.5 秒で色調が 0 → 1、9.25 秒まで 1、9.25〜9.75 秒で 1 → 0。`CameraAnim_SpeedBoost` の色調のトラックは開始前（−0.0018 秒）の 1 キーだけなので、値は常に (2.0, 0.584, 0.498)。
-- FOV のトラック（`CameraComponent.FieldOfView`）は、いまは再生しない（`Play` が警告を出す）。`CameraAnim_Teleport` を入れるステップ 4 で、基準の FOV の扱い（`BaseFOV` 137.24 か t=0 のキーか）を決めて足す。Move トラックは取り込まない。
+- **FOV のトラック**（`CameraComponent.FieldOfView`）: `Play` の時点のキーの値（開始時刻で評価。`CameraAnim_Teleport` では 90）を `InitialFOV` に持ち、毎フレーム「キーの値 − `InitialFOV`」に重みを掛けて視点の FOV に足し、5〜170° に収める（UE4 の `bRelativeToInitialFOV`〈書き出しに無い = 既定の真〉の形）。**基準は `BaseFOV`（137.24）ではない**: 旧版の実機で `CameraAnim_Teleport` を 60 fps で収録し、クリックの直後に画面が広がること、閃光の後（アニメの 0.24〜0.40 秒）の拡大率がアニメの後に対して 1.26〜1.06（画角 ≈ 103°〜93°）で、終わりで跳ばないことを確かめた（`BaseFOV` 基準なら 43〜51° に狭まり、終わりで 90° へ跳ぶ）。プレイヤーの FOV（ダッシュで動く）の上に足すので、ダッシュ中でも変化の量は同じ。Move トラックは取り込まない。PP とは別に、`BasePostProcessBlendWeight` が 0 でも FOV は効く。`Play` は PP と FOV 以外のトラックにだけ警告を出す。
 
 ### FX（`UWasamiChameleonComponent`）
 - 本家の Chameleon は、範囲なし（`Unbound`）の `PostProcessComponent`（`InternalPP`）を持ち、毎ティック `InitChameleon` で「`Native Post Process`（上書きなし）で設定を上書き → 有効な効果ごとに MID のパラメータを書いて `AddOrUpdateBlendable(MID, 1)`」を行う。本作は `BeginPlay` で持ち主に `UPostProcessComponent`（`bEnabled`・`bUnbound`）を作って付け（`UPostProcessComponent` は MinimalAPI で他のモジュールから派生できない）、揺れのマテリアルの MID を作る。毎ティック、ボリュームのブレンダブルを空にし、`bCameraShake` なら MID に `ShakePower` / `ShakeFQ` を書いて重み 1 で足す。
@@ -198,6 +200,7 @@ updated: 2026-09-16
 | `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed` | テレポートの移動（旧版。1.543 秒） |
 | `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak` | ブーストとテレポートの移動のシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.25、回転 Pitch 0.25/30・Yaw 0.25/40・Roll 0.5/35、FOV 2.0/10） |
 | `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost` | `WasamiCameraAnim`。長さ 24.503 秒、`BaseFOV` 137.24、`BasePostProcessBlendWeight` 1.0、基準の PP は `bOverride_WhiteTemp`・`WhiteTint`・`SceneColorTint` が真（WhiteTemp 6500・WhiteTint 0 は中立）で `SceneColorTint` (2.0, 0.583955, 0.498, 1)、色のトラック 1 本（−0.0017948 秒に同じ色の 1 キー、`CIM_CurveAutoClamped`） |
+| `/Game/DD/Animation/Camera/CameraAnim_Teleport` | `WasamiCameraAnim`（**旧版** `pak_reference`）。長さ 0.5 秒、`BaseFOV` 137.24（再生には使わない）、`BasePostProcessBlendWeight` 1.0、基準の PP は `bOverride_WhiteTemp`・`WhiteTint`・`SceneColorTint`・`AutoExposureBias` が真（`AutoExposureBias` 1.1223 はトラックが t=0 から上書きする）。トラックは FOV（0 → 90 / 0.13 → 150 / 0.18 → 80 / 0.25 → 100 / 0.4 → 90、接線 0）・`AutoExposureBias`（6 キー、0.1354 秒に 100）・`SceneColorTint`（5 キー、0.128〜0.211 秒に (2.0, 0.1145, 0.0)）、すべて `CIM_CurveAutoClamped`。読み戻して 02-teleport.md §5.1 の値と一致 |
 | `/Game/DD/UI/Main/Powers/T_Speedlines` | 集中線（3841 × 5404、2 列 × 5 段のコマ。sRGB・`TC_Default`・`TEXTUREGROUP_UI`。原作の cook も非圧縮 BGRA8・ミップ 1 で、本作の実測も約 81 MB〈`blueprint_get_memory_size` 84,934,656〉） |
 | `/Game/DD/UI/Menu/Streaks/T_VignetteNew` | ビネット（1024²、白地にアルファで縁。sRGB・`TC_EditorIcon`・`TEXTUREGROUP_UI`。本作は 4 MB〈ミップなし。原作の cook は 11 段のミップあり。全面に引き伸ばすだけなので見た目は同じ〉） |
 | `/Game/DD/UI/Main/Powers/M_Speedlines` | 原作のグラフどおり。User Interface・Translucent。`/Engine/Functions/Engine_MaterialFunctions02/Texturing/FlipBook` の呼び出し（入力はすべて既定 = 2 列 × 2 段、位相 `Time`、`TexCoord 0`）の出力 2 番（`UVs`）を `T_Speedlines` の `TextureSample` の UV に、その RGB を Emissive に。Opacity は未接続（1）。UE 5.8 の FlipBook は 4.24 の書き出しと同じ 38 ノードで、出力の並びは `SortPriority` だけで決まる（`MaterialExpressions.cpp` の `GetInputsAndOutputs`）ので、出力 2 番は原作と同じ `UVs`（取り込みのログで確認）。2 × 5 のシートを 2 × 2 で読むので、1 コマは 1 列 × 2.5 段ぶんが 1 秒に 4 コマで流れる（原作のまま） |
@@ -225,13 +228,14 @@ updated: 2026-09-16
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（6 件、2026-09-16 にすべて成功）。
+`Automation RunTests Wasami`（7 件）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
 - `Wasami.Powers.TeleportDistance` … Lv5 の最初の距離 1000（強化なしなら 700）、`Alpha` 0 / 1 の端、1 目盛りで +0.1（Lv5 で +125 cm）、1 フレームに 2 目盛り、0 と 1 での切り詰め。
 - `Wasami.CameraAnim.Playback`（`Tests/WasamiCameraAnimTests.cpp`）… ブーストの再生（0.25 秒で 0.5、0.5 秒で 1、9.25 秒でブレンドアウトが始まり 9.5 秒で 0.5、9.75 秒で 0、その次で終わり）、即座の停止、ブレンドの無い 0.5 秒のアニメが長さで終わること、ブレンドイン中の停止が小さい方の重みで続くこと。
 - `Wasami.CameraAnim.Tracks` … ブーストの 1 キーの色が保たれ上書きフラグを触らないこと、`CameraAnim_Teleport`（旧版）のキーと接線で、書き出しの 60 fps の標本（`CameraAnim_Teleport.csv`）と同じ値になること（0.1 秒の露出 1.149884・色調 (1.528122, 0.532324, 0.471878)、0.05 秒、8/60 秒の露出の山 67.69149）。FOV のトラックは PP を変えない。
+- `Wasami.CameraAnim.FieldOfView` … `CameraAnim_Teleport` の FOV のキーで、モディファイアの再生が書き出しの 60 fps の標本と同じ変化を足すこと（1/60 秒で 92.706、0.05 秒に 100° の視点で 119.80、0.13 秒で 150）、`BaseFOV` を基準にしないこと、0.5 秒の後は視点を変えないこと、5〜170° の切り詰めと重みの掛け方。
 
 ## 確かめたこと（2026-09-16、PIE、`L_Hospital_Zone1` の開始地点、ユーザーの了承のうえで `Tools/desktop.py` から入力）
 - 始めは左右とも Speed Boost、6 種とも使える、ゲージはすべて 1。
@@ -260,9 +264,16 @@ updated: 2026-09-16
 - 照準中に `ResetPowers` を呼ぶと、照準が消えて使える・ゲージ 1。クリックの直後（移動の前）に `ResetPowers` を呼ぶと、移動は起きずカプセルが Ignore のまま残り（本家どおり）、次のテレポートの移動で Block に戻った。
 - PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」2 件は前のセッションのログにも出ていたもの）。音はユーザーのスピーカーで確かめていない（照準ループが再生中であることは読んだ）。
 
+### テレポートのカメラアニメ（2026-09-16）
+- **旧版の実機で観察**（Deadly Decadence の入口の噴水、テレポート 2 回を `Tools/desktop.py record` で 60 fps 収録。`observations/classic/`）: クリックの直後に画面が広がり、1 フレームだけ全面が (234, 245, 244) の白になり、赤く暗いフレームを経て戻る。閃光の後（アニメの 0.24〜0.40 秒）のフレームはアニメの後に対して拡大率 1.26 → 1.30 → 1.14 → 1.06（画角 ≈ 103° → 93°）、アニメの後は 0.98 のまま跳ばない。→ FOV の基準は開始時のキー（90）。`BaseFOV` 137.24 が基準なら 43〜51° に狭まり、終わりで跳ぶはず。
+- 取り込み: `import_dd_powers()` が `camera_anims 2` を作り、読み戻した値は上の表のとおり。テスト 7 件が成功した。
+- PIE（`L_Hospital_Zone1`、プレイヤーを (−25, 3000) で南向きにして、ユーザーの了承のうえで Q と左クリックを送った。毎フレームの視点の FOV をエディタの Python で記録）: クリックのフレームで 91.1、0.117 秒で 149.9、0.127 秒で移動、その後 81.7 → 102.0 → 90 と、キーの曲線に移動のシェイク `BP_CameraShake_Streak` の FOV の振動（振幅 2・0.5 秒）が重なった値になった。カメラコンポーネントの FOV は 90 のまま（足し算はモディファイアだけ）。0.62 秒で 90 に戻った。
+- 収録（60 fps）: 広がり → 白 (252, 252, 251) → 赤 (88, 6, 0) → 戻り、が出た。**最初の回は白の直後に真っ黒なフレームが 1 枚出た**（UE 5.8 のプリ露出が +100 EV を 1〜2 フレーム遅れて使い、シーンカラーが溢れる。00 記録）。`r.EyeAdaptation.PreExposureOverride=1` を入れると、白が出た回でも黒は出ず、白 → 赤 (61, 5, 0) → 戻り になった。閃光は 9 ms ほどしか続かないので、フレームの刻みによっては白が出ない回がある（PIE の 6 回のうち 2 回で出た。旧版の 2 回はどちらも出た）。
+- PIE の間、`LogWasamiCameraAnim` の警告は無かった。PIE は止めた。
+
 ## 既知の制約・注意点
 - **スピードブーストとテレポート以外のパワーは中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
-- テレポートの**カメラアニメ（`CameraAnim_Teleport`）はまだ再生しない**（ステップ 4b。FOV の基準を本家の実機で決めてから）。**デカールの材質とパーティクルもまだ無い**（ステップ 5）。いまのデカールは UE の既定のデカール材で描かれる。
+- テレポートの**デカールの材質とパーティクルはまだ無い**（ステップ 5）。いまのデカールは UE の既定のデカール材で描かれる。
 - 本家では照準のアクタがクリックを受け、入力を消費しないので、プレイヤー自身の左クリック（調べる）も同時に走る。本作のプレイヤーにはまだ調べる処理が無い（02 記録）。
 - ゲームパッドでの確定（最新版の `Gamepad_FaceButton_Bottom`）は旧版に無いので入れていない。
 - 本家は `Check` を `Delay 0.2` の後に行うが、本作は `BeginPlay` ですぐ作る。
@@ -270,14 +281,16 @@ updated: 2026-09-16
 - 本家のパワーの放送（`UsedTeleportPower`・`UsedPrimal` など）を購読するのは本家のチュートリアルや台本のレベルだけで、病院には無い。本作は `OnPowerUsed` 1 つにまとめた。
 - ゲームパッドの割り当て（LT / RT / LB / RB）はまだ入れていない（プレイヤーの入力がキーボードとマウスだけのため）。
 - 音と揺れはユーザーのスピーカーと画面で確かめていない（PIE の確認は値と絵）。
+- テレポートの閃光の白は、本作の病院では (252, 252, 251)、旧版の Manor では (234, 245, 244)。トーンマッパーの上限の色がステージのポストプロセス（色の補正）で違うためと見ている（病院の Zone 1 はボリュームが無い）。最新版の病院の絵とは比べていない。
 - **推定のもの**: `M_DD_ChameleonCameraShake` の揺れ方（円・sin/cos）。本家の実機で見比べる（進捗記録のステップ 11）。
 - `Duration` の扱い（ブレンドアウトを含む）は UE 5.8 の説明に拠る。UE4 の `CameraAnimInst.cpp` で確かめていない。違っていれば色調の消え方が 0.5 秒ずれるだけ。
 - `UMG_SpeedBoost` の最初のフレームが不透明度 1 で出る（本家の Delay の順の写し）。1 フレームなので撮影では確かめていない。
 - `T_Speedlines` は原作どおり非圧縮で約 81 MB あり、プレイヤーの `BeginPlay` から持ち続ける（本家もプレイヤーがクラスを参照しているので同じ）。
-- カメラアニメの FOV のトラックはまだ再生しない（ステップ 4）。
+- カメラアニメの FOV の基準（開始時のキーの値）は実機の観察で決めた（UE4 の `CameraAnimInst.cpp` は手元に無い）。`CameraAnim_Teleport` は開始時のキーが 90 で UE4 のカメラの既定の FOV と同じなので、「開始時のキー」と「90」のどちらと読んでも同じ値になる。`bRelativeToInitialFOV` が偽のアニメ（本家の 2 つには無い）の扱いは作っていない。
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-16: テレポートのクリックで `CameraAnim_Teleport`（旧版）を再生するようにし、カメラアニメの FOV のトラックの再生（開始時のキーからの変化を足す。基準は旧版の実機で決めた）とテスト `Wasami.CameraAnim.FieldOfView` を足した
 - 2026-09-16: テレポーテーションの仕組みを足した（旧版。`AWasamiTeleportAim`、使った瞬間・照準・ホイール・クリック・0.12 秒後のスイープ移動・再使用 5 秒・同じ側の Q / E での取り消し・死亡のリセット、音 3 つ、テスト `Wasami.Powers.TeleportDistance`）。カメラアニメと見た目はまだ
 - 2026-09-16: スピードブーストの演出を足した（`CameraAnim_SpeedBoost` の赤い色調、`UMG_SpeedBoost` の集中線とビネット、FX の画面の揺れ。放射ブラーは本家で無効なので作らない）。UE4 の CameraAnim の再生（`UWasamiCameraAnim`・`FWasamiCameraAnimPlayback`・`UWasamiCameraAnimModifier`）、FX（`UWasamiChameleonComponent`）、`UWasamiSpeedBoostWidget`、テスト `Wasami.CameraAnim` 2 件を足した
 - 2026-09-16: 初版（パワーの土台: 枠・Q/E/1/2・2 段の連打防止・ゲージ・強化段階の表・死亡のリセット・スピードブースト、敵とシャードのインターフェース、テスト）

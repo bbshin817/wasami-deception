@@ -10,6 +10,8 @@
     python Tools/desktop.py hold w --ms 1500           hold keys down (walking, sprinting)
     python Tools/desktop.py look --dx 300 --dy 0       relative mouse movement (mouse look)
     python Tools/desktop.py type "some text"
+    python Tools/desktop.py record --seconds 8 --name x.mkv   record the screen at 60 fps in the background
+    python Tools/desktop.py record_status              are the recordings still running? (exit code when done)
     python Tools/desktop.py status                     is the agent running?
     python Tools/desktop.py stop                       stop the agent
 
@@ -96,7 +98,7 @@ def start(timeout=90):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", help="start / status / stop / ping / shot / click / key / combo / hold / look / type / "
-                               "scroll / wait")
+                               "scroll / wait / record / record_status")
     ap.add_argument("args", nargs="*", help="keys for key/combo/hold, X Y for click, the text for type")
     ap.add_argument("--allow", action="append", help="image name of a process whose window may receive the input")
     ap.add_argument("--scale", type=float, default=1.0)
@@ -112,6 +114,8 @@ def main():
     ap.add_argument("--dy", type=int, default=0)
     ap.add_argument("--steps", type=int, default=10)
     ap.add_argument("--timeout", type=int, default=30)
+    ap.add_argument("--seconds", type=float, default=10.0)
+    ap.add_argument("--fps", type=int, default=60)
     opts = ap.parse_args()
 
     if opts.cmd == "start":
@@ -147,6 +151,10 @@ def main():
         payload["delta"] = opts.dx or 120
     elif opts.cmd == "wait":
         payload["ms"] = opts.ms
+    elif opts.cmd == "record":
+        payload.update(seconds=opts.seconds, fps=opts.fps)
+        if opts.name:
+            payload["name"] = opts.name
 
     answer = request(opts.cmd, timeout=opts.timeout, **payload)
     print(json.dumps(answer, ensure_ascii=False, indent=2))

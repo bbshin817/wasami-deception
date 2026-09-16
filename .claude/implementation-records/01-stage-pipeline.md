@@ -50,7 +50,7 @@ updated: 2026-09-16
 | `python Tools/ue_remote.py <file.py>` / `-c "<code>"` | 起動中のエディタで Python を実行する（PythonScriptPlugin のリモート実行）。終了コードは 0 成功 / 1 Python エラー / 2 エディタが応答しない |
 | `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、**対話デスクトップで**開き直して、リモート実行が応答するまで待つ |
 | `python Tools/console_session.py <exe> [args] [--wait <画像名>]` | 任意のプログラムを**対話デスクトップ（コンソールのセッション）で**起動する。Claude はセッション 0 にいて GPU の出力が見えないので、GUI のプログラムは一度きりのスケジュールタスク（ログオン中のユーザーの SID・`LogonType Interactive`）経由で起動する。起動したらタスクを消す。本家のゲームのランチャを動かすのに使う（`.claude/guides/verification.md`） |
-| `python Tools/desktop.py <start\|shot\|click\|key\|hold\|look\|stop\|…>` | 対話デスクトップの画面を撮り、入力を送る。セッション 1 に常駐する `Tools/desktop_agent.py`（`pythonw.exe`、`console_session.py` が起動）と `Intermediate/DesktopAgent/` の JSON でやり取りする。入力は前面の窓が許可した対象（既定は本家のゲーム）のときだけ届き、OS 全体に効くキーは断る。使い方と枠は `.claude/guides/verification.md` の「画面を操作する」 |
+| `python Tools/desktop.py <start\|shot\|click\|key\|hold\|look\|record\|record_status\|stop\|…>` | 対話デスクトップの画面を撮り、入力を送る。セッション 1 に常駐する `Tools/desktop_agent.py`（`pythonw.exe`、`console_session.py` が起動）と `Intermediate/DesktopAgent/` の JSON でやり取りする。入力は前面の窓が許可した対象（既定は本家のゲーム）のときだけ届き、OS 全体に効くキーは断る。`record --seconds N --name x.mkv` は画面を 60 fps の動画に撮り始めてすぐ返る（エージェントが ffmpeg の `ddagrab` → `h264_nvenc` をバックグラウンドで起動する。1 枚数秒の `shot` では撮れない一瞬の演出のため）。`record_status` で終わりと終了コードを見る。使い方と枠は `.claude/guides/verification.md` の「画面を操作する」 |
 
 ## 内部構造と処理の流れ
 
@@ -100,7 +100,7 @@ updated: 2026-09-16
 `import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 25・フォント・音 3・ミニマップのレンダーターゲットとマテリアル・パワーのアイコンのインスタンス 6 を `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_mesh` / `ensure_masters` / `_Graph` と、`dd_assets` の `pak` / `export_json` / `main_export` / `sound` / `texture` / `material` を使い回す。メッシュは原作の `StaticMesh` のライトマップの値（`LightMapResolution` 64・`LightMapCoordinateIndex` 2）を `import_mesh` に渡す。
 
 ### パワーの素材（`pipeline/dd_powers.py`）
-`import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`）・テクスチャ（`TEXTURES`）を `dd_assets` で作り、マテリアル 2 つ（`make_materials`: 原作のグラフが残っている `M_Speedlines` と、推定の `M_DD_ChameleonCameraShake`）を `dd_assets.material` で建て、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` / `camera_shakes` / `camera_anims` / `textures` / `materials` の数。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
+`import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`。テレポートの `CameraAnim_Teleport` は `pak_reference`、ブーストのものは `pak_reference_2`）・テクスチャ（`TEXTURES`）を `dd_assets` で作り、マテリアル 2 つ（`make_materials`: 原作のグラフが残っている `M_Speedlines` と、推定の `M_DD_ChameleonCameraShake`）を `dd_assets.material` で建て、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` / `camera_shakes` / `camera_anims` / `textures` / `materials` の数。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
 - `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
@@ -169,6 +169,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: `dd_powers` の `CAMERA_ANIMS` に `CameraAnim_Teleport`（`pak_reference`）を足した。操作エージェントに画面の収録 `record` / `record_status` を足した
 - 2026-09-16: テレポートのゾーン（本家の `BP_Power_Teleport_Zone` の `Cube`）を、クラスの値（当たり・非表示・Z 0.05 倍）とレベルの差分で置くようにし、救急車の屋根の箱も置くようにした（`teleport_zones`・`_set_collision`）。前処理のメッシュの登録と材質を `note_mesh`・`slot_materials` に分けた。音の取り込みがエンジンの素材（`/Engine/…` → `/Game/DD/_Engine/…`）と `bLooping` を扱えるようにし、テレポートの音 3 つを `dd_powers` に足した。両ゾーンを組み立て直し、High 品質で焼き直した（Zone 1 は 80.3 秒、Zone 2 は 37.1 秒。BuiltData の大きさは前と同じ）
 - 2026-09-16: スピードブーストの演出の素材（カメラアニメ・テクスチャ 2・マテリアル 2）を `dd_powers` に足した。`dd_assets` に `asset_path` / `texture` / `material` / `camera_anim` を足し、`dd_tablet` のテクスチャとマスターの作り方をそこへ移した。ツールセットは `dd_stage` → `dd_assets` の順に読み直す
 - 2026-09-16: パワーの素材の取り込み（`pipeline/dd_powers.py`、`WasamiDDTools.import_dd_powers`）を足した。`dd_assets` に版の指定と、SoundWave（音量・ピッチ・同時発音）と `SoundConcurrency` の取り込みを足し、タブレットの音もそれで取り込むようにした。タブレットのメッシュの取り込みがライトマップの値（`lightmapResolution`）を渡しておらず止まっていたのを直した
