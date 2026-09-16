@@ -7,7 +7,7 @@
 | 記録 | 内容 |
 | --- | --- |
 | [00-overview.md](00-overview.md) | 全体像。モジュールとビルド、プラグイン、`Config/` の設定（Lumen・レイトレース・既定のマップとゲームモード・Python）、作業の流れ |
-| [01-stage-pipeline.md](01-stage-pipeline.md) | 取り込みの仕組み。ツールセット `WasamiDDTools` / `WasamiDevTools`、本家のアセットを原作データから作り直す仕組み、リモート実行とエディタの開き直し |
+| [01-stage-pipeline.md](01-stage-pipeline.md) | 取り込みの仕組み。病院ステージの前処理 `Tools/dd/prepare_stage.py`、ツールセット `WasamiDDTools` / `WasamiDevTools`、本家のアセットを原作データから作り直す仕組み、リモート実行とエディタの開き直し |
 | [02-player.md](02-player.md) | プレイヤーとゲームモード。カプセルとカメラ、Enhanced Input、歩き・ダッシュ・ブースト、速さに連動する FOV、頭の揺れ、180° ターン |
 
 ## ソース → 記録 対応表
@@ -17,7 +17,7 @@
 | `wasami_deception.uproject`、`.mcp.json`、`Config/*.ini` | 00 |
 | `Source/wasami_deception.Target.cs`、`Source/wasami_deceptionEditor.Target.cs` | 00 |
 | `Source/wasami_deception/wasami_deception.Build.cs`、`wasami_deception.cpp`、`wasami_deception.h` | 00 |
-| `Tools/ue_remote.py`、`Tools/editor_cycle.py` | 01 |
+| `Tools/dd/prepare_stage.py`、`Tools/ue_remote.py`、`Tools/editor_cycle.py` | 01 |
 | `Content/Python/init_unreal.py`、`Content/Python/wasami_tools/**` | 01 |
 | `Source/wasami_deception/WasamiGameMode.*`、`WasamiPlayerCharacter.*` | 02 |
 

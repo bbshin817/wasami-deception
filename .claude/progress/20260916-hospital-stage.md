@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/hospital-stage
 base: f2ad354
 started: 2026-09-16 09:01
-updated: 2026-09-16 09:11
+updated: 2026-09-16 09:21
 ---
 
 # ステージを CC2 から本家の病院（06_Hospital Zone 1・Zone 2）へ差し替える
@@ -25,14 +25,14 @@ updated: 2026-09-16 09:11
   - 消したアセット: `/Game/CC2`（511 アセット・733 MB）、`/Game/Stage/Maps/L_Zone1`、`/Game/Pipeline/Materials/M_CC2_Standard`、`/Game/Pipeline/Interchange/PL_CC2_StaticMesh`。空のレベル `/Game/Stage/Maps/L_Hospital_Zone1` を作って開いた（`/Game/Pipeline/Textures/T_Default_Masks` は病院でも使うので残した）
   - 消したコード: `Tools/cc2/prepare_stage.py`、`pipeline/cc2_assets.py`、`pipeline/cc2_level.py`、`toolsets/stage.py`（`WasamiStageTools`）
   - 直したもの: `pipeline/paths.py`（CC2 の定数を外し `DD_PAK2` を追加）、`wasami_tools/__init__.py`、`Config/DefaultEngine.ini`（既定マップ → `L_Hospital_Zone1`）、`.gitignore`、`CLAUDE.md`、ガイド 6 件、実装記録 00・01・`_index`、`handover.md`
-- [ ] 3. 前処理 `Tools/dd/prepare_stage.py`: `pak_reference_2` の `_levels/06_Hospital_Zone_0{1,2}.scene.json`・`_meshes.json`・`_materials.json`・`_textures.json` から `Intermediate/Pipeline/dd/stage_ue.json` を作る ← 作業中
-- [ ] 4. 取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py`: メッシュ 67・テクスチャ 291・マテリアル 146 を `/Game/DD/…` に。マスターマテリアル `M_DD_Standard`（本家の `MM_Main_Substance` 系を写す）
+- [x] 3. 前処理 `Tools/dd/prepare_stage.py` → `Intermediate/Pipeline/dd/stage_ue.json`（3.7 MB、problems 0）。メッシュ 66（うちエンジンの Plane・Cube が 2）・テクスチャ 282・マテリアル 143。Zone1: 配置 923・灯 1,120・反射キャプチャ 10・アクタ 873、Zone2: 配置 819・灯 751・反射キャプチャ 1・ポストプロセス 1・アクタ 836
+- [ ] 4. 取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py` と `toolsets/stage.py`: メッシュ 66・テクスチャ 282・マテリアル 143 を `/Game/DD/…` に。マスターマテリアルは `M_DD_Substance`（発光・マスクは静的スイッチ）・`M_DD_Decal`（メッシュデカール）・`M_DD_Unlit` の 3 つ ← 作業中
 - [ ] 5. 組み立て `pipeline/dd_level.py`: `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2`（配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセス・プレイヤースタート）
 - [ ] 6. PIE で歩いて当たりと見た目を確かめ、性能を測る。実装記録（01）とガイド・CLAUDE.md を病院に合わせて直し、`check_records.py --update` を通す
 
 ## 次にやること
 
-ステップ 3。`Tools/dd/prepare_stage.py` を書く。入力は `pak_reference_2` の `_levels/06_Hospital_Zone_01.scene.json`・`06_Hospital_Zone_02.scene.json`・`_meshes.json`・`_materials.json`・`_textures.json`、出力は `Intermediate/Pipeline/dd/stage_ue.json`（メッシュ・テクスチャ・マテリアル・配置・灯・反射キャプチャ・霧・空・ポストプロセス・ゲームの部品）。CC2 と違い座標変換は不要で、glTF はそのまま取り込める（区画ごとに分ける必要もない。マテリアル名がスロット名なので順序で対応が取れる）。
+ステップ 4。エディタ側の取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py` と、それを呼ぶ `toolsets/stage.py`（`WasamiStageTools` を病院用に作り直す）を書く。`stage_ue.json` を読み、glTF（`pak_reference_2/_meshes_gltf/**.gltf`）と PNG を直接取り込み、マテリアルインスタンスを作る。量が多いので CC2 と同じく `max_items` で区切って `remaining` が 0 になるまで呼ぶ。新しいツールセットのクラスは `reload_module` では登録されないので、`Tools/ue_remote.py` から明示的に登録するかエディタを開き直す。
 
 ## 決定事項
 
@@ -65,7 +65,27 @@ Zone 1 + Zone 2 の合計（重複を除く）: **メッシュ 67（glTF 423 MB�
 | `MM_Lit` | 5 | `Light Color`・`Light Multiplier` |
 | その他 7 系統 | 11 | ガラス・車・第三者製 |
 
-親チェーンの深さは 140 個が 2 段（インスタンス → マスター）。
+親チェーンの深さは 140 個が 2 段（インスタンス → マスター）。マスターの引数（`_assets/.../MasterMaterials/*.json` の式から確定）:
+
+| マスター | 既定・引数 |
+| --- | --- |
+| `MM_Main_Substance` | `Albedo`（sRGB）・`Normal`（`SAMPLERTYPE_Normal`）・`Packed`（`SAMPLERTYPE_LinearColor`）、`Metallic Power` 1.0・`Roughness Power` 1.0・`Normal Flatness`（既定なし＝0）。`bUsedWithSkeletalMesh` |
+| `MM_Main_Substance_Emissive` | 上 + `Emissive` テクスチャ・`Emissive Intensity`・`Opacity Override`・`Emissive Color Multiplier`（1,1,1,1）。`BLEND_Masked` |
+| `MM_Main_Substance_AlphaColorMask` | 上 + `Mask Color`（1,1,1,1） |
+| `MM_Lit` | `MSM_Unlit`。`Light Multiplier` 1.0・`Light Color`（0,0,0,1）・コレクション引数 `All Lights` |
+| `M_01_Hotel_Decals` | `MD_DeferredDecal`・`BLEND_Translucent`・`DBM_DBuffer_ColorRoughness`。`Texture`・`Roughness Power` 1.0・`Emissive Multiplier`・`Color Multiplier`・`Fade Length (S)` 500・`Fade Offset (S)` 500・静的ブール `Distance Fade?` |
+
+**式の中身（`Roughness Power` などがどう効くか）は cook で消えている**（`MaterialExpressionMaterialFunctionCall` 1 つに集約）。作り直すマスターでは pow(値, Power)・法線の平坦化と解釈する（推定と明記して記録に書く）。
+
+**BP の中の灯**: レベルの灯 1,873 のうち 1,251 は `light: {}` で、値は Blueprint のクラス既定にある。内訳は `BP_Shard_C` 679、`PointLight351_Tunnel_Blueprint_C` 190、`PointLight_Blueprint_C` 294、`PointLight_Blueprint_WallLight_C` 50、`PointLight_Blueprint_Ceiling_Z2_C` 34、`BP_06_sawTrap_short01_C` 22 ほか。`_assets/.../<BP>.json` の `LightComponent0` か `<名前>_GEN_VARIABLE` の `props` を使い、`RelativeLocation` 等があれば親のワールド変換に合成する（書き出しの `world` は BP 内の相対変換を含まないため）。
+
+**デカールはメッシュデカール**: デカール材 31 種は 227 スロットすべてが `/Engine/BasicShapes/Plane` の `StaticMeshActor` に載っている（`DecalActor` も `DecalComponent` も無い）。UE の mesh decal（`MD_DeferredDecal` のマテリアルをスタティックメッシュに割り当てる）なので、そのまま再現できる。`M_01_Hotel_Decals` は `DBM_DBuffer_ColorRoughness`・`BLEND_Translucent`。
+
+**`Normal Flatness` の扱いは未確定**: インスタンスは 1.2〜3.0 を入れるが、マスターの既定は 0 で、式は cook で消えている。0〜1 の lerp とも、XY の倍率とも読めて確定できない。**いまは適用しない**（WebGL 版も同じ判断: `.claude/references/webgl/implementation-records/13-asset-pipeline.md`）。`Roughness Power`・`Metallic Power` は既定 1.0 なので pow(値, Power) として実装する（推定）。見え方を原作の映像と比べる段で見直す。
+
+**マスターごとの配置スロット数**: substance 1,459・other 491・emissive 345・decal 227・alphamask 185・lit 131・glassmask 2・translucent 1。`other` の 11 種（`M_06_Sky`・`M_TeleportZone`・`m_crystal`〈シャード〉・`M_06_Nurse_Items`・`M_06_ShadowPlane_Zone1_Tunnel`・ガラス 2 種・車 2 種・動画 1）は `M_DD_Substance` に持っているテクスチャだけ載せる形で代用する。
+
+**テクスチャの設定**は `_textures.json` の `srgb` / `compression` / `lod_group` をそのまま使える（病院の 365 枚: DXT1 sRGB 139、BC5 法線 93〈`TC_Normalmap` + `TEXTUREGROUP_WorldNormalMap`〉、DXT1 リニア 84、DXT5 sRGB 45。2048² が 227 枚、4096² が 9 枚）。
 
 ### 気をつけること
 

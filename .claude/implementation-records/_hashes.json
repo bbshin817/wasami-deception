@@ -14,6 +14,7 @@
     "Source/wasami_deception/wasami_deception.h": "73cb863cf321f93664126321d4dd3ebaa1100368"
   },
   "01-stage-pipeline.md": {
+    "Tools/dd/prepare_stage.py": "2af52b4eafce7186aa3a680d62a88ffd552d9ca7",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "221400d9dfbdfa8ec81e6c8e00704585c2ee42fd",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
