@@ -1,3 +1,8 @@
+# 行末は LF に固定する（Windows の core.autocrlf=true だと checkout のたびに CRLF になり、
+# 実装記録のハッシュ（.claude/scripts/check_records.py）が内容の変更なしにずれるため）
+* text=auto eol=lf
+
 # Unreal のバイナリのアセットは Git LFS で扱う（参照データから作り直せる素材は .gitignore で除外している）
+# ここは後に書く（.gitattributes は後の行が勝つ）ことで、上の text=auto より -text を優先させる
 *.uasset filter=lfs diff=lfs merge=lfs -text
 *.umap filter=lfs diff=lfs merge=lfs -text
