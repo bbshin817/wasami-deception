@@ -5,7 +5,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 
 ## 必読（作業前）
 - 対話と報告の言語（**セッション内の対話・応答・実装報告はすべて日本語**）: `.claude/guides/communication.md`
-- 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。セッション開始・/clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する**）: `.claude/guides/progress-tracking.md`
+- 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。セッション開始・/clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する。実装が 1 つ終わったら `.claude/` に記録を残し、ユーザーに `/clear` をお願いする。大規模な実装はステップに分け、ステップごとに同じことをする**）: `.claude/guides/progress-tracking.md`
 - 実装記録（**ソースを変更したら対応する記録を直し、`python .claude/scripts/check_records.py --update` を通す**）: `.claude/guides/implementation-records.md`、索引は `.claude/implementation-records/_index.md`
 - エディタの操作（**MCP のツールは 1 つずつ順に呼び、結果を必ず確かめる。一括の変更の前後で保存する。取り込みとステージの組み立ては `Content/Python/wasami_tools` のツールセットを MCP から呼ぶ。C++ のビルドの手順**）: `.claude/guides/unreal-workflow.md`
 - 検証（**エディタはユーザーのアプリでもある。閉じる・開き直す・PIE は先に確認を取り、OS 全体の入力は操作しない。PIE は必ず止める**）: `.claude/guides/verification.md`
