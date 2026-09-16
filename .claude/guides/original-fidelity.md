@@ -59,6 +59,7 @@ WebGL 版の同名のルール（`<WEBGL>/.claude/guides/original-fidelity.md`�
 
 - **根拠は原則としてコード（原作データ）に基づく**（ユーザーの指示）。実機は、コードで確定できないもの（実行時の見え方・手触り・タイミング）を観察し、本作と並べて比べるために使う。実機で確かめたことは、記録に「実機で観察」と、どちらのビルドかを明記する。
 - 起動の作法（ユーザーの確認、セッション 0 の制約、同時起動の禁止）は `.claude/guides/verification.md` の「本家のゲームを動かすとき」に従う。
+- 撮った画面と、そこから測った値は `observations/`（git の対象外。`observations/README.md` だけ追う）に残す。2026-09-16 に Zone 1 の開始地点・廊下・タブレットを撮り、色を測ってある。
 
 ### 同居している 2 つのビルド
 
@@ -101,7 +102,9 @@ REPLAY で選べるのは、そのビルドに入っているマップだけ（�
 | Mascot Mayhem | 8 | `07_FunPlace_Zone_01` | — | ○ |
 | Bearly Buried | 9 | `08_BearHouse_Exterior` | — | Ch5 未所有 |
 
-- **病院は REPLAY から選ぶと入口（`06_Hospital`）から始まる**。本作の範囲である Zone 1（`06_Hospital_Zone_01`）へは、入口から中に入って進む。
+- **病院は REPLAY から選ぶと入口（`06_Hospital`）から始まる**。入口は長い導入（Bierce の会話・注射室・レントゲン室・追走・エレベーター。最後のエレベーターは x≈21,300、開始は x≈0 付近）なので、本作の範囲である Zone 1（`06_Hospital_Zone_01`）へ歩いて行くのは遠い。
+- **Zone 1 や Zone 2 へ直接入るときは MOD（Simple Mod Menu）の `Maps` を使う**（`M` でメニュー → `Maps` → `TORMENT THERAPY` → `ZONE 1 STARTING POINT` / `ZONE 1` / `ZONE 2` などのチェックポイント → 警告に `YES`）。入ったら `Console Command` に `clvl` と打ち、`Logs` で `Current Level: 06_Hospital_Zone_01` を確かめてから観察する（2026-09-16 に実施）。MOD の扱いは `.claude/guides/verification.md`。
+- コマンドラインでマップを直接指定する手は使えない（Steam のラッパーが引数を渡さず、steam_api64 の中で落ちる）。
 - 最新版では旧版に無い項目（`06`〜`08`）が増えるだけで、`Level` の値とマップの対応は旧版と同じ。
 
 ### それでも実機で観察できないもの

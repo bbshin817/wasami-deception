@@ -67,3 +67,7 @@ Desktop.ini
 
 # 検証用ファイル等を配置するディレクトリ
 tmp
+# 本家の実機を観察して撮った画面（原作の素材なので git には入れない。撮り直せる）
+# 測った値をまとめた README だけは追う（本作の判断の根拠になるので）
+/observations/*
+!/observations/README.md

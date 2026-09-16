@@ -50,9 +50,10 @@
 
 ## 本家のゲームに MOD を入れるとき
 
-Simple Mod Menu（`dd-sml`。ユーザーが用意したもの。`M` キーで開閉）を使うときの決め事。
+Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの。`M` キーで開閉）を使うときの決め事。**2026-09-16 に最新版へ導入済み**（`common\Dark Deception\DDeception\Content\Paks\` に `..._SimpleModMenu.pak` 150 MB と `..._SMM-Loader.pak` 176 KB）。pak の設置は Claude の許可判定で止まる（第三者のコードの組み込み）ので、入れ直すときはユーザーに実行してもらう。
 
-- 使ってよい: **Active Enemies**（敵の位置の確認と除去）、**Miscellaneous**（`Num1` 飛行・`Num2` ノークリップ・`Num3` 無敵・シャードの回収）、コマンド `clvl`（現在のレベル名）・`help`・`list`。観察の場所まで移動するのに使う。
+- 使ってよい: **Maps**（ステージ内のチェックポイントへ直接飛ぶ。病院の Zone 1・Zone 2 に入る唯一の実用的な手）、**Active Enemies**（敵の位置の確認と除去）、**Miscellaneous**（`Num1` 飛行・`Num2` ノークリップ・`Num3` 無敵・シャードの回収）、コマンド `clvl`（現在のレベル名）・`help`・`list`。観察の場所まで移動するのに使う。
+- `Maps` で飛ぶと「S ランクが取れない・ストーリーの進行が付かない・進行が失われる恐れ」の警告が出る（`YES` で進む）。セーブの控えを取ってから使う。
 - **World Editor は使わない**。レベルの配置を動かす・消す・足すと**自動で保存され**（`%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation`）、原作の見え方が根拠にならなくなる。
 - MOD は pak を `DDeception\Content\Paks\` に置くだけ、外すときは pak を消すだけ。ローダー（`..._SMM-Loader.pak`）は `BP_DD_GameMode` を差し替え、メニュー本体（`..._SimpleModMenu.pak`）の `/Game/SimpleModMenu/Blueprints/BP_SimpleModMenu` を生成する。**ローダーだけを入れない**（参照先が無い）。
 - **MOD を入れた状態で観察したことは、記録に「MOD 入り」と書く**。挙動や値の根拠は必ず原作データ（`pak_reference_2/`）のコード。MOD は観察の足場でしかない。
