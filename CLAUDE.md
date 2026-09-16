@@ -11,6 +11,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 検証（**エディタはユーザーのアプリでもある。閉じる・開き直す・PIE は先に確認を取り、OS 全体の入力は操作しない。PIE は必ず止める**）: `.claude/guides/verification.md`
 - 原作への忠実さ（**本家 Dark Deception の原作データ `pak_reference/` に忠実に倣う。ステージも本家の病院「Torment Therapy」の Zone 1・Zone 2（`pak_reference_2/` の `06_Hospital_Zone_01`・`06_Hospital_Zone_02`）。本家に無いギミックは複雑にせず、壊せる物は本家のホテルの板張りのバリケードのように 1 クリックで崩れて消える。原作のロゴとキャラクターのモデルは使わない。UE に同じ仕組みがあれば値を写すだけにし、作り直さない**）: `.claude/guides/original-fidelity.md`
 - コミットとブランチ（**実装ごとにコミット、大規模改修は作業ブランチ→main へマージ→ローカルブランチ削除、最終コミットから 10 分経過・未 push 2 件以上・大規模改修のマージ後のいずれかで main を push。参照データから作り直せる素材は git の外、手作りのアセットは Git LFS**）: `.claude/guides/git-workflow.md`
+- 性能とメモリ（**この PC は GTX 1660 SUPER の VRAM 6 GB・RAM 32 GB。開発中は VRAM と RAM の逼迫を避ける設定にし、そのための設定はエディタにだけ効く場所に置く。パッケージした本編の品質は落とさない**）: `.claude/guides/performance.md`
 - 配布とパッケージ（**パッケージには原作の素材が入る。配布の話が出たら必ずユーザーに確認する**）: `.claude/guides/distribution.md`
 
 ## 参考資料
