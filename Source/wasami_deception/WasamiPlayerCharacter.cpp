@@ -164,6 +164,8 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 void AWasamiPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	// PlaceTablet reads the point of view the camera manager has just worked out, so the tick has to come after it.
+	SetTickGroup(ETickingGroup::TG_PostUpdateWork);
 	ApplySpeed();
 	ApplyTabletInterp(0.f);
 	WasamiGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AWasamiGameMode>() : nullptr;
@@ -408,15 +410,37 @@ void AWasamiPlayerCharacter::ResizeMap()
 void AWasamiPlayerCharacter::ApplyTabletInterp(float Value)
 {
 	TabletInterp = Value;
-	Tablet->SetRelativeLocation(FVector(TabletX, TabletY, FMath::Lerp(TabletStowedZ, TabletRaisedZ, Value)));
+	PlaceTablet();
+}
+
+void AWasamiPlayerCharacter::PlaceTablet()
+{
+	// Where the timelines put the plate, in the view's own space.
+	const FVector Local(TabletX, TabletY, FMath::Lerp(TabletStowedZ, TabletRaisedZ, TabletInterp));
 	// RLerp with the shortest path: the plate swings up the right way round as it rises.
 	static const FQuat Stowed = FRotator(0.f, 90.f, 180.f).Quaternion();
 	static const FQuat Raised = FRotator(0.f, 90.f, 0.f).Quaternion();
-	Tablet->SetRelativeRotation(FQuat::Slerp(Stowed, Raised, Value).GetNormalized());
+	const FQuat LocalRotation = FQuat::Slerp(Stowed, Raised, TabletInterp).GetNormalized();
+
+	// The tablet has to sit still on the screen while the player walks (the user's call, as on the WebGL version:
+	// its 10 記録, 2026-09-12). UE puts a camera shake on the camera manager's point of view, not on the camera
+	// component, so a child of the camera would swing the other way on screen — instead the plate is placed on the
+	// view that is about to be rendered, every frame, in TG_PostUpdateWork.
+	FTransform View(Camera->GetComponentQuat(), Camera->GetComponentLocation());
+	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (const APlayerCameraManager* Manager = PC->PlayerCameraManager)
+		{
+			View = FTransform(Manager->GetCameraRotation().Quaternion(), Manager->GetCameraLocation());
+		}
+	}
+	const FTransform Placed = FTransform(LocalRotation, Local) * View;
+	Tablet->SetWorldLocationAndRotation(Placed.GetLocation(), Placed.GetRotation());
 }
 
 void AWasamiPlayerCharacter::UpdateTablet(float DeltaSeconds)
 {
+	PlaceTablet();
 	if (bTabletMoving)
 	{
 		TabletTime += DeltaSeconds;

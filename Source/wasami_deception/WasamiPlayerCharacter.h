@@ -165,6 +165,7 @@ private:
 	void UseBoost();
 	void ApplySpeed();
 	void ApplyTabletInterp(float Value);
+	void PlaceTablet();
 	void UpdateTablet(float DeltaSeconds);
 	void UpdateTabletScreen();
 	void RefreshMinimapContents();
