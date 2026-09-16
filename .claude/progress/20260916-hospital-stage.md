@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/hospital-stage
 base: f2ad354
 started: 2026-09-16 09:01
-updated: 2026-09-16 09:21
+updated: 2026-09-16 09:38
 ---
 
 # ステージを CC2 から本家の病院（06_Hospital Zone 1・Zone 2）へ差し替える
@@ -22,17 +22,17 @@ updated: 2026-09-16 09:21
 
 - [x] 1. 作業ブランチ `feature/hospital-stage` を作り、この記録を作る
 - [x] 2. CC2 の撤去
-  - 消したアセット: `/Game/CC2`（511 アセット・733 MB）、`/Game/Stage/Maps/L_Zone1`、`/Game/Pipeline/Materials/M_CC2_Standard`、`/Game/Pipeline/Interchange/PL_CC2_StaticMesh`。空のレベル `/Game/Stage/Maps/L_Hospital_Zone1` を作って開いた（`/Game/Pipeline/Textures/T_Default_Masks` は病院でも使うので残した）
+  - 消したアセット: `/Game/CC2`（511 アセット・733 MB）、`/Game/Stage/Maps/L_Zone1`、`/Game/Pipeline/Materials/M_CC2_Standard`、`/Game/Pipeline/Interchange/PL_CC2_StaticMesh`。空のレベル `/Game/Stage/Maps/L_Hospital_Zone1` を作って開いた（`/Game/Pipeline/Textures/T_Default_Masks` は残したが、ステップ 4 で `T_DD_DefaultPacked` に置き換えたので削除した）
   - 消したコード: `Tools/cc2/prepare_stage.py`、`pipeline/cc2_assets.py`、`pipeline/cc2_level.py`、`toolsets/stage.py`（`WasamiStageTools`）
   - 直したもの: `pipeline/paths.py`（CC2 の定数を外し `DD_PAK2` を追加）、`wasami_tools/__init__.py`、`Config/DefaultEngine.ini`（既定マップ → `L_Hospital_Zone1`）、`.gitignore`、`CLAUDE.md`、ガイド 6 件、実装記録 00・01・`_index`、`handover.md`
 - [x] 3. 前処理 `Tools/dd/prepare_stage.py` → `Intermediate/Pipeline/dd/stage_ue.json`（3.7 MB、problems 0）。メッシュ 66（うちエンジンの Plane・Cube が 2）・テクスチャ 282・マテリアル 143。Zone1: 配置 923・灯 1,120・反射キャプチャ 10・アクタ 873、Zone2: 配置 819・灯 751・反射キャプチャ 1・ポストプロセス 1・アクタ 836
-- [ ] 4. 取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py` と `toolsets/stage.py`: メッシュ 66・テクスチャ 282・マテリアル 143 を `/Game/DD/…` に。マスターマテリアルは `M_DD_Substance`（発光・マスクは静的スイッチ）・`M_DD_Decal`（メッシュデカール）・`M_DD_Unlit` の 3 つ ← 作業中
-- [ ] 5. 組み立て `pipeline/dd_level.py`: `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2`（配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセス・プレイヤースタート）
+- [x] 4. 取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py` と `toolsets/stage.py`。マスターマテリアルは `M_DD_Substance`（発光・マスクは静的スイッチ、`Roughness Power` / `Metallic Power` は pow）・`M_DD_Decal`（メッシュデカール）・`M_DD_Unlit` の 3 つ。メッシュ 1・テクスチャ 5・マテリアル 4 で動作を確かめた（スロット数一致、圧縮と sRGB と LOD グループが原作どおり、親とブレンドが正しい）。**本取り込み（489 アセット）をバックグラウンドで実行中** ← 作業中
+- [ ] 5. 組み立て `pipeline/dd_level.py` と `WasamiStageTools.build_dd_stage_level(zone)`: `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2`（配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセス・プレイヤースタート）。**コードは書いたが 1 度も実行していない**
 - [ ] 6. PIE で歩いて当たりと見た目を確かめ、性能を測る。実装記録（01）とガイド・CLAUDE.md を病院に合わせて直し、`check_records.py --update` を通す
 
 ## 次にやること
 
-ステップ 4。エディタ側の取り込み `Content/Python/wasami_tools/pipeline/dd_stage.py` と、それを呼ぶ `toolsets/stage.py`（`WasamiStageTools` を病院用に作り直す）を書く。`stage_ue.json` を読み、glTF（`pak_reference_2/_meshes_gltf/**.gltf`）と PNG を直接取り込み、マテリアルインスタンスを作る。量が多いので CC2 と同じく `max_items` で区切って `remaining` が 0 になるまで呼ぶ。新しいツールセットのクラスは `reload_module` では登録されないので、`Tools/ue_remote.py` から明示的に登録するかエディタを開き直す。
+走らせている取り込みが終わったら（下の「いま走らせているもの」）、ステップ 5 のレベルの組み立てを初めて実行する: `python Tools/ue_remote.py -c "…"` で `wasami_tools.pipeline.dd_level` を読み込み直して `build('Zone1')` を呼び、戻り値の `failed_settings` と出力ログの警告を確かめる。うまくいったら `build('Zone2')`。その後、実装記録 01 に組み立ての節を足し、`check_records.py --update` を通してコミットする。
 
 ## 決定事項
 
@@ -41,6 +41,38 @@ updated: 2026-09-16 09:21
 - 2026-09-16: ゲームの流れと値は病院の原作どおり — ユーザーの回答。`.claude/guides/original-fidelity.md` の「ステージだけは CC2」という例外が無くなり、**すべて本家基準に一本化**される。病院は `pak_reference`（UE 4.21）に無いので、根拠は `pak_reference_2`（UE 4.24）。敵はワサミ、ライフ 3 など本作独自の決定は維持。
 
 ## 再開時の注意
+
+### 見つかった問題（2026-09-16、本取り込みの後）
+
+**メッシュのマテリアルスロットが潰れる**: 本取り込みで 13 個のメッシュが書き出しより少ないスロット数になった（`hospital_zone_01_tiles_tile_01` 19 → 16、`tile_02` 16 → 13、`tile_03` 18 → 15、`tile_tunnel` 14 → 13、Zone 2 のタイル 3 枚も各 1 減、`hospital_zone_01_teleport` 7 → 1、`hospital_zone_02_teleport` 10 → 1、`hospital_zone_02_miniboss_room` 23 → 17、`hospital_posterframe_02` 3 → 1、`hospital_doorC_01_door_frame` 2 → 1、`Lwd_Rm_WallLightBase01_03` 5 → 4）。**同じマテリアルを使う区画が glTF で同じマテリアルを指すため、取り込みで 1 スロットに統合される**（CC2 のときと同じ。あちらは `sectioned_glb` で区画ごとに別マテリアル名を振って回避した）。このままだと配置のスロット番号がずれ、タイル（ステージの地形そのもの）のマテリアルが間違って付く。
+
+対処: 前処理で glTF の JSON だけを書き直し（`materials` を区画ごとの一意な名前 `<元のマテリアル名>__<番号>` にし、各プリミティブがそれを指すようにする）、`Intermediate/Pipeline/dd/meshes/` に出す。`.bin`（合計 423 MB）は複製せず、`buffers[0].uri` を `pak_reference_2` の元ファイルへの相対パスにする。
+
+**実装して確かめた**（`Tools/dd/prepare_stage.py` の `sectioned_gltf`）: 前処理を流し直すと 13 個が対象になり、どれもプリミティブ数と書き出しのスロット数が一致、`.bin` への相対 URI（`../../../../../../pak_reference_2/…`）の実在も確認。残りはエディタで 13 個を消して取り込み直すこと。**順序が保たれていることは確認済み**（数が合う 51 個は UE のスロット名が書き出しの並びと完全一致、合わない 13 個は重複を取り除いた並びになっていた）。
+
+**解決した**（2026-09-16）: 13 個を消して取り込み直し（234 秒）、全 64 メッシュで**スロット数の不一致 0** になった。
+
+### Zone 1 の組み立ての結果（2026-09-16、初回）
+
+**16.8 秒で成功**: 配置 923・デカール 69・灯 1,120・反射キャプチャ 10・霧 1・スカイライト 1・プレイヤースタート 4、`failed_settings` は 2 件だけ。
+
+1. `ExponentialHeightFogComponent.FogInscatteringColor` が見つからない → **UE5 で `FogInscatteringLuminance` に改名**されていた（`DirectionalInscatteringColor` も同様）。`ue_props.RENAMED` で読み替えるようにして解決。値は同じ LinearColor なのでそのまま使える。
+2. スカイライトのキューブマップが TextureCube でない → **回収不能**。原作は TextureCube だが、書き出しは 512×512 の平面 PNG（`PF_FloatRGBA` を 8 bit に落としたもの）なので、取り込んでも Texture2D にしかならない。`.hdr` も残っていない。いまはシーンのキャプチャに任せる（病院は屋内なので寄与は小さい）。見え方を比べる段で見直す。
+
+### Zone 1・Zone 2 の組み立て（霧の修正の後）
+
+- **Zone1**: 配置 923・デカール 69・灯 1,120・反射キャプチャ 10・霧 1・スカイライト 1・プレイヤースタート 4、20.5 秒、`failed_settings` 1（スカイライトのキューブマップのみ）
+- **Zone2**: 配置 819・デカール 158・灯 751・反射キャプチャ 1・霧 1・スカイライト 1・ポストプロセス 1・プレイヤースタート 6、11.3 秒、`failed_settings` 3
+
+Zone2 の残り 3 件: スカイライトと球の反射キャプチャのキューブマップ（上と同じ、回収不能）、**`PostProcessSettings.ColorGradingLUT`**（書き出しがアセットのパスの文字列 `/Game/ThirdParty/Chameleon/LUTs/LUT_Classic8`。取り込んだテクスチャに解決する仕組みがまだない）。同じボリュームの `WeightedBlendables`（`M_SharpenFilter_Inst`）も未対応。**ただしこのボリュームは `ColorGradingIntensity` が 0 なので LUT の寄与は無い**。後で対応するときは、前処理で `settings.ColorGradingLUT` を `textures` に用途 `lut` で登録し（CC2 のときと同じ `TC_VectorDisplacementmap`・ミップ無し・`TEXTUREGROUP_ColorLookupTable`）、組み立てでアセットに解決する。
+
+### いま走らせているもの
+
+- **Zone 1 のレベルの組み立て**（`dd_level.build('Zone1')` を `Tools/ue_remote.py` から。**この経路は初めての実行**）。`/Game/Stage/Maps/L_Hospital_Zone1` に配置 923・灯 1,120・反射キャプチャ 10・霧・スカイライト・プレイヤースタート 4 を置いて保存する。
+- 完了の確かめ方: 出力に `Zone1 の組み立て: {...}` が出る。`failed_settings` が 0 でなければ、`build_dd_stage_level:` で始まる警告が入らなかったプロパティを示している（スカイライトのキューブマップは Texture2D なので 1 件出る見込み）。
+- うまくいったら同じ要領で `build('Zone2')`。
+- 取り込み（489 アセット、375 秒）と、区画を分け直した 13 メッシュの再取り込み（234 秒、スロット数の不一致 0）は完了済み。
+- 組み立ての間、エディタのゲームスレッドは塞がる。PIE やアセットの操作は終わってから。やり直すときは同じコマンドでよい（タグ `dd` のアクタを消してから置き直す）。
 
 ### 調べた事実（2026-09-16、`pak_reference_2` から）
 
@@ -80,6 +112,8 @@ Zone 1 + Zone 2 の合計（重複を除く）: **メッシュ 67（glTF 423 MB�
 **BP の中の灯**: レベルの灯 1,873 のうち 1,251 は `light: {}` で、値は Blueprint のクラス既定にある。内訳は `BP_Shard_C` 679、`PointLight351_Tunnel_Blueprint_C` 190、`PointLight_Blueprint_C` 294、`PointLight_Blueprint_WallLight_C` 50、`PointLight_Blueprint_Ceiling_Z2_C` 34、`BP_06_sawTrap_short01_C` 22 ほか。`_assets/.../<BP>.json` の `LightComponent0` か `<名前>_GEN_VARIABLE` の `props` を使い、`RelativeLocation` 等があれば親のワールド変換に合成する（書き出しの `world` は BP 内の相対変換を含まないため）。
 
 **デカールはメッシュデカール**: デカール材 31 種は 227 スロットすべてが `/Engine/BasicShapes/Plane` の `StaticMeshActor` に載っている（`DecalActor` も `DecalComponent` も無い）。UE の mesh decal（`MD_DeferredDecal` のマテリアルをスタティックメッシュに割り当てる）なので、そのまま再現できる。`M_01_Hotel_Decals` は `DBM_DBuffer_ColorRoughness`・`BLEND_Translucent`。
+
+**UE の版の違い（デカール）**: 本家は `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、**UE 5.8 では `decal_blend_mode` は非推奨で「No longer used」**（Python からは読めず、`DecalBlendMode` 列挙の綴りも `DBM_D_BUFFER_COLOR_ROUGHNESS` に変わっている）。いまの UE はマテリアルがどの出力をつないでいるかで DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないで同じことにする。
 
 **`Normal Flatness` の扱いは未確定**: インスタンスは 1.2〜3.0 を入れるが、マスターの既定は 0 で、式は cook で消えている。0〜1 の lerp とも、XY の倍率とも読めて確定できない。**いまは適用しない**（WebGL 版も同じ判断: `.claude/references/webgl/implementation-records/13-asset-pipeline.md`）。`Roughness Power`・`Metallic Power` は既定 1.0 なので pow(値, Power) として実装する（推定）。見え方を原作の映像と比べる段で見直す。
 

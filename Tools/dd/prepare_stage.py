@@ -7,8 +7,10 @@ writes Intermediate/Pipeline/dd/stage_ue.json — every mesh, texture and materi
 placements, lights, reflection captures, fog, sky light, post process volumes and the gameplay actors, all in UE units
 (cm, left-handed, z up) and /Game asset paths under /Game/DD.
 
-Nothing is copied: the glTF and PNG of the export are imported straight from pak_reference_2 (its meshes keep the
-original mesh space and their glTF material names are the mesh's material slot names, so no re-sectioning is needed).
+Almost nothing is copied: the glTF and PNG of the export are imported straight from pak_reference_2 (its meshes keep
+the original mesh space and their glTF material names are the mesh's material slot names). The exception is a mesh
+whose sections share a material — UE's import would give those a single slot and shift every later slot index — whose
+glTF is written again under Intermediate/Pipeline/dd/meshes/ with one material per section. Its .bin is not copied.
 
 Env: PAK_REF2 — the export (default <repo>/pak_reference_2).
 """
@@ -20,10 +22,12 @@ import math
 import os
 import re
 import sys
+import urllib.parse
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 REF = os.environ.get("PAK_REF2", os.path.join(ROOT, "pak_reference_2"))
 OUT = os.path.join(ROOT, "Intermediate", "Pipeline", "dd")
+MESH_OUT = os.path.join(OUT, "meshes")
 
 GAME_ROOT = "/Game/DD"
 CONTENT_PREFIX = "DDeception/Content/"
@@ -144,6 +148,46 @@ def world_of(entry):
     return {"location": [round(v, 4) for v in w["location"]],
             "quat_xyzw": [round(v, 8) for v in w["quat_xyzw"]],
             "scale": [round(v, 6) for v in w["scale"]]}
+
+
+# ------------------------------------------------------------------------------------------------ glTF
+def sectioned_gltf(src, rel, slots, problems):
+    """The export's glTF written again with one material per section, under MESH_OUT; returns the new file's path.
+
+    The original's StaticMesh keeps a slot per section even when two sections use the same material, but a glTF makes
+    them point at one material and UE's import then makes one slot — every later slot index would shift. The section's
+    material name is kept in the new name ('M_06_Hospital_Floor_02__3') so the slots stay readable. The .bin is not
+    copied: the new glTF points back at the export's through a relative URI."""
+    with open(src, encoding="utf-8") as f:
+        gltf = json.load(f)
+    names, n = [], 0
+    for mesh in gltf.get("meshes", []):
+        for prim in mesh.get("primitives", []):
+            prim["material"] = n
+            base = (slots[n] or "").split(".")[-1] if n < len(slots) else ""
+            names.append({"name": "%s__%d" % (safe_segment(base or "Slot"), n)})
+            n += 1
+    if n != len(slots):
+        problems.append("%s: %d glTF primitives, %d material slots" % (rel, n, len(slots)))
+    gltf["materials"] = names
+    for k in ("images", "textures", "samplers"):
+        gltf.pop(k, None)
+    for k in ("extensionsUsed", "extensionsRequired"):
+        if k in gltf:
+            gltf[k] = [e for e in gltf[k] if not e.startswith(("KHR_materials", "KHR_texture"))]
+            if not gltf[k]:
+                del gltf[k]
+    dst = os.path.join(MESH_OUT, *rel.split("/")[1:])     # rel starts with '_meshes_gltf/'
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    for buf in gltf.get("buffers", []):
+        uri = buf.get("uri")
+        if uri and not uri.startswith("data:"):
+            target = os.path.join(os.path.dirname(src), urllib.parse.unquote(uri).replace("/", os.sep))
+            back = os.path.relpath(target, os.path.dirname(dst)).replace(os.sep, "/")
+            buf["uri"] = urllib.parse.quote(back, safe="/._-")
+    with open(dst, "w", encoding="utf-8") as f:
+        json.dump(gltf, f, separators=(",", ":"))
+    return dst
 
 
 # ------------------------------------------------------------------------------------------------ the export's index
@@ -324,9 +368,17 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
             if file and not os.path.exists(file):
                 problems.append("mesh gltf missing: " + gltf)
                 file = None
+            slots = [s.get("material") for s in (info.get("material_slots") or [])]
+            resectioned = False
+            if file and len(set(slots)) != len(slots):     # sections sharing a material would collapse into one slot
+                try:
+                    file = sectioned_gltf(file, gltf, slots, problems)
+                    resectioned = True
+                except Exception as e:  # noqa: BLE001
+                    problems.append("could not re-section %s: %s" % (gltf, e))
             meshes[key] = {
                 "asset": asset_of(key), "source": key, "file": file, "engine": not key.startswith("/Game/"),
-                "slots": [s.get("material") for s in (info.get("material_slots") or [])],
+                "slots": slots, "resectioned": resectioned,
                 "lightmapUv": info.get("lightmap_uv_index"), "bodySetup": bool(info.get("body_setup")),
                 "bounds": info.get("bounds"),
             }
@@ -430,12 +482,14 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
 
 # ------------------------------------------------------------------------------------------------ main
 def main():
+    global MESH_OUT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default=OUT, help="where stage_ue.json is written")
     args = parser.parse_args()
     if not os.path.isdir(REF):
         print("missing: %s (set PAK_REF2)" % REF, file=sys.stderr)
         return 1
+    MESH_OUT = os.path.join(args.out, "meshes")
 
     ex = Export()
     meshes, textures, materials, problems = {}, {}, {}, []
@@ -456,8 +510,9 @@ def main():
     with open(os.path.join(args.out, "stage_ue.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
 
-    print("meshes %d (engine %d), textures %d, materials %d"
-          % (len(meshes), sum(1 for m in meshes.values() if m["engine"]), len(textures), len(materials)))
+    print("meshes %d (engine %d, 区画を分け直した %d), textures %d, materials %d"
+          % (len(meshes), sum(1 for m in meshes.values() if m["engine"]),
+             sum(1 for m in meshes.values() if m.get("resectioned")), len(textures), len(materials)))
     for key, z in zones.items():
         print("  %s %s: %s" % (key, z["map"], ", ".join("%s %d" % (k, v) for k, v in z["counts"].items())))
     masters = {}

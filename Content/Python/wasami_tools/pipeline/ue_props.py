@@ -4,6 +4,13 @@ import re
 
 import unreal
 
+# Properties the original's engine (UE 4.21 / 4.24) had under another name. UE 5 renamed the height fog's colours to
+# luminance; the field is the same LinearColor, so the exported value carries over as it is.
+RENAMED = {
+    "FogInscatteringColor": "FogInscatteringLuminance",
+    "DirectionalInscatteringColor": "DirectionalInscatteringLuminance",
+}
+
 
 def snake(name):
     """A UE property name → its Python name ('CameraISO' → 'camera_iso', 'bOverride_WhiteTemp' → 'override_white_temp')."""
@@ -31,6 +38,20 @@ def value(raw, current):
                 return unreal.Color(r=int(raw["R"]), g=int(raw["G"]), b=int(raw["B"]), a=int(raw.get("A", 255)))
             return unreal.LinearColor(raw["R"], raw["G"], raw["B"], raw.get("A", 1.0))
         return None
+    # pak_reference_2 writes colours and vectors as arrays ([183, 163, 145, 255], [0.27, 0.33, 0.44, 1.0])
+    if isinstance(raw, (list, tuple)) and 2 <= len(raw) <= 4 and all(isinstance(v, (int, float)) for v in raw):
+        n = [float(v) for v in raw]
+        if isinstance(current, unreal.Color):
+            return unreal.Color(r=int(n[0]), g=int(n[1]), b=int(n[2]), a=int(n[3]) if len(n) > 3 else 255)
+        if isinstance(current, unreal.LinearColor):
+            return unreal.LinearColor(n[0], n[1], n[2], n[3] if len(n) > 3 else 1.0)
+        if isinstance(current, unreal.Vector) and len(n) >= 3:
+            return unreal.Vector(n[0], n[1], n[2])
+        if isinstance(current, unreal.Vector4) and len(n) >= 4:
+            return unreal.Vector4(n[0], n[1], n[2], n[3])
+        if isinstance(current, unreal.Vector2D) and len(n) >= 2:
+            return unreal.Vector2D(n[0], n[1])
+        return None
     if isinstance(current, unreal.EnumBase) and isinstance(raw, str):
         return enum_member(type(current), raw.split("::")[-1])
     if isinstance(current, float) and isinstance(raw, (int, float)):
@@ -51,7 +72,7 @@ def apply(obj, props, skip=(), failures=None):
     for key, raw in props.items():
         if key in skip:
             continue
-        name = snake(key)
+        name = snake(RENAMED.get(key, key))
         try:
             current = obj.get_editor_property(name)
             if isinstance(raw, dict) and isinstance(current, unreal.StructBase) and value(raw, current) is None:
