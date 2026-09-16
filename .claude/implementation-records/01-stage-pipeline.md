@@ -139,6 +139,8 @@ updated: 2026-09-16
 - `SCS_FINAL_COLOR_LDR` なので、露出・ブルーム・トーンマッパーはゲームと同じものが掛かる（露出の比較に使える。00 記録の「露出」）。
 - 視点の高さは、プレイヤーの目が capsule の中心 +95 cm なので、`PlayerStart` の z 92 に対して **187**。ヨー 0 は +X 方向。FOV は本家の静止時の 90。
 - 落とし穴: `unreal.Rotator` の引数の順は `(roll, pitch, yaw)`。位置引数で `(pitch, yaw, roll)` のつもりで渡すと、ヨーのつもりの値がピッチになる（天井や床を向いた絵が撮れる）。
+- **絶対の明るさの比較には使えない**。`SceneCapture2D` は Lumen の間接光を本編と同じようには回さず、同じ視点でも PIE の絵より暗く出る（Zone 1 の廊下で中央値 (13,13,0) 対 PIE の (41,38,25)。00 記録の「露出」）。同じ視点で**設定 A と設定 B を比べる**のには使える。**本家の実機と数値を突き合わせるときは PIE の `HighResShot 1280x720`** で撮る（PIE 中なら、エディタが前面でなくても `Saved/Screenshots/WindowsEditor/` に書かれる）。
+- PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
 - 2026-09-16: `WasamiDevTools.capture_pose` を足した（エディタが前面でなくても見た目を撮れるようにするため）

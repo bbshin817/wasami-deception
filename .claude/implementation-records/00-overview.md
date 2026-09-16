@@ -72,15 +72,25 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - UE 4.24 の `AutoExposureBias` の既定は **0.0**。原作に入っている第三者プラグイン 2 つ（`ThirdParty/Chameleon/Chameleon`、`ThirdParty/LightProbes/Blueprints/Light_ProbeController`）が、上書きしていない `FPostProcessSettings` をそのまま持っており、どちらも `AutoExposureBias 0.0`・`LowPercent 80`・`HighPercent 98.3`・`MinBrightness 0.03`・`MaxBrightness 2.0` と同じ値を示す。UE 5 の既定は `r.DefaultFeature.AutoExposure.Bias` が 1.0（= 2 倍明るい）なので、**0.0 を明示する**。
 - 灯の単位は取り込みのままでよい。`r.DefaultFeature.LightUnits` はエディタで灯を置く工場（`ActorFactoryPointLight.cpp:23` ほか）でしか読まれず、`ULocalLightComponent` の CDO の既定は `Unitless`（`LocalLightComponent.cpp:14`）。原作の Zone 1 の灯 1,121 個はすべて `IntensityUnits` を書き出していない = Unitless で、`dd_level.py` の `DEFAULT_LIGHT_UNITS` と一致する。
 
-効果（`WasamiDevTools.capture_pose` で Zone 1 の同じ場所・同じ向き〈(1801, −9601, 187)・ヨー 90〉を 1280 × 720 で撮って比較。画像は `observations/ours/zone1-corridor-before.png` / `-after.png`）:
+効果（同じ場所・同じ向き〈Zone 1 の廊下 (1801, −9601)・ヨー 90、目の高さ 187〉の 1280 × 720。画像は `observations/ours/`）:
 
-| | 画面全体の中央値 RGB | 平均輝度 | 上位 1 % の輝度 |
+| 撮り方 | 設定 | 画面全体の中央値 RGB | 平均輝度 | 上位 1 % |
+| --- | --- | --- | --- | --- |
+| `capture_pose`（`zone1-corridor-before.png`） | UE5 の既定（自動露出 ON・EV100・Bias 1.0・ローカル露出 0.8） | (175, 170, 140) | 165.7 | 245.5 |
+| `capture_pose`（`zone1-corridor-after.png`） | 原作の設定 | (13, 13, 0) | 20.9 | 194.1 |
+| **PIE の `HighResShot`**（`zone1-corridor-pie.png`） | 原作の設定 | **(41, 38, 25)** | 45.3 | 193.2（最大 231.0） |
+| 参考: 本家の実機の廊下（別の廊下。`observations/README.md`） | — | **(44, 38, 39)** | — | 天井の灯 227〜236 |
+
+**露出が原作どおりになったことの決め手はタブレット**（`zone1-corridor-pie-tablet.png`）。タブレットの画面は UMG の決まった色なので、灯の実装の差が混ざらず露出だけを映す:
+
+| | 直す前 | 直した後 | 本家の実機 |
 | --- | --- | --- | --- |
-| UE5 の既定（自動露出 ON・EV100・ローカル露出 0.8・Bias 1.0） | (175, 170, 140) | 165.7 | 245.5 |
-| 原作の設定（上のとおり） | (13, 13, 0) | 21.1 | 194.1 |
-| 参考: 本家の実機の廊下（`observations/README.md`、別の廊下） | (44, 38, 39) | — | 天井の灯 227〜236 |
+| 上の帯の地 | 162 | **(34, 34, 33)** | (32, 32, 31) |
+| 地図の地（黒） | (4, 3, 2) | **(0, 0, 0)** | (0, 0, 0) |
 
-**残る差は露出ではなく灯の側**。本作は Lumen の動的な灯（`r.AllowStaticLighting=False`、取り込んだ灯はすべて Movable）で、原作は 1,121 個の灯をライトマップに焼き込んでいる。明るい面（天井の灯）は 194 対 227〜236 とおおむね近いのに、中央値が 13 対 44 と暗いのは、間接光の回り込みが足りていないため。M1 の残りとして灯の側で詰める。
+ステージ側も、明るさは原作とほぼ同じところに来た（中央値 R 41 / G 38 に対し原作 44 / 38、いちばん明るい面 231 に対し原作 227〜236）。**残っている差は色温度**: 青が 25 に対し原作は 39 で、本作のほうが黄緑に寄っている。灯の色・スカイライト・反射キャプチャ（書き出しが平面 PNG でキューブマップを戻せない）のどれかで、露出とは別の課題（M1 の残り）。
+
+**`capture_pose` の絵は絶対の明るさの比較には使えない**（上の表で PIE の (41,38,25) に対し (13,13,0) と暗い）。`SceneCapture2D` は Lumen の間接光を本編と同じようには回さないため。**同じ視点で設定 A と設定 B を比べる用途には使える**（暗くなる度合いは同じ）が、本家の実機と数値を突き合わせるときは **PIE の `HighResShot`** で撮る。
 
 ## 作業の流れ
 
@@ -96,7 +106,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - `r.RayTracing=False` はこの PC に合わせた設定。RT コアのある GPU で動かすときは戻す。
 - 原作のプロジェクト設定のうち、**写していない 2 つ**（`Config/DefaultEngine.ini` にも理由を書いてある）:
   - `r.UsePreExposure=False` … プリ露出はトーンマッパーで打ち消される精度の工夫で、露出を 1.0 に固定した今は何も変えない。切り替えるとシェーダーが全部コンパイルし直しになる。
-  - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。ただし `handover.md` には「ステージのボリュームのモーションブラー 0 は採らず本家の既定 0.5」という逆の決定が残っているので、**ユーザーに確認してから**変える。
+  - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
 - 2026-09-16: 初版（現行の構成・設定を記録）
