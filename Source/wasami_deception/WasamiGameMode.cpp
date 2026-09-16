@@ -5,4 +5,5 @@
 AWasamiGameMode::AWasamiGameMode()
 {
 	DefaultPawnClass = AWasamiPlayerCharacter::StaticClass();
+	CurrentObjective = NSLOCTEXT("Wasami", "ObjectiveCollectAllShards", "Collect all shards");
 }

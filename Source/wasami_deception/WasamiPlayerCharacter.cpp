@@ -4,7 +4,12 @@
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Engine/LocalPlayer.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,8 +18,12 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
+#include "WasamiGameMode.h"
+#include "WasamiTabletWidget.h"
 
 namespace
 {
@@ -29,6 +38,39 @@ namespace
 
 	// Update Bob stops the head bob at or below this speed (cm/s).
 	constexpr float BobMinSpeed = 1.f;
+
+	// The tablet, from the original's BP_DD_PlayerCharacter. Its TabletInterp / Timeline_1 move the plate between
+	// these two heights in the camera's space and turn it the right way up as it comes; the X and Y stay put.
+	constexpr float TabletX = 35.39891f;
+	constexpr float TabletY = -21.994417f;
+	constexpr float TabletStowedZ = -39.701378f;
+	constexpr float TabletRaisedZ = -4.321648f;
+	constexpr float TabletRaiseLength = 0.5f;
+	constexpr float TabletLowerLength = 0.3f;
+	// PlaySound2D's volume and pitch for the two wooshes and for the map's resize.
+	constexpr float WooshVolume = 0.5f;
+	constexpr float WooshPitch = 1.5f;
+	constexpr float ResizeVolume = 0.5f;
+	constexpr float ResizePitch = 4.f;
+	// The minimap's scene capture: 40 m across, 100 m when the map is zoomed out.
+	constexpr float MinimapOrthoWidth = 4000.f;
+	constexpr float MinimapZoomedOrthoWidth = 10000.f;
+	constexpr float MinimapHeight = 3000.f;
+	// How often the screen counts the shards and picks up what the capture should show (the original does it every
+	// 0.01 s from the widget's own loop; 0.1 s cannot be told apart on a count that only changes on a collect).
+	constexpr float ScreenRefreshRate = 0.1f;
+	// The level's map plane carries this tag (the original finds its BP_MapTexture actors by class).
+	const FName MinimapTag(TEXT("dd_minimap"));
+
+	void AddCurveKey(FRichCurve& Curve, float Time, float Value, ERichCurveInterpMode Interp, float Arrive, float Leave)
+	{
+		const FKeyHandle Handle = Curve.AddKey(Time, Value);
+		FRichCurveKey& Key = Curve.GetKey(Handle);
+		Key.InterpMode = Interp;
+		Key.TangentMode = RCTM_User;
+		Key.ArriveTangent = Arrive;
+		Key.LeaveTangent = Leave;
+	}
 }
 
 AWasamiPlayerCharacter::AWasamiPlayerCharacter()
@@ -54,6 +96,60 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->SetFieldOfView(BaseFOV);
 
+	// Tablet: the original hangs it under an empty Scene at (0, 0, −94.9577) below the camera, but the heights its
+	// timelines write (−39.70 → −4.32) are the camera's own — with that Scene in between the plate would sit a metre
+	// under the view. Straight on the camera, those heights put it exactly where the original's recording shows it.
+	Tablet = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Tablet"));
+	Tablet->SetupAttachment(Camera);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> TabletMesh(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2"));
+	Tablet->SetStaticMesh(TabletMesh.Object);
+	Tablet->SetCollisionProfileName(TEXT("NoCollision"));
+	Tablet->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Tablet->bSelfShadowOnly = true;
+	Tablet->SetRelativeLocation(FVector(TabletX, TabletY, TabletStowedZ));
+	Tablet->SetRelativeRotation(FRotator(0.f, 90.f, 180.f));
+
+	TabletScreen = CreateDefaultSubobject<UWidgetComponent>(TEXT("TabletScreen"));
+	TabletScreen->SetupAttachment(Tablet);
+	TabletScreen->SetRelativeLocation(FVector(0.f, 0.8922737f, 0.2078171f));
+	TabletScreen->SetRelativeRotation(FRotator(0.f, 90.f, 0.f));
+	TabletScreen->SetRelativeScale3D(FVector(0.28f, 0.024465779f, 0.024465779f));
+	TabletScreen->SetWidgetSpace(EWidgetSpace::World);
+	TabletScreen->SetWidgetClass(UWasamiTabletWidget::StaticClass());
+	TabletScreen->SetDrawSize(FVector2D(UWasamiTabletWidget::ScreenWidth, UWasamiTabletWidget::ScreenHeight));
+	// Masked and one-sided picks Widget3DPassThrough_Masked_OneSided, the material the original overrides with.
+	TabletScreen->SetBlendMode(EWidgetBlendMode::Masked);
+	TabletScreen->SetTwoSided(false);
+	TabletScreen->SetCollisionProfileName(TEXT("NoCollision"));
+	TabletScreen->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TabletScreen->SetGenerateOverlapEvents(false);
+
+	MinimapCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapCapture"));
+	MinimapCapture->SetupAttachment(Capsule);
+	MinimapCapture->SetRelativeLocation(FVector(0.f, 0.f, MinimapHeight));
+	MinimapCapture->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));
+	MinimapCapture->ProjectionType = ECameraProjectionMode::Orthographic;
+	MinimapCapture->OrthoWidth = MinimapOrthoWidth;
+	MinimapCapture->CaptureSource = ESceneCaptureSource::SCS_BaseColor;
+	MinimapCapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> MinimapTarget(TEXT("/Game/DD/UI/Minimap/T_NewMap"));
+	MinimapCapture->TextureTarget = MinimapTarget.Object;
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> WooshUp(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1"));
+	static ConstructorHelpers::FObjectFinder<USoundBase> WooshDown(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v1_1"));
+	static ConstructorHelpers::FObjectFinder<USoundBase> Select(TEXT("/Game/DD/Audio/UI/UI_Select_V3"));
+	TabletUpSound = WooshUp.Object;
+	TabletDownSound = WooshDown.Object;
+	ResizeMapSound = Select.Object;
+
+	// TabletInterp's CurveFloat_1 and Timeline_1's CurveFloat_1_2, key for key.
+	AddCurveKey(TabletRaiseCurve, 0.f, 0.f, RCIM_Cubic, 0.f, 0.f);
+	AddCurveKey(TabletRaiseCurve, 0.3f, 0.9f, RCIM_Cubic, 2.f, 2.f);
+	AddCurveKey(TabletRaiseCurve, TabletRaiseLength, 1.f, RCIM_Linear, 0.f, 0.f);
+	AddCurveKey(TabletLowerCurve, 0.f, 1.f, RCIM_Cubic, -0.46747881f, -0.46748275f);
+	AddCurveKey(TabletLowerCurve, 0.2f, 0.1f, RCIM_Cubic, -1.3626982f, -3.1061733f);
+	AddCurveKey(TabletLowerCurve, TabletLowerLength, 0.f, RCIM_Linear, 0.f, 0.f);
+
 	GetCharacterMovement()->MaxWalkSpeed = WalkingSpeed;
 
 	static ConstructorHelpers::FClassFinder<UCameraShakeBase> WalkShake(TEXT("/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake"));
@@ -66,7 +162,11 @@ void AWasamiPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	ApplySpeed();
+	ApplyTabletInterp(0.f);
+	WasamiGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AWasamiGameMode>() : nullptr;
+	UpdateTabletScreen();
 	GetWorldTimerManager().SetTimer(FOVTimer, this, &AWasamiPlayerCharacter::UpdateFOV, FOVTimerRate, true);
+	GetWorldTimerManager().SetTimer(TabletScreenTimer, this, &AWasamiPlayerCharacter::UpdateTabletScreen, ScreenRefreshRate, true);
 }
 
 void AWasamiPlayerCharacter::Tick(float DeltaSeconds)
@@ -83,6 +183,7 @@ void AWasamiPlayerCharacter::Tick(float DeltaSeconds)
 	}
 	BoostCooldownLeft = FMath::Max(0.f, BoostCooldownLeft - DeltaSeconds);
 
+	UpdateTablet(DeltaSeconds);
 	UpdateHeadBob();
 }
 
@@ -90,6 +191,21 @@ float AWasamiPlayerCharacter::GetBoostCharge() const
 {
 	const float Total = BoostDuration + BoostCooldown;
 	return Total > 0.f ? 1.f - BoostCooldownLeft / Total : 1.f;
+}
+
+float AWasamiPlayerCharacter::GetBoostSocketPercent() const
+{
+	// Set Delay Speed Boost is a FlipFlop: the use reverses the socket's timeline over the boost, and the end of the
+	// boost plays it forward again over the cooldown.
+	if (IsBoosting())
+	{
+		return BoostDuration > 0.f ? BoostTimeLeft / BoostDuration : 0.f;
+	}
+	if (BoostCooldownLeft > 0.f && BoostCooldown > 0.f)
+	{
+		return 1.f - BoostCooldownLeft / BoostCooldown;
+	}
+	return 1.f;
 }
 
 void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -112,6 +228,8 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &AWasamiPlayerCharacter::SprintReleased);
 	Input->BindAction(TurnAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::TurnAround);
 	Input->BindAction(BoostAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::UseBoost);
+	Input->BindAction(TabletAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ToggleTablet);
+	Input->BindAction(ResizeMapAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ResizeMap);
 }
 
 void AWasamiPlayerCharacter::CreateInput()
@@ -132,6 +250,8 @@ void AWasamiPlayerCharacter::CreateInput()
 	SprintAction = NewAction(TEXT("IA_Sprint"), EInputActionValueType::Boolean);
 	TurnAction = NewAction(TEXT("IA_180Turn"), EInputActionValueType::Boolean);
 	BoostAction = NewAction(TEXT("IA_UsePowerRight"), EInputActionValueType::Boolean);
+	TabletAction = NewAction(TEXT("IA_ToggleTablet"), EInputActionValueType::Boolean);
+	ResizeMapAction = NewAction(TEXT("IA_ResizeMap"), EInputActionValueType::Boolean);
 
 	InputContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Player"));
 	auto Map = [this](const UInputAction* Action, const FKey& Key, const TArray<UInputModifier*>& Modifiers = {})
@@ -173,10 +293,16 @@ void AWasamiPlayerCharacter::CreateInput()
 	Map(SprintAction, EKeys::LeftShift);
 	Map(TurnAction, EKeys::MiddleMouseButton);
 	Map(BoostAction, EKeys::E);
+	Map(TabletAction, EKeys::SpaceBar);
+	Map(ResizeMapAction, EKeys::Z);
 }
 
 void AWasamiPlayerCharacter::Move(const FInputActionValue& Value)
 {
+	if (!bCanMove)
+	{
+		return;
+	}
 	const FVector2D Axis = Value.Get<FVector2D>();
 	const FRotationMatrix Yaw(FRotator(0.f, GetControlRotation().Yaw, 0.f));
 	AddMovementInput(Yaw.GetUnitAxis(EAxis::X), Axis.Y);
@@ -185,6 +311,10 @@ void AWasamiPlayerCharacter::Move(const FInputActionValue& Value)
 
 void AWasamiPlayerCharacter::Look(const FInputActionValue& Value)
 {
+	if (!bCanMove)
+	{
+		return;
+	}
 	const FVector2D Axis = Value.Get<FVector2D>() * MouseSensitivity;
 	AddControllerYawInput(Axis.X);
 	AddControllerPitchInput(bInvertY ? Axis.Y : -Axis.Y);
@@ -192,6 +322,10 @@ void AWasamiPlayerCharacter::Look(const FInputActionValue& Value)
 
 void AWasamiPlayerCharacter::SprintPressed()
 {
+	if (!bCanMove)
+	{
+		return;
+	}
 	if (bToggleSprint)
 	{
 		bSprintLatch = !bSprintLatch;
@@ -236,6 +370,96 @@ void AWasamiPlayerCharacter::UseBoost()
 void AWasamiPlayerCharacter::ApplySpeed()
 {
 	GetCharacterMovement()->MaxWalkSpeed = IsBoosting() ? BoostSpeed : (IsSprintOn() ? SprintingSpeed : WalkingSpeed);
+}
+
+void AWasamiPlayerCharacter::ToggleTablet()
+{
+	// Toggle Tablet: nothing happens while the player cannot move or cannot use it; either way a woosh plays and the
+	// matching timeline runs from its start, even if the other one was still going.
+	if (!bCanMove || !bCanUseTablet)
+	{
+		return;
+	}
+	bTabletUp = !bTabletUp;
+	bTabletMoving = true;
+	TabletTime = 0.f;
+	UGameplayStatics::PlaySound2D(this, bTabletUp ? TabletUpSound : TabletDownSound, WooshVolume, WooshPitch);
+}
+
+void AWasamiPlayerCharacter::ResizeMap()
+{
+	// Resize Map: only with the tablet up, and it flips between the two OrthoWidths.
+	if (!bTabletUp)
+	{
+		return;
+	}
+	UGameplayStatics::PlaySound2D(this, ResizeMapSound, ResizeVolume, ResizePitch);
+	bMapZoomedOut = !bMapZoomedOut;
+	MinimapCapture->OrthoWidth = bMapZoomedOut ? MinimapZoomedOrthoWidth : MinimapOrthoWidth;
+}
+
+void AWasamiPlayerCharacter::ApplyTabletInterp(float Value)
+{
+	TabletInterp = Value;
+	Tablet->SetRelativeLocation(FVector(TabletX, TabletY, FMath::Lerp(TabletStowedZ, TabletRaisedZ, Value)));
+	// RLerp with the shortest path: the plate swings up the right way round as it rises.
+	static const FQuat Stowed = FRotator(0.f, 90.f, 180.f).Quaternion();
+	static const FQuat Raised = FRotator(0.f, 90.f, 0.f).Quaternion();
+	Tablet->SetRelativeRotation(FQuat::Slerp(Stowed, Raised, Value).GetNormalized());
+}
+
+void AWasamiPlayerCharacter::UpdateTablet(float DeltaSeconds)
+{
+	if (bTabletMoving)
+	{
+		TabletTime += DeltaSeconds;
+		const float Length = bTabletUp ? TabletRaiseLength : TabletLowerLength;
+		const FRichCurve& Curve = bTabletUp ? TabletRaiseCurve : TabletLowerCurve;
+		if (TabletTime >= Length)
+		{
+			TabletTime = Length;
+			bTabletMoving = false;
+		}
+		ApplyTabletInterp(Curve.Eval(TabletTime));
+	}
+
+	if (UWasamiTabletWidget* Screen = Cast<UWasamiTabletWidget>(TabletScreen->GetUserWidgetObject()))
+	{
+		// The left socket is Teleportation, the right one Speed Boost, as the original's tablet has them. The teleport
+		// is not implemented yet (M2's rest), so its socket stays ready.
+		Screen->SetPowerCharge(true, 1.f);
+		Screen->SetPowerCharge(false, GetBoostSocketPercent());
+		Screen->SetObjective(WasamiGameMode ? WasamiGameMode->CurrentObjective : FText::GetEmpty());
+	}
+}
+
+void AWasamiPlayerCharacter::UpdateTabletScreen()
+{
+	RefreshMinimapContents();
+	if (UWasamiTabletWidget* Screen = Cast<UWasamiTabletWidget>(TabletScreen->GetUserWidgetObject()))
+	{
+		Screen->SetShardCount(ShardsLeft);
+	}
+}
+
+void AWasamiPlayerCharacter::RefreshMinimapContents()
+{
+	// Show Only: the capture draws the level's map plane and the shards, and nothing else of the world.
+	TArray<AActor*> Shown;
+	UGameplayStatics::GetAllActorsWithTag(this, MinimapTag, Shown);
+	ShardsLeft = 0;
+	if (ShardActorClass)
+	{
+		TArray<AActor*> Shards;
+		UGameplayStatics::GetAllActorsOfClass(this, ShardActorClass, Shards);
+		ShardsLeft = Shards.Num();
+		Shown.Append(Shards);
+	}
+	MinimapCapture->ShowOnlyActors.Reset(Shown.Num());
+	for (AActor* Actor : Shown)
+	{
+		MinimapCapture->ShowOnlyActors.Add(Actor);
+	}
 }
 
 void AWasamiPlayerCharacter::UpdateFOV()

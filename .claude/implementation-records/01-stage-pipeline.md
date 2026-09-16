@@ -16,6 +16,7 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_assets.py
   - Content/Python/wasami_tools/pipeline/dd_stage.py
   - Content/Python/wasami_tools/pipeline/dd_level.py
+  - Content/Python/wasami_tools/pipeline/dd_tablet.py
 updated: 2026-09-16
 ---
 
@@ -34,6 +35,7 @@ updated: 2026-09-16
 | `WasamiStageTools.refresh_dd_stage_assets()` | マスターマテリアルの版が古ければ作り直し、テクスチャの設定を原作どおりに直し、全マテリアルインスタンスを再コンパイルする |
 | `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する |
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
+| `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ）を `/Game/DD` に作る（中身は 03 記録） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 
 | スクリプト（エディタの外） | 内容 |
@@ -66,7 +68,7 @@ updated: 2026-09-16
 - `import_batch()` / `refresh_settings()`: 上をまとめて回す。`import_batch` はまだ無いものだけを `max_items` 件作り、`/Game/DD` と `/Game/Pipeline` を保存する。
 
 ### 組み立て（`pipeline/dd_level.py`）
-- `build(zone, map_path)`: レベルを開く（無ければ作る）→ タグ `dd` のアクタを消す → 配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセスボリューム・プレイヤースタートを置く → 保存。戻り値は種類ごとの数と `failed_settings`。
+- `build(zone, map_path)`: レベルを開く（無ければ作る）→ タグ `dd` のアクタを消す → 配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセスボリューム・プレイヤースタート・ミニマップの地図の板を置く → 保存。戻り値は種類ごとの数と `failed_settings`。
 - 配置: `StaticMeshActor` をワールド変換（書き出しは合成済み）で置き、スロットごとにマテリアルを割り当てる。デカール材が載っていれば `NoCollision`（本家のデカールは板メッシュ）。`Mobility`・`CollisionProfileName`・`bVisible`・`bHiddenInGame` は明示的に入れ、残りは `ue_props.apply`。ラベルは `<アクター>.<コンポーネント>`、フォルダは `Hospital/Meshes/<アクターのクラス>`、タグに `src:`。
 - 灯: `PointLight` / `SpotLight` / `RectLight` / `DirectionalLight`。**静的ライティングを切っている（Lumen）のですべて Movable**。`IntensityUnits` を `Intensity` より先に入れる（単位で数の意味が変わるため）。**書き出しに `IntensityUnits` が無い局所灯は `Unitless` を明示する**（UE 4.24 の既定は Unitless、UE5 は Candelas。入れないと明るさが桁違いになる）。
 - 反射キャプチャ: 球と箱。明るさ、球の影響半径、箱は書き出しのスケール。
@@ -78,6 +80,11 @@ updated: 2026-09-16
 - エディタの起動時に `init_unreal.py` が `wasami_tools.register()` を呼び、`Registration([dd.WasamiDDTools, dev.WasamiDevTools])` が ToolsetRegistry に登録する（MCP に出る）。
 - 各ツールは呼ばれるたびに `wasami_tools.pipeline` の中身（`paths`・`ue_props` と対象のモジュール）を `importlib.reload` で読み込み直すので、パイプラインの Python を直したらエディタを開き直さずに呼べる。
 - ツールセットのクラス自体（引数や新しいツール）を変えたときは、`reload_module` で登録し直す。**新しいツールセットのクラスを足したときは `reload_module` では登録されない**（`.claude/guides/unreal-workflow.md` の手順）。
+
+- 地図の板（`_map_plane`）: 書き出しの `BP_MapTexture_C`（Zone 1）/ `BP_MapTexture_MultiFloor_C`（Zone 2）のワールド変換に `/Engine/BasicShapes/Plane` を置き、`MAP_PLANE_MATERIAL` のゾーンごとのマテリアル（`/Game/DD/UI/Minimap/MM_Map_06_Zone01`・`MM_Map_06_Zone2`）を入れ、影・ナビ・当たりを切り、`bVisibleInSceneCaptureOnly` を立て、タグ `dd_minimap` を付ける。プレイヤーのシーンキャプチャがこのタグで拾う（03 記録）。
+
+### タブレットの素材（`pipeline/dd_tablet.py`）
+`import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 17・フォント・音 3・ミニマップのレンダーターゲットとマテリアルを `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_texture` / `import_mesh` / `ensure_masters` / `_Graph` を使い回す。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
 - `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
@@ -110,12 +117,14 @@ updated: 2026-09-16
 - **原作のマテリアルの式は cook で消えている**ので、`Normal Flatness`（インスタンスは 1.2〜3.0、マスターの既定は 0）・`Roughness Power` / `Metallic Power` 以外のスカラは適用していない。`Roughness Power` / `Metallic Power` は既定 1.0 が恒等になる pow として実装した（推定）。見え方を原作と比べる段で見直す。
 - **UE の版の違い**: 本家のデカールは `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、UE 5.8 では `decal_blend_mode` が非推奨（No longer used）で Python から読めない。いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないでいる。
 - 当たりはすべて描画のメッシュそのもの（complex as simple）。書き出しのメッシュは `body_setup` を持たない。
+- `editor_cycle.py` は起動時に `sys.stdout` / `sys.stderr` を `errors="replace"` にし直す。ビルドの出力にこの PC のコンソール（cp932）で出せない文字が混ざると、ビルドの失敗を報告する途中で `UnicodeEncodeError` になって落ちていた。
 - Zone 2 のポストプロセスボリュームの **`ColorGradingLUT` と `WeightedBlendables` は入れていない**。前者は書き出しがアセットのパスの文字列（`/Game/ThirdParty/Chameleon/LUTs/LUT_Classic8`）で、取り込んだテクスチャに解決する仕組みがまだない。後者はポストプロセスのマテリアル（`M_SharpenFilter_Inst`）で、マスターの式が cook で消えている。**このボリュームは `ColorGradingIntensity` が 0 なので、LUT の見た目への寄与は無い**。
 - スカイライトのキューブマップ（`HDRI_Epic_Courtyard_Daylight`・`TC_HDR01`）は**回収できていない**。原作は TextureCube だが、書き出しは 512×512 の平面 PNG（float の階調は落ちている）で、UE に取り込むと Texture2D になる。いまはシーンのキャプチャに任せている。病院は屋内なので寄与は小さいが、見え方を比べる段で見直す。
 - 原作の cook されたデータは、既定値と同じプロパティを持たない。ポストプロセスの override が立っていて値が無いのは「既定値で上書き」の意味。
 - MCP のポートは Docker Desktop と衝突しうる（`.claude/guides/unreal-workflow.md`）。MCP が使えないときは `Tools/ue_remote.py` で作業できる。
 
 ## 変更履歴
+- 2026-09-16: タブレットの素材の取り込み（`pipeline/dd_tablet.py`、`WasamiDDTools.import_dd_tablet`）と、レベルにミニマップの地図の板を置く `_map_plane` を足した。`editor_cycle.py` の出力の文字化けで落ちる問題を直した
 - 2026-09-16: 病院の取り込み（`pipeline/dd_stage.py`、マスターマテリアル 3 種）と組み立て（`pipeline/dd_level.py`）、それを呼ぶ `WasamiStageTools` を足した。`ue_props` が配列の色・ベクトルを読めるようにした
 - 2026-09-16: ステージを本家の病院へ差し替える方針変更にともない、CC2 の前処理（`Tools/cc2/prepare_stage.py`）・取り込み（`pipeline/cc2_assets.py`）・組み立て（`pipeline/cc2_level.py`）・ツールセット（`toolsets/stage.py` の `WasamiStageTools`）を削除し、`paths.py` から CC2 の定数を外して `DD_PAK2`（`pak_reference_2`）を足した
 - 2026-09-16: 初版（取り込みと組み立ての現行実装を記録）

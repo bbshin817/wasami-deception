@@ -1,6 +1,6 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
-placed meshes, the lights, the reflection captures, the fog, the sky light, the post process volumes and the player
-starts. Every actor it places carries the tag 'dd', which a rebuild removes first."""
+placed meshes, the lights, the reflection captures, the fog, the sky light, the post process volumes, the player
+starts and the minimap's map plane. Every actor it places carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -19,6 +19,15 @@ LIGHT_CLASS = {
 # property that is at its default — so a light the export says nothing about has to be set to Unitless explicitly.
 DEFAULT_LIGHT_UNITS = "ELightUnits::Unitless"
 SKIP_LIGHT_PROPS = ("LightGuid", "MapBuildDataId", "MaxDrawDistance", "MaxDistanceFadeRange")
+# The minimap's plane: the original's BP_MapTexture (Zone 1) and BP_MapTexture_MultiFloor (Zone 2) put
+# /Engine/BasicShapes/Plane under the level with the zone's baked map on it, and the player's scene capture draws it
+# into T_NewMap. The material is each actor's OverrideMaterials in the export.
+MAP_PLANE_MESH = "/Engine/BasicShapes/Plane"
+MAP_PLANE_CLASSES = ("BP_MapTexture_C", "BP_MapTexture_MultiFloor_C")
+MAP_PLANE_MATERIAL = {"Zone1": "/Game/DD/UI/Minimap/MM_Map_06_Zone01", "Zone2": "/Game/DD/UI/Minimap/MM_Map_06_Zone2"}
+# WasamiPlayerCharacter's scene capture shows only the actors with this tag and the shards.
+MINIMAP_TAG = "dd_minimap"
+
 # Component properties the placement handles itself, or that only matter with baked lighting (which is off).
 SKIP_COMPONENT_PROPS = ("Mobility", "CollisionProfileName", "bVisible", "bHiddenInGame",
                         "OverriddenLightMapRes", "bOverrideLightMapRes", "LightmassSettings")
@@ -210,6 +219,30 @@ def _player_starts(eas, zone, counts):
         counts["playerStarts"] += 1
 
 
+# ------------------------------------------------------------------------------------------------ minimap
+def _map_plane(eas, zone, zone_name, counts, failures):
+    mesh = unreal.load_asset(MAP_PLANE_MESH)
+    material = unreal.load_asset(MAP_PLANE_MATERIAL.get(zone_name, ""))
+    for a in zone["actors"]:
+        if a["class"] not in MAP_PLANE_CLASSES or not a["world"]:
+            continue
+        actor = eas.spawn_actor_from_object(mesh, _vec(a["world"]["location"]), _rot(a["world"]["quat_xyzw"]))
+        actor.set_actor_scale3d(_vec(a["world"]["scale"]))
+        comp = actor.static_mesh_component
+        comp.set_editor_property("cast_shadow", False)
+        comp.set_editor_property("can_ever_affect_navigation", False)
+        # UE 5 only: the plane is for the capture, so it is kept out of the view and of Lumen (the original relies on
+        # it being under the floor and on baked lighting, neither of which holds here).
+        comp.set_editor_property("visible_in_scene_capture_only", True)
+        comp.set_collision_profile_name("NoCollision")
+        if material is not None:
+            comp.set_material(0, material)
+        else:
+            failures.append("%s: no map material for %s" % (a["name"], zone_name))
+        _tag(actor, a["name"], "Hospital/Gameplay", MINIMAP_TAG)
+        counts["mapPlane"] += 1
+
+
 # ------------------------------------------------------------------------------------------------ build
 def build(zone="Zone1", map_path=""):
     stage = paths.load_dd_stage()
@@ -217,7 +250,8 @@ def build(zone="Zone1", map_path=""):
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
-    counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts")}
+    counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
+                             "mapPlane")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)
@@ -225,6 +259,7 @@ def build(zone="Zone1", map_path=""):
     _environment(eas, z, stage, counts, failures)
     _post_process(eas, z, counts, failures)
     _player_starts(eas, z, counts)
+    _map_plane(eas, z, zone, counts, failures)
     for f in failures[:50]:
         unreal.log_warning("build_dd_stage_level: " + f)
     counts["failed_settings"] = len(failures)
