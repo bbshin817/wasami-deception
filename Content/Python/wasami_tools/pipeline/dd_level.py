@@ -19,6 +19,12 @@ LIGHT_CLASS = {
 # property that is at its default — so a light the export says nothing about has to be set to Unitless explicitly.
 DEFAULT_LIGHT_UNITS = "ELightUnits::Unitless"
 SKIP_LIGHT_PROPS = ("LightGuid", "MapBuildDataId", "MaxDrawDistance", "MaxDistanceFadeRange")
+# A light the export gives no Mobility is Static (UE's default), so in the original it was baked and the renderer
+# never drew it: FLightSceneInfo::ShouldRenderLightViewIndependent (LightSceneInfo.cpp:245) skips a static light whose
+# lighting is built, which also keeps it out of the volumetric fog's light injection (VolumetricFog.cpp:1543). Its
+# VolumetricScatteringIntensity — 20 on the hospital's 294 ceiling lights, 2.5 on the 337 shards — was therefore inert.
+# This project bakes nothing (Lumen), so every light is movable and would scatter; zero it to keep the original's fog.
+BAKED_LIGHT_MOBILITY = (None, "EComponentMobility::Static")
 # The minimap's plane: the original's BP_MapTexture (Zone 1) and BP_MapTexture_MultiFloor (Zone 2) put
 # /Engine/BasicShapes/Plane under the level with the zone's baked map on it, and the player's scene capture draws it
 # into T_NewMap. The material is each actor's OverrideMaterials in the export.
@@ -120,6 +126,8 @@ def _lights(eas, zone, counts, failures):
             # static lighting is off in this project (Lumen), so every light is movable
             c.set_mobility(MOVABLE)
             props = {k: v for k, v in lt["props"].items() if k not in SKIP_LIGHT_PROPS}
+            if props.get("Mobility") in BAKED_LIGHT_MOBILITY:
+                props["VolumetricScatteringIntensity"] = 0.0
             units = props.pop("IntensityUnits", None if cls is unreal.DirectionalLight else DEFAULT_LIGHT_UNITS)
             if units:                                    # before Intensity: the units decide what the number means
                 c.set_editor_property("intensity_units", ue_props.enum_member(unreal.LightUnits, units.split("::")[-1]))

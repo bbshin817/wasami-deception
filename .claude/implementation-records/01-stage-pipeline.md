@@ -77,6 +77,7 @@ updated: 2026-09-16
 - `build(zone, map_path)`: レベルを開く（無ければ作る）→ タグ `dd` のアクタを消す → 配置・灯・反射キャプチャ・霧・スカイライト・ポストプロセスボリューム・プレイヤースタート・ミニマップの地図の板を置く → 保存。戻り値は種類ごとの数と `failed_settings`。
 - 配置: `StaticMeshActor` をワールド変換（書き出しは合成済み）で置き、スロットごとにマテリアルを割り当てる。デカール材が載っていれば `NoCollision`（本家のデカールは板メッシュ）。`Mobility`・`CollisionProfileName`・`bVisible`・`bHiddenInGame` は明示的に入れ、残りは `ue_props.apply`。ラベルは `<アクター>.<コンポーネント>`、フォルダは `Hospital/Meshes/<アクターのクラス>`、タグに `src:`。
 - 灯: `PointLight` / `SpotLight` / `RectLight` / `DirectionalLight`。**静的ライティングを切っている（Lumen）のですべて Movable**。`IntensityUnits` を `Intensity` より先に入れる（単位で数の意味が変わるため）。**書き出しに `IntensityUnits` が無い局所灯は `Unitless` を明示する**（UE 4.24 の既定は Unitless、UE5 は Candelas。入れないと明るさが桁違いになる）。
+- **原作で焼かれていた灯は `VolumetricScatteringIntensity` を 0 にする**（`BAKED_LIGHT_MOBILITY`。書き出しの `Mobility` が無い＝ UE の既定の Static、または `EComponentMobility::Static` のもの）。原作では、焼かれた Static の灯はそもそも動的に描かれず（`FLightSceneInfo::ShouldRenderLightViewIndependent` は、静的ライティングを持ち焼き込みが有効な灯を外す）、ボリューメトリック フォグの灯の注入も `ShouldRenderLight` を通った灯だけなので、**それらの `VolumetricScatteringIntensity` は原作では効いていなかった**（Zone 1 の天井灯 294 個の 20.0、シャードの灯 337 個の 2.5 など）。本作は何も焼かないので全部 Movable になり、そのままではその値が効いて暖色のもやが画面を覆う。Zone 1 は 1,120 個中 1,015 個、Zone 2 は 751 個中 523 個が対象。原作で `Movable`・`Stationary` だった灯（Zone 1 で 105、Zone 2 で 228）は書き出しの値をそのまま使う。
 - 反射キャプチャ: 球と箱。明るさ、球の影響半径、箱は書き出しのスケール。
 - 霧・スカイライト: 書き出しのプロパティをそのまま（`ue_props.apply`。UE5 で改名されたものは `ue_props.RENAMED` が読み替える）。スカイライトの `SLS_SpecifiedCubemap` には TextureCube が要るが、書き出しの HDRI は平面の PNG（`PF_FloatRGBA` を 8 bit に落としたもの）なので Texture2D にしかならない。その場合は指定せずシーンのキャプチャに任せ、`failed_settings` に記録する。
 - ポストプロセスボリューム: `bOverride_*` が立っているものだけ入れ、値が書き出しに無いもの（＝既定値のまま上書き）は override だけ立てる。
@@ -127,7 +128,8 @@ updated: 2026-09-16
 - **エディタの起動はセッションを跨ぐ**。Claude Code は Windows のセッション 0（サービス側）で動いており、そこには GPU の出力が無い（ログの `LogD3D12RHI: Adapter has … 0 output[s]`）ので、そのまま起動したエディタは D3D12 のスワップチェーンを作れず `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` で即落ちる。`start_editor()` は `ProcessIdToSessionId` と `WTSGetActiveConsoleSessionId` で自分のセッションとコンソールのセッションを比べ、違えば一度きりのスケジュールタスク（`WasamiLaunchEditor`。プリンシパルはログオン中のユーザーを **SID で**指定し、`LogonType Interactive`・`RunLevel Limited`）でログオン中のセッションに起動する。ユーザー名の形（ドメインなしの PC では `WORKGROUP` になる）では登録できないので SID を使う。タスクはエディタが応答したら消す（`drop_task`）。
 - 起動の完了は**リモート実行が答えるか**で見る（`editor_answers`）。この PC では Docker Desktop が 127.0.0.1:8000 を掴んでいるため、MCP のポートに繋がってもエディタが起きているとは限らない。
 - Zone 2 のポストプロセスボリュームの **`ColorGradingLUT` と `WeightedBlendables` は入れていない**。前者は書き出しがアセットのパスの文字列（`/Game/ThirdParty/Chameleon/LUTs/LUT_Classic8`）で、取り込んだテクスチャに解決する仕組みがまだない。後者はポストプロセスのマテリアル（`M_SharpenFilter_Inst`）で、マスターの式が cook で消えている。**このボリュームは `ColorGradingIntensity` が 0 なので、LUT の見た目への寄与は無い**。
-- スカイライトのキューブマップ（`HDRI_Epic_Courtyard_Daylight`・`TC_HDR01`）は**回収できていない**。原作は TextureCube だが、書き出しは 512×512 の平面 PNG（float の階調は落ちている）で、UE に取り込むと Texture2D になる。いまはシーンのキャプチャに任せている。病院は屋内なので寄与は小さいが、見え方を比べる段で見直す。
+- スカイライトのキューブマップ（`HDRI_Epic_Courtyard_Daylight`・`TC_HDR01`）は**回収できていない**。原作は TextureCube だが、書き出しは 512×512 の平面 PNG 1 面（float の階調は落ちている）で、UE に取り込むと Texture2D になる。いまはシーンのキャプチャに任せている。実測でも**寄与はほとんど無い**（Zone 1 の廊下で強度を 0 / 0.5 / 5 / 50 と振って撮ると、原作の 0.5 では平均が 0.05 も動かない。暗い屋内をキャプチャしているため）。同じアセットは Epic の StarterContent のものだが、この PC の UE 5.8 には入っていない（`Engine/Content/StarterContent` にテクスチャが 1 枚だけ、`FeaturePacks/` にも無い）。
+- **ボリューメトリック フォグの間接光は原作より弱い**。原作は焼き込みがあるので、フォグはボリュメトリック ライトマップ経由で `VolumetricFogStaticLightingScatteringIntensity`（Zone 1 は既定の 1.0）の分だけ焼かれた間接光を受け取る。本作は何も焼かないのでこの経路が無く（`EngineShowFlags.VolumetricLightmap` が要る）、Lumen はフォグに同じようには寄与しない。原作のフォグにあったやわらかい輝きの分だけ暗い。
 - 原作の cook されたデータは、既定値と同じプロパティを持たない。ポストプロセスの override が立っていて値が無いのは「既定値で上書き」の意味。
 - MCP のポートは Docker Desktop と衝突しうる（`.claude/guides/unreal-workflow.md`）。MCP が使えないときは `Tools/ue_remote.py` で作業できる。
 
@@ -143,6 +145,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: 原作で焼かれていた（Static の）灯の `VolumetricScatteringIntensity` を 0 にするようにした。原作では効いていなかった値がそのまま効いて、Zone 1 の画面が暖色のもやに覆われていた（切り分けは `capture_pose` の A/B。霧を切ると平均輝度が 18.7 → 9.9 になり、もやが霧由来と分かった）
 - 2026-09-16: `WasamiDevTools.capture_pose` を足した（エディタが前面でなくても見た目を撮れるようにするため）
 - 2026-09-16: 画面操作の道具（`Tools/desktop.py` と `Tools/desktop_agent.py`）を足した。Claude はセッション 0 にいてセッション 1 の画面を触れないので、セッション 1 に常駐するエージェントとファイル経由でやり取りする（ユーザーの指示で「画面操作も Claude が行う」に変更）
 - 2026-09-16: `Tools/console_session.py` を足した（`editor_cycle.py` の対話デスクトップでの起動を、任意のプログラムに使える形にしたもの。手元の本家のゲームの起動に使う）
