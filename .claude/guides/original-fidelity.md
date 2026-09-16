@@ -33,7 +33,7 @@ WebGL 版の同名のルール（`<WEBGL>/.claude/guides/original-fidelity.md`�
 | --- | --- | --- |
 | 1 | 原作データ（pak を展開・変換したもの） | `pak_reference/`（読み方は同フォルダの README） |
 | 1' | 原作データの新しい版（Steam 版、UE 4.24。後のチャプターと、pak_reference に無い効果） | `pak_reference_2/`（旧版との差分は `_diff.json`） |
-| 2 | **手元の本家の実機**（`pak_reference/` と同一のビルド）での観察 | この PC の Dark Deception Classic Ch3（下の「本家のゲームを手元で動かす」） |
+| 2 | **手元の本家の実機**での観察（旧版 = `pak_reference/` と同一、最新版 = `pak_reference_2/` と同一） | この PC の Dark Deception Classic Ch3 と Dark Deception（下の「本家のゲームを手元で動かす」） |
 | 2' | 本家の画面の観察（ユーザーの画面収録、既存の参考映像） | ユーザーから受け取った収録 |
 | 3 | Web 調査の参考資料の [A] / [B] | `<WEBGL>/.claude/references/dark-deception/` |
 | 4 | 参考資料の [C] | 言い回しや雰囲気の参考まで。値の根拠にしない |
@@ -55,22 +55,31 @@ WebGL 版の同名のルール（`<WEBGL>/.claude/guides/original-fidelity.md`�
 
 ## 本家のゲームを手元で動かす（2026-09-16 から）
 
-この PC には**実際に遊べる本家**が入っている（ユーザーの指示で使ってよい）。`pak_reference/`・`pak_reference_2/` のコードを読むことに加えて、**視覚的な比較でしか決められないとき**にこれを使う。
+この PC には**実際に遊べる本家が 2 つ同居している**（ユーザーの指示で使ってよい）。`pak_reference/`・`pak_reference_2/` のコードを読むことに加えて、**視覚的な比較でしか決められないとき**にこれを使う。
 
-- **根拠は原則としてコード（原作データ）に基づく**（ユーザーの指示）。実機は、コードで確定できないもの（実行時の見え方・手触り・タイミング）を観察し、本作と並べて比べるために使う。実機で確かめたことは、記録に「実機で観察」と手順を明記する。
+- **根拠は原則としてコード（原作データ）に基づく**（ユーザーの指示）。実機は、コードで確定できないもの（実行時の見え方・手触り・タイミング）を観察し、本作と並べて比べるために使う。実機で確かめたことは、記録に「実機で観察」と、どちらのビルドかを明記する。
 - 起動の作法（ユーザーの確認、セッション 0 の制約、同時起動の禁止）は `.claude/guides/verification.md` の「本家のゲームを動かすとき」に従う。
 
-### 入っているもの
+### 同居している 2 つのビルド
 
-| | 内容 |
-| --- | --- |
-| ランチャ | `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`（中身は同じ場所の `Launch-Classic-Ch3.ps1`） |
-| 本体 | `C:\Program Files (x86)\Steam\steamapps\common\Dark Deception Classic Ch3\DDeception.exe`（`-log` 付きで起動する） |
-| 版 | **`pak_reference/` と同一のビルド**。pak `DDeception-WindowsNoEditor.pak` が pak version 7・12,925 ファイルで、`pak_reference/_manifest.json` の `pak_format.version 7` / `files 12925` と一致（2026-09-16 に確認）。実機の観察は `pak_reference/` のコードとそのまま対応する |
-| セーブ | `C:\Users\User\AppData\Local\DDeception\Saved\SaveGames\SaveSlot.sav`。スピードブーストとテレポーテーションは解放済み・装備済み（`Unlock-Classic-Speed-Teleport.ps1` を当てた跡。バックアップは同じフォルダの `SaveSlot.before-powers-*.bak`） |
+| | 旧版（Classic Ch3） | 最新版 |
+| --- | --- | --- |
+| 対応する原作データ | **`pak_reference/`（UE 4.21）と同一のビルド** | **`pak_reference_2/`（UE 4.24）と同一のビルド** |
+| 確かめた一致（2026-09-16） | pak version 7・12,925 ファイル（`pak_reference/_manifest.json` の `pak_format.version 7` / `files 12925`） | pak version 8・30,158 ファイル・43 マップ（`pak_reference_2/README.md` の pak v8 / 30,158 / 43） |
+| 置き場所 | `C:\Program Files (x86)\Steam\steamapps\common\Dark Deception Classic Ch3` | `C:\Program Files (x86)\Steam\steamapps\common\Dark Deception` |
+| 起動 | `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`（exe を直接起動。Steam の DLC 確認つき） | `C:\Users\User\AppData\Local\DDeception\Launch-Latest.cmd`（`steam.exe -applaunch 332950`）。Steam の Library の Play も同じもの |
+| Steam の登録 | 無し（2026-09-16 に最新版へ譲った。戻すには Steam を止めて `C:\Users\User\AppData\Local\DDeception\steam-appmanifest-332950-classic.acf` を `steamapps\appmanifest_332950.acf` に上書き） | live の `appmanifest_332950.acf`（`installdir = Dark Deception`） |
+| 遊べる範囲 | チャプター 3 まで | チャプター 4 まで（DLC は Ch2・Ch3・**Ch4 が owned + installed**、Ch5 は未所有） |
 
-- ランチャは Steam を必要なら起動し、`SteamDlcProbe.exe` がチャプター 2（appid 1017030）とチャプター 3（appid 1019930）を owned + installed と報告するまで最大 90 秒待ってから本体を起動する。ゲームが既に動いているときは起動を拒む。
-- セーブを書き換えない（能力の解放は済んでいる）。書き換えが必要になったら必ずユーザーに確認する。
+- **Steam は app 332950 の登録を 1 つしか持てない**。live のマニフェストが旧版のフォルダを指した状態で Steam が更新すると、**旧版が最新版で上書きされる**。だから登録は最新版のままにしておき、旧版は exe を直接起動する（上の表のとおり）。
+- 最新版は Steam が自動で更新する（`AutoUpdateBehavior 0`）。pak の大きさ（7,854,848,189 バイト）やファイル数が変わったら `pak_reference_2` と同一ではなくなるので、`pak_reference_2/_manifest.json` と比べ直し、違っていたらユーザーに伝えて記録に書く。
+- セーブは `C:\Users\User\AppData\Local\DDeception\Saved\SaveGames\SaveSlot.sav` を**2 つのビルドで共有する**。スピードブーストとテレポーテーションは解放済み・装備済み。最新版で遊ぶと旧版のセーブが書き換わることがあるので、行き来するときはセーブを入れ替える。旧版のセーブの控えは `C:\Users\User\AppData\Local\DDeception\SaveBackups\classic-20260916-125039\`（Claude はセーブを編集しない。必要になったらユーザーに確認する）。
+
+### どちらのビルドで観察するか
+
+- 実装の根拠が `pak_reference/` のものは**旧版**、`pak_reference_2/` のものは**最新版**で観察する。版の違いについて決めたこと（テレポーテーションとモーションブラーは旧版に従う）はそのまま。
+- **本作のステージである病院（`06_Hospital_Zone_01` / `06_Hospital_Zone_02`）は最新版にしか無い**。ステージの見え方・ギミック・新しい版のタブレットの特殊効果は最新版で観察する。
+- 旧版でしか見られないもの（新しい版で撤廃されたモーションブラー、`wtfUE4` と赤い閃光の無いテレポーテーション）は旧版で観察する。
 
 ### 任意のステージを出す手順（ユーザーの指示）
 
@@ -79,21 +88,26 @@ WebGL 版の同名のルール（`<WEBGL>/.claude/guides/original-fidelity.md`�
 3. 一覧から観察したいステージを選ぶ。
 4. **テレポーテーションなどの能力の観測は Deadly Decadence が適切**（ユーザーの指示）。
 
-REPLAY で選べるのはこのビルドにあるマップだけ（根拠は `pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_Replays_Replay.txt` の `OpenLevel` のスイッチ `@446`。表示名は `UMG_TitleScreen.txt` の `@3800`〜`@4132` と同じ並びのスイッチ）。
+REPLAY で選べるのは、そのビルドに入っているマップだけ（根拠は `_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_Replays_Replay.txt` の `OpenLevel` のスイッチ。表示名は同じ並びの `UMG_TitleScreen.txt`。旧版はスイッチ `@446`、最新版は `Temp_name_Variable` の宣言が `@1032`〜）。
 
-| REPLAY の項目 | `Level` の値 | マップ |
-| --- | --- | --- |
-| Monkey Business | 0 | `01_Hotel` |
-| Elementary Evil | 1 | `02_ElementarySchool` |
-| Deadly Decadence | 2 | `03_Manor_Zone1` |
-| Stranger Sewers | 5 | `04_Sewer` |
-| Crazy Carnevil | 6 | `05_Circus_Entrance` |
+| REPLAY の項目 | `Level` の値 | マップ | 旧版 | 最新版 |
+| --- | --- | --- | --- | --- |
+| Monkey Business | 0 | `01_Hotel` | ○ | ○ |
+| Elementary Evil | 1 | `02_ElementarySchool` | ○ | ○ |
+| Deadly Decadence | 2 | `03_Manor_Zone1` | ○ | ○ |
+| Stranger Sewers | 5 | `04_Sewer` | ○ | ○ |
+| Crazy Carnevil | 6 | `05_Circus_Entrance` | ○ | ○ |
+| Torment Therapy | 7 | `06_Hospital` | — | ○ |
+| Mascot Mayhem | 8 | `07_FunPlace_Zone_01` | — | ○ |
+| Bearly Buried | 9 | `08_BearHouse_Exterior` | — | Ch5 未所有 |
 
-### 実機で観察できないもの
+- **病院は REPLAY から選ぶと入口（`06_Hospital`）から始まる**。本作の範囲である Zone 1（`06_Hospital_Zone_01`）へは、入口から中に入って進む。
+- 最新版では旧版に無い項目（`06`〜`08`）が増えるだけで、`Level` の値とマップの対応は旧版と同じ。
 
-- **本作のステージである病院（`06_Hospital_Zone_01` / `06_Hospital_Zone_02`、チャプター 4「Torment Therapy」）はこのビルドに無い**（`pak_reference/_levels/` にあるのは `06_AsylumPreview` まで）。病院固有の見え方は `pak_reference_2/`（UE 4.24）のデータか、最新版の実機に頼る。
-- **新しい版で足されたタブレットの特殊効果も観測できない**（ユーザーの指示）。これらは `pak_reference_2/` が根拠。
-- どうしても最新版の実機が要るときは、**DLC のライセンスは購入済みなので、Steam から最新の Dark Deception を入れれば動く**（ユーザーの指示）。入れる前にユーザーに確認する（ディスクと帯域を使い、手元の Classic Ch3 とは別のゲームになる）。
+### それでも実機で観察できないもの
+
+- チャプター 5（`08_BearHouse*`）は**未所有**なので遊べない（`SteamDlcProbe` が `appid=1019932 owned=False`）。
+- cook で消えた情報（ベースマテリアルの式、エディタ上の設定など）は実機でも見えない。下の「原作データで確定できないとき」に従う。
 
 ## 原作データで確定できないとき
 
@@ -101,7 +115,7 @@ cook で消えた情報（ベースマテリアルの式の多く、ベイク済
 
 1. **切り分ける**: 原作データから確定できる範囲を先に確かめ、確定できない部分を具体的に絞り込む。
 2. **観察する**: 手元の参考映像や、これまでに受け取った収録で観察する。足りなければ、上の「本家のゲームを手元で動かす」に従って**実機で観察する**（その場面がこのビルドで出せるかを先に確かめる）。
-3. **収録を求める**: 観察に足る映像がなく、実機でも出せない場面（病院、新しい版の効果）のときは、ユーザーに本家の画面収録を依頼する（確かめたいこと、再現の手順、撮り方〈60fps・解像度・音声・UI の有無〉を書く）。
+3. **収録を求める**: 観察に足る映像がなく、実機でも出せない場面（チャプター 5 など）のときは、ユーザーに本家の画面収録を依頼する（確かめたいこと、再現の手順、撮り方〈60fps・解像度・音声・UI の有無〉を書く）。
 4. **測る**: 収録をコマ単位で見て、時間・大きさ・色・動きを測る。本作の同じ場面を同じ条件で撮り、並べて比べる。
 5. **検討して決める**: 候補が複数あって見た目や手触りを大きく左右するときは、候補と根拠を示してユーザーに確認する。
 6. **記録する**: 観察から決めた値は「推定」と明記し、何から・どう推定したかを書く。

@@ -18,7 +18,7 @@
 | `wasami_deception.uproject`、`.mcp.json`、`Config/*.ini` | 00 |
 | `Source/wasami_deception.Target.cs`、`Source/wasami_deceptionEditor.Target.cs` | 00 |
 | `Source/wasami_deception/wasami_deception.Build.cs`、`wasami_deception.cpp`、`wasami_deception.h` | 00 |
-| `Tools/dd/prepare_stage.py`、`Tools/ue_remote.py`、`Tools/editor_cycle.py` | 01 |
+| `Tools/dd/prepare_stage.py`、`Tools/ue_remote.py`、`Tools/editor_cycle.py`、`Tools/console_session.py` | 01 |
 | `Content/Python/init_unreal.py`、`Content/Python/wasami_tools/**` | 01 |
 | `Source/wasami_deception/WasamiGameMode.*`、`WasamiPlayerCharacter.*` | 02 |
 | `Source/wasami_deception/WasamiTabletWidget.*`、`Content/Python/wasami_tools/pipeline/dd_tablet.py` | 03 |

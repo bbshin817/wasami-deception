@@ -35,7 +35,8 @@ Babylon.js 9.26 + Havok + Vite/TypeScript の一人称ホラー探索（Dark Dec
 | --- | --- | --- | --- |
 | 本家の原作データ（UE 4.21） | `pak_reference/` | 2.9 GB | BP バイトコード、全アセットのプロパティ、UMG、カメラ、SoundCue、パーティクル、テクスチャ、音、レベル配置。読み方は同フォルダの README |
 | 本家の新しい版（UE 4.24） | `pak_reference_2/` | 18.3 GB | 後のチャプターと追加の効果。旧版と違うものはユーザーに確認 |
-| 手元で遊べる本家（`pak_reference` と同一のビルド） | `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`（本体は Steam の `Dark Deception Classic Ch3`） | — | 実機。コードで確定できない見え方の観察に使う。REPLAY で 5 ステージ（`01_Hotel`・`02_ElementarySchool`・`03_Manor_Zone1`・`04_Sewer`・`05_Circus_Entrance`）。病院と新しい版のタブレットの効果は入っていない |
+| 手元で遊べる本家・旧版（`pak_reference` と同一のビルド） | `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`（本体は Steam の `Dark Deception Classic Ch3`） | 1.9 GB | 実機。REPLAY で 5 ステージ（`01_Hotel`・`02_ElementarySchool`・`03_Manor_Zone1`・`04_Sewer`・`05_Circus_Entrance`）。モーションブラーと旧版のテレポーテーションはこちらで観察 |
+| 手元で遊べる本家・最新版（`pak_reference_2` と同一のビルド。2026-09-16 に Steam から入れた） | `C:\Users\User\AppData\Local\DDeception\Launch-Latest.cmd`（本体は Steam の `Dark Deception`） | 7.9 GB | 実機。**病院（`06_Hospital`・Zone 1・Zone 2）と新しい版のタブレットの効果はこちらで観察**。REPLAY に Torment Therapy・Mascot Mayhem が増える（Ch5 は未所有） |
 | CC2 の書き出し（UE 5.4） | `cc2_reference/` | 7.5 GB | glb（メッシュ空間は UE そのもの）、usda、png、wav 206、BP の逆コンパイル、umap の全プロパティ |
 | 調査の資料 | `<WEBGL>/.claude/references/` | — | CC2 のゲームの流れと値、本家の用語・敵・仕組み・演出、本作との対応 |
 

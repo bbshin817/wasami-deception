@@ -17,6 +17,7 @@
     "Tools/dd/prepare_stage.py": "fdd1dd2907b1690498b4a95b8f9b82026e291608",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "0252f069d3c45d94f410928fe292e577c8c2b3c5",
+    "Tools/console_session.py": "79504ece5845d94fa038c18ab4f20d73945363fa",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
