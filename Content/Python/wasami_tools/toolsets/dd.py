@@ -33,3 +33,15 @@ class WasamiDDTools(unreal.ToolsetDefinition):
             raise ValueError("asset_paths must not be empty.")
         dd = _module("dd_assets")
         return [dd.camera_shake(p) for p in asset_paths]
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_dd_tablet() -> dict[str, int]:
+        """Imports (or re-imports) everything the player's tablet needs: its mesh, materials and textures, the screen's
+        UI textures and font, the woosh sounds, and the minimap's render target, map images and materials.
+
+        Returns:
+            How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap').
+        """
+        _module("dd_stage")
+        return _module("dd_tablet").import_all()

@@ -16,6 +16,12 @@ import subprocess
 import sys
 import time
 
+# The build's output can hold characters this console's code page has no room for (cp932 on this PC): print what we
+# can rather than dying with a UnicodeEncodeError on the way to reporting a build failure.
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(errors="replace")
+
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 UPROJECT = os.path.join(ROOT, "wasami_deception.uproject")
 ENGINE = os.environ.get("UE_ENGINE_DIR", r"C:\Program Files\Epic Games\UE_5.8\Engine")

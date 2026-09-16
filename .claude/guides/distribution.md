@@ -21,6 +21,7 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 
 ## 性能の目安
 
-- この PC（i7-9700K、32 GB、GeForce GTX 1660 SUPER 4 GB）で 1080p・60 fps 前後を目安にする。
-- 計測は PIE かパッケージで `stat unit` / `stat fps`、必要なら `ProfileGPU`。結果は実装記録に残す（WebGL 版の README の FPS の表にあたる）。
-- 重いときにまず見るところ: 灯の影（Zone 1 だけで 1,121 灯。仮想シャドウマップ）、Lumen の品質、Nanite の対象、テクスチャの解像度。スケーラビリティ（`r.ScreenPercentage`、シャドウの質）で落とす。
+運用は `.claude/guides/performance.md`（この PC は i7-9700K、32 GB、GeForce GTX 1660 SUPER の VRAM 6 GB）。
+
+- パッケージした本編で 1080p・60 fps 前後を目安にする。**開発中の逼迫を避けるための設定をパッケージに持ち込まない**（品質を落とさない）。
+- 計測は PIE かパッケージで `stat unit` / `stat fps` / `stat RHI`、必要なら `ProfileGPU`。結果は実装記録に残す（WebGL 版の README の FPS の表にあたる）。
