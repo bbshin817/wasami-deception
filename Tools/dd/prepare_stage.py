@@ -21,6 +21,7 @@ import json
 import math
 import os
 import re
+import struct
 import sys
 import urllib.parse
 
@@ -151,6 +152,48 @@ def world_of(entry):
 
 
 # ------------------------------------------------------------------------------------------------ glTF
+_INDEX_CODE = {5121: "B", 5123: "H", 5125: "I"}
+
+
+def _accessor_view(gltf, buffers, index, item_bytes):
+    """One accessor as (bytes, first byte, stride, count) — the glTF interleaves attributes (byteStride 108)."""
+    acc = gltf["accessors"][index]
+    view = gltf["bufferViews"][acc["bufferView"]]
+    start = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+    return buffers[view.get("buffer", 0)], start, view.get("byteStride") or item_bytes, acc["count"]
+
+
+def gltf_surface(src):
+    """The mesh's surface area in m² and whether its lightmap UV (TEXCOORD_1) holds anything.
+
+    The area decides the lightmap resolution at import (dd_stage.resolution_for). The UV check matters because the
+    original's merged stage meshes (the tiles, Zone 2's miniboss room) carry a TEXCOORD_1 that is (0,0) everywhere —
+    UE has to make one for those, while the rest keep the original's own unwrap."""
+    with open(src, encoding="utf-8") as f:
+        gltf = json.load(f)
+    folder = os.path.dirname(src)
+    buffers = [open(os.path.join(folder, urllib.parse.unquote(b["uri"])), "rb").read() for b in gltf["buffers"]]
+    area, has_uv = 0.0, False
+    for mesh in gltf.get("meshes", []):
+        for prim in mesh.get("primitives", []):
+            data, start, stride, count = _accessor_view(gltf, buffers, prim["attributes"]["POSITION"], 12)
+            pos = [struct.unpack_from("<3f", data, start + i * stride) for i in range(count)]
+            idata, istart, _, icount = _accessor_view(gltf, buffers, prim["indices"], 0)
+            acc = gltf["accessors"][prim["indices"]]
+            idx = struct.unpack_from("<%d%s" % (icount, _INDEX_CODE[acc["componentType"]]), idata, istart)
+            for i in range(0, len(idx) - 2, 3):
+                ax, ay, az = pos[idx[i]]
+                ux, uy, uz = (c - a for c, a in zip(pos[idx[i + 1]], (ax, ay, az)))
+                vx, vy, vz = (c - a for c, a in zip(pos[idx[i + 2]], (ax, ay, az)))
+                nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+                area += 0.5 * math.sqrt(nx * nx + ny * ny + nz * nz)
+            if not has_uv and "TEXCOORD_1" in prim["attributes"]:
+                data, start, stride, count = _accessor_view(gltf, buffers, prim["attributes"]["TEXCOORD_1"], 8)
+                has_uv = any(struct.unpack_from("<2f", data, start + i * stride) != (0.0, 0.0)
+                             for i in range(0, count, 7))
+    return area, has_uv
+
+
 def sectioned_gltf(src, rel, slots, problems):
     """The export's glTF written again with one material per section, under MESH_OUT; returns the new file's path.
 
@@ -376,11 +419,18 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
                     resectioned = True
                 except Exception as e:  # noqa: BLE001
                     problems.append("could not re-section %s: %s" % (gltf, e))
+            area, lightmap_uv_used = 0.0, False
+            if file:
+                try:
+                    area, lightmap_uv_used = gltf_surface(file)
+                except Exception as e:  # noqa: BLE001
+                    problems.append("could not measure %s: %s" % (gltf, e))
             meshes[key] = {
                 "asset": asset_of(key), "source": key, "file": file, "engine": not key.startswith("/Game/"),
                 "slots": slots, "resectioned": resectioned,
                 "lightmapUv": info.get("lightmap_uv_index"), "bodySetup": bool(info.get("body_setup")),
                 "bounds": info.get("bounds"),
+                "areaM2": round(area, 1), "lightmapUvUsed": lightmap_uv_used,
             }
         slots = meshes[key]["slots"]
         over = e.get("override_materials") or []

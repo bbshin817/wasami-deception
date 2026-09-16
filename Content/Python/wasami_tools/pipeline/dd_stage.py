@@ -8,6 +8,7 @@ material settings survive):
   M_DD_Decal      M_01_Hotel_Decals — a deferred decal material, which the level puts on plane meshes (mesh decals)
   M_DD_Unlit      MM_Lit — an unlit colour times a multiplier
 """
+import math
 import os
 import struct
 import zlib
@@ -18,6 +19,12 @@ from wasami_tools.pipeline import paths, ue_props
 
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
+
+# Baked lighting: one lightmap texel per this many cm, how much of the lightmap square UE's layout fills, and the
+# range of resolutions to stay inside. 20 cm over Zone 1 and 2 comes to about 52 MB of lightmaps for the 65 meshes.
+LIGHTMAP_TEXEL_CM = 20.0
+LIGHTMAP_PACKING = 0.5
+LIGHTMAP_RESOLUTION = (32, 2048)
 
 # Bump when a master material's graph changes: ensure_masters rebuilds it in place (its instances keep it).
 MASTER_VERSION = "1"
@@ -298,7 +305,37 @@ def import_mesh(entry, nanite):
     slots = mesh.get_editor_property("static_materials")
     if len(slots) != len(entry["slots"]):
         unreal.log_warning("mesh %s: %d slots imported, the export has %d" % (entry["asset"], len(slots), len(entry["slots"])))
+    setup_lightmap(mesh, entry)
     return mesh
+
+
+def lightmap_resolution(area_m2):
+    """The lightmap resolution for a mesh of this surface area, as a power of two within LIGHTMAP_RESOLUTION.
+
+    The original's own resolutions are not in the export (the pak has no MapBuildDataRegistry), so they are derived
+    from a texel size instead: LIGHTMAP_TEXEL_CM per texel, with LIGHTMAP_PACKING for how much of the square UE's
+    layout actually fills. Zone 1's corridors (hospital_zone_01_tiles_tile_01, 21,271 m²) land on 1024."""
+    texels = max(area_m2, 0.0) * 10000.0 / (LIGHTMAP_TEXEL_CM * LIGHTMAP_TEXEL_CM) / LIGHTMAP_PACKING
+    side = 2 ** round(math.log2(max(math.sqrt(texels), 1.0)))
+    return int(min(max(side, LIGHTMAP_RESOLUTION[0]), LIGHTMAP_RESOLUTION[1]))
+
+
+def setup_lightmap(mesh, entry):
+    """Points the mesh at its lightmap UV and gives it a resolution, for the baked lighting the original uses.
+
+    Most of the original's meshes carry their own unwrap in UV1. The merged stage meshes (Zone 1 and 2's tiles, Zone
+    2's miniboss room) do not — their TEXCOORD_1 is (0,0) everywhere — so UE lays one out for those at import."""
+    res = lightmap_resolution(entry.get("areaM2") or 0.0)
+    if not entry.get("lightmapUvUsed"):
+        sub = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+        build = sub.get_lod_build_settings(mesh, 0)
+        build.set_editor_property("generate_lightmap_u_vs", True)
+        build.set_editor_property("src_lightmap_index", 0)
+        build.set_editor_property("dst_lightmap_index", 1)
+        build.set_editor_property("min_lightmap_resolution", res)
+        sub.set_lod_build_settings(mesh, 0, build)
+    mesh.set_editor_property("light_map_resolution", res)
+    mesh.set_editor_property("light_map_coordinate_index", 1)
 
 
 def translucent_meshes(stage):

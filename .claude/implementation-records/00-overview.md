@@ -54,7 +54,8 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 - **`DefaultEngine.ini`**
   - `[/Script/EngineSettings.GameMapsSettings]`: `GameDefaultMap` と `EditorStartupMap` は `/Game/Stage/Maps/L_Hospital_Zone1`、`GlobalDefaultGameMode` は `/Script/wasami_deception.WasamiGameMode`。
-  - `[/Script/Engine.RendererSettings]`: 静的ライティング無効（`r.AllowStaticLighting=False`）、仮想シャドウマップ有効、メッシュ距離フィールド生成、Lumen（`r.DynamicGlobalIlluminationMethod=1`、`r.ReflectionMethod=1`）、Substrate 有効、**`r.RayTracing=False`**（この PC の GeForce GTX 1660 SUPER に RT コアが無く、Lumen はソフトウェアのレイトレースで動かすため）。
+  - `[/Script/Engine.RendererSettings]`: **静的ライティング有効**（`r.AllowStaticLighting=True`）、仮想シャドウマップ有効、**メッシュ距離フィールドは作らない**（`r.GenerateMeshDistanceFields=False`）、**動的 GI なし**（`r.DynamicGlobalIlluminationMethod=0`）、**反射は SSR**（`r.ReflectionMethod=2`）、Substrate 有効、**`r.RayTracing=False`**（この PC の GeForce GTX 1660 SUPER に RT コアが無い）。最初の 4 つは 2026-09-16 に Lumen から切り替えたもの。理由は下の「灯の焼き込み」。
+  - `[/Script/Engine.LocalPlayer]`: `AspectRatioAxisConstraint=AspectRatio_MaintainXFOV`（2026-09-16）。カメラの FOV 90 は原作では**水平**（UE 4.24 のエンジン既定が `MaintainXFOV` で、原作のプロジェクト設定は上書きしていない）。UE 5 の既定は `MaintainYFOV` に変わっており、そのままだとこの PC の 21:9（3440x1440）で水平 107° になって何もかも小さく写る。16:9 ではどちらでも同じ。
   - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。根拠と効果は下の「露出」。
   - `[/Script/WindowsTargetPlatform.WindowsTargetSettings]`: DX12 / SM6、音声 48 kHz。
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
@@ -91,6 +92,39 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 ステージ側も、明るさは原作とほぼ同じところに来た（中央値 R 41 / G 38 に対し原作 44 / 38、いちばん明るい面 231 に対し原作 227〜236）。**残っている差は色温度**: 青が 25 に対し原作は 39 で、本作のほうが黄緑に寄っている。灯の色・スカイライト・反射キャプチャ（書き出しが平面 PNG でキューブマップを戻せない）のどれかで、露出とは別の課題（M1 の残り）。
 
 **`capture_pose` の絵は絶対の明るさの比較には使えない**（上の表で PIE の (41,38,25) に対し (13,13,0) と暗い）。`SceneCapture2D` は Lumen の間接光を本編と同じようには回さないため。**同じ視点で設定 A と設定 B を比べる用途には使える**（暗くなる度合いは同じ）が、本家の実機と数値を突き合わせるときは **PIE の `HighResShot`** で撮る。
+
+## 灯の焼き込み（2026-09-16）
+
+**原作はライティングを焼いている。本作も同じようにする。** Lumen ではこのステージの間接光は出せない。
+
+原作が焼いている証拠:
+- 原作の `DefaultEngine.ini`（UE 4.24）は `r.AllowStaticLighting=True`・`r.GenerateMeshDistanceFields=False`・`r.PrecomputedVisibilityWarning=False`。
+- `06_Hospital_Zone_01` の StaticMeshComponent 963 個が `VisibilityId` を持つ（プリコンピューテッド ビジビリティはライティングビルドで作られる）。PointLightComponent 665 個が `LightGuid` を持つ。
+- Zone 1 の灯 1,120 個のうち 1,015 個が Static（書き出しに `Mobility` が無い＝ UE の既定）。Static の灯は焼く以外に意味がない。
+- 書き出しには原作のライトマップそのものは入っていない（`_manifest.json` の `not_recovered`: "Baked lighting (MapBuildDataRegistry lightmaps are not exported)"）ので、焼き直す。
+
+**Lumen が使えない理由**（2026-09-16 に実測）: ステージの本体は結合された巨大なメッシュで（`hospital_zone_01_tiles_tile_tunnel` は 270 m、`tiles_tile_01` は 138 m）、
+この PC の GPU に RT コアが無いので Lumen はソフトウェアのレイトレースになる。メッシュの距離フィールドは 1 メッシュ 256 ボクセルが上限（`r.DistanceFields.MaxPerMeshResolution`）なので、
+**1 ボクセルが 50 cm を超えて**壁も廊下も潰れ、トレースが何も当たらない（距離フィールドのアトラスは 8 MB しか使われていなかった）。
+PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均輝度が 18.8 → 16.2 と動くだけで、**間接光は実質ゼロだった**。
+
+本作の焼き方（取り込みは 01 記録）:
+- `Config/DefaultEngine.ini`: `r.AllowStaticLighting=True`、`r.GenerateMeshDistanceFields=False`、`r.DynamicGlobalIlluminationMethod=0`、`r.ReflectionMethod=2`（SSR + レベルの反射キャプチャ 10 個。原作と同じ構成）。
+- 灯・メッシュ・スカイライトの `Mobility` は書き出しのまま（Zone 1 は灯が Static 1,015・Movable 105、メッシュが Static 918・Movable 6）。
+- ライトマップ UV は、原作が持っているものはそのまま使い、結合されたステージのメッシュ 7 個（`TEXCOORD_1` が全頂点 0）だけ UE に作らせる。解像度は表面積から 1 テクセル 20 cm で決める。
+- ビルドは `LevelEditorSubsystem.build_light_maps(QUALITY_PREVIEW, True)`。**Zone 1 で 122 秒**（918 メッシュ、ライトマップのテクスチャ 45.2 MB）。Swarm と UnrealLightmass が動く（RAM 3.4 GB ほど）。
+
+結果（実機の開始地点 `04_Start` と同じ視点・同じ 3440x1440 で比べたもの。`observations/README.md`）:
+
+| 面 | 焼く前 | 焼いた後 | 実機 |
+| --- | --- | --- | --- |
+| 画面全体の中央値 | (10, 9, 6) | **(23, 22, 14)** | (34, 45, 47) |
+| 平均輝度 | 18.8 | **32.2** | 58.1 |
+| 床（手前中央） | (39, 34, 24) | **(68, 63, 45)** | (55, 75, 75) |
+| 天井の灯（発光面） | (238, 246, 249) | (204, 225, 232) | (220, 232, 236) |
+
+明るさは実機の水準に届いた。**残っているのは色味**で、実機は寒色（B ≥ G > R）なのに本作は暖色（R > G > B）。原作の灯の色は天井灯 294 個が (255,251,200) の薄黄色なので、
+実機の寒色は灯の色そのものではなく、別の要素（床の反射、青い灯 234 個、スカイライトの扱いのどれか）から来ている。**M1 の残りの課題**。
 
 ## 作業の流れ
 

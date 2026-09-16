@@ -7,7 +7,6 @@ from wasami_tools.pipeline import paths, ue_props
 
 EAL = unreal.EditorAssetLibrary
 TAG = "dd"
-MOVABLE = unreal.ComponentMobility.MOVABLE
 
 LIGHT_CLASS = {
     "PointLightComponent": unreal.PointLight,
@@ -19,12 +18,12 @@ LIGHT_CLASS = {
 # property that is at its default — so a light the export says nothing about has to be set to Unitless explicitly.
 DEFAULT_LIGHT_UNITS = "ELightUnits::Unitless"
 SKIP_LIGHT_PROPS = ("LightGuid", "MapBuildDataId", "MaxDrawDistance", "MaxDistanceFadeRange")
-# A light the export gives no Mobility is Static (UE's default), so in the original it was baked and the renderer
-# never drew it: FLightSceneInfo::ShouldRenderLightViewIndependent (LightSceneInfo.cpp:245) skips a static light whose
-# lighting is built, which also keeps it out of the volumetric fog's light injection (VolumetricFog.cpp:1543). Its
-# VolumetricScatteringIntensity — 20 on the hospital's 294 ceiling lights, 2.5 on the 337 shards — was therefore inert.
-# This project bakes nothing (Lumen), so every light is movable and would scatter; zero it to keep the original's fog.
-BAKED_LIGHT_MOBILITY = (None, "EComponentMobility::Static")
+# A property the export leaves out is at UE's default, and a light's default Mobility is Static — which is what
+# 1,015 of Zone 1's 1,120 lights are. Those are the original's baked lights: the renderer never draws a static light
+# whose lighting is built (FLightSceneInfo::ShouldRenderLightViewIndependent, LightSceneInfo.cpp:245), which also
+# keeps it out of the volumetric fog's light injection (VolumetricFog.cpp:1543), so their VolumetricScatteringIntensity
+# — 20 on the hospital's 294 ceiling lights, 2.5 on the 337 shards — is inert in the original and is here too.
+DEFAULT_LIGHT_MOBILITY = unreal.ComponentMobility.STATIC
 # The minimap's plane: the original's BP_MapTexture (Zone 1) and BP_MapTexture_MultiFloor (Zone 2) put
 # /Engine/BasicShapes/Plane under the level with the zone's baked map on it, and the player's scene capture draws it
 # into T_NewMap. The material is each actor's OverrideMaterials in the export.
@@ -34,9 +33,8 @@ MAP_PLANE_MATERIAL = {"Zone1": "/Game/DD/UI/Minimap/MM_Map_06_Zone01", "Zone2": 
 # WasamiPlayerCharacter's scene capture shows only the actors with this tag and the shards.
 MINIMAP_TAG = "dd_minimap"
 
-# Component properties the placement handles itself, or that only matter with baked lighting (which is off).
-SKIP_COMPONENT_PROPS = ("Mobility", "CollisionProfileName", "bVisible", "bHiddenInGame",
-                        "OverriddenLightMapRes", "bOverrideLightMapRes", "LightmassSettings")
+# Component properties the placement handles itself.
+SKIP_COMPONENT_PROPS = ("Mobility", "CollisionProfileName", "bVisible", "bHiddenInGame")
 
 
 def _vec(v):
@@ -45,6 +43,12 @@ def _vec(v):
 
 def _rot(q):
     return unreal.Quat(float(q[0]), float(q[1]), float(q[2]), float(q[3])).rotator()
+
+
+def _mobility(props, default=DEFAULT_LIGHT_MOBILITY):
+    """The component's Mobility as the export gives it — a missing one means UE's default, which is Static."""
+    value = props.get("Mobility")
+    return ue_props.enum_member(unreal.ComponentMobility, value.split("::")[-1]) if value else default
 
 
 def _tag(actor, label, folder, *tags):
@@ -95,8 +99,7 @@ def _meshes(eas, stage, zone, counts, failures):
                 comp.set_material(i, asset(m["asset"]))
                 decal = decal or m["master"] == "decal"
             props = dict(p["props"])
-            if props.get("Mobility"):
-                comp.set_mobility(ue_props.enum_member(unreal.ComponentMobility, props["Mobility"].split("::")[-1]))
+            comp.set_mobility(_mobility(props))
             if decal:
                 comp.set_collision_profile_name("NoCollision")   # the original's decals are planes, not colliders
             elif props.get("CollisionProfileName"):
@@ -123,11 +126,8 @@ def _lights(eas, zone, counts, failures):
                 continue
             actor = eas.spawn_actor_from_class(cls, _vec(lt["world"]["location"]), _rot(lt["world"]["quat_xyzw"]))
             c = actor.get_editor_property("light_component")
-            # static lighting is off in this project (Lumen), so every light is movable
-            c.set_mobility(MOVABLE)
+            c.set_mobility(_mobility(lt["props"]))
             props = {k: v for k, v in lt["props"].items() if k not in SKIP_LIGHT_PROPS}
-            if props.get("Mobility") in BAKED_LIGHT_MOBILITY:
-                props["VolumetricScatteringIntensity"] = 0.0
             units = props.pop("IntensityUnits", None if cls is unreal.DirectionalLight else DEFAULT_LIGHT_UNITS)
             if units:                                    # before Intensity: the units decide what the number means
                 c.set_editor_property("intensity_units", ue_props.enum_member(unreal.LightUnits, units.split("::")[-1]))
@@ -179,7 +179,7 @@ def _environment(eas, zone, stage, counts, failures):
     if sky:
         actor = eas.spawn_actor_from_class(unreal.SkyLight, _vec(sky["world"]["location"]), unreal.Rotator())
         c = actor.get_editor_property("light_component")
-        c.set_mobility(MOVABLE)
+        c.set_mobility(_mobility(sky["props"]))
         props = {k: v for k, v in sky["props"].items() if k not in ("Cubemap", "SourceType")}
         ue_props.apply(c, props, placement, failures)
         _cubemap(c, sky["props"].get("SourceType"), sky.get("cubemapFile"), stage, failures, sky["path"])
