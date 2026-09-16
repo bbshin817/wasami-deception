@@ -51,6 +51,8 @@
 ## 再開の手順
 
 セッション開始時、`/clear` の後、コンテキスト圧縮の後、「続きから」と言われたときは、ほかの作業より先に次を行う。
+**この手順は `/continue` スキル（`.claude/skills/continue/SKILL.md`）が具体的なコマンドつきで実行する形にしてある。**
+セッション開始の hook（`.claude/scripts/session_start_hook.py`）が、未完了の記録・main 以外のブランチ・未コミットの変更・直前のコミットを先に知らせる。
 
 1. **未完了の作業を探す**: `.claude/progress/` の `_template.md` 以外のファイル、`git branch` の main 以外のローカルブランチ。
 2. **記録と実際の状態を照合する**: `git status` / `git diff`、`git log --oneline <base>..HEAD`、エディタのアセット（MCP の `AssetTools.find_assets` や `list_folders`）、「再開時の注意」の出力。

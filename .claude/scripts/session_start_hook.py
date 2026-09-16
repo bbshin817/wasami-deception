@@ -30,7 +30,7 @@ def main():
     if os.path.isdir(PROGRESS_DIR):
         records = sorted(f for f in os.listdir(PROGRESS_DIR) if f.endswith(".md") and f != "_template.md")
     if records:
-        lines.append("未完了の進捗記録があります（`.claude/guides/progress-tracking.md` の再開の手順に従ってください）:")
+        lines.append("未完了の進捗記録があります。**`/continue` スキルで再開してください**（照合の手順は `.claude/skills/continue/SKILL.md`）:")
         for name in records:
             with open(os.path.join(PROGRESS_DIR, name), encoding="utf-8") as f:
                 text = f.read()
@@ -40,7 +40,7 @@ def main():
             if nxt:
                 lines.append("  次にやること: " + nxt[:300])
     else:
-        lines.append("未完了の進捗記録はありません。")
+        lines.append("未完了の進捗記録はありません（続きを頼まれたら `/continue`: handover の「次の一歩」から始め、進捗記録を作る）。")
 
     branch = git("branch", "--show-current")
     others = [b.strip().lstrip("* ").strip() for b in git("branch", "--format=%(refname:short)").split("\n") if b.strip() and b.strip() != "main"]
