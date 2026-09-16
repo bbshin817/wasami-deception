@@ -54,3 +54,4 @@ Project Settings > Plugins > Python の Remote Execution を有効にしてあ�
   Start-Process "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" '"C:\Users\User\Desktop\wasami_deception\wasami_deception.uproject"'
   ```
 - エディタを閉じる前にすべて保存する。エディタを閉じる・開き直すことは、ユーザーが作業中かもしれないので、最初に確認を取る。
+- **`Tools/editor_cycle.py` は Claude から実行できる**（閉じる → ビルド → 開き直す → 応答を待つ）。Claude Code は Windows のセッション 0 で動いていて、そこから直接起動したエディタはディスプレイが見えず即落ちる（`DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`）ので、スクリプトは一度きりのスケジュールタスクでログオン中のセッションに起動する（01 記録）。開き直した後は MCP の再接続（`/mcp`）だけユーザーに頼む。

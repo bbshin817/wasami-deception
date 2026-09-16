@@ -42,7 +42,7 @@ updated: 2026-09-16
 | --- | --- |
 | `python Tools/dd/prepare_stage.py [--out <dir>]` | 病院の Zone 1・Zone 2 を `Intermediate/Pipeline/dd/stage_ue.json` にまとめる |
 | `python Tools/ue_remote.py <file.py>` / `-c "<code>"` | 起動中のエディタで Python を実行する（PythonScriptPlugin のリモート実行）。終了コードは 0 成功 / 1 Python エラー / 2 エディタが応答しない |
-| `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、開き直して MCP が応答するまで待つ |
+| `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、**対話デスクトップで**開き直して、リモート実行が応答するまで待つ |
 
 ## 内部構造と処理の流れ
 
@@ -118,12 +118,15 @@ updated: 2026-09-16
 - **UE の版の違い**: 本家のデカールは `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、UE 5.8 では `decal_blend_mode` が非推奨（No longer used）で Python から読めない。いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないでいる。
 - 当たりはすべて描画のメッシュそのもの（complex as simple）。書き出しのメッシュは `body_setup` を持たない。
 - `editor_cycle.py` は起動時に `sys.stdout` / `sys.stderr` を `errors="replace"` にし直す。ビルドの出力にこの PC のコンソール（cp932）で出せない文字が混ざると、ビルドの失敗を報告する途中で `UnicodeEncodeError` になって落ちていた。
+- **エディタの起動はセッションを跨ぐ**。Claude Code は Windows のセッション 0（サービス側）で動いており、そこには GPU の出力が無い（ログの `LogD3D12RHI: Adapter has … 0 output[s]`）ので、そのまま起動したエディタは D3D12 のスワップチェーンを作れず `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` で即落ちる。`start_editor()` は `ProcessIdToSessionId` と `WTSGetActiveConsoleSessionId` で自分のセッションとコンソールのセッションを比べ、違えば一度きりのスケジュールタスク（`WasamiLaunchEditor`。プリンシパルはログオン中のユーザーを **SID で**指定し、`LogonType Interactive`・`RunLevel Limited`）でログオン中のセッションに起動する。ユーザー名の形（ドメインなしの PC では `WORKGROUP` になる）では登録できないので SID を使う。タスクはエディタが応答したら消す（`drop_task`）。
+- 起動の完了は**リモート実行が答えるか**で見る（`editor_answers`）。この PC では Docker Desktop が 127.0.0.1:8000 を掴んでいるため、MCP のポートに繋がってもエディタが起きているとは限らない。
 - Zone 2 のポストプロセスボリュームの **`ColorGradingLUT` と `WeightedBlendables` は入れていない**。前者は書き出しがアセットのパスの文字列（`/Game/ThirdParty/Chameleon/LUTs/LUT_Classic8`）で、取り込んだテクスチャに解決する仕組みがまだない。後者はポストプロセスのマテリアル（`M_SharpenFilter_Inst`）で、マスターの式が cook で消えている。**このボリュームは `ColorGradingIntensity` が 0 なので、LUT の見た目への寄与は無い**。
 - スカイライトのキューブマップ（`HDRI_Epic_Courtyard_Daylight`・`TC_HDR01`）は**回収できていない**。原作は TextureCube だが、書き出しは 512×512 の平面 PNG（float の階調は落ちている）で、UE に取り込むと Texture2D になる。いまはシーンのキャプチャに任せている。病院は屋内なので寄与は小さいが、見え方を比べる段で見直す。
 - 原作の cook されたデータは、既定値と同じプロパティを持たない。ポストプロセスの override が立っていて値が無いのは「既定値で上書き」の意味。
 - MCP のポートは Docker Desktop と衝突しうる（`.claude/guides/unreal-workflow.md`）。MCP が使えないときは `Tools/ue_remote.py` で作業できる。
 
 ## 変更履歴
+- 2026-09-16: `editor_cycle.py` がエディタを対話デスクトップ（コンソールのセッション）でスケジュールタスク経由で起動するようにし、起動の判定を MCP のポートからリモート実行の応答に変えた
 - 2026-09-16: タブレットの素材の取り込み（`pipeline/dd_tablet.py`、`WasamiDDTools.import_dd_tablet`）と、レベルにミニマップの地図の板を置く `_map_plane` を足した。`editor_cycle.py` の出力の文字化けで落ちる問題を直した
 - 2026-09-16: 病院の取り込み（`pipeline/dd_stage.py`、マスターマテリアル 3 種）と組み立て（`pipeline/dd_level.py`）、それを呼ぶ `WasamiStageTools` を足した。`ue_props` が配列の色・ベクトルを読めるようにした
 - 2026-09-16: ステージを本家の病院へ差し替える方針変更にともない、CC2 の前処理（`Tools/cc2/prepare_stage.py`）・取り込み（`pipeline/cc2_assets.py`）・組み立て（`pipeline/cc2_level.py`）・ツールセット（`toolsets/stage.py` の `WasamiStageTools`）を削除し、`paths.py` から CC2 の定数を外して `DD_PAK2`（`pak_reference_2`）を足した
