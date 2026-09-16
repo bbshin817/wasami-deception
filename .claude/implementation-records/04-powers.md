@@ -1,5 +1,5 @@
 ---
-title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Primal Fear と一瞬の演出の基底・カメラアニメ・FX）
+title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Primal Fear と Vanish と一瞬の演出の基底・カメラアニメ・FX）
 sources:
   - Source/wasami_deception/WasamiPowerTypes.h
   - Source/wasami_deception/WasamiPowerTypes.cpp
@@ -19,6 +19,10 @@ sources:
   - Source/wasami_deception/WasamiPowerBurst.cpp
   - Source/wasami_deception/WasamiPrimalPower.h
   - Source/wasami_deception/WasamiPrimalPower.cpp
+  - Source/wasami_deception/WasamiVanishPower.h
+  - Source/wasami_deception/WasamiVanishPower.cpp
+  - Source/wasami_deception/WasamiVanishWidget.h
+  - Source/wasami_deception/WasamiVanishWidget.cpp
   - Source/wasami_deception/Tests/WasamiTestEnemy.h
   - Source/wasami_deception/Tests/WasamiTestEnemy.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
@@ -29,7 +33,7 @@ updated: 2026-09-17
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）、テレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）、Primal Fear（`AWasamiPrimalPower`）で、ほかの 3 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 7〜10 で足す）。Primal・Telekinesis・Vanish が共有する一瞬の演出（全画面のポストプロセス 2 つと 2 秒のタイムライン）は基底 `AWasamiPowerBurst` にまとめた。敵はまだ無いので、確かめには仮の的 `AWasamiTestEnemy` を使う。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）、テレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）、Primal Fear（`AWasamiPrimalPower`）、Vanish（`AWasamiVanishPower` と `UWasamiVanishWidget`）で、ほかの 2 種（Telepathy・Telekinesis）は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 8〜10 で足す）。Primal・Telekinesis・Vanish が共有する一瞬の演出（全画面のポストプロセス 2 つと 2 秒のタイムライン）は基底 `AWasamiPowerBurst` にまとめた。敵はまだ無いので、確かめには仮の的 `AWasamiTestEnemy` を使う。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -45,7 +49,7 @@ updated: 2026-09-17
 - 読み出し（BlueprintPure）: `GetTeleportAim()`（出ている照準。無ければ null）、`GetSocketPower(bLeft)`（枠が解放済みの範囲の外なら `None`）、`GetGaugePercent(Power)`、`IsPowerAvailable(Power)`、`IsUsingPower(Power)`（本家の `Is Player Using Power ?`。`Active Powers` に入っているか）、`HasPowers()`、`GetUpgradeLevel(Power)`。C++ だけの `GetTuning(Power)`。
 - `OnPowerUsed(EWasamiPower)`（BlueprintAssignable）… 本家の `UsedPower`（と、パワーごとの `UsedTelepathy` などをまとめたもの）。
 - 設定（EditAnywhere）: `UnlockedPowers`（既定は 6 種すべてを並び順に）、`UpgradeLevel`（既定 5。0〜5）。
-- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）、`PrimalPowerClass`（既定 `AWasamiPrimalPower`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）、照準の素材（`AWasamiTeleportAim::LoadAssets`）、Primal の素材（`AWasamiPrimalPower::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
+- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）、`PrimalPowerClass`（既定 `AWasamiPrimalPower`）、`VanishPowerClass`（既定 `AWasamiVanishPower`）、`VanishWidgetClass`（既定 `UWasamiVanishWidget`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）、照準の素材（`AWasamiTeleportAim::LoadAssets`）、Primal の素材（`AWasamiPrimalPower::LoadAssets`）、Vanish の素材（`AWasamiVanishPower::LoadAssets`・`UWasamiVanishWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
 
 ### `AWasamiTeleportAim : AActor`（`WasamiTeleportAim.h`）
 本家の `BP_Power_Teleport`（旧版）。パワーが出し、移動か取り消しで消える。
@@ -74,6 +78,20 @@ updated: 2026-09-17
 - コンポーネント: 基底の 3 つ + `Sphere`（`UStaticMeshComponent`、ルートの原点・拡縮 1、`NoCollision`、動かすので `Movable`）。`GetSphere()`・`GetMaterialInstance()`（C++ だけ）。
 - 値: `PostProcess` の `ColorGain` (1.6100000143051147, 0.12956300377845764, 0, 1)（赤）、`PostProcess1` の `SceneFringeIntensity` 50。
 - 素材（ソフト参照。`StartPower` で読む）: `SphereMesh` `/Engine/BasicShapes/Sphere`、`SphereMaterial` `/Game/DD/Materials/05_Circus/M_05_Primal`、`WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`、`ShakeClass` `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop`（`_C`）。
+
+### `AWasamiVanishPower : AWasamiPowerBurst`（`WasamiVanishPower.h`）
+本家の `BP_VanishPower`（最新版）。Vanish の一瞬の演出と敵への通知だけを受け持つ（見えない扱い・ウィジェット・15 秒はパワーのコンポーネント）。
+- static `NotifyEnemies(WorldContext)`（BlueprintCallable）: タグ `Enemy` の全アクタのうち、`IWasamiEnemyInterface` を実装するものに `PlayerVanish` を 1 回ずつ送り、その数を返す（距離も遮蔽も見ない）。
+- static: `VanishFadeCurve()`（`float2`）、`LoadAssets(Out)`。
+- コンポーネント: 基底の 3 つ + `ParticleSystem`（`UParticleSystemComponent`。相対位置 (92.42288, −0.000427, −152.14667)、`bStartWithTickEnabled` 偽〈書き出しどおり。粒子のコンポーネントは起動で自分のティックを入れる〉、UE の既定の `bAutoActivate`）。`GetParticleSystem()`（C++ だけ）。
+- 値: `PostProcess` の `ColorGain` (0.6976670026779175, 0, 1.6100000143051147, 1)（紫）、`PostProcess1` の `SceneFringeIntensity` は上書きありで 0。本家の `PostProcess1` の `GrainIntensity` の上書き（既定の 0）は写していない（UE 5.8 は `GrainIntensity_DEPRECATED` として持つだけで、ブレンドも描画もしない。後継の `FilmGrainIntensity` とは別の効果）。本家の CDO の `Range` 1500 はどこからも使われないので持たない。
+- 素材（ソフト参照。`StartPower` で読む）: `PuffParticles` `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff`、`WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`。
+
+### `UWasamiVanishWidget : UUserWidget`（`WasamiVanishWidget.h`）
+本家の `UMG_Vanish`。
+- 木: キャンバス `CanvasPanel_0` に `Image_82`（全面に広げ〈アンカー 0〜1、余白 0〉、ブラシ `MM_WobblyVignette`、色 (0.278697, 0.160557, 0.536458, 1)、描画の拡縮 1.05〈中心基準〉）。`RebuildWidget` で作る。
+- `Speed`（既定 1。`ExposeOnSpawn`。パワーが 15 を入れる）、`VignetteMaterial`（ソフト参照 `/Game/DD/Materials/Special/MM_WobblyVignette`）。
+- static `EvaluateOpacity(アニメの秒)`（1 秒のアニメ `Vanish` の `RenderOpacity` のトラック）、`LoadAssets(Out)`、定数 `AnimationLength` 1。読み出し `GetAnimationTime()`・`IsAnimationPlaying()`・`GetVignette()`（C++ だけ）。
 
 ### `AWasamiTestEnemy : AActor`（`Tests/WasamiTestEnemy.h`）
 敵（M4）の代わりの仮の的。テストと PIE の確認だけに使う。
@@ -190,6 +208,19 @@ updated: 2026-09-17
 - 見え方（Lv5）: 0.5 秒で球の半径が約 2150 cm、1 秒で 3225 cm、1.5 秒で 3440 cm。画面は赤い単色（彩度 0 × ゲイン (1.61, 0.13, 0)）が 0.5 秒で消え、白い閃光（中間調 × 100・色収差 50）が約 0.29 秒で消える。2 秒で自分を消す。
 - 死亡のリセット: ゲージを止めて 1 → 充填（使っていなくても `power_refilled` が鳴る。下の「死亡のリセット」）。動いている 0.06 秒と再使用の Delay は止めないので、リセットの後に古い Delay が切れると、もう一度充填の音が鳴る（本家の癖どおり）。
 
+### Vanish（`UseVanish` → `EndVanish` → `RefillVanish`、アクタは `AWasamiVanishPower`、画面は `UWasamiVanishWidget`）
+- 使った瞬間（本家の @20985〜@22969）: `Active Powers` に足す → 使えない状態 → **プレイヤーのカプセルの `ECC_Camera` の応答を Ignore**（本家の敵の視線は `Camera` チャンネルのトレースなので、線がプレイヤーを素通りして後ろの壁に当たる。敵〈M4〉の視線をこのチャンネルで作れば同じ仕組みになる）→ ゲージの `SetDelay(15)`（アイコンが 15 秒で 1 → 0）→ `UWasamiVanishWidget` を作り（持ち主はプレイヤーのコントローラ。本家は `OwningPlayer` なしの `Create` で、最初のローカルプレイヤーになる）、`Speed = 15`、`AddToPlayerScreen(0)` → `AWasamiVanishPower` をプレイヤーの位置の **50 m 下**に**プレイヤーの向き**で `AlwaysSpawn` の遅延スポーンをして `FinishSpawning` → `Delay(15)` で `EndVanish`。効果時間は段階によらず 15 秒（`FWasamiPowerTuning::VanishDuration`。ウィジェットの `Speed` も同じ 15）。
+- 終わり（`EndVanish`、@6856〜@7725）: ゲージの `SetDelay(再使用)`（Lv5 で 15 秒、アイコンが 0 → 1）→ `Active Powers` から外す → カプセルの `ECC_Camera` を Block に戻す → `Delay(再使用)` で `RefillVanish`。**敵へは何も知らせない**。効果中に解除する処理も無い（シャードを取る・別のパワーを使う・捕まる、のどれでも続く）。
+- 充填（`RefillVanish`、@7927〜@8292）: `Refill`（`power_refilled` 0.5・使える状態）→ ウィジェットを外す（`RemoveFromParent`。15 秒の時点で不透明度は 0 になっているので、見た目は変わらない）。前の Gate は素通し（ステップ 2 の決定）。本家どおり、外したウィジェットへの参照は持ったまま。
+- アクタの `StartPower`（本家の `ReceiveBeginPlay` @471〜@705）: 粒子に `PPP_VanishPuff` を `SetTemplate`（登録済みで自動起動なので、その場で動き出す。本家はクラスのテンプレートとしてスポーンで起動する）→ プレイヤーのカプセルの中心へ `SetActorLocation`（スイープなし。回転はスポーンのまま）→ `Stun_Wave_Attack_New_04` を `PlaySoundAtLocation` の位置 (0, 0, 0)（Primal と同じ）→ `NotifyEnemies`。基底のタイムラインは重みだけを動かす（本家の `float`・`desaturation`・`opacity` のトラックは Primal と同じキーで、どこにもつながっていないので作らない）。
+- 粒子（`PPP_VanishPuff`）は Tick で出るので、移した後の位置に出る: カプセルの中心から、プレイヤーの向きで前へ 92.4 cm、下へ 152.1 cm に置かれ、`LocationWorldOffset` (0, 0, 150) を足して床から約 86 cm の胸の前に、煙が 5 つ（0 秒のバースト）出て、上へ加速しながら 0.5〜1 秒で消える。
+- 見え方: 画面は紫の単色（彩度 0 × ゲイン (0.698, 0, 1.61)）が 0.3 秒で消え、白い閃光（中間調 × 100、色収差なし）が約 0.12 秒で消える。2 秒でアクタを消す。
+- ウィジェット（`NativeConstruct` / `NativeTick`）: `Construct` で本家の `PlayAnimation(Vanish, 0, 1 回, 順方向, 1 / Speed)` を写し、アニメの時刻 0 の値をその場で入れる（`Speed` が 0 なら再生速度 0 = 動かない。Blueprint の割り算の 0 除算は 0）。毎ティック、時刻 += 経過 × 再生速度、1 秒を超えたら 1 に揃えて止める。値は `Image_82` の `RenderOpacity`。
+  - アニメのトラック（`MovieSceneFloatSection_0`）: ティック 0 / 6000 / 54000 / 60000（60000 = 1 秒。`TickResolution` は書き出しに無く `UMovieScene` の既定）に値 0 / 1 / 1 / 0、補間は 3 次、接線は 1 ティックあたり 0 / 1.0416667e-6 / −1.0101010e-6 / 0。秒あたりに直して（× 60000）`FRichCurve` で評価する（ムービーシーンの 3 次の式は `FRichCurve` と同じ。03 記録の枠の弾みと同じ扱い）。
+  - 1/15 倍速で、0〜1.5 秒で 0 → 1、1.5〜13.5 秒は 1（キーの間で最大 1.0123）、13.5〜15 秒で 1 → 0。以後は 0 のまま、再使用が明けて外されるまで画面にある。
+- 敵の側（M4 で作る）: 本家の 3 つの経路のうち、(1) カプセルの `Camera` 応答、(2) `IsUsingPower(Vanish)`（本家の `Active Powers` の 5）、(3) 使った瞬間の `PlayerVanish`（病院のナースは `Seen Player Recently = False` で追跡をやめる）が本作にもそろった。Vanish 中でも触れれば捕まる（本家の捕獲は Vanish を見ない）。
+- 死亡のリセット: ゲージを止めて 1 → `RefillVanish`（使っていなくても `power_refilled` が鳴り、ウィジェットを外す）。**カプセルの応答と `Active Powers` は元の 15 秒の `EndVanish` まで残る**（本家どおり）。リセットの直後に使い直すと、動いている `Delay(15)` は仕掛け直されないので、先の Delay で終わる。
+
 ### カメラアニメの再生（`UWasamiCameraAnimModifier::ModifyCamera`）
 - 毎フレーム、再生中の各アニメを `Advance` し、終わっていなければ、FOV のトラックがあれば視点の FOV に `AddFieldOfView(視点の FOV, キーの値, InitialFOV, Weight)` を入れ、`BasePostProcessSettings` の写しにトラックの値を書き、重み `BasePostProcessBlendWeight × Weight` が正なら `AddCachedPPBlend(…, VTBlendOrder_Base)` する（UE4 はカメラアニメの PP を通常のカメラの PP の下に重ねた。UE 5.8 の後継も `r.CameraAnimation.LegacyPostProcessBlending`〈既定 true〉で同じ位置に置く）。終わったものは外す。PP の値の重ね合わせ（`SceneColorTint` は重みで線形補間）はエンジンが行う。
 - `Advance`（UE 5.8 の後継 `CameraAnimationCameraModifier.cpp` の `TickAnimation` と同じ形。UE4 の `CameraAnimInst.cpp` は手元に無い）: 時間を `Delta × Rate` 進め、ブレンドの経過も進める。ループしないアニメは「長さ − BlendOut × Rate」を過ぎたらブレンドアウトを始め、長さを過ぎたら終わる。ブレンドインは経過が BlendIn を超えたら終わる。ブレンドアウトの経過が BlendOut を超えたら終わる。重みは `min(ブレンドインの経過 / BlendIn, 1 − ブレンドアウトの経過 / BlendOut) × Scale`（どちらも直線）。`Duration` が正なら、`Duration − BlendOut` を数え終えたところで `Stop(false)`（ブレンドアウト）を呼ぶ。**`Duration` はブレンドアウトを含む長さ**（UE 5.8 の `FCameraAnimationParams::DurationOverride` の説明「including blends」。後継はこの値を使っていない）。
@@ -214,7 +245,7 @@ updated: 2026-09-17
 1. スピードブースト: 終わりの処理（効果中なら即座に終わり、再使用のゲージが始まる）→ 充填の処理（使った後なら即座に充填）→ ゲージを止めて 1。
 2. テレポート: `ResetTeleport`（上の「テレポーテーション」）。
 3. Primal Fear: ゲージを止めて 1 → 充填。
-4. Vanish: ゲージを止めて 1 → 充填（ウィジェットを消す処理は Vanish の実装で足す）。
+4. Vanish: ゲージを止めて 1 → `RefillVanish`（充填とウィジェットを外す。カプセルの応答と `Active Powers` は戻さない）。
 - **Primal と Vanish は、使っていなくても充填を通るので `power_refilled` が鳴る**（本家の `Reset Primal` = @37261: Push @6444 → @27788 の Gate の Close。`Reset Vanish` = @37737 も同じ形）。Telepathy と Telekinesis はリセットしない。
 - 本家のクールダウン明けの Gate（Telepathy・Primal・Telekinesis・Vanish）は「Open の直後に Enter」（@6301〜@6444 ほか）なので、閉じても次の Enter の前に必ず開く＝素通しと同じ。Gate の状態は持たない。
 - 呼ぶのは死亡画面（本家は `UMG_DeathScreen` の暗転の 2 秒後、生き返りの直前）。死亡はまだ無い（M5）。
@@ -264,6 +295,13 @@ updated: 2026-09-17
 | `/Game/DD/Textures/05_Circus/T_05_PortalMaps` | Primal の球（2048²、R に星状の粒・G に中心の丸い光・B に雲状のノイズ。sRGB なし・`TC_Default`〈DXT1〉・`TEXTUREGROUP_World`。原作の cook も DXT1・sRGB なし・12 ミップ） |
 | `/Game/DD/Materials/05_Circus/M_05_Primal` | `M_DD_Primal` のインスタンス。原作のパラメータ `Color` (1, 0, 0, 1)・`Opacity` 1・`Desaturation` 0（書き出しに既定値が無い = UE の既定の 0） |
 | `/Game/Pipeline/Materials/M_DD_Primal` | **推定**（`M_05_Primal`。cook に残るのは設定〈Translucent・両面・`bUsedWithStaticLighting`。シェーディングモデルは書き出しに無いので既定の DefaultLit〉、パラメータ 3 つ、`Panner_1` を座標にした `T_05_PortalMaps` のサンプル 1 つ〈Linear Color〉、Emissive が `Add_2` から来ることだけ。cook はどのマテリアルでも Opacity の入力を残さない）。Emissive = `Desaturation(Color × B, Desaturation) + Color × R`、Opacity = `saturate(B + R) × Opacity`、座標は TexCoord 0 を (0.1, 0.1) でパン（**速さは仮の値**）。進捗記録のステップ 11 で最新版の病院と見比べる |
+| `/Game/DD/Particles/Shared/SmokeTest/T_LoopingSmoke_8x8` | Vanish の煙（4096²、8 × 8 コマの灰色の煙をアルファに。sRGB・`TC_Default`〈DXT5〉・`TEXTUREGROUP_World`。原作の cook も DXT5・sRGB・13 ミップ） |
+| `/Game/DD/Textures/FX_Textures/T_perlinnoise` | `MM_WobblyVignette` のノイズ（2048²、低周波のパーリンノイズ、平均 0.465。sRGB なし・`TC_Grayscale`〈G8〉。原作の cook も G8・12 ミップ） |
+| `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff` | Vanish の煙の粒子（最新版。`dd_particles` が書き出しの値をそのまま写した Cascade。LOD 距離 0 / 2500 / 5000、固定のバウンズ ±約 4800。エミッタ 1〈既定の名前 `Particle Emitter`、3 LOD とも同じモジュール 14〉: 長さ 3 秒・1 回、出現の率 0 で 0 秒に 5 個のバースト、寿命 0.5〜1、大きさ 200〜250 × `SizeScale` (1.5, 1, 1)、速度 0、色 (3.6956, 1.4102, 10) → (1, 1, 1)・アルファ 1 → 0、`LocationWorldOffset` (0, 0, 150)、ワールドの抵抗 5、位置 ±50、回転 0〜1・回転速度 0〜0.1、8 × 8 の SubUV〈`Linear_Blend`、寿命で 0 → 30〉、ワールドの加速 (0, 0, 250)。詳細度は Low〜Epic〈7 に Epic を足した 15〉。材質は下の `M_LoopingSmoke1_Sheet`） |
+| `/Game/DD/Particles/Shared/SmokeTest/M_LoopingSmoke1_Sheet` | `M_DD_LoopingSmoke` のインスタンス（原作にパラメータは無い） |
+| `/Game/DD/Materials/Special/MM_WobblyVignette` | `M_DD_WobblyVignette` のインスタンス（原作にパラメータは無い） |
+| `/Game/Pipeline/Materials/M_DD_LoopingSmoke` | **推定**（`M_LoopingSmoke1_Sheet`。cook に残るのは設定〈Translucent・分離透過なし・スプライト。シェーディングモデルは書き出しに無いので既定の DefaultLit〉、`ParticleSubUV`〈`T_LoopingSmoke_8x8`〉、関数 `CameraDepthFade`、式が 10 個あったこと。Emissive の入力は残っていない〈cook は接続があれば残す〉）。BaseColor = コマの RGB × 粒子の色、Opacity = コマのアルファ × 粒子のアルファ × `CameraDepthFade`（既定）。UE は BaseColor を 0〜1 に切るので、粒子の色の 1 を超える部分（紫の 3.7 / 1.4 / 10）は白に近くなる。分離透過なしは UE 5 の `MTP_BeforeDOF`。ライティングを受ける半透明なので、見え方は場所の明るさで変わる。進捗記録のステップ 11 で最新版の病院と見比べる |
+| `/Game/Pipeline/Materials/M_DD_WobblyVignette` | **推定**（`MM_WobblyVignette`。cook に残るのは設定〈UI・Translucent〉、Emissive = `TexCoord` の `T_VignetteNew` の RGB〈原作どおり。白〉、もう 1 つの `T_VignetteNew` のサンプル、`Panner_2` / `Panner_3` を座標にした `T_perlinnoise` のサンプル 2 つ〈LinearGrayscale〉、関数 `LinearSine`、式が 22 個あったこと）。Opacity = `saturate(T_VignetteNew の A × Lerp(ノイズ A, ノイズ B, LinearSine(Time, WobblePeriod)) × WobbleGain)`。**パンの速さ（(0.03, 0.02)・(−0.02, 0.03)）・`WobblePeriod` 2・`WobbleGain` 2 は仮の値**（`dd_powers.WOBBLE_*`）。ウィジェットの紫が白に掛かる。進捗記録のステップ 11 で最新版と見比べる |
 | `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` | **推定**。Chameleon の `M_CameraShake`（Post Process）。書き出しに残るのはパラメータ `ShakePower`（既定 0.01）・`ShakeFQ`（既定 50）と `MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking` だけで、HLSL・数式・シーンテクスチャは無い。本作は `ScreenPosition.ViewportUV + Append(sin(Time × ShakeFQ), cos(Time × ShakeFQ)) × ShakePower` で `PostProcessInput0` を読み、その色を Emissive に出す（UE の Sine / Cosine は周期 1 = `ShakeFQ` 回/秒の円）。ブレンドの位置は既定（トーンマップの後）。実機との見比べは進捗記録のステップ 11 |
 
 ## 原作データの根拠
@@ -280,6 +318,8 @@ updated: 2026-09-17
 - テレポーテーション（旧版）: `pak_reference/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_Power_Teleport.txt`（BeginPlay @1060、Tick @1525、ホイール @1279、クリック @2342 → @547、移動 @15）、`_assets/…/Powers/BP_Power_Teleport.json`（コンポーネントの値、入力の束縛）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @10017〜@11623、使えないときの取り消し @14489〜@14826、`UsedTeleport` @30854、充填 @4045、`Reset Teleport` @31827）、`UI/BP_Powers.txt`（`Set Delay Teleport` @1746、`Stop Teleport Timeline` @2322）、音の書き出し（`_assets/…/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227.json` の `bLooping`、`_assets/Engine/Content/VREditor/Sounds/UI/*.json`）。まとめは `.claude/references/powers/02-teleport.md`。
 - テレポートの見た目（旧版）: `pak_reference/_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2.json`（粒子。01 記録の `dd_particles`）、`…/Materials/M_ky_slash01_4x4.json`・`_assets/DDeception/Content/PyroParticlePack/Materials/PPP_Radial_Gradient_Doffed.json`・`Blueprints/Main/Powers/M_Decal_Teleport.json`（材質の設定と残った式）、`_textures.json`（`T_ky_slash01_4x4`）、`BP_Power_Teleport.json` の `ParticleSystem_GEN_VARIABLE`・`Decal_GEN_VARIABLE`。まとめは `.claude/references/powers/02-teleport.md` §2・§5.3・§5.4。推定の材質の形は旧版の実機の収録から決めた（下の「確かめたこと」）。関数の中身は UE 5.8 のもの（`RadialGradient` は原作と同じ StateId）。
 - Primal Fear: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_PrimalPower.txt`（`ReceiveBeginPlay` @915〜@1478、更新 @1511〜@1938、終わり @15）、`_assets/…/Powers/BP_PrimalPower.json`（コンポーネントの値、`CurveFloat_0〜3`、`Timeline_0_Template`）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @18337〜@19621、再使用 @5187〜@6084、充填 @6301〜@6444、`Reset Primal` @37261）、`_assets/…/Materials/05_Circus/M_05_Primal.json`・`M_05_WarpTest.json`（シェーディングモデルが書き出されることの比較）、`_textures.json`（`T_05_PortalMaps`）、`_assets/…/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.json`、`_assets/…/Audio/SharedGameplay/Stun_Wave_Attack_New_04.json`。まとめは `.claude/references/powers/04-primal-telepathy.md` §2。
+- Vanish: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_VanishPower.txt`（`ReceiveBeginPlay` @471〜@705、敵のループ @30〜@466、更新 @738〜@940、終わり @15）、`_assets/…/Powers/BP_VanishPower.json`（コンポーネントの値、`CurveFloat_0〜3`、`Timeline_0_Template`）、`BP_DD_PlayerCharacter.txt`（使った瞬間 @20985〜@22969、終わり @6856〜@7725、Gate の初期化と Open → Enter @7784〜@7917、充填 @7927〜@8328、`Reset Vanish` @37737 → @27838 → @27826・@7927）、`_assets/…/UI/Main/Powers/UMG_Vanish.json`（木・色・拡縮・アニメのキー）と `_bytecode/…/UMG_Vanish.txt`（`Construct` → `PlayAnimation`）、`_assets/…/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff.json`、`_assets/…/Particles/Shared/SmokeTest/M_LoopingSmoke1_Sheet.json`（同じ材質を使う遊園地の粒子も色が 10 → 1）、`_assets/…/Materials/Special/MM_WobblyVignette.json`、`_assets/Engine/Content/Functions/Engine_MaterialFunctions02/Utility/LinearSine.json`、`_textures.json`（`T_LoopingSmoke_8x8`・`T_perlinnoise`）。まとめは `.claude/references/powers/03-telekinesis-vanish.md` §3。
+- UE 5.8 の挙動（Vanish）: `Engine/Source/Runtime/Engine/Classes/Engine/Scene.h`（`GrainIntensity_DEPRECATED` と `FilmGrainIntensity`）・`Private/Scene.cpp`（変換が無いこと）・`Private/SceneView.cpp`（ブレンドするのは `FilmGrainIntensity` だけ）、`Private/Particles/ParticleSystemComponent.cpp`（コンストラクタの `bAutoActivate`、起動と停止でティックを自分で切り替えること）、`Classes/Particles/ParticleEmitter.h` の `FParticleBurst`、`UMG/Public/Blueprint/UserWidget.h`（`AddToPlayerScreen`）。
 - UE 5.8 の挙動（Primal）: `Engine/Source/Runtime/Engine/Private/Timeline.cpp`（`PlayFromStart` の更新、長さを超えたティックでの終わり）、`Private/Components/PostProcessComponent.cpp`（既定の `bUnbound`・`BlendRadius`・`Priority`）、`Private/Curves/RichCurve.cpp`（`AddKey` と `SetKeys` が Auto の接線を計算し直す）、`Private/KismetSystemLibrary.cpp`（`SphereOverlapActors`）、`PhysicsCore/Private/ChaosScene.cpp`（`AddActorsToScene_AssumesLocked` が既定で体をすぐに問い合わせの構造へ入れる。テストの一時的なワールドで重なり判定が効く理由）。
 - UE 5.8 の挙動（テレポート）: `Engine/Source/Runtime/Engine/Private/GameFramework/SpringArmComponent.cpp`（ラグ、`GetSocketTransform` がソケット名を見ないこと、長さ 0 ではトレースしないこと）、`Private/Components/DecalComponent.cpp`（材質が無いデカールは既定のデカール材で描く）、`Renderer/Private/DecalRenderingCommon.cpp`（Emissive だけのデカールは `BO_Add, BF_SourceAlpha, BF_One` の加算）、`Private/Particles/ParticleSystemComponent.cpp`（`SetTemplate` は登録済みで `bAutoActivate` なら動き出す）、`Private/KismetSystemLibrary.cpp`・`KismetTraceUtils.cpp`（`LineTraceSingleForObjects` の中身）。
 
@@ -291,13 +331,16 @@ updated: 2026-09-17
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（10 件。うち `Wasami.Cascade.Build` は 01 記録）。
+`Automation RunTests Wasami`（13 件。うち `Wasami.Cascade.Build` は 01 記録）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
 - `Wasami.Powers.TeleportDistance` … Lv5 の最初の距離 1000（強化なしなら 700）、`Alpha` 0 / 1 の端、1 目盛りで +0.1（Lv5 で +125 cm）、1 フレームに 2 目盛り、0 と 1 での切り詰め。
 - `Wasami.Powers.PrimalTimeline` … `BP_PrimalPower` の 4 本のトラックの値（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）、重みの式（位置 0 で 1.000698 と 1、0.2 秒で 0.8675 と 0.5585、0.3 秒で閃光 0、0.5 秒で色 0）、クラスの既定（範囲なし、重み 0、各上書きと値、球の当たりなし、`Range` 1500）。
 - `Wasami.Powers.PrimalStun` … 一時的なゲームのワールドに仮の的を並べ、`StunEnemies(原点, 3500)` が近く・端（3450）・真上 30 m の 3 体にだけ `SetState(Stun, false)` を 1 回ずつ送ること。遠く（3600）・体が Pawn でない的・`Enemy` タグだけで実装の無いアクタには送らないこと。
+- `Wasami.Powers.VanishTimeline` … `BP_VanishPower` の `float2`（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）と重み（0 秒で色 0.997・閃光 0.991、0.12 秒で閃光 0、0.3 秒以降で色 0）、クラスの既定（範囲なし・重み 0、紫のゲイン、中間調 100、色収差の上書きが 0、フィルムグレインの上書きなし、粒子の位置・自動起動・ティックの開始なし、粒子の素材の指定）。
+- `Wasami.Powers.VanishNotify` … 一時的なゲームのワールドで、タグ `Enemy` と実装のある的には距離によらず `PlayerVanish` が 1 回ずつ届き、タグの無い的と、タグだけで実装の無いアクタには届かないこと。`SetState` は送らないこと。
+- `Wasami.Powers.VanishWidget` … アニメ `Vanish` の不透明度を 1/15 倍速で読んだ値（0 / 0.375 / 0.75 / 1.125 / 1.5 / 7.5 / 13.5 / 14.25 / 14.625 / 15 / 20 秒で 0 / 0.156 / 0.499 / 0.843 / 1 / 1.0123 / 1 / 0.499 / 0.156 / 0 / 0）と、クラスの `Speed` 1。
 - `Wasami.CameraAnim.Playback`（`Tests/WasamiCameraAnimTests.cpp`）… ブーストの再生（0.25 秒で 0.5、0.5 秒で 1、9.25 秒でブレンドアウトが始まり 9.5 秒で 0.5、9.75 秒で 0、その次で終わり）、即座の停止、ブレンドの無い 0.5 秒のアニメが長さで終わること、ブレンドイン中の停止が小さい方の重みで続くこと。
 - `Wasami.CameraAnim.Tracks` … ブーストの 1 キーの色が保たれ上書きフラグを触らないこと、`CameraAnim_Teleport`（旧版）のキーと接線で、書き出しの 60 fps の標本（`CameraAnim_Teleport.csv`）と同じ値になること（0.1 秒の露出 1.149884・色調 (1.528122, 0.532324, 0.471878)、0.05 秒、8/60 秒の露出の山 67.69149）。FOV のトラックは PP を変えない。
 - `Wasami.CameraAnim.FieldOfView` … `CameraAnim_Teleport` の FOV のキーで、モディファイアの再生が書き出しの 60 fps の標本と同じ変化を足すこと（1/60 秒で 92.706、0.05 秒に 100° の視点で 119.80、0.13 秒で 150）、`BaseFOV` を基準にしないこと、0.5 秒の後は視点を変えないこと、5〜170° の切り詰めと重みの掛け方。
@@ -350,10 +393,21 @@ updated: 2026-09-17
 - シェイク: 最初は画面の位置が揺れなかった。取り込みが新しく作ったブループリントのクラスの既定値を、コンパイルの**後**に書いていたため、インスタンスに値が届いていなかった（01 記録の `camera_shake`）。直した後、カメラの位置は Q の直後から最大 68 cm 揺れ、0.48 秒で収まった（倍率 25 の 50 / 50 / 75 cm がブレンドアウトで減る）。
 - PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」は前からのもの）。音はユーザーのスピーカーで確かめていない。PIE は止めた。
 
+### Vanish（2026-09-17、PIE、`L_Hospital_Zone1`、Space・1・Q とビューポートのクリックは `Tools/desktop.py` から送り、値はエディタの Python で毎フレーム読んだ）
+- 取り込み: `import_dd_powers()` が `sounds 6・camera_shakes 2・camera_anims 2・textures 6・materials 14・particle_systems 2` を作った（`Failed to compile` なし）。`PPP_VanishPuff` はエミッタ 1・LOD 3・モジュール 14 で、`LODValidity`（すべて 7）と並びが書き出しと一致し、バーストは `((Count=5))`、材質は `M_LoopingSmoke1_Sheet`。推定の 2 つのマスターは、煙が DefaultLit・Translucent・`MTP_BeforeDOF`・スプライト用で BaseColor と Opacity がつながり（Emissive なし）、ビネットが UI・Translucent で Emissive がビネットの RGB、Opacity が `Saturate` ← 強さ ← ビネットの A × `Lerp`（2 つのノイズ、`LinearSine` の `Value` に `Time`・`Period` に `WobblePeriod`）とつながっていることを読み戻した。
+- プレイヤーを (−25, 3000)・南向きに置き、仮の的を 800 cm 先と約 2.3 km 先に出して、左の枠を Vanish にして Q: そのフレームで、カプセルの `Camera` 応答が Block → Ignore（プロファイルは `Pawn`）、`IsUsingPower(Vanish)` 真、使えない状態、両方の的の `PlayerVanishCount` が 1（距離によらない）、ウィジェット 1（`Speed` 15）、Vanish のアクタがプレイヤーの位置 (−25, 3000, 90.15)・ヨー −90 にあり、粒子（`PPP_VanishPuff`、起動中）が (−25, 2907.58, −62.0) = プレイヤーの前 92.4 cm・下 152.1 cm にあった。
+- 毎フレームの記録（約 70〜100 fps）: 最初に描かれるのはタイムラインの位置 0.0125（重み 0.987 / 0.956）。閃光の重みは位置 0.107 で 0.036、次の記録（0.194）で 0。色の重みは 0.2 で 0.29、0.3 で 0。アクタは位置 1.9987 の次のフレーム（2 を超えたティック）で消えた。ウィジェットの不透明度は 0.371 秒で 0.164、0.753 秒で 0.512、1.501 秒で 1.00006、7.505 秒で 1.0123、13.876 秒で 0.834、14.251 秒で 0.488、14.996 秒で 0（曲線どおり）。ゲージは 15 秒で 1 → 0。15.005 秒でカプセルが Block に戻り使用中が外れ、ゲージが 0 → 1 を 15 秒、30.006 秒で使える状態になって同じフレームでウィジェットが外れた。
+- 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面全体が白紫に飛び（閃光 × 紫の単色）、約 0.2 秒で紫の単色、約 0.23 秒で元の色に戻り、その後 1.5 秒かけて画面の縁に紫の揺らぐビネットが出た。**初回だけ**閃光の間に約 0.09 秒の引っかかりがあった（2 回目は無い。エディタが新しい材質のシェーダーを初めて使うときのコンパイルと見ている）。下を向いて使うと、0.3〜0.8 秒に画面全体へ灰紫のもや（煙）が掛かり、約 1 秒で晴れた。煙はカメラから約 1 m にあり、`CameraDepthFade`（既定の長さ 512 cm・オフセット 24 cm）で大きく透けるので、正面を向いているとほとんど見えない。**本家の煙がどう見えるかは見比べていない**（進捗記録のステップ 11）。
+- 死亡のリセット（効果の 3.7 秒後に `ResetPowers`）: 使える状態・ゲージ 1・ウィジェット 0 になり、カプセルの Ignore と使用中は残った。その 3 秒後に使い直すと、的に 2 度目の `PlayerVanish`、新しいウィジェットとアクタが出た。終わりは最初の使用から 15.0 秒（使い直しの Delay は仕掛け直されない）で、そこから 15 秒後に使える状態になり、2 つ目のウィジェットが外れた。**使い直しの `SetDelay` が 1 回多くなるのでゲージの FlipFlop がずれ**、使い直しではアイコンが 0 → 1、再使用中は 1 → 0 と逆に動き、使える状態になったときアイコンは 0 だった（本家の `Stop Vanish Timeline` も FlipFlop を戻さず、終わりの Delay も仕掛け直さないので、本家どおり）。
+- PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」は前からのもの）。音はユーザーのスピーカーで確かめていない。PIE は止めた。PIE のビューポートの外周に、縮尺の違う絵が枠のように出るのは、Vanish の前（ステップ 6 の撮影）からあるもの。
+
 ## 既知の制約・注意点
-- **Telepathy・Telekinesis・Vanish は中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
+- **Telepathy・Telekinesis は中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
+- **Vanish の煙の材質 `M_DD_LoopingSmoke` とビネットの材質 `M_DD_WobblyVignette` はグラフが推定**（ビネットのパンの速さ・周期・強さは仮の値）。進捗記録のステップ 11 で最新版の病院と見比べる。敵（M4）が無いので、見えない扱いは応答の値と仮の的への `PlayerVanish` でしか確かめていない。
 - **Primal Fear の球の材質 `M_DD_Primal` はグラフが推定**（パンの速さも仮の値）。ポストプロセスの値は原作どおりだが、UE 5.8 のトーンマッパーで同じ見え方になるかは未確認。進捗記録のステップ 11 で最新版の病院と見比べる。
-- 敵（M4）がまだ無いので、Primal の気絶は仮の的でしか確かめていない。本家の見張りナースのように、気絶の処理を後から動かす敵の扱いは敵の側で作る。
+- 敵（M4）がまだ無いので、Primal の気絶は仮の的でしか確かめていない。
+- **Vanish の効果中に死亡のリセットが来て、元の 15 秒が終わる前に使い直すと、ゲージの FlipFlop が 1 つずれ、以後アイコンの動きが逆になる**（使い直しの `SetDelay` だけが増え、終わりは 1 回のまま。本家の `BP_Powers` と Delay の作りどおり。ブーストはリセットがその場で終わりの処理を通すので、ずれない）。
+- Vanish の煙は、正面を向いているとほとんど見えない（上の「確かめたこと」）。本家の見張りナースのように、気絶の処理を後から動かす敵の扱いは敵の側で作る。
 - **テレポートの照準の材質 3 つはグラフが推定**（原作のグラフは cook で消えている）。デカールの色と明るさは仮の値、斬撃の色の出方と火花の大きさは旧版の Manor と違って見える。進捗記録のステップ 11 で、最新版の病院（同じ材質。ポストプロセスは本作と同じく無し）と見比べて決める。粒子の値そのものは原作の書き出しどおり。
 - 粒子の詳細度のビットは、UE 5.8 が古い資産を読むときと同じく Epic を足している（01 記録）。
 - 本家では照準のアクタがクリックを受け、入力を消費しないので、プレイヤー自身の左クリック（調べる）も同時に走る。本作のプレイヤーにはまだ調べる処理が無い（02 記録）。
@@ -372,6 +426,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: Vanish（`AWasamiVanishPower`〈紫と白の一瞬の演出・煙 `PPP_VanishPuff`・音・全敵への `PlayerVanish`〉、`UWasamiVanishWidget`〈紫の揺らぐビネット、15 秒で出て消える〉、カプセルの `Camera` 応答の切り替え、15 秒と再使用 15 秒、リセット）とテスト `Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget` を足した。煙とビネットの材質は推定
 - 2026-09-17: 一瞬の演出の基底 `AWasamiPowerBurst`（全画面のポストプロセス 2 つと 2 秒のタイムライン）と Primal Fear（`AWasamiPrimalPower`。半径の中の敵に気絶を 1 回、赤い球、音、シェイク、再使用 23 秒）、仮の的 `AWasamiTestEnemy`、テスト `Wasami.Powers.PrimalTimeline`・`PrimalStun` を足した。球の材質は推定
 - 2026-09-17: テレポートの照準の見た目を足した（デカールの材質 `M_Decal_Teleport`〈推定〉と、デカールの子のパーティクル `P_ky_cutter2`〈原作の書き出しを Cascade に写したもの〉。斬撃と火花の材質は推定）
 - 2026-09-16: テレポートのクリックで `CameraAnim_Teleport`（旧版）を再生するようにし、カメラアニメの FOV のトラックの再生（開始時のキーからの変化を足す。基準は旧版の実機で決めた）とテスト `Wasami.CameraAnim.FieldOfView` を足した

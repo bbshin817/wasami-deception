@@ -11,7 +11,9 @@ class USoundBase;
 class UWasamiCameraAnim;
 class AWasamiTeleportAim;
 class AWasamiPrimalPower;
+class AWasamiVanishPower;
 class UWasamiSpeedBoostWidget;
+class UWasamiVanishWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPower, Power);
 
@@ -19,8 +21,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPo
  * The tablet's powers, after Dark Deception's BP_DD_PlayerCharacter, BP_Powers and UMG_TabletPowers (pak_reference_2),
  * which each hold a part of it for the one player: the unlocked powers and the two sockets that point into them, Q / E
  * to use a socket and 1 / 2 to cycle it, each power's gauge on the tablet, the values of the upgrade level, the reset
- * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, and Primal
- * Fear, AWasamiPrimalPower). The tablet's screen only shows what this holds.
+ * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, Primal Fear,
+ * AWasamiPrimalPower, and Vanish, AWasamiVanishPower). The tablet's screen only shows what this holds.
  */
 UCLASS(ClassGroup = (Wasami), meta = (BlueprintSpawnableComponent))
 class WASAMI_DECEPTION_API UWasamiPowerComponent : public UActorComponent
@@ -140,6 +142,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<AWasamiPrimalPower> PrimalPowerClass;
 
+	/** BP_VanishPower: what Vanish spawns. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<AWasamiVanishPower> VanishPowerClass;
+
+	/** UMG_Vanish: the purple vignette from a Vanish until the power is ready again. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<UWasamiVanishWidget> VanishWidgetClass;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -179,6 +189,13 @@ private:
 	/** The end of the cooldown (the Gate before it always lets it through). */
 	void RefillPrimal() { Refill(EWasamiPower::PrimalFear); }
 
+	void UseVanish();
+	/** 15 s after a use: the capsule blocks the camera channel again and the cooldown starts. */
+	void EndVanish();
+	/** The end of the cooldown (the Gate before it always lets it through), and Reset Vanish: the power is ready again
+	 * and the widget goes. */
+	void RefillVanish();
+
 	UPROPERTY(Transient)
 	TArray<FWasamiPowerSlot> Powers;
 
@@ -215,6 +232,14 @@ private:
 	/** What Primal Fear's actor uses, held from the start. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UObject>> LoadedPrimalAssets;
+
+	/** What Vanish's actor and widget use, held from the start. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UObject>> LoadedVanishAssets;
+
+	/** Vanish Widget: the last UMG_Vanish made (it stays here after it is removed, as in the original). */
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiVanishWidget> VanishWidget;
 
 	/** What the boost's widget shows, held from the start. */
 	UPROPERTY(Transient)
@@ -258,4 +283,7 @@ private:
 
 	FTimerHandle PrimalCooldownTimer;
 	FTimerHandle PrimalRefillTimer;
+
+	FTimerHandle VanishEndTimer;
+	FTimerHandle VanishRefillTimer;
 };

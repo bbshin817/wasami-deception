@@ -1,6 +1,7 @@
 """Dark Deception's tablet powers: the sounds, camera shakes, camera anims, textures, materials and particle systems
-the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim), Primal Fear (AWasamiPrimalPower)
-and the player's FX (UWasamiChameleonComponent) use. The icons on the tablet's sockets are the tablet's own (dd_tablet).
+the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim), Primal Fear (AWasamiPrimalPower),
+Vanish (AWasamiVanishPower, UWasamiVanishWidget) and the player's FX (UWasamiChameleonComponent) use. The icons on the
+tablet's sockets are the tablet's own (dd_tablet).
 
   M_Speedlines                  the original's graph, node for node (FlipBook at its defaults → T_Speedlines)
   M_DD_ChameleonCameraShake     the Chameleon pack's M_CameraShake, estimated (its graph is cooked away)
@@ -8,6 +9,10 @@ and the player's FX (UWasamiChameleonComponent) use. The icons on the tablet's s
                                 estimated masters of the teleport aim's materials (their graphs are cooked away); the
                                 original's paths hold instances of them with the original's parameter values
   M_DD_Primal                   the estimated master of Primal Fear's sphere (M_05_Primal's graph is cooked away)
+  M_DD_LoopingSmoke, M_DD_WobblyVignette
+                                estimated masters of Vanish's puff (M_LoopingSmoke1_Sheet) and vignette
+                                (MM_WobblyVignette), whose graphs are cooked away; instances of them sit at the original's
+                                paths
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the powers follow except the teleport (pak_reference).
 """
@@ -41,10 +46,13 @@ TEXTURES = (
     (2, "UI/Menu/Streaks/T_VignetteNew"),  # UMG_SpeedBoost's vignette
     (1, "ThirdParty/AdvancedMagicFX13/Textures/T_ky_slash01_4x4"),  # the teleport aim's slashes (4 × 4 frames)
     (2, "Textures/05_Circus/T_05_PortalMaps"),  # Primal Fear's sphere (R sparkles, G a centred glow, B cloudy noise)
+    (2, "Particles/Shared/SmokeTest/T_LoopingSmoke_8x8"),  # Vanish's puff (8 × 8 frames of grey smoke over alpha)
+    (2, "Textures/FX_Textures/T_perlinnoise"),  # MM_WobblyVignette's noise (grey, linear)
 )
 # Cascade systems (dd_particles), made after the materials they use.
 PARTICLE_SYSTEMS = (
     (1, "ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2"),  # the teleport aim's slashes and sparks
+    (2, "ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff"),  # Vanish's five puffs of smoke
 )
 
 SPEEDLINES = "UI/Main/Powers/M_Speedlines"
@@ -79,6 +87,23 @@ PRIMAL_TEXTURE = "Textures/05_Circus/T_05_PortalMaps"
 # The export keeps a Panner (Panner_1) as the sample's coordinates, but not its speed: a placeholder until the sphere is
 # compared with the latest version's hospital.
 PRIMAL_PAN_SPEED = (0.1, 0.1)
+
+# Vanish (pak_reference_2): the puff's material and the widget's, with the masters holding our estimates of their graphs.
+LOOPING_SMOKE = "Particles/Shared/SmokeTest/M_LoopingSmoke1_Sheet"
+LOOPING_SMOKE_MASTER = "/Game/Pipeline/Materials/M_DD_LoopingSmoke"
+LOOPING_SMOKE_TEXTURE = "Particles/Shared/SmokeTest/T_LoopingSmoke_8x8"
+WOBBLY_VIGNETTE = "Materials/Special/MM_WobblyVignette"
+WOBBLY_VIGNETTE_MASTER = "/Game/Pipeline/Materials/M_DD_WobblyVignette"
+VIGNETTE_TEXTURE = "UI/Menu/Streaks/T_VignetteNew"
+PERLIN_TEXTURE = "Textures/FX_Textures/T_perlinnoise"
+FUNCTIONS_02 = "/Engine/Functions/Engine_MaterialFunctions02/"
+# The export keeps two Panners (Panner_2, Panner_3) and a LinearSine without their values: placeholders until the
+# vignette is compared with the latest version (the noises' speeds, the sine's period, and how strongly the noise
+# scales the vignette's alpha; the two noises' product averages 0.47).
+WOBBLE_PAN_A = (0.03, 0.02)
+WOBBLE_PAN_B = (-0.02, 0.03)
+WOBBLE_PERIOD = 2.0
+WOBBLE_GAIN = 2.0
 
 
 def _connect(a, a_pin, b, b_pin):
@@ -127,9 +152,9 @@ def _build_camera_shake(mat):
     g.out(scene, "Color", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 
-def _function(g, name, x, y):
+def _function(g, name, x, y, library=FUNCTIONS):
     call = g.node(unreal.MaterialExpressionMaterialFunctionCall, x, y)
-    call.set_editor_property("material_function", unreal.load_asset(FUNCTIONS + name))
+    call.set_editor_property("material_function", unreal.load_asset(library + name))
     return call
 
 
@@ -250,6 +275,62 @@ def _build_primal(mat):
     g.out(opacity, "", unreal.MaterialProperty.MP_OPACITY)
 
 
+def _build_looping_smoke(mat):
+    """M_LoopingSmoke1_Sheet (pak_reference_2), estimated. The cook kept its settings (translucent, no separate
+    translucency, for sprites; the default lit shading, as the cook writes any other), a ParticleSubUV of
+    T_LoopingSmoke_8x8 and a CameraDepthFade call, of ten expressions; it kept no emissive colour, which it keeps where
+    one is connected. The estimate: a base colour of the frame's RGB × the particle's colour (UE saturates a base colour,
+    so the puff's colours over 1 come out near white) and an opacity of the frame's alpha × the particle's alpha × the
+    depth fade (at its defaults)."""
+    mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    mat.set_editor_property("used_with_particle_sprites", True)
+    g = dd_stage._Graph(mat)
+    frame = g.node(unreal.MaterialExpressionParticleSubUV, -900, 0)
+    frame.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(LOOPING_SMOKE_TEXTURE)))
+    particle = g.node(unreal.MaterialExpressionParticleColor, -900, 300)
+    g.out(g.multiply(frame, "RGB", particle, "RGB", -600, 0), "", unreal.MaterialProperty.MP_BASE_COLOR)
+    fade = _function(g, "Opacity/CameraDepthFade", -900, 500)
+    alpha = g.multiply(frame, "A", particle, "A", -600, 250)
+    g.out(g.multiply(alpha, "", fade, "Result", -400, 300), "", unreal.MaterialProperty.MP_OPACITY)
+
+
+def _build_wobbly_vignette(mat):
+    """MM_WobblyVignette (pak_reference_2), estimated (see WOBBLE_*). The cook kept its settings (the UI domain,
+    translucent), its emissive colour (the RGB of T_VignetteNew at a TextureCoordinate: white), a second T_VignetteNew
+    sample, two samples of T_perlinnoise at two Panners and a LinearSine call, of 22 expressions. The estimate: an
+    opacity of the second vignette's alpha × the two panning noises crossfaded by LinearSine(Time) × a gain. The widget's
+    purple tints the white."""
+    g = dd_stage._Graph(mat)
+    vignette = unreal.load_asset(dd_assets.asset_path(VIGNETTE_TEXTURE))
+    noise = unreal.load_asset(dd_assets.asset_path(PERLIN_TEXTURE))
+    coords = g.node(unreal.MaterialExpressionTextureCoordinate, -1500, -350)
+    colour = g.node(unreal.MaterialExpressionTextureSample, -1250, -350)
+    colour.set_editor_property("texture", vignette)
+    _connect(coords, "", colour, "UVs")
+    g.out(colour, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    noises = []
+    for speed, y in ((WOBBLE_PAN_A, 0), (WOBBLE_PAN_B, 250)):
+        pan = g.node(unreal.MaterialExpressionPanner, -1500, y)
+        pan.set_editor_property("speed_x", speed[0])
+        pan.set_editor_property("speed_y", speed[1])
+        sample = g.node(unreal.MaterialExpressionTextureSample, -1250, y)
+        sample.set_editor_property("texture", noise)
+        sample.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+        _connect(pan, "", sample, "UVs")
+        noises.append(sample)
+    sine = _function(g, "Utility/LinearSine", -1250, 500, FUNCTIONS_02)
+    _connect(g.node(unreal.MaterialExpressionTime, -1500, 500), "", sine, "Value")
+    _connect(g.scalar("WobblePeriod", WOBBLE_PERIOD, -1500, 600), "", sine, "Period")
+    wobble = g.lerp(noises[0], "R", noises[1], "R", sine, "Linear Sine", -950, 150)
+    edge = g.node(unreal.MaterialExpressionTextureSample, -1250, -100)
+    edge.set_editor_property("texture", vignette)
+    shaped = g.multiply(edge, "A", wobble, "", -750, 0)
+    gained = g.multiply(shaped, "", g.scalar("WobbleGain", WOBBLE_GAIN, -950, 350), "", -550, 50)
+    clamped = g.node(unreal.MaterialExpressionSaturate, -400, 50)
+    _connect(gained, "", clamped, "")
+    g.out(clamped, "", unreal.MaterialProperty.MP_OPACITY)
+
+
 def parameter_defaults(rel, version):
     """A material's scalar and vector parameter defaults from its export ({name: value}, {name: [r, g, b, a]}); a
     default the export leaves out is the engine's (0, or black)."""
@@ -306,11 +387,27 @@ def make_primal_material():
     return [master.get_path_name(), instance.get_path_name()]
 
 
+def make_vanish_materials():
+    """Vanish's puff and vignette: the estimated masters, and instances of them at the original's paths (neither
+    original has parameters)."""
+    translucent = unreal.BlendMode.BLEND_TRANSLUCENT
+    smoke = dd_assets.material(LOOPING_SMOKE_MASTER, _build_looping_smoke, blend_mode=translucent)
+    vignette = dd_assets.material(WOBBLY_VIGNETTE_MASTER, _build_wobbly_vignette,
+                                  domain=unreal.MaterialDomain.MD_UI, blend_mode=translucent)
+    made = [smoke, vignette,
+            dd_assets.material_instance(dd_assets.asset_path(LOOPING_SMOKE), smoke),
+            dd_assets.material_instance(dd_assets.asset_path(WOBBLY_VIGNETTE), vignette)]
+    for asset in made:
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return [a.get_path_name() for a in made]
+
+
 def make_materials():
     speedlines = dd_assets.material(dd_assets.asset_path(SPEEDLINES), _build_speedlines,
                                     domain=unreal.MaterialDomain.MD_UI, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
     shake = dd_assets.material(CAMERA_SHAKE_MASTER, _build_camera_shake, domain=unreal.MaterialDomain.MD_POST_PROCESS)
-    return [speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials() + make_primal_material()
+    return ([speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials() + make_primal_material()
+            + make_vanish_materials())
 
 
 def import_all():

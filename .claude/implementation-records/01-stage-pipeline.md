@@ -44,7 +44,7 @@ updated: 2026-09-17
 | `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する |
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
 | `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ・6 パワーのアイコン）を `/Game/DD` に作る（中身は 03 記録） |
-| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアル、テレポートの照準のマテリアルと Cascade のパーティクル、Primal Fear の球のテクスチャとマテリアルを作る（中身は 04 記録）。戻り値は種類ごとの数（`particle_systems` を含む） |
+| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアル、テレポートの照準のマテリアルと Cascade のパーティクル、Primal Fear の球のテクスチャとマテリアル、Vanish の煙（テクスチャ・マテリアル・Cascade のパーティクル）とビネットのマテリアルを作る（中身は 04 記録）。戻り値は種類ごとの数（`particle_systems` を含む） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
@@ -113,7 +113,7 @@ updated: 2026-09-17
 `import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 25・フォント・音 3・ミニマップのレンダーターゲットとマテリアル・パワーのアイコンのインスタンス 6 を `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_mesh` / `ensure_masters` / `_Graph` と、`dd_assets` の `pak` / `export_json` / `main_export` / `sound` / `texture` / `material` を使い回す。メッシュは原作の `StaticMesh` のライトマップの値（`LightMapResolution` 64・`LightMapCoordinateIndex` 2）を `import_mesh` に渡す。
 
 ### パワーの素材（`pipeline/dd_powers.py`）
-`import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`。テレポートの `CameraAnim_Teleport` は `pak_reference`、ブーストのものは `pak_reference_2`）・テクスチャ（`TEXTURES`。テレポートの斬撃の `T_ky_slash01_4x4` は `pak_reference`）を `dd_assets` で作り、マテリアル（`make_materials`: 原作のグラフが残っている `M_Speedlines`、推定の `M_DD_ChameleonCameraShake`、`make_teleport_materials` の推定のマスター 3 つとそのインスタンス 3 つ、`make_primal_material` の推定のマスター `M_DD_Primal` とそのインスタンス `M_05_Primal`）を建て、パーティクル（`PARTICLE_SYSTEMS`: `P_ky_cutter2`、`pak_reference`）を `dd_particles` で作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` 6 / `camera_shakes` 2 / `camera_anims` 2 / `textures` 4 / `materials` 10 / `particle_systems` 1。インスタンスのパラメータは、原作のマテリアルの書き出しに残るパラメータの式の既定値から読み（`parameter_defaults`。書き出しに無い既定値は UE の既定 = 0）、斬撃のテクスチャは `ParticleSubUV` から読む（`slash_parameters`）。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
+`import_all()` がパワーの音（`SOUNDS`。テレポートの 3 つ〈照準の開始・照準のループ・移動〉は `pak_reference`、ほかは `pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`。テレポートの `CameraAnim_Teleport` は `pak_reference`、ブーストのものは `pak_reference_2`）・テクスチャ（`TEXTURES`。テレポートの斬撃の `T_ky_slash01_4x4` は `pak_reference`。Vanish の `T_LoopingSmoke_8x8`・`T_perlinnoise` を含む）を `dd_assets` で作り、マテリアル（`make_materials`: 原作のグラフが残っている `M_Speedlines`、推定の `M_DD_ChameleonCameraShake`、`make_teleport_materials` の推定のマスター 3 つとそのインスタンス 3 つ、`make_primal_material` の推定のマスター `M_DD_Primal` とそのインスタンス `M_05_Primal`、`make_vanish_materials` の推定のマスター `M_DD_LoopingSmoke`・`M_DD_WobblyVignette` とそのインスタンス `M_LoopingSmoke1_Sheet`・`MM_WobblyVignette`）を建て、パーティクル（`PARTICLE_SYSTEMS`: `P_ky_cutter2`〈`pak_reference`〉、`PPP_VanishPuff`〈`pak_reference_2`〉）を `dd_particles` で作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` 6 / `camera_shakes` 2 / `camera_anims` 2 / `textures` 6 / `materials` 14 / `particle_systems` 2。材質の関数の呼び出し（`_function`）は既定で `Engine_MaterialFunctions01` を、`LinearSine` は `Engine_MaterialFunctions02` を読む。インスタンスのパラメータは、原作のマテリアルの書き出しに残るパラメータの式の既定値から読み（`parameter_defaults`。書き出しに無い既定値は UE の既定 = 0）、斬撃のテクスチャは `ParticleSubUV` から読む（`slash_parameters`）。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
 
 ### Cascade のパーティクル（`pipeline/dd_particles.py`、`UWasamiCascadeLibrary`）
 Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced)` だけで Python から見えず、モジュールと分布のクラスも Python に出ていない。そこで**構造を C++ の道具で作り、値はすべてプロパティ名ごとに UE のテキスト形式で書く**。`particle_system(rel, version)` は原作のパッケージの書き出し（`_assets/…/P_*.json`。要約の `_particles.json` には無い値〈`bUseLegacySpawningBehavior` など〉も持つ）を読み、次の順に作る。
@@ -122,7 +122,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 3. `LODLevels` の順に LOD を作って値（`Level`・`PeakActiveParticles` など）を書き、`RequiredModule`・`SpawnModule`・`Modules` をモジュールの名前ごとに 1 度だけ作る（LOD 間で共有されているものは同じオブジェクト）。モジュールの値を書く前に、値が指す分布オブジェクト（cook が残したもの: `RequiredDistributionSpawnRate`・`BurstScaleDistribution`・粒子パラメータ）をそのモジュールの中に作り、その値を書く。`TypeDataModule` を持つ LOD はまだ扱わない（例外）。
 4. `FinishParticleSystem`、構造（エミッタ・LOD・モジュールの並び）と各モジュールの `LODValidity` を書き出しと突き合わせ（違えば例外）、保存する。
 - **分布は cook が焼き込んだ参照表をそのまま写す**（`FRawDistributionFloat/Vector` の `MinValue`・`MaxValue`・`MinValueVec`・`MaxValueVec`・`Table`〈`TimeScale`・`TimeBias`・`Values`・`Op`・`EntryCount`・`EntryStride`・`SubEntryStride`・`LockFlag`〉・`Distribution`）。書き出しに無いメンバーは既定の 0 で、毎回すべて書く。表があって分布オブジェクトが無い分布は、UE 5.8 でも表のまま読まれる（`FRawDistributionFloat::GetValue`。エディタが表を作り直すのは分布オブジェクトがあるときだけ）ので、本家のゲームと同じ値になる。モジュールが作られたときに自分で作る分布（`DistributionStartSize` など。`InitializeDefaults`）は、表を書くと使われなくなり、仕上げで外へ出る。
-- 値の形（`_text`）: `bool`（ビットフィールドは型名が `uint8` と出る）、数、名前・列挙・文字列（引用符つき）、`FVector`、`FBox`（書き出しは 7 つの数で、7 つ目の float の下位バイトが `IsValid`）、数の配列、既定のままの構造体の配列（`LODSettings`）、オブジェクト（このパッケージの中のものは作ったもののパス、原作の `/Game/…` は `/Game/DD/…`〈先に作ってあること〉）。ほかの形が来たら例外にする（新しいシステムを足すときに広げる）。書き出しの `LODValidity` は書かずに比べるだけ、`CurveEdSetup` と分布の `bIsDirty`（UE 5 では保存されない）は書かない。
+- 値の形（`_text`）: `bool`（ビットフィールドは型名が `uint8` と出る）、数、名前・列挙・文字列（引用符つき）、`FVector`、`FBox`（書き出しは 7 つの数で、7 つ目の float の下位バイトが `IsValid`）、数の配列、既定のままの構造体の配列（`LODSettings`）、バーストの配列（`BurstList`。`FParticleBurst` の `Count`・`CountLow`〈既定 −1〉・`Time`、ほかのメンバーは例外）、オブジェクト（このパッケージの中のものは作ったもののパス、原作の `/Game/…` は `/Game/DD/…`〈先に作ってあること〉）。ほかの形が来たら例外にする（新しいシステムを足すときに広げる）。書き出しの `LODValidity` は書かずに比べるだけ、`CurveEdSetup` と分布の `bIsDirty`（UE 5 では保存されない）は書かない。
 - `describe(asset_path)` は作ったシステムのエミッタ・LOD・モジュールの一覧を返す（確認用）。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
@@ -149,14 +149,15 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 | `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake`・`_RunShake` | 本家の頭の揺れ（02 記録のプレイヤーが参照する） |
 | `/Game/DD/UI/…`・`/Game/DD/Audio/…`・`/Game/DD/Animation/…` ほか | タブレット（03 記録）とパワー（04 記録）の素材 |
 | `/Game/Pipeline/Interchange/PL_DD_StaticMesh`、`/Game/Pipeline/Materials/M_DD_Substance`・`M_DD_Decal`・`M_DD_Unlit`、`/Game/Pipeline/Textures/T_DD_DefaultPacked` | 取り込みの道具 |
-| `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake`・`M_DD_KySlash`・`M_DD_PPPRadialGradient`・`M_DD_DecalTeleport` | グラフが cook で消えた原作のマテリアルの推定（04 記録）。テレポートの照準の 3 つは、`/Game/DD` の原作のパスにそのインスタンスを置く |
+| `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake`・`M_DD_KySlash`・`M_DD_PPPRadialGradient`・`M_DD_DecalTeleport`・`M_DD_Primal`・`M_DD_LoopingSmoke`・`M_DD_WobblyVignette` | グラフが cook で消えた原作のマテリアルの推定（04 記録）。Chameleon のもの以外は、`/Game/DD` の原作のパスにそのインスタンスを置く |
 | `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2` | Cascade のパーティクル（`dd_particles`。エミッタ 2・LOD 3・モジュールは斬撃 16 と火花 11） |
+| `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff` | Cascade のパーティクル（`dd_particles`。エミッタ 1・LOD 3・モジュール 14 を 3 つの LOD で共有） |
 | `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 924〈うちテレポートのゾーン 2〉・灯 1,120、Zone 2 は配置 820〈同 2〉・灯 751） |
 
 ## 原作データの根拠
 - テレポートのゾーン: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/Powers/BP_Power_Teleport_Zone.json` の `Cube_GEN_VARIABLE`（旧版も同じ値）、`_levels/06_Hospital_Zone_01.full.json`・`06_Hospital_Zone_02.full.json` の `BP_Power_Teleport_Zone*` の部品。まとめは `.claude/references/powers/02-teleport.md` §4。
 - カメラシェイク: `pak_reference/_assets/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter_*Shake.json`。
-- パーティクル: `pak_reference/_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2.json`（システム・エミッタ・LOD・モジュール・分布の書き出し。`_particles.json` はその要約）。分布の表の読み方は `pak_reference/_manifest.json` の `conventions.particle_distribution`。両版のパーティクルの書き出し（328 パッケージ）で、表のキーが上のものだけであることを確かめた（2026-09-17）。
+- パーティクル: `pak_reference/_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2.json`・`pak_reference_2/_assets/DDeception/Content/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff.json`（システム・エミッタ・LOD・モジュール・分布の書き出し。`_particles.json` はその要約）。分布の表の読み方は `pak_reference/_manifest.json` の `conventions.particle_distribution`。両版のパーティクルの書き出し（328 パッケージ）で、表のキーが上のものだけであることを確かめた（2026-09-17）。
 - UE 5.8 の Cascade: `Engine/Source/Runtime/Engine/Private/Particles/ParticleEmitter.cpp`（`CreateLODLevel`・`UpdateModuleLists`・`PostLoad` の詳細度の変換）、`ParticleSystem.cpp`（`SetupLODValidity`・`UpdateAllModuleLists`・`BuildEmitters`・`PostEditChangeProperty`）、`ParticleModules*.cpp`（`InitializeDefaults`）、`Private/Distributions.cpp`（参照表の扱い）、`Plugins/FX/Cascade/Source/Cascade/Private/Cascade.cpp`（エディタがエミッタとモジュールを足す手順）、`Config/BaseScalability.ini`（`r.DetailMode`）、`CoreUObject/Private/UObject/Property.cpp`（`ImportSingleProperty` が未知のメンバーを `LogExec` の Verbose でしか言わないこと）。
 - 音の設定: 各 SoundWave の書き出し（例: `pak_reference_2/_assets/DDeception/Content/Audio/UI/Shard_Streak_Milestone_V5.json` の `Volume` 0.7・`Pitch` 2.0・`ConcurrencySet`）と、同時発音の `Audio/NewSoundConcurrency.json`（`MaxCount` 2・`VolumeScale` 0.5）。
 - ステージ（これから）: `pak_reference_2/_levels/06_Hospital_Zone_01.scene.json`・`06_Hospital_Zone_02.scene.json`、`_meshes.json`、`_materials.json`、`_textures.json`、`_meshes_gltf/`。
@@ -171,7 +172,8 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - **UE の Python は「bool を返し出力引数を持つ関数」の形を変える**（失敗なら `None`、成功なら出力引数だけを返す）。理由の文字列が取れないので、`SetPropertyText` は理由を戻り値で返す形にした（2026-09-17）。
 - **UE の `ImportText` は構造体のテキストの知らないメンバーを黙って読み飛ばす**（`FProperty::ImportSingleProperty` は `UE_SUPPRESS(LogExec, Verbose, …)` でしか言わない）。値の取りこぼしを防ぐため、`SetPropertyText` は入れ子の構造体までメンバー名を先に照合する（`CheckStructText`。ネイティブの取り込みを持つ構造体は除く）。
 - Cascade のクラスは `MinimalAPI` なので、C++ から呼べるのは `ENGINE_API` の関数と仮想関数だけ（`UParticleEmitter::Build` は `UpdateModuleLists` 経由で呼ぶ）。`UParticleModule` は `Within=ParticleSystem` で、外へ出すときは `GetTransientOuterForRename` が一時的なシステムを外側にする。
-- `dd_particles` が扱う値の形と、`TypeDataModule`（メッシュ・ビームなど）はまだ限られている。ほかのシステム（最新版の `PPP_VanishPuff`・`P_ky_flash3`・`P_ky_forceField_Telekinesis`）を足すときに、書き出しに合わせて広げる（知らない形は例外で止まる）。
+- `dd_particles` が扱う値の形と、`TypeDataModule`（メッシュ・ビームなど）はまだ限られている。ほかのシステム（最新版の `P_ky_flash3`・`P_ky_forceField_Telekinesis`）を足すときに、書き出しに合わせて広げる（知らない形は例外で止まる）。
+- Python で書いたツールセット（`WasamiDDTools` など）は `unreal.` の下には出ない。リモート実行から呼ぶときは `from wasami_tools.toolsets.dd import WasamiDDTools` で読む。
 - **原作のマテリアルの式は cook で消えている**ので、`Normal Flatness`（インスタンスは 1.2〜3.0、マスターの既定は 0）・`Roughness Power` / `Metallic Power` 以外のスカラは適用していない。`Roughness Power` / `Metallic Power` は既定 1.0 が恒等になる pow として実装した（推定）。見え方を原作と比べる段で見直す。
 - **UE の版の違い**: 本家のデカールは `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、UE 5.8 では `decal_blend_mode` が非推奨（No longer used）で Python から読めない。いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないでいる。
 - 当たりはすべて描画のメッシュそのもの（complex as simple）。書き出しのメッシュは `body_setup` を持たない。
@@ -204,6 +206,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-17: `dd_powers` に Vanish の素材（`T_LoopingSmoke_8x8`・`T_perlinnoise`、推定のマスター `M_DD_LoopingSmoke`・`M_DD_WobblyVignette` とインスタンス、`PPP_VanishPuff`）を足した。`dd_particles` がバーストの配列（`BurstList`）を書けるようにした
 - 2026-09-17: `dd_assets.camera_shake` が既定値を書いた後にコンパイルし直すようにした（同じセッションで作ったシェイクのインスタンスに値が届いていなかった）。`ue_props.value` が、数でない値を持つ X / Y / Z の辞書（シェイクの `LocOscillation`）をベクトルと取り違えないようにした。`desktop.py` の説明を PIE の新しい決まりに合わせた
 - 2026-09-17: `dd_powers` に Primal Fear の素材（`Stun_Wave_Attack_New_04`・`01_Hotel_Lobby_ElevatorShakeStop`・`T_05_PortalMaps`、推定のマスター `M_DD_Primal` とインスタンス `M_05_Primal`）を足し、マテリアルのパラメータの既定値を書き出しから読む処理を `parameter_defaults` にまとめた
 - 2026-09-17: Cascade のパーティクルを原作の書き出しから作る仕組み（C++ の `UWasamiCascadeLibrary`、`pipeline/dd_particles.py`、テスト `Wasami.Cascade.Build`）を足し、`dd_powers` にテレポートの照準の素材（`T_ky_slash01_4x4`、推定のマスター 3 つとインスタンス 3 つ、`P_ky_cutter2`）を足した。`dd_assets` に `material_instance` を足し、`material` はブレンドをドメインより先に入れるようにした

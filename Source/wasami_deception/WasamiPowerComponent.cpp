@@ -2,6 +2,7 @@
 
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
@@ -14,6 +15,8 @@
 #include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
 #include "WasamiTeleportAim.h"
+#include "WasamiVanishPower.h"
+#include "WasamiVanishWidget.h"
 
 namespace
 {
@@ -48,6 +51,9 @@ namespace
 	constexpr float PrimalGaugeDropSeconds = 0.05f;
 	const FVector PrimalSpawnOffset(0., 0., -5000.);
 	constexpr float PrimalCooldownDelay = 0.06f;
+	// Vanish: the spawn 50 m under the player, and UMG_Vanish on the player's screen at this Z order.
+	const FVector VanishSpawnOffset(0., 0., -5000.);
+	constexpr int32 VanishWidgetZOrder = 0;
 }
 
 UWasamiPowerComponent::UWasamiPowerComponent()
@@ -68,6 +74,8 @@ UWasamiPowerComponent::UWasamiPowerComponent()
 	TeleportAimSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered")));
 	TeleportAimClass = AWasamiTeleportAim::StaticClass();
 	PrimalPowerClass = AWasamiPrimalPower::StaticClass();
+	VanishPowerClass = AWasamiVanishPower::StaticClass();
+	VanishWidgetClass = UWasamiVanishWidget::StaticClass();
 }
 
 void UWasamiPowerComponent::BeginPlay()
@@ -83,6 +91,8 @@ void UWasamiPowerComponent::BeginPlay()
 	LoadedTeleportAimSound = TeleportAimSound.LoadSynchronous();
 	AWasamiTeleportAim::LoadAssets(LoadedTeleportAimAssets);
 	AWasamiPrimalPower::LoadAssets(LoadedPrimalAssets);
+	AWasamiVanishPower::LoadAssets(LoadedVanishAssets);
+	UWasamiVanishWidget::LoadAssets(LoadedVanishAssets);
 
 	// UMG_TabletPowers' Check: every unlocked power, ready. The sockets keep their indices (0 and 0 on a new game, as the
 	// original's GameInstance starts them).
@@ -217,6 +227,9 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 		case EWasamiPower::PrimalFear:
 			UsePrimal();
 			break;
+		case EWasamiPower::Vanish:
+			UseVanish();
+			break;
 		default:
 			break;
 		}
@@ -241,11 +254,12 @@ void UWasamiPowerComponent::ResetPowers()
 	ResetTeleport();
 
 	// Reset Primal and Reset Vanish close a Gate that every refill opens again, and refill: they refill (and play
-	// power_refilled) whether or not the power was used. The telepathy and the telekinesis are not reset.
+	// power_refilled) whether or not the power was used. Vanish's refill takes its widget away, but a running Vanish
+	// keeps the capsule and Active Powers until its own 15 s end. The telepathy and the telekinesis are not reset.
 	Gauge(EWasamiPower::PrimalFear).Stop();
-	Refill(EWasamiPower::PrimalFear);
+	RefillPrimal();
 	Gauge(EWasamiPower::Vanish).Stop();
-	Refill(EWasamiPower::Vanish);
+	RefillVanish();
 }
 
 EWasamiPower UWasamiPowerComponent::GetSocketPower(bool bLeft) const
@@ -471,4 +485,56 @@ void UWasamiPowerComponent::StartPrimalCooldown()
 	Gauge(EWasamiPower::PrimalFear).SetDelay(Cooldown, false);
 	ActivePowers.Remove(EWasamiPower::PrimalFear);
 	Delay(PrimalRefillTimer, Cooldown, &UWasamiPowerComponent::RefillPrimal);
+}
+
+void UWasamiPowerComponent::UseVanish()
+{
+	AWasamiPlayerCharacter* Player = GetPlayer();
+	const float Duration = FWasamiPowerTuning::VanishDuration;
+	ActivePowers.AddUnique(EWasamiPower::Vanish);
+	SetPowerAvailable(EWasamiPower::Vanish, false);
+	// The enemies look along the camera channel: their sight passes through the capsule now.
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	Gauge(EWasamiPower::Vanish).SetDelay(Duration, false);
+
+	// UMG_Vanish plays its 1 s animation over the effect's 15 s (Speed is 15 at every level, as the duration).
+	APlayerController* PC = Cast<APlayerController>(Player->GetController());
+	if (PC && VanishWidgetClass)
+	{
+		VanishWidget = CreateWidget<UWasamiVanishWidget>(PC, VanishWidgetClass);
+		VanishWidget->Speed = Duration;
+		VanishWidget->AddToPlayerScreen(VanishWidgetZOrder);
+	}
+
+	// BP_VanishPower comes out 50 m under the player, turned as the player, whatever is there.
+	const FTransform SpawnTransform(Player->GetActorRotation(), Player->GetActorLocation() + VanishSpawnOffset);
+	if (AWasamiVanishPower* Burst = GetWorld()->SpawnActorDeferred<AWasamiVanishPower>(VanishPowerClass, SpawnTransform,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+	{
+		Burst->FinishSpawning(SpawnTransform);
+	}
+	Delay(VanishEndTimer, Duration, &UWasamiPowerComponent::EndVanish);
+}
+
+void UWasamiPowerComponent::EndVanish()
+{
+	// Nothing tells the enemies: the capsule just blocks their sight again.
+	const float Cooldown = GetTuning(EWasamiPower::Vanish).VanishCooldown;
+	Gauge(EWasamiPower::Vanish).SetDelay(Cooldown, false);
+	ActivePowers.Remove(EWasamiPower::Vanish);
+	if (AWasamiPlayerCharacter* Player = GetPlayer())
+	{
+		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+	}
+	Delay(VanishRefillTimer, Cooldown, &UWasamiPowerComponent::RefillVanish);
+}
+
+void UWasamiPowerComponent::RefillVanish()
+{
+	Refill(EWasamiPower::Vanish);
+	// The widget has been at an opacity of 0 since the effect's end.
+	if (VanishWidget)
+	{
+		VanishWidget->RemoveFromParent();
+	}
 }

@@ -40,6 +40,8 @@ DETAIL_EPIC = 1 << 3
 RAW_DISTRIBUTIONS = ("FRawDistributionFloat", "FRawDistributionVector")
 TABLE_DEFAULTS = (("TimeScale", 0.0), ("TimeBias", 0.0), ("Op", 0), ("EntryCount", 0), ("EntryStride", 0),
                   ("SubEntryStride", 0), ("LockFlag", 0))
+# FParticleBurst's members and defaults (a spawn module's BurstList; CountLow -1 turns the range off).
+BURST_DEFAULTS = (("Count", 0), ("CountLow", -1), ("Time", 0.0))
 
 
 def _number(value):
@@ -65,6 +67,14 @@ def _box(values):
 
 def _quoted(text):
     return '"%s"' % text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _burst(value):
+    """An exported FParticleBurst ({Count, CountLow, Time}; what it leaves out is at the struct's defaults)."""
+    unknown = set(value) - {k for k, _ in BURST_DEFAULTS}
+    if unknown:
+        raise ValueError("a burst with %s" % sorted(unknown))
+    return "(%s)" % ",".join("%s=%s" % (k, _number(value.get(k, d))) for k, d in BURST_DEFAULTS)
 
 
 class _Build:
@@ -149,6 +159,8 @@ class _Build:
         if cpp in ("TArray", "TArray<FParticleSystemLOD>") and all(v == {} for v in value):
             # Structs at their defaults (UParticleSystem::LODSettings, one per LOD distance).
             return "(%s)" % ",".join("()" for _ in value)
+        if cpp == "TArray<FParticleBurst>" and all(isinstance(v, dict) for v in value):
+            return "(%s)" % ",".join(_burst(v) for v in value)
         raise ValueError("%s.%s: no text form for a %s (%r)" % (obj.get_name(), key, cpp, value))
 
     def _write(self, obj, props, skip=()):

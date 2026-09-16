@@ -3,12 +3,15 @@
 #include "../WasamiTabletWidget.h"
 #include "../WasamiTeleportAim.h"
 #include "../WasamiPrimalPower.h"
+#include "../WasamiVanishPower.h"
+#include "../WasamiVanishWidget.h"
 #include "WasamiTestEnemy.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/World.h"
+#include "Particles/ParticleSystemComponent.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -200,6 +203,117 @@ bool FWasamiPrimalStunTest::RunTest(const FString& Parameters)
 
 	World->DestroyWorld(false);
 	World->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiVanishTimelineTest, "Wasami.Powers.VanishTimeline",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiVanishTimelineTest::RunTest(const FString& Parameters)
+{
+	// BP_VanishPower's float2 (Bezier over the exported tangents) and the volumes' weights: the flash is gone at 0.12 s,
+	// the purple at 0.3 s.
+	struct FRow
+	{
+		float Time, Fade, Tint, Flash;
+	};
+	const FRow Rows[] = {
+		{0.f, 0.002593f, 0.997407f, 0.991355f},
+		{0.03f, 0.040658f, 0.959342f, 0.864475f},
+		{0.06f, 0.116705f, 0.883295f, 0.610983f},
+		{0.09f, 0.221632f, 0.778368f, 0.261227f},
+		{0.12f, 0.346334f, 0.653666f, 0.f},
+		{0.21f, 0.748052f, 0.251948f, 0.f},
+		{0.27f, 0.947832f, 0.052168f, 0.f},
+		{0.5f, 1.f, 0.f, 0.f},
+		{2.f, 1.f, 0.f, 0.f},
+	};
+	for (const FRow& Row : Rows)
+	{
+		const FString At = FString::Printf(TEXT(" at %.2f s"), Row.Time);
+		const float Fade = AWasamiVanishPower::VanishFadeCurve().Eval(Row.Time);
+		TestEqual(TEXT("float2") + At, Fade, Row.Fade, 1e-5f);
+		TestEqual(TEXT("the tint's weight") + At, AWasamiPowerBurst::TintWeight(Fade), Row.Tint, 1e-5f);
+		TestEqual(TEXT("the flash's weight") + At, AWasamiPowerBurst::FlashWeight(Fade), Row.Flash, 1e-4f);
+	}
+
+	// The class's volumes and puff, as the export sets them.
+	const AWasamiVanishPower* Defaults = GetDefault<AWasamiVanishPower>();
+	const UPostProcessComponent* Tint = Defaults->GetTint();
+	const UPostProcessComponent* Flash = Defaults->GetFlash();
+	TestTrue(TEXT("both volumes are unbound at weight 0"), Tint->bUnbound && Flash->bUnbound && Tint->BlendWeight == 0.f && Flash->BlendWeight == 0.f);
+	TestTrue(TEXT("the tint washes out the colour"), Tint->Settings.bOverride_ColorSaturation && Tint->Settings.ColorSaturation == FVector4(0., 0., 0., 1.));
+	TestTrue(TEXT("the tint's purple gain"), Tint->Settings.bOverride_ColorGain && Tint->Settings.ColorGain.Equals(FVector4(0.697667, 0., 1.61, 1.), 1e-6));
+	TestTrue(TEXT("the flash's midtones"), Flash->Settings.bOverride_ColorGainMidtones && Flash->Settings.ColorGainMidtones == FVector4(100., 100., 100., 1.));
+	TestTrue(TEXT("the flash's fringe is overridden to 0"), Flash->Settings.bOverride_SceneFringeIntensity && Flash->Settings.SceneFringeIntensity == 0.f);
+	TestFalse(TEXT("no film grain override"), Flash->Settings.bOverride_FilmGrainIntensity);
+	const UParticleSystemComponent* Puff = Defaults->GetParticleSystem();
+	TestTrue(TEXT("the puff's place"), Puff->GetRelativeLocation().Equals(FVector(92.422882, -0.000427, -152.146667), 1e-4));
+	TestTrue(TEXT("the puff activates itself"), Puff->bAutoActivate);
+	TestFalse(TEXT("the puff's tick starts off"), Puff->PrimaryComponentTick.bStartWithTickEnabled);
+	TestFalse(TEXT("the puff's asset is set"), Defaults->PuffParticles.IsNull());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiVanishNotifyTest, "Wasami.Powers.VanishNotify",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiVanishNotifyTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("WasamiVanishNotifyTest"));
+	World->InitializeActorsForPlay(FURL());
+
+	// Tagged enemies, near and far (no range is asked for), and one with the interface but without the tag.
+	AWasamiTestEnemy* Near = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(500., 0., 0.));
+	AWasamiTestEnemy* Far = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(100000., 0., 0.));
+	AWasamiTestEnemy* Untagged = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(0., 500., 0.));
+	Untagged->Tags.Reset();
+	// The Enemy tag without the interface (the original's Zone 2 matron): not told.
+	AActor* TagOnly = World->SpawnActor<AActor>();
+	TagOnly->Tags.Add(TEXT("Enemy"));
+
+	TestEqual(TEXT("two enemies are told"), AWasamiVanishPower::NotifyEnemies(World), 2);
+	TestEqual(TEXT("the near one once"), Near->PlayerVanishCount, 1);
+	TestEqual(TEXT("the far one once"), Far->PlayerVanishCount, 1);
+	TestEqual(TEXT("an untagged one is not told"), Untagged->PlayerVanishCount, 0);
+	TestEqual(TEXT("nothing else is sent"), Near->SetStateCount, 0);
+
+	World->DestroyWorld(false);
+	World->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiVanishWidgetTest, "Wasami.Powers.VanishWidget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiVanishWidgetTest::RunTest(const FString& Parameters)
+{
+	// The animation Vanish at 1 / 15 speed: in over 1.5 s, held (a little over 1 between the keys, as the tangents
+	// give), out over the last 1.5 s of the 15.
+	constexpr float Speed = FWasamiPowerTuning::VanishDuration;
+	struct FRow
+	{
+		float Seconds, Opacity;
+	};
+	const FRow Rows[] = {
+		{0.f, 0.f},
+		{0.375f, 0.155957f},
+		{0.75f, 0.499219f},
+		{1.125f, 0.842871f},
+		{1.5f, 1.f},
+		{7.5f, 1.012311f},
+		{13.5f, 1.f},
+		{14.25f, 0.499242f},
+		{14.625f, 0.155966f},
+		{15.f, 0.f},
+		{20.f, 0.f},
+	};
+	for (const FRow& Row : Rows)
+	{
+		TestEqual(FString::Printf(TEXT("the opacity %.3f s into a Vanish"), Row.Seconds),
+			UWasamiVanishWidget::EvaluateOpacity(Row.Seconds / Speed), Row.Opacity, 1e-5f);
+	}
+	TestEqual(TEXT("the class's Speed"), GetDefault<UWasamiVanishWidget>()->Speed, 1.f);
 	return true;
 }
 

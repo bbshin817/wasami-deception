@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 01:15
+updated: 2026-09-17 06:35
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -27,7 +27,7 @@ updated: 2026-09-17 01:15
 - [x] 4b. テレポーテーションのカメラアニメ … 2026-09-16 完了。**旧版の実機で FOV の基準を決めた**（60 fps の収録。開始時のキー 90 が基準で `BaseFOV` 137.24 ではない）。`UWasamiCameraAnim` の FOV のトラックの再生（開始時のキーからの変化 × 重み、5〜170°）、`AWasamiTeleportAim::Confirm` での `CameraAnim_Teleport` の再生、取り込み、テスト `Wasami.CameraAnim.FieldOfView`。+100 EV の閃光の後に UE 5.8 のプリ露出で黒いフレームが出たので、ユーザーの決定で `r.EyeAdaptation.PreExposureOverride=1` を ini に入れた。操作エージェントに画面の収録 `record` を足した。実装記録 00・01・04 と索引、検証のガイド、調査 02 を直した
 - [x] 5. テレポーテーションの見た目 … 2026-09-17 完了。**パーティクルは Cascade のまま原作の値を写した**（C++ の道具 `UWasamiCascadeLibrary` が構造を作り、`pipeline/dd_particles.py` が書き出しの焼き込み済みの分布の表をそのまま書く。テスト `Wasami.Cascade.Build`）。`P_ky_cutter2` をデカールの子に付け、デカールに `M_Decal_Teleport` を入れた。材質 3 つ（斬撃・火花・デカール）はグラフが cook で消えているので推定のマスター（`/Game/Pipeline/Materials/M_DD_*`）を作り、原作のパスにそのインスタンスを置いた。**旧版の実機で照準を撮り直し**、デカールが 1 秒周期で明滅する縁の鋭い円（加算）であることを見つけて形・大きさ・周期を合わせ、PIE で斬撃の輪との比が旧版と同じになることを確かめた。デカールの色と明るさ、斬撃と火花の見え方はステップ 11 で最新版の病院と見比べる。実装記録 01・04 と索引、調査 02、observations/README を直した
 - [x] 6. 一瞬の演出の共通部品と Primal Fear … 2026-09-17 完了。基底 `AWasamiPowerBurst`（範囲なしのポストプロセス 2 つ、2 秒のタイムラインを `FRichCurve` で評価、`float2` で重み、終わりで破棄）と `AWasamiPrimalPower`（50 m 下に遅延スポーン → プレイヤーの位置、音、シェイク ×25、Pawn の重なり判定で敵に `SetState(Stun, false)`、球の拡縮と MID のトラック）、`UsePrimal`（0.05 s で 0、0.06 s 後に再使用 23 s）、仮の的 `AWasamiTestEnemy`、テスト `Wasami.Powers.PrimalTimeline`・`PrimalStun`（10 件）。取り込みに音・シェイク・`T_05_PortalMaps`・推定の `M_DD_Primal` とインスタンス `M_05_Primal`。**取り込みのシェイクがコンパイル前の既定値しか持たない不具合**（`dd_assets.camera_shake`）と、`ue_props` が振動の構造体をベクトルと取り違える不具合を直した。PIE で値・的・ゲージ・画面・揺れを確かめた。実装記録 01・04 と索引、検証のガイド（PIE の決まり、`record` が止まるときの gdigrab）、CLAUDE.md を直した
-- [ ] 7. Vanish（カプセルの Camera 応答、`Player Vanish` の通知、`UMG_Vanish` と `MM_WobblyVignette`、ポストプロセス、煙 `PPP_VanishPuff`、15 s・再使用 15 s）
+- [x] 7. Vanish … 2026-09-17 完了。`AWasamiVanishPower`（紫と白の一瞬の演出、煙 `PPP_VanishPuff` をプレイヤーの前 92 cm・下 152 cm に、音、タグ `Enemy` で実装のある全敵に `PlayerVanish` を 1 回）、`UWasamiVanishWidget`（`UMG_Vanish`。紫の揺らぐビネット、1 秒のアニメを 1/15 倍速）、パワーのコンポーネントの `UseVanish`（カプセルの `ECC_Camera` を Ignore、15 s）・`EndVanish`（Block に戻す、再使用 15 s）・`RefillVanish`（ウィジェットを外す。リセットも同じ）、テスト `Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget`（13 件）。取り込みに `T_LoopingSmoke_8x8`・`T_perlinnoise`、推定のマスター `M_DD_LoopingSmoke`（ライティングを受ける半透明）・`M_DD_WobblyVignette`（速さ・周期・強さは仮）とインスタンス、`PPP_VanishPuff`（`dd_particles` に `BurstList` を足した）。`GrainIntensity` の上書きは UE 5.8 で効かないので写さない。PIE で値・的への通知・ウィジェットの曲線・15 s + 15 s・リセットと使い直し・画面（閃光・紫・ビネット・煙のもや）を確かめた。煙は `CameraDepthFade` で正面からはほとんど見えない（ステップ 11 で本家と見比べる）。実装記録 01・04 と索引を直した
 - [ ] 8. Telepathy（`BP_Telepathy` とトラッカー、`UMG_TelepathyTracker` と `MM_Telepathy`、開始と終わりの音、シェイク、9 s・再使用 6.5 s）
 - [ ] 9. シャードの最小限（M3 の前倒し。最新版の `BP_Shard`）: 病院の配置（Zone 1 は 337、Zone 2 は 342）、回収（数・音 `Soul_Shard_Pickup_v2_Cue` と同時発音 `OnlyFew`・シェイク `BP_CameraShake_ShardCollect`・閃光 `P_ky_flash3`）、`Activate` の引き寄せ（`Shard Pull`、ExpoIn）、タブレットの数と地図
 - [ ] 10. テレキネシス（半径 3000 の重なり判定、`P_ky_forceField_Telekinesis`、ポストプロセス、シェイク、音、再使用 8 s）
@@ -36,11 +36,11 @@ updated: 2026-09-17 01:15
 
 ## 次にやること
 
-ステップ 7（Vanish）。まず `.claude/references/powers/03-telekinesis-vanish.md` の §0（要点）・§1・§3（3.1〜3.9。発動・終わりと再使用・`BP_VanishPower`・ポストプロセスとタイムライン・`PPP_VanishPuff`・`UMG_Vanish`・見えない扱いと敵の反応・途中で解除される条件）・§5・§6 と、実装記録 `04-powers.md` の「一瞬の演出の基底」「Primal Fear」「死亡のリセット」を読む。
-1. `AWasamiVanishPower`（`AWasamiPowerBurst` の派生。`PostProcess` の `ColorGain` は紫 (0.6976670026779175, 0, 1.6100000143051147, 1)、`PostProcess1` の `SceneFringeIntensity` は上書きありで 0、`GrainIntensity` の上書き〈UE 5 は `FilmGrainIntensity`、値 0〉の扱いを決める、`float2` だけ Primal と違うキー）、`Enemy` タグの全アクタのうちインターフェースを実装するものに `PlayerVanish` を 1 回、音、粒子 `PPP_VanishPuff`（`dd_particles` で作る。`BurstList` などの未対応の値の形を足す必要があるかもしれない）。
-2. プレイヤー側の `UseVanish`（カプセルの Camera 応答、15 s・再使用 15 s、ゲージ）、`UMG_Vanish` と `MM_WobblyVignette`（推定）、途中で解除される条件、死亡のリセット（ウィジェットを消す）。
-3. 取り込み → ビルド（C++ を変えたら `python Tools/editor_cycle.py`。**エディタを閉じる前にユーザーの確認を取る**）→ テスト → PIE（**確認は要らない**。仮の的の `player_vanish_count` で確かめる）。
-4. 敵の見え方（カプセルの Camera 応答で敵の視線が通らない）は敵が無いので、応答の値と `PlayerVanish` の到達で確かめる。
+ステップ 8（Telepathy）。まず `.claude/references/powers/04-primal-telepathy.md` の §0（要点）・§1（共通の流れ）・§3（3.1〜3.10。プレイヤー側・`BP_Telepathy`・`BP_TelepathyTracker`・`UMG_TelepathyTracker`・`MM_Telepathy`・音と画面の演出・強化段階・タブレットの地図・対象から外す敵・旧版との違い）・§4（敵側）・§8 と、実装記録 `04-powers.md` の「Primal Fear」「Vanish」「死亡のリセット」（Telepathy はリセットしない）を読む。
+1. プレイヤー側の `UseTelepathy`（9 s・再使用 6.5 s、ゲージ、開始と終わりの音、シェイク）と、`BP_Telepathy`・トラッカー（画面空間の印。`NoTelepathy` の敵は外す）を C++ で。
+2. `UMG_TelepathyTracker` と `MM_Telepathy`（推定。グラフは cook で消えている）の取り込み、`dd_powers` への素材の追加（音・シェイク・テクスチャ・材質。粒子があれば `dd_particles` の値の形を広げる）。
+3. 取り込み → ビルド（C++ を変えたら `python Tools/editor_cycle.py`。**エディタを閉じる前にユーザーの確認を取る**）→ テスト → PIE（**確認は要らない**。仮の的 `AWasamiTestEnemy` の `bNoTelepathy` で対象外を確かめる）。
+4. タブレットの地図への表示（§3.8）は、いまのタブレットの画面（03 記録）でどこまで出せるかを見てから決める。
 
 ## 決定事項
 
@@ -100,7 +100,15 @@ updated: 2026-09-17 01:15
 - 2026-09-17（ステップ 6）: PIE の収録は `ddagrab` が最初のフレームで止まった（ffmpeg が `Opened dxgi output 0` の後に進まず、`record_status` が `running` のまま）。この日の Claude のシェルはセッション 1 にいたので、ffmpeg の `gdigrab` でビューポートの範囲を直接撮った。検証のガイドに書いた。止まった ffmpeg は `taskkill` で止めた。
 - 2026-09-17（ユーザーの回答、ステップ 6）: エディタを閉じてビルドし開き直すこと、取り込み・テスト・PIE の確認まで進めてよい。**以後、PIE は明示的な禁止がない限り確認なしで使ってよい**（PIE の確認のためのエディタへの入力を含む）。検証のガイドと CLAUDE.md を直した。エディタの開き直しと本家の起動は、これまでどおり確認を取る。
 
+- 2026-09-17（ユーザーの回答、ステップ 7）: エディタを閉じてビルドし開き直すこと、テストと PIE の確認まで進めてよい。
+- 2026-09-17（ステップ 7）: `PostProcess1` の `GrainIntensity` の上書き（既定の 0）は写さない。UE 5.8 は `GrainIntensity_DEPRECATED` として持つだけで、変換もブレンドも描画もしない（後継の `FilmGrainIntensity` は別の効果）。本家の `Range` 1500 もどこからも使われないので持たない。
+- 2026-09-17（ステップ 7）: `M_LoopingSmoke1_Sheet` は書き出しに Emissive の接続が無く、シェーディングモデルも書かれていない（= DefaultLit）ので、**ライティングを受ける半透明**と推定する（BaseColor = コマ × 粒子の色、Opacity = コマの A × 粒子の A × `CameraDepthFade`）。粒子の色の 1 を超える値は BaseColor で切られて白に近くなる。`MM_WobblyVignette` は Emissive = ビネットの RGB（原作どおり）、Opacity = ビネットの A × 2 つのパンするノイズを `LinearSine` で行き来させたもの × 強さ、と推定し、速さ・周期・強さは仮の値にした。どちらもステップ 11 で最新版と見比べる。
+- 2026-09-17（ステップ 7）: ウィジェットの `UMG_Vanish` は、本家の `Create(OwningPlayer なし)`（= 最初のローカルプレイヤー）をプレイヤーのコントローラを持ち主にして作り、本家どおり `AddToPlayerScreen(0)` で出す。アニメは C++ の `FRichCurve`（接線は 1 ティックあたり × 60000）で評価する。
+
 ## 再開時の注意
+
+- **2026-09-17 06:30 ごろ（ステップ 7 の終わり）**: エディタは起動している（PID 27772、セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは動いたまま（`python Tools/desktop.py stop` で止めてよい）。ビルドは最新（警告なし）。取り込みは済み。Python のツールセットは `from wasami_tools.toolsets.dd import WasamiDDTools` で呼ぶ（`unreal.` の下には無い）。
+- **PIE で Vanish を確かめる手順**（7 で使った。scratchpad の `vanish_probe.py` はセッションごとに消えるので、要るときは作り直す）: `editor_request_begin_play()` → プレイヤーを (−25, 3000, 90.15)・ヨー −90 に置き、仮の的を出す → Automation のログの小窓（× (2195, 405)）を閉じる → ビューポート (2620, 600) をクリック → Space、1 × 5（左が Vanish）、Space → 毎フレームの記録を始めて Q。ウィジェットの画像は `unreal.find_object(None, <ウィジェットのパス> + '.WidgetTree.Image_82')` の `get_render_opacity()` で読める。収録は gdigrab でビューポートの範囲 (2236, 280, 884x596)。フレームは `-fps_mode passthrough` で取り出す（付けないと番号が時刻と合わない）。
 
 - **2026-09-17 01:15（ステップ 6 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは動いたまま（`python Tools/desktop.py stop` で止めてよい）。ビルドは最新（テストの 1 か所だけ Live Coding で直した。次のフルビルドで取り込まれる）。取り込みは済み（シェイク 2 つはコンパイルし直して保存した）。
 - **PIE で Primal を確かめる手順**（6 で使った）: `editor_request_begin_play()` → プレイヤーを `set_actor_location((−25, 3000, 90.15), False, True)`、`set_control_rotation(yaw −90)` → ビューポート (2620, 600) をクリック → Space、1 × 3、Space で左が Primal → Python で `unreal.WasamiTestEnemy.spawn_test_enemy(world, 位置)` → Q。毎フレームの値は `register_slate_post_tick_callback` で読む（MID の値は `get_scalar_parameter_value`。コールバックの中で例外を出すと毎フレーム出続けるので、登録のハンドルは必ず外す）。カメラの揺れは `get_player_camera_manager(w, 0).get_camera_location()` の変化で見える。
@@ -130,6 +138,8 @@ updated: 2026-09-17 01:15
 - 画面の撮影 1 回に数秒かかるので、時間に依存する確認は `unreal.GameplayStatics.get_time_seconds` と一緒に読む（scratchpad の `probe_powers.py` がパワーの状態を読む。scratchpad はセッションごとなので、要るときは作り直す）。
 
 ## 検証
+
+- ステップ 7: C++ ビルド成功（1 回目は `WasamiVanishWidget.cpp` のローカル変数 `Slot` が `UWidget::Slot` を隠す C4458 で落ち、名前を変えて通った。警告なし）、`Automation RunTests Wasami` 13 件成功（`Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget` を新設）、check_records OK、取り込み `import_dd_powers`（音 6・シェイク 2・カメラアニメ 2・テクスチャ 6・マテリアル 14・パーティクル 2。`Failed to compile` なし）と読み戻し、PIE で使った瞬間のカプセルの応答・通知・アクタと粒子の位置、毎フレームの重みとウィジェットの不透明度、15 s の終わりと 15 s の再使用、リセットと使い直し、画面を確かめた（詳細は 04 記録の「確かめたこと」）
 
 - ステップ 6: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 10 件成功（`Wasami.Powers.PrimalTimeline`・`PrimalStun` を新設。`PrimalStun` は最初、一時的なワールドのアクタが初期化前でイベントを捨てていたので `InitializeActorsForPlay` を足して Live Coding で直した）、check_records OK、取り込み `import_dd_powers`（音 6・シェイク 2・カメラアニメ 2・テクスチャ 4・マテリアル 10・パーティクル 1。`Failed to compile` なし）と読み戻し、PIE で的への作用（3350 cm と真上 30 m に届き 3700 cm に届かない）・球とポストプロセスとマテリアルの毎フレームの値・2 秒での破棄・ゲージと 23 s の再使用・リセット・画面（閃光と赤い単色と球）・カメラの揺れ（直した後に最大 68 cm）を確かめた（詳細は 04 記録の「確かめたこと」）
 
