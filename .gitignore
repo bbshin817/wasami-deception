@@ -64,3 +64,6 @@ __pycache__/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# 検証用ファイル等を配置するディレクトリ
+tmp
