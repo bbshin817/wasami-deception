@@ -24,12 +24,13 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 ## 構成
 - `Source/wasami_deception/` … ゲームの C++ モジュール
 - `Content/Python/` … エディタの Python（`init_unreal.py` がプロジェクトのツールセットを登録する）
-- `Tools/` … エディタの外で動くスクリプト（リモート実行 `Tools/ue_remote.py`、開き直し `Tools/editor_cycle.py`）
+- `Tools/` … エディタの外で動くスクリプト（ステージの前処理 `Tools/dd/`、リモート実行 `Tools/ue_remote.py`、開き直し `Tools/editor_cycle.py`）
 - `.claude/scripts/` … 運用の仕組み（実装記録の同期チェックと hooks）
 - `Intermediate/Pipeline/` … 前処理の出力（git の対象外、作り直せる）
 - `pak_reference/`・`pak_reference_2/`・`cc2_reference/` … 原作データ（git の対象外、読み取り専用）
 
 ## よく使うコマンド
+- ステージの前処理: `python Tools/dd/prepare_stage.py`
 - エディタで Python を実行: `python Tools/ue_remote.py <file.py>`
 - エディタを閉じて C++ をビルドし開き直す: `python Tools/editor_cycle.py`
 - 実装記録の同期チェック / ハッシュ更新: `python .claude/scripts/check_records.py [--update]`

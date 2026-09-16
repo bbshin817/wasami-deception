@@ -22,6 +22,7 @@
 
 | ツールセット | 内容 |
 | --- | --- |
+| `WasamiStageTools` | 病院ステージ（`06_Hospital_Zone_01`・`_02`）の取り込み（メッシュ・テクスチャ・マテリアル）とレベルの組み立て |
 | `WasamiDDTools` | 本家の資産（今はカメラシェイク）を原作データから `/Game/DD/…` に作る |
 | `WasamiDevTools` | コンソールコマンド |
 
@@ -38,7 +39,11 @@ Project Settings > Plugins > Python の Remote Execution を有効にしてあ�
 
 ## ステージの取り込み
 
-本家の病院（`06_Hospital_Zone_01`・`06_Hospital_Zone_02`）への差し替えに合わせて作り直している途中（2026-09-16）。手順ができたらここに書く。
+1. `python Tools/dd/prepare_stage.py` … `pak_reference_2` から `Intermediate/Pipeline/dd/stage_ue.json` を作る。区画が同じマテリアルを共有するメッシュ（13 個）は、スロットが潰れないように glTF を `Intermediate/Pipeline/dd/meshes/` へ分け直す（`.bin` は複製しない）。
+2. `WasamiStageTools.import_dd_stage_assets(max_items)` … メッシュ → テクスチャ → マテリアルの順に `/Game/DD/…` へ。量が多いので `remaining` が 0 になるまで繰り返す（全部で 489 アセット・約 6 分）。
+3. `WasamiStageTools.build_dd_stage_level("Zone1")` / `("Zone2")` … `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` を組み立てる（タグ `dd` のアクタを消してから置き直すので、何度呼んでもよい）。
+
+パイプラインを直したときは `refresh_dd_stage_assets()` でマスターマテリアルとテクスチャの設定を更新できる。MCP が使えないときは `Tools/ue_remote.py` から `wasami_tools.pipeline.dd_stage` / `dd_level` を直接呼べる。
 
 ## C++ のビルド
 
