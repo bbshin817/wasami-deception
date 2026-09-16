@@ -105,6 +105,10 @@ def camera_shake(rel, version=1):
         unreal.log_warning("camera_shake %s: %s" % (rel, f))
     if failures:
         raise RuntimeError("%d defaults of %s could not be set (see the log)" % (len(failures), rel))
+    # A Blueprint class copies only the defaults its last compile saw differ from its parent's into new instances
+    # (UBlueprintGeneratedClass' custom property list); a compile after the writes makes the shakes carry them in this
+    # session too (a load from disk would rebuild the list anyway).
+    unreal.BlueprintEditorLibrary.compile_blueprint(bp)
     EAL.save_asset(target, only_if_is_dirty=False)
     return target
 

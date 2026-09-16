@@ -10,6 +10,7 @@
 #include "WasamiCameraAnim.h"
 #include "WasamiChameleonComponent.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiPrimalPower.h"
 #include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
 #include "WasamiTeleportAim.h"
@@ -43,6 +44,10 @@ namespace
 	constexpr float TeleportAimVolume = 1.75f;
 	constexpr float TeleportGaugeDropSeconds = 0.05f;
 	const FVector TeleportAimSpawnOffset(0., 0., -5000.);
+	// Primal Fear: the icon's drop, the spawn 50 m under the player, and the delay before the cooldown starts.
+	constexpr float PrimalGaugeDropSeconds = 0.05f;
+	const FVector PrimalSpawnOffset(0., 0., -5000.);
+	constexpr float PrimalCooldownDelay = 0.06f;
 }
 
 UWasamiPowerComponent::UWasamiPowerComponent()
@@ -62,6 +67,7 @@ UWasamiPowerComponent::UWasamiPowerComponent()
 	BoostWidgetClass = UWasamiSpeedBoostWidget::StaticClass();
 	TeleportAimSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered")));
 	TeleportAimClass = AWasamiTeleportAim::StaticClass();
+	PrimalPowerClass = AWasamiPrimalPower::StaticClass();
 }
 
 void UWasamiPowerComponent::BeginPlay()
@@ -76,6 +82,7 @@ void UWasamiPowerComponent::BeginPlay()
 	UWasamiSpeedBoostWidget::LoadAssets(LoadedBoostWidgetAssets);
 	LoadedTeleportAimSound = TeleportAimSound.LoadSynchronous();
 	AWasamiTeleportAim::LoadAssets(LoadedTeleportAimAssets);
+	AWasamiPrimalPower::LoadAssets(LoadedPrimalAssets);
 
 	// UMG_TabletPowers' Check: every unlocked power, ready. The sockets keep their indices (0 and 0 on a new game, as the
 	// original's GameInstance starts them).
@@ -206,6 +213,9 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 			break;
 		case EWasamiPower::Teleport:
 			UseTeleport(bLeft);
+			break;
+		case EWasamiPower::PrimalFear:
+			UsePrimal();
 			break;
 		default:
 			break;
@@ -434,4 +444,31 @@ void UWasamiPowerComponent::ResetTeleport()
 	}
 	UsedTeleport();
 	Gauge(EWasamiPower::Teleport).Stop();
+}
+
+void UWasamiPowerComponent::UsePrimal()
+{
+	const AWasamiPlayerCharacter* Player = GetPlayer();
+	ActivePowers.AddUnique(EWasamiPower::PrimalFear);
+	SetPowerAvailable(EWasamiPower::PrimalFear, false);
+	Gauge(EWasamiPower::PrimalFear).SetDelay(PrimalGaugeDropSeconds, false);
+
+	// BP_PrimalPower comes out 50 m under the player, unrotated, whatever is there, with the level's Range.
+	const FTransform SpawnTransform(FRotator::ZeroRotator, Player->GetActorLocation() + PrimalSpawnOffset);
+	if (AWasamiPrimalPower* Primal = GetWorld()->SpawnActorDeferred<AWasamiPrimalPower>(PrimalPowerClass, SpawnTransform,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+	{
+		Primal->Range = GetTuning(EWasamiPower::PrimalFear).PrimalRange;
+		Primal->FinishSpawning(SpawnTransform);
+	}
+	Delay(PrimalCooldownTimer, PrimalCooldownDelay, &UWasamiPowerComponent::StartPrimalCooldown);
+}
+
+void UWasamiPowerComponent::StartPrimalCooldown()
+{
+	// The original's 5 s is for its circus entrance only.
+	const float Cooldown = GetTuning(EWasamiPower::PrimalFear).PrimalCooldown;
+	Gauge(EWasamiPower::PrimalFear).SetDelay(Cooldown, false);
+	ActivePowers.Remove(EWasamiPower::PrimalFear);
+	Delay(PrimalRefillTimer, Cooldown, &UWasamiPowerComponent::RefillPrimal);
 }

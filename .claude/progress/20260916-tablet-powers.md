@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 01:40
+updated: 2026-09-17 01:15
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -26,20 +26,21 @@ updated: 2026-09-17 01:40
 - [x] 4a. テレポーテーションの仕組み（旧版）… 2026-09-16 完了。Teleport チャンネル（旧版の既定 Overlap）、病院のゾーン（床のメッシュと救急車の屋根の箱をクラスの `Cube` の値で。前処理の `teleport_zones`・組み立ての `_set_collision`）、照準のアクタ `AWasamiTeleportAim`（SpringArm のラグ・500 cm の下向きトレース・ホイール・左クリック。デカールは UE の既定の材質のまま）、0.12 s 後のスイープ移動、シェイク、音 3 つ（エンジンの音は `/Game/DD/_Engine/…`）、同じ側の Q / E での取り消し、再使用 5 s、死亡のリセット、テスト `Wasami.Powers.TeleportDistance`。両ゾーンを組み立て直して High で焼き直した。実装記録は 00・01・02・04 と索引、検証のガイドを直した
 - [x] 4b. テレポーテーションのカメラアニメ … 2026-09-16 完了。**旧版の実機で FOV の基準を決めた**（60 fps の収録。開始時のキー 90 が基準で `BaseFOV` 137.24 ではない）。`UWasamiCameraAnim` の FOV のトラックの再生（開始時のキーからの変化 × 重み、5〜170°）、`AWasamiTeleportAim::Confirm` での `CameraAnim_Teleport` の再生、取り込み、テスト `Wasami.CameraAnim.FieldOfView`。+100 EV の閃光の後に UE 5.8 のプリ露出で黒いフレームが出たので、ユーザーの決定で `r.EyeAdaptation.PreExposureOverride=1` を ini に入れた。操作エージェントに画面の収録 `record` を足した。実装記録 00・01・04 と索引、検証のガイド、調査 02 を直した
 - [x] 5. テレポーテーションの見た目 … 2026-09-17 完了。**パーティクルは Cascade のまま原作の値を写した**（C++ の道具 `UWasamiCascadeLibrary` が構造を作り、`pipeline/dd_particles.py` が書き出しの焼き込み済みの分布の表をそのまま書く。テスト `Wasami.Cascade.Build`）。`P_ky_cutter2` をデカールの子に付け、デカールに `M_Decal_Teleport` を入れた。材質 3 つ（斬撃・火花・デカール）はグラフが cook で消えているので推定のマスター（`/Game/Pipeline/Materials/M_DD_*`）を作り、原作のパスにそのインスタンスを置いた。**旧版の実機で照準を撮り直し**、デカールが 1 秒周期で明滅する縁の鋭い円（加算）であることを見つけて形・大きさ・周期を合わせ、PIE で斬撃の輪との比が旧版と同じになることを確かめた。デカールの色と明るさ、斬撃と火花の見え方はステップ 11 で最新版の病院と見比べる。実装記録 01・04 と索引、調査 02、observations/README を直した
-- [ ] 6. 一瞬の演出の共通部品（全画面のポストプロセス 2 つとカーブ）と Primal Fear（半径 3500 の重なり判定で敵に `Set State(Stun)`、球 `M_05_Primal`、シェイク `ElevatorShakeStop` ×25、`Stun_Wave_Attack_New_04`、再使用 23 s）
+- [x] 6. 一瞬の演出の共通部品と Primal Fear … 2026-09-17 完了。基底 `AWasamiPowerBurst`（範囲なしのポストプロセス 2 つ、2 秒のタイムラインを `FRichCurve` で評価、`float2` で重み、終わりで破棄）と `AWasamiPrimalPower`（50 m 下に遅延スポーン → プレイヤーの位置、音、シェイク ×25、Pawn の重なり判定で敵に `SetState(Stun, false)`、球の拡縮と MID のトラック）、`UsePrimal`（0.05 s で 0、0.06 s 後に再使用 23 s）、仮の的 `AWasamiTestEnemy`、テスト `Wasami.Powers.PrimalTimeline`・`PrimalStun`（10 件）。取り込みに音・シェイク・`T_05_PortalMaps`・推定の `M_DD_Primal` とインスタンス `M_05_Primal`。**取り込みのシェイクがコンパイル前の既定値しか持たない不具合**（`dd_assets.camera_shake`）と、`ue_props` が振動の構造体をベクトルと取り違える不具合を直した。PIE で値・的・ゲージ・画面・揺れを確かめた。実装記録 01・04 と索引、検証のガイド（PIE の決まり、`record` が止まるときの gdigrab）、CLAUDE.md を直した
 - [ ] 7. Vanish（カプセルの Camera 応答、`Player Vanish` の通知、`UMG_Vanish` と `MM_WobblyVignette`、ポストプロセス、煙 `PPP_VanishPuff`、15 s・再使用 15 s）
 - [ ] 8. Telepathy（`BP_Telepathy` とトラッカー、`UMG_TelepathyTracker` と `MM_Telepathy`、開始と終わりの音、シェイク、9 s・再使用 6.5 s）
 - [ ] 9. シャードの最小限（M3 の前倒し。最新版の `BP_Shard`）: 病院の配置（Zone 1 は 337、Zone 2 は 342）、回収（数・音 `Soul_Shard_Pickup_v2_Cue` と同時発音 `OnlyFew`・シェイク `BP_CameraShake_ShardCollect`・閃光 `P_ky_flash3`）、`Activate` の引き寄せ（`Shard Pull`、ExpoIn）、タブレットの数と地図
 - [ ] 10. テレキネシス（半径 3000 の重なり判定、`P_ky_forceField_Telekinesis`、ポストプロセス、シェイク、音、再使用 8 s）
-- [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（エディタの PIE と本家の起動はユーザーの確認を取る）。テレポートの照準は**最新版の病院**で見比べる（材質は両版で同じ。旧版の Manor はポストプロセスが強く色と明るさを戻せない）: デカールの `Color`・`PulseLow`・`PulseHigh`（`dd_powers.DECAL_*`）、斬撃の色の出方、火花の大きさと数（PIE のほうが大きく多く見える）
+- [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（本家の起動とエディタの開き直しはユーザーの確認を取る。PIE は確認不要）。テレポートの照準は**最新版の病院**で見比べる（材質は両版で同じ。旧版の Manor はポストプロセスが強く色と明るさを戻せない）: デカールの `Color`・`PulseLow`・`PulseHigh`（`dd_powers.DECAL_*`）、斬撃の色の出方、火花の大きさと数（PIE のほうが大きく多く見える）
 - [ ] 12. 仕上げ: 実装記録（04 はステップ 2 で新設し、各ステップで書き足す）、handover の「現状と次の一歩」、main へマージして push、この記録を消す
 
 ## 次にやること
 
-ステップ 6（一瞬の演出の共通部品と Primal Fear）。まず `.claude/references/powers/04-primal-telepathy.md` の §0・§2（2.1〜2.10。`BP_PrimalPower` の構成・処理・タイムラインのキー・見た目・音・敵への通知・強化段階）と §7 付近の「UE5.8 で再現するときの注意」（ポストプロセス 2 つ、`BlendWeight` のカーブ）、`README.md` の「全パワー共通の仕組み」、実装記録 `04-powers.md`（`UWasamiPowerComponent` の `UsePower` と、Primal の枠・充填・リセットがどうなっているか）を読む。
-1. 全画面のポストプロセス 2 つ（`UPostProcessComponent` の `bUnbound`、`BlendWeight` をタイムラインのカーブで動かす）を、Primal・Telekinesis・Vanish で使い回せる形で作る（`UPostProcessComponent` は MinimalAPI で継げない。ステップ 3 の Chameleon と同じく、アクタが持つ）。カーブのキーは書き出しの値を `FRichCurve` / `FInterpCurve` にそのまま入れる。
-2. `BP_PrimalPower` にあたるアクタ（半径 `Range`〈Lv5 で 3500〉の `SphereOverlapActors` で Pawn を集め、`IWasamiEnemyInterface` を実装する敵に `Set State(Stun)` を 1 回）、赤い球 `M_05_Primal`（推定。取り込みは `dd_powers`。粒子や材質が要れば `dd_particles` / 推定のマスター）、シェイク `ElevatorShakeStop` × 25、音 `Stun_Wave_Attack_New_04`、再使用 23 s を足す。敵はまだ無いので、インターフェースを実装した仮の的で確かめる（決定事項）。
-3. 取り込み → ビルド（C++ を変えたら `python Tools/editor_cycle.py`。閉じる前にユーザーの確認）→ テスト → PIE（エディタへの入力と PIE はユーザーの確認を取る）。
+ステップ 7（Vanish）。まず `.claude/references/powers/03-telekinesis-vanish.md` の §0（要点）・§1・§3（3.1〜3.9。発動・終わりと再使用・`BP_VanishPower`・ポストプロセスとタイムライン・`PPP_VanishPuff`・`UMG_Vanish`・見えない扱いと敵の反応・途中で解除される条件）・§5・§6 と、実装記録 `04-powers.md` の「一瞬の演出の基底」「Primal Fear」「死亡のリセット」を読む。
+1. `AWasamiVanishPower`（`AWasamiPowerBurst` の派生。`PostProcess` の `ColorGain` は紫 (0.6976670026779175, 0, 1.6100000143051147, 1)、`PostProcess1` の `SceneFringeIntensity` は上書きありで 0、`GrainIntensity` の上書き〈UE 5 は `FilmGrainIntensity`、値 0〉の扱いを決める、`float2` だけ Primal と違うキー）、`Enemy` タグの全アクタのうちインターフェースを実装するものに `PlayerVanish` を 1 回、音、粒子 `PPP_VanishPuff`（`dd_particles` で作る。`BurstList` などの未対応の値の形を足す必要があるかもしれない）。
+2. プレイヤー側の `UseVanish`（カプセルの Camera 応答、15 s・再使用 15 s、ゲージ）、`UMG_Vanish` と `MM_WobblyVignette`（推定）、途中で解除される条件、死亡のリセット（ウィジェットを消す）。
+3. 取り込み → ビルド（C++ を変えたら `python Tools/editor_cycle.py`。**エディタを閉じる前にユーザーの確認を取る**）→ テスト → PIE（**確認は要らない**。仮の的の `player_vanish_count` で確かめる）。
+4. 敵の見え方（カプセルの Camera 応答で敵の視線が通らない）は敵が無いので、応答の値と `PlayerVanish` の到達で確かめる。
 
 ## 決定事項
 
@@ -89,9 +90,21 @@ updated: 2026-09-17 01:40
 - 2026-09-17（ステップ 5、推定のマテリアルの置き場所）: 推定したグラフは `/Game/Pipeline/Materials/M_DD_*` のマスターに置き、原作のパス（`/Game/DD/…`）にはそのマテリアルインスタンスを置いて原作のパラメータの値を入れる（病院のステージと同じ形）。パーティクルとデカールは原作のパスを参照する。
 - 2026-09-17（ステップ 5、**旧版の実機で観察**、Deadly Decadence の噴水の前の芝、照準を最短 250 cm にして 60 fps で 3 秒 + 取り消した後の背景 1.5 秒。`observations/classic/aim-top-a*.mkv`・`aim-top-a-min.png`・`aim-top-a-bg.png`）: (1) **デカールは 1 秒周期で明滅する**（内側の表示値 R が約 50 ↔ 177、なめらかで対称。書き出しで消えた `Time` と `Sine`〈周期 1〉の形）。(2) 内側はほぼ一様で、**縁が鋭い円**（縁の幅は半径の 1 割ほど）。半径は約 60〜73 cm（カメラの幾何と斬撃の輪との比から。`RadialGradientExponential` の既定〈半径 0.5・密度 2.333〉を `CheapContrast` で切ると約 70 cm で、これと合う）。PIE では「デカールの縁の半径 ÷ 斬撃の明るい帯の半径」が旧版の 368 px ÷ 約 545 px（= 0.68）になるかで確かめる（同じ粒子系なのでトーンマップに依らない）。(3) 加算で光る（芝の模様が残る。UE 5.8 の Emissive だけのデカールも `SourceAlpha, One` の加算）。(4) 光る部分に直線の縁が出るのは材質ではなく**床の起伏**（デカールの箱は上下 ±10 cm、当たるのはゾーンの箱の上面。向きを変えると縁の向きが変わり、砂利道には映らない）。`LinearGradient` は観察では効いていないので使わない。(5) 斬撃のスプライトは暗い部分でも背景を暗くする（不透明度が R から、色は R の累乗、という推定と合う）。(6) **Manor はポストプロセスの色の補正が強い**（`ColorGain` (1.43, 0, 0.56)・LUT `LUT_U1_Filmic_Cold_Blood_Murderer` 0.9・ブルーム 2.5 / しきい値 −0.49）ので、表示値から明るさと色は戻せない。**デカールの色と明るさは仮の値で置き、ステップ 11 で最新版の病院（同じ材質。ポストプロセスは本作と同じく無し）と見比べて決める。**
 
+- 2026-09-17（ステップ 6 の構成）: Primal・Telekinesis・Vanish の共通の形（`DefaultSceneRoot` の下に範囲なしの `PostProcess`・`PostProcess1`、長さ 2 秒のタイムライン、`PostProcess.BlendWeight = Lerp(1, 0, float2)`・`PostProcess1.BlendWeight = MapRangeClamped(float2, 0, 0.3, 1, 0)`、終わりで破棄）を C++ の基底 `AWasamiPowerBurst` にする。3 つで違うのはポストプロセスの値と `float2` のキー（Vanish だけ違う）なので、派生クラスのコンストラクタで入れる。`UPostProcessComponent` は MinimalAPI だが、継がずにコンストラクタで `CreateDefaultSubobject` し公開メンバーを書くだけならリンクできる（UE 5.8 の既定は `bUnbound` 真・`BlendRadius` 100・`Priority` 0 で、UE 4.24 の既定の推測と同じ。`PostProcessComponent.cpp` の 20〜23 行）。タイムラインは `UTimelineComponent` を使わず、アクタのティックで `FRichCurve` を評価する（UE4 の `FTimeline` と同じく、`PlayFromStart` の時点で位置 0 の更新を 1 回出し、位置が長さを**超えた**ティックで長さに揃えて更新してから終わる）。キーは書き出しの値を入れ、どのキーも `RCTM_User` にする（`AddKey` が前のキーの Auto の接線を計算し直すため。評価は接線のモードを見ない）。
+- 2026-09-17（ステップ 6）: Primal のアクタも本家どおりプレイヤーの 50 m 下に遅延スポーンし（`Range` を入れてから `FinishSpawning`）、`BeginPlay` でプレイヤーの位置へ移す。音は本家どおり `PlaySoundAtLocation` の位置 (0, 0, 0)（減衰の設定が無いので空間化されない）。敵の判定は本家の「インターフェースを実装する **または** `Enemy` タグ」→ インターフェースへのキャスト、なので、実際に `Set State` が届くのはインターフェースを実装するものだけ。本作はそれを直接書く。
+- 2026-09-17（ステップ 6）: `M_05_Primal` の書き出しに残るのは設定（Translucent・両面・`bUsedWithStaticLighting`）と、パラメータ 3 つ（`Color` (1, 0, 0, 1)・`Opacity` 1・`Desaturation` 0）、`Panner_1` を座標にした `T_05_PortalMaps` のサンプル 1 つ、Emissive が `Add_2` から来ることだけ。**シェーディングモデルは DefaultLit と見てよい**（cook は既定と違うシェーディングモデルを書き出す。同じテクスチャの `M_05_WarpTest` は `MSM_Unlit` が残っている）。**Opacity の接続が無いのは、cook がどのマテリアルでも Opacity・BaseColor・Roughness の入力を残さないため**（`pak_reference_2/_assets/.../Materials` の全書き出しで、残る入力は EmissiveColor・Normal・Metallic・Specular・WorldPositionOffset・PixelDepthOffset・Refraction だけ）で、接続が無かったとは言えない。`T_05_PortalMaps` は R に星状の粒、G に中心の丸い光、B に雲状のノイズ。推定: Emissive = `Desaturation(Color × B, Desaturation) + Color × R`（最後が Add）、Opacity = `saturate(B + R) × Opacity`、座標は TexCoord 0 をパンする。パンの速さは不明なので仮の値。ステップ 11 で最新版の病院と見比べる。
+- 2026-09-17（ステップ 6）: 敵（M4）がまだ無いので、仮の的 `AWasamiTestEnemy`（カプセル = Pawn、タグ `Enemy`、インターフェースを実装し、受けた `Set State` を数える）を `Tests/` に置く。Automation テストは、一時的なゲームのワールドに的を並べて重なり判定の静的関数を呼ぶ。PIE では Python から的を出して確かめる。
+
+- 2026-09-17（ステップ 6 の検証で見つけたこと）: **取り込みが作ったカメラシェイクが、同じセッションでは振幅 0・長さ 0 で鳴った**。ブループリントのクラスは、直前のコンパイルで親と違うと分かったプロパティだけをインスタンスへ写す（`UBlueprintGeneratedClass` の custom property list）ので、コンパイルの後に CDO を書いても届かない。`dd_assets.camera_shake` が書いた後にコンパイルし直すようにした（ディスクから読み直した場合は一覧が作り直されるので、`BP_CameraShake_Streak` はこれまで効いていた）。ほかにクラスの既定値を書く取り込みは無い（`get_default_object` の検索）。
+- 2026-09-17（ステップ 6）: `M_DD_Primal` の `Desaturation` ノードの最初の入力は名前が無い（`get_material_expression_input_names` が `['None', 'Fraction']`）ので `""` でつなぐ。
+- 2026-09-17（ステップ 6）: PIE の収録は `ddagrab` が最初のフレームで止まった（ffmpeg が `Opened dxgi output 0` の後に進まず、`record_status` が `running` のまま）。この日の Claude のシェルはセッション 1 にいたので、ffmpeg の `gdigrab` でビューポートの範囲を直接撮った。検証のガイドに書いた。止まった ffmpeg は `taskkill` で止めた。
+- 2026-09-17（ユーザーの回答、ステップ 6）: エディタを閉じてビルドし開き直すこと、取り込み・テスト・PIE の確認まで進めてよい。**以後、PIE は明示的な禁止がない限り確認なしで使ってよい**（PIE の確認のためのエディタへの入力を含む）。検証のガイドと CLAUDE.md を直した。エディタの開き直しと本家の起動は、これまでどおり確認を取る。
+
 ## 再開時の注意
 
-- **2026-09-17 01:40（ステップ 5 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは止めた。旧版は閉じた。ビルドは最新（警告なし）。
+- **2026-09-17 01:15（ステップ 6 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは動いたまま（`python Tools/desktop.py stop` で止めてよい）。ビルドは最新（テストの 1 か所だけ Live Coding で直した。次のフルビルドで取り込まれる）。取り込みは済み（シェイク 2 つはコンパイルし直して保存した）。
+- **PIE で Primal を確かめる手順**（6 で使った）: `editor_request_begin_play()` → プレイヤーを `set_actor_location((−25, 3000, 90.15), False, True)`、`set_control_rotation(yaw −90)` → ビューポート (2620, 600) をクリック → Space、1 × 3、Space で左が Primal → Python で `unreal.WasamiTestEnemy.spawn_test_enemy(world, 位置)` → Q。毎フレームの値は `register_slate_post_tick_callback` で読む（MID の値は `get_scalar_parameter_value`。コールバックの中で例外を出すと毎フレーム出続けるので、登録のハンドルは必ず外す）。カメラの揺れは `get_player_camera_manager(w, 0).get_camera_location()` の変化で見える。
+- **2026-09-17 00:40 ごろ（ステップ 5 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは止めた。旧版は閉じた。ビルドは最新（警告なし）。
 - **PIE で照準の絵を撮る手順**（5 で使った）: `LevelEditorSubsystem.editor_request_begin_play()` で PIE を始め、`GameplayStatics.get_player_character` のプレイヤーを `set_actor_location((15, 385, 90.15), False, True)`、コントローラを `set_control_rotation(pitch −33.3, yaw −90)`。PIE を始めると Automation のログの小窓（メッセージログ）が前に出るので、× (2208, 410) で閉じる（エディタの窓が今の位置のとき）。ビューポート (2620, 600) をクリックしてから Space・1・Space・Q。距離は照準のアクタの `adjust_distance(−1)` を 8 回。ビューポートは画面の (2040, 216)〜(3200, 870)。`desktop.py record` の後、`ffmpeg -vf crop=1160:654:2040:216` で切り出す。照準のアクタの部品は `get_components_by_class(unreal.DecalComponent)` などで読む（`GetDecal` は C++ だけ）。
 - **旧版で照準を撮る手順**（5 で使った）: 左の枠をテレポートにして Q、ホイールを手前へ 7 回（`desktop.py scroll --dx -120`）で 250 cm。`look --dy` はマウスの加速で量が一定でないので、撮っては直す（噴水の前の芝、`look --dy 400` → `+250` → `−470` → `+190` で照準が画面の中ほどに来た）。デカールはゾーンの箱の上面から上下 10 cm にしか映らないので、芝の起伏で半分しか映らない場所がある。
 - UE の Python は「bool を返し出力引数を持つ UFUNCTION」を、失敗なら `None`・成功なら出力引数だけを返す形にする（`SetPropertyText` はそのため理由の文字列を返す形にした）。
@@ -117,6 +130,8 @@ updated: 2026-09-17 01:40
 - 画面の撮影 1 回に数秒かかるので、時間に依存する確認は `unreal.GameplayStatics.get_time_seconds` と一緒に読む（scratchpad の `probe_powers.py` がパワーの状態を読む。scratchpad はセッションごとなので、要るときは作り直す）。
 
 ## 検証
+
+- ステップ 6: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 10 件成功（`Wasami.Powers.PrimalTimeline`・`PrimalStun` を新設。`PrimalStun` は最初、一時的なワールドのアクタが初期化前でイベントを捨てていたので `InitializeActorsForPlay` を足して Live Coding で直した）、check_records OK、取り込み `import_dd_powers`（音 6・シェイク 2・カメラアニメ 2・テクスチャ 4・マテリアル 10・パーティクル 1。`Failed to compile` なし）と読み戻し、PIE で的への作用（3350 cm と真上 30 m に届き 3700 cm に届かない）・球とポストプロセスとマテリアルの毎フレームの値・2 秒での破棄・ゲージと 23 s の再使用・リセット・画面（閃光と赤い単色と球）・カメラの揺れ（直した後に最大 68 cm）を確かめた（詳細は 04 記録の「確かめたこと」）
 
 - ステップ 5: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 8 件成功（`Wasami.Cascade.Build` を新設）、check_records OK、取り込み `import_dd_powers` を通しで（音 5・シェイク 1・カメラアニメ 2・テクスチャ 3・マテリアル 8・パーティクル 1。`Failed to compile` なし）、`P_ky_cutter2` の構造と `LODValidity` を書き出しと突き合わせ、分布の表・分布オブジェクト・材質のパラメータを読み戻した。旧版の実機で照準を撮り、PIE で同じ手順で撮って比べた（円の大きさ・縁・明滅の周期が合う。色と明るさ・火花はステップ 11）。照準からの移動も確かめた（詳細は 04 記録の「確かめたこと」）
 

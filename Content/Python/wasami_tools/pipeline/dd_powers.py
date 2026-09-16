@@ -1,12 +1,13 @@
 """Dark Deception's tablet powers: the sounds, camera shakes, camera anims, textures, materials and particle systems
-the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim) and the player's FX
-(UWasamiChameleonComponent) use. The icons on the tablet's sockets are the tablet's own (dd_tablet).
+the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim), Primal Fear (AWasamiPrimalPower)
+and the player's FX (UWasamiChameleonComponent) use. The icons on the tablet's sockets are the tablet's own (dd_tablet).
 
   M_Speedlines                  the original's graph, node for node (FlipBook at its defaults → T_Speedlines)
   M_DD_ChameleonCameraShake     the Chameleon pack's M_CameraShake, estimated (its graph is cooked away)
   M_DD_KySlash, M_DD_PPPRadialGradient, M_DD_DecalTeleport
                                 estimated masters of the teleport aim's materials (their graphs are cooked away); the
                                 original's paths hold instances of them with the original's parameter values
+  M_DD_Primal                   the estimated master of Primal Fear's sphere (M_05_Primal's graph is cooked away)
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the powers follow except the teleport (pak_reference).
 """
@@ -25,9 +26,11 @@ SOUNDS = (
     (1, "/Engine/VREditor/Sounds/UI/Teleport_Mode_Entered"),
     (1, "Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227"),
     (1, "/Engine/VREditor/Sounds/UI/Teleport_Committed"),
+    (2, "Audio/SharedGameplay/Stun_Wave_Attack_New_04"),  # Primal Fear
 )
 CAMERA_SHAKES = (
     (2, "UI/Menu/Streaks/BP_CameraShake_Streak"),  # the speed boost starts, the teleport moves (the same in both versions)
+    (2, "Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop"),  # Primal Fear, at a scale of 25
 )
 CAMERA_ANIMS = (
     (2, "Animation/Camera/CameraAnim_SpeedBoost"),  # the view turns red while the speed boost lasts
@@ -37,6 +40,7 @@ TEXTURES = (
     (2, "UI/Main/Powers/T_Speedlines"),    # UMG_SpeedBoost's lines (a 2 × 5 sheet; M_Speedlines reads it as 2 × 2)
     (2, "UI/Menu/Streaks/T_VignetteNew"),  # UMG_SpeedBoost's vignette
     (1, "ThirdParty/AdvancedMagicFX13/Textures/T_ky_slash01_4x4"),  # the teleport aim's slashes (4 × 4 frames)
+    (2, "Textures/05_Circus/T_05_PortalMaps"),  # Primal Fear's sphere (R sparkles, G a centred glow, B cloudy noise)
 )
 # Cascade systems (dd_particles), made after the materials they use.
 PARTICLE_SYSTEMS = (
@@ -67,6 +71,14 @@ DECAL_CONTRAST = 5.0
 DECAL_COLOR = (1.0, 0.105, 0.09, 1.0)
 DECAL_PULSE_LOW = 0.04
 DECAL_PULSE_HIGH = 0.6
+
+# Primal Fear's sphere (pak_reference_2): the original's path, and the master holding our estimate of its graph.
+PRIMAL = "Materials/05_Circus/M_05_Primal"
+PRIMAL_MASTER = "/Game/Pipeline/Materials/M_DD_Primal"
+PRIMAL_TEXTURE = "Textures/05_Circus/T_05_PortalMaps"
+# The export keeps a Panner (Panner_1) as the sample's coordinates, but not its speed: a placeholder until the sphere is
+# compared with the latest version's hospital.
+PRIMAL_PAN_SPEED = (0.1, 0.1)
 
 
 def _connect(a, a_pin, b, b_pin):
@@ -207,18 +219,58 @@ def _build_decal_teleport(mat):
     g.out(g.multiply(glow, "", pulse, "", -250, 50), "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 
+def _build_primal(mat):
+    """M_05_Primal (pak_reference_2), estimated. The cook kept its settings (translucent, two-sided, used with static
+    lighting; the default lit shading, as the cook writes any other), the parameters Color, Opacity and Desaturation, one
+    sample of T_05_PortalMaps at a Panner's coordinates, and an Add as the emissive colour's last node (a cook keeps no
+    material's opacity input, so whether it was connected is unknown). The estimate: Desaturation(Color × B,
+    Desaturation) + Color × R as the emissive colour, saturate(B + R) × Opacity as the opacity."""
+    mat.set_editor_property("two_sided", True)
+    mat.set_editor_property("used_with_static_lighting", True)
+    g = dd_stage._Graph(mat)
+    pan = g.node(unreal.MaterialExpressionPanner, -1300, 0)
+    pan.set_editor_property("speed_x", PRIMAL_PAN_SPEED[0])
+    pan.set_editor_property("speed_y", PRIMAL_PAN_SPEED[1])
+    tex = g.node(unreal.MaterialExpressionTextureSample, -1100, 0)
+    tex.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(PRIMAL_TEXTURE)))
+    tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    _connect(pan, "", tex, "UVs")
+    colour = g.vector("Color", (1.0, 0.0, 0.0, 1.0), -1100, -300)
+    clouds = g.multiply(colour, "RGB", tex, "B", -850, -200)
+    washed = g.node(unreal.MaterialExpressionDesaturation, -650, -200)
+    _connect(clouds, "", washed, "")
+    _connect(g.scalar("Desaturation", 0.0, -850, -50), "", washed, "Fraction")
+    sparkles = g.multiply(colour, "RGB", tex, "R", -650, -350)
+    glow = g.binary(unreal.MaterialExpressionAdd, washed, "", sparkles, "", -400, -250)
+    g.out(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    cover = g.binary(unreal.MaterialExpressionAdd, tex, "B", tex, "R", -850, 150)
+    clamped = g.node(unreal.MaterialExpressionSaturate, -650, 150)
+    _connect(cover, "", clamped, "")
+    opacity = g.multiply(clamped, "", g.scalar("Opacity", 1.0, -650, 300), "", -400, 200)
+    g.out(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+
+
+def parameter_defaults(rel, version):
+    """A material's scalar and vector parameter defaults from its export ({name: value}, {name: [r, g, b, a]}); a
+    default the export leaves out is the engine's (0, or black)."""
+    scalars, vectors = {}, {}
+    for e in dd_assets.export_json(rel, version)["exports"]:
+        p = e["props"]
+        if e["class"] == "MaterialExpressionScalarParameter":
+            scalars[p["ParameterName"]] = p.get("DefaultValue", 0.0)
+        elif e["class"] == "MaterialExpressionVectorParameter":
+            vectors[p["ParameterName"]] = p.get("DefaultValue", [0.0, 0.0, 0.0, 1.0])
+    return scalars, vectors
+
+
 def slash_parameters():
     """M_ky_slash01_4x4's parameter defaults and texture, from its export: ({name: value}, {name: [r, g, b, a]}, the
     texture's rel)."""
-    scalars, vectors, texture = {}, {}, None
+    scalars, vectors = parameter_defaults(KY_SLASH, 1)
+    texture = None
     for e in dd_assets.export_json(KY_SLASH, 1)["exports"]:
-        p = e["props"]
-        if e["class"] == "MaterialExpressionScalarParameter":
-            scalars[p["ParameterName"]] = p["DefaultValue"]
-        elif e["class"] == "MaterialExpressionVectorParameter":
-            vectors[p["ParameterName"]] = p["DefaultValue"]
-        elif e["class"] == "MaterialExpressionParticleSubUV":
-            texture = dd_assets.game_rel(p["Texture"])
+        if e["class"] == "MaterialExpressionParticleSubUV":
+            texture = dd_assets.game_rel(e["props"]["Texture"])
     return scalars, vectors, texture
 
 
@@ -243,11 +295,22 @@ def make_teleport_materials():
     return [a.get_path_name() for a in made]
 
 
+def make_primal_material():
+    """Primal Fear's sphere: the estimated master, and an instance of it at the original's path with the original's
+    parameter values."""
+    master = dd_assets.material(PRIMAL_MASTER, _build_primal, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
+    scalars, vectors = parameter_defaults(PRIMAL, 2)
+    instance = dd_assets.material_instance(dd_assets.asset_path(PRIMAL), master, scalars=scalars, vectors=vectors)
+    for asset in (master, instance):
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return [master.get_path_name(), instance.get_path_name()]
+
+
 def make_materials():
     speedlines = dd_assets.material(dd_assets.asset_path(SPEEDLINES), _build_speedlines,
                                     domain=unreal.MaterialDomain.MD_UI, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
     shake = dd_assets.material(CAMERA_SHAKE_MASTER, _build_camera_shake, domain=unreal.MaterialDomain.MD_POST_PROCESS)
-    return [speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials()
+    return [speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials() + make_primal_material()
 
 
 def import_all():

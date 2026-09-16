@@ -2,6 +2,13 @@
 #include "../WasamiPowerTypes.h"
 #include "../WasamiTabletWidget.h"
 #include "../WasamiTeleportAim.h"
+#include "../WasamiPrimalPower.h"
+#include "WasamiTestEnemy.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/PostProcessComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/CollisionProfile.h"
+#include "Engine/World.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -95,6 +102,104 @@ bool FWasamiTeleportDistanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("two notches down in a frame"), AWasamiTeleportAim::StepAlpha(0.6f, -2.f), 0.4f, 1e-5f);
 	TestEqual(TEXT("clamped at 1"), AWasamiTeleportAim::StepAlpha(0.95f, 1.f), 1.f, 1e-5f);
 	TestEqual(TEXT("clamped at 0"), AWasamiTeleportAim::StepAlpha(0.05f, -1.f), 0.f, 1e-5f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiPrimalTimelineTest, "Wasami.Powers.PrimalTimeline",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiPrimalTimelineTest::RunTest(const FString& Parameters)
+{
+	// BP_PrimalPower's tracks at the times of the research's table (Bezier over the exported tangents).
+	struct FRow
+	{
+		float Time, Growth, Fade, Desaturation, Opacity;
+	};
+	const FRow Rows[] = {
+		{0.f, 0.f, -0.000698f, 0.015488f, 1.f},
+		{0.1f, 0.150556f, 0.029344f, 0.013753f, 0.975541f},
+		{0.2f, 0.286645f, 0.132451f, 0.009453f, 0.945612f},
+		{0.3f, 0.408825f, 0.320608f, 0.004881f, 0.910149f},
+		{0.5f, 0.613689f, 1.f, 0.004152f, 0.822367f},
+		{1.f, 0.921497f, 1.f, 0.159048f, 0.438256f},
+		{1.2f, 0.968728f, 1.f, 0.576909f, 0.229825f},
+		{1.4f, 0.982647f, 1.f, 0.994729f, 0.065877f},
+		{2.f, 0.983488f, 1.f, 0.996395f, 0.002581f},
+	};
+	for (const FRow& Row : Rows)
+	{
+		const FString At = FString::Printf(TEXT(" at %.1f s"), Row.Time);
+		TestEqual(TEXT("float") + At, AWasamiPrimalPower::GrowthCurve().Eval(Row.Time), Row.Growth, 1e-5f);
+		TestEqual(TEXT("float2") + At, AWasamiPrimalPower::PrimalFadeCurve().Eval(Row.Time), Row.Fade, 1e-5f);
+		TestEqual(TEXT("desaturation") + At, AWasamiPrimalPower::DesaturationCurve().Eval(Row.Time), Row.Desaturation, 1e-5f);
+		TestEqual(TEXT("opacity") + At, AWasamiPrimalPower::OpacityCurve().Eval(Row.Time), Row.Opacity, 1e-5f);
+	}
+
+	// The volumes' weights: the tint starts a little over 1 (float2 dips below 0) and is gone at 0.5 s, the flash at 0.3.
+	TestEqual(TEXT("the tint's weight at the start"), AWasamiPowerBurst::TintWeight(-0.000698f), 1.000698f, 1e-6f);
+	TestEqual(TEXT("the flash's weight at the start"), AWasamiPowerBurst::FlashWeight(-0.000698f), 1.f);
+	TestEqual(TEXT("the tint's weight at 0.2 s"), AWasamiPowerBurst::TintWeight(0.132451f), 0.867549f, 1e-6f);
+	TestEqual(TEXT("the flash's weight at 0.2 s"), AWasamiPowerBurst::FlashWeight(0.132451f), 0.558497f, 1e-5f);
+	TestEqual(TEXT("the flash is gone at 0.3 s"), AWasamiPowerBurst::FlashWeight(0.320608f), 0.f);
+	TestEqual(TEXT("the tint is gone at 0.5 s"), AWasamiPowerBurst::TintWeight(1.f), 0.f);
+
+	// The class's volumes and sphere, as the export sets them.
+	const AWasamiPrimalPower* Defaults = GetDefault<AWasamiPrimalPower>();
+	const UPostProcessComponent* Tint = Defaults->GetTint();
+	const UPostProcessComponent* Flash = Defaults->GetFlash();
+	TestTrue(TEXT("both volumes are unbound"), Tint->bUnbound && Flash->bUnbound);
+	TestEqual(TEXT("the tint starts at weight 0"), Tint->BlendWeight, 0.f);
+	TestTrue(TEXT("the tint washes out the colour"), Tint->Settings.bOverride_ColorSaturation && Tint->Settings.ColorSaturation == FVector4(0., 0., 0., 1.));
+	TestTrue(TEXT("the tint's red gain"), Tint->Settings.bOverride_ColorGain && Tint->Settings.ColorGain.Equals(FVector4(1.61, 0.129563, 0., 1.), 1e-6));
+	TestFalse(TEXT("the flash has no gain of its own"), Flash->Settings.bOverride_ColorGain || Flash->Settings.bOverride_ColorSaturation);
+	TestTrue(TEXT("the flash's midtones"), Flash->Settings.bOverride_ColorGainMidtones && Flash->Settings.ColorGainMidtones == FVector4(100., 100., 100., 1.));
+	TestTrue(TEXT("the flash's fringe"), Flash->Settings.bOverride_SceneFringeIntensity && Flash->Settings.SceneFringeIntensity == 50.f);
+	TestTrue(TEXT("the flash's gamma override at its default"), Flash->Settings.bOverride_ColorGamma && Flash->Settings.ColorGamma == FVector4(1., 1., 1., 1.));
+	TestTrue(TEXT("the sphere collides with nothing"), Defaults->GetSphere()->GetCollisionEnabled() == ECollisionEnabled::NoCollision);
+	TestEqual(TEXT("the class's Range"), Defaults->Range, 1500.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiPrimalStunTest, "Wasami.Powers.PrimalStun",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiPrimalStunTest::RunTest(const FString& Parameters)
+{
+	// An actor drops Blueprint events (Set State) until its world has initialised its actors.
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("WasamiPrimalStunTest"));
+	World->InitializeActorsForPlay(FURL());
+	const float Range = FWasamiPowerTuning::ForLevel(5).PrimalRange;
+
+	// Inside the range: near, near its edge, and a floor above (no line of sight is asked for).
+	AWasamiTestEnemy* Near = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(1000., 0., 0.));
+	AWasamiTestEnemy* Edge = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(0., Range - 50., 0.));
+	AWasamiTestEnemy* Above = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(0., 0., 3000.));
+	// Out of it, and an enemy whose body is not a pawn.
+	AWasamiTestEnemy* Far = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(-(Range + 100.), 0., 0.));
+	AWasamiTestEnemy* NotPawn = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(500., 500., 0.));
+	NotPawn->FindComponentByClass<UCapsuleComponent>()->SetCollisionObjectType(ECC_WorldDynamic);
+	// A pawn body with the Enemy tag but without the interface (the original's Zone 2 matron): not stunned.
+	AActor* TagOnly = World->SpawnActor<AActor>();
+	UCapsuleComponent* TagOnlyBody = NewObject<UCapsuleComponent>(TagOnly);
+	TagOnlyBody->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+	TagOnly->SetRootComponent(TagOnlyBody);
+	TagOnlyBody->RegisterComponent();
+	TagOnly->SetActorLocation(FVector(-500., 0., 0.));
+	TagOnly->Tags.Add(TEXT("Enemy"));
+
+	const int32 Stunned = AWasamiPrimalPower::StunEnemies(World, FVector::ZeroVector, Range);
+	TestEqual(TEXT("three enemies are stunned"), Stunned, 3);
+	for (const AWasamiTestEnemy* Each : {Near, Edge, Above})
+	{
+		TestEqual(TEXT("one Set State"), Each->SetStateCount, 1);
+		TestTrue(TEXT("the state is Stun"), Each->State == EWasamiEnemyState::Stun);
+		TestFalse(TEXT("not by an orb"), Each->bLastByOrb);
+	}
+	TestEqual(TEXT("the far one is left alone"), Far->SetStateCount, 0);
+	TestEqual(TEXT("a body that is not a pawn is left alone"), NotPawn->SetStateCount, 0);
+
+	World->DestroyWorld(false);
+	World->RemoveFromRoot();
 	return true;
 }
 

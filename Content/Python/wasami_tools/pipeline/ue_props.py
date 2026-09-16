@@ -29,6 +29,10 @@ def value(raw, current):
     """An exported value → the Python value for a property whose current value is `current`, or None when the export's
     shape is not one this reads (object references, arrays)."""
     if isinstance(raw, dict):
+        # Only numbers make a vector or a colour; a struct of structs under the same names (a camera shake's
+        # LocOscillation, whose X, Y and Z are oscillators) goes member by member.
+        if not all(isinstance(v, (int, float)) for v in raw.values()):
+            return None
         if {"X", "Y", "Z", "W"} <= raw.keys():
             return unreal.Vector4(raw["X"], raw["Y"], raw["Z"], raw["W"])
         if {"X", "Y", "Z"} <= raw.keys():

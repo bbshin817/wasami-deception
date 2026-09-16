@@ -10,6 +10,7 @@ class UCameraShakeBase;
 class USoundBase;
 class UWasamiCameraAnim;
 class AWasamiTeleportAim;
+class AWasamiPrimalPower;
 class UWasamiSpeedBoostWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPower, Power);
@@ -18,8 +19,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPo
  * The tablet's powers, after Dark Deception's BP_DD_PlayerCharacter, BP_Powers and UMG_TabletPowers (pak_reference_2),
  * which each hold a part of it for the one player: the unlocked powers and the two sockets that point into them, Q / E
  * to use a socket and 1 / 2 to cycle it, each power's gauge on the tablet, the values of the upgrade level, the reset
- * on death, and the powers themselves (the speed boost, and the teleport with its aim, AWasamiTeleportAim). The
- * tablet's screen only shows what this holds.
+ * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, and Primal
+ * Fear, AWasamiPrimalPower). The tablet's screen only shows what this holds.
  */
 UCLASS(ClassGroup = (Wasami), meta = (BlueprintSpawnableComponent))
 class WASAMI_DECEPTION_API UWasamiPowerComponent : public UActorComponent
@@ -135,6 +136,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<AWasamiTeleportAim> TeleportAimClass;
 
+	/** BP_PrimalPower: what Primal Fear spawns. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<AWasamiPrimalPower> PrimalPowerClass;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -168,6 +173,12 @@ private:
 	/** Reset Teleport with BP_Powers' Stop Teleport Timeline: a take-back, or the reset on death. */
 	void ResetTeleport();
 
+	void UsePrimal();
+	/** 0.06 s after a use: the cooldown starts. */
+	void StartPrimalCooldown();
+	/** The end of the cooldown (the Gate before it always lets it through). */
+	void RefillPrimal() { Refill(EWasamiPower::PrimalFear); }
+
 	UPROPERTY(Transient)
 	TArray<FWasamiPowerSlot> Powers;
 
@@ -200,6 +211,10 @@ private:
 	/** The spawned BP_Power_Teleport (the original keeps the spawn's return value; a destroyed one stays in it). */
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiTeleportAim> TeleportAim;
+
+	/** What Primal Fear's actor uses, held from the start. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UObject>> LoadedPrimalAssets;
 
 	/** What the boost's widget shows, held from the start. */
 	UPROPERTY(Transient)
@@ -240,4 +255,7 @@ private:
 	/** DoOnce_5 (its refill): starts closed and opens on a use. */
 	bool bTeleportRefillOpen = false;
 	FTimerHandle TeleportRefillTimer;
+
+	FTimerHandle PrimalCooldownTimer;
+	FTimerHandle PrimalRefillTimer;
 };
