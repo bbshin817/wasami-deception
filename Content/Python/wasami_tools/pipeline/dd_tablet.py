@@ -11,7 +11,6 @@ ourselves (the originals' graphs are cooked away), which go next to the stage's 
 Sources: pak_reference (UE 4.21) for the tablet and its UI, pak_reference_2 (UE 4.24) for the hospital's map images
 and the icons of the four powers the older tablet does not show (Telepathy, Primal Fear, Telekinesis, Vanish).
 """
-import json
 import os
 
 import unreal
@@ -113,30 +112,10 @@ def asset(rel):
     return paths.DD_ROOT + "/" + rel
 
 
-def _texture_settings(version, rel):
-    """The original texture's sRGB, compression and LOD group, from the export's _textures.json."""
-    with open(os.path.join(dd_assets.pak(version), "_textures.json"), encoding="utf-8") as f:
-        table = json.load(f)
-    key = "DDeception/Content/%s.uasset" % rel
-    entry = table.get(key)
-    if entry is None:
-        raise KeyError("no texture %s in %s/_textures.json" % (key, dd_assets.pak(version)))
-    return {"srgb": entry["srgb"], "compression": entry["compression"], "lodGroup": entry["lod_group"]}
-
-
 # ------------------------------------------------------------------------------------------------ textures / mesh
 def import_textures():
     """Imports the PNGs the tablet uses with the original's texture settings."""
-    done = []
-    for version, rel in TEXTURES:
-        entry = _texture_settings(version, rel)
-        entry["file"] = os.path.join(dd_assets.pak(version), "DDeception", "Content", *rel.split("/")) + ".png"
-        entry["asset"] = asset(rel)
-        if not os.path.exists(entry["file"]):
-            raise FileNotFoundError(entry["file"])
-        dd_stage.import_texture(entry)
-        done.append(entry["asset"])
-    return done
+    return [dd_assets.texture(rel, version) for version, rel in TEXTURES]
 
 
 def import_mesh():
@@ -220,22 +199,6 @@ def ensure_render_target():
     return path
 
 
-def _master(asset_path, build, domain_ui=False):
-    """Loads or creates one of our master materials and (re)builds its graph."""
-    if EAL.does_asset_exist(asset_path):
-        mat = unreal.load_asset(asset_path)
-        MEL.delete_all_material_expressions(mat)
-    else:
-        folder, name = paths.split(asset_path)
-        mat = _tools().create_asset(name, folder, unreal.Material, unreal.MaterialFactoryNew())
-    if domain_ui:
-        mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_UI)
-        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-    build(mat)
-    MEL.recompile_material(mat)
-    return mat
-
-
 def _build_map_plane(mat):
     """MM_Map_Parent: the map image as base colour on a lit surface — the capture reads SCS_BaseColor, which an unlit
     material does not write."""
@@ -314,9 +277,10 @@ def _build_powers(mat):
 def make_minimap_materials():
     """The three masters and the instances the level and the screen use."""
     ensure_render_target()
-    plane = _master(MAP_PLANE_MASTER, _build_map_plane)
-    _master(MAP_SCREEN_MASTER, _build_map_screen, domain_ui=True)
-    powers = _master(POWERS_MASTER, _build_powers, domain_ui=True)
+    plane = dd_assets.material(MAP_PLANE_MASTER, _build_map_plane)
+    ui = {"domain": unreal.MaterialDomain.MD_UI, "blend_mode": unreal.BlendMode.BLEND_TRANSLUCENT}
+    dd_assets.material(MAP_SCREEN_MASTER, _build_map_screen, **ui)
+    powers = dd_assets.material(POWERS_MASTER, _build_powers, **ui)
 
     out = []
     for rel, tex_rel in MAPS:

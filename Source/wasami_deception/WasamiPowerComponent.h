@@ -8,6 +8,8 @@
 class AWasamiPlayerCharacter;
 class UCameraShakeBase;
 class USoundBase;
+class UWasamiCameraAnim;
+class UWasamiSpeedBoostWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPower, Power);
 
@@ -102,6 +104,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSoftClassPtr<UCameraShakeBase> BoostShakeClass;
 
+	/** CameraAnim_SpeedBoost: the view turns red while the speed boost lasts. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSoftObjectPtr<UWasamiCameraAnim> BoostCameraAnim;
+
+	/** UMG_SpeedBoost: the speed lines and the vignette while the speed boost lasts. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<UWasamiSpeedBoostWidget> BoostWidgetClass;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -124,6 +134,8 @@ private:
 	void UseSpeedBoost();
 	void EndSpeedBoost();
 	void RefillSpeedBoost();
+	/** Sprinting Effects: the FX's camera shake follows the speed. */
+	void UpdateSprintingEffects();
 
 	UPROPERTY(Transient)
 	TArray<FWasamiPowerSlot> Powers;
@@ -143,6 +155,17 @@ private:
 
 	UPROPERTY(Transient)
 	TSubclassOf<UCameraShakeBase> LoadedBoostShake;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiCameraAnim> LoadedBoostCameraAnim;
+
+	/** What the boost's widget shows, held from the start. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UObject>> LoadedBoostWidgetAssets;
+
+	/** The UMG_SpeedBoost on the screen (the original's CallFunc_Create_ReturnValue). */
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiSpeedBoostWidget> BoostWidget;
 
 	FWasamiPowerGauge Gauges[WasamiPowerCount];
 	int32 LeftIndex = 0;
@@ -164,4 +187,7 @@ private:
 	bool bBoostRefillOpen = false;
 	FTimerHandle BoostEndTimer;
 	FTimerHandle BoostRefillTimer;
+	FTimerHandle SprintingEffectsTimer;
+	/** CallFunc_PlayCameraAnim_ReturnValue: the boost's camera anim, which the reset stops. */
+	int32 BoostCameraAnimHandle = 0;
 };

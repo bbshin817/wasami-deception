@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-16 21:15
+updated: 2026-09-16 22:10
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -22,8 +22,8 @@ updated: 2026-09-16 21:15
 
 - [x] 1. 原作データの調査をまとめる（`.claude/references/powers/`）、ユーザーに 4 点を確認
 - [x] 2. パワーの土台（C++）… 2026-09-16 完了。`UWasamiPowerComponent`（枠・Q/E/1/2・2 段の連打防止・ゲージ・強化段階の表・死亡のリセット・スピードブースト Lv5）、敵とシャードのインターフェース、タブレットの 6 アイコンと弾み、パワーの音とシェイクの取り込み、パイプラインの素材のソフト参照化（エディタが落ちた件の対策）。実装記録は 04 を新設し、00〜03 を直した
-- [ ] 3. スピードブーストの演出: `CameraAnim_SpeedBoost` の色調（ブレンド 0.5 s）、`UMG_SpeedBoost`（集中線 `M_Speedlines`・ビネット `T_VignetteNew`）、Chameleon（放射ブラー・画面の揺れ。0〜870 cm/s に連動）
-- [ ] 4. テレポーテーションの仕組み（旧版）: Teleport チャンネル（旧版の既定 Overlap）、病院のゾーン（`hospital_zone_01/02_teleport` と救急車の屋根の箱。複雑コリジョン、非表示、QueryOnly）をレベルの組み立てに足す、照準のアクタ（SpringArm のラグ・500 cm の下向きトレース・ホイール・左クリック）、0.12 s 後のスイープ移動（カプセルの WorldDynamic / Pawn を Ignore → Block）、`CameraAnim_Teleport`（FOV・露出・色調を C++ で評価）、シェイク、音 4 つ（照準ループを含む）、照準中の同じ側の Q で取り消し、再使用 5 s、最大距離 1500（Lv5）
+- [x] 3. スピードブーストの演出 … 2026-09-16 完了。`CameraAnim_SpeedBoost` の赤い色調（UE4 の CameraAnim を C++ で再生する `UWasamiCameraAnim` / `UWasamiCameraAnimModifier` を新設）、`UMG_SpeedBoost`（`UWasamiSpeedBoostWidget`、原作のグラフどおりの `M_Speedlines` と `T_VignetteNew`）、FX（`UWasamiChameleonComponent`、推定の `M_DD_ChameleonCameraShake`）。放射ブラーは本家で無効なので作らない。取り込みのテクスチャとマスターの作り方を `dd_assets` に共通化。実装記録は 01〜04 と索引を直した
+- [ ] 4. テレポーテーションの仕組み（旧版）: Teleport チャンネル（旧版の既定 Overlap）、病院のゾーン（`hospital_zone_01/02_teleport` と救急車の屋根の箱。複雑コリジョン、非表示、QueryOnly）をレベルの組み立てに足す、照準のアクタ（SpringArm のラグ・500 cm の下向きトレース・ホイール・左クリック）、0.12 s 後のスイープ移動（カプセルの WorldDynamic / Pawn を Ignore → Block）、`CameraAnim_Teleport`（ステップ 3 の `UWasamiCameraAnimModifier` で再生。露出・色調はそのまま動く。FOV のトラックの再生を足す）、シェイク、音 4 つ（照準ループを含む）、照準中の同じ側の Q で取り消し、再使用 5 s、最大距離 1500（Lv5）
 - [ ] 5. テレポーテーションの見た目: デカール `M_Decal_Teleport`（推定）、パーティクル `P_ky_cutter2`（Cascade を Python で組めるか確かめる。だめなら Niagara）
 - [ ] 6. 一瞬の演出の共通部品（全画面のポストプロセス 2 つとカーブ）と Primal Fear（半径 3500 の重なり判定で敵に `Set State(Stun)`、球 `M_05_Primal`、シェイク `ElevatorShakeStop` ×25、`Stun_Wave_Attack_New_04`、再使用 23 s）
 - [ ] 7. Vanish（カプセルの Camera 応答、`Player Vanish` の通知、`UMG_Vanish` と `MM_WobblyVignette`、ポストプロセス、煙 `PPP_VanishPuff`、15 s・再使用 15 s）
@@ -35,7 +35,7 @@ updated: 2026-09-16 21:15
 
 ## 次にやること
 
-ステップ 3（スピードブーストの演出）を始める。まず `.claude/references/powers/01-player-system.md` の §5（とくに §5.1 の `CameraAnim_SpeedBoost`、§5.2 の `Sprinting Effects`・`UMG_SpeedBoost`）と、実装記録 `04-powers.md` の「スピードブースト」を読む。`CameraAnim_SpeedBoost` の書き出し（`pak_reference_2/_camera/CameraAnim_SpeedBoost.json`）、`UMG_SpeedBoost`（`UI/Main/Powers/`）、`M_Speedlines`・`T_VignetteNew`、Chameleon（`/Game/ThirdParty/Chameleon/Chameleon`）の中身を確かめ、どう作るかを「決定事項」に書いてから作る。素材は `dd_powers.py` に足し、C++ ではソフト参照で持つ（`WasamiAssets.h`）。
+ステップ 4（テレポーテーションの仕組み、旧版）を始める。まず `.claude/references/powers/02-teleport.md`（§1 の流れ、§5.1 の `CameraAnim_Teleport` と「FOV の基準（未確定）」、ゾーンとコリジョンの節）と、実装記録 `04-powers.md` の「カメラアニメの再生」、`01-stage-pipeline.md` のレベルの組み立て（`dd_level.py`）を読む。FOV のトラックの基準（`BaseFOV` 137.24 か t=0 のキーか）は、手元の旧版（`Launch-Classic-Ch3.cmd`）の 60 fps の収録で判別できる（本家の起動はユーザーの確認を取る。エディタと同時に動かさない）。規模が大きいので、4a（チャンネルとゾーンの配置、照準のアクタと移動）と 4b（カメラアニメの FOV・シェイク・音・取り消し・再使用）に分けてよい。
 
 ## 決定事項
 
@@ -58,16 +58,30 @@ updated: 2026-09-16 21:15
 - 2026-09-16（ユーザーの回答）: 落ちたエディタの起動し直しと、素材の取り込み・テスト・PIE の確認（エディタへの Q/E/1/2/Space の入力を含む）まで進めてよい。
 - 2026-09-16: パイプラインが作る素材は C++ のコンストラクタで読まず、ソフト参照（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に既定のパスを入れる）にして BeginPlay / RebuildWidget で読む。起動時に読むとルートに入り、以後の作り直しでエディタが落ちるため（再開時の注意）。この先のステップで推定のマテリアルを何度も作り直すので、ここで直しておく。
 - 2026-09-16: テストは `Source/wasami_deception/Tests/` に置き、モジュールのヘッダーは `../` で読む（Build.cs に include パスを足すより変更が小さい）。
+- 2026-09-16（ユーザーの回答、ステップ 3）: エディタを閉じてビルドし開き直すこと、取り込み・テスト・PIE の確認（エディタへの Q/E の入力を含む）まで進めてよい。
 - 2026-09-16: 実装記録は、パワーの仕組みを `04-powers.md` として**このステップで新設**する（新しいソースはどれかの記録に載せる決まりのため）。索引の予定表の番号は 1 つずつ後ろにずらす。
+- 2026-09-16（ステップ 3 の調査）: **放射ブラーは作らない**。最新版のプレイヤーの子アクタ `FX`（`Chameleon`）は `Radial Blur`（有効フラグ）が CDO で false、プレイヤーのテンプレートは `Custom Depth Highlighter` 系しか上書きせず、`Radial Blur` を true にするコードもどこにも無い（`Chameleon_C.Radial Blur` を書くのはプレイヤーの `Radial Blur Width` だけ）。`InitChameleon` は無効な効果の関数を素通りするので、ブースト中の `Radial Blur Width` の書き込みは絵に出ない。効くのは `Camera Shake`（ブースト中だけ true、`ShakePower` = 速さ 0〜870 → 0〜0.003、`ShakeFQ` → 0〜15）だけ。
+- 2026-09-16（ステップ 3）: Chameleon は「プレイヤーに付けた範囲なしの PostProcess に、有効な効果の MID をブレンダブル（重み 1）で足す」作り（`InitChameleon` → `Set Advanced Effect Features` → `AddOrUpdateBlendable`、`ApplyChameleonSettings` が毎ティック設定を上書きして外す）。本作は `UWasamiChameleonComponent`（アクタコンポーネント）をプレイヤーに付け、`BeginPlay` で範囲なしの `UPostProcessComponent` を作って持ち、`bCameraShake` が真の間だけ揺れのマテリアルの MID を足す（`UPostProcessComponent` を継ぐ案は MinimalAPI でリンクできず取りやめた）。揺れの詳細設定は CDO の既定（ブレンド Normal・不透明度 1・カスタム深度なし）なので効果をそのまま出す。`Native Post Process` は上書きなし。
+- 2026-09-16（ステップ 3）: `M_CameraShake`（Chameleon）はグラフの大半（HLSL・数式・シーンテクスチャ）が書き出されていない（残っているのは `ShakePower` 既定 0.01・`ShakeFQ` 既定 50・`MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking`）。**推定**で `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` を作る: 画面の UV を `MakeFloat2(sin(Time×FQ), cos(Time×FQ)) × Power` だけずらして PostProcessInput0 を読む（UE の Sine/Cosine は周期 1 = FQ Hz）。ステップ 11 で実機と見比べる。
+- 2026-09-16（ステップ 3）: `M_Speedlines` は書き出しにグラフが残っている（`FlipBook` 関数の呼び出しを入力なしで置き、その出力 2 番を `T_Speedlines` の UV に、RGB を Emissive へ。UI・Translucent、Opacity は未接続 = 1）。UE 5.8 の `FlipBook` は 4.24 の書き出しと同じ 38 ノードで、入力の既定は列 2・行 2・位相 Time（関数の中で frac）・UV TexCoord0。出力の並びは `SortPriority` だけで決まる（4.24 と同じ比較）ので、同じ関数を既定のまま呼び出力 2 番をつなげば原作と同じ絵になる → 推定ではなく原作どおりとして `/Game/DD/UI/Main/Powers/M_Speedlines` に作る。UI マテリアルの色はウィジェットの色と不透明度（頂点カラー）が掛かる（UE 5.8 `SlateElementPixelShader.usf` の `GetColor`）ので、赤・不透明度 0〜0.15 がそのまま効く。
+- 2026-09-16（ステップ 3）: `T_Speedlines`（3841×5404）は原作でも非圧縮 BGRA8・ミップ 1（`_textures.json`）。性能のガイドの「素材の設定は原作のまま」に従い TC_Default・sRGB・UI のまま取り込み、実際の大きさを測って記録する。
+- 2026-09-16（ステップ 3）: **カメラアニメは C++ の汎用の再生で写す**（ステップ 4 の `CameraAnim_Teleport` も同じ部品で再生する）。UE 5.8 に `UCameraAnim` は無く、後継の `UCameraAnimationSequence` は Python から PP のトラックを組むのが難しく確かめにくい。データは取り込みで `UWasamiCameraAnim`（データアセット: 長さ・BaseFOV・基準の PP・重み・PP のトラックのキーと接線）に写し、`UWasamiCameraAnimModifier`（`UCameraModifier`）が再生する。評価は UE4 の Matinee と同じ `FInterpCurve`（保存された接線のまま）。ブレンドは UE 5.8 の後継（`CameraAnimationCameraModifier.cpp`）と同じ形（直線、ブレンドインとアウトの重みの小さい方、PP は `VTBlendOrder_Base` = 通常のカメラの下）。`Duration` は「ブレンドを含む長さ」（UE 5.8 の `DurationOverride` の説明。UE4 の実装は手元に無い）とし、`Duration − BlendOut` で止め始める。FOV のトラックはステップ 4 で足す（基準の FOV が未確定のため）。Move トラック（どちらのアニメも原点の 1 キー）は扱わない。基準の PP の `bOverride_FilmWhitePoint` は UE5 に無い（既定値の中立なので落としても同じ）。
+- 2026-09-16（ステップ 3）: ブーストの演出の出し入れは原作どおり。使ったとき `PlayCameraAnim(CameraAnim_SpeedBoost, 1, 1, 0.5, 0.5, loop なし, Duration = 効果時間)`・`Sprinting Effects` のタイマー（0.001 s）と `Camera Shake = true`・`UMG_SpeedBoost` を `AddToViewport(1)`。終わり（@30）でタイマーを止め `Camera Shake = false`・ウィジェットを外す（カメラアニメは止めない。効果時間で自然に終わる）。死亡のリセット（@37067）だけカメラアニメを `Stop(true)` で即座に止めてから終わりの処理へ。
+- 2026-09-16（ステップ 3 で見つけたこと。M4 向け）: プレイヤーの Chameleon はテンプレートで `Custom Depth Highlighter (Clip)` が常に有効（縁取りの色 (1,0,0)、中の色 (0.0802,0,0)）。病院の `BP_06_ReaperNurse` を含む敵が `SetRenderCustomDepth` を呼ぶので、敵の赤い縁取りはこの仕組み。敵を作るときに足す。
 
 ## 再開時の注意
 
-- 2026-09-16 21:15 の時点で、エディタは起動している（PID 28568、セッション 1、`L_Hospital_Zone1` を開いている、PIE は止めた、未保存の変更なし）。操作のエージェント（`Tools/desktop.py`）は止めた。MCP はエディタを開き直した後に切れている（`/mcp` の再接続はユーザーに頼む。それまでは `Tools/ue_remote.py` で `from wasami_tools.toolsets.dd import WasamiDDTools` を呼べば同じ）。
+- 2026-09-16 22:10 の時点（ステップ 3 の終わり）で、エディタは起動している（PID 24460、セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存の変更なし）。ビルドは済み（ステップ 3 の最後にテストだけ Live Coding で直した。次のフルビルドで取り込まれる）。操作エージェント（`Tools/desktop.py`）は止めた。MCP は開き直しで切れたまま（`Tools/ue_remote.py` で同じことができる）。
+- **C++ で `UPostProcessComponent`・`ULegacyCameraShake` を継がない**（MinimalAPI で他のモジュールからはリンクできない。ステップ 3 で一度ビルドが落ちた）。
+- PIE で「走りながら」の絵を撮るときは、エディタの Python で `unreal.register_slate_post_tick_callback` に `player.add_movement_input(forward, 1.0, False)` を入れて前進させ、その間に `Tools/desktop.py shot` で撮る（`hold w` の間はエージェントが撮影できない）。終わったら `unregister_slate_post_tick_callback`。PIE の `shot showui` はエディタ全体を撮りビューポートが黒くなるので使えない。画面に載ったウィジェットは `unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, True)`（False だと外したものも GC まで数える）。`unreal.Rotator` はキーワード（`roll=, pitch=, yaw=`）で作る。開始地点は (5620, −23410, 90.15)・ヨー 180 で、前方（駐車場）に 30 m ほど走れる。
+- エディタが背面だと Automation テストは「10 FPS 待ち」で止まる（3 FPS）。エディタが前面になると進む。
 - **エディタが落ちた件（20:36）は解決済み**: C++ のコンストラクタで読んだ素材は起動時にルートに入り、作り直すと `!IsRooted()` で落ちる。C++ はパイプラインの素材をソフト参照で持つように直し（00 記録）、再起動後に `obj refs` で `M_DD_MapPlane` がルートに入っていないこと（起動時に読まれる `WorldGridMaterial` には `(root)` が付く）を確かめてから取り込みをやり直した。以後、C++ に素材を足すときは `ConstructorHelpers` を使わない。
 - `Tools/desktop.py` で PIE に入力を送るときは、ビューポートを 1 回クリックして焦点を渡してからキーを送る（クリックしないとキーが届かなかった）。PIE を始めた直後に前面にある窓がテストのログなどのときは、先に閉じる。
 - 画面の撮影 1 回に数秒かかるので、時間に依存する確認は `unreal.GameplayStatics.get_time_seconds` と一緒に読む（scratchpad の `probe_powers.py` がパワーの状態を読む。scratchpad はセッションごとなので、要るときは作り直す）。
 
 ## 検証
+
+- ステップ 3: C++ ビルド成功（警告なし）、`Automation RunTests Wasami` 5 件成功（`Wasami.CameraAnim.Playback`・`Tracks` を新設）、check_records OK（00〜04）、取り込み `import_dd_powers`（音 2・シェイク 1・カメラアニメ 1・テクスチャ 2・マテリアル 2）と `import_dd_tablet`（前回と同じ数）、PIE でブーストの色調・集中線とビネット・揺れの値（950 cm/s で 0.003 / 15）・終わりの片付け・リセットの即時停止を確かめた（詳細は 04 記録の「確かめたこと」）
 
 - check_records: OK（ステップ 2。00〜04 の 5 件）
 - C++ ビルド: 成功（ステップ 2、警告なし）

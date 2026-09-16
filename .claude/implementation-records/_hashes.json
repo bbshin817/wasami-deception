@@ -24,36 +24,43 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "cee142833ce3d6627eef28ee642909c67e36a88b",
+    "Content/Python/wasami_tools/toolsets/dd.py": "cadf8b4b5191c1d5aab70412f4f999c5ce4c4138",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "d9b8b93f221c9a9d23c25be0f69c4cdabdfa1254",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "55c21f8674f2a9da94db432266578dfb9b1709e2",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "438caf68011d4de2894af948ceaaa3bc7657a1c3",
-    "Content/Python/wasami_tools/pipeline/dd_assets.py": "bb9de945826a244744b886fb10ed690b6740714e",
+    "Content/Python/wasami_tools/pipeline/dd_assets.py": "3300d046eb9a455538301ab09c5333424e34d377",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "c49867504611d05c4a85b11a48d937bdeb01acbb",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "399aea98525871ec4be06bf75d178b48b52561c6",
-    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "7def588bca9c9a2d5256e5046376a74227dcab7a",
-    "Content/Python/wasami_tools/pipeline/dd_powers.py": "ee606858d480a94171c97d5f55d6f2d75d9ca839"
+    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "c4ad6486b3e11293c30a85c427184e2535763b62",
+    "Content/Python/wasami_tools/pipeline/dd_powers.py": "210ca00bf5113229b14c2eda8b9f92a248db5557"
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "a1271ddcb0d06113947b55c45a483ae86d3fccb9",
     "Source/wasami_deception/WasamiGameMode.cpp": "f0be668d22ce3427c581f1ce5fcf903cb1f610b7",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "518cc497101491717121bf137d4087ca831256fe",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "7b46e104e16d3fb8ba051719855404951f855909"
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "08a9e63bf8a4333f474f50879259c80ec517003d",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "b0eabe32fe0246ee3c34a4305e002e63bd876c7a"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "fb1807d7af50e6fa42e2764a3015835aa23857e6",
     "Source/wasami_deception/WasamiTabletWidget.cpp": "47712005d8b93f6dff35fbb11ba7ba6a9adedc6f",
-    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "7def588bca9c9a2d5256e5046376a74227dcab7a"
+    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "c4ad6486b3e11293c30a85c427184e2535763b62"
   },
   "04-powers.md": {
     "Source/wasami_deception/WasamiPowerTypes.h": "25ea2a2f5e2a89f7b72d1428cdc557777fbba069",
     "Source/wasami_deception/WasamiPowerTypes.cpp": "cf4a593d47aefb34a45626aec0183ac1dd059079",
-    "Source/wasami_deception/WasamiPowerComponent.h": "4111fa91fac51229e8bab3f21b793f6d8eb3e07d",
-    "Source/wasami_deception/WasamiPowerComponent.cpp": "f3e4892051518bfcf56a8962a3a3877290a5348f",
+    "Source/wasami_deception/WasamiPowerComponent.h": "19c7396092990071e6faca18914cf44e8f377d3e",
+    "Source/wasami_deception/WasamiPowerComponent.cpp": "7b9b6859855f32fb9f616f2d5892857d42c92aaa",
     "Source/wasami_deception/WasamiEnemyInterface.h": "2f02527241393d4ff49482cd9f903b1e6b5d6a2a",
     "Source/wasami_deception/WasamiTelekinesisInterface.h": "760d20e7f68dde290f4a1f9565120894396f6912",
-    "Source/wasami_deception/Tests/WasamiPowerTests.cpp": "7edd44c2f424244186b2469e145d3ba4046044be"
+    "Source/wasami_deception/WasamiCameraAnim.h": "2bf9a3a4e15313252e9da636ed9283d15904b243",
+    "Source/wasami_deception/WasamiCameraAnim.cpp": "8c06515f1575c14ad311b0e9003e03e7f797da0a",
+    "Source/wasami_deception/WasamiChameleonComponent.h": "1f39a955230539fe5fd196dfabd583289db76159",
+    "Source/wasami_deception/WasamiChameleonComponent.cpp": "3aaa33b231c8903acfde95c6eb04ae29010b39d6",
+    "Source/wasami_deception/WasamiSpeedBoostWidget.h": "95cfa89ba3d7490ce16a01046b5947acca5edcb3",
+    "Source/wasami_deception/WasamiSpeedBoostWidget.cpp": "036a0b3f800d620ba2aefc5bed0f578c6fdb20b9",
+    "Source/wasami_deception/Tests/WasamiPowerTests.cpp": "7edd44c2f424244186b2469e145d3ba4046044be",
+    "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "e5117ede055f44f4f27944910e4a4f13782d3ce9"
   }
 }

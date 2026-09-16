@@ -1,5 +1,5 @@
 ---
-title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブースト）
+title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・カメラアニメ・FX）
 sources:
   - Source/wasami_deception/WasamiPowerTypes.h
   - Source/wasami_deception/WasamiPowerTypes.cpp
@@ -7,14 +7,21 @@ sources:
   - Source/wasami_deception/WasamiPowerComponent.cpp
   - Source/wasami_deception/WasamiEnemyInterface.h
   - Source/wasami_deception/WasamiTelekinesisInterface.h
+  - Source/wasami_deception/WasamiCameraAnim.h
+  - Source/wasami_deception/WasamiCameraAnim.cpp
+  - Source/wasami_deception/WasamiChameleonComponent.h
+  - Source/wasami_deception/WasamiChameleonComponent.cpp
+  - Source/wasami_deception/WasamiSpeedBoostWidget.h
+  - Source/wasami_deception/WasamiSpeedBoostWidget.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
+  - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
 updated: 2026-09-16
 ---
 
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブーストだけで、ほかの 5 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 3〜10 で足す）。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）だけで、ほかの 5 種は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 4〜10 で足す）。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -30,7 +37,26 @@ updated: 2026-09-16
 - 読み出し（BlueprintPure）: `GetSocketPower(bLeft)`（枠が解放済みの範囲の外なら `None`）、`GetGaugePercent(Power)`、`IsPowerAvailable(Power)`、`IsUsingPower(Power)`（本家の `Is Player Using Power ?`。`Active Powers` に入っているか）、`HasPowers()`、`GetUpgradeLevel(Power)`。C++ だけの `GetTuning(Power)`。
 - `OnPowerUsed(EWasamiPower)`（BlueprintAssignable）… 本家の `UsedPower`（と、パワーごとの `UsedTelepathy` などをまとめたもの）。
 - 設定（EditAnywhere）: `UnlockedPowers`（既定は 6 種すべてを並び順に）、`UpgradeLevel`（既定 5。0〜5）。
-- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）。
+- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）。`BeginPlay` でウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがウィジェットのクラスを参照しているので、素材は最初から読まれている。最初のブーストで読み込み待ちを出さないため）。
+
+### `UWasamiCameraAnim : UDataAsset`（`WasamiCameraAnim.h`）
+本家の `CameraAnim`（UE4 の `UCameraAnim`。UE 5 には無い）を取り込みが写したもの（01 記録の `dd_assets.camera_anim`）。`AnimLength`（既定 3）・`BaseFOV`（既定 90）・`BasePostProcessSettings`（上書きフラグごと）・`BasePostProcessBlendWeight`（既定 0 = PP が効かない。UE4 と同じ）・`FloatTracks` / `ColorTracks`（`FWasamiCameraAnimFloatTrack` / `FWasamiCameraAnimColorTrack` = `PropertyName`〈`CameraComponent.PostProcessSettings.SceneColorTint` のような原作の名前〉と Matinee の曲線 `FInterpCurveFloat` / `FInterpCurveLinearColor`）。
+- `ApplyPostProcessTracks(Time, Settings)` … `CameraComponent.PostProcessSettings.` で始まるトラックの値を、`FPostProcessSettings` の同名のメンバー（float か `FLinearColor`）へ書く。上書きフラグは触らない（UE4 でもトラックは値だけを動かし、フラグは基準の設定のまま）。評価は `FInterpCurve::Eval`（保存された接線のまま。UE4 の Matinee と同じ式）。
+
+### `FWasamiCameraAnimPlayback`（`WasamiCameraAnim.h`）
+再生中のアニメの時間の進み方（UE4 の `UCameraAnimInst` の写し。純粋な値の構造体でテストできる）。`Start(AnimLength, Rate, Scale, BlendIn, BlendOut, bLoop, Duration)`・`Advance(DeltaTime)`・`Stop(bImmediate)`、読み出しは `CurTime`・`Weight`・`bBlendingOut`・`bFinished`。
+
+### `UWasamiCameraAnimModifier : UCameraModifier`（`WasamiCameraAnim.h`）
+- `Get(PlayerCameraManager)` … カメラマネージャのこのモディファイアを返す（無ければ足す）。
+- `Play(Anim, Rate, Scale, BlendInTime, BlendOutTime, bLoop, Duration)` → ハンドル（本家の `PlayCameraAnim`。`bRandomStartTime` は常に false、再生空間は CameraLocal 相当で、移動も回転もしない）、`Stop(Handle, bImmediate)`、`IsPlaying(Handle)`。
+
+### `UWasamiChameleonComponent : UActorComponent`（`AWasamiPlayerCharacter` の `FX`）
+本家のプレイヤーの子アクタ `FX`（`/Game/ThirdParty/Chameleon/Chameleon`。ポストプロセスの効果集）。
+- `bCameraShake`・`CameraShakePower`（既定 0.01）・`CameraShakeFrequency`（既定 10）… 本家の `Camera Shake`・`Camera Shake Power`・`Camera Shake Frequency`（既定は Chameleon の CDO）。
+- 素材: `CameraShakeMaterial` `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake`（ソフト参照）。
+
+### `UWasamiSpeedBoostWidget : UUserWidget`
+本家の `UMG_SpeedBoost`。`LinesMaterial`（`/Game/DD/UI/Main/Powers/M_Speedlines`）・`VignetteTexture`（`/Game/DD/UI/Menu/Streaks/T_VignetteNew`）はソフト参照で `RebuildWidget` で読む。`LoadAssets(Out)`（static）はその 2 つを読んで `Out` に足す。
 
 ### `IWasamiEnemyInterface`（`UWasamiEnemyInterface`）
 本家の `DD_EnemyInterface` のうちパワーに関わる 4 つ。どれも `BlueprintNativeEvent`（C++ の敵は `_Implementation` を上書きし、呼ぶ側は `IWasamiEnemyInterface::Execute_*`）。既定の中身は本家の `BP_DD_Character_Base` と同じ。
@@ -81,7 +107,31 @@ updated: 2026-09-16
 - 充填（DoOnce_4。開いているときだけ）: 閉じて `Refill`。
 - どちらの DoOnce も最初は閉じている（本家の Start Closed。@1211・@1241）ので、使う前にリセットしても何も起きない。
 - Lv5 の値: 速さ 950 cm/s・効果 9.75 秒・再使用 7.5 秒（効果の後。合わせて 17.25 秒）。
-- 本家の `UI Cooldown(True, 10)` の放送は作っていない（受ける `UMG_Tablet` の結び付け先のウィジェットが木に無く、見た目の効果が無いと見られる。調査 01 §4.4）。演出（`CameraAnim_SpeedBoost` の色調、`UMG_SpeedBoost`、Chameleon の放射ブラーと揺れ）はステップ 3。
+- 本家の `UI Cooldown(True, 10)` の放送は作っていない（受ける `UMG_Tablet` の結び付け先のウィジェットが木に無く、見た目の効果が無いと見られる。調査 01 §4.4）。
+- **演出**（本家の使った瞬間の Sequence @15020〜@23332 と @11203）: 使った瞬間、速さを入れた後に、ゲージ → `CameraAnim_SpeedBoost` を `Play(Rate 1, Scale 1, BlendIn 0.5, BlendOut 0.5, loop なし, Duration = 効果時間)`（ハンドルを持つ）→ 終わりの Delay → DoOnce を開く → `Sprinting Effects` のタイマー（0.001 秒の繰り返し。値を速さから書くだけなので `bMaxOncePerFrame` で 1 フレーム 1 回にしている）と FX の `bCameraShake = true` → `UMG_SpeedBoost` を作ってビューポートに載せる（Z 順 1）。
+- `Sprinting Effects`（`UpdateSprintingEffects`）: 速さ（速度ベクトルの長さ。本家の `Speed` = `VSize(Velocity)`）を 0〜870 cm/s → FX の `CameraShakeFrequency` 0〜15、`CameraShakePower` 0〜0.003 に写す（`MapRangeClamped`）。本家はここで `Radial Blur Width`（0〜1）も書くが、FX の `Radial Blur` は一度も有効にならないので作っていない（下の「FX」）。
+- 終わり: 速さ・`Active Powers` の後に、タイマーを止め、FX の `bCameraShake = false`、ウィジェットを外す（`RemoveFromParent`）。**カメラアニメは止めない**（効果時間と同じ長さで自然に終わる）。
+- 死亡のリセット（本家の `Reset Speed Boost 1` = @37067）は、カメラアニメを `Stop(immediate)` で即座に止めてから終わりの処理へ進む。
+
+### カメラアニメの再生（`UWasamiCameraAnimModifier::ModifyCamera`）
+- 毎フレーム、再生中の各アニメを `Advance` し、終わっていなければ `BasePostProcessSettings` の写しにトラックの値を書き、重み `BasePostProcessBlendWeight × Weight` で `AddCachedPPBlend(…, VTBlendOrder_Base)` する（UE4 はカメラアニメの PP を通常のカメラの PP の下に重ねた。UE 5.8 の後継も `r.CameraAnimation.LegacyPostProcessBlending`〈既定 true〉で同じ位置に置く）。終わったものは外す。PP の値の重ね合わせ（`SceneColorTint` は重みで線形補間）はエンジンが行う。
+- `Advance`（UE 5.8 の後継 `CameraAnimationCameraModifier.cpp` の `TickAnimation` と同じ形。UE4 の `CameraAnimInst.cpp` は手元に無い）: 時間を `Delta × Rate` 進め、ブレンドの経過も進める。ループしないアニメは「長さ − BlendOut × Rate」を過ぎたらブレンドアウトを始め、長さを過ぎたら終わる。ブレンドインは経過が BlendIn を超えたら終わる。ブレンドアウトの経過が BlendOut を超えたら終わる。重みは `min(ブレンドインの経過 / BlendIn, 1 − ブレンドアウトの経過 / BlendOut) × Scale`（どちらも直線）。`Duration` が正なら、`Duration − BlendOut` を数え終えたところで `Stop(false)`（ブレンドアウト）を呼ぶ。**`Duration` はブレンドアウトを含む長さ**（UE 5.8 の `FCameraAnimationParams::DurationOverride` の説明「including blends」。後継はこの値を使っていない）。
+- `Stop(bImmediate)`: 即座なら（または BlendOut が 0 なら）終わり・重み 0、そうでなければブレンドアウトを始める（既に始まっていれば続ける）。
+- スピードブーストでは: 0〜0.5 秒で色調が 0 → 1、9.25 秒まで 1、9.25〜9.75 秒で 1 → 0。`CameraAnim_SpeedBoost` の色調のトラックは開始前（−0.0018 秒）の 1 キーだけなので、値は常に (2.0, 0.584, 0.498)。
+- FOV のトラック（`CameraComponent.FieldOfView`）は、いまは再生しない（`Play` が警告を出す）。`CameraAnim_Teleport` を入れるステップ 4 で、基準の FOV の扱い（`BaseFOV` 137.24 か t=0 のキーか）を決めて足す。Move トラックは取り込まない。
+
+### FX（`UWasamiChameleonComponent`）
+- 本家の Chameleon は、範囲なし（`Unbound`）の `PostProcessComponent`（`InternalPP`）を持ち、毎ティック `InitChameleon` で「`Native Post Process`（上書きなし）で設定を上書き → 有効な効果ごとに MID のパラメータを書いて `AddOrUpdateBlendable(MID, 1)`」を行う。本作は `BeginPlay` で持ち主に `UPostProcessComponent`（`bEnabled`・`bUnbound`）を作って付け（`UPostProcessComponent` は MinimalAPI で他のモジュールから派生できない）、揺れのマテリアルの MID を作る。毎ティック、ボリュームのブレンダブルを空にし、`bCameraShake` なら MID に `ShakePower` / `ShakeFQ` を書いて重み 1 で足す。
+- 揺れの詳細設定（本家の `Camera Shake - Advanced`）は CDO の既定のまま（ブレンド `0 - Normal`・`BlendingOpacity` 1・カスタム深度とステンシルなし・距離のブレンドなし・白のマスク）なので、効果をそのまま画面に出す。
+- **`Radial Blur` は作らない**。CDO の `Radial Blur`（有効フラグ）は false で、プレイヤーのテンプレートは `Custom Depth Highlighter` 系しか上書きせず、どのコードも true にしない（`Chameleon_C.Radial Blur` への書き込みはプレイヤーの `Radial Blur Width` だけ）。`InitChameleon` は無効な効果の関数を素通りするので、本家でも放射ブラーは出ていない。
+- プレイヤーのテンプレートは `Custom Depth Highlighter (Clip)` を有効にしている（縁取り (1,0,0)、中 (0.0802,0,0)）。病院の `BP_06_ReaperNurse` などの敵が `SetRenderCustomDepth` を呼んで赤く縁取られる仕組みなので、敵を作るとき（M4）にこの FX へ足す。いまは作っていない。
+- ボリュームは空でも常にある（上書きなし・ブレンダブルなし）。揺れのマテリアルが毎フレーム描かれるのはブースト中だけ（性能のルール）。
+
+### `UMG_SpeedBoost`（`UWasamiSpeedBoostWidget`）
+- 木: キャンバス `CanvasPanel_0` に、`Lines`（`M_Speedlines` のブラシ）、`Image_72`（`T_VignetteNew`）の順。どちらも全面に広げ（アンカー 0〜1、余白 0）、色 (1,0,0,1)、描画の拡縮 1.25 / 1.2（中心基準）。
+- 不透明度: 本家の Tick は `Delay(0.001)` の後に `Lines.SetOpacity(MapRangeClamped(Speed, 0, 900, 0, 0.15))`・`Image_72.SetOpacity(…, 0, 0.5)` を行う。Delay はティックで仕掛けて次のティックの前に切れるので、**値は 1 フレーム遅れで、載った最初のフレームは両方とも不透明度 1 のまま描かれる**。本作は `NativeTick` で「前のティックが仕掛けた Delay があれば値を書く、それから Delay を仕掛けたことにする」として同じ順にしている。速さは持ち主のポーンの速度の長さ。
+- UI マテリアルにはウィジェットの色と不透明度が頂点カラーとして掛かる（UE 5.8 `SlateElementPixelShader.usf` の `GetColor`: 材質の色 × 頂点カラー）ので、`M_Speedlines` の白黒の線が赤く、薄く出る。
+- 本家のウィジェットのアニメ `Fade` はどこからも再生されないので作っていない。
 
 ### 死亡のリセット（`ResetPowers`。本家の `BP_Powers.Reset All Powers`）
 1. スピードブースト: 終わりの処理（効果中なら即座に終わり、再使用のゲージが始まる）→ 充填の処理（使った後なら即座に充填）→ ゲージを止めて 1。
@@ -116,6 +166,11 @@ updated: 2026-09-16
 | `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5` | ブーストの音（1.058 秒。SoundWave の Volume 0.7・Pitch 2.0・ConcurrencySet `NewSoundConcurrency`） |
 | `/Game/DD/Audio/NewSoundConcurrency` | 同時発音（MaxCount 2・VolumeScale 0.5、ほかは既定） |
 | `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak` | ブーストのシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.25、回転 Pitch 0.25/30・Yaw 0.25/40・Roll 0.5/35、FOV 2.0/10） |
+| `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost` | `WasamiCameraAnim`。長さ 24.503 秒、`BaseFOV` 137.24、`BasePostProcessBlendWeight` 1.0、基準の PP は `bOverride_WhiteTemp`・`WhiteTint`・`SceneColorTint` が真（WhiteTemp 6500・WhiteTint 0 は中立）で `SceneColorTint` (2.0, 0.583955, 0.498, 1)、色のトラック 1 本（−0.0017948 秒に同じ色の 1 キー、`CIM_CurveAutoClamped`） |
+| `/Game/DD/UI/Main/Powers/T_Speedlines` | 集中線（3841 × 5404、2 列 × 5 段のコマ。sRGB・`TC_Default`・`TEXTUREGROUP_UI`。原作の cook も非圧縮 BGRA8・ミップ 1 で、本作の実測も約 81 MB〈`blueprint_get_memory_size` 84,934,656〉） |
+| `/Game/DD/UI/Menu/Streaks/T_VignetteNew` | ビネット（1024²、白地にアルファで縁。sRGB・`TC_EditorIcon`・`TEXTUREGROUP_UI`。本作は 4 MB〈ミップなし。原作の cook は 11 段のミップあり。全面に引き伸ばすだけなので見た目は同じ〉） |
+| `/Game/DD/UI/Main/Powers/M_Speedlines` | 原作のグラフどおり。User Interface・Translucent。`/Engine/Functions/Engine_MaterialFunctions02/Texturing/FlipBook` の呼び出し（入力はすべて既定 = 2 列 × 2 段、位相 `Time`、`TexCoord 0`）の出力 2 番（`UVs`）を `T_Speedlines` の `TextureSample` の UV に、その RGB を Emissive に。Opacity は未接続（1）。UE 5.8 の FlipBook は 4.24 の書き出しと同じ 38 ノードで、出力の並びは `SortPriority` だけで決まる（`MaterialExpressions.cpp` の `GetInputsAndOutputs`）ので、出力 2 番は原作と同じ `UVs`（取り込みのログで確認）。2 × 5 のシートを 2 × 2 で読むので、1 コマは 1 列 × 2.5 段ぶんが 1 秒に 4 コマで流れる（原作のまま） |
+| `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` | **推定**。Chameleon の `M_CameraShake`（Post Process）。書き出しに残るのはパラメータ `ShakePower`（既定 0.01）・`ShakeFQ`（既定 50）と `MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking` だけで、HLSL・数式・シーンテクスチャは無い。本作は `ScreenPosition.ViewportUV + Append(sin(Time × ShakeFQ), cos(Time × ShakeFQ)) × ShakePower` で `PostProcessInput0` を読み、その色を Emissive に出す（UE の Sine / Cosine は周期 1 = `ShakeFQ` 回/秒の円）。ブレンドの位置は既定（トーンマップの後）。実機との見比べは進捗記録のステップ 11 |
 
 ## 原作データの根拠
 - 仕組みの全体と各値: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter.txt`（`Use Power` @29314〜、使えないときの @16335、DoOnce_11 @11731、スピードブースト @13628〜@16280、終わり @30、充填 @1206、Reset 系 @37067〜@37753）、`UI/BP_Powers.txt`（`Set Delay`・FlipFlop・`Reset All Powers`）、`UI/Tablet/UMG_TabletPowers.txt`（`Check`・`Cycle Power Left/Right`・`Update Powers`）。まとめは `.claude/references/powers/01-player-system.md`。
@@ -123,18 +178,25 @@ updated: 2026-09-16
 - キー: `pak_reference_2/_raw/DDeception/Config/DefaultInput.ini`（`Use Power Left` Q、`Use Power Right` E、`Cycle Power Left` 1、`Cycle Power Right` 2、`Use Power` R は受ける BP が無い）。
 - 敵とシャードのインターフェース: `pak_reference_2/_assets/DDeception/Content/Blueprints/Characters/Shared/DD_EnemyInterface.json`・`DD_TelekinesisInterface.json`、既定の中身は `BP_DD_Character_Base.txt`（調査 04 §4）。
 - 素材: `pak_reference_2/_assets/DDeception/Content/Audio/UI/*.json`・`Audio/NewSoundConcurrency.json`・`UI/Menu/Streaks/BP_CameraShake_Streak.json`（旧版と同じ値。アイコン・音の ogg も両版で同一であることを突き合わせた）。
+- ブーストの演出: `BP_DD_PlayerCharacter.txt`（`PlayCameraAnim` @15636 の引数、効果時間の選択 @15466〜@15535、`UMG_SpeedBoost` の生成 @11203・`AddToViewport(1)` @11256、`Sprinting Effects` のタイマー @23268 と中身 @35054、`Camera Shake = True` @23332、終わりの @358〜@436、`Reset Speed Boost 1` の `Stop(True)` @37067、`Speed = VSize` @31419）。`_camera/CameraAnim_SpeedBoost.json`・`_assets/DDeception/Content/Animation/Camera/CameraAnim_SpeedBoost.json`。
+- `UMG_SpeedBoost`: `_bytecode/DDeception/Content/UI/Main/Powers/UMG_SpeedBoost.txt`（Tick → Delay 0.001 → 不透明度、Construct → プレイヤーを取る）、`_assets/…/UI/Main/Powers/UMG_SpeedBoost.json`（木・色・拡縮・ブラシ）、`M_Speedlines.json`（式とつなぎ）、`_textures.json`（`T_Speedlines`・`T_VignetteNew` の設定）、`_assets/Engine/Content/Functions/Engine_MaterialFunctions02/Texturing/FlipBook.json`（4.24 の FlipBook。38 ノード）。
+- Chameleon: `_bytecode/DDeception/Content/ThirdParty/Chameleon/Chameleon.txt`（`InitChameleon`・`Radial Blur Func`・`Camera Shake Func`・`Set Advanced Effect Features`・`ApplyChameleonSettings`）、`_assets/…/ThirdParty/Chameleon/Chameleon.json`（CDO: `Enabled`・`Unbound`、揺れの既定、`Camera Shake - Advanced`、`Native Post Process`）、`Enums/BlendModes.json`（`NewEnumerator0` = `0 - Normal`）、`Materials/M_CameraShake.json`・`M_RadialBlurHLSL.json`、`BP_DD_PlayerCharacter.json` の `FX_GEN_VARIABLE`（テンプレート）。放射ブラーの有効フラグを書くコードが無いことは `_bytecode` 全体の検索で確かめた（`Chameleon_C.Radial Blur`・`Camera Shake` を書くのはプレイヤーとカットシーン `Cutscene_01_Exterior` だけ）。
+- UE 5.8 の挙動: `Engine/Plugins/Cameras/EngineCameras/Source/EngineCameras/Private/Animations/CameraAnimationCameraModifier.cpp`（ブレンドの形・PP の重ね方）、`Engine/Source/Runtime/Engine/Classes/Camera/CameraModifier.h`・`Private/Camera/CameraModifier.cpp`（`ModifyCamera` → `AddCachedPPBlend`）、`Private/PlayerCameraManager.cpp`（`ApplyCameraModifiers` が先に PP の蓄えを空にする）、`Core/Public/Math/InterpCurve.h`（`Eval`）、`Shaders/Private/SlateElementPixelShader.usf`（UI マテリアルの色 × 頂点カラー）、`Classes/Components/PostProcessComponent.h`（MinimalAPI、`AddOrUpdateBlendable` は inline）。
 
 ## 依存関係
 - `AWasamiPlayerCharacter`（02 記録）: `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()`・コントローラのカメラマネージャ。プレイヤーがこのコンポーネントを作り、入力を結び、毎フレーム画面へ値を渡す。
 - `UWasamiTabletWidget`（03 記録）: `BounceSocket`。
 - `WasamiAssets.h`（00 記録）。
-- エンジン: `FTimerManager`、`UGameplayStatics::PlaySound2D` / `PlaySoundAtLocation`、`APlayerCameraManager::StartCameraShake`。
+- エンジン: `FTimerManager`、`UGameplayStatics::PlaySound2D` / `PlaySoundAtLocation`、`APlayerCameraManager::StartCameraShake` / `AddNewCameraModifier` / `AddCachedPPBlend`、`UCameraModifier`、`UPostProcessComponent`、`UMG`（`UUserWidget`・`UWidgetTree`・`UCanvasPanel`・`UImage`）。
+- 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami.Powers`（3 件、2026-09-16 にすべて成功）。
+`Automation RunTests Wasami`（5 件、2026-09-16 にすべて成功）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
+- `Wasami.CameraAnim.Playback`（`Tests/WasamiCameraAnimTests.cpp`）… ブーストの再生（0.25 秒で 0.5、0.5 秒で 1、9.25 秒でブレンドアウトが始まり 9.5 秒で 0.5、9.75 秒で 0、その次で終わり）、即座の停止、ブレンドの無い 0.5 秒のアニメが長さで終わること、ブレンドイン中の停止が小さい方の重みで続くこと。
+- `Wasami.CameraAnim.Tracks` … ブーストの 1 キーの色が保たれ上書きフラグを触らないこと、`CameraAnim_Teleport`（旧版）のキーと接線で、書き出しの 60 fps の標本（`CameraAnim_Teleport.csv`）と同じ値になること（0.1 秒の露出 1.149884・色調 (1.528122, 0.532324, 0.471878)、0.05 秒、8/60 秒の露出の山 67.69149）。FOV のトラックは PP を変えない。
 
 ## 確かめたこと（2026-09-16、PIE、`L_Hospital_Zone1` の開始地点、ユーザーの了承のうえで `Tools/desktop.py` から入力）
 - 始めは左右とも Speed Boost、6 種とも使える、ゲージはすべて 1。
@@ -145,6 +207,14 @@ updated: 2026-09-16
 - ブースト中に `ResetPowers` を呼ぶと、即座に 300 / 600・使える・ゲージ 1 に戻った。
 - PIE のログにこの仕組みの警告やエラーは無かった。
 
+### スピードブーストの演出（2026-09-16、PIE、ユーザーの了承のうえで `Tools/desktop.py` から E を送り、前進はエディタの Python の毎フレームのコールバックで `AddMovementInput` を入れた）
+- 取り込み: `import_dd_powers()` が `camera_anims 1・textures 2・materials 2` を作り、`FlipBook output 2 is UVs` をログに出した。読み戻した値は上の「作るアセット」のとおり。`Failed to compile` なし。`import_dd_tablet()` も前回と同じ数（テクスチャ 25・マテリアル 2・メッシュ 1・フォント 1・音 3・ミニマップ 8）で通った。
+- 立ち止まって E: 最大速さ 950、`IsUsingPower` 真、FX の `bCameraShake` 真（速さ 0 なので強さ・周波数は 0）、画面に載ったウィジェット 1。開始地点の絵の平均が (22.7, 22.7, 30.2) → (36.2, 14.8, 18.1) と赤くなった。
+- 走りながら（速さ 950）: FX の強さ 0.003・周波数 15、FOV 115。赤い集中線・赤いビネット・赤い色調が出た。
+- 効果時間の後: 最大速さ 300、揺れ偽、ウィジェット 0、色調が消えた（廊下の絵の平均 (73.1, 28.6, 33.5) → (67.1, 84.1, 85.3)）。再使用の後に使える・ゲージ 1。
+- ブースト中に `ResetPowers`: 1.4 秒後の絵の平均が色調の無い状態と同じ (67.1, 84.1, 85.4) で、カメラアニメが即座に止まった。揺れ偽・ウィジェット 0・使える。
+- PIE の開始以降、ログに警告もエラーも無かった。エンジンの起動時の `LogAutomationTest: Error: Condition failed` 19 件は前回の起動にも同じ数あり、エンジン自身の自己テストのもの。
+
 ## 既知の制約・注意点
 - **スピードブースト以外のパワーは中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。テレポートの照準中の `bCanCycleLeft/Right` も、まだ偽にする側がいない。
 - 本家は `Check` を `Delay 0.2` の後に行うが、本作は `BeginPlay` ですぐ作る。
@@ -152,6 +222,13 @@ updated: 2026-09-16
 - 本家のパワーの放送（`UsedTeleportPower`・`UsedPrimal` など）を購読するのは本家のチュートリアルや台本のレベルだけで、病院には無い。本作は `OnPowerUsed` 1 つにまとめた。
 - ゲームパッドの割り当て（LT / RT / LB / RB）はまだ入れていない（プレイヤーの入力がキーボードとマウスだけのため）。
 - 音と揺れはユーザーのスピーカーと画面で確かめていない（PIE の確認は値と絵）。
+- **推定のもの**: `M_DD_ChameleonCameraShake` の揺れ方（円・sin/cos）。本家の実機で見比べる（進捗記録のステップ 11）。
+- `Duration` の扱い（ブレンドアウトを含む）は UE 5.8 の説明に拠る。UE4 の `CameraAnimInst.cpp` で確かめていない。違っていれば色調の消え方が 0.5 秒ずれるだけ。
+- `UMG_SpeedBoost` の最初のフレームが不透明度 1 で出る（本家の Delay の順の写し）。1 フレームなので撮影では確かめていない。
+- `T_Speedlines` は原作どおり非圧縮で約 81 MB あり、プレイヤーの `BeginPlay` から持ち続ける（本家もプレイヤーがクラスを参照しているので同じ）。
+- カメラアニメの FOV のトラックはまだ再生しない（ステップ 4）。
+- FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-16: スピードブーストの演出を足した（`CameraAnim_SpeedBoost` の赤い色調、`UMG_SpeedBoost` の集中線とビネット、FX の画面の揺れ。放射ブラーは本家で無効なので作らない）。UE4 の CameraAnim の再生（`UWasamiCameraAnim`・`FWasamiCameraAnimPlayback`・`UWasamiCameraAnimModifier`）、FX（`UWasamiChameleonComponent`）、`UWasamiSpeedBoostWidget`、テスト `Wasami.CameraAnim` 2 件を足した
 - 2026-09-16: 初版（パワーの土台: 枠・Q/E/1/2・2 段の連打防止・ゲージ・強化段階の表・死亡のリセット・スピードブースト、敵とシャードのインターフェース、テスト）

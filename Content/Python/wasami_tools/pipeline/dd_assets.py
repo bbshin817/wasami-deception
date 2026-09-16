@@ -1,24 +1,36 @@
 """Dark Deception (the original, pak_reference / pak_reference_2): its assets rebuilt from the exported data under
-/Game/DD/<the original's path under /Game> — Blueprints of its classes from their class defaults, and sounds with the
-SoundWave's own settings."""
+/Game/DD/<the original's path under /Game> — Blueprints of its classes from their class defaults, sounds with the
+SoundWave's own settings, textures with the original's texture settings, and CameraAnims as UWasamiCameraAnim — and the
+master materials we write ourselves (materials whose graphs are cooked away)."""
 import json
 import os
 
 import unreal
 
-from wasami_tools.pipeline import paths, ue_props
+from wasami_tools.pipeline import dd_stage, paths, ue_props
 
 EAL = unreal.EditorAssetLibrary
+MEL = unreal.MaterialEditingLibrary
 
 # SoundWave properties of the export that are written onto the imported wave, with UE's default for when the export
 # leaves them out (it keeps only what differs from the defaults). Channels, rate and duration come with the file; the
 # original's sound classes are not made (yet), so SoundClassObject is not written.
 SOUND_DEFAULTS = {"Volume": 1.0, "Pitch": 1.0}
 
+# UCameraAnim's defaults for what its export leaves out (UE4's UCameraAnim constructor; the blend weight is zeroed).
+CAMERA_ANIM_DEFAULTS = {"AnimLength": 3.0, "BaseFOV": 90.0, "BasePostProcessBlendWeight": 0.0}
+# UE4's legacy tonemapper settings, which UE 5 dropped; the CameraAnims only switch them on at their neutral defaults.
+UE4_ONLY_POSTPROCESS = ("bOverride_FilmWhitePoint",)
+
 
 def pak(version):
     """The export root of pak_reference (1, UE 4.21) or pak_reference_2 (2, UE 4.24)."""
     return paths.DD_PAK if version == 1 else paths.DD_PAK2
+
+
+def asset_path(rel):
+    """The original's /Game/<rel> under our /Game/DD."""
+    return paths.DD_ROOT + "/" + rel
 
 
 def export_json(rel, version=1):
@@ -55,7 +67,7 @@ def _tools():
 def camera_shake(rel, version=1):
     """A LegacyCameraShake Blueprint (UE4's UCameraShake, as the original's) with the original's defaults. Returns its
     package path; an existing one gets its defaults written again."""
-    target = paths.DD_ROOT + "/" + rel
+    target = asset_path(rel)
     if EAL.does_asset_exist(target):
         bp = unreal.load_asset(target)
     else:
@@ -76,7 +88,7 @@ def camera_shake(rel, version=1):
 
 def sound_concurrency(rel, version=1):
     """A SoundConcurrency asset with the original's settings ('Audio/NewSoundConcurrency'). Returns the asset."""
-    target = paths.DD_ROOT + "/" + rel
+    target = asset_path(rel)
     if EAL.does_asset_exist(target):
         asset = unreal.load_asset(target)
     else:
@@ -95,7 +107,7 @@ def sound(rel, version=1):
     ogg = os.path.join(pak(version), "DDeception", "Content", *rel.split("/")) + ".ogg"
     if not os.path.exists(ogg):
         raise FileNotFoundError(ogg)
-    target = paths.DD_ROOT + "/" + rel
+    target = asset_path(rel)
     folder, name = paths.split(target)
     task = unreal.AssetImportTask()
     task.filename = ogg
@@ -115,4 +127,111 @@ def sound(rel, version=1):
         wave.set_editor_property(ue_props.snake(key), float(props.get(key, default)))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
+    return target
+
+
+def texture(rel, version=1):
+    """Imports the original's /Game/<rel>.png under /Game/DD with its sRGB, compression and LOD group (_textures.json).
+    Returns the package path."""
+    with open(os.path.join(pak(version), "_textures.json"), encoding="utf-8") as f:
+        table = json.load(f)
+    key = "DDeception/Content/%s.uasset" % rel
+    entry = table.get(key)
+    if entry is None:
+        raise KeyError("no texture %s in %s/_textures.json" % (key, pak(version)))
+    png = os.path.join(pak(version), "DDeception", "Content", *rel.split("/")) + ".png"
+    if not os.path.exists(png):
+        raise FileNotFoundError(png)
+    target = asset_path(rel)
+    dd_stage.import_texture({"file": png, "asset": target, "srgb": entry["srgb"], "compression": entry["compression"],
+                             "lodGroup": entry["lod_group"]})
+    return target
+
+
+def material(asset_path, build, domain=None, blend_mode=None):
+    """Loads or creates a material, clears its graph, sets its domain and blend mode, and has build(mat) make the graph.
+    Returns the material, recompiled."""
+    if EAL.does_asset_exist(asset_path):
+        mat = unreal.load_asset(asset_path)
+        MEL.delete_all_material_expressions(mat)
+    else:
+        folder, name = paths.split(asset_path)
+        mat = _tools().create_asset(name, folder, unreal.Material, unreal.MaterialFactoryNew())
+    if domain is not None:
+        mat.set_editor_property("material_domain", domain)
+    if blend_mode is not None:
+        mat.set_editor_property("blend_mode", blend_mode)
+    build(mat)
+    MEL.recompile_material(mat)
+    return mat
+
+
+def _curve_points(points, point_cls, convert):
+    """The export's Matinee curve points ({InVal, OutVal, ArriveTangent, LeaveTangent, InterpMode}) as Python structs;
+    convert makes a value of the curve's type out of an exported one."""
+    out = []
+    for p in points:
+        point = point_cls()
+        point.set_editor_property("val", float(p["InVal"]))  # InVal: Python strips its 'In'
+        point.set_editor_property("out_val", convert(p["OutVal"]))
+        point.set_editor_property("arrive_tangent", convert(p.get("ArriveTangent", 0.0)))
+        point.set_editor_property("leave_tangent", convert(p.get("LeaveTangent", 0.0)))
+        point.set_editor_property("interp_mode", ue_props.enum_member(unreal.InterpCurveMode, p.get("InterpMode", "CIM_Linear")))
+        out.append(point)
+    return out
+
+
+def _linear_color(value):
+    if not isinstance(value, (list, tuple)):
+        value = [value] * 4
+    return unreal.LinearColor(*[float(v) for v in value])
+
+
+def camera_anim(rel, version=1):
+    """The original CameraAnim /Game/<rel> as a UWasamiCameraAnim under /Game/DD: its length, base FOV, base
+    post-process settings and weight, and its float and colour property tracks with their keys and tangents as saved.
+    The Move track is left out (the CameraAnims the powers play keep it at the origin). Returns the package path."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        anim = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        factory = unreal.DataAssetFactory()
+        factory.set_editor_property("data_asset_class", unreal.WasamiCameraAnim)
+        anim = _tools().create_asset(name, folder, unreal.WasamiCameraAnim, factory)
+    pkg = export_json(rel, version)
+    props = main_export(pkg, rel)["props"]
+    anim.set_editor_property("anim_length", float(props.get("AnimLength", CAMERA_ANIM_DEFAULTS["AnimLength"])))
+    anim.set_editor_property("base_fov", float(props.get("BaseFOV", CAMERA_ANIM_DEFAULTS["BaseFOV"])))
+    anim.set_editor_property("base_post_process_blend_weight",
+                             float(props.get("BasePostProcessBlendWeight", CAMERA_ANIM_DEFAULTS["BasePostProcessBlendWeight"])))
+    settings = unreal.PostProcessSettings()
+    failures = ue_props.apply(settings, props.get("BasePostProcessSettings", {}), skip=UE4_ONLY_POSTPROCESS)
+    if failures:
+        raise RuntimeError("base post-process settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    anim.set_editor_property("base_post_process_settings", settings)
+
+    float_tracks, color_tracks = [], []
+    for e in pkg["exports"]:
+        p = e["props"]
+        if e["class"] == "InterpTrackFloatProp":
+            curve = unreal.InterpCurveFloat()
+            curve.set_editor_property("points", _curve_points(p["FloatTrack"]["Points"], unreal.InterpCurvePointFloat, float))
+            track = unreal.WasamiCameraAnimFloatTrack()
+            track.set_editor_property("property_name", p["PropertyName"])
+            track.set_editor_property("curve", curve)
+            float_tracks.append(track)
+        elif e["class"] == "InterpTrackLinearColorProp":
+            curve = unreal.InterpCurveLinearColor()
+            curve.set_editor_property("points", _curve_points(p["LinearColorTrack"]["Points"],
+                                                              unreal.InterpCurvePointLinearColor, _linear_color))
+            track = unreal.WasamiCameraAnimColorTrack()
+            track.set_editor_property("property_name", p["PropertyName"])
+            track.set_editor_property("curve", curve)
+            color_tracks.append(track)
+        elif e["class"].startswith("InterpTrack") and e["class"] != "InterpTrackMove":
+            raise RuntimeError("%s has a %s track, which UWasamiCameraAnim does not hold" % (rel, e["class"]))
+    anim.set_editor_property("float_tracks", float_tracks)
+    anim.set_editor_property("color_tracks", color_tracks)
+    EAL.save_asset(target, only_if_is_dirty=False)
     return target

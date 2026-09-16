@@ -7,7 +7,10 @@
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiCameraAnim.h"
+#include "WasamiChameleonComponent.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
 
 namespace
@@ -21,6 +24,19 @@ namespace
 	// The speeds the end of the speed boost writes back (constants in the original, not the speeds from before).
 	constexpr float BoostEndWalkingSpeed = 300.f;
 	constexpr float BoostEndSprintingSpeed = 600.f;
+	// PlayCameraAnim(CameraAnim_SpeedBoost, Rate, Scale, BlendInTime, BlendOutTime, bLoop false, Duration = the boost's).
+	constexpr float BoostAnimRate = 1.f;
+	constexpr float BoostAnimScale = 1.f;
+	constexpr float BoostAnimBlendTime = 0.5f;
+	// UMG_SpeedBoost goes on the viewport at this Z order.
+	constexpr int32 BoostWidgetZOrder = 1;
+	// Sprinting Effects runs on a 0.001 s looping timer; it only writes values that follow the speed, so once a frame
+	// comes to the same.
+	constexpr float SprintingEffectsRate = 0.001f;
+	// Sprinting Effects: the camera shake's frequency and power follow the speed from 0 to 870 cm/s.
+	constexpr float ShakeFullSpeed = 870.f;
+	constexpr float ShakeMaxFrequency = 15.f;
+	constexpr float ShakeMaxPower = 0.003f;
 }
 
 UWasamiPowerComponent::UWasamiPowerComponent()
@@ -36,6 +52,8 @@ UWasamiPowerComponent::UWasamiPowerComponent()
 	CycleSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
 	BoostSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Shard_Streak_Milestone_V5")));
 	BoostShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak")));
+	BoostCameraAnim = TSoftObjectPtr<UWasamiCameraAnim>(WasamiAssets::Path(TEXT("/Game/DD/Animation/Camera/CameraAnim_SpeedBoost")));
+	BoostWidgetClass = UWasamiSpeedBoostWidget::StaticClass();
 }
 
 void UWasamiPowerComponent::BeginPlay()
@@ -46,6 +64,8 @@ void UWasamiPowerComponent::BeginPlay()
 	LoadedCycleSound = CycleSound.LoadSynchronous();
 	LoadedBoostSound = BoostSound.LoadSynchronous();
 	LoadedBoostShake = BoostShakeClass.LoadSynchronous();
+	LoadedBoostCameraAnim = BoostCameraAnim.LoadSynchronous();
+	UWasamiSpeedBoostWidget::LoadAssets(LoadedBoostWidgetAssets);
 
 	// UMG_TabletPowers' Check: every unlocked power, ready. The sockets keep their indices (0 and 0 on a new game, as the
 	// original's GameInstance starts them).
@@ -156,7 +176,14 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 
 void UWasamiPowerComponent::ResetPowers()
 {
-	// Reset Speed Boost 1 ends a running boost, Reset Speed Boost 2 refills a used one; then the gauge goes back to 1.
+	// Reset Speed Boost 1 stops the boost's camera anim at once and ends a running boost, Reset Speed Boost 2 refills a
+	// used one; then the gauge goes back to 1.
+	const AWasamiPlayerCharacter* Player = GetPlayer();
+	const APlayerController* PC = Player ? Cast<APlayerController>(Player->GetController()) : nullptr;
+	if (UWasamiCameraAnimModifier* Anims = PC ? UWasamiCameraAnimModifier::Get(PC->PlayerCameraManager) : nullptr)
+	{
+		Anims->Stop(BoostCameraAnimHandle, true);
+	}
 	EndSpeedBoost();
 	RefillSpeedBoost();
 	Gauge(EWasamiPower::SpeedBoost).Stop();
@@ -215,7 +242,7 @@ void UWasamiPowerComponent::UseSpeedBoost()
 	ActivePowers.AddUnique(EWasamiPower::SpeedBoost);
 	UGameplayStatics::PlaySoundAtLocation(this, LoadedBoostSound, Player->GetActorLocation());
 	SetPowerAvailable(EWasamiPower::SpeedBoost, false);
-	const APlayerController* PC = Cast<APlayerController>(Player->GetController());
+	APlayerController* PC = Cast<APlayerController>(Player->GetController());
 	if (PC && PC->PlayerCameraManager && LoadedBoostShake)
 	{
 		PC->PlayerCameraManager->StartCameraShake(LoadedBoostShake, 1.f, ECameraShakePlaySpace::CameraLocal);
@@ -223,10 +250,46 @@ void UWasamiPowerComponent::UseSpeedBoost()
 	// Walking and sprinting both go at the boost's speed.
 	Player->SetMoveSpeeds(Tuning.BoostSpeed, Tuning.BoostSpeed);
 
+	// The Sequence after the speeds: the gauge, the red tint for the boost's length, the end, the DoOnce nodes, the
+	// sprinting effects with the FX's camera shake, and UMG_SpeedBoost.
 	Gauge(EWasamiPower::SpeedBoost).SetDelay(Tuning.BoostDuration, false);
+	if (UWasamiCameraAnimModifier* Anims = PC ? UWasamiCameraAnimModifier::Get(PC->PlayerCameraManager) : nullptr)
+	{
+		BoostCameraAnimHandle = Anims->Play(LoadedBoostCameraAnim, BoostAnimRate, BoostAnimScale, BoostAnimBlendTime,
+			BoostAnimBlendTime, false, Tuning.BoostDuration);
+	}
 	Delay(BoostEndTimer, Tuning.BoostDuration, &UWasamiPowerComponent::EndSpeedBoost);
 	bBoostEndOpen = true;
 	bBoostRefillOpen = true;
+	FTimerManagerTimerParameters EffectsTimer;
+	EffectsTimer.bLoop = true;
+	EffectsTimer.bMaxOncePerFrame = true;
+	GetWorld()->GetTimerManager().SetTimer(SprintingEffectsTimer, this, &UWasamiPowerComponent::UpdateSprintingEffects,
+		SprintingEffectsRate, EffectsTimer);
+	if (UWasamiChameleonComponent* FX = Player->GetChameleon())
+	{
+		FX->bCameraShake = true;
+	}
+	if (PC && BoostWidgetClass)
+	{
+		BoostWidget = CreateWidget<UWasamiSpeedBoostWidget>(PC, BoostWidgetClass);
+		BoostWidget->AddToViewport(BoostWidgetZOrder);
+	}
+}
+
+void UWasamiPowerComponent::UpdateSprintingEffects()
+{
+	const AWasamiPlayerCharacter* Player = GetPlayer();
+	UWasamiChameleonComponent* FX = Player ? Player->GetChameleon() : nullptr;
+	if (!FX)
+	{
+		return;
+	}
+	// The radial blur's width is written here too, but the FX never has its radial blur on.
+	const float Speed = static_cast<float>(Player->GetVelocity().Size());
+	const FVector2f SpeedRange(0.f, ShakeFullSpeed);
+	FX->CameraShakeFrequency = FMath::GetMappedRangeValueClamped(SpeedRange, FVector2f(0.f, ShakeMaxFrequency), Speed);
+	FX->CameraShakePower = FMath::GetMappedRangeValueClamped(SpeedRange, FVector2f(0.f, ShakeMaxPower), Speed);
 }
 
 void UWasamiPowerComponent::EndSpeedBoost()
@@ -237,11 +300,23 @@ void UWasamiPowerComponent::EndSpeedBoost()
 	}
 	bBoostEndOpen = false;
 	const FWasamiPowerTuning& Tuning = GetTuning(EWasamiPower::SpeedBoost);
-	if (AWasamiPlayerCharacter* Player = GetPlayer())
+	AWasamiPlayerCharacter* Player = GetPlayer();
+	if (Player)
 	{
 		Player->SetMoveSpeeds(BoostEndWalkingSpeed, BoostEndSprintingSpeed);
 	}
 	ActivePowers.Remove(EWasamiPower::SpeedBoost);
+	// The camera anim is left to run out over the boost's length.
+	GetWorld()->GetTimerManager().ClearTimer(SprintingEffectsTimer);
+	if (UWasamiChameleonComponent* FX = Player ? Player->GetChameleon() : nullptr)
+	{
+		FX->bCameraShake = false;
+	}
+	if (BoostWidget)
+	{
+		BoostWidget->RemoveFromParent();
+		BoostWidget = nullptr;
+	}
 	Gauge(EWasamiPower::SpeedBoost).SetDelay(Tuning.BoostCooldown, false);
 	Delay(BoostRefillTimer, Tuning.BoostCooldown, &UWasamiPowerComponent::RefillSpeedBoost);
 }

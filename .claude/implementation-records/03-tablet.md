@@ -29,7 +29,7 @@ updated: 2026-09-16
 ### `dd_tablet.py`（`WasamiDDTools.import_dd_tablet` から呼ぶ）
 - `import_all()` … 下の「作るアセット」を全部作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は種類ごとの数。
 - 部分ごとに `import_textures()` / `import_mesh()` / `make_body_materials()` / `import_font()` / `import_sounds()` / `ensure_render_target()` / `make_minimap_materials()`。
-- `asset(rel)` … 原作の `/Game/<rel>` を `/Game/DD/<rel>` に読み替える。`_texture_settings(version, rel)` … 原作の sRGB・圧縮・LOD グループを `_textures.json` から引く。
+- `asset(rel)` … 原作の `/Game/<rel>` を `/Game/DD/<rel>` に読み替える。テクスチャは `dd_assets.texture`（原作の sRGB・圧縮・LOD グループを `_textures.json` から入れる）、自前のマスターは `dd_assets.material` で作る（01 記録）。
 
 ## 内部構造と処理の流れ
 
@@ -96,8 +96,8 @@ updated: 2026-09-16
 
 ## 依存関係
 - `UMG`（`UUserWidget`・`UWidgetTree`・`UCanvasPanel`・`UImage`・`UBorder`・`UTextBlock`）、`Slate` / `SlateCore`（`FSlateFontInfo`）。`wasami_deception.Build.cs` に足してある。
-- `dd_tablet.py` は `dd_stage` の `import_texture` / `import_mesh` / `ensure_masters` / `_Graph` と `paths` を使う。
-- `WasamiPowerTypes.h`（`EWasamiPower`・`WasamiPowerCount`。04 記録）、`WasamiAssets.h`（00 記録）。`dd_tablet.py` は `dd_assets`（01 記録）も使う。
+- `dd_tablet.py` は `dd_stage` の `import_mesh` / `ensure_masters` / `_Graph` と `paths` を使う。
+- `WasamiPowerTypes.h`（`EWasamiPower`・`WasamiPowerCount`。04 記録）、`WasamiAssets.h`（00 記録）。`dd_tablet.py` は `dd_assets`（01 記録。`sound`・`texture`・`material`・`export_json`）も使う。
 - 使う側: `AWasamiPlayerCharacter`（02 記録）が `UWidgetComponent` にこのクラスを載せ、毎フレーム枠・ゲージ・弾みと `SetObjective`、0.1 秒ごとに `SetShardCount` を呼ぶ。`UWasamiPowerComponent`（04 記録）が `BounceSocket` を呼ぶ。`dd_level.py`（01 記録）が地図の板を置く。
 
 ## 確かめたこと（2026-09-16、PIE の 1280 × 720 の撮影）
@@ -124,6 +124,7 @@ updated: 2026-09-16
 - `UWidgetComponent` は `bTickWhenOffscreen` が false のままなので、画面がビューポートに映っていない間は描き直さない（下ろしている間は描画も止まる）。エディタを背面にして PIE を撮ると、この理由で地図が止まったままになる。
 
 ## 変更履歴
+- 2026-09-16: テクスチャの取り込み（`_texture_settings`）とマスターの作り直し（`_master`）を `dd_assets` の `texture` / `material` へ移した（パワーの取り込みと共通にするため。作るものは同じで、取り直しても種類ごとの数は変わらなかった）
 - 2026-09-16: パワーの枠を最新版の `UMG_TabletPowers` に合わせ、6 つのアイコン（MID）を持って、左右の枠が指すパワーを出し分けるようにした（`ShowSocketPowers`・`SetPowerPercent`・`SetPowersVisible`）。Q / E の弾み（`BounceSocket`・`TickSockets`）を足した。`SetPowerCharge` を外した。アイコン 8 枚とインスタンス 4 つを取り込みに足した。素材をソフト参照にし、`RebuildWidget` で読むようにした
 - 2026-09-16: 露出をプロジェクト設定で原作に合わせた（00 記録の「露出」）。タブレットの画面の値の撮り直しは PIE 待ち
 - 2026-09-16: 初版（画面のウィジェット、素材の取り込み、ミニマップの仕掛けを記録）

@@ -40,7 +40,7 @@ updated: 2026-09-16
 | `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する |
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
 | `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ・6 パワーのアイコン）を `/Game/DD` に作る（中身は 03 記録） |
-| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）とカメラシェイクを `/Game/DD` に作る（中身は 04 記録） |
+| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアルを作る（中身は 04 記録） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
@@ -96,10 +96,10 @@ updated: 2026-09-16
 - 地図の板（`_map_plane`）: 書き出しの `BP_MapTexture_C`（Zone 1）/ `BP_MapTexture_MultiFloor_C`（Zone 2）のワールド変換に `/Engine/BasicShapes/Plane` を置き、`MAP_PLANE_MATERIAL` のゾーンごとのマテリアル（`/Game/DD/UI/Minimap/MM_Map_06_Zone01`・`MM_Map_06_Zone2`）を入れ、影・ナビ・当たりを切り、`bVisibleInSceneCaptureOnly` を立て、タグ `dd_minimap` を付ける。プレイヤーのシーンキャプチャがこのタグで拾う（03 記録）。
 
 ### タブレットの素材（`pipeline/dd_tablet.py`）
-`import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 25・フォント・音 3・ミニマップのレンダーターゲットとマテリアル・パワーのアイコンのインスタンス 6 を `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_texture` / `import_mesh` / `ensure_masters` / `_Graph` と、`dd_assets` の `pak` / `export_json` / `main_export` / `sound` を使い回す。メッシュは原作の `StaticMesh` のライトマップの値（`LightMapResolution` 64・`LightMapCoordinateIndex` 2）を `import_mesh` に渡す。
+`import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 25・フォント・音 3・ミニマップのレンダーターゲットとマテリアル・パワーのアイコンのインスタンス 6 を `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_mesh` / `ensure_masters` / `_Graph` と、`dd_assets` の `pak` / `export_json` / `main_export` / `sound` / `texture` / `material` を使い回す。メッシュは原作の `StaticMesh` のライトマップの値（`LightMapResolution` 64・`LightMapCoordinateIndex` 2）を `import_mesh` に渡す。
 
 ### パワーの素材（`pipeline/dd_powers.py`）
-`import_all()` がパワーの音（`SOUNDS`、`pak_reference_2`）とカメラシェイク（`CAMERA_SHAKES`）を `dd_assets` で作り、`/Game/DD` を保存する。戻り値は `sounds` / `camera_shakes` の数。中身と原作の根拠は 04 記録。
+`import_all()` がパワーの音（`SOUNDS`、`pak_reference_2`）・カメラシェイク（`CAMERA_SHAKES`）・カメラアニメ（`CAMERA_ANIMS`）・テクスチャ（`TEXTURES`）を `dd_assets` で作り、マテリアル 2 つ（`make_materials`: 原作のグラフが残っている `M_Speedlines` と、推定の `M_DD_ChameleonCameraShake`）を `dd_assets.material` で建て、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は `sounds` / `camera_shakes` / `camera_anims` / `textures` / `materials` の数。マテリアルのノードをつなげなかったら例外にする（`_connect`）。中身と原作の根拠は 04 記録。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
 - `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
@@ -109,6 +109,10 @@ updated: 2026-09-16
 - どの関数も `version`（1 = `pak_reference`、2 = `pak_reference_2`。`pak(version)` が根を返す）を取り、`_assets/DDeception/Content/<パス>.json`（`export_json`）を読む。`main_export` はパッケージと同名の書き出し（アセットそのもの）、`class_defaults` は `Default__*`、`game_rel` はオブジェクトパス（`/Game/Audio/X.X`）→ `Audio/X`。
 - `camera_shake(rel, version)`: `Default__*` のプロパティを、`LegacyCameraShake` を親にした Blueprint の CDO に入れる（UE4 の `UCameraShake` がそのまま `LegacyCameraShake` なので、振幅・周波数・ブレンドの意味が一致する）。1 つでも入らないプロパティがあれば例外にする（黙って違う値のアセットを作らないため）。
 - `sound(rel, version)`: `<パス>.ogg` を `SoundFactory` で取り込み、SoundWave の書き出しの `Volume` と `Pitch`（`SOUND_DEFAULTS`。書き出しに無ければ UE の既定の 1.0 を入れ直す）と `ConcurrencySet` を入れる。同時発音の設定は `sound_concurrency` で作る。チャンネル数・レート・長さはファイルから来る。`SoundClassObject`（本家の `DD_SoundClass_SFX`）はまだ作っていないので入れない。
+- `asset_path(rel)`: 原作の `/Game/<rel>` → `/Game/DD/<rel>`。
+- `texture(rel, version)`: `<パス>.png` を `dd_stage.import_texture` で取り込み、`_textures.json` の sRGB・圧縮・LOD グループを入れる（2026-09-16 に `dd_tablet` から移した）。
+- `material(asset_path, build, domain, blend_mode)`: マテリアルを読み込むか作り、式を全部消してドメインとブレンドを入れ、`build(mat)` にグラフを作らせて再コンパイルする（自前のマスター用。2026-09-16 に `dd_tablet` の `_master` から移した）。
+- `camera_anim(rel, version)`: 本家の `CameraAnim`（UE 5 には無い）を `DataAssetFactory` で `WasamiCameraAnim`（04 記録）に写す。`AnimLength`・`BaseFOV`・`BasePostProcessBlendWeight`（書き出しに無ければ UE4 の `UCameraAnim` の既定 3.0 / 90 / 0。`CAMERA_ANIM_DEFAULTS`）、`BasePostProcessSettings`（`ue_props.apply`。UE 5 に無い `bOverride_FilmWhitePoint` は落とす。原作では既定値の中立でしか使っていない）、`InterpTrackFloatProp` / `InterpTrackLinearColorProp` の `PropertyName` とキー（`InVal`〈Python では `val`〉・`OutVal`・接線・`InterpMode`）を `InterpCurveFloat` / `InterpCurveLinearColor` にそのまま入れる。`InterpTrackMove` は読まない（パワーのアニメは原点の 1 キーだけ）。ほかの種類のトラックがあれば例外にする。
 - `sound_concurrency(rel, version)`: `SoundConcurrencyFactory` で `SoundConcurrency` を作り（あれば読み込み）、書き出しの `Concurrency`（`MaxCount`・`VolumeScale` など、既定と違うものだけ）を `ue_props.apply` で入れる。UE 4.24 と 5.8 の `FSoundConcurrencySettings` の既定は同じ（MaxCount 16・StopFarthestThenOldest・VolumeScale 1.0 など）。
 
 ## 作るアセット
@@ -117,7 +121,7 @@ updated: 2026-09-16
 | --- | --- |
 | `/Game/DD/Meshes/…`・`/Game/DD/Textures/…`・`/Game/DD/Materials/…` ほか | 病院のステージ。本家の `/Game` の木そのまま。メッシュ 64・テクスチャ 282・マテリアルインスタンス 143 |
 | `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake`・`_RunShake` | 本家の頭の揺れ（02 記録のプレイヤーが参照する） |
-| `/Game/DD/UI/…`・`/Game/DD/Audio/…` ほか | タブレット（03 記録）とパワー（04 記録）の素材 |
+| `/Game/DD/UI/…`・`/Game/DD/Audio/…`・`/Game/DD/Animation/…` ほか | タブレット（03 記録）とパワー（04 記録）の素材 |
 | `/Game/Pipeline/Interchange/PL_DD_StaticMesh`、`/Game/Pipeline/Materials/M_DD_Substance`・`M_DD_Decal`・`M_DD_Unlit`、`/Game/Pipeline/Textures/T_DD_DefaultPacked` | 取り込みの道具 |
 | `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 923・灯 1,120、Zone 2 は配置 819・灯 751） |
 
@@ -162,6 +166,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: スピードブーストの演出の素材（カメラアニメ・テクスチャ 2・マテリアル 2）を `dd_powers` に足した。`dd_assets` に `asset_path` / `texture` / `material` / `camera_anim` を足し、`dd_tablet` のテクスチャとマスターの作り方をそこへ移した。ツールセットは `dd_stage` → `dd_assets` の順に読み直す
 - 2026-09-16: パワーの素材の取り込み（`pipeline/dd_powers.py`、`WasamiDDTools.import_dd_powers`）を足した。`dd_assets` に版の指定と、SoundWave（音量・ピッチ・同時発音）と `SoundConcurrency` の取り込みを足し、タブレットの音もそれで取り込むようにした。タブレットのメッシュの取り込みがライトマップの値（`lightmapResolution`）を渡しておらず止まっていたのを直した
 - 2026-09-16: 焼き込みの警告（インポータンスボリュームが無い・ライトマップ UV の重なり）がどちらも原作どおりであることを「既知の制約・注意点」に書いた（ソースは変えていない）
 - 2026-09-16: `apply_texture_settings` が、UE が sRGB を切る圧縮（HDR など）で sRGB を求めないようにした（HDR の空 2 枚が `refresh_settings` のたびに変わったと数えられていた）

@@ -22,6 +22,7 @@
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiChameleonComponent.h"
 #include "WasamiGameMode.h"
 #include "WasamiPowerComponent.h"
 #include "WasamiTabletWidget.h"
@@ -136,6 +137,9 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	MinimapCapture->bCaptureEveryFrame = false;
 
 	Powers = CreateDefaultSubobject<UWasamiPowerComponent>(TEXT("Powers"));
+
+	// FX: the original's child actor sits 20 m over the capsule, but its volume is unbound, so where it is changes nothing.
+	Chameleon = CreateDefaultSubobject<UWasamiChameleonComponent>(TEXT("FX"));
 
 	// The pipeline's assets, loaded at BeginPlay (WasamiAssets.h says why not here).
 	TabletMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2")));

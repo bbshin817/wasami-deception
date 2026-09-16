@@ -16,6 +16,7 @@ class USpringArmComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
 class UTextureRenderTarget2D;
+class UWasamiChameleonComponent;
 class UWasamiPowerComponent;
 class UWasamiTabletWidget;
 class UWidgetComponent;
@@ -26,7 +27,8 @@ struct FInputActionValue;
  * a zero-length spring arm 95 cm over its centre with rotation lag, walking at 300 and sprinting at 600 cm/s, the
  * camera's horizontal FOV following the speed, the walk / run head bob shakes and the 180° turn. It also holds the
  * tablet: the plate in front of the camera, its screen (UWasamiTabletWidget) and the scene capture that draws the
- * minimap, and the tablet's powers (UWasamiPowerComponent).
+ * minimap, the tablet's powers (UWasamiPowerComponent), and the post-process effects the powers switch on
+ * (UWasamiChameleonComponent, the original's Chameleon FX).
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiPlayerCharacter : public ACharacter
@@ -63,6 +65,9 @@ public:
 	UWasamiTabletWidget* GetTabletScreen() const;
 
 	UWasamiPowerComponent* GetPowers() const { return Powers; }
+
+	/** The original's Chameleon FX. */
+	UWasamiChameleonComponent* GetChameleon() const { return Chameleon; }
 
 	/** Walking Speed (cm/s). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
@@ -174,6 +179,10 @@ protected:
 	/** The tablet's powers: its sockets, Q / E / 1 / 2, the gauges and the speed boost. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Powers")
 	TObjectPtr<UWasamiPowerComponent> Powers;
+
+	/** FX: the Chameleon's unbound post-process, which the speed boost shakes. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Powers")
+	TObjectPtr<UWasamiChameleonComponent> Chameleon;
 
 private:
 	void CreateInput();

@@ -24,7 +24,7 @@ updated: 2026-09-16
   - 頭の揺れ: `WalkShakeClass` / `RunShakeClass`（`TSoftClassPtr`。既定は `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake` と `_RunShake` の `_C`）。
   - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E が見る）、`ShardActorClass`（画面が数えるシャードのクラス。未設定なら 0 を出す）。
   - 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `TabletMesh`（`/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2`）、`MinimapTarget`（`/Game/DD/UI/Minimap/T_NewMap`）、`TabletUpSound`（`/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1`）、`TabletDownSound`（`_v1_1`）、`ResizeMapSound`（`/Game/DD/Audio/UI/UI_Select_V3`）。
-  - コンポーネント: `Tablet`（板のスタティックメッシュ）、`TabletScreen`（`UWidgetComponent`、`UWasamiTabletWidget`）、`MinimapCapture`（`USceneCaptureComponent2D`）、`Powers`（`UWasamiPowerComponent`）。
+  - コンポーネント: `Tablet`（板のスタティックメッシュ）、`TabletScreen`（`UWidgetComponent`、`UWasamiTabletWidget`）、`MinimapCapture`（`USceneCaptureComponent2D`）、`Powers`（`UWasamiPowerComponent`）、`Chameleon`（名前は `FX`。`UWasamiChameleonComponent`、`GetChameleon()`。本家の子アクタ `FX` の Chameleon。本家は Z +2000・拡縮 (5,5,1) に置くが、範囲なしのボリュームなので位置は絵に関係せず、アクタコンポーネントにした。中身は 04 記録）。
 
 ## 内部構造と処理の流れ
 
@@ -72,7 +72,7 @@ updated: 2026-09-16
 - `EnhancedInput`（`UInputAction`、`UInputMappingContext`、修飾子 `UInputModifierSwizzleAxis` / `Negate` / `Scalar` / `Smooth` / `FOVScaling`）。
 - タブレットの画面は `UWasamiTabletWidget`（03 記録）、板・画面・地図の素材は `WasamiDDTools.import_dd_tablet` が作る `/Game/DD` のアセット（03 記録）、地図の板はレベルの組み立てが置く（01 記録）。`UMG`（`UWidgetComponent`）と `Engine`（`USceneCaptureComponent2D`、`FRichCurve`）。
 - `UCameraShakeBase`（`/Game/DD` の `LegacyCameraShake` の Blueprint を `TSoftClassPtr` で読む）。
-- パワーは `UWasamiPowerComponent`（04 記録）。コンポーネントはこのクラスの `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()` を使う。
+- パワーは `UWasamiPowerComponent`（04 記録）。コンポーネントはこのクラスの `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()`・`GetChameleon()` を使う。FX は `UWasamiChameleonComponent`（04 記録）。
 - `WasamiAssets.h`（00 記録。ソフト参照の既定のパス）。
 - `Config/DefaultEngine.ini` の `GlobalDefaultGameMode` と `Config/DefaultInput.ini`（00 記録）。
 
@@ -86,6 +86,7 @@ updated: 2026-09-16
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-16: 本家の子アクタ `FX`（Chameleon）にあたる `UWasamiChameleonComponent` を足した（`GetChameleon()`。スピードブーストの画面の揺れが使う）
 - 2026-09-16: スピードブーストを `UWasamiPowerComponent`（04 記録）へ移し、Q / E / 1 / 2 の入力、`bHasInput`・`bCanInteract`、`SetMoveSpeeds`・`GetTabletScreen` を足した。画面にはパワーの枠・ゲージ・弾みを渡すようにした。素材（板・地図のターゲット・音・揺れ）をソフト参照にして `BeginPlay` で読むようにした（コンストラクタで読むとエディタの起動時にルートに入り、パイプラインが作り直すとエディタが落ちる）
 - 2026-09-16: 初版（移動・視点・FOV・頭の揺れ・180°・ブーストを記録）
 - 2026-09-16: タブレット（板・画面・ミニマップのシーンキャプチャ、Space の出し入れと Z の拡縮）と、ゲームモードの `CurrentObjective`、`bCanMove` による移動・視点・ダッシュの停止を足した

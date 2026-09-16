@@ -70,6 +70,7 @@ Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの�
 - **エディタが背面にあるとティックが 3 fps ほどに落ちる**（`Use Less CPU when in Background`）。リモート実行から `LaunchCharacter` などで動かしても速さが出ず、時間に依存する確認（FOV の追従、頭の揺れ、クールダウン）はあてにならない。
   - 入力を伴う確認は、ユーザーに PIE で触ってもらうか、入力を流す Automation テスト（`AutomationTestToolset`）を書く。
   - どうしてもリモートで確かめるときは、エディタを前面にしてもらうか、`Use Less CPU when in Background` を切ってから行い、確認後に戻す。
+- **PIE で動いている最中の絵を撮る**（2026-09-16）: `desktop.py hold w` の間はエージェントが撮影できない。エディタが前面のまま、エディタの Python で `unreal.register_slate_post_tick_callback` に `player.add_movement_input(前方, 1.0, False)` を入れて毎フレーム前進させ、その間に `desktop.py shot` で撮り、終わったら `unregister_slate_post_tick_callback` で外す。PIE の `shot showui` はエディタの窓全体を撮ってビューポートが黒くなるので使えない（UI を含む絵はエージェントで撮る）。
 - ゲームの音はユーザーのスピーカーから鳴る。音を確かめる必要がないときは PIE の音量を上げない。
 
 ## テスト

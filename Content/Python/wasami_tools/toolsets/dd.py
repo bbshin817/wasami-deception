@@ -31,6 +31,7 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         """
         if not asset_paths:
             raise ValueError("asset_paths must not be empty.")
+        _module("dd_stage")
         dd = _module("dd_assets")
         return [dd.camera_shake(p) for p in asset_paths]
 
@@ -43,18 +44,21 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         Returns:
             How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap').
         """
-        _module("dd_assets")
         _module("dd_stage")
+        _module("dd_assets")
         return _module("dd_tablet").import_all()
 
     @toolset_registry.tool_call
     @staticmethod
     def import_dd_powers() -> dict[str, int]:
-        """Imports (or re-imports) what the tablet's powers play: their sounds (with the original SoundWave settings
-        and sound concurrency) and camera shakes. The power icons come with import_dd_tablet.
+        """Imports (or re-imports) what the tablet's powers show and play: their sounds (with the original SoundWave
+        settings and sound concurrency), camera shakes, camera anims (as WasamiCameraAnim), and the speed boost's
+        textures and materials with the player's FX material. The power icons come with import_dd_tablet.
 
         Returns:
-            How many assets of each kind were made ('sounds', 'camera_shakes').
+            How many assets of each kind were made ('sounds', 'camera_shakes', 'camera_anims', 'textures',
+            'materials').
         """
+        _module("dd_stage")
         _module("dd_assets")
         return _module("dd_powers").import_all()
