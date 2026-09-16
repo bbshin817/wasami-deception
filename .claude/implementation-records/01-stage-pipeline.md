@@ -40,6 +40,7 @@ updated: 2026-09-16
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
 | `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ）を `/Game/DD` に作る（中身は 03 記録） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
+| `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
 | スクリプト（エディタの外） | 内容 |
 | --- | --- |
@@ -130,7 +131,17 @@ updated: 2026-09-16
 - 原作の cook されたデータは、既定値と同じプロパティを持たない。ポストプロセスの override が立っていて値が無いのは「既定値で上書き」の意味。
 - MCP のポートは Docker Desktop と衝突しうる（`.claude/guides/unreal-workflow.md`）。MCP が使えないときは `Tools/ue_remote.py` で作業できる。
 
+## 見た目を撮る（`WasamiDevTools.capture_pose`）
+
+エディタのビューポートを通さずに、一時的な `SceneCapture2D`（`SCS_FINAL_COLOR_LDR`）でレベルを PNG に描く。
+
+- **エディタの窓が前面でなくても撮れる**のが要点。`HighResShot` と `AutomationLibrary.take_high_res_screenshot` は、エディタが前面でないとき（`GetActiveViewport()` が無い）**何も言わずに要求を捨てて、ファイルを書かない**。Claude はセッション 0 にいて窓を前に出せないので、この 2 つは使えない。
+- `SCS_FINAL_COLOR_LDR` なので、露出・ブルーム・トーンマッパーはゲームと同じものが掛かる（露出の比較に使える。00 記録の「露出」）。
+- 視点の高さは、プレイヤーの目が capsule の中心 +95 cm なので、`PlayerStart` の z 92 に対して **187**。ヨー 0 は +X 方向。FOV は本家の静止時の 90。
+- 落とし穴: `unreal.Rotator` の引数の順は `(roll, pitch, yaw)`。位置引数で `(pitch, yaw, roll)` のつもりで渡すと、ヨーのつもりの値がピッチになる（天井や床を向いた絵が撮れる）。
+
 ## 変更履歴
+- 2026-09-16: `WasamiDevTools.capture_pose` を足した（エディタが前面でなくても見た目を撮れるようにするため）
 - 2026-09-16: 画面操作の道具（`Tools/desktop.py` と `Tools/desktop_agent.py`）を足した。Claude はセッション 0 にいてセッション 1 の画面を触れないので、セッション 1 に常駐するエージェントとファイル経由でやり取りする（ユーザーの指示で「画面操作も Claude が行う」に変更）
 - 2026-09-16: `Tools/console_session.py` を足した（`editor_cycle.py` の対話デスクトップでの起動を、任意のプログラムに使える形にしたもの。手元の本家のゲームの起動に使う）
 - 2026-09-16: `editor_cycle.py` がエディタを対話デスクトップ（コンソールのセッション）でスケジュールタスク経由で起動するようにし、起動の判定を MCP のポートからリモート実行の応答に変えた

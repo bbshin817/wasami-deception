@@ -55,11 +55,32 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - **`DefaultEngine.ini`**
   - `[/Script/EngineSettings.GameMapsSettings]`: `GameDefaultMap` と `EditorStartupMap` は `/Game/Stage/Maps/L_Hospital_Zone1`、`GlobalDefaultGameMode` は `/Script/wasami_deception.WasamiGameMode`。
   - `[/Script/Engine.RendererSettings]`: 静的ライティング無効（`r.AllowStaticLighting=False`）、仮想シャドウマップ有効、メッシュ距離フィールド生成、Lumen（`r.DynamicGlobalIlluminationMethod=1`、`r.ReflectionMethod=1`）、Substrate 有効、**`r.RayTracing=False`**（この PC の GeForce GTX 1660 SUPER に RT コアが無く、Lumen はソフトウェアのレイトレースで動かすため）。
+  - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。根拠と効果は下の「露出」。
   - `[/Script/WindowsTargetPlatform.WindowsTargetSettings]`: DX12 / SM6、音声 48 kHz。
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
 - **`DefaultGame.ini`**、**`DefaultEditor.ini`**: テンプレートのまま（CommonUI の設定とプロジェクト ID）。
+
+## 露出（2026-09-16）
+
+**原作の露出はポストプロセスボリュームではなくプロジェクト設定で決まっている。** 根拠:
+
+- 原作の `06_Hospital_Zone_01` に `PostProcessVolume` は **0 個**（`pak_reference_2/_levels/06_Hospital_Zone_01.scene.json` の `counts`）。Zone 2 と入口 `06_Hospital` には 1 個ずつあるが、どちらも `bOverride_AutoExposure*` を持たない（色補正・ブルーム・AO・DOF・シャープンだけ）。
+- `pak_reference_2/_raw/DDeception/Config/DefaultEngine.ini`（UE 4.24）の `[/Script/Engine.RendererSettings]` に `r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`r.UsePreExposure=False`・`r.DefaultFeature.MotionBlur=False`・`r.DefaultFeature.LensFlare=False`・`r.DefaultFeature.LightUnits=1`。
+- UE 5.8 でも同じ cvar が効く。`r.DefaultFeature.AutoExposure=0` は `AutoExposureMinBrightness` と `MaxBrightness` を 1 にする（`Engine/Source/Runtime/Engine/Private/SceneView.cpp:2060`）。旧レンジでは `MinWhitePointLuminance = MaxWhitePointLuminance = 1` になり（`PostProcessEyeAdaptation.cpp:665`）、露出 = `2^AutoExposureBias` に固定される。
+- UE 4.24 の `AutoExposureBias` の既定は **0.0**。原作に入っている第三者プラグイン 2 つ（`ThirdParty/Chameleon/Chameleon`、`ThirdParty/LightProbes/Blueprints/Light_ProbeController`）が、上書きしていない `FPostProcessSettings` をそのまま持っており、どちらも `AutoExposureBias 0.0`・`LowPercent 80`・`HighPercent 98.3`・`MinBrightness 0.03`・`MaxBrightness 2.0` と同じ値を示す。UE 5 の既定は `r.DefaultFeature.AutoExposure.Bias` が 1.0（= 2 倍明るい）なので、**0.0 を明示する**。
+- 灯の単位は取り込みのままでよい。`r.DefaultFeature.LightUnits` はエディタで灯を置く工場（`ActorFactoryPointLight.cpp:23` ほか）でしか読まれず、`ULocalLightComponent` の CDO の既定は `Unitless`（`LocalLightComponent.cpp:14`）。原作の Zone 1 の灯 1,121 個はすべて `IntensityUnits` を書き出していない = Unitless で、`dd_level.py` の `DEFAULT_LIGHT_UNITS` と一致する。
+
+効果（`WasamiDevTools.capture_pose` で Zone 1 の同じ場所・同じ向き〈(1801, −9601, 187)・ヨー 90〉を 1280 × 720 で撮って比較。画像は `observations/ours/zone1-corridor-before.png` / `-after.png`）:
+
+| | 画面全体の中央値 RGB | 平均輝度 | 上位 1 % の輝度 |
+| --- | --- | --- | --- |
+| UE5 の既定（自動露出 ON・EV100・ローカル露出 0.8・Bias 1.0） | (175, 170, 140) | 165.7 | 245.5 |
+| 原作の設定（上のとおり） | (13, 13, 0) | 21.1 | 194.1 |
+| 参考: 本家の実機の廊下（`observations/README.md`、別の廊下） | (44, 38, 39) | — | 天井の灯 227〜236 |
+
+**残る差は露出ではなく灯の側**。本作は Lumen の動的な灯（`r.AllowStaticLighting=False`、取り込んだ灯はすべて Movable）で、原作は 1,121 個の灯をライトマップに焼き込んでいる。明るい面（天井の灯）は 194 対 227〜236 とおおむね近いのに、中央値が 13 対 44 と暗いのは、間接光の回り込みが足りていないため。M1 の残りとして灯の側で詰める。
 
 ## 作業の流れ
 
@@ -73,6 +94,10 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - スクリプトで作り直せるアセット（`/Game/DD`・`/Game/Pipeline`・`/Game/Stage`）は git に入れていない。クローンした直後は上の 1〜2 を実行しないとレベルが開けない。
 - Substrate を有効のままにしている（テンプレートの既定）。本家（UE 4.24）は Substrate を使っていないので、見た目を突き詰める段で切ることを検討する。
 - `r.RayTracing=False` はこの PC に合わせた設定。RT コアのある GPU で動かすときは戻す。
+- 原作のプロジェクト設定のうち、**写していない 2 つ**（`Config/DefaultEngine.ini` にも理由を書いてある）:
+  - `r.UsePreExposure=False` … プリ露出はトーンマッパーで打ち消される精度の工夫で、露出を 1.0 に固定した今は何も変えない。切り替えるとシェーダーが全部コンパイルし直しになる。
+  - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。ただし `handover.md` には「ステージのボリュームのモーションブラー 0 は採らず本家の既定 0.5」という逆の決定が残っているので、**ユーザーに確認してから**変える。
 
 ## 変更履歴
 - 2026-09-16: 初版（現行の構成・設定を記録）
+- 2026-09-16: 露出を原作のプロジェクト設定に合わせた（「露出」の節）。写していない 2 つの設定を「既知の制約・注意点」に足した
