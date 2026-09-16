@@ -43,5 +43,18 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         Returns:
             How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap').
         """
+        _module("dd_assets")
         _module("dd_stage")
         return _module("dd_tablet").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_dd_powers() -> dict[str, int]:
+        """Imports (or re-imports) what the tablet's powers play: their sounds (with the original SoundWave settings
+        and sound concurrency) and camera shakes. The power icons come with import_dd_tablet.
+
+        Returns:
+            How many assets of each kind were made ('sounds', 'camera_shakes').
+        """
+        _module("dd_assets")
+        return _module("dd_powers").import_all()

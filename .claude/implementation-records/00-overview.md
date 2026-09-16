@@ -13,6 +13,7 @@ sources:
   - Source/wasami_deception/wasami_deception.Build.cs
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
+  - Source/wasami_deception/WasamiAssets.h
 updated: 2026-09-16
 ---
 
@@ -25,7 +26,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 | 場所 | 中身 |
 | --- | --- |
-| `Source/wasami_deception/` | ゲームの C++ モジュール（`Runtime`、`LoadingPhase: Default`）。プレイヤーとゲームモードは 02 記録 |
+| `Source/wasami_deception/` | ゲームの C++ モジュール（`Runtime`、`LoadingPhase: Default`）。プレイヤーとゲームモードは 02 記録、タブレットの画面は 03 記録、パワーは 04 記録 |
 | `Content/Python/` | エディタの Python。`init_unreal.py` が `wasami_tools` のツールセットを ToolsetRegistry に登録し、MCP から呼べるようにする（01 記録） |
 | `Tools/` | エディタの外で動かすスクリプト（参照データの前処理、リモート実行、エディタの開き直し。01 記録） |
 | `Intermediate/Pipeline/` | 前処理の出力（git の対象外、作り直せる） |
@@ -37,6 +38,8 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）。非公開依存: `Slate`、`SlateCore`。
 - ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V5`、`IncludeOrderVersion.Unreal5_6`（テンプレートのまま）。
 - `wasami_deception.cpp` / `.h` はモジュールの実装（`IMPLEMENT_PRIMARY_GAME_MODULE`）。
+- **パイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）の参照の決まり**（`WasamiAssets.h`）: C++ はそれらをソフト参照で持ち（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に、`WasamiAssets::Path("/Game/…/Name")`〈→ `/Game/…/Name.Name`〉や `WasamiAssets::ClassPath`〈→ `…/BP_Name.BP_Name_C`〉で既定のパスを入れる）、使うとき（`BeginPlay`・`RebuildWidget`）に `LoadSynchronous` で読む。`ConstructorHelpers` で読むとエディタの起動時の読み込みでルートに入り、パイプラインが作り直そうとするとエディタが落ちる（01 記録の注意点）。
+- Automation テストは `Source/wasami_deception/Tests/`（名前は `Wasami.*`）。モジュールのヘッダーは `../` で読む（`Tests/` はモジュールの include パスに入っていない）。
 - ビルドと開き直しの手順は `.claude/guides/unreal-workflow.md`、自動化は `Tools/editor_cycle.py`（01 記録）。
 
 ## プラグイン（`wasami_deception.uproject`）
@@ -153,6 +156,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 
 ## 変更履歴
 - 2026-09-16: 初版（現行の構成・設定を記録）
+- 2026-09-16: パイプラインのアセットをソフト参照で持つ決まり（`WasamiAssets.h`）と、Automation テストの置き場所を足した
 - 2026-09-16: 露出を原作のプロジェクト設定に合わせた（「露出」の節）。写していない 2 つの設定を「既知の制約・注意点」に足した
 - 2026-09-16: 「灯の焼き込み」の結果を、マテリアルのコンパイル失敗と灯の色の取り違え（01 記録）を直した後の値に書き換えた
 - 2026-09-16: 「灯の焼き込み」を、灯の Mobility・両面の影・原作のライトマップの解像度と UV に揃えた後の値に書き換え、床の残りの差が扉の不在による映り込みであることと、開始地点のフレーム時間と VRAM を足した

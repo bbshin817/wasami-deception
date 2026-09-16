@@ -6,10 +6,11 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Curves/RichCurve.h"
 #include "Engine/Font.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "UObject/ConstructorHelpers.h"
+#include "WasamiAssets.h"
 
 namespace
 {
@@ -70,6 +71,36 @@ namespace
 	const FLinearColor BandColour(0.043735f, 0.043735f, 0.043735f, 1.f);
 	const FLinearColor FlashColour(0.485150f, 0.f, 1.f, 1.f);
 
+	// UMG_TabletPowers (pak_reference_2): the MM_Powers instance of each power, in EWasamiPower order.
+	const TCHAR* const PowerMaterialPaths[WasamiPowerCount] = {
+		TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_SpeedBoost"),
+		TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_Inst_Teleport"),
+		TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_Inst_Telepathy"),
+		TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_PrimalFear"),
+		TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_Inst_Telekinesis"),
+		TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_Vanish"),
+	};
+
+	// Use Left / Use Right: a Scale track on the socket's canvas, cubic keys at ticks 0 / 3000 / 9000 / 30000 (60000 a
+	// second) with the tangents the export gives per tick (1.1111e-5 and -9.2593e-6), here per second.
+	constexpr float BounceLength = 0.5f;
+
+	FRichCurve MakeBounceCurve()
+	{
+		FRichCurve Curve;
+		const float Keys[][2] = {{0.f, 1.f}, {0.05f, 1.25f}, {0.15f, 1.1f}, {BounceLength, 1.f}};
+		const float Tangents[] = {0.f, 0.66666683f, -0.55555554f, 0.f};
+		for (int32 Index = 0; Index < UE_ARRAY_COUNT(Keys); ++Index)
+		{
+			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(Keys[Index][0], Keys[Index][1]));
+			Key.InterpMode = RCIM_Cubic;
+			Key.TangentMode = RCTM_User;
+			Key.ArriveTangent = Tangents[Index];
+			Key.LeaveTangent = Tangents[Index];
+		}
+		return Curve;
+	}
+
 	UCanvasPanelSlot* PlaceBox(UCanvasPanel* Panel, UWidget* Child, float X, float Y, float Width, float Height)
 	{
 		UCanvasPanelSlot* Slot = Panel->AddChildToCanvas(Child);
@@ -92,20 +123,15 @@ namespace
 UWasamiTabletWidget::UWasamiTabletWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	static ConstructorHelpers::FObjectFinder<UTexture2D> Background(TEXT("/Game/DD/UI/Tablet/tablet_screen_bg"));
-	static ConstructorHelpers::FObjectFinder<UTexture2D> PlayerMark(TEXT("/Game/DD/UI/Tablet/tablet_map_player"));
-	static ConstructorHelpers::FObjectFinder<UTexture2D> Vignette(TEXT("/Game/DD/UI/Menu/Streaks/T_Vignette"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Map(TEXT("/Game/Pipeline/Materials/M_DD_MapScreen"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Teleport(TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_Inst_Teleport"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Boost(TEXT("/Game/DD/Materials/MasterMaterials/MM_Powers_SpeedBoost"));
-	static ConstructorHelpers::FObjectFinder<UFont> Font(TEXT("/Game/DD/UI/Fonts/helvetica-neue-bold_Font"));
-	BackgroundTexture = Background.Object;
-	PlayerMarkTexture = PlayerMark.Object;
-	VignetteTexture = Vignette.Object;
-	MapMaterial = Map.Object;
-	LeftPowerMaterial = Teleport.Object;
-	RightPowerMaterial = Boost.Object;
-	ScreenFont = Font.Object;
+	BackgroundTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Tablet/tablet_screen_bg")));
+	PlayerMarkTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Tablet/tablet_map_player")));
+	VignetteTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Menu/Streaks/T_Vignette")));
+	MapMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/Pipeline/Materials/M_DD_MapScreen")));
+	for (const TCHAR* Path : PowerMaterialPaths)
+	{
+		PowerMaterials.Add(TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(Path)));
+	}
+	ScreenFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/UI/Fonts/helvetica-neue-bold_Font")));
 }
 
 TSharedRef<SWidget> UWasamiTabletWidget::RebuildWidget()
@@ -121,10 +147,12 @@ TSharedRef<SWidget> UWasamiTabletWidget::RebuildWidget()
 
 void UWasamiTabletWidget::BuildScreen(UCanvasPanel* Root)
 {
-	auto MakeFont = [this](float Size, int32 Outline)
+	// The brushes, fonts and material instances below hold on to what is loaded here.
+	UFont* Font = ScreenFont.LoadSynchronous();
+	auto MakeFont = [Font](float Size, int32 Outline)
 	{
 		FSlateFontInfo Info;
-		Info.FontObject = ScreenFont;
+		Info.FontObject = Font;
 		Info.TypefaceFontName = TEXT("Default");
 		Info.Size = Size;
 		Info.OutlineSettings.OutlineSize = Outline;
@@ -133,7 +161,7 @@ void UWasamiTabletWidget::BuildScreen(UCanvasPanel* Root)
 
 	// Image_25: the background fills the screen.
 	UImage* Background = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Background"));
-	Background->SetBrushFromTexture(BackgroundTexture, false);
+	Background->SetBrushFromTexture(BackgroundTexture.LoadSynchronous(), false);
 	PlaceBox(Root, Background, 0.f, 0.f, ScreenWidth, ScreenHeight);
 
 	// ShardCount: centred in its box, lifted by the margin and the render transform of the original.
@@ -155,15 +183,15 @@ void UWasamiTabletWidget::BuildScreen(UCanvasPanel* Root)
 	PlaceBox(Root, MapPanel, MapLeft, MapTop, MapWidth, MapHeight);
 
 	UImage* MapImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Map"));
-	MapImage->SetBrushFromMaterial(MapMaterial);
+	MapImage->SetBrushFromMaterial(MapMaterial.LoadSynchronous());
 	PlaceFill(MapPanel, MapImage);
 
 	UImage* PlayerMark = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("PlayerMark"));
-	PlayerMark->SetBrushFromTexture(PlayerMarkTexture, false);
+	PlayerMark->SetBrushFromTexture(PlayerMarkTexture.LoadSynchronous(), false);
 	PlaceBox(MapPanel, PlayerMark, MapWidth * 0.5f + MarkOffsetX, MapHeight * 0.5f + MarkOffsetY, MarkSize, MarkSize);
 
 	FlashImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Flash"));
-	FlashImage->SetBrushFromTexture(VignetteTexture, false);
+	FlashImage->SetBrushFromTexture(VignetteTexture.LoadSynchronous(), false);
 	FlashImage->SetBrushTintColor(FSlateColor(FlashColour));
 	FlashImage->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.f));
 	PlaceFill(MapPanel, FlashImage);
@@ -179,15 +207,19 @@ void UWasamiTabletWidget::BuildScreen(UCanvasPanel* Root)
 	Band->AddChild(ObjectiveText);
 	PlaceBox(MapPanel, Band, MapWidth * 0.5f + BandOffsetX, MapHeight + BandOffsetY, BandWidth, BandHeight);
 
-	// Skill1 / Skill2: the two power sockets, each an MM_Powers instance we can drive with `Percent`.
-	LeftPower = UMaterialInstanceDynamic::Create(LeftPowerMaterial, this);
-	UImage* LeftSocket = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("LeftPower"));
-	LeftSocket->SetBrushFromMaterial(LeftPower);
-	PlaceBox(Root, LeftSocket, LeftSocketLeft, SocketTop, LeftSocketRight - LeftSocketLeft, LeftSocketBottom - SocketTop);
+	// Construct: an MM_Powers instance per power, whose `Percent` the gauges drive.
+	PowerIcons.Reset(WasamiPowerCount);
+	for (const TSoftObjectPtr<UMaterialInterface>& Material : PowerMaterials)
+	{
+		UMaterialInterface* Loaded = Material.LoadSynchronous();
+		PowerIcons.Add(Loaded ? UMaterialInstanceDynamic::Create(Loaded, this) : nullptr);
+	}
 
-	RightPower = UMaterialInstanceDynamic::Create(RightPowerMaterial, this);
-	UImage* RightSocket = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RightPower"));
-	RightSocket->SetBrushFromMaterial(RightPower);
+	// Skill1 / Skill2: the two sockets, filling CanvasPanel_3 / CanvasPanel_4 (the bounce scales them about their middle,
+	// as it does those canvases). Update Powers gives them their icons.
+	LeftSocket = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("LeftPower"));
+	PlaceBox(Root, LeftSocket, LeftSocketLeft, SocketTop, LeftSocketRight - LeftSocketLeft, LeftSocketBottom - SocketTop);
+	RightSocket = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RightPower"));
 	PlaceBox(Root, RightSocket, RightSocketLeft, SocketTop, RightSocketRight - RightSocketLeft, RightSocketBottom - SocketTop);
 
 	// TextBlock_107: the "Z" of the map's resize, almost invisible.
@@ -216,16 +248,79 @@ void UWasamiTabletWidget::SetObjective(const FText& Objective)
 	}
 }
 
-void UWasamiTabletWidget::SetPowerCharge(bool bLeftSocket, float Percent)
+void UWasamiTabletWidget::SetPowersVisible(bool bVisible)
 {
-	const int32 Index = bLeftSocket ? 0 : 1;
-	if (FMath::IsNearlyEqual(LastCharge[Index], Percent, 0.001f))
+	if (bPowersVisible == bVisible)
 	{
 		return;
 	}
-	LastCharge[Index] = Percent;
-	if (UMaterialInstanceDynamic* Socket = bLeftSocket ? LeftPower : RightPower)
+	bPowersVisible = bVisible;
+	for (UImage* Each : {LeftSocket.Get(), RightSocket.Get()})
 	{
-		Socket->SetScalarParameterValue(TEXT("Percent"), Percent);
+		if (Each)
+		{
+			Each->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+		}
 	}
+}
+
+void UWasamiTabletWidget::ShowSocketPowers(EWasamiPower Left, EWasamiPower Right)
+{
+	for (bool bLeft : {true, false})
+	{
+		const int32 Power = static_cast<int32>(bLeft ? Left : Right);
+		int32& Shown = ShownPower[bLeft ? 0 : 1];
+		UImage* Image = Socket(bLeft);
+		if (!Image || Shown == Power)
+		{
+			continue;
+		}
+		Shown = Power;
+		// SetBrushFromMaterial(None) would draw a white box; a socket with no power shows nothing instead.
+		UMaterialInstanceDynamic* Icon = PowerIcons.IsValidIndex(Power) ? PowerIcons[Power].Get() : nullptr;
+		Image->SetBrushFromMaterial(Icon);
+		Image->SetOpacity(Icon ? 1.f : 0.f);
+	}
+}
+
+void UWasamiTabletWidget::SetPowerPercent(EWasamiPower Power, float Percent)
+{
+	const int32 Index = static_cast<int32>(Power);
+	if (!PowerIcons.IsValidIndex(Index) || !PowerIcons[Index] || FMath::IsNearlyEqual(LastPercent[Index], Percent, 0.001f))
+	{
+		return;
+	}
+	LastPercent[Index] = Percent;
+	PowerIcons[Index]->SetScalarParameterValue(TEXT("Percent"), Percent);
+}
+
+void UWasamiTabletWidget::BounceSocket(bool bLeft)
+{
+	BounceTime[bLeft ? 0 : 1] = 0.f;
+}
+
+void UWasamiTabletWidget::TickSockets(float DeltaSeconds)
+{
+	for (bool bLeft : {true, false})
+	{
+		float& Time = BounceTime[bLeft ? 0 : 1];
+		UImage* Image = Socket(bLeft);
+		if (Time < 0.f || !Image)
+		{
+			continue;
+		}
+		Time += DeltaSeconds;
+		const float Scale = EvaluateSocketBounce(Time);
+		Image->SetRenderScale(FVector2D(Scale, Scale));
+		if (Time >= BounceLength)
+		{
+			Time = -1.f;
+		}
+	}
+}
+
+float UWasamiTabletWidget::EvaluateSocketBounce(float Seconds)
+{
+	static const FRichCurve Curve = MakeBounceCurve();
+	return Curve.Eval(FMath::Clamp(Seconds, 0.f, BounceLength));
 }

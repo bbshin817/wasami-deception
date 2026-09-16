@@ -20,6 +20,7 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_stage.py
   - Content/Python/wasami_tools/pipeline/dd_level.py
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
+  - Content/Python/wasami_tools/pipeline/dd_powers.py
 updated: 2026-09-16
 ---
 
@@ -38,7 +39,8 @@ updated: 2026-09-16
 | `WasamiStageTools.refresh_dd_stage_assets()` | マスターマテリアルの版が古ければ作り直し、テクスチャの設定を原作どおりに直し、全マテリアルインスタンスを再コンパイルする |
 | `WasamiStageTools.build_dd_stage_level(zone="Zone1", map_path="")` | そのゾーンのレベルを作り（または開き）、前の組み立てが置いたアクタ（タグ `dd`）を消してから置き直し、保存する |
 | `WasamiDDTools.import_dd_camera_shakes(asset_paths)` | 本家のカメラシェイクを `LegacyCameraShake` の Blueprint として `/Game/DD/<元のパス>` に作る |
-| `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ）を `/Game/DD` に作る（中身は 03 記録） |
+| `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ・6 パワーのアイコン）を `/Game/DD` に作る（中身は 03 記録） |
+| `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）とカメラシェイクを `/Game/DD` に作る（中身は 04 記録） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
@@ -94,15 +96,20 @@ updated: 2026-09-16
 - 地図の板（`_map_plane`）: 書き出しの `BP_MapTexture_C`（Zone 1）/ `BP_MapTexture_MultiFloor_C`（Zone 2）のワールド変換に `/Engine/BasicShapes/Plane` を置き、`MAP_PLANE_MATERIAL` のゾーンごとのマテリアル（`/Game/DD/UI/Minimap/MM_Map_06_Zone01`・`MM_Map_06_Zone2`）を入れ、影・ナビ・当たりを切り、`bVisibleInSceneCaptureOnly` を立て、タグ `dd_minimap` を付ける。プレイヤーのシーンキャプチャがこのタグで拾う（03 記録）。
 
 ### タブレットの素材（`pipeline/dd_tablet.py`）
-`import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 17・フォント・音 3・ミニマップのレンダーターゲットとマテリアルを `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_texture` / `import_mesh` / `ensure_masters` / `_Graph` を使い回す。
+`import_all()` がタブレットのメッシュ・マテリアル・テクスチャ 25・フォント・音 3・ミニマップのレンダーターゲットとマテリアル・パワーのアイコンのインスタンス 6 を `/Game/DD` に作り、自前のマスター 3 つを `/Game/Pipeline/Materials` に建てる。中身と原作の根拠は 03 記録。`dd_stage` の `import_texture` / `import_mesh` / `ensure_masters` / `_Graph` と、`dd_assets` の `pak` / `export_json` / `main_export` / `sound` を使い回す。メッシュは原作の `StaticMesh` のライトマップの値（`LightMapResolution` 64・`LightMapCoordinateIndex` 2）を `import_mesh` に渡す。
+
+### パワーの素材（`pipeline/dd_powers.py`）
+`import_all()` がパワーの音（`SOUNDS`、`pak_reference_2`）とカメラシェイク（`CAMERA_SHAKES`）を `dd_assets` で作り、`/Game/DD` を保存する。戻り値は `sounds` / `camera_shakes` の数。中身と原作の根拠は 04 記録。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
 - `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
 - `ue_props`: UE のプロパティ名 → Python 名（`CameraISO` → `camera_iso`、`bOverride_X` → `override_x`）、書き出しの値 → Python の値（辞書の Vector / Vector4 / Color / LinearColor、**`pak_reference_2` が色やベクトルに使う配列**〈`[183, 163, 145, 255]`〉、列挙）、構造体は中身だけを再帰的に入れる（`apply`）。**整数 4 つの配列の色（FColor）は [B, G, R, A] の順として読む**（エンジンは FColor を uint32 のまま書き〈`Color.h` の `Ar << DWColor()`〉、リトルエンディアンでバイトは B,G,R,A。書き出しの道具 `ue4.py` の `'Color': ('u8', 4)` はその順のまま出す。`pak_reference` も同じ）。浮動小数の配列（LinearColor）と、名前つきの辞書の色は並べ替えない。読めなかったものは `failures` に積む。**UE の版で名前が変わったプロパティは `RENAMED` で読み替える**（`FogInscatteringColor` → `FogInscatteringLuminance`、`DirectionalInscatteringColor` → `DirectionalInscatteringLuminance`。どちらも同じ LinearColor の改名なので値はそのまま）。
 
 ### 本家のアセット（`pipeline/dd_assets.py`）
-- `pak_reference/_assets/DDeception/Content/<パス>.json` の `Default__*` のプロパティを、`LegacyCameraShake` を親にした Blueprint の CDO に入れる（UE4 の `UCameraShake` がそのまま `LegacyCameraShake` なので、振幅・周波数・ブレンドの意味が一致する）。
-- 1 つでも入らないプロパティがあれば例外にする（黙って違う値のアセットを作らないため）。
+- どの関数も `version`（1 = `pak_reference`、2 = `pak_reference_2`。`pak(version)` が根を返す）を取り、`_assets/DDeception/Content/<パス>.json`（`export_json`）を読む。`main_export` はパッケージと同名の書き出し（アセットそのもの）、`class_defaults` は `Default__*`、`game_rel` はオブジェクトパス（`/Game/Audio/X.X`）→ `Audio/X`。
+- `camera_shake(rel, version)`: `Default__*` のプロパティを、`LegacyCameraShake` を親にした Blueprint の CDO に入れる（UE4 の `UCameraShake` がそのまま `LegacyCameraShake` なので、振幅・周波数・ブレンドの意味が一致する）。1 つでも入らないプロパティがあれば例外にする（黙って違う値のアセットを作らないため）。
+- `sound(rel, version)`: `<パス>.ogg` を `SoundFactory` で取り込み、SoundWave の書き出しの `Volume` と `Pitch`（`SOUND_DEFAULTS`。書き出しに無ければ UE の既定の 1.0 を入れ直す）と `ConcurrencySet` を入れる。同時発音の設定は `sound_concurrency` で作る。チャンネル数・レート・長さはファイルから来る。`SoundClassObject`（本家の `DD_SoundClass_SFX`）はまだ作っていないので入れない。
+- `sound_concurrency(rel, version)`: `SoundConcurrencyFactory` で `SoundConcurrency` を作り（あれば読み込み）、書き出しの `Concurrency`（`MaxCount`・`VolumeScale` など、既定と違うものだけ）を `ue_props.apply` で入れる。UE 4.24 と 5.8 の `FSoundConcurrencySettings` の既定は同じ（MaxCount 16・StopFarthestThenOldest・VolumeScale 1.0 など）。
 
 ## 作るアセット
 
@@ -110,11 +117,13 @@ updated: 2026-09-16
 | --- | --- |
 | `/Game/DD/Meshes/…`・`/Game/DD/Textures/…`・`/Game/DD/Materials/…` ほか | 病院のステージ。本家の `/Game` の木そのまま。メッシュ 64・テクスチャ 282・マテリアルインスタンス 143 |
 | `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake`・`_RunShake` | 本家の頭の揺れ（02 記録のプレイヤーが参照する） |
+| `/Game/DD/UI/…`・`/Game/DD/Audio/…` ほか | タブレット（03 記録）とパワー（04 記録）の素材 |
 | `/Game/Pipeline/Interchange/PL_DD_StaticMesh`、`/Game/Pipeline/Materials/M_DD_Substance`・`M_DD_Decal`・`M_DD_Unlit`、`/Game/Pipeline/Textures/T_DD_DefaultPacked` | 取り込みの道具 |
 | `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 923・灯 1,120、Zone 2 は配置 819・灯 751） |
 
 ## 原作データの根拠
 - カメラシェイク: `pak_reference/_assets/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter_*Shake.json`。
+- 音の設定: 各 SoundWave の書き出し（例: `pak_reference_2/_assets/DDeception/Content/Audio/UI/Shard_Streak_Milestone_V5.json` の `Volume` 0.7・`Pitch` 2.0・`ConcurrencySet`）と、同時発音の `Audio/NewSoundConcurrency.json`（`MaxCount` 2・`VolumeScale` 0.5）。
 - ステージ（これから）: `pak_reference_2/_levels/06_Hospital_Zone_01.scene.json`・`06_Hospital_Zone_02.scene.json`、`_meshes.json`、`_materials.json`、`_textures.json`、`_meshes_gltf/`。
 
 ## 依存関係
@@ -127,6 +136,7 @@ updated: 2026-09-16
 - **原作のマテリアルの式は cook で消えている**ので、`Normal Flatness`（インスタンスは 1.2〜3.0、マスターの既定は 0）・`Roughness Power` / `Metallic Power` 以外のスカラは適用していない。`Roughness Power` / `Metallic Power` は既定 1.0 が恒等になる pow として実装した（推定）。見え方を原作と比べる段で見直す。
 - **UE の版の違い**: 本家のデカールは `DecalBlendMode = DBM_DBuffer_ColorRoughness` だが、UE 5.8 では `decal_blend_mode` が非推奨（No longer used）で Python から読めない。いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつないでいる。
 - 当たりはすべて描画のメッシュそのもの（complex as simple）。書き出しのメッシュは `body_setup` を持たない。
+- **C++ のコンストラクタで読まれたアセットは作り直せない**。エディタの起動時の読み込み（`GIsInitialLoad`）の間に読まれたオブジェクトは、UE 5.8 の `AsyncLoading2.cpp` が `AddToRoot` する。その式を `MaterialEditingLibrary.delete_all_material_expressions` で消すと `MarkAsGarbage` の `check(!IsRooted())` でエディタが落ちる（2026-09-16、`import_dd_tablet` が `M_DD_MapScreen` を作り直したとき。タブレットの画面のコンストラクタが `ConstructorHelpers` で読んでいた）。テクスチャ・音・メッシュの取り込み直しは同じオブジェクトに書き戻すので落ちなかった。**C++ は、ここで作るアセットをソフト参照にして使うときに読む**（`Source/wasami_deception/WasamiAssets.h`。02〜04 記録）。
 - **マテリアルのノードの既定テクスチャは、ノードのサンプラーの型と合わせる**。合わないとマスターのコンパイルが失敗し（`Sampler type is Linear Color, should be Masks for …`）、**そのマスターのインスタンスがすべて UE の `DefaultMaterial`（灰色の市松）で描かれる**。ログには `Failed to compile Material Instance with Base M_DD_Substance for platform PCD3D_SM6, Default Material will be used in game.` が出るだけで、組み立てもビルドも止まらない。2026-09-16 まで `T_DD_DefaultPacked` が `TC_Masks` だったため、**病院の `M_DD_Substance` 系のマテリアル（壁・床・金属など）はずっとこの状態で、それまでの PIE の絵と焼き込みはすべて市松のまま**だった。取り込みや組み立ての後は、ログに `Failed to compile Material` が無いことを確かめる。
 - `editor_cycle.py` は起動時に `sys.stdout` / `sys.stderr` を `errors="replace"` にし直す。ビルドの出力にこの PC のコンソール（cp932）で出せない文字が混ざると、ビルドの失敗を報告する途中で `UnicodeEncodeError` になって落ちていた。
 - **エディタの起動はセッションを跨ぐ**。Claude Code は Windows のセッション 0（サービス側）で動いており、そこには GPU の出力が無い（ログの `LogD3D12RHI: Adapter has … 0 output[s]`）ので、そのまま起動したエディタは D3D12 のスワップチェーンを作れず `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE` で即落ちる。`start_editor()` は `ProcessIdToSessionId` と `WTSGetActiveConsoleSessionId` で自分のセッションとコンソールのセッションを比べ、違えば一度きりのスケジュールタスク（`WasamiLaunchEditor`。プリンシパルはログオン中のユーザーを **SID で**指定し、`LogonType Interactive`・`RunLevel Limited`）でログオン中のセッションに起動する。ユーザー名の形（ドメインなしの PC では `WORKGROUP` になる）では登録できないので SID を使う。タスクはエディタが応答したら消す（`drop_task`）。
@@ -152,6 +162,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-16: パワーの素材の取り込み（`pipeline/dd_powers.py`、`WasamiDDTools.import_dd_powers`）を足した。`dd_assets` に版の指定と、SoundWave（音量・ピッチ・同時発音）と `SoundConcurrency` の取り込みを足し、タブレットの音もそれで取り込むようにした。タブレットのメッシュの取り込みがライトマップの値（`lightmapResolution`）を渡しておらず止まっていたのを直した
 - 2026-09-16: 焼き込みの警告（インポータンスボリュームが無い・ライトマップ UV の重なり）がどちらも原作どおりであることを「既知の制約・注意点」に書いた（ソースは変えていない）
 - 2026-09-16: `apply_texture_settings` が、UE が sRGB を切る圧縮（HDR など）で sRGB を求めないようにした（HDR の空 2 枚が `refresh_settings` のたびに変わったと数えられていた）
 - 2026-09-16: ライトマップの解像度と UV の番号を原作のメッシュの値から取るようにし（`Export.lightmap`）、UV1 を持たないメッシュにも UE の展開を作らせないようにした（`setup_lightmap`。`refresh_settings` が既存のメッシュにもかけ直す）。それまでは解像度を表面積から決め（最大 2048）、番号を 1 に決め打ちし、結合メッシュに UV を作らせていたため、原作では 1 点の値だったステージ本体の間接光が面ごとに焼かれ、壁と床が実機より明るかった。表面積の計測（`gltf_surface`・`areaM2`・`lightmapUvUsed`）は使わなくなったので外した

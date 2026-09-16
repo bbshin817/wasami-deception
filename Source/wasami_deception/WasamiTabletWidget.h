@@ -2,6 +2,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "CoreMinimal.h"
+#include "WasamiPowerTypes.h"
 #include "WasamiTabletWidget.generated.h"
 
 class UBorder;
@@ -17,6 +18,8 @@ class UTexture2D;
  * The tablet's screen, after Dark Deception's UI/Tablet/UMG_Tablet (pak_reference): 714 × 864 px of background with
  * the shard count, the two power sockets, the minimap with the player's mark, the objective band and the "Z" of the
  * map's resize. The tree is built here rather than in a widget Blueprint so every position stays the original's px.
+ * The sockets follow the latest version's UMG_TabletPowers (pak_reference_2): six power icons, shown by what each
+ * socket points at.
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiTabletWidget : public UUserWidget
@@ -36,14 +39,54 @@ public:
 	/** The game mode's Current Objective; the band shows it in upper case, as the original's binding does. */
 	void SetObjective(const FText& Objective);
 
-	/** A power socket's MM_Powers `Percent`: 1 when it can be used, 0 when it cannot. */
-	void SetPowerCharge(bool bLeftSocket, float Percent);
+	/** Both sockets, hidden when no power is unlocked (UMG_TabletPowers' Check). */
+	void SetPowersVisible(bool bVisible);
+
+	/** Update Powers: the icon each socket shows (None shows nothing). */
+	void ShowSocketPowers(EWasamiPower Left, EWasamiPower Right);
+
+	/** A power icon's MM_Powers `Percent` (1 = full); a socket showing that power shows it. */
+	void SetPowerPercent(EWasamiPower Power, float Percent);
+
+	/** Use Left / Use Right: the socket swells to 1.25 and settles back over 0.5 s, from the start each time. */
+	void BounceSocket(bool bLeft);
+
+	/** Moves the sockets' bounce on by DeltaSeconds. */
+	void TickSockets(float DeltaSeconds);
+
+	/** The bounce's scale at Seconds into it (1 before and after). */
+	static float EvaluateSocketBounce(float Seconds);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
+	/** tablet_screen_bg: the background with the bar and the map's frame drawn on it. */
+	UPROPERTY(EditAnywhere, Category = "Tablet|Assets")
+	TSoftObjectPtr<UTexture2D> BackgroundTexture;
+
+	/** tablet_map_player: the mark at the middle of the map. */
+	UPROPERTY(EditAnywhere, Category = "Tablet|Assets")
+	TSoftObjectPtr<UTexture2D> PlayerMarkTexture;
+
+	/** T_Vignette: the purple flash over the map when a shard is collected (Count Shake's Image_41). */
+	UPROPERTY(EditAnywhere, Category = "Tablet|Assets")
+	TSoftObjectPtr<UTexture2D> VignetteTexture;
+
+	/** M_DD_MapScreen: the scene capture's render target, as the original's M_NewMap. */
+	UPROPERTY(EditAnywhere, Category = "Tablet|Assets")
+	TSoftObjectPtr<UMaterialInterface> MapMaterial;
+
+	/** The MM_Powers instances of the six powers, in EWasamiPower order. */
+	UPROPERTY(EditAnywhere, Category = "Tablet|Assets")
+	TArray<TSoftObjectPtr<UMaterialInterface>> PowerMaterials;
+
+	/** helvetica-neue-bold_Font: every text of the original's tablet. */
+	UPROPERTY(EditAnywhere, Category = "Tablet|Assets")
+	TSoftObjectPtr<UFont> ScreenFont;
+
 private:
 	void BuildScreen(UCanvasPanel* Root);
+	UImage* Socket(bool bLeft) const { return bLeft ? LeftSocket : RightSocket; }
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ShardCountText;
@@ -55,38 +98,20 @@ private:
 	TObjectPtr<UImage> FlashImage;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> LeftPower;
+	TObjectPtr<UImage> LeftSocket;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> RightPower;
+	TObjectPtr<UImage> RightSocket;
 
-	/** tablet_screen_bg: the background with the bar and the map's frame drawn on it. */
-	UPROPERTY()
-	TObjectPtr<UTexture2D> BackgroundTexture;
-
-	/** tablet_map_player: the mark at the middle of the map. */
-	UPROPERTY()
-	TObjectPtr<UTexture2D> PlayerMarkTexture;
-
-	/** T_Vignette: the purple flash over the map when a shard is collected (Count Shake's Image_41). */
-	UPROPERTY()
-	TObjectPtr<UTexture2D> VignetteTexture;
-
-	/** M_DD_MapScreen: the scene capture's render target, as the original's M_NewMap. */
-	UPROPERTY()
-	TObjectPtr<UMaterialInterface> MapMaterial;
-
-	/** MM_Powers_Inst_Teleport / MM_Powers_SpeedBoost: the left and right sockets (the original's power order). */
-	UPROPERTY()
-	TObjectPtr<UMaterialInterface> LeftPowerMaterial;
-
-	UPROPERTY()
-	TObjectPtr<UMaterialInterface> RightPowerMaterial;
-
-	/** helvetica-neue-bold_Font: every text of the original's tablet. */
-	UPROPERTY()
-	TObjectPtr<UFont> ScreenFont;
+	/** One dynamic instance per power, in EWasamiPower order. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> PowerIcons;
 
 	int32 LastShardCount = -1;
-	float LastCharge[2] = {-1.f, -1.f};
+	bool bPowersVisible = true;
+	float LastPercent[WasamiPowerCount] = {-1.f, -1.f, -1.f, -1.f, -1.f, -1.f};
+	/** The power each socket shows, as an int so that nothing matches before the first call. */
+	int32 ShownPower[2] = {-1, -1};
+	/** Seconds into each socket's bounce; negative when it is not playing. */
+	float BounceTime[2] = {-1.f, -1.f};
 };
