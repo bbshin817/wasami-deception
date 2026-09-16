@@ -55,9 +55,41 @@
 | `zone1-start-pie.png` | 同上 | **実機と同じ視点**（開始地点 `04_Start`）。扉が閉じたまま・Lumen・21:9 で水平 107° |
 | `zone1-start-pie-doorhidden.png` | 同上 | 同じ視点でエレベーターの扉を隠したもの（本作は扉が動かないので、実機の「開いた」状態に合わせた） |
 | `zone1-start-pie-baked-nolightmapuv.png` | 同上 | 焼き込みに切り替えた直後（ライトマップ UV がまだ無く、かえって暗い） |
-| `zone1-start-pie-baked.png` | 同上 | **ライトマップ UV を用意して焼いた後**（2026-09-16 時点のいちばん新しい絵） |
+| `zone1-start-pie-baked.png` | 同上 | ライトマップ UV を用意して焼いた後 |
+| `zone1-start-capture-fixedmat.png`・`…-pastdoor.png` | `capture_pose` | マテリアルのコンパイル失敗を直した直後（焼き込みは古いまま）。扉の手前と、扉を越えた (-25, 3440) |
+| `zone1-start-pie-fixedmat.png` | PIE の `HighResShot 3440x1440` | マテリアルを直して焼き直した後（灯の色は R と B が入れ替わったまま） |
+| `zone1-start-pie-fixedcolor.png` | 同上 | **灯の色も直して焼き直した後**（2026-09-16 時点のいちばん新しい絵） |
 
-### 実機と同じ視点で比べる（2026-09-16）
+**`zone1-start-pie-fixedmat.png` より前の本作の絵は、すべて病院の壁・床が既定のマテリアル（灰色の市松）で描かれている**（`M_DD_Substance` のコンパイル失敗）。
+**`zone1-start-pie-fixedcolor.png` より前の本作の絵は、灯の色の R と B が入れ替わっている**（天井灯が黄色、扉枠の灯が青。本来は青白と赤）。どちらも 01 記録。
+これより前の数値の比較（下の表）は、この 2 つの誤りを含んだ絵のもの。
+
+## tools/（比較の補助。git の対象外）
+
+| ファイル | 使い方 |
+| --- | --- |
+| `tools/pie_pose.py` | PIE 中に `python Tools/ue_remote.py observations/tools/pie_pose.py`。視点をヨー -90 にし、プレイヤーから 8 m 以内のエレベーターの扉を隠す（実機の「開いた」状態に合わせる） |
+| `tools/cmp.py` | `python observations/tools/cmp.py <画像> <画像> …`（3440x1440）。画面全体・床・壁・天井・天井灯の面・エレベーターの壁・廊下の奥の中央値と平均輝度を並べる |
+| `tools/bake_zone1.py` | `python Tools/ue_remote.py observations/tools/bake_zone1.py`。`L_Hospital_Zone1` を開いた状態で Preview 品質で焼き、反射キャプチャを撮り直して保存する（2 分ほど） |
+
+PIE の手順: MCP の `EditorAppToolset.StartPIE`（`startTransform` = (-25, 3735, 97)・ヨー -90、`warmupSeconds` 3）→ `tools/pie_pose.py` → ゲームのワールドで `HighResShot 3440x1440`
+（`unreal.SystemLibrary.execute_console_command(get_game_world(), …)`）→ `Saved/Screenshots/WindowsEditor/` の最新を `ours/` へ写す → `StopPIE`。
+
+### 開始地点の比較（2026-09-16、マテリアルと灯の色を直した後）
+
+| 領域（`tools/cmp.py`） | 本作 `zone1-start-pie-fixedcolor.png` | 実機 `ref-zone1-start-full.png` |
+| --- | --- | --- |
+| 画面全体 | (54, 68, 72)・輝度 84.0 | (34, 45, 47)・58.1 |
+| 床の手前 | (119, 141, 147)・135.7 | (47, 61, 61)・57.4 |
+| 床の中ほど | (129, 151, 157)・144.3 | (35, 53, 53)・49.0 |
+| 右の壁 | (72, 93, 97)・69.7 | (22, 36, 36)・31.9 |
+| 天井の中央 | (151, 178, 177)・169.6 | (160, 187, 187)・183.3 |
+| 天井灯の面 | (94, 122, 127)・170.1 | (95, 125, 130)・170.3 |
+| エレベーターの壁（左・右） | (48, 60, 64)・(42, 56, 58) | (35, 47, 49)・(38, 49, 50) |
+
+色相は合った。**床と壁は本作が約 2〜3 倍明るい**（次の課題）。廊下の奥は、実機では赤い両開き扉（本作にまだ無い）がふさいでいるので比べられない。
+
+### 実機と同じ視点で比べる（2026-09-16、マテリアルと灯の色の誤りを直す前）
 
 実機の `ref-zone1-start-full.png` は MOD の Maps でスポーンした直後の絵なので、**視点は原作の `PlayerStart` そのもの**。
 原作 `06_Hospital_Zone_01` の 4 つのうち **`04_Start` (-25, 3735, 97)・ヨー -90** で、エレベーターの扉メッシュ（±160, 3487）の 281 cm 手前、
