@@ -337,6 +337,13 @@
 - 試して駄目だったこと（2026-09-17）: `output_idx=1`（`Failed to enumerate DXGI output 1`。出力は 1 つだけ）、`-loglevel debug`（`Opened dxgi output 0 with dimensions 3440x1440` の後に何も出ない）。
 - 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 6・11a）、`.claude/guides/verification.md`。
 
+### PIE のビューポートが `gdigrab` で 1 秒に 4〜10 枚しか撮れない
+
+- 症状: 10b3 では 1 秒に約 48 枚撮れたビューポートの収録が、`frames` で 1 秒に 4〜10 枚（最初に 1.5 秒以上の穴）。ビューポートの外（VS Code の上）を撮っても同じ。`ddagrab` は最初のフレームで止まった（上の節）。
+- 原因: PIE が上限なしで約 89 fps で描き、GPU の使用率が 96 %（`nvidia-smi`）。デスクトップの合成が待たされ、GDI の取り込みが遅れる。
+- 対処: 撮る前に `python Tools/pie.py cmd "t.MaxFPS 60"`（GPU 63 %、1 秒に約 48 枚に戻った）。終わったら `t.MaxFPS 0` に戻す。手順は `.claude/guides/observation.md` の「5.」。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11b1）。
+
 ### 本家の一瞬の演出が `gdigrab` で粗くしか撮れない（1 秒に約 10 枚）
 
 - 症状: 本家（全画面）を `record --grab gdi` で撮ると、`--fps 60` でも 1 秒に約 10 枚。範囲を 1720 × 720 や 860 × 360 に絞っても 3 秒で 16 枚だった（エディタのビューポートなら 60 fps で撮れた）。

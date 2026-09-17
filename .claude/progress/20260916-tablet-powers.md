@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 16:30
+updated: 2026-09-17 18:00
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -36,54 +36,22 @@ updated: 2026-09-17 16:30
 - [x] 10b. テレキネシスの粒子 `P_ky_forceField_Telekinesis`（10b1 道具と素材、10b2 推定の材質 4 つと粒子、10b3 C++ の参照と PIE）… 2026-09-17。01・04 記録
 - [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）
   - [x] 11a. 最新版の実機の観察 … 2026-09-17。収録は `observations/original/orig-*`、測った値は `observations/README.md` の「パワーの演出」
-  - [ ] 11b. PIE で同じものを撮って見比べ、仮の値（`TODO(仮)`）を直す。次の 2 つ以上に分ける（2026-09-17）:
-    - [ ] 11b1. **作業中**。PIE で下の項目 1〜7 を本家と同じ条件で撮り、同じコマンドで測って `observations/README.md` の ours に並べる（値は変えない）。変更するファイル: `observations/README.md`、この記録。アセットは変えない（PIE と仮の的だけ）
-    - [ ] 11b2 以降. 違いの大きいものから仮の値を直し、取り込み直す（11b1 の結果で分ける）
-    見比べる項目（本家の結果 → 本作で確かめること）:
-    1. **テレポートの照準**（最新版の病院。材質は両版で同じ）
-       - 本家: 赤い渦の輪、赤いデカール、小さな赤い火花が数個。デカールの内側の中央値の R は 139 ↔ 238（約 1.0 s 周期）。
-       - 本作で確かめること: `dd_powers.DECAL_COLOR`・`DECAL_PULSE_LOW`・`DECAL_PULSE_HIGH`・`DECAL_CONTRAST`、斬撃の色の出方、火花の大きさと数（ステップ 5 では PIE のほうが大きく多く見えた）。
-    2. **倍率 25 のシェイクの間の黒いフレーム**
-       - 本家: 見えない。下半分で輝度が 8 未満の画素の割合は、最大でも primal-a 0.099・primal-b 0.075・telekinesis-a 0.045。
-       - 本作で確かめること: 同じ測り方で測り、下の決定事項「直さない」を見直す。
-    3. **テレキネシス**
-       - 本家: 閃光と青の色調の時系列（`observations/README.md`）。力場の間に廊下が照らされる様子は見えない。
-       - 本作で確かめること: 同じ時系列になるか、力場の粒子の色・大きさ・速さ（材質 4 つは推定。要確認）、球の粒子の灯が照らす強さ（本作は 0.2〜0.7 s に画面が白っぽい水色になる）。
-    4. **Primal**
-       - 本家: 黄〜橙の白飛び → 赤の単色。
-       - 本作で確かめること: `M_DD_Primal` のパンの速さ（仮）。
-    5. **Vanish**
-       - 本家: 桃〜白 → 紫のもや → 紫の揺らぐビネット（slomo の下で約 5.1 s 周期）。
-       - 本作で確かめること: `M_DD_WobblyVignette` の速さ・周期・強さ（仮）、煙 `M_DD_LoopingSmoke` の見え方（本作は正面からほとんど見えない）。
-    6. **Telepathy**
-       - 本家: 敵の体に重なる、体と同じくらいの大きさの橙〜赤の炎のような印。
-       - 本作で確かめること: `M_DD_Telepathy` の速さと Gain（仮）。本作は仮の的で撮る。
-    7. **シャードの回転**
-       - 本家: 21.0 s で同じ見た目に戻る。1 周とみなすと 17.1 °/s。
-       - 本作で確かめること: 「1 ループ 2 周」の読み（10.8〜32.4 °/s）の範囲に入るので、同じ測り方（`video_probe.py period`）で比べる。
-    8. **スピードブーストの揺れ**（推定の `M_DD_ChameleonCameraShake`）
-       - 11a では撮っていない。撮るには本家をもう一度起動する。作業一覧の項目 2 でもブーストを実機で見るので、そこで合わせてもよい。
-    9. **回収の音の重なり**
-       - 要確認（人が聞く）。
+  - [ ] 11b. PIE で同じものを撮って見比べ、仮の値（`TODO(仮)`）を直す
+    - [x] 11b1. PIE で本家と同じ条件で撮って測った … 2026-09-17。結果は `observations/README.md` の「パワーの演出の見比べ」。シェイク中の黒（見えない）とシャードの回転（範囲内）は直さないと決めた（04 記録）
+    - [ ] 11b2. **Primal**: 閃光の模様が大きく黄白に寄る（本家は赤橙の地に細かい白い粒）、閃光が 1.5 倍長い、球の赤いまだらが +3.5 s まで残る（本家は +1.0 s で消える）。`M_DD_Primal`（`PRIMAL_PAN_SPEED` などの仮の値と `T_05_PortalMaps` の使い方）と、球の大きさ・消え方が本家の値かを確かめて直す
+    - [ ] 11b3. **Vanish**: 画面全体の紫が強い（B +40、本家は +6〜18）、縁のビネットが濃く明るい（左端 R 68〜93、本家 29〜46）、明滅の周期 2.0 s（本家約 5.1 s。UI の材質の時間は slomo に従わない前提）、中央の煙のもやが見えない（本家は約 3.8 s × 0.25 残る）。`WOBBLE_*`・ウィジェットの色・`M_DD_LoopingSmoke` を直す
+    - [ ] 11b4. **照準とテレキネシスの粒**: デカールの暗い側 R 74（本家 139）と明るい側の白さ（`DECAL_PULSE_LOW`・`DECAL_PULSE_HIGH`・`DECAL_CONTRAST`）、火花が多く大きい、輪が細く暗い。テレキネシスの星屑が画面を横切るほど大きい（本家は小さな粒）、力場が少し明るい（G +20）
+    - [ ] 11b5. **Telepathy の印**: 本家はぎざぎざの穴のあいた赤い煙の雲、本作は丸く柔らかいぼかし（`M_DD_Telepathy`）。大きさは同じ解像度（3440 × 1440 の別窓の PIE など）で比べ直す
+    - 撮っていないもの: スピードブーストの揺れ（推定の `M_DD_ChameleonCameraShake`。作業一覧の項目 2 で本家のブーストを見るときに合わせる）、回収の音の重なり（要確認）
 - [ ] 12. 仕上げ: 実装記録 04 の見直し、handover の「現状と次の一歩」、作業一覧の項目 1 を「完了」に、main へマージして push、この記録を消す
 
 ## 次にやること
 
-ステップ 11b1。`.claude/guides/observation.md` の「5.」「6.」に沿って撮って測る。撮るものの一覧（本家の条件は `observations/README.md` の「パワーの演出」）:
+ステップ 11b2（Primal）。
 
-| 項目 | 場所 | 速さ | 長さ | 操作 | 測り方 | 本家 / 本作 |
-| --- | --- | --- | --- | --- | --- | --- |
-| Primal | 開始地点 | 0.25 | 10 s | 左 = Primal → Q | `series`・`--dark 8`・`sheet` | `orig-primal-a` / `pie-primal-a` |
-| テレキネシス | 開始地点 | 0.25 | 10 s | 左 = Telekinesis → Q | `series`・`--dark 8`・`sheet` | `orig-telekinesis-a` / `pie-telekinesis-a` |
-| テレキネシス（速さ 1） | 開始地点 | 1 | 6 s | 同上 | `series` | `orig-telekinesis-b` / `pie-telekinesis-b` |
-| Vanish | 開始地点 | 0.25 | 16 s | 左 = Vanish → Q | `series`・`sheet` | `orig-vanish-a` / `pie-vanish-a` |
-| Telepathy | 開始地点＋仮の的 | 1 | 10 s | 左 = Telepathy → Q | `sheet` | `orig-telepathy-b` / `pie-telepathy-c` |
-| 照準 | Zone 1 の待合 | 1 | 5 s | 右 = Teleport → E、ホイールで手前へ、見下ろし | `series --box --stat median`・`HighResShot` | `orig-aim-a` / `pie-aim-b` |
-| シャードの回転 | Zone 1 の待合（4 m 先） | 1 | 45 s | 見るだけ | `period` | `orig-shard-spin-long` / `pie-shard-spin-long` |
-
-1. 開始地点（`python Tools/pie.py place -25 3735 --yaw -90`）で上の 5 本を撮る。枠の中身は `get_socket_power` で確かめる。
-2. Zone 1 の待合（推定 `place 15 385 --yaw -90`）で照準とシャードを撮る。最初に、本家の `orig-aim-a-full.png` と同じ絵になるかを確かめる。
-3. 測った値を `observations/README.md` の ours に本家と並べて書き、違いの大きい順に 11b2 以降のステップを決めてここに書く。
+1. `Content/Python/wasami_tools/pipeline/dd_powers.py` の `_build_primal`・`PRIMAL_*` と `Source/wasami_deception/WasamiPrimalPower.cpp` を読み、閃光の模様・色・長さと球の消え方のどれが本家の値の写しで、どれが仮の値かを分ける（本家の値は変えない。根拠は `.claude/references/powers/04-primal-telepathy.md`）。
+2. 仮の値を `orig-primal-a.mkv` に近づける（模様の細かさ＝タイリング、黄白 → 赤橙の色、パンの速さ）。取り込み直しは `WasamiDDTools.import_dd_powers()`。
+3. 11b1 と同じ条件（`observation.md` の「5.」。`t.MaxFPS 60`、開始地点、扉を隠す、slomo 0.25、10 s、左 = Primal）で `pie-primal-b.mkv` を撮り、`series --dark 8`・`sheet` で本家と比べて `observations/README.md` に書く。
 
 ## 決定事項
 
@@ -99,9 +67,10 @@ updated: 2026-09-17 16:30
 - 2026-09-17（ユーザーの回答）: シャードの見た目はワサミ餅（06 記録）。
 - 2026-09-17: 推定したマテリアルは、`/Game/Pipeline/Materials/M_DD_*` のマスターと、原作のパスのインスタンスで作る。決まらない値は `TODO(仮)` にし、見た目は 11b で最新版の病院と見比べて決める。
   - デカールの色と明るさは、旧版の Manor ではポストプロセスが強すぎて戻せない。そのため最新版で決める。
-- 2026-09-17（10a）: シェイクの間の黒いフレームは直さないとしていた。理由は、シェイク・タブレットの位置・隠さないことがどれも本家の値と仕組みの写しだから。11a で本家では見えなかったので、11b で本作を同じ測り方で測って見直す。
 - 2026-09-17（11）: 観察（エディタを閉じて本家を動かす）と、見比べ・直し（エディタ）は同時にできず、1 コミットに収まらない。そのため 11a と 11b に分けた。
 - 2026-09-17（11a）: 本家のセーブは読んだだけで、控えを `SaveBackups/pre-step11-<時刻>/` に写した。捕まって Restart したので、ゲーム自身がセーブを書いたかもしれない（Claude の編集ではない）。
+- 2026-09-17（11b1）: 11b を、撮って測る 11b1 と、差の大きい順に直す 11b2〜11b5 に分けた（Primal → Vanish → 照準とテレキネシスの粒 → Telepathy）。どれも取り込み直しと PIE の撮り直しで 1 コミットに収まる大きさ。
+- 2026-09-17（11b1）: 本家の Telepathy の収録で敵の体に出る溶岩のような模様は、Reaper Nurse が姿を現す演出（`BP_06_ReaperNurse` の `Cloak`・マテリアルの `Efficiency`）で、Telepathy の印ではない。透明化は作らない（作業一覧の項目 7、ユーザーの回答）ので、Telepathy は印の雲だけを比べる。
 - 2026-09-17（記録を畳んだ）: 新しい決まり（`progress-tracking.md` の「記録を畳む」）に沿って、115 KB から畳んだ。消した決定・手順・検証が、実装記録・症状索引・ガイド・`observations/README.md` にあることを語句で確かめた。無かった 4 点は、症状索引・検証のガイド・観察の手順書に足した（`Desaturation` の入力名、取り込みの後に Zone 1 が未保存になる件、テストをリモート実行で回す方法、PIE の開始地点がランダムなこと）。
 
 ## 要確認（ユーザー）
@@ -112,12 +81,14 @@ updated: 2026-09-17 16:30
 
 ## 再開時の注意
 
-- **状態**（2026-09-17 16:15。観察の手順書の作業で PIE を試して止めた後）
+- **状態**（2026-09-17 18:00。11b1 の撮影の後）
   - 本家は閉じてある。
-  - エディタは開いている（`L_Hospital_Zone1`、PIE なし、未保存なし）。
+  - エディタは開いている（`L_Hospital_Zone1`、PIE なし、未保存なし）。`t.MaxFPS` は 0 に戻した。
   - C++ は 10b3 のままで、ビルドは最新。
 - **11b の道具**
   - 撮影と測定の手順は `.claude/guides/observation.md`。PIE は `Tools/pie.py`、測るのは `Tools/video_probe.py`。
+  - **撮る前に `python Tools/pie.py cmd "t.MaxFPS 60"`**（無いと 1 秒に 4〜10 枚。症状索引）。ビューポートの位置はエディタの窓で変わる（11b1 は (1826, 205)〜(2978, 859)）。
+  - 枠の中身とゲージは `tmp/pie_sockets.py`（git の外。`get_socket_power`・`is_power_available`・`get_gauge_percent` を表示する）。無ければ `observation.md` の「5.」の説明で書き直す。
   - 本家の収録は `observations/original/`、本作の既存の収録は `observations/ours/pie-*`。
 - **取り込み直し**
   - `WasamiDDTools.import_dd_powers()` で行う（`from wasami_tools.toolsets.dd import WasamiDDTools`）。
@@ -128,10 +99,8 @@ updated: 2026-09-17 16:30
 
 ## 検証
 
-- ステップ 11a:
-  - 最新版の pak の大きさが `pak_reference_2` と同じ（7,854,848,189 バイト）。
-  - MOD の `clvl` が `Current Level: 06_Hospital_Zone_01` を返した。
-  - 収録 12 本（`observations/original/orig-*`）を測った（`observations/README.md`）。
-  - 本家を閉じ、エディタを開き直した（未保存なし）。
-  - check_records OK（6 件）。
-  - C++ とアセットは変えていないので、ビルドとテストは走らせていない。
+- ステップ 11b1:
+  - PIE の収録 8 本（`observations/ours/pie-*`。`t.MaxFPS 60` で 1 秒に 47〜50 枚、シャードは 10 fps）を、本家と同じコマンドで測った（`observations/README.md`）。
+  - 照準の構図は `HighResShot 3440x1440` で本家と同じ（市松の十字の大きさ）と確かめた。
+  - PIE を止め、未保存なし。ffmpeg は残っていない。
+  - check_records OK（6 件）。C++ とアセットは変えていないので、ビルドとテストは走らせていない。

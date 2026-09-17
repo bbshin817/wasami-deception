@@ -128,8 +128,10 @@ cp Intermediate/DesktopAgent/shots/orig-<項目>-a.mkv observations/original/
 
 ```bash
 python Tools/pie.py start                                   # PIE を始めて状態を表示（開いているレベル = L_Hospital_Zone1）
+python Tools/pie.py cmd "t.MaxFPS 60"                       # GPU に余裕を残す（無いと gdigrab が 1 秒に 4〜10 枚に落ちる）
 python Tools/pie.py place -25 3735 --yaw -90                # 本家と同じ場所と向き
-python Tools/desktop.py shot --scale 0.25                   # ビューポートの位置を確かめる（2026-09-17 は (2046, 217)〜(3198, 869)）
+python Tools/ue_remote.py observations/tools/pie_pose.py    # 開始地点では、エレベーターの扉を隠す（本家は開いている）
+python Tools/desktop.py shot --scale 0.25                   # ビューポートの位置を確かめる（エディタの窓の位置で変わる。11b1 は (1826, 205)〜(2978, 859)）
 python Tools/desktop.py click 2620 600 --allow UnrealEditor.exe            # ビューポートを押して焦点を渡す（エディタを前面にする）
 python Tools/desktop.py key space --allow UnrealEditor.exe; sleep 1                     # タブレットを上げきってから
 python Tools/desktop.py key 1 1 1 1 --gap-ms 300 --allow UnrealEditor.exe; sleep 0.5    # 枠を送る（並びは本家と同じ）
@@ -138,6 +140,7 @@ python Tools/pie.py cmd "slomo 0.25"
 python Tools/desktop.py record --grab gdi --region 2046 217 3198 869 --seconds 10 --name pie-<項目>-a.mkv >/dev/null
 sleep 1.5; python Tools/desktop.py key q --allow UnrealEditor.exe >/dev/null; sleep 10
 cp Intermediate/DesktopAgent/shots/pie-<項目>-a.mkv observations/ours/
+python Tools/pie.py cmd "t.MaxFPS 0"                        # 上限を戻す
 python Tools/pie.py stop                                    # 必ず止める。未保存が無いことも表示される
 ```
 
@@ -146,7 +149,8 @@ python Tools/pie.py stop                                    # 必ず止める。
   - エディタが背面のままだと、PIE は 1 秒に 3 フレームほどに落ちる。
   - 前面に出ている小窓（Automation のログなど）は、先に閉じる。
 - **枠の中身**: `python Tools/ue_remote.py -c` で `WasamiPowerComponent` の `get_socket_power(True)`（左）と `get_socket_power(False)`（右）を読めば確かめられる。
-- **ビューポートの収録**: 60 fps で撮れる。本家とは枚数が違うが、時刻（pts）で比べるので揃えなくてよい。
+- **ビューポートの収録**: `t.MaxFPS 60` を付ければ 1 秒に約 48 枚で撮れる（`frames` で確かめる）。本家とは枚数が違うが、時刻（pts）で比べるので揃えなくてよい。
+- **照準**（`orig-aim-a` と同じ絵）: `place 15 385 --yaw -90 --pitch -26.7` の後に E。距離はリモート実行で `WasamiPowerComponent.adjust_teleport_distance(-1)` を 10 回（最短）→ `+1` を 3 回（Lv5 で 625 cm。本家の約 5.9 m に合わせた推定）。`HighResShot 3440x1440` で床の市松の十字が本家と同じ大きさになる。取り消しは同じ側の E。
 - **比べられるもの**: ビューポートの縦横比は本家（21:9）と違う。色と時間は比べられるが、画面上の位置と大きさは比べられない。
   - 位置を比べるときは `python Tools/pie.py cmd "HighResShot 3440x1440"` で静止画を撮る（`Saved/Screenshots/WindowsEditor/`）。
 - **敵の代わり**: 敵（作業一覧の項目 4）ができるまでは、仮の的を使う。リモート実行で `unreal.WasamiTestEnemy.spawn_test_enemy(<ゲームのワールド>, <位置>)` を呼んで出す。
