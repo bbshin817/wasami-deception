@@ -58,10 +58,10 @@
 ### 2. 既存の修正 2 件（マウスの視点移動が遅い・スピードブーストの集中線がノイズに見える）
 
 - 目標: 視点移動の速さを本家と同じにし、集中線を本家と同じ絵にする。
-- 完了の条件: (1) 同じマウスの移動量に対する回転角が最新版の実機と一致する（`Tools/desktop.py` の `look` で同じ量を送って収録し、画面の回転を測る）。まず疑うのは `Config/DefaultInput.ini` の `AxisConfig`（Mouse2D の感度 0.07）と Enhanced Input の `Scalar` 0.07 の二重掛け（`WasamiPlayerCharacter.cpp` の `MouseAxisSensitivity`）。(2) ブースト中の画面（`observations/ours/`）で集中線が本家の実機の収録と同じ形（放射状の線のコマ送り）に見える。疑うのは `T_Speedlines`（3841 × 5404、2 列 × 5 段）の取り込み（非圧縮・ミップ 1・`TEXTUREGROUP_UI`）と `M_Speedlines` の FlipBook の読み方（2 × 2）。
+- 完了の条件: (1) 同じマウスの移動量に対する回転角が最新版の実機と一致する（`Tools/desktop.py` の `look` で同じ量を送って収録し、画面の回転を測る）。最初に疑った `AxisConfig`（Mouse2D の感度 0.07）と `Scalar` 0.07 の二重掛けは、エンジンのコードでは起きないと分かった（Enhanced Input は `AxisConfig` を通らない生の値を読む。進捗記録の決定事項）。(2) ブースト中の画面（`observations/ours/`）で集中線が本家の実機の収録と同じ形（放射状の線のコマ送り）に見える。疑うのは `T_Speedlines`（3841 × 5404、2 列 × 5 段）の取り込み（非圧縮・ミップ 1・`TEXTUREGROUP_UI`）と `M_Speedlines` の FlipBook の読み方（2 × 2）。
 - 根拠: 実装記録 02・04、`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini`、`pak_reference_2/_bytecode/DDeception/Content/UI/Main/Powers/UMG_SpeedBoost.txt`、最新版の実機。
 - 依存: 1（同じ C++ とマスターを触るので、マージの後）。
-- 状態: 未着手。
+- 状態: **進行中**（進捗記録 `20260917-look-speedlines.md`、ブランチ `feature/look-and-speedlines`。2026-09-17 に計画）。
 
 ### 3. ワサミシャードの光（紫の明滅と、紫でやや弱い回収の閃光）
 
