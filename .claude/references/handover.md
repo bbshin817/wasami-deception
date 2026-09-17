@@ -106,13 +106,15 @@ WebGL 版の多くの工夫は「ブラウザで UE の見た目と挙動を再�
 - コミットと push は WebGL 版と同じ運用（実装ごとにコミット、条件を満たすと main を自動で push。`.claude/guides/git-workflow.md`）。
 - 参照データ（pak_reference・pak_reference_2・cc2_reference）はこのリポジトリの直下へ移した（`.gitignore`）。WebGL 版の派生データ（`assets-src/cc2/layout.json`・`assets-src/level/stage.json`・`assets-src/cc2/tex/`）と調査の資料（`.claude/references/`）は WebGL 版の場所から読む。
 
-## 7. 現状（2026-09-17 の作業の終わり）と次の一歩
+## 7. 現状（2026-09-18 の作業の終わり）と次の一歩
 
 できたこと:
 
 - **タブレットのパワー 6 種（2026-09-17、作業一覧の項目 1。`feature/tablet-powers` を main へマージ）**: Speed Boost（演出つき）・Teleport（旧版 `pak_reference` に従う。照準・移動・取り消し・カメラアニメ）・Telepathy（壁越しの印）・Primal Fear・Telekinesis（シャードの引き寄せと力場の粒子）・Vanish が、Lv5 固定で最初から使える（04 記録）。Q / E で使い、1 / 2 で枠を切り替える。シャードの最小限（ワサミ餅 337 / 342、回収・閃光・引き寄せ。06 記録）もこの作業で作った。原作のグラフが cook で消えた材質は推定で組み、最新版の実機の収録と同じ条件で見比べて値を決めた（`observations/README.md`）。敵がまだ無いので、敵に効くパワーは仮の的 `AWasamiTestEnemy` でしか確かめていない。残った差と仮の値は、04 記録の「既知の制約・注意点」にある（テレキネシスの灯と材質、Telepathy の印は作業一覧の項目 23 で詰める）。
 - **マウスの視点の速さと集中線の修正（2026-09-17、作業一覧の項目 2。`feature/look-and-speedlines` を main へマージ）**: 視点が遅すぎたのは、Enhanced Input がマウスの対応づけに `AxisConfig` の感度 0.07 を自動で重ね、C++ の Scalar 0.07 と二重に掛かっていたため。Scalar を外し、最新版の実機で測った 0.175°/カウントと一致させた（02 記録・症状索引）。スピードブーストの集中線がノイズに見えたのは `M_Speedlines` の FlipBook が既定の 2 × 2 だったためで、実機の連写に合わせて 2 × 5・30 コマ/s にした（04・01 記録。測り方は `observations/README.md` の「視点の速さと集中線」）。
 - **ワサミシャードの光（2026-09-17、作業一覧の項目 3。`feature/shard-glow` を main へマージ）**: 置かれている餅が紫に明滅し（`M_DD_WasamiMochi` の自己発光に紫の波。位相は個体ごとの乱数）、回収の閃光が紫でやや弱い本作の版 `/Game/Wasami/Shard/P_WasamiShardFlash` になった（原作のパスの `P_ky_flash3` は変えない）。本家の紫の灯はそのまま。閃光の係数は 2026-09-17 にユーザーが確定し、餅の明滅は同じ回答で外すことになった（作業一覧の項目 22: 明滅をやめ、1.5 倍にして本家のように回す）（06 記録。測り方は `observations/README.md` の「紫の回収の閃光」ほか）。
+- **敵ワサミの素体（2026-09-18、作業一覧の項目 4。`feature/enemy-wasami-body` を main へマージ）**: ユーザーのモデル `enemy_wasami_v3.glb`（と捕獲の 3 本だけ旧 glb）を `SourceArt/Wasami/` に置き、`WasamiDDTools.import_wasami_enemy` が `/Game/Wasami/Enemy` に `SK_WasamiEnemy` と役の名前のアニメ 19 本を作る（glb の 24/30 fps の混在を 30 fps に標本化し直す、気絶をループと起き上がりに分ける、追跡中の変化をその場の形にする、旧モデルの 3 本を骨のひねりの対応で載せ替える、`Chase_VaultLand` を床から跳ぶ形にする）。`AWasamiEnemy` は本家のナース `BP_06_ReaperNurse` の値（カプセル・速さ 350 / 800・`CanSpawn`・0.5 s ごとの判断・17 s の気絶・`IWasamiEnemyInterface`）を持ち、`UWasamiEnemyAnimInstance` が本家のナースの ABP の木と全身の 1 回再生（捕獲と追跡中の変化の口）を持つ（07 記録）。PIE で立ち姿・巡回・追跡・Nightmare・気絶と明け・Telepathy・Vanish・1 回再生 9 本を確かめた（`observations/README.md` の「敵ワサミ」）。**敵はまだレベルに置かれず AI も無い**（項目 6・7）。再生の速さ・Nightmare の切り替え・待機の選択・`Chase_VaultLand` の形は作業一覧の「未回答の要確認」。
+
 
 - M0: 運用ルール（`CLAUDE.md`、`.claude/guides/`）、参照データの移動、git（main、Git LFS、origin へ push 済み）。
 - ステージ: CC2 の Zone_1 を取り込んで組み立てるところまで作ったが、**2026-09-16 の方針変更（ステージを本家の病院へ）で削除した**（`/Game/CC2`・`L_Zone1`・`Tools/cc2/`・`cc2_assets.py`・`cc2_level.py`）。実装は git 履歴（`f2ad354` 以前）に残っているので、必要なら取り出せる。
@@ -138,7 +140,7 @@ WebGL 版の多くの工夫は「ブラウザで UE の見た目と挙動を再�
 - MCP の再接続: Docker Desktop が `0.0.0.0:8000` を掴んでいるため、エディタを閉じている間に Claude Code の接続が切れる。開き直した後は `/mcp` で再接続する（`.claude/guides/unreal-workflow.md`）。
 - ステージ（病院）の残り: NavMesh（`NavMeshBoundsVolume` はブラシの形が書き出しに無いので置いていない）、性能の計測（開始地点だけ測った: PIE の平均 12.7 ms・95 パーセンタイル 16.8 ms、**VRAM 5.1 GB は `.claude/guides/performance.md` の目安の上限**。ステージ全体と Zone 2 はまだ）、動く部品（両開き扉 62・除細動器 23・ガレージリフト・ゾーンの障壁・スピードバリア 4）はまだ静的な配置か未実装。スカイライトと反射キャプチャのキューブマップ（書き出しが平面 PNG で回収不能）と Zone 2 の `ColorGradingLUT`（寄与 0）・`WeightedBlendables` は未対応。マテリアルの `Normal Flatness` は式が cook で消えていて適用していない。
 
-次の一歩: **2026-09-17 から `.claude/roadmap.md`（作業一覧）が正本**。ユーザーが示した最終目標（敵は `enemy_wasami.glb`、本家ホテルの体の捕獲、紫のワサミシャード、本家どおりの特殊シャード、ボス戦なしで Zone 2 のガレージの祭壇とポータルから脱出、〈2026-09-18 から〉入口レベルは作らず Zone 1 のエレベーターの到着から始める・敵は `enemy_wasami_v3`・Matron は `boss_wasami`・餅は `wasami_mochi_v3`・追跡中にランダムの動き、WebGL 版どおりのタイトル・オプション・スコア画面、マウス感度と集中線の修正、除細動器・スピードバリア・秘密）を 21 項目に分解してあり、`/continue` は未完了の進捗記録が無ければそこの「未着手」で依存が満たされた最初の項目から始める（2026-09-17 に項目 1〜3 が終わり、次は項目 4〈敵ワサミの素体〉）。下の一覧は 2026-09-16 時点のもの（経緯として残す。0 は作業一覧の項目 1、1〜3 は項目 5〜8・13、4 は項目 21 に含めた）。
+次の一歩: **2026-09-17 から `.claude/roadmap.md`（作業一覧）が正本**。ユーザーが示した最終目標（敵は `enemy_wasami.glb`、本家ホテルの体の捕獲、紫のワサミシャード、本家どおりの特殊シャード、ボス戦なしで Zone 2 のガレージの祭壇とポータルから脱出、〈2026-09-18 から〉入口レベルは作らず Zone 1 のエレベーターの到着から始める・敵は `enemy_wasami_v3`・Matron は `boss_wasami`・餅は `wasami_mochi_v3`・追跡中にランダムの動き、WebGL 版どおりのタイトル・オプション・スコア画面、マウス感度と集中線の修正、除細動器・スピードバリア・秘密）を 21 項目に分解してあり、`/continue` は未完了の進捗記録が無ければそこの「未着手」で依存が満たされた最初の項目から始める（2026-09-17 に項目 1〜3、2026-09-18 に項目 4 が終わり、次は項目 22〈ワサミシャードの見た目の変更〉）。下の一覧は 2026-09-16 時点のもの（経緯として残す。0 は作業一覧の項目 1、1〜3 は項目 5〜8・13、4 は項目 21 に含めた）。
 
 2026-09-16 時点の次の一歩（おすすめの順）:
 

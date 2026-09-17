@@ -83,7 +83,7 @@
 - 完了の条件: 原本を `SourceArt/Wasami/`（Git LFS）に写し、取り込み（`wasami_tools` のツールセット）が `/Game/Wasami/Enemy` にメッシュ・スケルトン・v3 のアニメ 16 本と捕獲の 3 本を作り、一覧（`.claude/references/enemy-wasami-motions.md`）の役で引ける。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で `Stun_Loop` をループして明けに `Stun_Recover` で起き上がる（無名のモーションの前半と後半）。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。
 - 根拠: `tmp/enemy_wasami_v3.glb`（Blender 4.5 の glTF、骨 28、UE のマネキン系の名前）、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.txt`（部品と気絶）、実装記録 04（インターフェース）。
 - 依存: 1。
-- 状態: **進行中**（進捗記録 `20260917-enemy-wasami-body.md`、ブランチ `feature/enemy-wasami-body`。2026-09-17 に計画。同日の回答で、割り当ては確定、縁取りは作らない。2026-09-18 にモデルが `enemy_wasami_v3` に決まった）。
+- 状態: **完了（2026-09-18）**。`WasamiDDTools.import_wasami_enemy` が `/Game/Wasami/Enemy` に `SK_WasamiEnemy` と役の名前のアニメ 19 本（`A_WasamiEnemy_<役>`）を作り、`AWasamiEnemy`（本家のナースの値、0.5 s ごとの判断で気絶して 17 s 後に Patrol）と `UWasamiEnemyAnimInstance`（本家のナースの ABP の木、全身の 1 回再生 `PlayOnce`）が動く（実装記録 07）。PIE で立ち姿・巡回・追跡・Nightmare・気絶と明け・Telepathy・Vanish・1 回再生 9 本を確かめた（`observations/README.md` の「敵ワサミ」）。`Chase_VaultLand` は取り込みで床から跳ぶ形に直した。敵はまだレベルに置かれず（`SpawnEnemy` を呼ぶのは項目 6・7）、仮の的 `AWasamiTestEnemy` とそのテストは残してある。再生の速さ・Nightmare の切り替え・待機の選択・`Chase_VaultLand` の形は下の「未回答の要確認」。
 
 ### 22. ワサミシャードの見た目の変更（明滅をやめる・1.5 倍・本家のシャードのように回す）
 
@@ -241,4 +241,9 @@
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
 
-（いまは無し。2026-09-17 に残っていた 11 件すべてに回答があった。答えは上の「最終目標について決めたこと」と項目 22・23 に移した。main の worktree と本家の MOD の W-Editor のファイルは、同日にユーザーの許可を得て消した）
+### 項目 4（敵ワサミの素体、2026-09-18 に閉じた記録 `20260917-enemy-wasami-body`）
+
+- 2026-09-18: 敵の足の運びに合わせた再生の速さ — 仮に `Walk` = 速さ / 133 を 0.5〜2 倍、`Run` = 速さ / 450・`Run_Nightmare` = 速さ / 500 を 0.6〜1.8 倍にした。PIE では追跡の走りはほぼ滑らない（1 %）が、巡回 350 cm/s の歩きは上限 2 倍で足が速さの 24 % 滑る（上限を 2.6 にすれば滑らないが、1 秒に約 5 歩のせかせかした歩きになる）。理由: 本家はスケートで速さ 1、範囲は WebGL 版の値、分母は PIE で測った足の速さ。場所: `WasamiEnemyAnimInstance.h` の `TODO(仮): the play rate follows the speed`。
+- 2026-09-18: 全回収後の追跡の走り `Run_Nightmare` への切り替え — 仮に走りと同じ 0.25 s のブレンドにした。理由: 本家の ABP に無い分岐。場所: `WasamiEnemyAnimInstance.h` の `TODO(仮): the original has one run`。
+- 2026-09-18: 待機と見張りの待機のアニメ — 仮に `Idle_11`（直立）と `Idle_5`（足を開いた低い構え）にした。理由: Claude が v3 の中から選び、PIE で見て不自然さが無かった（`observations/ours/pie-enemy-idle-*.png`・`pie-enemy-alert-*.png`）。場所: `.claude/references/enemy-wasami-motions.md` の表、`dd_enemy.py` の `ROLES`。
+- 2026-09-18: `Chase_VaultLand`（`Vault_and_Land`）の扱い — 元は「高さ約 76 cm の台の上から片手をついて跳び降りる」動きで、平らな廊下では宙から始まった。仮に、取り込みで台の高さの分を離れるまで下げて床から跳び越える形（見えない低い障害物を越える形。足は最高約 78 cm、骨盤は 130 cm）にし、着地後に立っているだけの区間を切り（2.4 s）、この 1 本だけ 31° 斜めに進むのを真っすぐに回した（体の向きは −7° で始まり 21° で終わる）。ほかの案: 追跡の候補から外して場面（項目 6 の Zone 1 の出来事）でだけ使う / そのまま流す。理由: ユーザーが追跡中の例に挙げた動きなので、候補に残す。場所: `dd_enemy.py` の `VAULT_FRAMES`・`_vault`、一覧の追跡中の変化の表、映像 `observations/ours/pie-enemy-once-Chase_VaultLand.mkv`・`-sheet.png`。
