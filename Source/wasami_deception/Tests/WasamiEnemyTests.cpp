@@ -160,7 +160,7 @@ bool FWasamiEnemyAnimLocomotionTest::RunTest(const FString& Parameters)
 	Sentry.Update(SentryInputs, 0.5f);
 	TestEqual(TEXT("the Nightmare run from the start of moving"), Sentry.GetClipWeight(WasamiEnemyClip::RunNightmare), 1.f);
 	TestEqual(TEXT("the plain run is not used"), Sentry.GetClipWeight(WasamiEnemyClip::Run), 0.f);
-	TestEqual(TEXT("the Nightmare run's rate"), Sentry.GetClipRate(WasamiEnemyClip::RunNightmare), 800.f / 460.f);
+	TestEqual(TEXT("the Nightmare run's rate"), Sentry.GetClipRate(WasamiEnemyClip::RunNightmare), 800.f / 500.f);
 	SentryInputs.bNightmare = false;
 	Sentry.Update(SentryInputs, 0.125f);
 	TestEqual(TEXT("it switches like the run"), Sentry.GetClipWeight(WasamiEnemyClip::Run), 0.5f);

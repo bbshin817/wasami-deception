@@ -35,7 +35,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiTestEnemy.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
   - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # タブレットのパワー
@@ -562,6 +562,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-18: テストの的（`Tests/WasamiTestEnemy.cpp`）のタグの定数を `TestEnemyTag` にした（敵ワサミ `WasamiEnemy.cpp` の `EnemyTag` とユニティビルドでぶつかった。07 記録）
 - 2026-09-17: `M_Speedlines` の FlipBook を既定の 2 × 2・1 周/秒から、本家の実機に合わせた 2 × 5・3 周/秒（30 コマ/s）に直し、`T_Speedlines` の `NeverStream` を原作どおり真にした（`dd_powers`・`dd_assets.texture`。01 記録。ソースの C++ は変えていない）
 - 2026-09-17: テレポートの照準とテレキネシスの星屑の推定の材質を最新版の収録に合わせた。`M_DD_DecalTeleport` の `Color`・`PulseLow`・`PulseHigh` を (1, 0, 0)・0.2・1.0 に、`M_DD_KySlash` を「粒子の色を G で `hilightColor` へ、不透明度は R^colorCorrect × alphaDensity × α を深度で薄める」に組み直し、`M_DD_KyStarDust` の `swSQdust` の真と偽を入れ替えて偽の側を `DiamondGradient`（`Falloff` = `starDensity`）× `flashPower` にした（`dd_powers`。C++ は変えていない）
 - 2026-09-17: Vanish の推定の材質を最新版の収録に合わせた。`M_DD_WobblyVignette` を `Lerp(A × (1 − s), B × s, s)` に組み直して `WOBBLE_*` を当てはめた値にし、`M_DD_LoopingSmoke` の `CameraDepthFade` の入力をパラメータ `FadeLength`・`FadeOffset`（仮に 64・0）にした（`dd_powers`。ソースの C++ は変えていない）

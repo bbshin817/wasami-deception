@@ -69,11 +69,11 @@ namespace WasamiEnemyAnim
 	inline constexpr float OnceBlendTime = 0.25f;
 
 	// TODO(仮): the play rate follows the speed so the feet slide less (the original skates at rate 1). The speed of
-	// each clip's planted foot (the pelvis's travel before the importer held it: 1.33, 4.5, 4.6 m/s) and the WebGL
-	// version's limits (walk 0.5–2, run 0.6–1.8). To be looked at in PIE (the item 4's step 4).
+	// each clip's planted foot, as PIE measured it (the item 4's step 4: 134, 446, 496 cm/s at rate 1), and the WebGL
+	// version's limits (walk 0.5–2, run 0.6–1.8). The patrol's 350 cm/s walk wants 2.6 and slides at the limit.
 	inline constexpr float WalkStrideSpeed = 133.f;
 	inline constexpr float RunStrideSpeed = 450.f;
-	inline constexpr float NightmareStrideSpeed = 460.f;
+	inline constexpr float NightmareStrideSpeed = 500.f;
 	inline constexpr float WalkRateMin = 0.5f;
 	inline constexpr float WalkRateMax = 2.f;
 	inline constexpr float RunRateMin = 0.6f;
