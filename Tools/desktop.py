@@ -11,6 +11,7 @@
     python Tools/desktop.py look --dx 300 --dy 0       relative mouse movement (mouse look)
     python Tools/desktop.py type "some text"
     python Tools/desktop.py record --seconds 8 --name x.mkv   record the screen at 60 fps in the background
+    python Tools/desktop.py record --grab gdi --region L T R B …   the same through GDI (when ddagrab hangs)
     python Tools/desktop.py record_status              are the recordings still running? (exit code when done)
     python Tools/desktop.py status                     is the agent running?
     python Tools/desktop.py stop                       stop the agent
@@ -117,6 +118,8 @@ def main():
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--seconds", type=float, default=10.0)
     ap.add_argument("--fps", type=int, default=60)
+    ap.add_argument("--grab", choices=("dda", "gdi"), default="dda",
+                    help="record: Desktop Duplication (default) or GDI (use --region to keep it at 60 fps)")
     opts = ap.parse_args()
 
     if opts.cmd == "start":
@@ -153,9 +156,11 @@ def main():
     elif opts.cmd == "wait":
         payload["ms"] = opts.ms
     elif opts.cmd == "record":
-        payload.update(seconds=opts.seconds, fps=opts.fps)
+        payload.update(seconds=opts.seconds, fps=opts.fps, grab=opts.grab)
         if opts.name:
             payload["name"] = opts.name
+        if opts.region:
+            payload["region"] = opts.region
 
     answer = request(opts.cmd, timeout=opts.timeout, **payload)
     print(json.dumps(answer, ensure_ascii=False, indent=2))

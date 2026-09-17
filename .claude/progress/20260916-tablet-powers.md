@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 14:55
+updated: 2026-09-17 15:55
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -36,12 +36,20 @@ updated: 2026-09-17 14:55
   - [x] 10b1. 道具と素材 … 2026-09-17 完了。C++ の `UWasamiCascadeLibrary::AddLODLevel` に `TypeDataModule`（システムの中の型データ。型データでないもの・システムの外・`Modules` に紛れたもの・最初の LOD と違うものは断る）と `GetLODTypeDataModule`、テスト `Wasami.Cascade.MeshEmitter`（21 件）。`dd_particles` が型データを作って渡し、照合と `describe` に入れる。`dd_assets.static_mesh`（`_meshes.json` の glTF を Nanite なしで、ライトマップの値とエンジンの材質のスロット）。`dd_powers` にメッシュ 2（`MESHES`）とテクスチャ 6。取り込みの読み戻しは原作どおり（外接球 10.0・15.70、sRGB とグループ）。既存の粒子 3 つを組み直し、**`P_ky_forceField_Telekinesis` を材質を空にした一時的なシステムに組んで、構造・`LODValidity`・型データ・値がすべて通ることを確かめた**（保存していない）。実装記録 01・04、症状索引（テストの一時的なワールドの `/Temp/Untitled_*`）を直した
   - [x] 10b2. 材質と粒子 … 2026-09-17 完了。推定のマスター 4 つ（`/Game/Pipeline/Materials/M_DD_KyWall02`・`M_DD_KyAura7`・`M_DD_KyShockWave02`・`M_DD_KyStarDust`）、原作のパスのインスタンス 4 つ、原作のインスタンス 3 つ（`MI_ky_starDust_sq` は静的スイッチ `swSQdust` を偽に）、`P_ky_forceField_Telekinesis`（`dd_powers.make_telekinesis_materials`・`PARTICLE_SYSTEMS`）。推定のマスター + 原作のパスのインスタンス + 原作のインスタンスの繰り返しを `dd_assets.estimated_materials` にまとめ（`dd_shards` の閃光も使う）、粒子の材質の小道具を `dd_shards` から `dd_assets` へ移し、インスタンスの静的スイッチ（`instance_parameters` の 5 つ目・`material_instance(static_switches=)`。UE 5.8 の setter は常に False を返すので読み戻す）と `FUNCTIONS_03` を足した。取り込み（`materials` 28・`particle_systems` 3、`import_dd_shards` は前と同じ数）と読み戻しは書き出しどおり。実装記録 01・04・06 と索引を直した
   - [x] 10b3. C++ の参照と確認 … 2026-09-17 完了。`AWasamiTelekinesisPower` の `ForceFieldParticles` に `P_ky_forceField_Telekinesis` を入れ、`LoadAssets` が常に 3 つ読むようにした。テスト `TelekinesisTimeline` を粒子のパスと `LoadAssets` の確認に変えた（21 件）。PIE で、0.21 秒後にプレイヤーの位置に拡縮 2 で出て 2.21 秒で消えること、エミッタ 4 つが描かれること（星屑・オーラ・地面の輪・青い幕。外から `slomo 0.25` で撮り、球が外から内へ縮むこと）を収録で確かめた。**球の粒子の灯が 0.2〜0.7 秒ごろ廊下を明るい水色に照らす**（ステップ 11 で見比べる）。初回だけシェーダーのその場のコンパイルで描画が止まる。実装記録 04（索引は変更なし）、note の原稿（力場のスクショ）を直した
-- [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（本家の起動・エディタの開き直し・PIE は確認なしで進める）。テレポートの照準は**最新版の病院**で見比べる（材質は両版で同じ。旧版の Manor はポストプロセスが強く色と明るさを戻せない）: デカールの `Color`・`PulseLow`・`PulseHigh`（`dd_powers.DECAL_*`）、斬撃の色の出方、火花の大きさと数（PIE のほうが大きく多く見える）。**10b3 で足した見比べ**: 力場の粒子の色・大きさ・速さ（材質 4 つは推定。要確認）と、球の粒子の灯が廊下を照らす強さ（本作は 0.2〜0.7 秒ごろ画面が白っぽい水色になる。`observations/ours/pie-telekinesis-forcefield-*`）。**10a で足した見比べ**: 倍率 25 のシェイク（Primal・テレキネシス）の間に下げたタブレットが視界を横切る黒いフレームが本家にもあるか、テレキネシスの水色の閃光と青の色調、まとめて回収したときの回収の音の重なり方（本作は 8 つが 0.5 倍ずつで重なる）
+- [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）と PIE での確認（本家の起動・エディタの開き直し・PIE は確認なしで進める）。**2026-09-17 に 11a（最新版の実機の観察）・11b（PIE で同じ場所を撮って見比べ、仮の値を直す）に分けた**（観察と直しで 1 コミットに収まらない）。
+  - [x] 11a. 最新版の実機の観察 … 2026-09-17 完了。最新版を起動し、MOD の Maps で開始地点と Zone 1 へ飛んで、Primal・テレキネシス（シャードなし・あり）・Vanish・Telepathy（Reaper Nurse の印）・テレポートの照準・シャードの回転を収録した（`observations/original/orig-*`、測った値は `observations/README.md` の「パワーの演出」と下の決定事項）。`ddagrab` が止まったので操作エージェントの `record` に `--grab gdi`（`gdigrab`）を、MOD の切り替えのためにテンキー `num0`〜`num9` を足した。本家の全画面は 1 秒に約 10 枚しか撮れないので、MOD の `slomo 0.25` で撮った。実装記録 01、症状索引（`gdigrab` の遅さ・Reaper Nurse・クリックで視点が回る / W-Editor の押し間違い）、検証のガイドを直した
+  - [ ] 11b. PIE で同じ場所・同じ手順を撮って見比べ、仮の値（`dd_powers.py` の `DECAL_*`・`AURA_LAYERS`・`SHOCKWAVE_PANS`、Primal・WobblyVignette・Telepathy の速さなど）を直す。量が多ければさらに分ける。比べ方: PIE は開始地点 (−25, 3735, 90.15)・ヨー −90（本家の `04_Start`）で、**本家と同じ時間の伸ばし方**（`slomo 0.25`）と同じ測り方（`observations/README.md` の「測った値」の画面平均と中央の RGB、照準のデカールの中央値）で撮る。照準とシャードは廊下のシャードの前の床で撮る。
+  - 見比べる項目（元の一覧）:テレポートの照準は**最新版の病院**で見比べる（材質は両版で同じ。旧版の Manor はポストプロセスが強く色と明るさを戻せない）: デカールの `Color`・`PulseLow`・`PulseHigh`（`dd_powers.DECAL_*`）、斬撃の色の出方、火花の大きさと数（PIE のほうが大きく多く見える）。**10b3 で足した見比べ**: 力場の粒子の色・大きさ・速さ（材質 4 つは推定。要確認）と、球の粒子の灯が廊下を照らす強さ（本作は 0.2〜0.7 秒ごろ画面が白っぽい水色になる。`observations/ours/pie-telekinesis-forcefield-*`）。**10a で足した見比べ**: 倍率 25 のシェイク（Primal・テレキネシス）の間に下げたタブレットが視界を横切る黒いフレームが本家にもあるか、テレキネシスの水色の閃光と青の色調、まとめて回収したときの回収の音の重なり方（本作は 8 つが 0.5 倍ずつで重なる）
 - [ ] 12. 仕上げ: 実装記録（04 はステップ 2 で新設し、各ステップで書き足す）、handover の「現状と次の一歩」、main へマージして push、この記録を消す
 
 ## 次にやること
 
-ステップ 11（実機との見比べ）。本家（最新版）を起動して病院でパワーを使い、推定の材質・粒子と画面の演出を収録して本作と見比べる。
+ステップ 11b（PIE での見比べと仮の値の直し）。本家の収録（`observations/original/orig-*`、測った値は `observations/README.md` の「パワーの演出」）と同じ場所・同じ速さ（`slomo 0.25`）・同じ測り方で PIE を撮り、違いを直す。
+1. PIE を始め、プレイヤーを開始地点 (−25, 3735, 90.15)・ヨー −90 に置き、コンソール `slomo 0.25` → Primal・テレキネシス・Vanish を使ってビューポートを `gdigrab` で撮る（`desktop.py record --grab gdi --region <ビューポート>`。ビューポートなら 60 fps で撮れる）。本家の測り方（画面を 172 × 72 に縮めた平均と中央の RGB の時系列）で比べる。ビューポートの縦横比は本家（21:9）と違うので、色と時間だけを比べる。
+2. 照準は廊下のシャードの前の床で、ホイールで手前へ 7 回・見下ろしで撮り、デカールの内側の中央値の R の明滅（本家 139 ↔ 238、約 1.0 秒周期）と輪の色に合わせて `dd_powers.DECAL_*` を直す。
+3. 違いの大きいものから、推定の材質の仮の値（`TODO(仮)`）を直して取り込み直す（`WasamiDDTools.import_dd_powers()`）。量が多ければ 11b1・11b2… に分ける。
+
+（以下は 11a の手順。済んだ）
 1. エディタを `python Tools/editor_cycle.py --quit-only` で閉じ、最新版を `python Tools/console_session.py --wait DDeception-Win64-Shipping.exe "C:\Users\User\AppData\Local\DDeception\Launch-Latest.cmd"` で起動する（病院への出し方は `.claude/guides/original-fidelity.md`。MOD の Maps で Zone 1 へ。**本家のセーブの編集はしない**）。
 2. 見比べる項目は計画のステップ 11 の一覧（テレポートの照準の色と明るさ・Primal / Vanish / Telepathy / テレキネシスの材質・シェイクの黒いフレーム・回収の音の重なり・餅の回転の速さ）。収録は `desktop.py record`（止まったら gdigrab）で 60 fps、`observations/original/` に置く（`observations/README.md` に書き足す）。
 3. 本家を閉じてエディタを開き直し、違いを仮の値（`TODO(仮)`）の直しに反映する。量が多ければ 11a（観察）・11b（直し）に分ける。
@@ -137,10 +145,15 @@ updated: 2026-09-17 14:55
 - 2026-09-17（ステップ 10b1）: `TypeDataModule` は構造なので、値の書き込み（`SetPropertyText`）ではなく C++ の `AddLODLevel` の引数にする（ほかの構造と同じく、システムの中に作ったモジュールで、`UParticleModuleTypeDataBase` の派生であることを C++ が確かめる）。UE 5.8 は `TypeDataModule` を LOD の `Modules` とは別に持ち（`ParticleLODLevel.cpp` の `UpdateModuleLists`）、LOD の有効範囲も別に数え（`ParticleSystem.cpp` の `SetupLODValidity` の `INDEX_TYPEDATAMODULE`）、どの LOD も同じものを指す前提（`GenerateFromLODLevel` の `check`）。外側はシステム（`ParticleEmitter.cpp` の `PostLoad` の警告）。書き出しもこの形（3 つの LOD が同じ `ParticleModuleTypeDataMesh_0` を指す、`LODValidity` 7）。
 - 2026-09-17（ステップ 10b2、材質の推定）: 4 つともグラフが cook で消えているので、残ったもの（設定・パラメータの名前と既定値・サンプルのテクスチャと座標の式の名前・関数・静的スイッチ・Emissive の最後の式）と、テクスチャのチャンネルの中身・メッシュの UV から形を決めた（詳しくは 04 記録の表）。**星屑**: `T_ky_dust_longStar` は中央の行が 1 で上下へ 0.37 まで落ちる横の光なので、`starDensity`（35〜68）を指数に使うと細い線になる。インスタンスが `swSQdust` を偽にし `maskRadius`・`maskDensity` を上書きしている（UE4 のインスタンスのエディタは使われるパラメータだけを出す）ので、偽の側を「2 本の線〈1 本は `Rotator` の座標〉を `Blend_Screen` で重ねて放射グラデーションで腕の先を消す」と読んだ。真の側は使われないが、原作の既定（真）でマスターがコンパイルできるよう `DiamondGradient` だけを置いた（9b の「使う側だけ作る」の例外）。**オーラ**: 帯の U が幅・V が長さなので、`maskRadiusControl` の中心 (0.5, 0) と `maskU`・`maskV` は帯の中央の線を残す窓で、`maskOffsetY` は中心の V に足す（粒子の 0.1 → 0.2 で線が V = 0 の側から消える。UV に足すと 0.125 を超えた時点で全部消えて動きが無いので採らない）。8 つのサンプルは式の並びで (`Add` の座標, `Panner` の座標) の組になるので、「パンのサンプルで座標を曲げる」層が 4 つと読んだ。**地面の輪**: インスタンスの `depthFade` 0 は UE の `DepthFade` が `Max(距離, UE_DELTA)` にするので薄めない（名前の `nonD` と合う）。**球**: Emissive の `Lerp` を「幕の `baseColor` → 筋の粒子の色」と読んだ。速さなどの決まらない値は仮（`AURA_LAYERS`・`SHOCKWAVE_PANS`、`TODO(仮)`）で、見た目なのでステップ 11 で見比べる（要確認に書いた）。
 - 2026-09-17（ステップ 10b2）: 推定のマスター + 原作のパスのインスタンス + 原作のインスタンスを作る繰り返しは `dd_shards.make_flash_materials` と同じ形なので、`dd_assets.estimated_materials` にまとめて両方から使う（小道具も `dd_shards` から `dd_assets` へ）。ビルダーにはスカラとベクトルの既定値を 1 つの辞書で渡す（名前は重ならない）。原作のインスタンスの確認は、スカラに加えてベクトル・テクスチャ・静的スイッチも推定に無ければ例外にする。
+- 2026-09-17（ステップ 11 の分け方）: 本家の観察（エディタを閉じて本家を動かす）と PIE の見比べ・直し（エディタ）は同じ時間に行えず、合わせると 1 コミットに収まらないので、11a（観察）・11b（見比べと直し）に分けた。
+- 2026-09-17（ステップ 11a、**最新版の実機で観察**。MOD 入り。値は `observations/README.md` の「パワーの演出」）: (1) **テレポートの照準は最新版の病院でも赤い**（渦の輪は赤〜サーモンで中心が白っぽい、デカールは赤い光、火花は小さな赤い点が数個）。デカールは約 1.0 秒周期で、内側の中央値の R が 139 ↔ 238（G 81〜98、B 81〜90、すぐ外の床 (78, 89, 102)）。本作の `DECAL_COLOR` (1.0, 0.105, 0.09) の向きと合う。明るさは 11b で PIE と比べる。(2) **倍率 25 のシェイクの間、下げたタブレットが横切る黒いフレームは本家では見えない**（Primal とテレキネシスの 4 本、`slomo 0.25` で実時間 1 秒に約 40 枚相当。下半分のほぼ黒の画素は最大 7 %）。10a の決定（直さない）は 11b で本作の同じ測り方と比べてから見直す。(3) **テレキネシスの力場の間、廊下が白や水色に照らされる様子は見えない**（白飛びは使って約 0.2 秒まで。PP の白飛びと重なるので灯だけを分けては見られない）。(4) **シャードの見た目は 21.0 秒ずれで最も近くなる**（1 周なら 17.1 °/s。本作の「1 ループ 2 周」の読みの範囲に入る。結晶の対称性によっては 8.6 °/s）。(5) Primal は黄〜橙の白飛び → 赤の単色、Vanish は桃〜白 → 紫のもや → 紫の揺らぐビネット（約 5.1 秒周期で脈打つ。slomo の下）、Telepathy は敵の体に重なる、体と同じくらいの大きさの橙〜赤の炎のような印。(6) 回収の音の重なりは音を撮っていないので分からない（要確認）。
+- 2026-09-17（ステップ 11a）: 本家のセーブは読んだだけ（6 種とも解放済み）。観察の前に `SaveBackups/pre-step11-<時刻>/` へ控えを写した（写すだけで元は触っていない）。観察中に Reaper Nurse に捕まって `Restart` を選んだので、ゲーム自身がセーブを書いたかもしれない（遊んだ結果で、Claude の編集ではない）。
 - 2026-09-17（ステップ 10b2）: 取り込みの後に `L_Hospital_Zone1` が未保存になった（`import_dd_shards` の餅のメッシュの取り込み直しの後。9b の「PIE の後に未保存」と同じものかもしれない）。地図は git の外で作り直せるので、灯 783・シャード 337・選択なしを数えてから保存した。
 
 ## 再開時の注意
 
+- **2026-09-17 15:50（ステップ 11a の終わり）**: 本家は閉じた（`tasklist` に無い）。エディタは `editor_cycle.py --no-build --no-quit` で開き直した（セッション 1、`L_Hospital_Zone1`、PIE なし、未保存なし）。ビルドは 10b3 のまま最新（C++ は変えていない）。MCP は開き直しで切れたまま（`Tools/ue_remote.py` で同じことができる）。操作エージェントは動いたまま（`python Tools/desktop.py stop` で止めてよい。30 分で自分で終わる）。本家の測り方の台本は `$TEMP/wasami/s11/series.py`（画面を 172 × 72 に縮めた平均と中央の RGB）と `sheet.py`（pts つきの一覧画像）。セッションをまたいで残るとは限らない（`observations/README.md` の「測った値」の説明で作り直せる）。
+- **本家の操作の手順**（11a で使った。3440x1440、最新版）: MOD は `M`。左の列を上まで戻すと Active Enemy (987, 303)・Settings (987, 670)・Maps (987, 760)・Logs (987, 850)（ホイールで送った位置のまま残るので、押す前に撮る）。Maps の TORMENT THERAPY は (2033, 523)、その中の ZONE 1 STARTING POINT は (1343, 523)・ZONE 1 は (1693, 523)、警告の YES は (1660, 757〜813。撮って確かめる)。`Console Command` の欄は (1890, 977)。Active Enemy の `Find All` (1325, 860)・`Remove All` (1950, 860)。枠の切り替えは Space → 1 / 2。ゲーム中のクリックは画面の中央 (1720, 720)。終わりは Esc → やめる (1716, 1020) → デスクトップへ戻る (1716, 1045)。
 - **2026-09-17 14:55 ごろ（ステップ 10b3 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。ビルドは最新（警告なし）。操作エージェントは止めた。ffmpeg は終わっている。MCP は開き直しで切れたまま（`Tools/ue_remote.py` で同じことができる。テストは `execute_console_command(None, 'Automation RunTests Wasami')` → ログの `Test Completed` を数える。エディタを前面にしてから）。note の原稿は直したが **note へは未反映**（セッションの値が無い。次に値をもらったら `edit` を 1 回）。PIE の計測の台本は `$TEMP/wasami/tk_probe.py`（`place`・`start`・`stop`。粒子は `WorldSettings` の `ParticleSystemComponent`）と `tk_spawn.py`（15 m 先に力場を出して `slomo 0.25`）。セッションをまたいで残るとは限らない。
 - **2026-09-17（ステップ 10b3 の途中。済んだ）**: C++ の変更（`ForceFieldParticles` の既定のパス、`LoadAssets` が常に 3 つ読む、テスト `TelekinesisTimeline` のパスと `LoadAssets` の確認）は書き終えた。続きの手順: (1) `python Tools/editor_cycle.py`（バックグラウンド。未保存なしを確かめてから走らせた。完了は `ue_remote.py` が答え、`unreal.WasamiTelekinesisPower.get_default_object().get_editor_property('force_field_particles')` にパスが入っていること）。(2) `Automation RunTests Wasami`（21 件。エディタを前面に）。(3) PIE で力場を収録（下の「PIE でテレキネシスを確かめる手順」）。(4) 実装記録 04、`check_records.py --update`、note の原稿、コミット。
 - **2026-09-17 14:40 ごろ（ステップ 10b2 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE なし、未保存なし〈取り込みの後に Zone 1 が未保存になったので数えてから保存した〉）。取り込み `import_dd_powers` と `import_dd_shards` は済み（`P_ky_forceField_Telekinesis` あり）。ビルドは 10b1 のまま最新（C++ は変えていない）。MCP はつながっている。操作エージェントは使っていない。確認の台本は `$TEMP/wasami/tk_check.py`（セッションをまたいで残るとは限らない。粒子の `describe`・材質の読み戻し・未保存）。
@@ -192,9 +205,14 @@ updated: 2026-09-17 14:55
 
 ## 要確認（ユーザー）
 
+- 2026-09-17: 本家の MOD の W-Editor のファイル — 観察中に押し間違いで W-Editor の画面が開き、`%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` に扉 `BP_06_DoubleDoors13` の変換が書かれた（値は原作と同じ位置・回転・拡縮で、`Removed` は偽なので見え方は変わらない）。仮にそのまま残した。理由: 無人ではファイルを消さない・戻さない。場所: 上のファイル（W-Editor の Reset で戻すか、ファイルを消すか）
+- 2026-09-17: シャードをまとめて回収したときの音の重なり — 本家の収録に音が無く比べられないので、本作のまま（8 つが 0.5 倍ずつで重なる）にした。理由: 音の確認は人が聞く。場所: 本家の Zone 1 でテレキネシスを使って聞き比べる（`observations/original/orig-telekinesis-pull.mkv` は音なし）
+
 - 2026-09-17: テレキネシスの力場の材質の推定 — 仮に 4 つのグラフを推定し（球 = 暗い青の幕に明るい筋、オーラ = 4 層の曲げたパンと帯の中央の線の窓、地面の輪 = 輪 + いちばん明るい線 + 火花、星屑 = 2 本の細い線を回して重ねた 4 本の光）、決まらない値を仮にした（オーラの 4 層のタイリング・パンの速さ・曲げの速さと強さ、地面の輪の 2 つのパンの速さ）。理由: グラフは cook で消え、パラメータ・サンプル・関数だけが残る（決定事項）。見た目の値なのでステップ 11 で最新版の病院と見比べて直す。場所: `Content/Python/wasami_tools/pipeline/dd_powers.py` の `_build_wall02`・`_build_aura7`・`_build_shockwave02`・`_build_star_dust`、`AURA_LAYERS`・`SHOCKWAVE_PANS`（`TODO(仮)`）
 
 ## 検証
+
+- ステップ 11a: 最新版の pak の大きさが `pak_reference_2` と同じ（7,854,848,189 バイト）、MOD の `clvl` が `Current Level: 06_Hospital_Zone_01`、収録 12 本（`observations/original/orig-*`）を測った（`observations/README.md`）、本家を閉じてエディタを開き直した（未保存なし）、check_records OK（6 件）。C++ とアセットは変えていないのでビルドとテストは走らせていない。操作エージェントの変更（`--grab gdi`・テンキー）は本家の観察で使って動いた
 
 - ステップ 10b3: C++ ビルド成功（1 回で、警告なし）、`Automation RunTests Wasami` 21 件成功、check_records OK（6 件）、PIE で Q を 2 回（力場のコンポーネントが 0.208 / 0.210 秒で出て、位置はプレイヤー・拡縮 2、2.214 / 2.217 秒で消えた。1 回目はシャード 8 個の回収と閃光 8 つ）、プレイヤーの視点と外から（`slomo 0.25`）の収録で 4 つのエミッタの描画と球の縮みを確かめた、PIE の間のログに警告・エラーなし、PIE の後の未保存なし、note の原稿の変換（API なし）が通った
 

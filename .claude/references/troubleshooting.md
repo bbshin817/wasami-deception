@@ -326,8 +326,27 @@
 ### `desktop.py record` が終わらない（`record_status` が `running` のまま、動画も `.mkv.log` も空）
 
 - 原因: ffmpeg の `ddagrab` が `Opened dxgi output 0` の後、最初のフレームを待って止まる（原因は未特定。「未解決」）。
-- 対処: 止まった ffmpeg は自分が起動したものなので `taskkill` で止め、`gdigrab` で撮る（コマンドは `.claude/guides/verification.md` の「画面を操作する」）。Claude のシェルがセッション 1 なら直接バックグラウンドで走らせられる。フレームの取り出しは `-fps_mode passthrough`（無いと一定の速さに複製され、時刻と組にならない）。
-- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 6）、`.claude/guides/verification.md`。
+- 対処: 止まった ffmpeg は自分が起動したものなので `taskkill` で止め、`gdigrab` で撮る（`python Tools/desktop.py record --grab gdi [--region L T R B]`。エージェントがセッション 1 で撮るので、Claude のシェルがセッション 0 でもそのまま使える。手で打つコマンドは `.claude/guides/verification.md` の「画面を操作する」）。フレームの取り出しは `-fps_mode passthrough`（無いと一定の速さに複製され、時刻と組にならない）。
+- 試して駄目だったこと（2026-09-17）: `output_idx=1`（`Failed to enumerate DXGI output 1`。出力は 1 つだけ）、`-loglevel debug`（`Opened dxgi output 0 with dimensions 3440x1440` の後に何も出ない）。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 6・11a）、`.claude/guides/verification.md`。
+
+### 本家の一瞬の演出が `gdigrab` で粗くしか撮れない（1 秒に約 10 枚）
+
+- 症状: 本家（全画面）を `record --grab gdi` で撮ると、`--fps 60` でも 1 秒に約 10 枚。範囲を 1720 × 720 や 860 × 360 に絞っても 3 秒で 16 枚だった（エディタのビューポートなら 60 fps で撮れた）。
+- 対処: MOD の `Console Command` に `slomo 0.25` と打ってから撮る（シッピングでも効く。テレキネシスの演出が 1.3 秒 → 4.7 秒に延びた）。レベルを読み直すと 1 に戻る。タブレットの出し入れは slomo でも約 0.7 秒のままだった（理由は未確認）。`Console Command` の欄は 1 回クリックしてから `type` で打ち、`enter`。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）、`observations/README.md`。
+
+### 本家の MOD の無敵が効かず、Zone 1 で Reaper Nurse に捕まる
+
+- 症状: MOD の Maps の ZONE 1（シャードの並ぶ待合の廊下）に飛ぶと、Reaper Nurse 3 体が約 7 秒で来て捕まる。MOD の Settings で `God Mode` を見ると OFF のことがあり、テンキーの 3 を送っても効いたか分からないまま捕まった。MOD のメニューを開いている間もゲームは進む。捕まり続けると `You Are Dead` → `Restart?` で入口（`06_Hospital`）からやり直しになる。
+- 対処: 着いたらすぐ `M` → Active Enemy の `Find All`（(1325, 860)）→ `Remove All`（(1950, 860)）で敵を消す（敵が要る観察は、消す前の数秒で済ませる）。敵のいない開始地点（ZONE 1 STARTING POINT）で済む観察はそこで行う。テンキーはエージェントの `num0`〜`num9`。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
+
+### 本家で `desktop.py click` を送ると視点が大きく回る / MOD のメニューの押し間違い
+
+- 症状: ゲーム中の `click X Y` はカーソルを絶対座標へ動かすので、その分だけ視点が回る（真下を向いた）。MOD のメニューの左の列は、ホイールで送った位置のまま残るので、前に測った座標で別の項目（W-Editor）を押した。
+- 対処: ゲーム中のクリックは画面の中央 (1720, 720) で行う。MOD のメニューは押す前に撮って項目の位置を確かめる（列を上まで戻すと Active Enemy (987, 303)・Settings (987, 670)・Maps (987, 760)・Logs (987, 850)）。**W-Editor の画面が開いたら何も動かさずに `Close` で閉じる**（開いただけで、カーソルの下の扉 `BP_06_DoubleDoors13` の変換が元の値のまま `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` に書かれた。値は原作と同じなので見え方は変わらない）。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
 
 ### PIE で動いている最中の絵が撮れない
 
