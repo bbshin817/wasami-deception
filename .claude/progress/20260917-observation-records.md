@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: 5338f5e
 started: 2026-09-17 16:00
-updated: 2026-09-17 16:10
+updated: 2026-09-17 16:20
 ---
 
 # 観察の手順書と、進捗記録を畳む方針
@@ -21,14 +21,14 @@ updated: 2026-09-17 16:10
 ## 計画
 
 - [x] 1. 観察の手順書と道具 … 2026-09-17 完了。`.claude/guides/observation.md`（原則・撮るものの一覧・本家の起動・MOD のメニューの上端の座標〈W-Editor は (990, 487)〉と Maps の座標・場所〈`04_Start`、ZONE 1 は `05_Start` と推定〉・本家で撮る・PIE で同じものを撮る・測る・片付け）、`Tools/video_probe.py`（`frames`・`sheet`・`series`〈`--box`・`--stat`・`--dark`〉・`period`）、`Tools/pie.py`（`state`・`start`・`place`・`cmd`・`stop`）。本家の 11a の収録で 11a の測定値に合うこと（テレキネシスの白飛び・照準の R 140〜237・シャードの周期 20.9〜21.0 s を約 3 秒で）と、PIE の開始 → 配置 → `slomo 0.25` → 停止（未保存なし）を確かめた。CLAUDE.md・verification.md・症状索引・observations/README.md・実装記録 01 と索引を直した
-- [ ] 2. 進捗記録を畳む決まり: `progress-tracking.md` の「書き方」、`_template.md`、`/continue`（`SKILL.md` の手順 6）、`session_start_hook.py`（大きすぎる記録を知らせる）、CLAUDE.md の索引の要約。 ← 作業中
-  - 変更予定: `.claude/guides/progress-tracking.md`、`.claude/progress/_template.md`、`.claude/skills/continue/SKILL.md`、`.claude/scripts/session_start_hook.py`、`CLAUDE.md`
-- [ ] 3. `20260916-tablet-powers.md` を新しい決まりで畳む。消す前に、決定事項が実装記録（01・04・06）にあるかを確かめ、無くて今も効くものは実装記録へ移す。
+- [x] 2. 進捗記録を畳む決まり … 2026-09-17 完了。`progress-tracking.md` に「記録を畳む」（節ごとに残すもの、目安 20 KB・上限 30 KB、消す前に実装記録へ移す、毎回全体を書き直さない）、`_template.md`・`/continue` の手順 1 と 6・hook（上限を超えた記録の大きさを知らせる）・CLAUDE.md を直した
+- [ ] 3. `20260916-tablet-powers.md` を新しい決まりで畳む。消す前に、決定事項が実装記録（01・04・06）にあるかを確かめ、無くて今も効くものは実装記録へ移す。 ← 作業中
+  - 変更予定: `.claude/progress/20260916-tablet-powers.md`、実装記録（01・04・06。移すものがあれば）
 - [ ] 4. 仕上げ: この記録を消してコミットし、`/clear` をお願いする。
 
 ## 次にやること
 
-ステップ 2。`progress-tracking.md` の「書き方」に「畳む」決まり（ステップを閉じるときにそのステップの分を 1 行に、決定事項は今も効くものだけ・実装済みのことは実装記録へ、次にやることは置き換え、再開時の注意は今も有効なものだけ、目安 20 KB・上限 30 KB）を足し、`_template.md`・`/continue` の手順 6・hook（30 KB を超えた記録を知らせる）・CLAUDE.md の索引に反映する。
+ステップ 3。`20260916-tablet-powers.md`（115 KB）を「記録を畳む」で畳む。決定事項（52 KB）の各項目が実装記録 04（パワー）・06（シャード）・01（取り込み）にあるかを確かめ、無くて今も効くものは実装記録へ移す。残りのステップ 11b・12 に効く決定、要確認 3 件、11b の手順は残す。
 
 ## 決定事項
 
@@ -45,7 +45,8 @@ updated: 2026-09-17 16:10
 
 ## 検証
 
-- check_records: OK（ステップ 1。01 に `Tools/pie.py`・`Tools/video_probe.py` を足した）
+- check_records: OK（ステップ 1。01 に `Tools/pie.py`・`Tools/video_probe.py` を足した。ステップ 2 は対象外のファイルだけ）
+- hook: `session_start_hook.py` が `20260916-tablet-powers.md` に「大きさ: 115 KB（上限 30 KB を超えています…）」を出すことを確かめた（ステップ 2）
 - C++ ビルド: 対象外（C++ は変えない）
 - エディタでの確認: `Tools/pie.py` の state（PIE 外・PIE 中）・start・place・cmd・stop と、PIE 外の cmd が「not in PIE」で失敗すること（ステップ 1）
 - 解析: `Tools/video_probe.py` を `observations/original/` の 11a の収録で確かめた（ステップ 1）

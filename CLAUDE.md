@@ -5,7 +5,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 
 ## 必読（作業前）
 - 対話と報告の言語（**セッション内の対話・応答・実装報告はすべて日本語**）: `.claude/guides/communication.md`
-- 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。セッション開始・/clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する（`/continue`）。実装が 1 つ終わったら `.claude/` に記録を残し、ユーザーに `/clear` をお願いする。大規模な実装はステップに分け、ステップごとに同じことをする**）: `.claude/guides/progress-tracking.md`
+- 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。セッション開始・/clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する（`/continue`）。実装が 1 つ終わったら `.claude/` に記録を残し、ユーザーに `/clear` をお願いする。大規模な実装はステップに分け、ステップごとに同じことをする。記録は続きに要ることだけにし、ステップを閉じるときにその分を畳む〈目安 20 KB・上限 30 KB。今も効く決定は実装記録へ移してから消す〉**）: `.claude/guides/progress-tracking.md`
 - 作業一覧（**最終目標〈2026-09-17〉を 21 項目に分解した順序つきの一覧。1 項目 = 進捗記録 1 件。未完了の記録が無いときはここの「未着手」で依存が満たされた最初の項目から始める**）: `.claude/roadmap.md`
 - 中断した実装の再開（**未完了の記録と git・エディタの状態を照合してから、次のステップを 1 つ実行する**）: `/continue`（`.claude/skills/continue/SKILL.md`）
 - 実装記録（**ソースを変更したら対応する記録を直し、`python .claude/scripts/check_records.py --update` を通す**）: `.claude/guides/implementation-records.md`、索引は `.claude/implementation-records/_index.md`
