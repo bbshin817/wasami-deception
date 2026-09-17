@@ -1,21 +1,28 @@
 ---
-title: 敵ワサミ（素体の素材）
+title: 敵ワサミ（素体の素材とアニメの再生）
 sources:
   - Content/Python/wasami_tools/pipeline/dd_enemy.py
+  - Source/wasami_deception/WasamiEnemyAnimInstance.h
+  - Source/wasami_deception/WasamiEnemyAnimInstance.cpp
+  - Source/wasami_deception/Tests/WasamiEnemyTests.cpp
   - SourceArt/Wasami/enemy_wasami_v3.glb
   - SourceArt/Wasami/enemy_wasami_capture.glb
 updated: 2026-09-18
 ---
 
-# 敵ワサミ（素体の素材）
+# 敵ワサミ（素体の素材とアニメの再生）
 
 ## 役割
-本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込みだけ**（作業一覧の項目 4 のステップ 1）: ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする。アニメの再生（`UWasamiEnemyAnimInstance`）と敵のアクタ（`AWasamiEnemy`）、AI・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
+本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）と**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）まで（作業一覧の項目 4 のステップ 1・2）。敵のアクタ（`AWasamiEnemy`）、AI・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
 
 ## 公開インターフェース
 - `WasamiDDTools.import_wasami_enemy()`（01 記録）→ `dd_enemy.import_all()`。戻り値 `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 19。
 - `dd_enemy.make_capture_source(old_glb)`: ユーザーの旧モデル（`tmp/enemy_wasami.glb`、git の外）から `SourceArt/Wasami/enemy_wasami_capture.glb` を書く（2026-09-18 に 1 回走らせた。旧 glb が変わらない限り再び走らせる必要はない）。
 - `dd_enemy.prepare()`: 前処理した glb を書き、役ごとの（長さ、骨盤を動かした量）を返す。`prepared_file()` がその場所。
+- `UWasamiEnemyAnimInstance`（ネイティブの AnimInstance。メッシュの `AnimClass` にする。持ち主が毎フレームのフラグを書く）:
+  - `bStunned`（持ち主の State が Stun。立ち上がりで気絶のクリップを `StunDuration` の長さで始める）、`StunDuration`（既定 17.0 = `BP_06_ReaperNurse` の `Delay 17.0`。敵のアクタが自分の値を入れる）、`bAggressiveIdle`（見張り）、`bNightmare`（全回収後の追跡の走り）。`Speed` は読み取り専用（持ち主の `GetVelocity().Size()`）。
+  - `PlayOnce(Clip, PlayRate=1, BlendIn=0.25, BlendOut=0.25)`: 名前（`WasamiEnemyAnim::ClipNames`。`'Chase_Slide'` など）のクリップを全身に 1 回かぶせる。持ち主は動いたまま。戻り値は再生の秒数（長さ / 速さ）。無い名前・速さ ≤ 0 は 0 を返して警告する。`StopOnce(BlendOut=0.25)`、`IsPlayingOnce()`（ブレンドアウトが始まったら偽）、`GetMainClip(OutTime, OutWeight)`（いちばん重いクリップの名前。PIE の確かめ用）。いずれも Blueprint から呼べる（Python からも）。
+- `WasamiEnemyClip`（クリップの番号。移動と気絶の 7 本、捕獲 3 本、追跡中の変化 6 本、役なし 3 本の順）、`WasamiEnemyAnim::ClipNames`・`FindClip(Name)`・`ClipPath(Clip)`（`/Game/Wasami/Enemy/A_WasamiEnemy_<名前>`。名前は取り込みの `ROLES` の 1 列目と同じ並び）。
 - 定数: `MESH` = `/Game/Wasami/Enemy/SK_WasamiEnemy`、`SKELETON` = `…_Skeleton`、`PHYSICS_ASSET` = `…_PhysicsAsset`、`ANIM_PREFIX` = `A_WasamiEnemy_`、`MATERIAL` = `/Game/Wasami/Enemy/MI_WasamiEnemy`、`MASTER` = `/Game/Pipeline/Materials/M_DD_WasamiGltf`、`ROLES`（下の表）。
 
 ## 内部構造と処理の流れ
@@ -58,6 +65,29 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 
 足の運びの速さ（接地した足の後ろへの速さ。再生の速さを移動に合わせるときの物差し）: `Walk` 1.33 m/s、`Run` 4.5 m/s。本家の巡回 350 cm/s・追跡 800 cm/s より遅い。
 
+### アニメの再生（`UWasamiEnemyAnimInstance`）
+
+本家のナースの ABP（`nurse_idle1_Skeleton_AnimBlueprint`）の木を、アニメグラフのノードを使わずに C++ で持つ（本作は手作りの BP を持たず、MCP にアニメグラフを組む道具も無いため）。3 つに分かれる:
+
+1. **`FWasamiEnemyAnimState`**（エンジンを使わない純粋な状態。テストの対象）: どのクリップを、どの時刻・重みで混ぜるかを決める。`Update(Inputs, DeltaSeconds)` → `GetSamples(OutSamples)`（重みの和は 1。欠けたクリップの分は正規化で埋める）。
+2. **`UWasamiEnemyAnimInstance`**: `NativeInitializeAnimation` でクリップを読み（**ゲームのワールドのときだけ**。エディタのレベルでは参照姿勢のまま。`WasamiAssets.h` の起動時の読み込みを避けるため）、長さを状態に渡す。`NativeUpdateAnimation`（ゲームスレッド）で持ち主の速さとフラグから状態を進め、標本の一覧 `FrameSamples` を作る。
+3. **`FWasamiEnemyAnimInstanceProxy`**: `PreEvaluateAnimation`（ゲームスレッド。更新の後・評価の前に必ず呼ばれる。`PreUpdate` は `NativeUpdateAnimation` より前なので使わない）で標本を写し、`Evaluate`（ワーカースレッド）で各クリップの姿勢を `UAnimSequence::GetAnimationPose` で取り出して `FAnimationRuntime::BlendPosesTogether` で混ぜる。スケルトンの無いクリップは飛ばし（エンジンのシーケンスプレーヤーと同じ判定）、標本が無ければ参照姿勢。ルートモーションは取り出さない。
+
+木（重みは上から掛け合わせる）:
+
+- **全身の 1 回再生**（本家の Slot `Fullbody` にモンタージュを入れる代わり）: 1 回再生の重みの和 W（最大 1）が上に乗り、下の木は 1 − W。複数あるときは重みの比で分ける。
+- **根: 気絶**（`FWasamiBoolBlend`。本家の Blend Poses by bool、0.25 s、Linear）: 気絶の側 = `Stun_Loop` か `Stun_Recover`（`FWasamiStunPlayback`）、偽の側 = 移動。
+- **移動: Idle ↔ Moving**（`FWasamiStateBlend`。本家のステートマシンの標準のブレンド）: 速さ > 5 で Moving へ 0.5 s（Sinusoidal）、速さ < 5 で Idle へ 0.25 s（ExpOut）。ちょうど 5 はどちらにも移らない。移る先の重みは、その時の重みから遷移の曲線に沿って 1 へ動く。本家は Skating → Stop Skating（`nurse_skate_stop` を 0.35 s から 1 回）→ Idle（残り 10 % 未満、0.5 s、Cubic）だが、止まるクリップが無いので Stop へ入る値のまま直接 Idle へ移る。
+  - Idle の中: `Idle` | `Idle_Alert`（`bAggressiveIdle`、1.0 s、Linear。本家は Alert がさらに 2 本〈`bVarIdle` で 0.1 s〉だが、ここは 1 本）。
+  - Moving の中: `Walk` | 走り（速さ > 400、0.25 s、Linear）。走りの中: `Run` | `Run_Nightmare`（`bNightmare`、0.25 s。本家に無い分岐で、走りと同じ切り替えにした。`TODO(仮)`）。
+- **ブレンドの動き**（エンジンの `FAnimNode_BlendListBase` と同じ）: 重みは 1 / ブレンド時間 の速さで目標へ動く（途中で折り返すと、残りの重みの分の時間で戻る）。リセットの後の最初の更新は目標へ飛ぶ。
+- **時刻の進め方**: 重み 0 の枝は進めない。重み 0 から入った状態（Idle / Moving）は中のクリップを 0 から始め、中の切り替えもリセットする（本家の `bAlwaysResetOnEntry` 偽・`bResetChildOnActivation` 偽と同じ）。**本家と違い、移動の木は気絶の下でも 1 回再生の下でも進める**（本家の Slot と BlendList は重み 0 の子を進めない）。気絶が明けたときに移動の木を速さに合った状態（止まっていれば Idle）にしておき、起き上がりの終わりの待機へ走りの姿勢が混ざらないようにするため。追跡中の変化が終わったときも走りの位相が続いている。
+- **再生の速さ**（`TODO(仮)`。本家はスケートで速さ 1）: `Walk` = 速さ / 133 を 0.5〜2、`Run` = 速さ / 450 を 0.6〜1.8、`Run_Nightmare` = 速さ / 460 を 0.6〜1.8。分母は各クリップの接地した足の速さ（下の「足の運びの速さ」）、範囲は WebGL 版の 15 記録の `speedRatio` の範囲。巡回の 350 cm/s では `Walk` が上限 2 に当たる（足に合わせるなら 2.6 倍）。待機・気絶は速さ 1、1 回再生は指定の速さ。
+- **気絶**（`FWasamiStunPlayback::Start(Duration, ループの長さ, 起き上がりの長さ)`）: 起き上がりを気絶の終わりにちょうど終わるよう `Duration − 起き上がりの長さ`（17 s なら 9.433 s）で始め、ループはその時刻に境目（時刻 0 = 起き上がりの最初のキーと同じ姿勢）が来る位相から始める（`LoopStart` = 1.5 − (9.433 mod 1.5) = 1.067 s）。気絶が起き上がりより短いときは、起き上がりを途中（長さ − Duration）から始める。起き上がりは終わりの姿勢で止まる。`bStunned` の立ち上がり（ブレンドアウト中の 2 回目も）で始め直し、同時に 1 回再生を 0.25 s でブレンドアウトさせる。
+- **1 回再生**（`FWasamiOncePlayback`。UE のモンタージュの更新の順に倣う）: 重みを先に動かし（ブレンドインは 1 / BlendIn、ブレンドアウトは 1 / BlendOut の速さ）、次に時刻を進め（速さを掛け、長さで止める）、残りの実時間（(長さ − 時刻) / 速さ）が BlendOut 以下になったらブレンドアウトを始める。重み 0 で消える。新しい `PlayOnce` は前のものを新しい BlendIn でブレンドアウトさせ、既にブレンドアウト中のものは短い方の時間にする（BlendIn 0 なら前のものはすぐ消える）。`StopOnce` も同じ規則。
+
+テスト（`Tests/WasamiEnemyTests.cpp`、`Wasami.Enemy.Anim.*`）: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s と 5 s の位相、走り → 気絶 → 起き上がり → 明け、2 回目）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 19 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。取り込みが変わったらここが落ちる）。
+
 ### 取り込み
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
 2. `M_DD_WasamiGltf`（`dd_assets.material` + `_build_master`）: glTF の metallic-roughness の係数 1 の形。色 → Base Color、金属と粗さの B → Metallic、G → Roughness、法線 → Normal。片面、`used_with_skeletal_mesh`。`MI_WasamiEnemy` はそのインスタンスでテクスチャ 3 枚を入れる。
@@ -78,12 +108,15 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 
 ## 原作データの根拠
 - モデルとモーションはユーザーの作ったもの（2026-09-18 の指示「`enemy_wasami_v3`・`wasami_mochi_v3`・`boss_wasami` をそれぞれ使用」、捕獲は「旧 glb の 3 本を流用」）。役の対応は一覧（`.claude/references/enemy-wasami-motions.md`）。
-- 本家のナースの値（部品・気絶・ABP）は進捗記録 `20260917-enemy-wasami-body` の決定事項にあり、アクタとアニメの再生を作るときにこの記録へ移す。
+- アニメの再生の木と値: `pak_reference_2/_assets/DDeception/Content/Animation/Enemies/Nurse/Reaper/nurse_idle1_Skeleton_AnimBlueprint.json`（`BakedStateMachines` の遷移 3 本の `CrossfadeDuration`・`BlendMode`、`AnimGraphNode_BlendListByBool` 4 つの `BlendTime`・`BlendType`〈0.25 = 根の気絶と走り、1.0 = Alert、0.1 = Alert の 2 本〉、シーケンスプレーヤーの `PlayRate` 1）と、同じ場所の `_bytecode` の `.txt`（`bStunned = (BP_06_ReaperNurse.State == 2)`、`Speed = VSize(TryGetPawnOwner().GetVelocity())`、`bAgressiveIdle = bAggressiveIdle`、Skating → Stop は Speed < 5）。
+- 気絶の長さ 17.0 s は `BP_06_ReaperNurse` の Make Choice の `Delay 17.0`。起き上がりをその中に収めるのはユーザーの「明けに起き上がる」の読み（本家に起き上がりのアニメは無く、0.25 s のブレンドで戻る）。
+- 本家のナースのアクタの値（部品・気絶の流れ）は進捗記録 `20260917-enemy-wasami-body` の決定事項にあり、アクタを作るときにこの記録へ移す。
 
 ## 依存関係
 - `pipeline/gltf.py`（glb の読み書き・標本化・四元数）、`dd_stage`（`import_texture`・`_Graph`・`VERSION_TAG`）、`dd_assets`（`material`・`material_instance`）、`paths`（01 記録）。
 - エンジン: `InterchangeManager`・`InterchangeGenericAssetsPipeline`、`SkeletalMesh`・`AnimSequence`。
-- 使う側: まだ無い（アニメの再生と敵のアクタが作業一覧の項目 4 のステップ 2・3 で使う）。
+- アニメの再生: エンジンの `FAnimInstanceProxy`（`PreEvaluateAnimation`・`Evaluate`）、`FAnimationRuntime::BlendPosesTogether`、`FAlphaBlend::AlphaToBlendOption`、`WasamiAssets::Path`（00 記録）。追加のモジュールは要らない（`Engine` だけ）。
+- 使う側: アニメの再生が取り込んだクリップを名前で読む。敵のアクタ（項目 4 のステップ 3）がアニメの再生を使う。
 
 ## 既知の制約・注意点
 - glb に**ルートの骨が無い**ので、UE のルートモーションは使えない。前へ進むアニメは前処理でその場の形にした（捕獲の 3 本は捕獲の別室で使うので進んだまま）。
@@ -91,6 +124,11 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - 追跡中の変化 `Chase_VaultLand` は始めの骨盤が床から約 0.8 m 高く、平らな廊下では宙から始まって見える。扱いは PIE で決める。
 - 気絶のモーションは、載せ替えの物差しとしては頭だけ 4° 合わない（旧と v3 で作り直されている）。捕獲の 3 本には関係しない。
 - 前処理は純粋な Python（エディタの Python に numpy が無い）で、全体で数秒かかる。
+- クリップの名前は `ClipNames` と取り込みの `ROLES` の両方にある。役を足す・名前を変えるときは両方を直す（`Wasami.Enemy.Anim.Clips` が食い違いを見つける）。
+- クリップはゲームのワールドでしか読まないので、エディタのレベルに置いた敵は参照姿勢（腕を広げた形）で見える。
+- 1 回再生にアニメ通知・終わりのイベントは無い。終わりは `IsPlayingOnce()` で見る。
+- `FAnimInstanceProxy::IsSkeletonCompatible` は UE 5.8 で非推奨（警告 C4996）なので使わない。
 
 ## 変更履歴
 - 2026-09-18: 初版。敵ワサミの素材の取り込み（`dd_enemy.py`、原本 2 つ）を記録
+- 2026-09-18: アニメの再生 `UWasamiEnemyAnimInstance`（本家の ABP の木・気絶の位相合わせ・1 回再生の口）とテスト `Wasami.Enemy.Anim.*` を追加

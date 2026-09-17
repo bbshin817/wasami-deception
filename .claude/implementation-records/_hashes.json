@@ -107,6 +107,9 @@
   },
   "07-enemies.md": {
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "c0d8cc0f7443b09af65788af0e7ca872ffa18707",
+    "Source/wasami_deception/WasamiEnemyAnimInstance.h": "f0a5b24794fa09d7894b2b62d950be92750afe91",
+    "Source/wasami_deception/WasamiEnemyAnimInstance.cpp": "7974d9cddf989adf3f7efbf44c578330e568e85e",
+    "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "41d42c1a089541f144d8eb5a5c77f61197f4cefa",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112"
   }
