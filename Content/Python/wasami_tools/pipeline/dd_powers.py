@@ -178,11 +178,12 @@ TELEPATHY_INST_SCALARS = ("Speed",)
 # masters holding our estimates sit under /Game/Pipeline (dd_assets.estimated_materials).
 KY09 = "ThirdParty/AdvancedMagicFX09/"
 # The exports keep no Panner's speed, no TextureCoordinate's tiling and nothing of how the aura's samples bend each
-# other's coordinates: placeholders until the force field is compared with the latest version. Each of the aura's four
+# other's coordinates: placeholders. Compared with the latest version's recording (observations/README.md, step 11b1),
+# the veil looked close (with fewer streaks), so they stay as they are. Each of the aura's four
 # layers is (its TexCoord tiling (U across a wind line, V along it), its pan speed, the pan speed of the sample that
 # bends its coordinates, how far that sample's B bends them).
-# TODO(仮): the force field's four estimated graphs and these values are placeholders (their graphs are cooked away);
-# compare with the latest version (progress record step 11; 要確認「テレキネシスの力場の材質の推定」).
+# TODO(仮): the force field's four estimated graphs and these values are placeholders (their graphs are cooked away;
+# 要確認「テレキネシスの力場の材質の推定」 in .claude/roadmap.md).
 AURA_LAYERS = (
     ((1.0, 1.0), (0.0, -1.5), (0.1, -0.5), 0.1),
     ((1.0, 2.0), (0.0, -2.2), (-0.1, -0.7), 0.1),
