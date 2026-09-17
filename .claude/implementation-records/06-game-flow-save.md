@@ -117,7 +117,7 @@ updated: 2026-09-17
 
 ## 依存関係
 - 自前: `AWasamiPlayerCharacter`（`GetTabletScreen`、02 記録）、`UWasamiTabletWidget`（`GetShardCount`・`SetShardCount`・`PlayCountShake`、03 記録）、`IWasamiTelekinesisInterface`（04 記録）、`WasamiAssets.h`（00 記録）。取り込みは `dd_assets`・`dd_stage`・`paths`（01 記録）。
-- 使う側: プレイヤーの `ShardActorClass`（既定がこのクラス。数と地図、02 記録）、レベルの組み立て（01 記録）、テレキネシス（ステップ 10）。
+- 使う側: プレイヤーの `ShardActorClass`（既定がこのクラス。数と地図、02 記録）、レベルの組み立て（01 記録）、テレキネシス（`AWasamiTelekinesisPower::PullShards` が半径の中のシャードに `Activate` を呼ぶ。04 記録）。
 - エンジン: `UCapsuleComponent`・`UPointLightComponent`・`UStaticMeshComponent`、`UGameplayStatics`（`PlaySound2D`・`GetPlayerCharacter`・`GetPlayerController`）、`UKismetMathLibrary::VEase`、`FRichCurve`、`APlayerController::ClientStartCameraShake`。
 
 ## 既知の制約・注意点
@@ -139,7 +139,7 @@ updated: 2026-09-17
 - 触れて回収（前進の入力で歩いてシャード 331 へ）: プレイヤーの中心がシャードから 97 cm（カプセルの半径の和 99.6 cm）に来たフレームで、アクタが消え、画面の数が 337 → 336。同じフレームの `Count Shake` は約 0.03 秒ぶん進んだ値（数の移動 (−8.4, 6.2)・拡縮 1.06・閃きの α 0.236。プレイヤーの画面の更新が回収より後のフレーム順のため）で、0.09 秒後に数の変換が元の (0, −12)・1.0 に戻り、α は 0 のまま。揺れは FOV が最大 +0.78°・ロールが最大 0.39° で、0.1 秒で 0 に戻った。
 - 音（`ListWaves`）: `Soul_Shard_Pickup_v2` が 1 つ、音量 0.47〜0.51 で鳴る。0.65 × Cue の既定の `VolumeMultiplier` 0.75（UE 5.8 も 0.75。原作の書き出しは既定と同じ値を省くので原作も 0.75。書き出した Cue 126 個のうち 20 個だけが別の値を持つ）× Modulator の音量 0.95〜1.05 = 0.46〜0.51 と合う。
 - 引き寄せ（プレイヤーは (0, −157) に立ったまま、4.4 m 先の 330 と 10.4 m 先の 4 に Python から `activate()`）: どちらも初めはほとんど動かず（0.35 秒で 8 cm と 52 cm）、最後に一気に寄り、プレイヤーに触れた所で回収された（4 が 0.64 秒、330 が 0.84 秒。再生速度の乱数で遠い方が先に着いた）。高さは 0 のまま。数は 336 → 335 → 334。
-- **同時発音の差（未解決）**: 0.2 秒差で 2 つ回収すると、1 つ目の音は止まらず音量が 0.5 倍（0.24）になって鳴り続け、2 つが重なった（2 回試して同じ）。`OnlyFew` は `MaxCount` 1・`StopOldest`・`VolumeScale` 0.5 を原作どおりに写してあり、UE 5.8 の `SoundConcurrency.cpp` を読む限りは古い方が止まるはず。原因は特定していない。テレキネシスでまとめて回収したときに聞こえ方が変わりうるので、ステップ 10・11 で本家と聞き比べる。
+- **同時発音の差（未解決）**: 0.2 秒差で 2 つ回収すると、1 つ目の音は止まらず音量が 0.5 倍（0.24）になって鳴り続け、2 つが重なった（2 回試して同じ）。`OnlyFew` は `MaxCount` 1・`StopOldest`・`VolumeScale` 0.5 を原作どおりに写してあり、UE 5.8 の `SoundConcurrency.cpp` を読む限りは古い方が止まるはず。原因は特定していない。テレキネシスでまとめて回収したときに聞こえ方が変わりうるので、ステップ 10・11 で本家と聞き比べる。2026-09-17（ステップ 10a）: テレキネシスで 8 個が約 0.24 秒の間に回収されたとき、8 つの音がどれも止まらず、音量が新しい順に 0.47・0.24・0.13・0.06・0.03・0.01・0.01・0.00（新しい音が来るたびに古い音が 0.5 倍）で重なった。本家の `OnlyFew` の書き出しは `MaxCount` 1・`StopOldest`・`VolumeScale` 0.5 だけで、ほかの値（`VoiceStealReleaseTime` など）は既定のまま。
 
 - 回収の閃光（2026-09-17、同じ廊下。Python から 4 m 先のシャードの `collect`、続けて歩いて 2 つに触れる。60 fps の gdigrab の収録と毎フレームの記録）: 回収のフレームに `P_ky_flash3` の部品が `WorldSettings` に 1 つ出て、位置は結晶の位置（高さ 97.1 cm）、拡縮 0.2、約 1.0 秒で消えた（3 回とも）。4 m 先からは、虹色の星と半透明の円（最初の絵）、紫の衝撃波の円・明るい中心の星・横の帯・床を照らす灯が 3〜4 フレームで消え、床の明るさが少し残った。歩いて触れたときは、閃光がカメラの約 1 m 先・60 cm 下に出るので、画面の下に紫の衝撃波の弧と細い光の筋が 5 フレームほど見えた。最初の 1 回だけ描画が約 0.6 秒止まった（上の「既知の制約」）。
 

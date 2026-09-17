@@ -1,5 +1,5 @@
 ---
-title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Telepathy・Primal Fear と Vanish と一瞬の演出の基底・カメラアニメ・FX）
+title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Telepathy・Primal Fear とテレキネシスと Vanish と一瞬の演出の基底・カメラアニメ・FX）
 sources:
   - Source/wasami_deception/WasamiPowerTypes.h
   - Source/wasami_deception/WasamiPowerTypes.cpp
@@ -19,6 +19,8 @@ sources:
   - Source/wasami_deception/WasamiPowerBurst.cpp
   - Source/wasami_deception/WasamiPrimalPower.h
   - Source/wasami_deception/WasamiPrimalPower.cpp
+  - Source/wasami_deception/WasamiTelekinesisPower.h
+  - Source/wasami_deception/WasamiTelekinesisPower.cpp
   - Source/wasami_deception/WasamiVanishPower.h
   - Source/wasami_deception/WasamiVanishPower.cpp
   - Source/wasami_deception/WasamiVanishWidget.h
@@ -55,7 +57,7 @@ updated: 2026-09-17
 - 読み出し（BlueprintPure）: `GetTeleportAim()`（出ている照準。無ければ null）、`GetSocketPower(bLeft)`（枠が解放済みの範囲の外なら `None`）、`GetGaugePercent(Power)`、`IsPowerAvailable(Power)`、`IsUsingPower(Power)`（本家の `Is Player Using Power ?`。`Active Powers` に入っているか）、`HasPowers()`、`GetUpgradeLevel(Power)`。C++ だけの `GetTuning(Power)`。
 - `OnPowerUsed(EWasamiPower)`（BlueprintAssignable）… 本家の `UsedPower`（と、パワーごとの `UsedTelepathy` などをまとめたもの）。
 - 設定（EditAnywhere）: `UnlockedPowers`（既定は 6 種すべてを並び順に）、`UpgradeLevel`（既定 5。0〜5）。
-- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`、`TelepathySound` `/Game/DD/Audio/SharedGameplay/Telepathy`、`TelepathyEndSound`（`TeleportAimSound` と同じ音）、`TelepathyShakeClass`（`BoostShakeClass` と同じシェイク）。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）、`TelepathyPowerClass`（既定 `AWasamiTelepathyPower`）、`PrimalPowerClass`（既定 `AWasamiPrimalPower`）、`VanishPowerClass`（既定 `AWasamiVanishPower`）、`VanishWidgetClass`（既定 `UWasamiVanishWidget`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）、照準の素材（`AWasamiTeleportAim::LoadAssets`）、Telepathy の印の素材（`UWasamiTelepathyTrackerWidget::LoadAssets`）、Primal の素材（`AWasamiPrimalPower::LoadAssets`）、Vanish の素材（`AWasamiVanishPower::LoadAssets`・`UWasamiVanishWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
+- 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `RefillSound` `/Game/DD/Audio/UI/power_refilled`、`CycleSound` `/Game/DD/Audio/UI/UI_Select_V3`、`BoostSound` `/Game/DD/Audio/UI/Shard_Streak_Milestone_V5`、`BoostShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`BoostCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_SpeedBoost`（`UWasamiCameraAnim`）、`TeleportAimSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Mode_Entered`、`TelepathySound` `/Game/DD/Audio/SharedGameplay/Telepathy`、`TelepathyEndSound`（`TeleportAimSound` と同じ音）、`TelepathyShakeClass`（`BoostShakeClass` と同じシェイク）。`BoostWidgetClass`（既定 `UWasamiSpeedBoostWidget`）、`TeleportAimClass`（既定 `AWasamiTeleportAim`）、`TelepathyPowerClass`（既定 `AWasamiTelepathyPower`）、`PrimalPowerClass`（既定 `AWasamiPrimalPower`）、`TelekinesisPowerClass`（既定 `AWasamiTelekinesisPower`）、`VanishPowerClass`（既定 `AWasamiVanishPower`）、`VanishWidgetClass`（既定 `UWasamiVanishWidget`）。`BeginPlay` でブーストのウィジェットの素材（`UWasamiSpeedBoostWidget::LoadAssets`）、照準の素材（`AWasamiTeleportAim::LoadAssets`）、Telepathy の印の素材（`UWasamiTelepathyTrackerWidget::LoadAssets`）、Primal の素材（`AWasamiPrimalPower::LoadAssets`）、テレキネシスの素材（`AWasamiTelekinesisPower::LoadAssets`）、Vanish の素材（`AWasamiVanishPower::LoadAssets`・`UWasamiVanishWidget::LoadAssets`）も読んで持っておく（本家はプレイヤーがそれらのクラスを参照しているので、素材は最初から読まれている。最初の使用で読み込み待ちを出さないため）。
 
 ### `AWasamiTeleportAim : AActor`（`WasamiTeleportAim.h`）
 本家の `BP_Power_Teleport`（旧版）。パワーが出し、移動か取り消しで消える。
@@ -101,6 +103,15 @@ updated: 2026-09-17
 - コンポーネント: 基底の 3 つ + `Sphere`（`UStaticMeshComponent`、ルートの原点・拡縮 1、`NoCollision`、動かすので `Movable`）。`GetSphere()`・`GetMaterialInstance()`（C++ だけ）。
 - 値: `PostProcess` の `ColorGain` (1.6100000143051147, 0.12956300377845764, 0, 1)（赤）、`PostProcess1` の `SceneFringeIntensity` 50。
 - 素材（ソフト参照。`StartPower` で読む）: `SphereMesh` `/Engine/BasicShapes/Sphere`、`SphereMaterial` `/Game/DD/Materials/05_Circus/M_05_Primal`、`WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`、`ShakeClass` `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop`（`_C`）。
+
+### `AWasamiTelekinesisPower : AWasamiPowerBurst`（`WasamiTelekinesisPower.h`）
+本家の `BP_TelekinesisPower`（最新版）。
+- `Range`（既定 1500。`ExposeOnSpawn`。パワーが強化段階の値〈Lv5 で 3000〉を入れる）。
+- static `PullShards(WorldContext, Center, Radius)`（BlueprintCallable）: 半径の中の Pawn・WorldDynamic・WorldStatic の体を持つアクタのうち、`IWasamiTelekinesisInterface` を実装するもの（シャード `AWasamiShard`、06 記録）に `Activate` を 1 回ずつ送り、その数を返す。
+- static: `TelekinesisFadeCurve()`（`float2`。Primal と同じキー）、`LoadAssets(Out)`、定数 `ForceFieldDelay` 0.2・`ForceFieldScale` 2。
+- コンポーネント: 基底の 3 つだけ（粒子はコンポーネントではなく `SpawnEmitterAtLocation` で出す）。
+- 値: `PostProcess` の `ColorGain` (0, 0.4217270016670227, 1.6100000143051147, 1)（青）、`PostProcess1` の `SceneFringeIntensity` 50（Primal と同じ）。本家の CDO の `Range` 1500 はパワーが必ず上書きする。
+- 素材（ソフト参照。`StartPower` で読む）: `WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`、`ShakeClass` `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop`（`_C`）、`ForceFieldParticles`（**空**。`P_ky_forceField_Telekinesis` を作ったら `/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis` を入れる。進捗記録のステップ 10b）。
 
 ### `AWasamiVanishPower : AWasamiPowerBurst`（`WasamiVanishPower.h`）
 本家の `BP_VanishPower`（最新版）。Vanish の一瞬の演出と敵への通知だけを受け持つ（見えない扱い・ウィジェット・15 秒はパワーのコンポーネント）。
@@ -245,6 +256,16 @@ updated: 2026-09-17
 - 見え方（Lv5）: 0.5 秒で球の半径が約 2150 cm、1 秒で 3225 cm、1.5 秒で 3440 cm。画面は赤い単色（彩度 0 × ゲイン (1.61, 0.13, 0)）が 0.5 秒で消え、白い閃光（中間調 × 100・色収差 50）が約 0.29 秒で消える。2 秒で自分を消す。
 - 死亡のリセット: ゲージを止めて 1 → 充填（使っていなくても `power_refilled` が鳴る。下の「死亡のリセット」）。動いている 0.06 秒と再使用の Delay は止めないので、リセットの後に古い Delay が切れると、もう一度充填の音が鳴る（本家の癖どおり）。
 
+### テレキネシス（`UseTelekinesis` → `StartTelekinesisCooldown` → `RefillTelekinesis`、アクタは `AWasamiTelekinesisPower`）
+- 使った瞬間（本家の @19661〜@20984）: `Active Powers` に足す → 使えない状態 → ゲージの `SetDelay(0.05)`（アイコンが 0.05 秒で 0）→ `AWasamiTelekinesisPower` をプレイヤーの位置の **50 m 下**に回転 0・`AlwaysSpawn` で遅延スポーンし、`Range` に強化段階の値（Lv5 で 3000）を入れてから `FinishSpawning` → `Delay(0.06)` で `StartTelekinesisCooldown`。Primal と同じ形。
+- `StartTelekinesisCooldown`（@8329〜@9937）: 再使用の秒数（Lv5 で 8。本家の `00_Ballroom` だけの 1 秒は病院に無い）でゲージの `SetDelay`（アイコンが 0 → 1）→ `Active Powers` から外す → `Delay(再使用)` で `RefillTelekinesis`（`power_refilled` 0.5・使える状態。前の Gate は素通し）。使ってから再び使えるまで 8.06 秒。
+- アクタの `StartPower`（本家の `ReceiveBeginPlay` @661〜@1151）: プレイヤー（`GetPlayerCharacter(0)`）のカプセルの中心へ `SetActorLocation`（スイープなし。以後はプレイヤーに付いていかない）→ `Stun_Wave_Attack_New_04` を `PlaySoundAtLocation` の位置 (0, 0, 0)・音量 1・ピッチ 1（Primal と同じ）→ `GetPlayerController(0)` の `ClientStartCameraShake(01_Hotel_Lobby_ElevatorShakeStop, 25, CameraLocal)` → `PullShards(プレイヤーの位置, Range)` → 基底がタイムラインを再生 → 0.2 秒のタイマーで `SpawnForceField`。
+  - `PullShards`: `UKismetSystemLibrary::SphereOverlapActors`（オブジェクトの種類は本家の `[2, 1, 0]` = Pawn・WorldDynamic・WorldStatic、クラスの絞り込みなし、除外なし）。**遮蔽は見ない**（壁越し・上下の階のシャードも寄る）。判定は 0 秒の 1 回だけで、後から範囲に入ったシャードは対象にならない。本家は `DoesImplementInterface` で絞ってからインターフェースへキャストするので、届くのはシャード（`AWasamiShard`。06 記録の `Activate`: 0.8〜1.2 倍速の 1 秒でプレイヤーへ水平に寄り、終わりに届いていなくても回収）だけ。カプセルの当たりを切ったシャード（本家の `bDisabled`）は問い合わせに入らない（テスト `TelekinesisPull`）。
+  - `SpawnForceField`（本家の `Delay(0.2)` → `SpawnEmitterAtLocation` @15〜@43）: `ForceFieldParticles` が読めれば、アクタの位置（使った瞬間のプレイヤーの位置。付いていかない）に回転 0・拡縮 2・自動破棄・プールなし・自動起動で出す。**粒子はまだ無いので何も出ない**（進捗記録のステップ 10b）。
+- 更新（`UpdateTimeline`）: 基底の重みだけ（本家の `float`・`desaturation`・`opacity` のトラックは Primal と同じキーで、どこにもつながっていない）。
+- 見え方（Lv5）: 画面は青い単色（彩度 0 × ゲイン (0, 0.42, 1.61)）が 0.5 秒で消え、白い閃光（中間調 × 100・色収差 50）が約 0.29 秒で消える。2 秒で自分を消す。半径 30 m のシャードが 0.8〜1.25 秒でまとめて回収され、その数だけ `Count Shake` と回収の音（`OnlyFew`。06 記録の未解決の重なり）。
+- 死亡のリセット: **何もしない**（本家の `Reset Telekinesis` はどこからも呼ばれない。死んでも再使用の Delay は続く）。
+
 ### Vanish（`UseVanish` → `EndVanish` → `RefillVanish`、アクタは `AWasamiVanishPower`、画面は `UWasamiVanishWidget`）
 - 使った瞬間（本家の @20985〜@22969）: `Active Powers` に足す → 使えない状態 → **プレイヤーのカプセルの `ECC_Camera` の応答を Ignore**（本家の敵の視線は `Camera` チャンネルのトレースなので、線がプレイヤーを素通りして後ろの壁に当たる。敵〈M4〉の視線をこのチャンネルで作れば同じ仕組みになる）→ ゲージの `SetDelay(15)`（アイコンが 15 秒で 1 → 0）→ `UWasamiVanishWidget` を作り（持ち主はプレイヤーのコントローラ。本家は `OwningPlayer` なしの `Create` で、最初のローカルプレイヤーになる）、`Speed = 15`、`AddToPlayerScreen(0)` → `AWasamiVanishPower` をプレイヤーの位置の **50 m 下**に**プレイヤーの向き**で `AlwaysSpawn` の遅延スポーンをして `FinishSpawning` → `Delay(15)` で `EndVanish`。効果時間は段階によらず 15 秒（`FWasamiPowerTuning::VanishDuration`。ウィジェットの `Speed` も同じ 15）。
 - 終わり（`EndVanish`、@6856〜@7725）: ゲージの `SetDelay(再使用)`（Lv5 で 15 秒、アイコンが 0 → 1）→ `Active Powers` から外す → カプセルの `ECC_Camera` を Block に戻す → `Delay(再使用)` で `RefillVanish`。**敵へは何も知らせない**。効果中に解除する処理も無い（シャードを取る・別のパワーを使う・捕まる、のどれでも続く）。
@@ -371,18 +392,21 @@ updated: 2026-09-17
 ## 依存関係
 - `AWasamiPlayerCharacter`（02 記録）: `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()`・コントローラのカメラマネージャ。プレイヤーがこのコンポーネントを作り、入力を結び、毎フレーム画面へ値を渡す。
 - `UWasamiTabletWidget`（03 記録）: `BounceSocket`。
+- `AWasamiShard`（06 記録）: テレキネシスの `Activate` の受け手（`IWasamiTelekinesisInterface`）。テスト `TelekinesisPull` も置く。
 - `WasamiAssets.h`（00 記録）。
 - エンジン: `FTimerManager`、`UGameplayStatics::PlaySound2D` / `PlaySoundAtLocation`、`APlayerCameraManager::StartCameraShake` / `AddNewCameraModifier` / `AddCachedPPBlend`、`UCameraModifier`、`UPostProcessComponent`、`UMG`（`UUserWidget`・`UWidgetTree`・`UCanvasPanel`・`UImage`）。
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（15 件。うち `Wasami.Cascade.Build` は 01 記録）。
+`Automation RunTests Wasami`（20 件。うち `Wasami.Cascade.Build` は 01 記録、`Wasami.Tablet.CountShake` は 03 記録、`Wasami.Shard.PullCurve`・`Shard.Actor` は 06 記録）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
 - `Wasami.Powers.TeleportDistance` … Lv5 の最初の距離 1000（強化なしなら 700）、`Alpha` 0 / 1 の端、1 目盛りで +0.1（Lv5 で +125 cm）、1 フレームに 2 目盛り、0 と 1 での切り詰め。
 - `Wasami.Powers.PrimalTimeline` … `BP_PrimalPower` の 4 本のトラックの値（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）、重みの式（位置 0 で 1.000698 と 1、0.2 秒で 0.8675 と 0.5585、0.3 秒で閃光 0、0.5 秒で色 0）、クラスの既定（範囲なし、重み 0、各上書きと値、球の当たりなし、`Range` 1500）。
 - `Wasami.Powers.PrimalStun` … 一時的なゲームのワールドに仮の的を並べ、`StunEnemies(原点, 3500)` が近く・端（3450）・真上 30 m の 3 体にだけ `SetState(Stun, false)` を 1 回ずつ送ること。遠く（3600）・体が Pawn でない的・`Enemy` タグだけで実装の無いアクタには送らないこと。
+- `Wasami.Powers.TelekinesisTimeline` … `BP_TelekinesisPower` の `float2`（Primal と同じキー。0〜2 秒の 7 点）と重み、クラスの既定（範囲なし・重み 0、青のゲイン (0, 0.421727, 1.61)、中間調 100、色収差 50、ガンマの上書き、`Range` 1500、音とシェイクのパス、粒子の参照が空、0.2 秒と拡縮 2）。
+- `Wasami.Powers.TelekinesisPull` … `FTestWorldWrapper` のワールドにシャードを並べ、`PullShards(原点, 3000)` が近く（10 m）・端（29 m）・真上 25 m の 3 つだけを引き寄せ始めること。遠く（32 m）・カプセルの当たりを切ったシャード・範囲内の仮の的（Pawn の体、テレキネシスのインターフェースなし）には何もしないこと（`SetState`・`PlayerVanish` も来ない）。
 - `Wasami.Powers.VanishTimeline` … `BP_VanishPower` の `float2`（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）と重み（0 秒で色 0.997・閃光 0.991、0.12 秒で閃光 0、0.3 秒以降で色 0）、クラスの既定（範囲なし・重み 0、紫のゲイン、中間調 100、色収差の上書きが 0、フィルムグレインの上書きなし、粒子の位置・自動起動・ティックの開始なし、粒子の素材の指定）。
 - `Wasami.Powers.VanishNotify` … 一時的なゲームのワールドで、タグ `Enemy` と実装のある的には距離によらず `PlayerVanish` が 1 回ずつ届き、タグの無い的と、タグだけで実装の無いアクタには届かないこと。`SetState` は送らないこと。
 - `Wasami.Powers.VanishWidget` … アニメ `Vanish` の不透明度を 1/15 倍速で読んだ値（0 / 0.375 / 0.75 / 1.125 / 1.5 / 7.5 / 13.5 / 14.25 / 14.625 / 15 / 20 秒で 0 / 0.156 / 0.499 / 0.843 / 1 / 1.0123 / 1 / 0.499 / 0.156 / 0 / 0）と、クラスの `Speed` 1。
@@ -458,8 +482,17 @@ updated: 2026-09-17
 - 画面（gdigrab で 60 fps 収録。`observations/ours/pie-telepathy-*`）: 印は壁や的に隠れずに赤い丸として重なって出た。縁のぼけた赤い円で、中はほぼ飽和し、ノイズの模様は薄い（**材質は推定。本家と見比べていない**）。正面 800 cm の印の直径は約 110〜120 px（ビューポート 884 × 596。DPI の拡大率は約 0.55 なので、500 × 0.468 × 0.95 × 0.55 ≈ 122 px と合う）。30 m 先の印は正面の印の後ろに重なって見えない（近いものが上）。出るときに膨らみ、終わりに一度膨らんでから 0.3 秒で消えた。
 - PIE の間、この仕組みの警告やエラーは無かった（ログのエラーは計測のスクリプトの書き損じだけ）。音はユーザーのスピーカーで確かめていない。PIE は止めた。
 
+### テレキネシス（2026-09-17、PIE、`L_Hospital_Zone1`、Space・1 × 4・Space・Q とビューポートのクリックは `Tools/desktop.py` から送り、値はエディタの Python で毎フレーム読んだ）
+- ビルドは警告なし、テストは 20 件とも成功。取り込みは足していない（音とシェイクは Primal のもの）。
+- 1 回目: プレイヤーを (0, 700)・南向きに置いて Q。アクタはプレイヤーの位置 (0, 700, 90.1) にあり `Range` 3000。半径の中の 8 個（703〜2801 cm。横の廊下のものを含む）が 0.627〜0.863 秒で回収され（シャードは `Alpha` が 1 になる 0.75 / 再生速度 秒でプレイヤーに届いて、触れて回収される）、3107 cm 先の 9 個目は残った。2 回目: (2, −10500) で 41 個が 0.595〜0.933 秒で回収された（壁越しにも寄る）。
+- 毎フレームの記録（約 100 fps）: ゲージは使ったフレームから 0.052 秒で 0、0.064 秒で使用中が外れ、その後 8 秒で 0 → 1（4 秒で 0.4925）、8.069 秒で使える状態に戻った。重みは位置 0.0624 で色 0.990・閃光 0.966、0.2055 で 0.860・0.532、0.3144 で閃光 0、0.5144 で色 0。アクタは 1.99 秒後に消えた。カメラの位置は Q の直後から最大 45 cm 揺れ、0.5 秒で収まった。
+- 音（`au.Debug.ListWaves`）: 使った直後に `Stun_Wave_Attack_New_04` が音量 1 で鳴っていた。回収の音は、8 個が約 0.24 秒の間に続いた後、8 つとも残って音量が新しい順に 0.47・0.24・0.13・0.06・0.03・0.01・0.01・0.00（06 記録の未解決の同時発音の差と同じ現象。ステップ 11 で本家と聞き比べる）。
+- 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面が明るい水色に飛び（閃光 × 青い単色）、約 0.3 秒で閃光が消えて青い単色になり、0.5 秒で元の色に戻った。その間に餅が廊下の奥から飛んでくる。**揺れの間、下げたタブレットの黒い裏面が視界を横切るフレームがある**（全面の黒が 1 枚、部分的な黒が数枚。下の「既知の制約」）。色と見え方は本家と見比べていない（ステップ 11）。
+- PIE の間、この仕組みの警告やエラーは無かった。音はユーザーのスピーカーで確かめていない。PIE は止めた。
+
 ## 既知の制約・注意点
-- **Telekinesis は中身が無い**（枠に出る・弾む・`OnPowerUsed` が出るだけで、使える状態は変わらない）。
+- **倍率 25 のシェイク（Primal Fear・テレキネシス）の間、下げたタブレットが視界を横切って黒いフレームが出る**（2026-09-17、テレキネシスの収録で見つけた）。シェイクは視点だけを最大 50 / 50 / 75 cm 動かし、カメラの子のタブレット（下げた状態で視点の前 35 cm・下 40 cm・右 22 cm。02 記録。本家の値で、本家も隠さない）は動かないため。仕組みも値も本家の写しなので直していない。本家でも同じに見えるかは進捗記録のステップ 11 で見比べる。
+- **テレキネシスの粒子 `P_ky_forceField_Telekinesis` はまだ無い**（`ForceFieldParticles` が空で、0.2 秒後に何も出ない。進捗記録のステップ 10b で `dd_particles` にメッシュのエミッタなどを足して作る）。ポストプロセスの値は原作どおりだが、UE 5.8 のトーンマッパーで同じ見え方になるかは未確認（ステップ 11）。敵はテレキネシスの対象ではない（本家どおり）。
 - **Telepathy の印の材質 `M_DD_Telepathy` はグラフが推定**（ノイズのつなぎ方・パンの速さ・`Gain` は仮の値）。印の画面上の大きさ（500 × 500 の枠に広がること、DPI の拡大率）も本家と見比べていない。進捗記録のステップ 11 で最新版の病院（ナースが出る）と見比べる。敵（M4）が無いので、印は仮の的でしか確かめていない。
 - Telepathy の印の `Appear` が角度を触らないこと（2D 変換のトラックはデータのあるチャンネルだけを書く）と、アニメの最後の評価の時刻は UE 5.8 のソースに拠る。UE 4.24 のソースは手元に無い（本家も乱数の角度を入れているので、角度は残る前提）。
 - ユニティビルドで無名名前空間の名前がぶつからないよう、定数や補助の名前はファイルごとに固有にする（ステップ 8 でファイルが増えてまとまり方が変わり、Vanish と Primal の定数がぶつかった）。
@@ -486,6 +519,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: テレキネシス（`AWasamiTelekinesisPower`〈半径の中のシャードに `Activate` を 1 回ずつ、青い画面と閃光、音、シェイク〉、`UseTelekinesis`〈0.05 秒でアイコンが落ち、0.06 秒後に再使用 8 秒〉、粒子の枠〈空〉）とテスト `Wasami.Powers.TelekinesisTimeline`・`TelekinesisPull` を足した。粒子 `P_ky_forceField_Telekinesis` は次のステップ
 - 2026-09-17: テレキネシスのインターフェースを実装するシャード（`AWasamiShard`、06 記録）ができたことを書き足した（ソースは変えていない）
 - 2026-09-17: Telepathy（`AWasamiTelepathyPower`〈0.8 秒ごとにレベルの全敵に印、時間で全部外す〉、`AWasamiTelepathyTracker`〈画面空間のウィジェットで敵を追い、距離で大きさ〉、`UWasamiTelepathyTrackerWidget`〈赤い煙の円、Appear / Disappear〉、開始と終わりの音、シェイク、9 秒と再使用 6.5 秒）とテスト `Wasami.Powers.TelepathyTracker`・`TelepathyTargets` を足した。印の材質は推定。ユニティビルドでぶつかった Vanish の無名名前空間の名前を変えた
 - 2026-09-17: Vanish（`AWasamiVanishPower`〈紫と白の一瞬の演出・煙 `PPP_VanishPuff`・音・全敵への `PlayerVanish`〉、`UWasamiVanishWidget`〈紫の揺らぐビネット、15 秒で出て消える〉、カプセルの `Camera` 応答の切り替え、15 秒と再使用 15 秒、リセット）とテスト `Wasami.Powers.VanishTimeline`・`VanishNotify`・`VanishWidget` を足した。煙とビネットの材質は推定

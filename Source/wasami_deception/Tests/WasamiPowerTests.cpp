@@ -3,6 +3,8 @@
 #include "../WasamiTabletWidget.h"
 #include "../WasamiTeleportAim.h"
 #include "../WasamiPrimalPower.h"
+#include "../WasamiShard.h"
+#include "../WasamiTelekinesisPower.h"
 #include "../WasamiVanishPower.h"
 #include "../WasamiVanishWidget.h"
 #include "../WasamiTelepathyPower.h"
@@ -211,6 +213,94 @@ bool FWasamiPrimalStunTest::RunTest(const FString& Parameters)
 
 	World->DestroyWorld(false);
 	World->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiTelekinesisTimelineTest, "Wasami.Powers.TelekinesisTimeline",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiTelekinesisTimelineTest::RunTest(const FString& Parameters)
+{
+	// BP_TelekinesisPower's float2 is Primal Fear's, key for key: the same values at the times of the research's table.
+	struct FRow
+	{
+		float Time, Fade;
+	};
+	const FRow Rows[] = {
+		{0.f, -0.000698f},
+		{0.1f, 0.029344f},
+		{0.2f, 0.132451f},
+		{0.3f, 0.320608f},
+		{0.5f, 1.f},
+		{1.f, 1.f},
+		{2.f, 1.f},
+	};
+	for (const FRow& Row : Rows)
+	{
+		TestEqual(FString::Printf(TEXT("float2 at %.1f s"), Row.Time), AWasamiTelekinesisPower::TelekinesisFadeCurve().Eval(Row.Time), Row.Fade, 1e-5f);
+	}
+	TestEqual(TEXT("the tint's weight at 0.2 s"), AWasamiPowerBurst::TintWeight(0.132451f), 0.867549f, 1e-6f);
+	TestEqual(TEXT("the flash's weight at 0.2 s"), AWasamiPowerBurst::FlashWeight(0.132451f), 0.558497f, 1e-5f);
+	TestEqual(TEXT("the flash is gone at 0.3 s"), AWasamiPowerBurst::FlashWeight(0.320608f), 0.f);
+	TestEqual(TEXT("the tint is gone at 0.5 s"), AWasamiPowerBurst::TintWeight(1.f), 0.f);
+
+	// The class's volumes, as the export sets them: the tint is blue, the flash has Primal's fringe.
+	const AWasamiTelekinesisPower* Defaults = GetDefault<AWasamiTelekinesisPower>();
+	const UPostProcessComponent* Tint = Defaults->GetTint();
+	const UPostProcessComponent* Flash = Defaults->GetFlash();
+	TestTrue(TEXT("both volumes are unbound"), Tint->bUnbound && Flash->bUnbound);
+	TestTrue(TEXT("both start at weight 0"), Tint->BlendWeight == 0.f && Flash->BlendWeight == 0.f);
+	TestTrue(TEXT("the tint washes out the colour"), Tint->Settings.bOverride_ColorSaturation && Tint->Settings.ColorSaturation == FVector4(0., 0., 0., 1.));
+	TestTrue(TEXT("the tint's blue gain"), Tint->Settings.bOverride_ColorGain && Tint->Settings.ColorGain.Equals(FVector4(0., 0.421727, 1.61, 1.), 1e-6));
+	TestFalse(TEXT("the flash has no gain of its own"), Flash->Settings.bOverride_ColorGain || Flash->Settings.bOverride_ColorSaturation);
+	TestTrue(TEXT("the flash's midtones"), Flash->Settings.bOverride_ColorGainMidtones && Flash->Settings.ColorGainMidtones == FVector4(100., 100., 100., 1.));
+	TestTrue(TEXT("the flash's fringe"), Flash->Settings.bOverride_SceneFringeIntensity && Flash->Settings.SceneFringeIntensity == 50.f);
+	TestTrue(TEXT("the flash's gamma override at its default"), Flash->Settings.bOverride_ColorGamma && Flash->Settings.ColorGamma == FVector4(1., 1., 1., 1.));
+	TestEqual(TEXT("the class's Range"), Defaults->Range, 1500.f);
+	TestEqual(TEXT("the wave"), Defaults->WaveSound.ToSoftObjectPath().ToString(), FString(TEXT("/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04.Stun_Wave_Attack_New_04")));
+	TestEqual(TEXT("the shake"), Defaults->ShakeClass.ToSoftObjectPath().ToString(), FString(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.01_Hotel_Lobby_ElevatorShakeStop_C")));
+	TestTrue(TEXT("no force field until its particles are made"), Defaults->ForceFieldParticles.IsNull());
+	TestEqual(TEXT("the force field's wait"), AWasamiTelekinesisPower::ForceFieldDelay, 0.2f);
+	TestEqual(TEXT("the force field's scale"), AWasamiTelekinesisPower::ForceFieldScale, 2.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiTelekinesisPullTest, "Wasami.Powers.TelekinesisPull",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiTelekinesisPullTest::RunTest(const FString& Parameters)
+{
+	// A world that plays, as the shard's own test uses: the shards' capsules are in it and Activate starts their pulls.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	const float Range = FWasamiPowerTuning::ForLevel(5).TelekinesisRange;
+	TestEqual(TEXT("the top level's range"), Range, 3000.f);
+
+	// Inside the range: near, near its edge (the capsule sits about 1 m up the shard), and 25 m above (no line of sight
+	// is asked for).
+	AWasamiShard* Near = World->SpawnActor<AWasamiShard>(FVector(1000., 0., 0.), FRotator::ZeroRotator);
+	AWasamiShard* Edge = World->SpawnActor<AWasamiShard>(FVector(0., Range - 100., 0.), FRotator::ZeroRotator);
+	AWasamiShard* Above = World->SpawnActor<AWasamiShard>(FVector(0., 0., 2500.), FRotator::ZeroRotator);
+	// Out of it; in it with its capsule off (the original's bDisabled); and an enemy in it, which the pull is not for.
+	AWasamiShard* Far = World->SpawnActor<AWasamiShard>(FVector(-(Range + 200.), 0., 0.), FRotator::ZeroRotator);
+	AWasamiShard* Disabled = World->SpawnActor<AWasamiShard>(FVector(0., -1000., 0.), FRotator::ZeroRotator);
+	Disabled->FindComponentByClass<UCapsuleComponent>()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AWasamiTestEnemy* Enemy = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(500., 500., 0.));
+
+	const int32 Pulled = AWasamiTelekinesisPower::PullShards(World, FVector::ZeroVector, Range);
+	TestEqual(TEXT("three shards are pulled"), Pulled, 3);
+	TestTrue(TEXT("the near one is pulled"), Near->IsPulling());
+	TestTrue(TEXT("the one near the edge is pulled"), Edge->IsPulling());
+	TestTrue(TEXT("the one above is pulled"), Above->IsPulling());
+	TestFalse(TEXT("the far one is left alone"), Far->IsPulling());
+	TestFalse(TEXT("the one with its capsule off is left alone"), Disabled->IsPulling());
+	TestEqual(TEXT("the enemy is left alone"), Enemy->SetStateCount, 0);
+	TestEqual(TEXT("the enemy is not told of a vanish"), Enemy->PlayerVanishCount, 0);
 	return true;
 }
 

@@ -11,6 +11,7 @@ class USoundBase;
 class UWasamiCameraAnim;
 class AWasamiTeleportAim;
 class AWasamiPrimalPower;
+class AWasamiTelekinesisPower;
 class AWasamiTelepathyPower;
 class AWasamiVanishPower;
 class UWasamiSpeedBoostWidget;
@@ -23,8 +24,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPo
  * which each hold a part of it for the one player: the unlocked powers and the two sockets that point into them, Q / E
  * to use a socket and 1 / 2 to cycle it, each power's gauge on the tablet, the values of the upgrade level, the reset
  * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, the telepathy,
- * AWasamiTelepathyPower, Primal Fear, AWasamiPrimalPower, and Vanish, AWasamiVanishPower). The tablet's screen only
- * shows what this holds.
+ * AWasamiTelepathyPower, Primal Fear, AWasamiPrimalPower, the telekinesis, AWasamiTelekinesisPower, and Vanish,
+ * AWasamiVanishPower). The tablet's screen only shows what this holds.
  */
 UCLASS(ClassGroup = (Wasami), meta = (BlueprintSpawnableComponent))
 class WASAMI_DECEPTION_API UWasamiPowerComponent : public UActorComponent
@@ -160,6 +161,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<AWasamiPrimalPower> PrimalPowerClass;
 
+	/** BP_TelekinesisPower: what the telekinesis spawns. */
+	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
+	TSubclassOf<AWasamiTelekinesisPower> TelekinesisPowerClass;
+
 	/** BP_VanishPower: what Vanish spawns. */
 	UPROPERTY(EditAnywhere, Category = "Powers|Assets")
 	TSubclassOf<AWasamiVanishPower> VanishPowerClass;
@@ -212,6 +217,12 @@ private:
 	void StartPrimalCooldown();
 	/** The end of the cooldown (the Gate before it always lets it through). */
 	void RefillPrimal() { Refill(EWasamiPower::PrimalFear); }
+
+	void UseTelekinesis();
+	/** 0.06 s after a use: the cooldown starts. */
+	void StartTelekinesisCooldown();
+	/** The end of the cooldown (the Gate before it always lets it through). Nothing resets the telekinesis. */
+	void RefillTelekinesis() { Refill(EWasamiPower::Telekinesis); }
 
 	void UseVanish();
 	/** 15 s after a use: the capsule blocks the camera channel again and the cooldown starts. */
@@ -270,6 +281,10 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UObject>> LoadedPrimalAssets;
 
+	/** What the telekinesis's actor uses, held from the start. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UObject>> LoadedTelekinesisAssets;
+
 	/** What Vanish's actor and widget use, held from the start. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UObject>> LoadedVanishAssets;
@@ -323,6 +338,9 @@ private:
 
 	FTimerHandle PrimalCooldownTimer;
 	FTimerHandle PrimalRefillTimer;
+
+	FTimerHandle TelekinesisCooldownTimer;
+	FTimerHandle TelekinesisRefillTimer;
 
 	FTimerHandle VanishEndTimer;
 	FTimerHandle VanishRefillTimer;

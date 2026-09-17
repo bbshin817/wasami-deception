@@ -60,8 +60,8 @@
   "04-powers.md": {
     "Source/wasami_deception/WasamiPowerTypes.h": "25ea2a2f5e2a89f7b72d1428cdc557777fbba069",
     "Source/wasami_deception/WasamiPowerTypes.cpp": "cf4a593d47aefb34a45626aec0183ac1dd059079",
-    "Source/wasami_deception/WasamiPowerComponent.h": "8a0e588ea2116cea431069ae6154715b399a4569",
-    "Source/wasami_deception/WasamiPowerComponent.cpp": "a65f05e8f1ebe5f62a222663f53334ddff41b3fa",
+    "Source/wasami_deception/WasamiPowerComponent.h": "3cc5e51040ccb3c37486a076bbdde3a67426dcf0",
+    "Source/wasami_deception/WasamiPowerComponent.cpp": "6e406222da8a38c8610d15e034c2fbc98c5cfb49",
     "Source/wasami_deception/WasamiEnemyInterface.h": "2f02527241393d4ff49482cd9f903b1e6b5d6a2a",
     "Source/wasami_deception/WasamiTelekinesisInterface.h": "760d20e7f68dde290f4a1f9565120894396f6912",
     "Source/wasami_deception/WasamiCameraAnim.h": "877a9f12d76ea992142b0023885f67b43593e898",
@@ -76,6 +76,8 @@
     "Source/wasami_deception/WasamiPowerBurst.cpp": "0f85ce8b4a6d6372284de0735f4618c90826f2ec",
     "Source/wasami_deception/WasamiPrimalPower.h": "8200bbbc9b5bd3b572697d37665c1e8e57301cfa",
     "Source/wasami_deception/WasamiPrimalPower.cpp": "3afb017bf9f05d8759e3f6ff2df8d87b6e5dbbe0",
+    "Source/wasami_deception/WasamiTelekinesisPower.h": "2cad0c7a09d48d30707ea5657f90f47b60c767c4",
+    "Source/wasami_deception/WasamiTelekinesisPower.cpp": "11c94bb748e2079f625377caab9ee5fbafca3120",
     "Source/wasami_deception/WasamiVanishPower.h": "b5241b6a3d5f14cf421bbe83337aa26f5e27dae9",
     "Source/wasami_deception/WasamiVanishPower.cpp": "8c2e2c4f5cbf97ac49b03bda03888de02ef23d74",
     "Source/wasami_deception/WasamiVanishWidget.h": "edb71baed3dc8a6398fe1ab10dacffb22c7eef06",
@@ -88,7 +90,7 @@
     "Source/wasami_deception/WasamiTelepathyTrackerWidget.cpp": "274a37a03ec587bbc3cea72b0b3242af5c41c9d8",
     "Source/wasami_deception/Tests/WasamiTestEnemy.h": "4915a29a6d56fbf6aeba0dbb1b4385840974929b",
     "Source/wasami_deception/Tests/WasamiTestEnemy.cpp": "24e7f438257ec2be53e2bcaf238a3d16274790a6",
-    "Source/wasami_deception/Tests/WasamiPowerTests.cpp": "64d1f38d61e128164f9ea6ec9c9246cfa8264b10",
+    "Source/wasami_deception/Tests/WasamiPowerTests.cpp": "df3b21976edc52cfe79b17cfc3f37d968841d9f6",
     "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "956a79e018c51e07c01b0937d1cf1788c9d22f86"
   },
   "06-game-flow-save.md": {

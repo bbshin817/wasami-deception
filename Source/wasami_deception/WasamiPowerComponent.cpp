@@ -12,6 +12,7 @@
 #include "WasamiChameleonComponent.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiPrimalPower.h"
+#include "WasamiTelekinesisPower.h"
 #include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
 #include "WasamiTelepathyPower.h"
@@ -59,6 +60,10 @@ namespace
 	constexpr float PrimalGaugeDropSeconds = 0.05f;
 	const FVector PrimalSpawnOffset(0., 0., -5000.);
 	constexpr float PrimalCooldownDelay = 0.06f;
+	// The telekinesis: the icon's drop, the spawn 50 m under the player, and the delay before the cooldown starts.
+	constexpr float TelekinesisGaugeDropSeconds = 0.05f;
+	const FVector TelekinesisSpawnOffset(0., 0., -5000.);
+	constexpr float TelekinesisCooldownDelay = 0.06f;
 	// Vanish: the spawn 50 m under the player, and UMG_Vanish on the player's screen at this Z order.
 	const FVector VanishSpawnOffset(0., 0., -5000.);
 	constexpr int32 VanishWidgetZOrder = 0;
@@ -86,6 +91,7 @@ UWasamiPowerComponent::UWasamiPowerComponent()
 	TelepathyShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak")));
 	TelepathyPowerClass = AWasamiTelepathyPower::StaticClass();
 	PrimalPowerClass = AWasamiPrimalPower::StaticClass();
+	TelekinesisPowerClass = AWasamiTelekinesisPower::StaticClass();
 	VanishPowerClass = AWasamiVanishPower::StaticClass();
 	VanishWidgetClass = UWasamiVanishWidget::StaticClass();
 }
@@ -107,6 +113,7 @@ void UWasamiPowerComponent::BeginPlay()
 	LoadedTelepathyShake = TelepathyShakeClass.LoadSynchronous();
 	UWasamiTelepathyTrackerWidget::LoadAssets(LoadedTelepathyAssets);
 	AWasamiPrimalPower::LoadAssets(LoadedPrimalAssets);
+	AWasamiTelekinesisPower::LoadAssets(LoadedTelekinesisAssets);
 	AWasamiVanishPower::LoadAssets(LoadedVanishAssets);
 	UWasamiVanishWidget::LoadAssets(LoadedVanishAssets);
 
@@ -245,6 +252,9 @@ void UWasamiPowerComponent::UsePower(bool bLeft)
 			break;
 		case EWasamiPower::PrimalFear:
 			UsePrimal();
+			break;
+		case EWasamiPower::Telekinesis:
+			UseTelekinesis();
 			break;
 		case EWasamiPower::Vanish:
 			UseVanish();
@@ -538,6 +548,33 @@ void UWasamiPowerComponent::StartPrimalCooldown()
 	Gauge(EWasamiPower::PrimalFear).SetDelay(Cooldown, false);
 	ActivePowers.Remove(EWasamiPower::PrimalFear);
 	Delay(PrimalRefillTimer, Cooldown, &UWasamiPowerComponent::RefillPrimal);
+}
+
+void UWasamiPowerComponent::UseTelekinesis()
+{
+	const AWasamiPlayerCharacter* Player = GetPlayer();
+	ActivePowers.AddUnique(EWasamiPower::Telekinesis);
+	SetPowerAvailable(EWasamiPower::Telekinesis, false);
+	Gauge(EWasamiPower::Telekinesis).SetDelay(TelekinesisGaugeDropSeconds, false);
+
+	// BP_TelekinesisPower comes out 50 m under the player, unrotated, whatever is there, with the level's Range.
+	const FTransform SpawnTransform(FRotator::ZeroRotator, Player->GetActorLocation() + TelekinesisSpawnOffset);
+	if (AWasamiTelekinesisPower* Telekinesis = GetWorld()->SpawnActorDeferred<AWasamiTelekinesisPower>(TelekinesisPowerClass,
+		SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+	{
+		Telekinesis->Range = GetTuning(EWasamiPower::Telekinesis).TelekinesisRange;
+		Telekinesis->FinishSpawning(SpawnTransform);
+	}
+	Delay(TelekinesisCooldownTimer, TelekinesisCooldownDelay, &UWasamiPowerComponent::StartTelekinesisCooldown);
+}
+
+void UWasamiPowerComponent::StartTelekinesisCooldown()
+{
+	// The original's 1 s is for its ballroom only.
+	const float Cooldown = GetTuning(EWasamiPower::Telekinesis).TelekinesisCooldown;
+	Gauge(EWasamiPower::Telekinesis).SetDelay(Cooldown, false);
+	ActivePowers.Remove(EWasamiPower::Telekinesis);
+	Delay(TelekinesisRefillTimer, Cooldown, &UWasamiPowerComponent::RefillTelekinesis);
 }
 
 void UWasamiPowerComponent::UseVanish()
