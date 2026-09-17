@@ -9,6 +9,12 @@ import os
 import subprocess
 import sys
 
+# Claude Code は hook の出力を UTF-8 として読む。この PC のコンソールは cp932 で、「—」のような cp932 に無い文字が
+# 1 つでもあると print が UnicodeEncodeError になり、外側の try が握りつぶして出力ごと消えていた（2026-09-17 に発見）。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 CHECK = os.path.join(ROOT, ".claude", "scripts", "check_records.py")
 
