@@ -27,6 +27,8 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_powers.py
   - Content/Python/wasami_tools/pipeline/dd_particles.py
   - Content/Python/wasami_tools/pipeline/dd_shards.py
+  - Content/Python/wasami_tools/pipeline/dd_enemy.py
+  - Content/Python/wasami_tools/pipeline/gltf.py
   - Source/wasami_deception/WasamiCascadeLibrary.h
   - Source/wasami_deception/WasamiCascadeLibrary.cpp
   - Source/wasami_deception/WasamiSoundCueLibrary.h
@@ -34,7 +36,7 @@ sources:
   - Source/wasami_deception/WasamiMaterialLibrary.h
   - Source/wasami_deception/WasamiMaterialLibrary.cpp
   - Source/wasami_deception/Tests/WasamiCascadeTests.cpp
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # 取り込みの仕組み
@@ -56,6 +58,7 @@ updated: 2026-09-17
 | `WasamiDDTools.import_dd_tablet()` | タブレット一式（メッシュ・マテリアル・テクスチャ・フォント・音・ミニマップ・6 パワーのアイコン）を `/Game/DD` に作る（中身は 03 記録） |
 | `WasamiDDTools.import_dd_powers()` | パワーが鳴らす音（同時発音の設定を含む）・カメラシェイク・カメラアニメ（`WasamiCameraAnim`）と、スピードブーストのテクスチャとマテリアル、プレイヤーの FX のマテリアル、テレポートの照準のマテリアルと Cascade のパーティクル、Primal Fear の球のテクスチャとマテリアル、Vanish の煙（テクスチャ・マテリアル・Cascade のパーティクル）とビネットのマテリアル、Telepathy の開始の音と印のテクスチャとマテリアル、テレキネシスの力場（テクスチャ・メッシュ・推定のマテリアル・Cascade のパーティクル）を作る（中身は 04 記録）。戻り値は種類ごとの数（`meshes`・`particle_systems` を含む） |
 | `WasamiDDTools.import_dd_shards()` | シャードの素材（本作の餅のメッシュ・テクスチャ・材質〈`SourceArt/` から〉、地図の印の材質 `M_Shard`、回収の音・Cue・同時発音・揺れ）を作る（中身は 06 記録）。戻り値は `sounds` 1 / `sound_concurrencies` 1 / `sound_cues` 1 / `camera_shakes` 1 / `materials` 2 / `mochi` 6 |
+| `WasamiDDTools.import_wasami_enemy()` | 敵ワサミ（本作のモデル〈`SourceArt/` から〉）のスケルタルメッシュ・スケルトン・物理アセット・テクスチャ・材質と、役の名前のアニメ `A_WasamiEnemy_<役>` を作る（中身は 07 記録）。戻り値は `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 19 |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
 
@@ -143,6 +146,12 @@ updated: 2026-09-17
 ### シャードの素材（`pipeline/dd_shards.py`）
 `import_all()` が回収の音（`SOUNDS`）・同時発音（`SOUND_CONCURRENCIES`）・Cue（`SOUND_CUES`。波形の後に作る）・揺れ（`CAMERA_SHAKES`）を `dd_assets` で作り（どれも `pak_reference_2`）、地図の印の推定のマスター `M_DD_MapMark` とそのインスタンス `M_Shard`（`make_map_mark`）、本作の餅（`import_mochi`: `SourceArt/Wasami/wasami_mochi.glb` の JSON と BIN を読み〈`_glb`〉、材質のテクスチャの JPEG を `Intermediate/Pipeline/wasami/shard/` に書き出して `dd_stage.import_texture` で取り込み、法線は緑を反転し、マスター `M_DD_WasamiMochi` とインスタンス `MI_WasamiMochi` を建て、glb を `dd_stage.import_mesh`〈Nanite〉で取り込んでスロットにインスタンスを入れる）を作って、`/Game/DD`・`/Game/Pipeline`・`/Game/Wasami` を保存する。glb が無ければ（LFS を取っていない）例外にする。続けて回収の閃光を作る: テクスチャ 4（`FLASH_TEXTURES`）、原作の材質 5 つの推定のマスター `M_DD_Ky*` と、原作のパスのそのインスタンス（原作の既定値のうち、作ったパラメータの分だけ）、原作のインスタンス 3 つ（`MI_ky_flare01_primitiveG` / `R`・`MI_ky_primitive2_trs`。`dd_assets.instance_parameters` の値。推定に無いパラメータを上書きしていたら例外）を原作と同じ親子で（`make_flash_materials` が `FLASH_MATERIALS` を `dd_assets.estimated_materials` に渡す。グラフは `_Graph(checked=True)`）、最後に `P_ky_flash3` を `dd_particles` で作り、続けてシャードが出す本作の版 `/Game/Wasami/Shard/P_WasamiShardFlash`（`make_flash`: 同じ書き出しを色の表だけ紫に直して組む）。戻り値に `flash_textures` 4・`flash_materials` 13・`particle_systems` 2 が加わる。中身と根拠は 06 記録。
 
+### 敵ワサミの素材（`pipeline/dd_enemy.py`）
+`import_all()` が本作のモデル `SourceArt/Wasami/enemy_wasami_v3.glb` と捕獲のアニメ `enemy_wasami_capture.glb` から、アニメを役の名前で 30 fps に標本化し直した写し `Intermediate/Pipeline/wasami/enemy/SK_WasamiEnemy.glb` を書き（`prepare`）、埋め込みのテクスチャ 3 枚を同じ所に書き出して取り込み、マスター `M_DD_WasamiGltf` とインスタンス `MI_WasamiEnemy` を建て、写しをスケルタル用の Interchange のパイプライン `PL_Wasami_Skeletal`（`ensure_skeletal_pipeline`。版 `PIPELINE_VERSION` をメタデータ `WasamiGraphVersion` に持ち、違えば設定し直す）で `/Game/Wasami/Enemy` に取り込んで、メッシュのスロットにインスタンスを入れ、保存する。前処理の中身と根拠は 07 記録。
+
+### glTF（`pipeline/gltf.py`）
+numpy の無いエディタの Python で glb を読み書きする小道具（`dd_enemy` が使う。`dd_shards` は自前の `_glb` のまま）: `read`（JSON と BIN）・`write`（BIN 1 つの glb。4 バイト境界にそろえる）・`accessor`（要素をタプルで。`byteStride` を読み、疎な accessor は読まない）・`add_accessor`（float の要素を末尾に足す。アニメの入力は `bounds` で min/max を付ける）・`copy_accessor`、アニメの `channels`（LINEAR だけ。{(節の名前, パス): (時刻, 値)}）・`sample`（端は止め、同じ時刻のキーは後のもの）・`slerp`・`blend`・`qmul`・`qinv`・`angle`・`parents`・`world_rotations`（節の回転を根から掛ける）・`continuous`（四元数の符号を前のキーにそろえる）・`add_animation`（等間隔のキーのアニメを足す。回転は `continuous` を通す）。
+
 ### Cascade のパーティクル（`pipeline/dd_particles.py`、`UWasamiCascadeLibrary`）
 Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced)` だけで Python から見えず、モジュールと分布のクラスも Python に出ていない。そこで**構造を C++ の道具で作り、値はすべてプロパティ名ごとに UE のテキスト形式で書く**。`particle_system(rel, version)` は原作のパッケージの書き出し（`_assets/…/P_*.json`。要約の `_particles.json` には無い値〈`bUseLegacySpawningBehavior` など〉も持つ）を読み、次の順に作る（出力先は既定で `/Game/DD/<rel>`。`target` と `adjust` を渡すと、書き出しの値を `adjust`〈書き出しのオブジェクトの辞書を受けて `props` をその場で直す〉で直してから `target` に組む。構造は原作のままであることが前提で、下の 4 の照合もそのまま行う。本作の版を作るためのもの〈`dd_shards.make_flash`〉）。
 1. アセットを読むか `ParticleSystemFactoryNew` で作り、`ResetParticleSystem` で空にする。システムの値（`LODDistances`・`LODSettings`・`bUseFixedRelativeBoundingBox`・`FixedRelativeBoundingBox`・`bShouldResetPeakCounts`・`CustomOcclusionBounds` など、書き出しにあるもの）を書く。
@@ -156,7 +165,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - C++ の道具の照合（`SetPropertyText`）は、構造体のプロパティのほか**構造体の配列**（要素ごと）と、構造体の中の構造体・構造体の配列までメンバー名を確かめる。仕上げで外へ出す「使われなくなった分布」は、モジュールの値が指すオブジェクトを構造体と配列の中までたどって数える（`CollectReferencedObjects`。動的パラメータの `ParamValue` の分布も使用中に数える。2026-09-17）。`UParticleModuleParameterDynamic` は作られたときに 4 つの定数の分布を自分で作る（`PostInitProperties`）ので、表を書いた後はそれが外へ出る。`PostEditChangeProperty` の `InitializeDefaults` は、表があれば分布を作り直さない（`FRawDistributionFloat::IsCreated` が表を見る）。
 
 ### 共通（`pipeline/paths.py`、`pipeline/ue_props.py`）
-- `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、パッケージパスの分解（`split`・`object_path`）。
+- `paths`: プロジェクトの場所（`PROJECT`）、原作データの場所（`DD_PAK` = 環境変数 `PAK_REF`、既定 `<project>/pak_reference`。`DD_PAK2` = `PAK_REF2`、既定 `<project>/pak_reference_2`）、本家のアセットの置き場所 `DD_ROOT` = `/Game/DD`、取り込みのパイプライン（`MESH_PIPELINE` = `/Game/Pipeline/Interchange/PL_DD_StaticMesh`、`SKELETAL_PIPELINE` = `/Game/Pipeline/Interchange/PL_Wasami_Skeletal`）、パッケージパスの分解（`split`・`object_path`）。
 - `ue_props`: UE のプロパティ名 → Python 名（`CameraISO` → `camera_iso`、`bOverride_X` → `override_x`）、書き出しの値 → Python の値（辞書の Vector / Vector4 / Color / LinearColor、**`pak_reference_2` が色やベクトルに使う配列**〈`[183, 163, 145, 255]`〉、列挙）、構造体は中身だけを再帰的に入れる（`apply`）。**辞書は値がすべて数のときだけベクトルや色として読む**（カメラシェイクの `LocOscillation` は X / Y / Z がそれぞれ振動の構造体なので、構造体として中身を入れる）。**整数 4 つの配列の色（FColor）は [B, G, R, A] の順として読む**（エンジンは FColor を uint32 のまま書き〈`Color.h` の `Ar << DWColor()`〉、リトルエンディアンでバイトは B,G,R,A。書き出しの道具 `ue4.py` の `'Color': ('u8', 4)` はその順のまま出す。`pak_reference` も同じ）。浮動小数の配列（LinearColor）と、名前つきの辞書の色は並べ替えない。読めなかったものは `failures` に積む。**UE の版で名前が変わったプロパティは `RENAMED` で読み替える**（`FogInscatteringColor` → `FogInscatteringLuminance`、`DirectionalInscatteringColor` → `DirectionalInscatteringLuminance`。どちらも同じ LinearColor の改名なので値はそのまま）。
 
 ### 本家のアセット（`pipeline/dd_assets.py`）
@@ -192,6 +201,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis` | Cascade のパーティクル（`dd_particles`。エミッタ 4〈メッシュの `aura`・`sphere`、スプライトの `ground`・`dustSq`〉・LOD 3。テレキネシスの力場。04 記録） |
 | `/Game/Pipeline/Materials/M_DD_KyWall02`・`M_DD_KyAura7`・`M_DD_KyShockWave02`・`M_DD_KyStarDust`、`/Game/DD/ThirdParty/AdvancedMagicFX09/Materials/…`・`Textures/…`・`Meshes/…` | テレキネシスの力場の推定のマスターと、原作のパスのインスタンス 4・原作のインスタンス 3・テクスチャ 6・メッシュ 2（`import_dd_powers`。04 記録） |
 | `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff` | Cascade のパーティクル（`dd_particles`。エミッタ 1・LOD 3・モジュール 14 を 3 つの LOD で共有） |
+| `/Game/Wasami/Enemy/…`（26）、`/Game/Pipeline/Materials/M_DD_WasamiGltf`、`/Game/Pipeline/Interchange/PL_Wasami_Skeletal` | 敵ワサミの素材（`import_wasami_enemy`。07 記録） |
 | `/Game/Stage/Maps/L_Hospital_Zone1`・`L_Hospital_Zone2` | ステージのレベル（`build_dd_stage_level` が組み立てる。Zone 1 は配置 924〈うちテレポートのゾーン 2〉・灯 783・シャード 337、Zone 2 は配置 820〈同 2〉・灯 409・シャード 342。灯の数はシャードの灯〈Zone 1 は 337、Zone 2 は 342〉を除いたもの） |
 | `/Game/Pipeline/Materials/M_DD_KyFlare01Primitive`・`M_DD_KyPrimitive`・`M_DD_KyPrimitiveDyn2`・`M_DD_KyPolarGlow02`・`M_DD_KyEmpty`、`/Game/DD/ThirdParty/AdvancedMagicFX13/Materials/…`・`Textures/…` | 回収の閃光の推定のマスターと、原作のパスのインスタンス・テクスチャ（`import_dd_shards`。06 記録） |
 | `/Game/Wasami/Shard/…`、`/Game/Pipeline/Materials/M_DD_WasamiMochi`・`M_DD_MapMark`、`/Game/DD/Materials/Shared/M_Shard`・`/Game/DD/Audio/…`・`/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect` | シャードの素材（`import_dd_shards`。06 記録）。`/Game/Wasami` は本作の素材の置き場所で、原本は `SourceArt/`（Git LFS）にあり、取り込んだものは git の外 |
@@ -255,6 +265,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-18: 敵ワサミの素材の取り込み（`pipeline/dd_enemy.py`、`WasamiDDTools.import_wasami_enemy`）と glb の小道具（`pipeline/gltf.py`）、`paths.SKELETAL_PIPELINE` を足した（作業一覧の項目 4。07 記録）
 - 2026-09-17: 要確認の回答に合わせて `dd_shards`（閃光の係数の `TODO(仮)` を外した）と `dd_powers`（Vanish の煙のフェードは今の値で了承、力場の仮の値は作業一覧の項目 23 で詰める）のコメントを直した（値は変えていない。04・06 記録）
 - 2026-09-17: `dd_particles.particle_system` に出力先 `target` と値の調整 `adjust` を足し、`dd_shards.make_flash` がシャードの紫でやや弱い閃光 `P_WasamiShardFlash` を作るようにした（作業一覧の項目 3。06 記録）
 - 2026-09-17: `video_probe.py series` に `--stat peak`（箱の明るい所の輝度と色相）を足した（作業一覧の項目 3。シャードの回収の閃光の強さと色を新旧で比べるため）

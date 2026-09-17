@@ -84,3 +84,19 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         _module("dd_assets")
         _module("dd_particles")
         return _module("dd_shards").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_wasami_enemy() -> dict[str, int]:
+        """Imports (or re-imports) the enemy Wasami (WasamiEnemy) from this game's model in SourceArt: its skeletal
+        mesh, skeleton and physics asset, its textures and material, and its animations named A_WasamiEnemy_<role>
+        (Idle, Walk, Run, Stun_Loop, Capture_1 …), after writing the prepared glb (animations resampled at 30 fps,
+        loops closed, chase variants in place, the stun cut in two) under Intermediate/Pipeline/wasami/enemy.
+
+        Returns:
+            How many assets of each kind were made ('textures', 'materials', 'meshes', 'animations').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        _module("gltf")
+        return _module("dd_enemy").import_all()
