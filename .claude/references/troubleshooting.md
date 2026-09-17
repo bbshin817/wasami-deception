@@ -427,7 +427,7 @@
 ### エージェントが入力を断る / 反応しない
 
 - 症状: 「前面の窓が許可の一覧に無い」で断られる。Win・Alt+Tab・Alt+F4 も断る。30 分何も来ないと自分で終了する。
-- 対処: エディタに送るときは `--allow UnrealEditor.exe`（VS Code が前面で、エディタを前面にするクリックだけなら `--allow Code.exe` も）。終了していたら `python Tools/desktop.py start`。何を送ったかは `Intermediate/DesktopAgent/agent.log`。
+- 対処: エディタに送るときは `--allow UnrealEditor.exe`（VS Code が前面で、エディタを前面にするクリックだけなら `--allow Code.exe` も。無人運転で駆動役のターミナルが前面のときは `--allow WindowsTerminal.exe`。2026-09-17、撮った画面でタイトルバーの空き〈2957, 95〉がエディタの上であることを確かめて押した）。終了していたら `python Tools/desktop.py start`。何を送ったかは `Intermediate/DesktopAgent/agent.log`。
 - 出典: `.claude/guides/verification.md`。
 
 ### 撮った PNG が大きくて会話に読めない（5〜6 MB）

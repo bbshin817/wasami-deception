@@ -3,7 +3,8 @@
   SM_WasamiMochi   this game's shard, the Wasami mochi (SourceArt/Wasami/wasami_mochi.glb, the WebGL version's 6000
                    triangles with its three 1024² JPEGs), under /Game/Wasami/Shard with its textures and MI_WasamiMochi
   M_DD_WasamiMochi the mochi's master: the glTF's metallic-roughness material, two-sided, glowing with its own base
-                   colour × Glow (the WebGL version's game.shard.glow, which keeps it legible on a dark stage)
+                   colour × Glow (the WebGL version's game.shard.glow, which keeps it legible on a dark stage) and a
+                   purple pulse of our own (the original's crystal does not pulse)
   M_DD_MapMark     the estimated master of the minimap's marks; M_Shard (the shard's plane) is an instance of it
   the pickup       Soul_Shard_Pickup_v2 and its cue (a modulator of pitch 0.9 – 1.1), OnlyFew, and
                    BP_CameraShake_ShardCollect
@@ -38,6 +39,14 @@ MOCHI_MESH = MOCHI_FOLDER + "/SM_WasamiMochi"
 MOCHI_MATERIAL = MOCHI_FOLDER + "/MI_WasamiMochi"
 MOCHI_MASTER = "/Game/Pipeline/Materials/M_DD_WasamiMochi"
 MOCHI_GLOW = 0.3
+# The purple pulse, this game's own (the user's request; neither the original nor the WebGL version has it): the base
+# colour × PulseColor × PulseStrength × (0.5 + 0.5 sin(2π (time / PulsePeriod + PulsePhase))) joins the glow. The
+# colour is the shard light's (194, 0, 255) in linear. PulsePhase is the mochi's custom primitive data, a random
+# fraction AWasamiShard gives each at BeginPlay (AWasamiShard::PulsePhaseData).
+MOCHI_PULSE_COLOR = (0.539, 0.0, 1.0, 1.0)
+MOCHI_PULSE_STRENGTH = 1.0  # TODO(仮)
+MOCHI_PULSE_PERIOD = 2.0    # TODO(仮) seconds
+MOCHI_PULSE_PHASE_DATA = 0
 # The glb's embedded pictures, taken out to be imported: (the glTF material's texture, our parameter and texture name,
 # sRGB, compression, LOD group). glTF's normal maps point Y up; UE's point it down, so the green channel is flipped.
 MOCHI_TEXTURES = (
@@ -110,13 +119,30 @@ def _extract_textures():
 
 def _build_mochi(mat, textures):
     """glTF's metallic-roughness material with every factor at 1 (the glb's): the base colour, metallic from B and
-    roughness from G of the metallic-roughness map, the normal map, two-sided; and the base colour × Glow as emissive."""
+    roughness from G of the metallic-roughness map, the normal map, two-sided; and the base colour × (Glow + the
+    purple pulse) as emissive."""
     mat.set_editor_property("two_sided", True)
-    g = dd_stage._Graph(mat)
+    g = dd_stage._Graph(mat, checked=True)
     tcs = unreal.MaterialSamplerType
     base = g.texture("BaseColor", textures["BaseColor"], tcs.SAMPLERTYPE_COLOR, -900, -300)
     g.out(base, "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
-    glow = g.multiply(base, "RGB", g.scalar("Glow", MOCHI_GLOW, -900, -100), "", -600, -200)
+
+    # The pulse: a Sine's period of 1 makes it sin(2π x).
+    time = g.node(unreal.MaterialExpressionTime, -1900, -700)
+    cycles = g.binary(unreal.MaterialExpressionDivide, time, "",
+                      g.scalar("PulsePeriod", MOCHI_PULSE_PERIOD, -1900, -600), "", -1700, -650)
+    phase = g.scalar("PulsePhase", 0.0, -1700, -450)
+    phase.set_editor_property("use_custom_primitive_data", True)
+    phase.set_editor_property("primitive_data_index", MOCHI_PULSE_PHASE_DATA)
+    wave = dd_assets.single(g, unreal.MaterialExpressionSine,
+                            dd_assets.add(g, cycles, "", phase, "", -1350, -550), "", -1200, -550)
+    lifted = dd_assets.add(g, wave, "", dd_assets.constant(g, 1.0, -1200, -450), "", -1050, -550)
+    level = g.multiply(lifted, "", dd_assets.constant(g, 0.5, -1050, -450), "", -900, -550)
+    strength = g.multiply(g.scalar("PulseStrength", MOCHI_PULSE_STRENGTH, -1100, -750), "", level, "", -750, -650)
+    pulse = g.multiply(g.vector("PulseColor", MOCHI_PULSE_COLOR, -900, -850), "RGB", strength, "", -600, -700)
+
+    lit = dd_assets.add(g, g.scalar("Glow", MOCHI_GLOW, -900, -100), "", pulse, "", -450, -400)
+    glow = g.multiply(base, "RGB", lit, "", -300, -250)
     g.out(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     packed = g.texture("MetallicRoughness", textures["MetallicRoughness"], tcs.SAMPLERTYPE_LINEAR_COLOR, -900, 100)
     g.out(packed, "B", unreal.MaterialProperty.MP_METALLIC)
@@ -131,7 +157,10 @@ def import_mochi():
         raise FileNotFoundError("%s is missing (git lfs pull)" % MOCHI_SOURCE)
     textures = _extract_textures()
     master = dd_assets.material(MOCHI_MASTER, lambda mat: _build_mochi(mat, textures))
-    instance = dd_assets.material_instance(MOCHI_MATERIAL, master, scalars={"Glow": MOCHI_GLOW},
+    instance = dd_assets.material_instance(MOCHI_MATERIAL, master,
+                                           scalars={"Glow": MOCHI_GLOW, "PulseStrength": MOCHI_PULSE_STRENGTH,
+                                                    "PulsePeriod": MOCHI_PULSE_PERIOD},
+                                           vectors={"PulseColor": MOCHI_PULSE_COLOR},
                                            textures={p: t.get_path_name().split(".")[0] for p, t in textures.items()})
     mesh = dd_stage.import_mesh({"file": MOCHI_SOURCE, "asset": MOCHI_MESH, "slots": [None],
                                  "lightmapResolution": 4, "lightmapUv": 0}, nanite=True)

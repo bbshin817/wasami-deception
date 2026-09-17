@@ -159,6 +159,10 @@ void AWasamiShard::BeginPlay()
 	LoadedCollectShake = CollectShake.LoadSynchronous();
 	LoadedCollectFlash = CollectFlash.LoadSynchronous();
 	SpinRate = FMath::FRandRange(MinSpinRate, MaxSpinRate);
+	// This game's purple pulse (the mochi's material) starts at a random point of its period on each, so that
+	// neighbours do not glow together, as the crystals each turn at a random rate. Set once: a phase taken from the
+	// position would race while the shard is pulled.
+	Mochi->SetCustomPrimitiveDataFloat(PulsePhaseData, FMath::FRand());
 	PreviousLocation = GetActorLocation();
 }
 
