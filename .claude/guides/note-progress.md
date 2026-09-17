@@ -46,6 +46,7 @@
 - 新しく見えるものが増えたときだけ撮り足す。撮り方は `.claude/guides/verification.md`（PIE を始める → `DisableAllScreenMessages` → プレイヤーを置く → `python Tools/desktop.py shot --scale 1.0 --region <ビューポートの左 上 右 下> --name x.png`（2026-09-17 夕方の配置では 1825 205 2978 859。エディタの窓が動くと変わるので、撮る前に全体を `shot --scale 0.3` で見て確かめる） → PIE を止める → `stop`。キーとクリックには `--allow UnrealEditor.exe` を付ける）。一瞬の演出は `unreal.GameplayStatics.set_global_time_dilation(world, 0.1)` で遅くしてから撮り、終わったら 1.0 に戻す。
 - 上端と左端にエディタの枠線が写るので切り落とし、JPEG にして置く: `ffmpeg -i <png> -vf "crop=1146:644:3:5" -q:v 2 observations/ours/note/<番号>-<名前>.jpg`。
 - 2026-09-17 に撮った場所: 廊下 (0, 700)・ヨー −90、タブレット (0, −330)、テレポートの照準 (0, −60)・ピッチ −30 で `adjust_distance(-1)` × 5、Telepathy (−25, 3000) に仮の的 3 つ（(−330, 2150)・(−25, 2250)・(130, 2450)、z 118。使って 2 秒後）、Telekinesis (0, 700) で時間を 0.1 倍。
+- 浮いた小窓（メッセージログなど）がビューポートに重なっているときは、画面の撮影の代わりに PIE のコンソールで `shot showui` を打つ（2026-09-17 夜）。UI 込みでエディタの主窓だけが `Saved/Screenshots/WindowsEditor/ScreenShotNNNNN.png` に出て、小窓は写らない。その日の配置ではビューポートは `crop=1146:644:9:142`。Speed Boost はこれで撮った: 待合 (15, 385)・ヨー 90 で左の枠の `UsePower(true)` をリモート実行で呼び、`hold w --ms 4000` の約 2 秒後に撮る。
 - 検証用の比較シートや、デバッグ表示の入った絵は載せない。
 
 ## コマンド（`tmp/note-cli` で、必ず 1 行で）
