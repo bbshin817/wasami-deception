@@ -184,12 +184,16 @@ TELEPATHY_INST_SCALARS = ("Speed",)
 # masters holding our estimates sit under /Game/Pipeline (dd_assets.estimated_materials).
 KY09 = "ThirdParty/AdvancedMagicFX09/"
 # The exports keep no Panner's speed, no TextureCoordinate's tiling and nothing of how the aura's samples bend each
-# other's coordinates: placeholders. Compared with the latest version's recording (observations/README.md, step 11b1),
-# the veil looked close (with fewer streaks), so they stay as they are. Each of the aura's four
-# layers is (its TexCoord tiling (U across a wind line, V along it), its pan speed, the pan speed of the sample that
-# bends its coordinates, how far that sample's B bends them).
-# TODO(仮): the force field's four estimated graphs and these values are placeholders (their graphs are cooked away;
-# more recordings of the original refine them: item 23 in .claude/roadmap.md).
+# other's coordinates: placeholders. Each of the aura's four layers is (its TexCoord tiling (U across a wind line, V
+# along it), its pan speed, the pan speed of the sample that bends its coordinates, how far that sample's B bends
+# them).
+# The tilings were checked against the original's burst and kept (observations/README.md, "オーラの大きさを本家と
+# 比べた"; step 5b of item 23). Over the floor at the same tau, the mean autocorrelation of these wisps follows the
+# original's within what one recording differs from the next: of the three tilings tried, U x 0.4 with V x 0.7 and
+# with V x 0.85 were no closer, and V x 0.7 with U left at 1 was clearly worse. So the scale is not a placeholder any
+# more, although the numbers themselves are not the original's.
+# TODO(仮): the pan directions and the bends are still placeholders (the exports keep neither), and the aura's
+# broad structure is a little weaker than the original's (item 23 in .claude/roadmap.md).
 AURA_LAYERS = (
     ((1.0, 1.0), (0.0, -1.5), (0.1, -0.5), 0.1),
     ((1.0, 2.0), (0.0, -2.2), (-0.1, -0.7), 0.1),

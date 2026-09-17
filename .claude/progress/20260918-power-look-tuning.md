@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 559d87e
 started: 2026-09-18 03:55
-updated: 2026-09-18 06:05
+updated: 2026-09-18 06:17
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -29,7 +29,7 @@ updated: 2026-09-18 06:05
 - [x] 4. 本家の実機（最新版）で撮った … 2026-09-18、04:41〜05:15（約 34 分）。無劣化の連写 5 件（A1・A2・A3・B1・B2。A4 は不要で飛ばした）。条件・測った値・気づいたことは `observations/README.md` の「力場と Telepathy の印の無劣化の連写」。
 - [ ] 5. テレキネシスの力場の材質を収録に合わせて詰める（`AURA_LAYERS`・`SHOCKWAVE_PANS`・`_build_wall02`、灯の色味の残り）… 1 コミットに収まらないので 5a〜5d に分けた（2026-09-18）
   - [x] 5a. 連写を測る道具を作り、本家を測った … 2026-09-18。`observations/tools/burst_flow.py`（`width`・`decay`・`flow`）と台本 `forcefield_stats.sh`。値と分かったことは `observations/README.md` の「力場の模様を測った」。
-  - [ ] 5b. PIE を同じ条件で撮って同じ台本で測り、`AURA_LAYERS`（オーラ）を合わせる（地面の輪は下の決定事項で対象から外した）
+  - [x] 5b. オーラの大きさを本家と比べ、**今の値のままにした** … 2026-09-18。px の倍率 2.97、自己相関の曲線で比べると試した 3 つは今の値と区別できなかった。値と理由は `observations/README.md` の「オーラの大きさを本家と比べた」。
   - [ ] 5c. 幕 `_build_wall02` を「幅の広い柔らかい光の筋」に寄せる
   - [ ] 5d. 終わりの破片を「角ばった板状のかけら」に見直す（形・数・尾）
 - [ ] 6. Telepathy の印を収録に合わせて詰める（`TELEPATHY_PAN_*`、縁のこぶ）
@@ -37,13 +37,13 @@ updated: 2026-09-18 06:05
 
 ## 次にやること
 
-ステップ 5b（オーラの `AURA_LAYERS` を合わせる）。本家の値は `observations/README.md` の「力場の模様を測った」の表。手順:
+ステップ 5c（幕 `_build_wall02` を「幅の広い柔らかい光の筋」に寄せる）。手順は 5b と同じ道具で:
 
-1. PIE を本家と同じ条件で用意する（`observations/tools/telekinesis_setup.py`・`telekinesis_begin.sh`: 画質「高」の 3 つの cvar・Lv4・開始地点・奥をふさぐ）。`t.MaxFPS 60` を忘れない（11b1）。
-2. `slomo 0.25` で `burst.py` でビューポート（画面の (1826, 205)〜(2978, 859)）を 150 枚ほど撮り、閃光のフレームの時刻を出してから `sh observations/tools/forcefield_stats.sh <連写> 0.25 <閃光の時刻>` を走らせる（範囲は本家に合わせて中央と床の 2 回）。
-3. **px の倍率**を出す: 床の市松の十字の幅を本家（`orig-aim-a-full.png` で約 115 px、縮めた絵）と PIE で測る（11b1 と同じ）。時間の値（崩れる速さ）と縦横比は倍率なしで比べられる。
-4. A の窓（τ 0.70〜0.90、床）で本家に合わせる: 細かい模様の縦横比 約 4 : 1、崩れる速さ 収録 0.05〜0.19 s、流れは出はじめだけ右下へ 125〜250 実 px/収録 s で、すぐ止まる。`AURA_LAYERS` の `tiling`（U : V）が縦横比、`speed`・`bend_speed` が崩れる速さと流れに効く。
-5. 直したら `python Tools/ue_remote.py` で `/Game/Pipeline` の材質を作り直して PIE を撮り直し、同じ表で確かめる。
+1. `sh observations/tools/telekinesis_burst.sh observations/ours/pie-wall-<版> 200` で本作を撮る（閃光の時刻が印字される）。**終わったら `python Tools/pie.py stop`**（PIE のままアセットを作り直すと `load_asset` が None になる）。
+2. V（τ 0.30〜0.45）と F（0.50〜0.70）の窓を、**中央 1200²**（本家 (1120, 120)〜(2320, 1320) / 本作 (375, 126)〜(777, 528)）で比べる。`SCALE=2.97 sh observations/tools/forcefield_stats.sh <連写> 0.25 <閃光> 375 126 777 528`。
+3. 1 枚ごとの太さは揺れるので、決めるのは **8 枚の自己相関の曲線**（5b と同じ `tmp/tk5b/acf.py` の作り。同じ値で 2 回撮って揺れの幅を先に出す）。
+4. 本家との既知の差（5b の測りで出た。どれも V・F の窓、本作の値は今の `_build_wall02`）: **本作の幕は崩れるのが速い**（中央の窓で相関が 0.5 を切るのが本作 収録 0.38 s、本家 約 1.0 s）。太さは近い（細かい dx 21〜24・dy 12 対 本家 25〜28・13）。
+5. 直したら材質を作り直して撮り直し、同じ表で確かめる。
 
 ## 決定事項
 
@@ -54,6 +54,9 @@ updated: 2026-09-18 06:05
 - 2026-09-18（5a）: **地面の輪（`SHOCKWAVE_PANS`）は合わせる対象から外し、仮の値のまま置く**。3 つの連写のどこにも輪が写っておらず（見下ろした収録は幕の横帯で埋まり、正面の収録で床の奥に見えるのは光と筋）、本家の実機でもプレイヤーの視点から輪は見えないので、合わせる先が無い。根拠は `observations/README.md` の「力場の模様を測った」の 3 と `orig-tk-a025-ring-sheet.png`。
 - 2026-09-18（5a）: **比べるのは同じ slomo で撮った収録の秒数**（ゲーム秒に直さない）。同じ τ・同じ収録のずれで 0.25 倍と 0.1 倍の収録を比べると崩れ方が 0.87 対 0.66 で、ゲーム時間に直すと 2.5 倍ずれるため（同 4）。
 - 2026-09-18（5a）: 模様の崩れ方は**最良のずれで補正して**測る（ずれ 0 だと流れを変化に数えてしまう）。太さは高域を取ってから測る（取らないと画面全体の明るさに相関が支配される）。
+- 2026-09-18（5b）: **オーラの `AURA_LAYERS` は今の値のまま**にした。自己相関の曲線で本家と比べると、試した 3 つの tiling は**同じ値で 2 回撮ったときの揺れ（合計 0.075 対 0.090）の中**で、今の値と区別できなかった。根拠と表は `observations/README.md` の「オーラの大きさを本家と比べた」。
+- 2026-09-18（5b）: 決めるのは **1 枚ごとの太さではなく 8 枚の自己相関の曲線**。1 枚ごとの `width` は探す半径で頭打ちになるうえ揺れが大きく、5a の 3 枚の表はそのせいで本家を細く見せていた（本家の細かい dx は 22〜52 ではなく 22〜76）。**値を変える前に、同じ値で 2 回撮って揺れの幅を出す**。
+- 2026-09-18（5b）: **本作と本家の px の倍率は 2.97**（床の市松の十字の広い段。画面の幅の比と同じで、上下の中心が揃う）。`forcefield_stats.sh` の `SCALE=2.97` がこれを使う。
 
 ## 要確認（ユーザー）
 
@@ -61,7 +64,9 @@ updated: 2026-09-18 06:05
 
 ## 再開時の注意
 
-- 連写は `observations/original/`（git の外）。`observations/tools/` も git の外なので、5a で作った `burst_flow.py`・`forcefield_stats.sh` はコミットに入らない（使い方は `observations/README.md` の tools の表に書いた）。`times.json` は `perf_counter` 秒で**等間隔ではない**ので、一定間隔を前提にする古い道具（`tele_fit/*`）に渡す前に時刻を差し替える。
+- 連写は `observations/original/`・`observations/ours/`（git の外）。`observations/tools/` も git の外なので、5a・5b で作った `burst_flow.py`・`forcefield_stats.sh`・`telekinesis_burst.sh` はコミットに入らない（使い方は `observations/README.md` の tools の表に書いた）。`times.json` は `perf_counter` 秒で**等間隔ではない**ので、一定間隔を前提にする古い道具（`tele_fit/*`）に渡す前に時刻を差し替える。
+- **PIE を動かしたままアセットを作り直すと `unreal.load_asset` が None を返す**（`'NoneType' object has no attribute 'set_editor_property'` で止まる。play mode とは言われない）。`telekinesis_burst.sh` は PIE を動かしたまま終わるので、作り直す前に `python Tools/pie.py stop`。
+- 5b の収録は `observations/ours/pie-tk-{a,b,c,d,e}025`（a・e が今の値、b・c・d が試した tiling）。曲線を比べる走り書きは `tmp/tk5b/acf.py`（git の外。`RUNS` に「名前・フォルダー・閃光の時刻・範囲・倍率」を足すだけで増やせる）。
 - 背景で走らせた測りの出力を読むときは、パスを**スラッシュ**で書く（`"...	asks\$f.output"` は `\$` が展開を止めて空になる）。
 - 本家のセーブは、観察の途中で捕まって書き換わっている（控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-20260918-044132`。**戻さない・編集しない**）。W-Editor は開いていない。
 - 本家をもう一度起動するときはエディタを先に閉じる（VRAM 6 GB）。手順・座標・つまずきは `.claude/guides/observation.md`（2026-09-18 に連写の速さ・死亡画面のボタン・印が画面空間であることを足した）。
@@ -70,4 +75,4 @@ updated: 2026-09-18 06:05
 
 ## 検証
 
-- ステップ 4・5a はソース・アセットを変えていない（`check_records.py` は OK、7 件）。本家は閉じたまま、エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。連写 5 件はすべて `times.json` まで書き終えている。
+- ステップ 5b は `dd_powers.py` の注記だけを変え、**値とアセットは 5a の終わりと同じ**（試した値は最後に戻し、`/Game/Pipeline` と `/Game/DD` の 4 つの材質を作り直して今の値に戻してある）。本家は閉じたまま。

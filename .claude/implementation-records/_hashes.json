@@ -38,7 +38,7 @@
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "179170e9e72f63c15b2f245ddff5b4c93e99a245",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "eb1af1ae7cef723142514cf233ca1004c6496bef",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "c4ad6486b3e11293c30a85c427184e2535763b62",
-    "Content/Python/wasami_tools/pipeline/dd_powers.py": "263c6d1ad268c43041876d7725082ecf43cf22ae",
+    "Content/Python/wasami_tools/pipeline/dd_powers.py": "c5f4095be42843b9337ad7b430a407f021fd8db8",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "738b7b4a830bddbef8db8606e9b428978f40aaf8",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "a3d4db029c3b3f8be827cb14c543205f96039939",
