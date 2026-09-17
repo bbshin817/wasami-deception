@@ -6,13 +6,14 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 ## 必読（作業前）
 - 対話と報告の言語（**セッション内の対話・応答・実装報告はすべて日本語**）: `.claude/guides/communication.md`
 - 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。セッション開始・/clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する（`/continue`）。実装が 1 つ終わったら `.claude/` に記録を残し、ユーザーに `/clear` をお願いする。大規模な実装はステップに分け、ステップごとに同じことをする**）: `.claude/guides/progress-tracking.md`
+- 作業一覧（**最終目標〈2026-09-17〉を 21 項目に分解した順序つきの一覧。1 項目 = 進捗記録 1 件。未完了の記録が無いときはここの「未着手」で依存が満たされた最初の項目から始める**）: `.claude/roadmap.md`
 - 中断した実装の再開（**未完了の記録と git・エディタの状態を照合してから、次のステップを 1 つ実行する**）: `/continue`（`.claude/skills/continue/SKILL.md`）
 - 実装記録（**ソースを変更したら対応する記録を直し、`python .claude/scripts/check_records.py --update` を通す**）: `.claude/guides/implementation-records.md`、索引は `.claude/implementation-records/_index.md`
 - 無人運転（**夜間は駆動役 `Tools/overnight.py` が `/continue` を繰り返す。無人モード〈`WASAMI_UNATTENDED=1`〉ではユーザーに質問せず、本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて「要確認（ユーザー）」にまとめ、ステップを終えたら `/clear` を頼まずに状態ファイルを書いて応答を終える。ゲームの規則の値が本家のコードに無いときと、変更を捨てる操作・配布・本家のセーブの編集は行わずに飛ばす**）: `.claude/guides/autonomy.md`
 - 症状索引（**エラーやおかしな挙動に会ったら先に grep する。解決にエディタの開き直し 1 回以上か 30 分以上かかったら、次に進む前にその場で書く**）: `.claude/references/troubleshooting.md`
 - エディタの操作（**MCP のツールは 1 つずつ順に呼び、結果を必ず確かめる。一括の変更の前後で保存する。取り込みとステージの組み立ては `Content/Python/wasami_tools` のツールセットを MCP から呼ぶ。C++ のビルドの手順**）: `.claude/guides/unreal-workflow.md`
 - 検証（**作業の許可は求めずに進める（エディタの開き直し〈C++ のビルドのための `Tools/editor_cycle.py` も、C++ を書き終えたら尋ねずに走らせる〉・PIE・エディタへの入力・本家の起動。明示的な禁止があれば従う）。ただし変更を捨てる操作・配布・本家のセーブの編集は先に確認する。エディタはユーザーのアプリでもあるので、閉じる前に保存し、閉じたら開き直す。PIE は必ず止める。本家はエディタと同時に動かさず、終わったら閉じる。OS 全体の入力は操作しない。**画面の操作は `Tools/desktop.py` で Claude が行う**（入力は許可した窓だけ）。MOD は観察の足場までで、World Editor は使わない**）: `.claude/guides/verification.md`
-- 原作への忠実さ（**本家 Dark Deception の原作データ `pak_reference/` に忠実に倣う。ステージも本家の病院「Torment Therapy」の Zone 1・Zone 2（`pak_reference_2/` の `06_Hospital_Zone_01`・`06_Hospital_Zone_02`）。本家に無いギミックは複雑にせず、壊せる物は本家のホテルの板張りのバリケードのように 1 クリックで崩れて消える。原作のロゴとキャラクターのモデルは使わない。UE に同じ仕組みがあれば値を写すだけにし、作り直さない。視覚的な比較が要るときは手元で遊べる本家（旧版は `pak_reference`、最新版は `pak_reference_2` と同一のビルド。病院は最新版だけ）で観察してよいが、根拠は原則コード**）: `.claude/guides/original-fidelity.md`
+- 原作への忠実さ（**本家 Dark Deception の原作データ `pak_reference/` に忠実に倣う。ステージも本家の病院「Torment Therapy」の入口・Zone 1・Zone 2（`pak_reference_2/` の `06_Hospital`・`06_Hospital_Zone_01`・`06_Hospital_Zone_02`。ボス戦は作らず、Zone 2 のガレージの祭壇とポータルで脱出）。本家に無いギミックは複雑にせず、壊せる物は本家のホテルの板張りのバリケードのように 1 クリックで崩れて消える。原作のロゴとキャラクターのモデルは使わない。UE に同じ仕組みがあれば値を写すだけにし、作り直さない。視覚的な比較が要るときは手元で遊べる本家（旧版は `pak_reference`、最新版は `pak_reference_2` と同一のビルド。病院は最新版だけ）で観察してよいが、根拠は原則コード**）: `.claude/guides/original-fidelity.md`
 - コミットとブランチ（**実装ごとにコミット、大規模改修は作業ブランチ→main へマージ→ローカルブランチ削除、最終コミットから 10 分経過・未 push 2 件以上・大規模改修のマージ後のいずれかで main を push。参照データから作り直せる素材は git の外、手作りのアセットは Git LFS**）: `.claude/guides/git-workflow.md`
 - 性能とメモリ（**この PC は GTX 1660 SUPER の VRAM 6 GB・RAM 32 GB。開発中は VRAM と RAM の逼迫を避ける設定にし、そのための設定はエディタにだけ効く場所に置く。パッケージした本編の品質は落とさない**）: `.claude/guides/performance.md`
 - 配布とパッケージ（**パッケージには原作の素材が入る。配布の話が出たら必ずユーザーに確認する**）: `.claude/guides/distribution.md`
