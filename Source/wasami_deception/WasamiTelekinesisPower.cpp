@@ -48,8 +48,7 @@ AWasamiTelekinesisPower::AWasamiTelekinesisPower()
 
 	WaveSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04")));
 	ShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop")));
-	// ForceFieldParticles stays empty until /Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis
-	// is made.
+	ForceFieldParticles = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis")));
 }
 
 void AWasamiTelekinesisPower::LoadAssets(TArray<TObjectPtr<UObject>>& Out)
@@ -57,10 +56,7 @@ void AWasamiTelekinesisPower::LoadAssets(TArray<TObjectPtr<UObject>>& Out)
 	const AWasamiTelekinesisPower* Defaults = GetDefault<AWasamiTelekinesisPower>();
 	Out.Add(Defaults->WaveSound.LoadSynchronous());
 	Out.Add(Defaults->ShakeClass.LoadSynchronous());
-	if (!Defaults->ForceFieldParticles.IsNull())
-	{
-		Out.Add(Defaults->ForceFieldParticles.LoadSynchronous());
-	}
+	Out.Add(Defaults->ForceFieldParticles.LoadSynchronous());
 }
 
 int32 AWasamiTelekinesisPower::PullShards(const UObject* WorldContextObject, FVector Center, float Radius)
@@ -106,7 +102,7 @@ void AWasamiTelekinesisPower::StartPower()
 void AWasamiTelekinesisPower::SpawnForceField()
 {
 	// SpawnEmitterAtLocation where the actor is (the player's place at the start; it does not follow), unturned, at
-	// twice the size, destroyed when done, not pooled, active at once. Nothing until the particles are made.
+	// twice the size, destroyed when done, not pooled, active at once.
 	if (UParticleSystem* Template = ForceFieldParticles.LoadSynchronous())
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(this, Template, GetActorLocation(), FRotator::ZeroRotator, FVector(ForceFieldScale),

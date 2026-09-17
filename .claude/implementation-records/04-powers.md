@@ -108,10 +108,10 @@ updated: 2026-09-17
 本家の `BP_TelekinesisPower`（最新版）。
 - `Range`（既定 1500。`ExposeOnSpawn`。パワーが強化段階の値〈Lv5 で 3000〉を入れる）。
 - static `PullShards(WorldContext, Center, Radius)`（BlueprintCallable）: 半径の中の Pawn・WorldDynamic・WorldStatic の体を持つアクタのうち、`IWasamiTelekinesisInterface` を実装するもの（シャード `AWasamiShard`、06 記録）に `Activate` を 1 回ずつ送り、その数を返す。
-- static: `TelekinesisFadeCurve()`（`float2`。Primal と同じキー）、`LoadAssets(Out)`、定数 `ForceFieldDelay` 0.2・`ForceFieldScale` 2。
+- static: `TelekinesisFadeCurve()`（`float2`。Primal と同じキー）、`LoadAssets(Out)`（音・シェイク・粒子の 3 つ）、定数 `ForceFieldDelay` 0.2・`ForceFieldScale` 2。
 - コンポーネント: 基底の 3 つだけ（粒子はコンポーネントではなく `SpawnEmitterAtLocation` で出す）。
 - 値: `PostProcess` の `ColorGain` (0, 0.4217270016670227, 1.6100000143051147, 1)（青）、`PostProcess1` の `SceneFringeIntensity` 50（Primal と同じ）。本家の CDO の `Range` 1500 はパワーが必ず上書きする。
-- 素材（ソフト参照。`StartPower` で読む）: `WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`、`ShakeClass` `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop`（`_C`）、`ForceFieldParticles`（**空**。`P_ky_forceField_Telekinesis` を作ったら `/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis` を入れる。進捗記録のステップ 10b）。
+- 素材（ソフト参照。`StartPower` で読む）: `WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`、`ShakeClass` `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop`（`_C`）、`ForceFieldParticles` `/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis`（01 記録の `dd_powers` が作る Cascade）。
 
 ### `AWasamiVanishPower : AWasamiPowerBurst`（`WasamiVanishPower.h`）
 本家の `BP_VanishPower`（最新版）。Vanish の一瞬の演出と敵への通知だけを受け持つ（見えない扱い・ウィジェット・15 秒はパワーのコンポーネント）。
@@ -261,7 +261,7 @@ updated: 2026-09-17
 - `StartTelekinesisCooldown`（@8329〜@9937）: 再使用の秒数（Lv5 で 8。本家の `00_Ballroom` だけの 1 秒は病院に無い）でゲージの `SetDelay`（アイコンが 0 → 1）→ `Active Powers` から外す → `Delay(再使用)` で `RefillTelekinesis`（`power_refilled` 0.5・使える状態。前の Gate は素通し）。使ってから再び使えるまで 8.06 秒。
 - アクタの `StartPower`（本家の `ReceiveBeginPlay` @661〜@1151）: プレイヤー（`GetPlayerCharacter(0)`）のカプセルの中心へ `SetActorLocation`（スイープなし。以後はプレイヤーに付いていかない）→ `Stun_Wave_Attack_New_04` を `PlaySoundAtLocation` の位置 (0, 0, 0)・音量 1・ピッチ 1（Primal と同じ）→ `GetPlayerController(0)` の `ClientStartCameraShake(01_Hotel_Lobby_ElevatorShakeStop, 25, CameraLocal)` → `PullShards(プレイヤーの位置, Range)` → 基底がタイムラインを再生 → 0.2 秒のタイマーで `SpawnForceField`。
   - `PullShards`: `UKismetSystemLibrary::SphereOverlapActors`（オブジェクトの種類は本家の `[2, 1, 0]` = Pawn・WorldDynamic・WorldStatic、クラスの絞り込みなし、除外なし）。**遮蔽は見ない**（壁越し・上下の階のシャードも寄る）。判定は 0 秒の 1 回だけで、後から範囲に入ったシャードは対象にならない。本家は `DoesImplementInterface` で絞ってからインターフェースへキャストするので、届くのはシャード（`AWasamiShard`。06 記録の `Activate`: 0.8〜1.2 倍速の 1 秒でプレイヤーへ水平に寄り、終わりに届いていなくても回収）だけ。カプセルの当たりを切ったシャード（本家の `bDisabled`）は問い合わせに入らない（テスト `TelekinesisPull`）。
-  - `SpawnForceField`（本家の `Delay(0.2)` → `SpawnEmitterAtLocation` @15〜@43）: `ForceFieldParticles` が読めれば、アクタの位置（使った瞬間のプレイヤーの位置。付いていかない）に回転 0・拡縮 2・自動破棄・プールなし・自動起動で出す。**粒子はまだ無いので何も出ない**（進捗記録のステップ 10b）。
+  - `SpawnForceField`（本家の `Delay(0.2)` → `SpawnEmitterAtLocation` @15〜@43）: `ForceFieldParticles` が読めれば、アクタの位置（使った瞬間のプレイヤーの位置。付いていかない）に回転 0・拡縮 2・自動破棄・プールなし・自動起動で出す（粒子が読めなければ何も出さない）。粒子のコンポーネントはワールドの `WorldSettings` に付き、エミッタの長さ 2 秒の後に消える。
 - 更新（`UpdateTimeline`）: 基底の重みだけ（本家の `float`・`desaturation`・`opacity` のトラックは Primal と同じキーで、どこにもつながっていない）。
 - 見え方（Lv5）: 画面は青い単色（彩度 0 × ゲイン (0, 0.42, 1.61)）が 0.5 秒で消え、白い閃光（中間調 × 100・色収差 50）が約 0.29 秒で消える。2 秒で自分を消す。半径 30 m のシャードが 0.8〜1.25 秒でまとめて回収され、その数だけ `Count Shake` と回収の音（`OnlyFew`。06 記録の未解決の重なり）。
 - 死亡のリセット: **何もしない**（本家の `Reset Telekinesis` はどこからも呼ばれない。死んでも再使用の Delay は続く）。
@@ -369,7 +369,7 @@ updated: 2026-09-17
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Meshes/SM_ky_sphere` | テレキネシスの粒子 `sphere` のメッシュ（最新版。半径 10 cm の球、559 頂点。Nanite なし、ライトマップ 64・UV 0、スロット `WorldGridMaterial`〈エミッタが材質を上書きするので描かれない〉） |
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Meshes/SM_ky_windLine27midPoly` | テレキネシスの粒子 `aura` のメッシュ（最新版。外接球 15.70 cm の渦巻く帯、294 頂点。設定は上と同じ） |
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Textures/T_ky_maskRGB5`・`T_ky_shockWave02_4x4`・`T_ky_circle01_4x4`・`T_ky_maskRGB3`・`T_ky_dust_longStar`・`T_ky_wall02_4x4` | テレキネシスの粒子の材質のテクスチャ（最新版。どれも `TC_Default`〈DXT1〉。sRGB は `T_ky_maskRGB3`・`T_ky_dust_longStar`・`T_ky_wall02_4x4` だけ、グループは `T_ky_circle01_4x4` だけ World で残りは Effects。1024² / 2048² / 2048² / 1024² / 512² / 2048²。原作の cook と同じ）。中身: `T_ky_maskRGB5` は R 煙の筋・G 小さな欠片・B 横の筋、`T_ky_maskRGB3` は R まばらな引っかき・G 雲・B 泡、`T_ky_circle01_4x4` は R 縁がとげとげの輪（16 コマ）、`T_ky_shockWave02_4x4` は広がる輪（16 コマ）、`T_ky_dust_longStar` は中央の行が 1 で上下へ 0.37 まで落ちる横の光（灰色）、`T_ky_wall02_4x4` は灰色の電気の筋（16 コマ） |
-| `/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis` | テレキネシスの力場の粒子（最新版。`dd_particles` が書き出しの値をそのまま写した Cascade。エミッタ 4〈`aura`・`ground`・`sphere`・`dustSq`〉・LOD 3・詳細度 15。`aura` と `sphere` はメッシュのエミッタで、3 つの LOD が 1 つの型データ〈`LODValidity` 7、`bOverrideMaterial`〉を共有する。値は調査 03 §2.6。材質は `aura` が `MI_ky_aura7c`、`ground` が `MI_ky_shockWave02_4x4_nonD`、`sphere` が `M_ky_wall02_4x4_two`、`dustSq` が `MI_ky_starDust_sq`）。C++ の `ForceFieldParticles` にはまだ入れていない（進捗記録のステップ 10b3） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis` | テレキネシスの力場の粒子（最新版。`dd_particles` が書き出しの値をそのまま写した Cascade。エミッタ 4〈`aura`・`ground`・`sphere`・`dustSq`〉・LOD 3・詳細度 15。`aura` と `sphere` はメッシュのエミッタで、3 つの LOD が 1 つの型データ〈`LODValidity` 7、`bOverrideMaterial`〉を共有する。値は調査 03 §2.6。材質は `aura` が `MI_ky_aura7c`、`ground` が `MI_ky_shockWave02_4x4_nonD`、`sphere` が `M_ky_wall02_4x4_two`、`dustSq` が `MI_ky_starDust_sq`）。C++ の `ForceFieldParticles` の既定 |
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Materials/M_ky_wall02_4x4_two`・`M_ky_aura7`・`M_ky_shockWave02_4x4`・`M_ky_starDust` | 下の推定のマスターのインスタンス（原作のパラメータの既定値のうち推定にあるもの。`opacity` 0.1・`baseColor` (0.0606, 0.0692, 0.145)／`baseDensity` 0.3・`baseOpacity` 0.2・`hilightPower` 10・`hilightDensity` 2・`depthFade` 100・`maskU` 1・`maskV` 1・`maskRadiusControl` (0.5, 0, 0.5, 2)／`baseDensity` 1・`depthFade` 100・`coreDensity` 8・`coreHardness` 50・`hilightDetailPower` 50・`coreHilightPower` 10・`coreColor` (2, 0.1572, 0.119)／`maskRadius` 0.5・`maskDensity` 1・`fadeValue` 100。`M_ky_starDust` の `threshold` 400 と `starPower`〈既定なし = 0〉は作らなかった側のもので写さない） |
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Materials/MI_ky_aura7c`・`MI_ky_shockWave02_4x4_nonD`・`MI_ky_starDust_sq` | 原作のインスタンス（原作と同じ親子。`hilightDensity` 1.5・`hilightPower` 5・`maskU` 1・`maskV` 0.2・`maskRadiusControl` (0.5, 0, 0.125, 2)／`depthFade` 0・`hilightDetailPower` 10・`coreColor` (1.2186, 1.2017, 2.0)・`baseTex` `T_ky_circle01_4x4`／`maskDensity` 1・`maskRadius` 0.5・静的スイッチ `swSQdust` 偽。`RefractionDepthBias` と、親と同じになる `BasePropertyOverrides` は写さない） |
 | `/Game/Pipeline/Materials/M_DD_KyWall02` | **推定**（`M_ky_wall02_4x4_two`。cook に残るのは設定〈Translucent・Unlit・両面・スプライトとメッシュの粒子〉、パラメータ `opacity`・`baseColor`、`baseTex` の SubUV のサンプル、Emissive が `LinearInterpolate_0` から来ること、式が 10 個あったこと）。Emissive = `Lerp(baseColor, 粒子の色, 筋の R)`、Opacity = `saturate(R + opacity) × 粒子の α`（暗い青の薄い幕に明るい筋）。深度のぼかしは無い（パラメータが無い） |
@@ -416,7 +416,7 @@ updated: 2026-09-17
 - `Wasami.Powers.TeleportDistance` … Lv5 の最初の距離 1000（強化なしなら 700）、`Alpha` 0 / 1 の端、1 目盛りで +0.1（Lv5 で +125 cm）、1 フレームに 2 目盛り、0 と 1 での切り詰め。
 - `Wasami.Powers.PrimalTimeline` … `BP_PrimalPower` の 4 本のトラックの値（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）、重みの式（位置 0 で 1.000698 と 1、0.2 秒で 0.8675 と 0.5585、0.3 秒で閃光 0、0.5 秒で色 0）、クラスの既定（範囲なし、重み 0、各上書きと値、球の当たりなし、`Range` 1500）。
 - `Wasami.Powers.PrimalStun` … 一時的なゲームのワールドに仮の的を並べ、`StunEnemies(原点, 3500)` が近く・端（3450）・真上 30 m の 3 体にだけ `SetState(Stun, false)` を 1 回ずつ送ること。遠く（3600）・体が Pawn でない的・`Enemy` タグだけで実装の無いアクタには送らないこと。
-- `Wasami.Powers.TelekinesisTimeline` … `BP_TelekinesisPower` の `float2`（Primal と同じキー。0〜2 秒の 7 点）と重み、クラスの既定（範囲なし・重み 0、青のゲイン (0, 0.421727, 1.61)、中間調 100、色収差 50、ガンマの上書き、`Range` 1500、音とシェイクのパス、粒子の参照が空、0.2 秒と拡縮 2）。
+- `Wasami.Powers.TelekinesisTimeline` … `BP_TelekinesisPower` の `float2`（Primal と同じキー。0〜2 秒の 7 点）と重み、クラスの既定（範囲なし・重み 0、青のゲイン (0, 0.421727, 1.61)、中間調 100、色収差 50、ガンマの上書き、`Range` 1500、音とシェイクと粒子のパス、`LoadAssets` が 3 つとも読めること〈取り込みの後〉、0.2 秒と拡縮 2）。
 - `Wasami.Powers.TelekinesisPull` … `FTestWorldWrapper` のワールドにシャードを並べ、`PullShards(原点, 3000)` が近く（10 m）・端（29 m）・真上 25 m の 3 つだけを引き寄せ始めること。遠く（32 m）・カプセルの当たりを切ったシャード・範囲内の仮の的（Pawn の体、テレキネシスのインターフェースなし）には何もしないこと（`SetState`・`PlayerVanish` も来ない）。
 - `Wasami.Powers.VanishTimeline` … `BP_VanishPower` の `float2`（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）と重み（0 秒で色 0.997・閃光 0.991、0.12 秒で閃光 0、0.3 秒以降で色 0）、クラスの既定（範囲なし・重み 0、紫のゲイン、中間調 100、色収差の上書きが 0、フィルムグレインの上書きなし、粒子の位置・自動起動・ティックの開始なし、粒子の素材の指定）。
 - `Wasami.Powers.VanishNotify` … 一時的なゲームのワールドで、タグ `Enemy` と実装のある的には距離によらず `PlayerVanish` が 1 回ずつ届き、タグの無い的と、タグだけで実装の無いアクタには届かないこと。`SetState` は送らないこと。
@@ -501,15 +501,23 @@ updated: 2026-09-17
 - 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面が明るい水色に飛び（閃光 × 青い単色）、約 0.3 秒で閃光が消えて青い単色になり、0.5 秒で元の色に戻った。その間に餅が廊下の奥から飛んでくる。**揺れの間、下げたタブレットの黒い裏面が視界を横切るフレームがある**（全面の黒が 1 枚、部分的な黒が数枚。下の「既知の制約」）。色と見え方は本家と見比べていない（ステップ 11）。
 - PIE の間、この仕組みの警告やエラーは無かった。音はユーザーのスピーカーで確かめていない。PIE は止めた。
 
-### テレキネシスの力場の素材（2026-09-17、取り込みと読み戻し。PIE は進捗記録のステップ 10b3）
+### テレキネシスの力場の素材（2026-09-17、取り込みと読み戻し。PIE は次の節）
 - `import_dd_powers()` が `sounds 7・camera_shakes 2・camera_anims 2・textures 14・meshes 2・materials 28・particle_systems 3` を作った（`Failed to compile` なし）。`import_dd_shards()` も前と同じ数（`flash_materials` 13）で通り、閃光の静的マスクは G / R のまま。
 - 推定のマスターは、式が `M_DD_KyWall02` 8・`M_DD_KyAura7` 64・`M_DD_KyShockWave02` 31・`M_DD_KyStarDust` 22 で、パラメータの名前は上の表のとおり。原作のパスのインスタンスと原作のインスタンスの値・親・テクスチャを読み戻して書き出しどおり、`MI_ky_starDust_sq` の `swSQdust` は偽（親は真のまま）。
 - `P_ky_forceField_Telekinesis` はエミッタ 4・LOD 3・詳細度 15、型データは `aura`（`SM_ky_windLine27midPoly`）と `sphere`（`SM_ky_sphere`）で `LODValidity` 7、各エミッタの材質は上の表のとおり。
 - 取り込みの後に `L_Hospital_Zone1` が未保存になった（`import_dd_shards` の餅のメッシュの取り込み直しの後。06 記録のシャードが参照する）。灯 783・シャード 337・選択なしを数えてから保存した。
 
+### テレキネシスの力場（2026-09-17、PIE、`L_Hospital_Zone1`、Space・1 × 4・Space・Q とビューポートのクリックは `Tools/desktop.py` から送り、値はエディタの Python で毎フレーム読んだ。収録は gdigrab の 60 fps で `observations/ours/pie-telekinesis-forcefield-*`）
+- ビルドは警告なし、テストは 21 件とも成功（`TelekinesisTimeline` を粒子のパスと `LoadAssets` の確認に変えた）。
+- プレイヤーを (0, 700)・南向きに置いて Q（2 回）: 使ってから 0.208〜0.210 秒（タイムラインの位置 0.223〜0.225）のフレームで `P_ky_forceField_Telekinesis` のコンポーネントが 1 つ、プレイヤーの位置 (0, 700, 90.15)・拡縮 2・起動中で出て、2.214〜2.217 秒で消えた（アクタは 1.99 秒で先に消える）。1 回目はその間にシャード 8 個が回収され、閃光 `P_ky_flash3` が 8 つ出て約 1 秒ずつで消えた。
+- 画面（プレイヤーの視点）: 閃光と青の色調の後、0.3 秒ごろから水色の 4 本の光（星屑）がプレイヤーの周りを回りながら散り、0.7〜1.2 秒に青い風の筋（オーラ）と床の紫白の稲妻のような輪（地面の輪）、暗い青の幕（球）が重なって、約 1.4 秒で星屑が消え、元の色に戻った。**球の粒子の灯（`ParticleModuleLight`）が 0.2〜0.7 秒ごろ廊下を明るい水色に照らす**（青の色調が消えた後も画面が白っぽい）。
+- 外から（同じ粒子を 15 m 先に拡縮 2 で出し、`slomo 0.25`。`pie-telekinesis-forcefield-outside-slomo025.mkv`）: 出た直後から廊下全体が水色に照らされ、約 0.45 秒（実時間）で青い球の壁が出現点の周りに見え、約 0.55 秒で廊下の奥の小さな青い球まで縮み、約 0.9 秒で消えた（球が外から内へ縮む。調査 03 §2.6 の計算どおり）。
+- **初回だけ**、新しい材質のシェーダーをその場でコンパイルして描画が約 0.1 秒ずつ 3 回止まった（画面の左上に「シェーダーをコンパイルしています」。2 回目は止まらない。9b の閃光と同じ）。
+- PIE の間、ログに警告やエラーは無かった。色・明るさ・大きさ・速さは推定の材質のまま（本家と見比べていない。進捗記録のステップ 11）。PIE は止めた。
+
 ## 既知の制約・注意点
 - **倍率 25 のシェイク（Primal Fear・テレキネシス）の間、下げたタブレットが視界を横切って黒いフレームが出る**（2026-09-17、テレキネシスの収録で見つけた）。シェイクは視点だけを最大 50 / 50 / 75 cm 動かし、カメラの子のタブレット（下げた状態で視点の前 35 cm・下 40 cm・右 22 cm。02 記録。本家の値で、本家も隠さない）は動かないため。仕組みも値も本家の写しなので直していない。本家でも同じに見えるかは進捗記録のステップ 11 で見比べる。
-- **テレキネシスの粒子 `P_ky_forceField_Telekinesis` はできたが、`ForceFieldParticles` にまだ入れていない**（0.2 秒後に何も出ない。進捗記録のステップ 10b3 で入れて PIE で確かめる）。粒子の材質 4 つはグラフが推定（オーラと地面の輪のパンの速さなどは仮の値）で、進捗記録のステップ 11 で最新版と見比べる。ポストプロセスの値は原作どおりだが、UE 5.8 のトーンマッパーで同じ見え方になるかは未確認（ステップ 11）。敵はテレキネシスの対象ではない（本家どおり）。
+- **テレキネシスの力場の粒子の材質 4 つはグラフが推定**（オーラと地面の輪のパンの速さなどは仮の値）で、進捗記録のステップ 11 で最新版と見比べる。球の粒子の灯が廊下を明るく照らす強さ（灯の値は原作どおり。UE 5.8 の露出は固定の 1.0）も見比べる。ポストプロセスの値は原作どおりだが、UE 5.8 のトーンマッパーで同じ見え方になるかは未確認（ステップ 11）。敵はテレキネシスの対象ではない（本家どおり）。
 - **Telepathy の印の材質 `M_DD_Telepathy` はグラフが推定**（ノイズのつなぎ方・パンの速さ・`Gain` は仮の値）。印の画面上の大きさ（500 × 500 の枠に広がること、DPI の拡大率）も本家と見比べていない。進捗記録のステップ 11 で最新版の病院（ナースが出る）と見比べる。敵（M4）が無いので、印は仮の的でしか確かめていない。
 - Telepathy の印の `Appear` が角度を触らないこと（2D 変換のトラックはデータのあるチャンネルだけを書く）と、アニメの最後の評価の時刻は UE 5.8 のソースに拠る。UE 4.24 のソースは手元に無い（本家も乱数の角度を入れているので、角度は残る前提）。
 - ユニティビルドで無名名前空間の名前がぶつからないよう、定数や補助の名前はファイルごとに固有にする（ステップ 8 でファイルが増えてまとまり方が変わり、Vanish と Primal の定数がぶつかった）。
@@ -536,6 +544,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: テレキネシスの力場の粒子の参照 `ForceFieldParticles` に `P_ky_forceField_Telekinesis` を入れ、`LoadAssets` が常に読むようにした。テスト `TelekinesisTimeline` を粒子のパスと `LoadAssets` の確認に変えた
 - 2026-09-17: テレキネシスの力場の粒子 `P_ky_forceField_Telekinesis` と、その材質（推定のマスター 4 つ・原作のパスのインスタンス 4 つ・原作のインスタンス 3 つ）を取り込み対象に足した（`dd_powers`。01 記録。C++ は変えていない）
 - 2026-09-17: テレキネシスの粒子のメッシュ 2 つとテクスチャ 6 枚を取り込み対象に足した（`dd_powers`。01 記録。ソースの C++ は変えていない）
 - 2026-09-17: テレキネシス（`AWasamiTelekinesisPower`〈半径の中のシャードに `Activate` を 1 回ずつ、青い画面と閃光、音、シェイク〉、`UseTelekinesis`〈0.05 秒でアイコンが落ち、0.06 秒後に再使用 8 秒〉、粒子の枠〈空〉）とテスト `Wasami.Powers.TelekinesisTimeline`・`TelekinesisPull` を足した。粒子 `P_ky_forceField_Telekinesis` は次のステップ

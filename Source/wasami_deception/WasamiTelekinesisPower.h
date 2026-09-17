@@ -52,7 +52,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Telekinesis|Assets")
 	TSoftClassPtr<UCameraShakeBase> ShakeClass;
 
-	/** P_ky_forceField_Telekinesis: the blue force field. Empty until the particles are made (nothing bursts then). */
+	/** P_ky_forceField_Telekinesis: the blue force field (a sphere that closes in, an aura, a ground ring, star dust). */
 	UPROPERTY(EditAnywhere, Category = "Telekinesis|Assets")
 	TSoftObjectPtr<UParticleSystem> ForceFieldParticles;
 

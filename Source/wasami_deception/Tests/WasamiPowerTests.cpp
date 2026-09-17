@@ -21,6 +21,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Tests/AutomationCommon.h"
+#include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -259,7 +260,14 @@ bool FWasamiTelekinesisTimelineTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the class's Range"), Defaults->Range, 1500.f);
 	TestEqual(TEXT("the wave"), Defaults->WaveSound.ToSoftObjectPath().ToString(), FString(TEXT("/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04.Stun_Wave_Attack_New_04")));
 	TestEqual(TEXT("the shake"), Defaults->ShakeClass.ToSoftObjectPath().ToString(), FString(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.01_Hotel_Lobby_ElevatorShakeStop_C")));
-	TestTrue(TEXT("no force field until its particles are made"), Defaults->ForceFieldParticles.IsNull());
+	TestEqual(TEXT("the force field"), Defaults->ForceFieldParticles.ToSoftObjectPath().ToString(),
+		FString(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis.P_ky_forceField_Telekinesis")));
+	// What the power loads ahead (after import_dd_powers): the wave, the shake and the force field, none missing.
+	TArray<TObjectPtr<UObject>> Loaded;
+	AWasamiTelekinesisPower::LoadAssets(Loaded);
+	TestEqual(TEXT("three assets are loaded ahead"), Loaded.Num(), 3);
+	TestFalse(TEXT("none is missing"), Loaded.Contains(nullptr));
+	TestTrue(TEXT("the force field is loaded"), Loaded.Num() == 3 && Cast<UParticleSystem>(Loaded[2]) != nullptr);
 	TestEqual(TEXT("the force field's wait"), AWasamiTelekinesisPower::ForceFieldDelay, 0.2f);
 	TestEqual(TEXT("the force field's scale"), AWasamiTelekinesisPower::ForceFieldScale, 2.f);
 	return true;
