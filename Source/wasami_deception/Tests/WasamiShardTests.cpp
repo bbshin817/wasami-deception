@@ -108,6 +108,9 @@ bool FWasamiShardActorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the mark does not collide"), static_cast<int32>(Plane->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
 
 	TestTrue(TEXT("a play rate from 0.05 to 0.15"), Shard->GetSpinRate() >= 0.05f && Shard->GetSpinRate() <= 0.15f);
+	const FSoftObjectProperty* FlashProperty = FindFProperty<FSoftObjectProperty>(AWasamiShard::StaticClass(), TEXT("CollectFlash"));
+	TestTrue(TEXT("the collect flash is P_ky_flash3"), FlashProperty && FlashProperty->GetPropertyValue_InContainer(Shard).ToSoftObjectPath()
+		== FSoftObjectPath(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3.P_ky_flash3")));
 
 	// Activate with no player: the shard heads for the origin, and at the end Collect finds no tablet and stops.
 	TestFalse(TEXT("not pulled before"), Shard->IsPulling());

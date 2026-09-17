@@ -10,6 +10,7 @@
 #include "Particles/ParticleLODLevel.h"
 #include "Particles/ParticleModuleRequired.h"
 #include "Particles/ParticleSystem.h"
+#include "Particles/Parameter/ParticleModuleParameterDynamic.h"
 #include "Particles/Size/ParticleModuleSize.h"
 #include "Particles/Spawn/ParticleModuleSpawn.h"
 #include "Particles/SubUV/ParticleModuleSubUV.h"
@@ -40,7 +41,8 @@ bool FWasamiCascadeBuildTest::RunTest(const FString& Parameters)
 	UObject* FarSpawn = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleSpawn"), TEXT("ParticleModuleSpawn_4"));
 	UObject* Size = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleSize"), TEXT("ParticleModuleSize_0"));
 	UObject* SubUV = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleSubUV"), TEXT("ParticleModuleSubUV_4"));
-	if (!TestTrue(TEXT("every object is made"), Emitter && Near && Far && Required && NearSpawn && FarSpawn && Size && SubUV))
+	UObject* Dynamic = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleParameterDynamic"), TEXT("ParticleModuleParameterDynamic_1"));
+	if (!TestTrue(TEXT("every object is made"), Emitter && Near && Far && Required && NearSpawn && FarSpawn && Size && SubUV && Dynamic))
 	{
 		return false;
 	}
@@ -65,6 +67,26 @@ bool FWasamiCascadeBuildTest::RunTest(const FString& Parameters)
 	SetText(*this, SubUV, TEXT("SubImageIndex"), TEXT("(MaxValue=15.0,Table=(TimeScale=15.0,Op=1,EntryCount=16,EntryStride=1,Values=(0.0,2.8058248,5.238904,")
 		TEXT("7.3239365,9.089217,10.560319,11.764762,12.728793,13.479359,14.043178,14.446826,14.717292,14.880983,14.96496,14.995657,15.0)),Distribution=None)"));
 	SetText(*this, Required, TEXT("InterpolationMethod"), TEXT("PSUVIM_Linear_Blend"));
+	// An array of structs holding tables (P_ky_flash3's dynamic parameters), over the four the module made with objects.
+	TArray<UObject*> MadeDistributions;
+	GetObjectsWithOuter(Dynamic, MadeDistributions, EGetObjectsFlags::None);
+	TestEqual(TEXT("the dynamic parameter module makes a distribution for each parameter"), MadeDistributions.Num(), 4);
+	FString Params;
+	const TCHAR* Names[] = { TEXT("dynOutDen"), TEXT("dynInR"), TEXT("dynInDen"), TEXT("Param4") };
+	const float Values[] = { 1.f, 0.2f, 3.f, 1.f };
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		Params += FString::Printf(TEXT("%s(ParamName=\"%s\",bUseEmitterTime=False,bSpawnTimeOnly=False,ValueMethod=\"EDPV_UserSet\",")
+			TEXT("bScaleVelocityByParamValue=False,ParamValue=(MinValue=%f,MaxValue=%f,Table=(Op=1,EntryCount=1,EntryStride=1,Values=(%f)),")
+			TEXT("Distribution=None))"), Index ? TEXT(",") : TEXT(""), Names[Index], Values[Index], Values[Index], Values[Index]);
+	}
+	SetText(*this, Dynamic, TEXT("DynamicParams"), *FString::Printf(TEXT("(%s)"), *Params));
+	SetText(*this, Dynamic, TEXT("UpdateFlags"), TEXT("15"));
+	TestFalse(TEXT("a missing member of an array's struct"), UWasamiCascadeLibrary::SetPropertyText(Dynamic, TEXT("DynamicParams"),
+		TEXT("((ParamName=\"a\",NoSuchMember=1))")).IsEmpty());
+	TestFalse(TEXT("a missing member of a struct inside an array's struct"), UWasamiCascadeLibrary::SetPropertyText(Dynamic,
+		TEXT("DynamicParams"), TEXT("((ParamName=\"a\",ParamValue=(NoSuchMember=1)))")).IsEmpty());
+	TestEqual(TEXT("the refused texts left the parameters"), Cast<UParticleModuleParameterDynamic>(Dynamic)->DynamicParams.Num(), 4);
 
 	// A distribution object the module made for itself is not its template: a new one replaces it.
 	UParticleModuleRequired* RequiredModule = Cast<UParticleModuleRequired>(Required);
@@ -83,13 +105,36 @@ bool FWasamiCascadeBuildTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a module outside the system"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, NearSpawn, { Emitter }));
 
 	TestTrue(TEXT("the emitter is added"), UWasamiCascadeLibrary::AddEmitter(System, Emitter));
-	TestTrue(TEXT("the near LOD level is added"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, NearSpawn, { Size, SubUV }));
-	TestTrue(TEXT("the far LOD level is added"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Far, Required, FarSpawn, { Size, SubUV }));
+	TestTrue(TEXT("the near LOD level is added"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, NearSpawn, { Size, SubUV, Dynamic }));
+	TestTrue(TEXT("the far LOD level is added"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Far, Required, FarSpawn, { Size, SubUV, Dynamic }));
 	UWasamiCascadeLibrary::FinishParticleSystem(System);
 
 	TArray<UObject*> SizeChildren;
 	GetObjectsWithOuter(Size, SizeChildren, EGetObjectsFlags::None);
 	TestEqual(TEXT("the size module's own distribution has left it (its table is used)"), SizeChildren.Num(), 0);
+	TArray<UObject*> DynamicChildren;
+	GetObjectsWithOuter(Dynamic, DynamicChildren, EGetObjectsFlags::None);
+	TestEqual(TEXT("the dynamic parameters' own distributions have left the module"), DynamicChildren.Num(), 0);
+	const UParticleModuleParameterDynamic* DynamicModule = Cast<UParticleModuleParameterDynamic>(Dynamic);
+	if (TestEqual(TEXT("four dynamic parameters"), DynamicModule->DynamicParams.Num(), 4))
+	{
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			FRawDistributionFloat Value = DynamicModule->DynamicParams[Index].ParamValue;
+			TestTrue(FString::Printf(TEXT("dynamic parameter %d's name"), Index), DynamicModule->DynamicParams[Index].ParamName == FName(Names[Index]));
+			TestNull(FString::Printf(TEXT("dynamic parameter %d has no object"), Index), Value.Distribution.Get());
+			TestEqual(FString::Printf(TEXT("dynamic parameter %d reads its table"), Index), Value.GetValue(), Values[Index], 1e-6f);
+		}
+		TestEqual(TEXT("a parameter's method"), (int32)DynamicModule->DynamicParams[1].ValueMethod, (int32)EDPV_UserSet);
+	}
+	// A distribution object an array's struct points at stays in its module (as a cook-kept one would).
+	UObject* Kept = UWasamiCascadeLibrary::MakeObject(Dynamic, TEXT("DistributionFloatConstant"), TEXT("DistributionParam4"));
+	if (TestNotNull(TEXT("a distribution for the last dynamic parameter"), Kept) && DynamicModule->DynamicParams.Num() == 4)
+	{
+		Cast<UParticleModuleParameterDynamic>(Dynamic)->DynamicParams[3].ParamValue.Distribution = Cast<UDistributionFloat>(Kept);
+		UWasamiCascadeLibrary::FinishParticleSystem(System);
+		TestTrue(TEXT("a distribution object inside an array stays in its module"), Kept->GetOuter() == Dynamic);
+	}
 	TestTrue(TEXT("a distribution object in use stays in its module"), BurstScale->GetOuter() == NearSpawn
 		&& Cast<UParticleModuleSpawn>(NearSpawn)->BurstScale.Distribution.Get() == BurstScale);
 	TestEqual(TEXT("the burst scale reads its object"), Cast<UParticleModuleSpawn>(NearSpawn)->BurstScale.GetValue(), 1.f);
@@ -106,7 +151,7 @@ bool FWasamiCascadeBuildTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the size module spawns"), NearLevel->SpawnModules.Contains(Cast<UParticleModule>(Size)));
 	TestTrue(TEXT("the sub-UV module updates"), NearLevel->UpdateModules.Contains(Cast<UParticleModule>(SubUV)));
 	TestTrue(TEXT("the read-back lists the required and spawn modules first"),
-		UWasamiCascadeLibrary::GetLODModules(Near) == TArray<UObject*>({ Required, NearSpawn, Size, SubUV }));
+		UWasamiCascadeLibrary::GetLODModules(Near) == TArray<UObject*>({ Required, NearSpawn, Size, SubUV, Dynamic }));
 
 	// The tables are what the particles read.
 	UParticleModuleSpawn* NearSpawnModule = Cast<UParticleModuleSpawn>(NearSpawn);

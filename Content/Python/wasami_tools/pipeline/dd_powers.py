@@ -77,7 +77,6 @@ RADIAL_GRADIENT = "PyroParticlePack/Materials/PPP_Radial_Gradient_Doffed"
 RADIAL_GRADIENT_MASTER = "/Game/Pipeline/Materials/M_DD_PPPRadialGradient"
 DECAL_TELEPORT = "Blueprints/Main/Powers/M_Decal_Teleport"
 DECAL_TELEPORT_MASTER = "/Game/Pipeline/Materials/M_DD_DecalTeleport"
-FUNCTIONS = "/Engine/Functions/Engine_MaterialFunctions01/"
 # The estimate of M_Decal_Teleport. The classic game shows (2026-09-17, 04 record) a disc with a sharp edge that
 # glows additively and pulses once a second. Its size is RadialGradientExponential at its defaults cut by CheapContrast,
 # whose contrast sets the edge's width (about a tenth of the radius). The colour and the brightness are placeholders
@@ -104,7 +103,6 @@ WOBBLY_VIGNETTE = "Materials/Special/MM_WobblyVignette"
 WOBBLY_VIGNETTE_MASTER = "/Game/Pipeline/Materials/M_DD_WobblyVignette"
 VIGNETTE_TEXTURE = "UI/Menu/Streaks/T_VignetteNew"
 PERLIN_TEXTURE = "Textures/FX_Textures/T_perlinnoise"
-FUNCTIONS_02 = "/Engine/Functions/Engine_MaterialFunctions02/"
 # The export keeps two Panners (Panner_2, Panner_3) and a LinearSine without their values: placeholders until the
 # vignette is compared with the latest version (the noises' speeds, the sine's period, and how strongly the noise
 # scales the vignette's alpha; the two noises' product averages 0.47).
@@ -130,11 +128,6 @@ TELEPATHY_GAIN = 3.0
 TELEPATHY_INST_SCALARS = ("Speed",)
 
 
-def _connect(a, a_pin, b, b_pin):
-    if not MEL.connect_material_expressions(a, a_pin, b, b_pin):
-        raise RuntimeError("could not connect %s.%s to %s.%s" % (a.get_name(), a_pin, b.get_name(), b_pin))
-
-
 def _build_speedlines(mat):
     """M_Speedlines (pak_reference_2's export keeps its graph): a FlipBook call with every input at its default (2 × 2
     frames, phase from Time, TexCoord 0), its output 2 as a TextureSample of T_Speedlines' UVs, and that sample's RGB as
@@ -146,7 +139,7 @@ def _build_speedlines(mat):
         raise RuntimeError("FlipBook has only the outputs %s" % (outputs,))
     sample = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSample, -300, 0)
     sample.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path("UI/Main/Powers/T_Speedlines")))
-    _connect(call, str(outputs[FLIPBOOK_UV_OUTPUT]), sample, "UVs")
+    dd_assets.connect(call, str(outputs[FLIPBOOK_UV_OUTPUT]), sample, "UVs")
     MEL.connect_material_property(sample, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     unreal.log("M_Speedlines: FlipBook output %d is %s" % (FLIPBOOK_UV_OUTPUT, outputs[FLIPBOOK_UV_OUTPUT]))
 
@@ -161,31 +154,19 @@ def _build_camera_shake(mat):
     time = g.node(unreal.MaterialExpressionTime, -1200, -150)
     phase = g.multiply(time, "", frequency, "", -1000, -50)
     sine = g.node(unreal.MaterialExpressionSine, -850, -100)
-    _connect(phase, "", sine, "")
+    dd_assets.connect(phase, "", sine, "")
     cosine = g.node(unreal.MaterialExpressionCosine, -850, 0)
-    _connect(phase, "", cosine, "")
+    dd_assets.connect(phase, "", cosine, "")
     circle = g.node(unreal.MaterialExpressionAppendVector, -700, -50)
-    _connect(sine, "", circle, "A")
-    _connect(cosine, "", circle, "B")
+    dd_assets.connect(sine, "", circle, "A")
+    dd_assets.connect(cosine, "", circle, "B")
     offset = g.multiply(circle, "", power, "", -550, 0)
     screen = g.node(unreal.MaterialExpressionScreenPosition, -700, -250)
     uv = g.binary(unreal.MaterialExpressionAdd, screen, "ViewportUV", offset, "", -400, -150)
     scene = g.node(unreal.MaterialExpressionSceneTexture, -250, -150)
     scene.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
-    _connect(uv, "", scene, "UVs")
+    dd_assets.connect(uv, "", scene, "UVs")
     g.out(scene, "Color", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-
-
-def _function(g, name, x, y, library=FUNCTIONS):
-    call = g.node(unreal.MaterialExpressionMaterialFunctionCall, x, y)
-    call.set_editor_property("material_function", unreal.load_asset(library + name))
-    return call
-
-
-def _constant(g, value, x, y):
-    e = g.node(unreal.MaterialExpressionConstant, x, y)
-    e.set_editor_property("r", value)
-    return e
 
 
 def _build_ky_slash(mat):
@@ -212,10 +193,10 @@ def _build_ky_slash(mat):
     g.out(g.lerp(base, "", hilight, "RGB", tex, "G", -450, -100), "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     density = g.multiply(tex, "R", g.scalar("alphaDensity", 1.5, -1100, 150), "", -900, 150)
     clamped = g.node(unreal.MaterialExpressionSaturate, -750, 150)
-    _connect(density, "", clamped, "")
+    dd_assets.connect(density, "", clamped, "")
     fade = g.node(unreal.MaterialExpressionDepthFade, -400, 200)
-    _connect(g.multiply(clamped, "", particle, "A", -600, 200), "", fade, "Opacity")
-    _connect(g.scalar("depthFade", 100.0, -600, 350), "", fade, "FadeDistance")
+    dd_assets.connect(g.multiply(clamped, "", particle, "A", -600, 200), "", fade, "Opacity")
+    dd_assets.connect(g.scalar("depthFade", 100.0, -600, 350), "", fade, "FadeDistance")
     g.out(fade, "", unreal.MaterialProperty.MP_OPACITY)
 
 
@@ -234,8 +215,8 @@ def _build_radial_gradient(mat):
     g = dd_stage._Graph(mat)
     particle = g.node(unreal.MaterialExpressionParticleColor, -900, -100)
     g.out(particle, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    gradient = _function(g, "Gradient/RadialGradient", -900, 150)
-    fade = _function(g, "Opacity/CameraDepthFade", -900, 300)
+    gradient = dd_assets.function_call(g, "Gradient/RadialGradient", -900, 150)
+    fade = dd_assets.function_call(g, "Opacity/CameraDepthFade", -900, 300)
     shape = g.multiply(gradient, "RadialGradient", fade, "Result", -650, 200)
     g.out(g.multiply(shape, "", particle, "A", -450, 150), "", unreal.MaterialProperty.MP_OPACITY)
 
@@ -248,16 +229,16 @@ def _build_decal_teleport(mat):
     draws as an additive emissive decal (UE 4's DBM_Emissive; UE 5 dropped the property). LinearGradient is left out:
     the classic game's disc shows no gradient along either axis."""
     g = dd_stage._Graph(mat)
-    gradient = _function(g, "Gradient/RadialGradientExponential", -1300, 0)
-    contrast = _function(g, "ImageAdjustment/CheapContrast", -1050, 0)
-    _connect(gradient, "RadialGradientExponential", contrast, "In")
-    _connect(g.scalar("Contrast", DECAL_CONTRAST, -1300, 200), "", contrast, "Contrast")
+    gradient = dd_assets.function_call(g, "Gradient/RadialGradientExponential", -1300, 0)
+    contrast = dd_assets.function_call(g, "ImageAdjustment/CheapContrast", -1050, 0)
+    dd_assets.connect(gradient, "RadialGradientExponential", contrast, "In")
+    dd_assets.connect(g.scalar("Contrast", DECAL_CONTRAST, -1300, 200), "", contrast, "Contrast")
     disc = g.node(unreal.MaterialExpressionSaturate, -850, 0)
-    _connect(contrast, "Result", disc, "")
+    dd_assets.connect(contrast, "Result", disc, "")
     time = g.node(unreal.MaterialExpressionTime, -1300, 350)
     sine = g.node(unreal.MaterialExpressionSine, -1150, 350)
-    _connect(time, "", sine, "")
-    half = _constant(g, 0.5, -1150, 450)
+    dd_assets.connect(time, "", sine, "")
+    half = dd_assets.constant(g, 0.5, -1150, 450)
     wave = g.binary(unreal.MaterialExpressionAdd, g.multiply(sine, "", half, "", -1000, 350), "", half, "", -850, 350)
     low = g.scalar("PulseLow", DECAL_PULSE_LOW, -850, 200)
     high = g.scalar("PulseHigh", DECAL_PULSE_HIGH, -850, 280)
@@ -283,18 +264,18 @@ def _build_primal(mat):
     tex = g.node(unreal.MaterialExpressionTextureSample, -1100, 0)
     tex.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(PRIMAL_TEXTURE)))
     tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
-    _connect(pan, "", tex, "UVs")
+    dd_assets.connect(pan, "", tex, "UVs")
     colour = g.vector("Color", (1.0, 0.0, 0.0, 1.0), -1100, -300)
     clouds = g.multiply(colour, "RGB", tex, "B", -850, -200)
     washed = g.node(unreal.MaterialExpressionDesaturation, -650, -200)
-    _connect(clouds, "", washed, "")
-    _connect(g.scalar("Desaturation", 0.0, -850, -50), "", washed, "Fraction")
+    dd_assets.connect(clouds, "", washed, "")
+    dd_assets.connect(g.scalar("Desaturation", 0.0, -850, -50), "", washed, "Fraction")
     sparkles = g.multiply(colour, "RGB", tex, "R", -650, -350)
     glow = g.binary(unreal.MaterialExpressionAdd, washed, "", sparkles, "", -400, -250)
     g.out(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     cover = g.binary(unreal.MaterialExpressionAdd, tex, "B", tex, "R", -850, 150)
     clamped = g.node(unreal.MaterialExpressionSaturate, -650, 150)
-    _connect(cover, "", clamped, "")
+    dd_assets.connect(cover, "", clamped, "")
     opacity = g.multiply(clamped, "", g.scalar("Opacity", 1.0, -650, 300), "", -400, 200)
     g.out(opacity, "", unreal.MaterialProperty.MP_OPACITY)
 
@@ -313,7 +294,7 @@ def _build_looping_smoke(mat):
     frame.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(LOOPING_SMOKE_TEXTURE)))
     particle = g.node(unreal.MaterialExpressionParticleColor, -900, 300)
     g.out(g.multiply(frame, "RGB", particle, "RGB", -600, 0), "", unreal.MaterialProperty.MP_BASE_COLOR)
-    fade = _function(g, "Opacity/CameraDepthFade", -900, 500)
+    fade = dd_assets.function_call(g, "Opacity/CameraDepthFade", -900, 500)
     alpha = g.multiply(frame, "A", particle, "A", -600, 250)
     g.out(g.multiply(alpha, "", fade, "Result", -400, 300), "", unreal.MaterialProperty.MP_OPACITY)
 
@@ -330,7 +311,7 @@ def _build_wobbly_vignette(mat):
     coords = g.node(unreal.MaterialExpressionTextureCoordinate, -1500, -350)
     colour = g.node(unreal.MaterialExpressionTextureSample, -1250, -350)
     colour.set_editor_property("texture", vignette)
-    _connect(coords, "", colour, "UVs")
+    dd_assets.connect(coords, "", colour, "UVs")
     g.out(colour, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     noises = []
     for speed, y in ((WOBBLE_PAN_A, 0), (WOBBLE_PAN_B, 250)):
@@ -340,18 +321,18 @@ def _build_wobbly_vignette(mat):
         sample = g.node(unreal.MaterialExpressionTextureSample, -1250, y)
         sample.set_editor_property("texture", noise)
         sample.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
-        _connect(pan, "", sample, "UVs")
+        dd_assets.connect(pan, "", sample, "UVs")
         noises.append(sample)
-    sine = _function(g, "Utility/LinearSine", -1250, 500, FUNCTIONS_02)
-    _connect(g.node(unreal.MaterialExpressionTime, -1500, 500), "", sine, "Value")
-    _connect(g.scalar("WobblePeriod", WOBBLE_PERIOD, -1500, 600), "", sine, "Period")
+    sine = dd_assets.function_call(g, "Utility/LinearSine", -1250, 500, dd_assets.FUNCTIONS_02)
+    dd_assets.connect(g.node(unreal.MaterialExpressionTime, -1500, 500), "", sine, "Value")
+    dd_assets.connect(g.scalar("WobblePeriod", WOBBLE_PERIOD, -1500, 600), "", sine, "Period")
     wobble = g.lerp(noises[0], "R", noises[1], "R", sine, "Linear Sine", -950, 150)
     edge = g.node(unreal.MaterialExpressionTextureSample, -1250, -100)
     edge.set_editor_property("texture", vignette)
     shaped = g.multiply(edge, "A", wobble, "", -750, 0)
     gained = g.multiply(shaped, "", g.scalar("WobbleGain", WOBBLE_GAIN, -950, 350), "", -550, 50)
     clamped = g.node(unreal.MaterialExpressionSaturate, -400, 50)
-    _connect(gained, "", clamped, "")
+    dd_assets.connect(gained, "", clamped, "")
     g.out(clamped, "", unreal.MaterialProperty.MP_OPACITY)
 
 
@@ -374,19 +355,19 @@ def _build_telepathy(mat):
         pan = g.node(unreal.MaterialExpressionPanner, -1300, y)
         pan.set_editor_property("speed_x", speed[0])
         pan.set_editor_property("speed_y", speed[1])
-        _connect(tiled, "", pan, "Coordinate")
-        _connect(flow, "", pan, "Time")
+        dd_assets.connect(tiled, "", pan, "Coordinate")
+        dd_assets.connect(flow, "", pan, "Time")
         sample = g.node(unreal.MaterialExpressionTextureSample, -1100, y)
         sample.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(rel)))
         sample.set_editor_property("sampler_type", sampler)
-        _connect(pan, "", sample, "UVs")
+        dd_assets.connect(pan, "", sample, "UVs")
         noises.append(sample)
     smoke = g.binary(unreal.MaterialExpressionAdd, noises[0], "R", noises[1], "R", -850, 50)
-    gradient = _function(g, "Gradient/RadialGradientExponential", -1100, 450)
+    gradient = dd_assets.function_call(g, "Gradient/RadialGradientExponential", -1100, 450)
     shaped = g.multiply(smoke, "", gradient, "RadialGradientExponential", -650, 150)
     gained = g.multiply(shaped, "", g.scalar("Gain", TELEPATHY_GAIN, -850, 300), "", -450, 200)
     clamped = g.node(unreal.MaterialExpressionSaturate, -300, 200)
-    _connect(gained, "", clamped, "")
+    dd_assets.connect(gained, "", clamped, "")
     g.out(clamped, "", unreal.MaterialProperty.MP_OPACITY)
 
 
@@ -395,7 +376,7 @@ def make_telepathy_materials():
     values, and MM_Telepathy_Inst as an instance of MM_Telepathy with its own."""
     master = dd_assets.material(TELEPATHY_MASTER, _build_telepathy, domain=unreal.MaterialDomain.MD_UI,
                                 blend_mode=unreal.BlendMode.BLEND_ADDITIVE)
-    scalars, vectors = parameter_defaults(TELEPATHY, 2)
+    scalars, vectors = dd_assets.parameter_defaults(TELEPATHY, 2)
     base = dd_assets.material_instance(dd_assets.asset_path(TELEPATHY), master, scalars=scalars, vectors=vectors)
     inst = dd_assets.main_export(dd_assets.export_json(TELEPATHY_INST, 2), TELEPATHY_INST)["props"]
     inst_scalars = {v["ParameterInfo"]["Name"]: v["ParameterValue"] for v in inst.get("ScalarParameterValues", [])
@@ -407,23 +388,10 @@ def make_telepathy_materials():
     return [a.get_path_name() for a in made]
 
 
-def parameter_defaults(rel, version):
-    """A material's scalar and vector parameter defaults from its export ({name: value}, {name: [r, g, b, a]}); a
-    default the export leaves out is the engine's (0, or black)."""
-    scalars, vectors = {}, {}
-    for e in dd_assets.export_json(rel, version)["exports"]:
-        p = e["props"]
-        if e["class"] == "MaterialExpressionScalarParameter":
-            scalars[p["ParameterName"]] = p.get("DefaultValue", 0.0)
-        elif e["class"] == "MaterialExpressionVectorParameter":
-            vectors[p["ParameterName"]] = p.get("DefaultValue", [0.0, 0.0, 0.0, 1.0])
-    return scalars, vectors
-
-
 def slash_parameters():
     """M_ky_slash01_4x4's parameter defaults and texture, from its export: ({name: value}, {name: [r, g, b, a]}, the
     texture's rel)."""
-    scalars, vectors = parameter_defaults(KY_SLASH, 1)
+    scalars, vectors = dd_assets.parameter_defaults(KY_SLASH, 1)
     texture = None
     for e in dd_assets.export_json(KY_SLASH, 1)["exports"]:
         if e["class"] == "MaterialExpressionParticleSubUV":
@@ -456,7 +424,7 @@ def make_primal_material():
     """Primal Fear's sphere: the estimated master, and an instance of it at the original's path with the original's
     parameter values."""
     master = dd_assets.material(PRIMAL_MASTER, _build_primal, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
-    scalars, vectors = parameter_defaults(PRIMAL, 2)
+    scalars, vectors = dd_assets.parameter_defaults(PRIMAL, 2)
     instance = dd_assets.material_instance(dd_assets.asset_path(PRIMAL), master, scalars=scalars, vectors=vectors)
     for asset in (master, instance):
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)

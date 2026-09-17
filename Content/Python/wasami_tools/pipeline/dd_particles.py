@@ -42,6 +42,11 @@ TABLE_DEFAULTS = (("TimeScale", 0.0), ("TimeBias", 0.0), ("Op", 0), ("EntryCount
                   ("SubEntryStride", 0), ("LockFlag", 0))
 # FParticleBurst's members and defaults (a spawn module's BurstList; CountLow -1 turns the range off).
 BURST_DEFAULTS = (("Count", 0), ("CountLow", -1), ("Time", 0.0))
+# FEmitterDynamicParameter's members (a dynamic parameter module's DynamicParams) and the form of each; what an export
+# leaves out stays at the struct's defaults.
+DYNAMIC_PARAMETER_MEMBERS = (("ParamName", "text"), ("bUseEmitterTime", "bool"), ("bSpawnTimeOnly", "bool"),
+                             ("ValueMethod", "text"), ("bScaleVelocityByParamValue", "bool"),
+                             ("ParamValue", "distribution"))
 
 
 def _number(value):
@@ -55,6 +60,12 @@ def _number(value):
 def _vector(values):
     x, y, z = (list(values) + [0.0, 0.0, 0.0])[:3]
     return "(X=%s,Y=%s,Z=%s)" % (_number(x), _number(y), _number(z))
+
+
+def _vector2(values):
+    if len(values) != 2:
+        raise ValueError("an FVector2D of %d numbers" % len(values))
+    return "(X=%s,Y=%s)" % (_number(values[0]), _number(values[1]))
 
 
 def _box(values):
@@ -129,6 +140,28 @@ class _Build:
             raise ValueError("%s: a distribution with %s" % (self.rel, sorted(unknown)))
         return "(%s)" % ",".join(parts)
 
+    def _dynamic_parameter(self, value):
+        """An exported FEmitterDynamicParameter ({ParamName, ..., ParamValue}; its distribution a lookup table)."""
+        kinds = dict(DYNAMIC_PARAMETER_MEMBERS)
+        unknown = set(value) - set(kinds)
+        if unknown:
+            raise ValueError("%s: a dynamic parameter with %s" % (self.rel, sorted(unknown)))
+        parts = []
+        for key, kind in DYNAMIC_PARAMETER_MEMBERS:
+            if key not in value:
+                continue
+            v = value[key]
+            if kind == "bool":
+                if not isinstance(v, bool):
+                    raise ValueError("%s: a dynamic parameter's %s of %r" % (self.rel, key, v))
+                text = "True" if v else "False"
+            elif kind == "text":
+                text = _quoted(v)
+            else:
+                text = self._raw_distribution(v, False)
+            parts.append("%s=%s" % (key, text))
+        return "(%s)" % ",".join(parts)
+
     def _text(self, obj, key, value):
         cpp = LIB.get_property_type(obj, key)
         if not cpp:
@@ -141,6 +174,8 @@ class _Build:
             return _box(value)
         if cpp == "FVector":
             return _vector(value)
+        if cpp == "FVector2D":
+            return _vector2(value)
         # A bitfield bool's C++ type reads as its storage ('uint8').
         if isinstance(value, bool) and cpp in ("bool", "uint8", "uint16", "uint32", "uint64"):
             return "True" if value else "False"
@@ -161,6 +196,8 @@ class _Build:
             return "(%s)" % ",".join("()" for _ in value)
         if cpp == "TArray<FParticleBurst>" and all(isinstance(v, dict) for v in value):
             return "(%s)" % ",".join(_burst(v) for v in value)
+        if cpp == "TArray<FEmitterDynamicParameter>" and all(isinstance(v, dict) for v in value):
+            return "(%s)" % ",".join(self._dynamic_parameter(v) for v in value)
         raise ValueError("%s.%s: no text form for a %s (%r)" % (obj.get_name(), key, cpp, value))
 
     def _write(self, obj, props, skip=()):

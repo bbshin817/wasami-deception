@@ -12,6 +12,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Materials/MaterialInterface.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundBase.h"
 #include "Sound/SoundConcurrency.h"
 #include "WasamiAssets.h"
@@ -58,9 +60,11 @@ namespace
 	constexpr float MaxPullRate = 1.2f;
 	constexpr float PullAlphaEnd = 0.75f;
 
-	// Collect: ClientPlayCameraShake(BP_CameraShake_ShardCollect, 0.4, CameraLocal) and
+	// Collect: ClientPlayCameraShake(BP_CameraShake_ShardCollect, 0.4, CameraLocal),
+	// SpawnEmitterAtLocation(P_ky_flash3, the crystal's location, no rotation, 0.2, auto destroy, no pooling, active) and
 	// PlaySound2D(Soul_Shard_Pickup_v2_Cue, NoSound ? 0 : 0.65, 1, 0, OnlyFew). The count is Clamp(count − 1, 0, 9999).
 	constexpr float CollectShakeScale = 0.4f;
+	constexpr double CollectFlashScale = 0.2;
 	constexpr float PickupVolume = 0.65f;
 	constexpr int32 MaxShardCount = 9999;
 
@@ -133,6 +137,7 @@ AWasamiShard::AWasamiShard()
 	PickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue")));
 	PickupConcurrency = TSoftObjectPtr<USoundConcurrency>(WasamiAssets::Path(TEXT("/Game/DD/Audio/OnlyFew")));
 	CollectShake = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect")));
+	CollectFlash = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3")));
 }
 
 void AWasamiShard::OnConstruction(const FTransform& Transform)
@@ -152,6 +157,7 @@ void AWasamiShard::BeginPlay()
 	LoadedPickupSound = PickupSound.LoadSynchronous();
 	LoadedPickupConcurrency = PickupConcurrency.LoadSynchronous();
 	LoadedCollectShake = CollectShake.LoadSynchronous();
+	LoadedCollectFlash = CollectFlash.LoadSynchronous();
 	SpinRate = FMath::FRandRange(MinSpinRate, MaxSpinRate);
 	PreviousLocation = GetActorLocation();
 }
@@ -241,6 +247,8 @@ void AWasamiShard::Collect(bool bNoSound)
 	{
 		Controller->ClientStartCameraShake(LoadedCollectShake, CollectShakeScale, ECameraShakePlaySpace::CameraLocal);
 	}
+	UGameplayStatics::SpawnEmitterAtLocation(this, LoadedCollectFlash, Body->GetComponentLocation(), FRotator::ZeroRotator,
+		FVector(CollectFlashScale), true, EPSCPoolMethod::None, true);
 	// The original destroys the shard and then plays the sound in the same frame; here the sound goes first, while the
 	// shard is still a valid world context.
 	UGameplayStatics::PlaySound2D(this, LoadedPickupSound, bNoSound ? 0.f : PickupVolume, 1.f, 0.f, LoadedPickupConcurrency);

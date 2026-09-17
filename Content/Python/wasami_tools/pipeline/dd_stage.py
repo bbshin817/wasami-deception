@@ -110,13 +110,23 @@ def ensure_default_packed():
 
 
 # ------------------------------------------------------------------------------------------------ master materials
+def clear_expressions(mat):
+    """Removes every expression of a material. UE 5.8's DeleteAllMaterialExpressions removes from the list it walks, so
+    one pass leaves about half behind (they stay in the graph, and compile); it is repeated until none is left."""
+    for _ in range(64):
+        if not MEL.get_num_material_expressions(mat):
+            return
+        MEL.delete_all_material_expressions(mat)
+    raise RuntimeError("the expressions of %s could not be cleared" % mat.get_path_name())
+
+
 def _material(asset_path):
     """Loads the master material, or makes it; returns (material, whether its graph has to be built)."""
     if EAL.does_asset_exist(asset_path):
         mat = unreal.load_asset(asset_path)
         if EAL.get_metadata_tag(mat, VERSION_TAG) == MASTER_VERSION:
             return mat, False
-        MEL.delete_all_material_expressions(mat)
+        clear_expressions(mat)
         return mat, True
     folder, name = paths.split(asset_path)
     return _tools().create_asset(name, folder, unreal.Material, unreal.MaterialFactoryNew()), True
@@ -140,10 +150,17 @@ def ensure_masters():
 
 
 class _Graph:
-    """Small helpers over MaterialEditingLibrary."""
+    """Small helpers over MaterialEditingLibrary. A checked graph raises where a connection fails (the library only
+    returns False, for a pin name it does not find)."""
 
-    def __init__(self, mat):
+    def __init__(self, mat, checked=False):
         self.mat = mat
+        self.checked = checked
+
+    def link(self, a, a_pin, b, b_pin):
+        if not MEL.connect_material_expressions(a, a_pin, b, b_pin) and self.checked:
+            raise RuntimeError("%s: could not connect %s.%s to %s.%s"
+                               % (self.mat.get_name(), a.get_name(), a_pin, b.get_name(), b_pin))
 
     def node(self, cls, x, y):
         return MEL.create_material_expression(self.mat, cls, x, y)
@@ -174,8 +191,8 @@ class _Graph:
 
     def binary(self, cls, a, a_pin, b, b_pin, x, y):
         e = self.node(cls, x, y)
-        MEL.connect_material_expressions(a, a_pin, e, "A")
-        MEL.connect_material_expressions(b, b_pin, e, "B")
+        self.link(a, a_pin, e, "A")
+        self.link(b, b_pin, e, "B")
         return e
 
     def multiply(self, a, a_pin, b, b_pin, x, y):
@@ -183,27 +200,28 @@ class _Graph:
 
     def power(self, base, base_pin, exp, exp_pin, x, y):
         e = self.node(unreal.MaterialExpressionPower, x, y)
-        MEL.connect_material_expressions(base, base_pin, e, "Base")
-        MEL.connect_material_expressions(exp, exp_pin, e, "Exp")
+        self.link(base, base_pin, e, "Base")
+        self.link(exp, exp_pin, e, "Exp")
         return e
 
     def lerp(self, a, a_pin, b, b_pin, alpha, alpha_pin, x, y):
         e = self.node(unreal.MaterialExpressionLinearInterpolate, x, y)
-        MEL.connect_material_expressions(a, a_pin, e, "A")
-        MEL.connect_material_expressions(b, b_pin, e, "B")
-        MEL.connect_material_expressions(alpha, alpha_pin, e, "Alpha")
+        self.link(a, a_pin, e, "A")
+        self.link(b, b_pin, e, "B")
+        self.link(alpha, alpha_pin, e, "Alpha")
         return e
 
     def switch(self, param, on, on_pin, off, off_pin, x, y):
         e = self.node(unreal.MaterialExpressionStaticSwitchParameter, x, y)
         e.set_editor_property("parameter_name", param)
         e.set_editor_property("default_value", False)
-        MEL.connect_material_expressions(on, on_pin, e, "True")
-        MEL.connect_material_expressions(off, off_pin, e, "False")
+        self.link(on, on_pin, e, "True")
+        self.link(off, off_pin, e, "False")
         return e
 
     def out(self, e, pin, prop):
-        MEL.connect_material_property(e, pin, prop)
+        if not MEL.connect_material_property(e, pin, prop) and self.checked:
+            raise RuntimeError("%s: could not connect %s.%s to %s" % (self.mat.get_name(), e.get_name(), pin, prop))
 
 
 def _build_substance(mat):

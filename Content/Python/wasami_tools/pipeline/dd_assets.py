@@ -240,7 +240,7 @@ def material(asset_path, build, domain=None, blend_mode=None):
     Returns the material, recompiled."""
     if EAL.does_asset_exist(asset_path):
         mat = unreal.load_asset(asset_path)
-        MEL.delete_all_material_expressions(mat)
+        dd_stage.clear_expressions(mat)
     else:
         folder, name = paths.split(asset_path)
         mat = _tools().create_asset(name, folder, unreal.Material, unreal.MaterialFactoryNew())
@@ -254,9 +254,10 @@ def material(asset_path, build, domain=None, blend_mode=None):
     return mat
 
 
-def material_instance(asset_path, parent, scalars=None, vectors=None, textures=None):
+def material_instance(asset_path, parent, scalars=None, vectors=None, textures=None, static_masks=None):
     """Loads or creates a MaterialInstanceConstant of parent and sets its parameters ({name: value}; a vector is 4
-    numbers, a texture an asset path); the parameters it had before are cleared first. Returns the instance."""
+    numbers, a texture an asset path, a static component mask the channels it keeps, 'G'); the parameters it had before
+    (static ones too) are cleared first. Returns the instance."""
     if EAL.does_asset_exist(asset_path):
         mic = unreal.load_asset(asset_path)
     else:
@@ -271,8 +272,74 @@ def material_instance(asset_path, parent, scalars=None, vectors=None, textures=N
         MEL.set_material_instance_vector_parameter_value(mic, key, unreal.LinearColor(*[float(v) for v in value]))
     for key, value in (textures or {}).items():
         MEL.set_material_instance_texture_parameter_value(mic, key, unreal.load_asset(value))
+    # Python has no setter for a static component mask (UWasamiMaterialLibrary); the update rebuilds the permutation.
+    for key, channels in (static_masks or {}).items():
+        unreal.WasamiMaterialLibrary.set_static_component_mask(mic, key, *[c in channels for c in "RGBA"])
     MEL.update_material_instance(mic)
     return mic
+
+
+# The engine's material function libraries.
+FUNCTIONS_01 = "/Engine/Functions/Engine_MaterialFunctions01/"
+FUNCTIONS_02 = "/Engine/Functions/Engine_MaterialFunctions02/"
+# Parameters an instance's export lists that are the engine's own (every material has RefractionDepthBias; the
+# original's particle and UI materials do not use it).
+ENGINE_PARAMETERS = ("RefractionDepthBias",)
+
+
+def connect(a, a_pin, b, b_pin):
+    """Connects a's output a_pin to b's input b_pin, or raises (MaterialEditingLibrary only returns False)."""
+    if not MEL.connect_material_expressions(a, a_pin, b, b_pin):
+        raise RuntimeError("could not connect %s.%s to %s.%s" % (a.get_name(), a_pin, b.get_name(), b_pin))
+
+
+def function_call(g, name, x, y, library=FUNCTIONS_01):
+    """A call of the engine's material function library + name ('Gradient/RadialGradientExponential') in graph g."""
+    call = g.node(unreal.MaterialExpressionMaterialFunctionCall, x, y)
+    call.set_editor_property("material_function", unreal.load_asset(library + name))
+    return call
+
+
+def constant(g, value, x, y):
+    e = g.node(unreal.MaterialExpressionConstant, x, y)
+    e.set_editor_property("r", value)
+    return e
+
+
+def parameter_defaults(rel, version):
+    """A material's scalar and vector parameter defaults from its export ({name: value}, {name: [r, g, b, a]}); a
+    default the export leaves out is the engine's (0, or black)."""
+    scalars, vectors = {}, {}
+    for e in export_json(rel, version)["exports"]:
+        p = e["props"]
+        if e["class"] == "MaterialExpressionScalarParameter":
+            scalars[p["ParameterName"]] = p.get("DefaultValue", 0.0)
+        elif e["class"] == "MaterialExpressionVectorParameter":
+            vectors[p["ParameterName"]] = p.get("DefaultValue", [0.0, 0.0, 0.0, 1.0])
+    return scalars, vectors
+
+
+def instance_parameters(rel, version):
+    """A material instance's own values from its export: ({scalar: value}, {vector: [r, g, b, a]}, {texture: our asset
+    path}, {static component mask: the channels it keeps, 'G'}), without the engine's parameters (ENGINE_PARAMETERS).
+    Static parameters of other kinds raise (nothing writes them yet)."""
+    props = main_export(export_json(rel, version), rel)["props"]
+
+    def own(key):
+        return [v for v in props.get(key, []) if v["ParameterInfo"]["Name"] not in ENGINE_PARAMETERS]
+
+    def colour(value):
+        return [value[c] for c in "RGBA"] if isinstance(value, dict) else list(value)
+
+    scalars = {v["ParameterInfo"]["Name"]: v["ParameterValue"] for v in own("ScalarParameterValues")}
+    vectors = {v["ParameterInfo"]["Name"]: colour(v["ParameterValue"]) for v in own("VectorParameterValues")}
+    textures = {v["ParameterInfo"]["Name"]: asset_path(game_rel(v["ParameterValue"])) for v in own("TextureParameterValues")}
+    static = dict(props.get("StaticParameters") or {})
+    masks = {p["ParameterInfo"]["Name"]: "".join(c for c in "RGBA" if p.get(c))
+             for p in static.pop("StaticComponentMaskParameters", []) if p.get("bOverride")}
+    if any(static.values()):
+        raise NotImplementedError("%s has static parameters %s" % (rel, sorted(k for k, v in static.items() if v)))
+    return scalars, vectors, textures, masks
 
 
 def _curve_points(points, point_cls, convert):

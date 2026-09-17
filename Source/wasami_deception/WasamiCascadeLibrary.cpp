@@ -2,8 +2,6 @@
 
 #if WITH_EDITOR
 #include "Distributions/Distribution.h"
-#include "Distributions/DistributionFloat.h"
-#include "Distributions/DistributionVector.h"
 #include "Engine/InterpCurveEdSetup.h"
 #include "Misc/StringOutputDevice.h"
 #include "Particles/ParticleEmitter.h"
@@ -109,9 +107,54 @@ namespace
 		return Depth == 0;
 	}
 
+	bool CheckStructText(const UStruct* Struct, const TCHAR*& Cursor, FString& Error);
+
+	/** Whether a struct's text is checked member by member (a struct with its own text import is left to it). */
+	bool IsCheckedStruct(const FProperty* Property)
+	{
+		const FStructProperty* StructProperty = CastField<FStructProperty>(Property);
+		return StructProperty && !(StructProperty->Struct->StructFlags & STRUCT_ImportTextItemNative);
+	}
+
+	/** Checks each element of an array of Struct's text ('((A=1),(A=2))') with CheckStructText. */
+	bool CheckStructArrayText(const UStruct* Struct, const TCHAR*& Cursor, FString& Error)
+	{
+		SkipSpaces(Cursor);
+		if (*Cursor != TEXT('('))
+		{
+			Error = FString::Printf(TEXT("the text of an array of %s does not open with '('"), *Struct->GetName());
+			return false;
+		}
+		++Cursor;
+		for (;;)
+		{
+			SkipSpaces(Cursor);
+			if (*Cursor == TEXT(')'))
+			{
+				++Cursor;
+				return true;
+			}
+			if (!CheckStructText(Struct, Cursor, Error))
+			{
+				return false;
+			}
+			SkipSpaces(Cursor);
+			if (*Cursor == TEXT(','))
+			{
+				++Cursor;
+			}
+			else if (*Cursor != TEXT(')'))
+			{
+				Error = FString::Printf(TEXT("the text of an array of %s does not close"), *Struct->GetName());
+				return false;
+			}
+		}
+	}
+
 	/**
 	 * Checks that every member a struct's text names ('(A=1,B=(C=2))') is a property of Struct, down through nested
-	 * structs: UE's own import passes over unknown members without a word (it reports them at LogExec's Verbose).
+	 * structs and arrays of them: UE's own import passes over unknown members without a word (it reports them at
+	 * LogExec's Verbose).
 	 */
 	bool CheckStructText(const UStruct* Struct, const TCHAR*& Cursor, FString& Error)
 	{
@@ -160,10 +203,21 @@ namespace
 			}
 			++Cursor;
 			SkipSpaces(Cursor);
-			const FStructProperty* StructMember = CastField<FStructProperty>(Member);
-			const bool bNested = StructMember && *Cursor == TEXT('(')
-				&& !(StructMember->Struct->StructFlags & STRUCT_ImportTextItemNative);
-			if (!(bNested ? CheckStructText(StructMember->Struct, Cursor, Error) : SkipValue(Cursor, Error)))
+			const FArrayProperty* ArrayMember = CastField<FArrayProperty>(Member);
+			bool bChecked;
+			if (IsCheckedStruct(Member) && *Cursor == TEXT('('))
+			{
+				bChecked = CheckStructText(CastField<FStructProperty>(Member)->Struct, Cursor, Error);
+			}
+			else if (ArrayMember && IsCheckedStruct(ArrayMember->Inner) && *Cursor == TEXT('('))
+			{
+				bChecked = CheckStructArrayText(CastField<FStructProperty>(ArrayMember->Inner)->Struct, Cursor, Error);
+			}
+			else
+			{
+				bChecked = SkipValue(Cursor, Error);
+			}
+			if (!bChecked)
 			{
 				return false;
 			}
@@ -180,38 +234,50 @@ namespace
 		}
 	}
 
+	void CollectReferencedObjects(const UStruct* Struct, const void* Container, TSet<UObject*>& Used);
+
+	/** The objects one value refers to: itself for an object, and down through structs and arrays. */
+	void CollectReferencedObjectsInValue(const FProperty* Property, const void* Value, TSet<UObject*>& Used)
+	{
+		if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(Property))
+		{
+			Used.Add(ObjectProperty->GetObjectPropertyValue(Value));
+		}
+		else if (const FStructProperty* StructProperty = CastField<FStructProperty>(Property))
+		{
+			CollectReferencedObjects(StructProperty->Struct, Value, Used);
+		}
+		else if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property))
+		{
+			FScriptArrayHelper Array(ArrayProperty, Value);
+			for (int32 Index = 0; Index < Array.Num(); ++Index)
+			{
+				CollectReferencedObjectsInValue(ArrayProperty->Inner, Array.GetRawPtr(Index), Used);
+			}
+		}
+	}
+
+	/** The objects Container's properties refer to (a raw distribution's Distribution among them). */
+	void CollectReferencedObjects(const UStruct* Struct, const void* Container, TSet<UObject*>& Used)
+	{
+		for (TFieldIterator<FProperty> It(Struct); It; ++It)
+		{
+			for (int32 Index = 0; Index < It->ArrayDim; ++Index)
+			{
+				CollectReferencedObjectsInValue(*It, It->ContainerPtrToValuePtr<void>(Container, Index), Used);
+			}
+		}
+	}
+
 	/**
 	 * Moves out the distribution objects Module holds but no longer uses: a module makes its own when it is made, and a
-	 * table written over one (with Distribution=None) leaves it behind.
+	 * table written over one (with Distribution=None) leaves it behind. A distribution counts as used wherever the
+	 * module's values refer to it, an array of structs included (a dynamic parameter's ParamValue).
 	 */
 	void RenameAwayUnusedDistributions(UParticleModule* Module)
 	{
 		TSet<UObject*> Used;
-		for (TFieldIterator<FProperty> It(Module->GetClass()); It; ++It)
-		{
-			if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
-			{
-				const FName StructName = StructProperty->Struct->GetFName();
-				for (int32 Index = 0; Index < StructProperty->ArrayDim; ++Index)
-				{
-					if (StructName == NAME_RawDistributionFloat)
-					{
-						Used.Add(StructProperty->ContainerPtrToValuePtr<FRawDistributionFloat>(Module, Index)->Distribution);
-					}
-					else if (StructName == NAME_RawDistributionVector)
-					{
-						Used.Add(StructProperty->ContainerPtrToValuePtr<FRawDistributionVector>(Module, Index)->Distribution);
-					}
-				}
-			}
-			else if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(*It))
-			{
-				for (int32 Index = 0; Index < ObjectProperty->ArrayDim; ++Index)
-				{
-					Used.Add(ObjectProperty->GetObjectPropertyValue_InContainer(Module, Index));
-				}
-			}
-		}
+		CollectReferencedObjects(Module->GetClass(), Module, Used);
 		TArray<UObject*> Children;
 		GetObjectsWithOuter(Module, Children, EGetObjectsFlags::None);
 		for (UObject* Child : Children)
@@ -403,14 +469,20 @@ FString UWasamiCascadeLibrary::SetPropertyText(UObject* Object, const FString& N
 	{
 		return Error;
 	}
-	if (const FStructProperty* StructProperty = CastField<FStructProperty>(Property))
+	const TCHAR* Cursor = *Text;
+	const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property);
+	bool bChecked = true;
+	if (IsCheckedStruct(Property))
 	{
-		const TCHAR* Cursor = *Text;
-		if (!(StructProperty->Struct->StructFlags & STRUCT_ImportTextItemNative)
-			&& !CheckStructText(StructProperty->Struct, Cursor, Error))
-		{
-			return FString::Printf(TEXT("%s.%s: %s"), *Object->GetName(), *Name, *Error);
-		}
+		bChecked = CheckStructText(CastField<FStructProperty>(Property)->Struct, Cursor, Error);
+	}
+	else if (ArrayProperty && IsCheckedStruct(ArrayProperty->Inner))
+	{
+		bChecked = CheckStructArrayText(CastField<FStructProperty>(ArrayProperty->Inner)->Struct, Cursor, Error);
+	}
+	if (!bChecked)
+	{
+		return FString::Printf(TEXT("%s.%s: %s"), *Object->GetName(), *Name, *Error);
 	}
 	FStringOutputDevice Errors;
 	void* Value = Property->ContainerPtrToValuePtr<void>(Object, Index);
