@@ -7,6 +7,7 @@ sources:
   - Tools/console_session.py
   - Tools/desktop.py
   - Tools/desktop_agent.py
+  - Tools/overnight.py
   - Content/Python/init_unreal.py
   - Content/Python/wasami_tools/__init__.py
   - Content/Python/wasami_tools/toolsets/__init__.py
@@ -49,6 +50,7 @@ updated: 2026-09-17
 | `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、**対話デスクトップで**開き直して、リモート実行が応答するまで待つ |
 | `python Tools/console_session.py <exe> [args] [--wait <画像名>]` | 任意のプログラムを**対話デスクトップ（コンソールのセッション）で**起動する。Claude はセッション 0 にいて GPU の出力が見えないので、GUI のプログラムは一度きりのスケジュールタスク（ログオン中のユーザーの SID・`LogonType Interactive`）経由で起動する。起動したらタスクを消す。本家のゲームのランチャを動かすのに使う（`.claude/guides/verification.md`） |
 | `python Tools/desktop.py <start\|shot\|click\|key\|hold\|look\|stop\|…>` | 対話デスクトップの画面を撮り、入力を送る。セッション 1 に常駐する `Tools/desktop_agent.py`（`pythonw.exe`、`console_session.py` が起動）と `Intermediate/DesktopAgent/` の JSON でやり取りする。入力は前面の窓が許可した対象（既定は本家のゲーム）のときだけ届き、OS 全体に効くキーは断る。使い方と枠は `.claude/guides/verification.md` の「画面を操作する」 |
+| `python Tools/overnight.py --until HH:MM (--usage-cmd "<cmd>" \| --no-usage-check) [--max-iterations N] [--dry-run]` | 夜間の無人運転の駆動役（`.claude/guides/autonomy.md`）。**ユーザーの端末から**起動し、`WASAMI_UNATTENDED=1` を付けて `claude -p "/continue" --permission-mode auto --permission-prompts none` をプロジェクトの直下で繰り返す。Claude が応答を終える（プロセスが終わる）ことが次の反復の合図で、反復にタイムアウトは無い。反復の前に `--usage-cmd`（使用量を `{"seven_day": {"utilization": 0〜100, "resets_at": ISO 8601}, "five_hour": {…}}` で出す任意のコマンド）で予算を判定し、後に `Intermediate/Overnight/status.json`（Claude が書く `result` / `reason` / `step` / `commit` / `written`）と HEAD の変化を見る。止まるのは Claude の `stop`、HEAD が 2 回続けて動かない、`--until`、`--max-iterations`、予算、使用量が読めない。Claude の出力は `Intermediate/Overnight/<YYYYMMDD-HHMM>.log` に反復ごとの見出しつきで流し、終わりに朝向けのまとめ（反復数・理由・最後の状態・要確認の件数）を出す。終了コードは 0 予定どおり / 2 予算か使用量が読めない / 3 進捗なしか起動できない / 4 引数（Claude Code のセッションの中からの起動を含む） |
 
 ## 内部構造と処理の流れ
 
@@ -152,6 +154,7 @@ updated: 2026-09-17
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-17: `Tools/overnight.py`（夜間の無人運転の駆動役）を足した。使用量は自分では読まず `--usage-cmd` で差し込む形にした（auto モードの分類器が認証情報のファイルと CLI 本体の読み取りを `[Credential Exploration]` で拒否したため。症状索引に書いた）。Claude の「usage limit reached」の返事の形は推定（`|エポック秒` が付く旧来の形と、付かない形の両方を見る。付かない形は 30 分待つ）。
 - 2026-09-17: `Tools/desktop.py` の説明文を、エディタへの入力に確認は要らない（ユーザーが操作している間は送らない）という決まりに合わせた（ユーザーの指示。処理は変えていない）。
 - 2026-09-16: 焼き込みの警告（インポータンスボリュームが無い・ライトマップ UV の重なり）がどちらも原作どおりであることを「既知の制約・注意点」に書いた（ソースは変えていない）
 - 2026-09-16: `apply_texture_settings` が、UE が sRGB を切る圧縮（HDR など）で sRGB を求めないようにした（HDR の空 2 枚が `refresh_settings` のたびに変わったと数えられていた）

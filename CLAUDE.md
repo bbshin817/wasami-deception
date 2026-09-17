@@ -42,3 +42,4 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 対話デスクトップ（コンソールのセッション）でプログラムを起動する: `python Tools/console_session.py <exe> [--wait <画像名>]`
 - 画面を撮る・入力を送る（対話デスクトップ）: `python Tools/desktop.py start` → `shot` / `click` / `key` / `hold` / `look` → `stop`
 - 実装記録の同期チェック / ハッシュ更新: `python .claude/scripts/check_records.py [--update]`
+- 夜間の無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N`。決まりは `.claude/guides/autonomy.md`）

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(python Tools/editor_cycle.py *)",
-      "PowerShell(python Tools/editor_cycle.py *)"
+      "PowerShell(python Tools/editor_cycle.py *)",
+      "Bash(python Tools/overnight.py --dry-run *)",
+      "PowerShell(python Tools/overnight.py --dry-run *)"
     ]
   },
   "hooks": {
