@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 559d87e
 started: 2026-09-18 03:55
-updated: 2026-09-18 09:40
+updated: 2026-09-18 12:10
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -33,18 +33,23 @@ updated: 2026-09-18 09:40
   - [x] 5c. 収録の仕掛けを 3 つ直して（窓の最大化・ソケットの持ち越し・PIE のクリックで回る視点）幕を測り直した。
   - [x] 5c2a. **V の窓の流れは対象外**（球の幾何と発動ごとの乱数で決まる）。
   - [x] 5c2b. **幕の広い模様の差は背景だった** … 2026-09-18。窓に写っているのは白飛びした廊下で、`room`（部屋をどれだけ測っているか）は奥の扉の窓で本家 0.81・本作 0.16〜0.38。**材質は変えていない**。値と表は `observations/README.md` の「幕の広い模様は背景だった」、道具は `tools/burst_bands.py`。
-  - [ ] 5d. 終わりの破片を「角ばった板状のかけら」に見直す（`_build_star_dust`・`dustSq`。形・数・尾）
+  - [x] 5d1. **破片は星屑（`dustSq`）で、本家のそれは四芒星**だと分かった … 2026-09-18。道具 `burst_blobs.py`（明るい塊を 1 つずつ拾う）と `forcefield_solo.py`（エミッタを 1 つだけにする）を作り、本作のエミッタ別の収録 4 件（`pie-solo-{aura,ground,sphere,dust}025`）で確かめた。**値もアセットも変えていない**。`observations/README.md` の「終わりの破片は星屑で、本家のは四芒星だった」。
+  - [ ] 5d2. `_build_star_dust` の `swSQdust` の真偽を入れ替え、四芒星の腕を本家の長さに収める
 - [ ] 6. Telepathy の印を収録に合わせて詰める（`TELEPATHY_PAN_*`、縁のこぶ）
 - [ ] 7. 仕上げ（実装記録 04 の「既知の制約・注意点」と変更履歴、`observations/README.md`、`.claude/roadmap.md` の項目 23、`handover.md`、note の原稿）
 
 ## 次にやること
 
-ステップ 5d（**終わりの破片**）。ステップ 4 で「本家の破片は**角ばった板状のかけら**で、白飛びした芯に短い尾が付き、画面上半分の帯にまとまって中央へ寄る（丸い粒ではない）」と分かっている。本作は `dustSq` エミッタ + `_build_star_dust`（`M_ky_starDust` / `MI_ky_starDust_sq`。`TODO(仮)`）。
+ステップ 5d2（**星屑の形**）。5d1 で目標がはっきりした。
 
-1. **まず測れる場面かを確かめる**（5c2b の教訓）。破片が出る τ（`orig-tk-a025` の収録 4 秒以降）で `python observations/tools/burst_bands.py bands centre <τ>` を本家と本作で出し、`room` が 0.3 を超える窓では材質を決めない。白飛びが引いていれば、破片は暗い背景の上の点なので**粒を 1 つずつ拾って測れる**（明るい画素の塊 → 面積・縦横比・向き・数）。
-2. 本作の連写は `pie-wall-a025`〜`e025` に同じ場面が入っているので、**まず撮らずに比べる**。差が出たら `_build_star_dust` か `dustSq` の値（粒子の大きさ・向き）のどちらの話かを切り分ける（粒子の値は cook のままなので、**変えてよいのは材質の推定だけ**）。
-3. 材質を作り直す前に `python Tools/pie.py stop`（PIE 中は `unreal.load_asset` が None を返す）。作り直しは `Tools/ue_remote.py` から `dd_powers.make_telekinesis_materials()`。
-4. 撮り直すときは `sh observations/tools/telekinesis_burst.sh observations/ours/pie-dust-<版> 200` を**同じ値で 2 回**（2 回の差より小さい変化は採らない）。
+- **本家**（`orig-tk-a025/f114`、τ1.1 の 1 粒）: 四芒星。芯は (250, 255, 255) で白飛び、腕は細って辺が凹む。明るさが半分になる半径 **9 本家 px**、1/10 が **21 本家 px**。
+- **本作**（`pie-solo-dust025/f098`、τ1.0 の 1 粒）: 平らなひし形。芯は (1, 173, 223) で飽和せず、半分 **30**・1/10 **48 本家 px**。
+
+1. **偽の側を四芒星にする**。cook が残すのは `swSQdust`（既定 真・A = `Multiply_28`・B = `Multiply_9`）という並びだけで、番号の新旧では決められない。見えているものを根拠に入れ替える（実装記録 04 と `_build_star_dust` の `TODO(wrong)` に理由を書いてある）。
+2. **腕を短くする仕掛けを探す**のが本題。`T_ky_dust_longStar` は **512²・中央の行が 1 で上下の端が 0.365 の縦の勾配だけ**（横は一定）なので、R の `starDensity` 乗は幅 2〜7 % の横帯で長さはスプライト全体。`RadialGradientExponential(maskRadius 0.5, maskDensity 1)` だけでは腕が残る（11b4 の前は画面を横切る十字が出ていた）。候補: 2 つのサンプルの合わせ方（`Blend_Screen` の前後に何か）、`RadialGradientExponential` に渡す UV、作らなかった `starPower`・`threshold`・`useDistanceSize` の側の読み直し。**cook の「式が 40 個」に収まる形**にする。
+3. 作り直す前に `python Tools/pie.py stop`。作り直しは `Tools/ue_remote.py` から `dd_powers.make_telekinesis_materials()`。
+4. 撮るときは **`forcefield_solo.py` で `dustSq` だけにしてから** `sh observations/tools/telekinesis_burst.sh observations/ours/pie-dust-<版> 200`（粒が幕に埋もれない）。終わったら `main('all')` で戻す。測るのは `burst_blobs.py` と 1 粒の半径。
+5. 値を採るのは**同じ値で 2 回撮って**その差より大きい変化だけ。
 
 ## 決定事項
 
@@ -58,6 +63,11 @@ updated: 2026-09-18 09:40
 - 2026-09-18（5c2b）: **白飛びした窓で材質の模様を比べない**。V・F の窓に写るのは青く白飛びした廊下で、模様の大半は部屋の形。窓ごとに `room`（`burst_bands.py`。100〜700 px の帯と閃光の前の同じ窓との相関）を先に見て、0.3 を超えるならその窓で材質は決められない。**閃光の前のフレームで本家と本作の背景が揃っているかも先に見る**（本作の奥の扉は観察の代用のエレベーターの扉で、本家の赤い両開きの扉より 2 倍明るく、閃光の最中は真っ白に飛ぶ）。
 - 2026-09-18（5c2b）: **40 本家 px より細かい帯は比べない**（本作のビューポートは 1152 px 幅で、TAA と解像度で細部が落ちる）。
 
+- 2026-09-18（5d1）: **終わりの破片は `dustSq`（星屑）**。寿命から τ1.0 より後に残れるのはこれだけで（`aura` は τ1.0 まで、`ground`・`sphere` は寿命 1.0）、その頃は廊下が元の暗さに戻るので 1 粒ずつ拡大して見られる。**幕（`sphere`）は本作の τ0.7〜0.8 の塊のほとんどだが、5c2b で対象から外した**ので触らない。
+- 2026-09-18（5d1）: **エミッタを 1 つだけにするには `DetailModeBitmask` を 0 にする**。LOD の `bEnabled` は系の読み込みで真に戻され、黙って全部入りのまま撮れる。切ったものが本当に消えたか 1 コマ見る。
+- 2026-09-18（5d1）: **まばらな粒は帯の統計では測れない**（`room` が τ0.85 で 0.78〜0.97）。`burst_blobs.py` で 1 つずつ拾い、**短軸/長軸 > 0.2** だけを粒として数える（細長い塊は部屋の稜線）。
+- 2026-09-18（5d1）: **芯の白飛びは「とても明るい青」の意味**。4 つの材質はどれも `BLEND_Translucent`・`MSM_Unlit` で Emissive は粒子の色（`dustSq` は R = 0）だが、UE のトーンマッパーは AP1 に移してからチャンネルごとに曲げるので、十分明るい青は R も 1 を超える。**色の推定を疑う前に明るさを疑う。**
+
 ## 要確認（ユーザー）
 
 - **幕の模様を合わせる対象から外した**（2026-09-18、5c2b）。2026-09-17 の依頼の「球の幕の筋（本作は少ない）」は、本家の連写では**幕ではなく背景（白飛びした廊下と、本作の代用の扉）を測っていた**と分かった。`_build_wall02` の推定は否定されていないが、この収録では良し悪しを決められない。詰めるなら、**幕が暗く特徴の無い背景を覆う所**で本家を撮り直し（球の中から壁や床だけが写る向き）、本作も同じ向きで撮る必要がある。
@@ -68,7 +78,7 @@ updated: 2026-09-18 09:40
 
 - 連写は `observations/original/`・`observations/ours/`、道具は `observations/tools/`（どれも git の外）。使い方は `observations/README.md` の tools の表（5c2b で `burst_bands.py` を足した）。`times.json` は `perf_counter` 秒で**等間隔ではない**。
 - **PIE を動かしたままアセットを作り直すと `unreal.load_asset` が None を返す**（`'NoneType' object has no attribute 'set_editor_property'` で止まる）。`telekinesis_burst.sh` は PIE を動かしたまま終わるので、作り直す前に `python Tools/pie.py stop`。
-- 本作の収録は `pie-wall-{a..e}025`（5c・5c2a）・`pie-wall-noshake{,-b,-c}025`（5c2a）・`pie-tk-{a..e}025`（5b）。5c2b の絵は `ours/veil-5c2b-scene.png`・`veil-5c2b-broad.png`。走り書きは `tmp/tk5b/`・`tmp/tk5c/`・`tmp/tk5c2/`・`tmp/tk5c2b/`（git の外）。
+- 本作の収録は `pie-solo-{aura,ground,sphere,dust}025`（5d1。閃光は f025 t=1.397 / f026 t=1.476 / f025 t=1.415 / f025 t=1.399）・`pie-wall-{a..e}025`（5c・5c2a）・`pie-wall-noshake{,-b,-c}025`（5c2a）・`pie-tk-{a..e}025`（5b）。5c2b の絵は `ours/veil-5c2b-scene.png`・`veil-5c2b-broad.png`。走り書きは `tmp/tk5d/`（5d1 の絵）・`tmp/tk5b/`・`tmp/tk5c/`・`tmp/tk5c2/`・`tmp/tk5c2b/`（git の外）。
 - カメラの揺れを切って撮るには、PIE を始める前に `Tools/ue_remote.py` で `unreal.get_default_object(unreal.WasamiTelekinesisPower).set_editor_property('shake_class', None)`。戻すのは `unreal.load_class(None, '/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.01_Hotel_Lobby_ElevatorShakeStop_C')`（CDO なので保存は要らない）。
 - 背景で走らせた測りの出力を読むときは、パスを**スラッシュ**で書く（`"...\tasks\$f.output"` は `\$` が展開を止めて空になる）。
 - 本家のセーブは、観察の途中で捕まって書き換わっている（控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-20260918-044132`。**戻さない・編集しない**）。本家をもう一度起動するときはエディタを先に閉じる（VRAM 6 GB）。手順は `.claude/guides/observation.md`。
@@ -76,4 +86,4 @@ updated: 2026-09-18 09:40
 
 ## 検証
 
-- ステップ 5c2b は**記録と注記だけ**を変え、値とアセットは 5a の終わりと同じ（`check_records.py --update` は OK・7 件）。本家は起動していない。エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。
+- ステップ 5d1 も**記録と注記だけ**を変え、値とアセットは 5a の終わりと同じ（`forcefield_solo.py` で切ったエミッタは `main('all')` で 15 に戻して保存済み。`check_records.py --update` は OK・7 件）。本家は起動していない。エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。

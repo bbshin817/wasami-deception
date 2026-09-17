@@ -705,7 +705,13 @@ def _build_star_dust(mat, d):
            Rotator over Time × flashTime (the two lines turn against each other, and the star twinkles), screened
            together, × RadialGradientExponential(maskRadius, maskDensity) (the arms fade out) × flashPower
     The opacity is saturate(the switch) × the particle's alpha, faded over fadeValue. useDistanceSize's on side
-    (threshold) and starPower are not made, and the world position offset is left unconnected."""
+    (threshold) and starPower are not made, and the world position offset is left unconnected.
+    TODO(wrong): the two sides are the wrong way round. The lossless burst shows the force field's dust (this
+    instance, swSQdust off) as a small four-pointed star with a white-hot core and tapering arms, not as a diamond
+    (observations/README.md, step 5d1: ours is a flat cyan diamond of twice the radius and never clips). Step 11b4
+    read a square off an h264 frame, where the star blurs into one. The off side has to be the star, and its arms
+    have to end within about a twentieth of the sprite - which the star built here does not do (before 11b4 it drew
+    a cross across the screen), so the switch cannot just be swapped. Step 5d2."""
     dd_assets.particle_material(mat, responsive_aa=True)
     g = dd_stage._Graph(mat, checked=True)
     particle = g.node(unreal.MaterialExpressionParticleColor, -400, 400)
