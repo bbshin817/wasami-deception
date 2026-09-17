@@ -113,9 +113,20 @@ DECAL_PULSE_HIGH = 0.6
 PRIMAL = "Materials/05_Circus/M_05_Primal"
 PRIMAL_MASTER = "/Game/Pipeline/Materials/M_DD_Primal"
 PRIMAL_TEXTURE = "Textures/05_Circus/T_05_PortalMaps"
-# The export keeps a Panner (Panner_1) as the sample's coordinates, but not its speed: a placeholder until the sphere is
-# compared with the latest version's hospital.
+# The export keeps a Panner (Panner_1) as the sample's coordinates, but not its speed.
+# TODO(仮): the speed and the knobs below are our estimate, matched to the latest version's recording of the sphere
+# (observations/README.md, step 11b2). The knobs are the master's parameters (the original's instance sets none of them).
 PRIMAL_PAN_SPEED = (0.1, 0.1)
+PRIMAL_KNOBS = {
+    "Tiling": 2.0,  # the mesh's UVs × this, into the Panner
+    "SparkleGain": 10.0,  # R × this, saturated: the flakes
+    "SparkleBrightness": 3.0,
+    "CloudDark": 0.01,  # the emissive where B is 0 and where it is 1
+    "CloudBright": 0.1,
+    "CloudOpacity": 0.95,  # the opacity away from the flakes and the edge
+    "EdgeDistance": 50.0,  # DepthFade's distance (cm): the glow where the sphere cuts the level
+    "EdgeBrightness": 6.0,
+}
 
 # Vanish (pak_reference_2): the puff's material and the widget's, with the masters holding our estimates of their graphs.
 LOOPING_SMOKE = "Particles/Shared/SmokeTest/M_LoopingSmoke1_Sheet"
@@ -292,30 +303,52 @@ def _build_primal(mat):
     """M_05_Primal (pak_reference_2), estimated. The cook kept its settings (translucent, two-sided, used with static
     lighting; the default lit shading, as the cook writes any other), the parameters Color, Opacity and Desaturation, one
     sample of T_05_PortalMaps at a Panner's coordinates, and an Add as the emissive colour's last node (a cook keeps no
-    material's opacity input, so whether it was connected is unknown). The estimate: Desaturation(Color × B,
-    Desaturation) + Color × R as the emissive colour, saturate(B + R) × Opacity as the opacity."""
+    material's opacity input, so whether it was connected is unknown), of 43 expressions.
+
+    The estimate follows the recording (observations/README.md, step 11b2): seen from its centre, the sphere is a dark
+    red veil clouded by B, strewn with bright flakes the size of R's sparkles at the mesh's own UVs (wide, blocky, as
+    few texels magnified), and it glows where it cuts the level. So, sampling at the mesh's UVs × Tiling through the
+    Panner: flakes = saturate(R × SparkleGain), clouds = Lerp(CloudDark, CloudBright, B), edge = 1 −
+    DepthFade(EdgeDistance); the emissive colour is Add(Desaturation(Color × clouds, Desaturation), Color × (flakes ×
+    SparkleBrightness + edge × EdgeBrightness)), and the opacity saturate(CloudOpacity + flakes + edge) × Opacity. The
+    knobs' defaults are PRIMAL_KNOBS."""
     mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_static_lighting", True)
-    g = dd_stage._Graph(mat)
+    g = dd_stage._Graph(mat, checked=True)
+    knob = {name: g.scalar(name, value, -1500, -600 + 100 * i) for i, (name, value) in enumerate(PRIMAL_KNOBS.items())}
     pan = g.node(unreal.MaterialExpressionPanner, -1300, 0)
     pan.set_editor_property("speed_x", PRIMAL_PAN_SPEED[0])
     pan.set_editor_property("speed_y", PRIMAL_PAN_SPEED[1])
+    coords = g.node(unreal.MaterialExpressionTextureCoordinate, -1650, 100)
+    dd_assets.connect(g.multiply(coords, "", knob["Tiling"], "", -1450, 100), "", pan, "Coordinate")
     tex = g.node(unreal.MaterialExpressionTextureSample, -1100, 0)
     tex.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(PRIMAL_TEXTURE)))
     tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     dd_assets.connect(pan, "", tex, "UVs")
     colour = g.vector("Color", (1.0, 0.0, 0.0, 1.0), -1100, -300)
-    clouds = g.multiply(colour, "RGB", tex, "B", -850, -200)
-    washed = g.node(unreal.MaterialExpressionDesaturation, -650, -200)
-    dd_assets.connect(clouds, "", washed, "")
-    dd_assets.connect(g.scalar("Desaturation", 0.0, -850, -50), "", washed, "Fraction")
-    sparkles = g.multiply(colour, "RGB", tex, "R", -650, -350)
-    glow = g.binary(unreal.MaterialExpressionAdd, washed, "", sparkles, "", -400, -250)
+
+    flakes = g.node(unreal.MaterialExpressionSaturate, -700, 0)
+    dd_assets.connect(g.multiply(tex, "R", knob["SparkleGain"], "", -850, 0), "", flakes, "")
+    fade = g.node(unreal.MaterialExpressionDepthFade, -850, 300)  # its Opacity pin left at 1
+    dd_assets.connect(knob["EdgeDistance"], "", fade, "FadeDistance")
+    edge = g.node(unreal.MaterialExpressionOneMinus, -700, 300)
+    dd_assets.connect(fade, "", edge, "")
+
+    clouds = g.lerp(knob["CloudDark"], "", knob["CloudBright"], "", tex, "B", -850, -200)
+    washed = g.node(unreal.MaterialExpressionDesaturation, -500, -250)
+    dd_assets.connect(g.multiply(colour, "RGB", clouds, "", -650, -250), "", washed, "")
+    dd_assets.connect(g.scalar("Desaturation", 0.0, -650, -150), "", washed, "Fraction")
+    lit = g.binary(unreal.MaterialExpressionAdd,
+                   g.multiply(flakes, "", knob["SparkleBrightness"], "", -550, 0), "",
+                   g.multiply(edge, "", knob["EdgeBrightness"], "", -550, 300), "", -400, 100)
+    glow = g.binary(unreal.MaterialExpressionAdd, washed, "", g.multiply(colour, "RGB", lit, "", -300, 0), "", -150, -100)
     g.out(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    cover = g.binary(unreal.MaterialExpressionAdd, tex, "B", tex, "R", -850, 150)
-    clamped = g.node(unreal.MaterialExpressionSaturate, -650, 150)
+
+    cover = g.binary(unreal.MaterialExpressionAdd, knob["CloudOpacity"], "",
+                     g.binary(unreal.MaterialExpressionAdd, flakes, "", edge, "", -550, 450), "", -400, 450)
+    clamped = g.node(unreal.MaterialExpressionSaturate, -250, 450)
     dd_assets.connect(cover, "", clamped, "")
-    opacity = g.multiply(clamped, "", g.scalar("Opacity", 1.0, -650, 300), "", -400, 200)
+    opacity = g.multiply(clamped, "", g.scalar("Opacity", 1.0, -250, 600), "", -100, 500)
     g.out(opacity, "", unreal.MaterialProperty.MP_OPACITY)
 
 

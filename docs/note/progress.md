@@ -37,6 +37,8 @@ Telepathy。壁の向こうの相手に赤い印が付きます（敵はまだ�
 
 ![Telepathy の赤い印](../../observations/ours/note/04-telepathy.jpg)
 
+Primal Fear を使うと、画面が赤く光ります。同時に、光の欠片が散った赤い球が周りに広がり、球が壁や床と交わる所が光ります。
+
 Telekinesis を使った瞬間。画面が青く光り、周りのシャードが飛んできます。
 
 ![Telekinesis を使った瞬間](../../observations/ours/note/05-telekinesis.jpg)

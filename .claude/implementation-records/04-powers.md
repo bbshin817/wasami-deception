@@ -358,7 +358,7 @@ updated: 2026-09-17
 | `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop` | Primal Fear のシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.5、位置 X 2/50・Y 2/35・Z 3/10〈始まりの位相は乱数、正弦波〉、回転と FOV なし。倍率 25 で鳴らす） |
 | `/Game/DD/Textures/05_Circus/T_05_PortalMaps` | Primal の球（2048²、R に星状の粒・G に中心の丸い光・B に雲状のノイズ。sRGB なし・`TC_Default`〈DXT1〉・`TEXTUREGROUP_World`。原作の cook も DXT1・sRGB なし・12 ミップ） |
 | `/Game/DD/Materials/05_Circus/M_05_Primal` | `M_DD_Primal` のインスタンス。原作のパラメータ `Color` (1, 0, 0, 1)・`Opacity` 1・`Desaturation` 0（書き出しに既定値が無い = UE の既定の 0） |
-| `/Game/Pipeline/Materials/M_DD_Primal` | **推定**（`M_05_Primal`。cook に残るのは設定〈Translucent・両面・`bUsedWithStaticLighting`。シェーディングモデルは書き出しに無いので既定の DefaultLit〉、パラメータ 3 つ、`Panner_1` を座標にした `T_05_PortalMaps` のサンプル 1 つ〈Linear Color〉、Emissive が `Add_2` から来ることだけ。cook はどのマテリアルでも Opacity の入力を残さない）。Emissive = `Desaturation(Color × B, Desaturation) + Color × R`、Opacity = `saturate(B + R) × Opacity`、座標は TexCoord 0 を (0.1, 0.1) でパン（**速さは仮の値**）。進捗記録のステップ 11 で最新版の病院と見比べる |
+| `/Game/Pipeline/Materials/M_DD_Primal` | **推定**（`M_05_Primal`。cook に残るのは設定〈Translucent・両面・`bUsedWithStaticLighting`。シェーディングモデルは書き出しに無いので既定の DefaultLit〉、パラメータ 3 つ、`Panner_1` を座標にした `T_05_PortalMaps` のサンプル 1 つ〈Linear Color〉、Emissive が `Add_2` から来ることだけ。cook はどのマテリアルでも Opacity の入力を残さない）。式が 43 個あったこと）。推定は最新版の収録（ステップ 11b2、`observations/README.md`）に合わせた: 球の中から見ると、B の雲で濃淡のついた暗い赤の幕に、R の粒ほどの明るい欠片（横長でブロック状。エンジンの球の UV は横 360°・縦 180°で、数テクセルの粒が拡大されるため）が散り、球がレベルと交わる所が光る。座標 = TexCoord 0 × `Tiling` 2 を `Panner` (0.1, 0.1) へ、欠片 = `saturate(R × SparkleGain 10)`、雲 = `Lerp(CloudDark 0.01, CloudBright 0.1, B)`、縁 = `1 − DepthFade(EdgeDistance 50)`（Opacity の入力は既定の 1）。Emissive = `Desaturation(Color × 雲, Desaturation) + Color × (欠片 × SparkleBrightness 3 + 縁 × EdgeBrightness 6)`、Opacity = `saturate(CloudOpacity 0.95 + 欠片 + 縁) × Opacity`。**パンの速さと、決まらない値（`dd_powers.PRIMAL_KNOBS`。マスターのパラメータで、原作のインスタンスは設定しない）は仮の値**。パンの速さは、球が見える約 0.3 秒の間の動きがシェイクの揺れに埋もれて測れなかった |
 | `/Game/DD/Particles/Shared/SmokeTest/T_LoopingSmoke_8x8` | Vanish の煙（4096²、8 × 8 コマの灰色の煙をアルファに。sRGB・`TC_Default`〈DXT5〉・`TEXTUREGROUP_World`。原作の cook も DXT5・sRGB・13 ミップ） |
 | `/Game/DD/Textures/FX_Textures/T_perlinnoise` | `MM_WobblyVignette` のノイズ（2048²、低周波のパーリンノイズ、平均 0.465。sRGB なし・`TC_Grayscale`〈G8〉。原作の cook も G8・12 ミップ） |
 | `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff` | Vanish の煙の粒子（最新版。`dd_particles` が書き出しの値をそのまま写した Cascade。LOD 距離 0 / 2500 / 5000、固定のバウンズ ±約 4800。エミッタ 1〈既定の名前 `Particle Emitter`、3 LOD とも同じモジュール 14〉: 長さ 3 秒・1 回、出現の率 0 で 0 秒に 5 個のバースト、寿命 0.5〜1、大きさ 200〜250 × `SizeScale` (1.5, 1, 1)、速度 0、色 (3.6956, 1.4102, 10) → (1, 1, 1)・アルファ 1 → 0、`LocationWorldOffset` (0, 0, 150)、ワールドの抵抗 5、位置 ±50、回転 0〜1・回転速度 0〜0.1、8 × 8 の SubUV〈`Linear_Blend`、寿命で 0 → 30〉、ワールドの加速 (0, 0, 250)。詳細度は Low〜Epic〈7 に Epic を足した 15〉。材質は下の `M_LoopingSmoke1_Sheet`） |
@@ -522,7 +522,7 @@ updated: 2026-09-17
 - Telepathy の印の `Appear` が角度を触らないこと（2D 変換のトラックはデータのあるチャンネルだけを書く）と、アニメの最後の評価の時刻は UE 5.8 のソースに拠る。UE 4.24 のソースは手元に無い（本家も乱数の角度を入れているので、角度は残る前提）。
 - ユニティビルドで無名名前空間の名前がぶつからないよう、定数や補助の名前はファイルごとに固有にする（ステップ 8 でファイルが増えてまとまり方が変わり、Vanish と Primal の定数がぶつかった）。
 - **Vanish の煙の材質 `M_DD_LoopingSmoke` とビネットの材質 `M_DD_WobblyVignette` はグラフが推定**（ビネットのパンの速さ・周期・強さは仮の値）。進捗記録のステップ 11 で最新版の病院と見比べる。敵（M4）が無いので、見えない扱いは応答の値と仮の的への `PlayerVanish` でしか確かめていない。
-- **Primal Fear の球の材質 `M_DD_Primal` はグラフが推定**（パンの速さも仮の値）。ポストプロセスの値は原作どおりだが、UE 5.8 のトーンマッパーで同じ見え方になるかは未確認。進捗記録のステップ 11 で最新版の病院と見比べる。
+- **Primal Fear の球の材質 `M_DD_Primal` はグラフが推定**（パンの速さと `PRIMAL_KNOBS` は仮の値）。2026-09-17（ステップ 11b2）に最新版の収録と見比べて値を決めた。本家と同じ条件（Lv3 = 半径 2500、正面 1,036 cm を扉でふさぐ）では、画面全体の色の推移が本家と合い、球が扉を越えるときの菱形（エンジンの球の頂点が正面に来る形）も同じ形で出た。違いは、閃光の終わり際の明るさの落ち方（本家は約 0.07 秒かけて下がり、本作は 0.01 秒ほどで落ちる。ポストプロセスの値は原作どおりなので、UE4 と UE 5.8 の色の処理の違いと見ている）と、閃光の直後の黄みが本家より少し強いこと。本作の病院には廊下の奥の両開き扉がまだ無い（作業一覧の項目 3）ので、扉が入るまでは球が奥まで見え、Lv5（半径 3500）では +3.5 s まで赤い雲が残る。
 - 敵（M4）がまだ無いので、Primal の気絶は仮の的でしか確かめていない。
 - **Vanish の効果中に死亡のリセットが来て、元の 15 秒が終わる前に使い直すと、ゲージの FlipFlop が 1 つずれ、以後アイコンの動きが逆になる**（使い直しの `SetDelay` だけが増え、終わりは 1 回のまま。本家の `BP_Powers` と Delay の作りどおり。ブーストはリセットがその場で終わりの処理を通すので、ずれない）。
 - Vanish の煙は、正面を向いているとほとんど見えない（上の「確かめたこと」）。本家の見張りナースのように、気絶の処理を後から動かす敵の扱いは敵の側で作る。
@@ -544,6 +544,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: Primal Fear の球の推定の材質 `M_DD_Primal` を最新版の収録に合わせて組み直した（B の雲を暗い幕に、R を小さな明るい欠片に、`DepthFade` で交わる所の光を足し、決まらない値をマスターのパラメータ `PRIMAL_KNOBS` にした。`dd_powers`。ソースの C++ は変えていない）
 - 2026-09-17: テレキネシスの力場の粒子の参照 `ForceFieldParticles` に `P_ky_forceField_Telekinesis` を入れ、`LoadAssets` が常に読むようにした。テスト `TelekinesisTimeline` を粒子のパスと `LoadAssets` の確認に変えた
 - 2026-09-17: テレキネシスの力場の粒子 `P_ky_forceField_Telekinesis` と、その材質（推定のマスター 4 つ・原作のパスのインスタンス 4 つ・原作のインスタンス 3 つ）を取り込み対象に足した（`dd_powers`。01 記録。C++ は変えていない）
 - 2026-09-17: テレキネシスの粒子のメッシュ 2 つとテクスチャ 6 枚を取り込み対象に足した（`dd_powers`。01 記録。ソースの C++ は変えていない）
