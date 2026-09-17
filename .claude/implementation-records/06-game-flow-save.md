@@ -94,7 +94,7 @@ updated: 2026-09-17
 | light | `M_ky_empty`（見えない） | 1 つ、寿命 0.1 s、`ParticleModuleLight`（逆二乗でない指数 16、明るさ 2.5、半径は大きさ 20 cm × 8）で紫 (0.319, 0.130, 1.0) の灯 |
 
 ### 閃光の材質（推定。グラフは cook で消えている）
-共通: 半透明・Unlit・スプライトとメッシュの粒子用。原作のインスタンスと粒子が使う静的スイッチの側だけを作る（`dd_shards.py` の各ビルダーの説明に、残っていた式と推定を書いた）。
+共通: 半透明・Unlit・スプライトとメッシュの粒子用。原作のインスタンスと粒子が使う静的スイッチの側だけを作る（`dd_shards.py` の各ビルダーの説明に、残っていた式と推定を書いた）。マスター・原作のパスのインスタンス・原作のインスタンスは `dd_assets.estimated_materials` が作り、グラフの小道具も `dd_assets` のもの（01 記録。テレキネシスの力場も同じ作り方）。
 - `M_DD_KyFlare01Primitive`: 自己発光 = 粒子の色（残っている）。不透明度 = 静的マスク `selectCh` で選んだ `baseTex` の 1 チャンネル × `alphaDensity` × 粒子の α を `DepthFade`（`depthFade`）。`useFresnel` の真の側（`fresPower`・`fresDensity`）は作らない。
 - `M_DD_KyPrimitive`: 自己発光 = 粒子の色。不透明度 = `RadialGradientExponential(radius, radiusDensity)` × `alphaValue` × 粒子の α を `DepthFade`。`useFresnel`・`useTexColor`・`useDistanceSize` の真の側（ノイズ `T_ky_noise6` など）は作らない。
 - `M_DD_KyPrimitiveDyn2`: 自己発光 = 粒子の色（残っている）。不透明度 = saturate(外の勾配〈関数の既定の半径、密度 `outDensity` + `dynOutDen`〉 − 内の勾配〈半径 `inR` + `dynInR`、密度 `inDensity` + `dynInDen`〉) × 粒子の α を `DepthFade`。**動的パラメータは足すと見た**（材質の既定値が 0 で、掛けると外の密度 0 で何も描かれないため）。この値では縁だけが 0.24 ほど残る薄い輪になる。
@@ -149,5 +149,6 @@ updated: 2026-09-17
 - `Wasami.Tablet.CountShake`（03 記録）。
 
 ## 変更履歴
+- 2026-09-17: 閃光の材質を作る繰り返しと小道具を `dd_assets` へ移した（`make_flash_materials` は `estimated_materials` を呼ぶ。作るものは同じで、取り込み直して `flash_materials` 13・静的マスク G / R を確かめた）
 - 2026-09-17: 回収の閃光 `P_ky_flash3` を足した（`Collect` の揺れの後に出す。素材の取り込みは `dd_shards.py` のテクスチャ 4・推定のマスター 5・インスタンス 8・粒子 1）
 - 2026-09-17: 初版（シャードの最小限: `AWasamiShard`〈ワサミ餅・灯・カプセル・地図の印・回転〉、回収、引き寄せ、素材の取り込み `dd_shards.py`、配置、テスト）

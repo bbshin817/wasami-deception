@@ -54,12 +54,13 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         """Imports (or re-imports) what the tablet's powers show and play: their sounds (with the original SoundWave
         settings and sound concurrency), camera shakes, camera anims (as WasamiCameraAnim), the speed boost's
         textures and materials with the player's FX material, the teleport aim's materials and Cascade particle
-        system (rebuilt from the original's exported package), Primal Fear's sphere texture and material, and
-        Vanish's puff (textures, material, Cascade particle system) and vignette material. The power icons come with
-        import_dd_tablet.
+        system (rebuilt from the original's exported package), Primal Fear's sphere texture and material, Vanish's
+        puff (textures, material, Cascade particle system) and vignette material, the telepathy marker's material,
+        and the telekinesis's force field (textures, meshes, estimated materials, Cascade particle system). The power
+        icons come with import_dd_tablet.
 
         Returns:
-            How many assets of each kind were made ('sounds', 'camera_shakes', 'camera_anims', 'textures',
+            How many assets of each kind were made ('sounds', 'camera_shakes', 'camera_anims', 'textures', 'meshes',
             'materials', 'particle_systems').
         """
         _module("dd_stage")

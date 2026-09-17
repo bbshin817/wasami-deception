@@ -18,6 +18,10 @@ MM_Telepathy_Inst.
   M_DD_Telepathy                the estimated master of the telepathy's marker (MM_Telepathy's graph is cooked away);
                                 MM_Telepathy is an instance of it and MM_Telepathy_Inst an instance of that, as the
                                 original's
+  M_DD_KyWall02, M_DD_KyAura7, M_DD_KyShockWave02, M_DD_KyStarDust
+                                estimated masters of the telekinesis's force field (P_ky_forceField_Telekinesis), whose
+                                graphs are cooked away; the original's paths hold instances of them, and the original's
+                                instances are instances of those
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the powers follow except the teleport (pak_reference).
 """
@@ -27,6 +31,7 @@ from wasami_tools.pipeline import dd_assets, dd_particles, dd_stage, paths
 
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
+MP = unreal.MaterialProperty
 
 # (pak_reference version, the original's path under /Game).
 SOUNDS = (
@@ -76,6 +81,8 @@ MESHES = (
 PARTICLE_SYSTEMS = (
     (1, "ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2"),  # the teleport aim's slashes and sparks
     (2, "ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff"),  # Vanish's five puffs of smoke
+    # the telekinesis's force field: a shrinking blue sphere, a swirling aura, a ground ring and star dust
+    (2, "ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis"),
 )
 
 SPEEDLINES = "UI/Main/Powers/M_Speedlines"
@@ -141,6 +148,23 @@ TELEPATHY_GAIN = 3.0
 # MM_Telepathy_Inst's values its parent has (its Size is not one of MM_Telepathy's parameters, and
 # RefractionDepthBias is the engine's, which a UI material does not use).
 TELEPATHY_INST_SCALARS = ("Speed",)
+
+# The telekinesis's force field (AdvancedMagicFX09, pak_reference_2): its four materials' graphs are cooked away, so
+# masters holding our estimates sit under /Game/Pipeline (dd_assets.estimated_materials).
+KY09 = "ThirdParty/AdvancedMagicFX09/"
+# The exports keep no Panner's speed, no TextureCoordinate's tiling and nothing of how the aura's samples bend each
+# other's coordinates: placeholders until the force field is compared with the latest version. Each of the aura's four
+# layers is (its TexCoord tiling (U across a wind line, V along it), its pan speed, the pan speed of the sample that
+# bends its coordinates, how far that sample's B bends them).
+# TODO(仮): the force field's four estimated graphs and these values are placeholders (their graphs are cooked away);
+# compare with the latest version (progress record step 11; 要確認「テレキネシスの力場の材質の推定」).
+AURA_LAYERS = (
+    ((1.0, 1.0), (0.0, -1.5), (0.1, -0.5), 0.1),
+    ((1.0, 2.0), (0.0, -2.2), (-0.1, -0.7), 0.1),
+    ((1.0, 1.0), (0.0, -1.2), (0.15, -0.4), 0.15),
+    ((1.0, 3.0), (0.0, -2.8), (-0.15, -0.9), 0.15),
+)
+SHOCKWAVE_PANS = ((0.05, 0.1), (-0.08, 0.06))  # the ground ring's two T_ky_maskRGB3 samples (Panner_2, Panner_3)
 
 
 def _build_speedlines(mat):
@@ -403,6 +427,217 @@ def make_telepathy_materials():
     return [a.get_path_name() for a in made]
 
 
+def _ky09_texture(name):
+    return unreal.load_asset(dd_assets.asset_path(KY09 + "Textures/" + name))
+
+
+def _sample(g, tex, sampler, uvs, x, y):
+    """A TextureSample of tex at uvs (None: TexCoord 0)."""
+    e = g.node(unreal.MaterialExpressionTextureSample, x, y)
+    e.set_editor_property("texture", tex)
+    e.set_editor_property("sampler_type", sampler)
+    if uvs is not None:
+        dd_assets.connect(uvs, "", e, "UVs")
+    return e
+
+
+def _panner(g, coordinate, speed, x, y):
+    """A Panner of coordinate (None: TexCoord 0) moving (u, v) per second."""
+    e = g.node(unreal.MaterialExpressionPanner, x, y)
+    e.set_editor_property("speed_x", speed[0])
+    e.set_editor_property("speed_y", speed[1])
+    if coordinate is not None:
+        dd_assets.connect(coordinate, "", e, "Coordinate")
+    return e
+
+
+def _build_wall02(mat, d):
+    """M_ky_wall02_4x4_two (the force field's sphere), estimated. The cook kept its settings (translucent, unlit,
+    two-sided, for sprites and mesh particles), the parameters opacity and baseColor, a SubUV sample of baseTex
+    (T_ky_wall02_4x4: grey wisps) and a LinearInterpolate as the emissive colour, of ten expressions. The estimate: the
+    emissive colour runs from baseColor in the gaps to the particle's colour on the wisps (a lerp by R), over an opacity
+    of saturate(R + opacity) × the particle's alpha: a faint dark-blue veil with bright wisps."""
+    dd_assets.particle_material(mat, two_sided=True)
+    g = dd_stage._Graph(mat, checked=True)
+    tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1000, 0)
+    tex.set_editor_property("parameter_name", "baseTex")
+    tex.set_editor_property("texture", _ky09_texture("T_ky_wall02_4x4"))
+    particle = g.node(unreal.MaterialExpressionParticleColor, -1000, 300)
+    colour = g.lerp(g.vector("baseColor", d["baseColor"], -1000, -250), "RGB", particle, "RGB", tex, "R", -600, -100)
+    g.out(colour, "", MP.MP_EMISSIVE_COLOR)
+    veil = dd_assets.add(g, tex, "R", g.scalar("opacity", d["opacity"], -1000, 200), "", -750, 100)
+    clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, veil, "", -600, 100)
+    g.out(g.multiply(clamped, "", particle, "A", -400, 150), "", MP.MP_OPACITY)
+
+
+def _build_aura7(mat, d):
+    """M_ky_aura7 (the force field's swirling aura: MI_ky_aura7c on SM_ky_windLine27midPoly), estimated (see
+    AURA_LAYERS). The cook kept its settings (translucent, unlit, two-sided, for sprites, beam trails and mesh
+    particles), a Multiply as the emissive colour, the parameters baseDensity, baseOpacity, hilightPower,
+    hilightDensity, depthFade, maskU, maskV and maskRadiusControl, a DynamicParameter (maskOffsetY at 0, Param2 – 4 at
+    1), a RadialGradientExponential call and eight samples of T_ky_maskRGB5 (linear; R wisps, G specks, B streaks),
+    four at Adds and four at Panners, of 61 expressions. The mesh's lines are strips with U across them (0, 0.5, 1) and
+    V along them. The estimate reads the samples as four layers, each a sample at a panned TexCoord bent by the B of a
+    sample at another Panner:
+      emissive  the particle's colour × (base × baseDensity + hilight), where base is the mean of layers 1 and 2's R
+                and hilight = (the mean of layers 3 and 4's R)^hilightPower × hilightDensity (where both are bright)
+      opacity   saturate(base × baseOpacity + hilight) × the mask × the particle's alpha, faded over depthFade. The mask
+                is RadialGradientExponential at TexCoord × (maskU, maskV), centred on maskRadiusControl's RG with
+                maskOffsetY added to G, of radius B and density A: a strip's middle line, in a window along it that the
+                particle system moves (maskOffsetY 0.1 → 0.2 wipes the lines from their V = 0 ends)
+    Param2 – 4 are not used (the particle system leaves them at 1)."""
+    dd_assets.particle_material(mat, beam_trails=True, two_sided=True)
+    g = dd_stage._Graph(mat, checked=True)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -400, 700)
+    wisps = _ky09_texture("T_ky_maskRGB5")
+    linear = unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
+    layers = []
+    for i, (tiling, speed, bend_speed, bend) in enumerate(AURA_LAYERS):
+        y = -700 + i * 350
+        coords = g.node(unreal.MaterialExpressionTextureCoordinate, -2700, y)
+        coords.set_editor_property("u_tiling", tiling[0])
+        coords.set_editor_property("v_tiling", tiling[1])
+        bender = _sample(g, wisps, linear, _panner(g, coords, bend_speed, -2500, y + 150), -2300, y + 150)
+        bent = g.multiply(bender, "B", dd_assets.constant(g, bend, -2100, y + 250), "", -1950, y + 150)
+        uvs = dd_assets.add(g, _panner(g, coords, speed, -2500, y), "", bent, "", -1800, y)
+        layers.append(_sample(g, wisps, linear, uvs, -1600, y))
+    half = dd_assets.constant(g, 0.5, -1400, -200)
+    base = g.multiply(dd_assets.add(g, layers[0], "R", layers[1], "R", -1400, -600), "", half, "", -1200, -550)
+    glint = g.multiply(dd_assets.add(g, layers[2], "R", layers[3], "R", -1400, 100), "", half, "", -1200, 150)
+    sharp = g.power(glint, "", g.scalar("hilightPower", d["hilightPower"], -1200, 250), "", -1000, 150)
+    hilight = g.multiply(sharp, "", g.scalar("hilightDensity", d["hilightDensity"], -1000, 250), "", -800, 200)
+    dim = g.multiply(base, "", g.scalar("baseDensity", d["baseDensity"], -1200, -450), "", -1000, -550)
+    glow = dd_assets.add(g, dim, "", hilight, "", -650, -300)
+    g.out(g.multiply(glow, "", particle, "RGB", -400, -250), "", MP.MP_EMISSIVE_COLOR)
+
+    # The mask along the lines.
+    control = g.vector("maskRadiusControl", d["maskRadiusControl"], -1400, 1000)
+    dynamic = dd_assets.dynamic_parameter(g, ("maskOffsetY", "Param2", "Param3", "Param4"), -1400, 1250,
+                                          defaults=(0.0, 1.0, 1.0, 1.0))
+    scale = g.binary(unreal.MaterialExpressionAppendVector, g.scalar("maskU", d["maskU"], -1400, 700), "",
+                     g.scalar("maskV", d["maskV"], -1400, 800), "", -1200, 750)
+    mask_uvs = g.multiply(g.node(unreal.MaterialExpressionTextureCoordinate, -1200, 600), "", scale, "", -1000, 650)
+    centre_v = dd_assets.add(g, control, "G", dynamic, "maskOffsetY", -1150, 1150)
+    centre = g.binary(unreal.MaterialExpressionAppendVector, control, "R", centre_v, "", -1000, 1000)
+    mask = dd_assets.radial_gradient(g, None, None, -800, 850, uvs=mask_uvs, centre=centre)
+    dd_assets.connect(control, "B", mask, "Radius")
+    dd_assets.connect(control, "A", mask, "Density")
+    veil = g.multiply(base, "", g.scalar("baseOpacity", d["baseOpacity"], -1000, -150), "", -800, -150)
+    cover = dd_assets.single(g, unreal.MaterialExpressionSaturate,
+                             dd_assets.add(g, veil, "", hilight, "", -650, 0), "", -500, 0)
+    masked = g.multiply(cover, "", mask, "RadialGradientExponential", -350, 300)
+    faded = g.multiply(masked, "", particle, "A", -200, 450)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -200, 600), 0, 500)
+
+
+def _build_shockwave02(mat, d):
+    """M_ky_shockWave02_4x4 (the force field's ground ring: MI_ky_shockWave02_4x4_nonD), estimated (see
+    SHOCKWAVE_PANS). The cook kept its settings (translucent, unlit, two-sided, for sprites and mesh particles), an Add
+    as the emissive colour, the parameters baseDensity, depthFade, coreDensity, coreHardness, hilightDetailPower,
+    coreHilightPower and coreColor, a SubUV sample of baseTex (T_ky_shockWave02_4x4, linear; the instance swaps in
+    T_ky_circle01_4x4, whose R is a ring with spiky edges) whose RGB goes through the static mask selectCh (R), and two
+    samples of T_ky_maskRGB3 (sRGB) at Panners, of 32 expressions. The estimate, with shape the selected channel and
+    noise the two samples' R (sparse bright scratches) summed:
+      emissive  the particle's colour × base + coreColor × (core + detail), where base = shape × baseDensity, core =
+                saturate(shape^coreHilightPower × coreDensity) (the ring's hottest line) and detail =
+                saturate((shape × noise)^hilightDetailPower × coreHardness) (sparks along it)
+      opacity   saturate(base + core + detail) × the particle's alpha, faded over depthFade (the instance's 0 fades
+                nothing)"""
+    dd_assets.particle_material(mat, two_sided=True)
+    g = dd_stage._Graph(mat, checked=True)
+    tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1700, -200)
+    tex.set_editor_property("parameter_name", "baseTex")
+    tex.set_editor_property("texture", _ky09_texture("T_ky_shockWave02_4x4"))
+    tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    shape = g.node(unreal.MaterialExpressionStaticComponentMaskParameter, -1450, -200)
+    shape.set_editor_property("parameter_name", "selectCh")
+    shape.set_editor_property("default_r", True)
+    dd_assets.connect(tex, "RGB", shape, "")
+    scratches = _ky09_texture("T_ky_maskRGB3")
+    colour = unreal.MaterialSamplerType.SAMPLERTYPE_COLOR
+    noises = [_sample(g, scratches, colour, _panner(g, None, speed, -1700, 200 + i * 250), -1500, 200 + i * 250)
+              for i, speed in enumerate(SHOCKWAVE_PANS)]
+    noise = dd_assets.add(g, noises[0], "R", noises[1], "R", -1250, 300)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -700, 500)
+
+    base = g.multiply(shape, "", g.scalar("baseDensity", d["baseDensity"], -1250, -350), "", -1050, -350)
+    hottest = g.power(shape, "", g.scalar("coreHilightPower", d["coreHilightPower"], -1250, -100), "", -1050, -150)
+    dense = g.multiply(hottest, "", g.scalar("coreDensity", d["coreDensity"], -1050, -50), "", -850, -150)
+    core = dd_assets.single(g, unreal.MaterialExpressionSaturate, dense, "", -700, -150)
+    sparks = g.power(g.multiply(shape, "", noise, "", -1050, 150), "",
+                     g.scalar("hilightDetailPower", d["hilightDetailPower"], -1050, 250), "", -850, 150)
+    hard = g.multiply(sparks, "", g.scalar("coreHardness", d["coreHardness"], -850, 250), "", -700, 150)
+    detail = dd_assets.single(g, unreal.MaterialExpressionSaturate, hard, "", -550, 150)
+    hot = dd_assets.add(g, core, "", detail, "", -450, 0)
+    tinted = g.multiply(g.vector("coreColor", d["coreColor"], -600, -300), "RGB", hot, "", -300, -100)
+    coloured = g.multiply(particle, "RGB", base, "", -450, -350)
+    g.out(dd_assets.add(g, coloured, "", tinted, "", -150, -250), "", MP.MP_EMISSIVE_COLOR)
+    cover = dd_assets.single(g, unreal.MaterialExpressionSaturate, dd_assets.add(g, base, "", hot, "", -300, 150),
+                             "", -150, 150)
+    faded = g.multiply(cover, "", particle, "A", 0, 300)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], 0, 450), 200, 350)
+
+
+def _build_star_dust(mat, d):
+    """M_ky_starDust (the force field's star dust: MI_ky_starDust_sq), estimated. The cook kept its settings
+    (translucent, unlit, responsive AA, for sprites and mesh particles), its emissive colour (the particle colour's
+    RGB), a static switch useDistanceSize as the world position offset (B a constant), the parameters threshold,
+    starPower (no default: 0), maskRadius, maskDensity and fadeValue, a DynamicParameter (flashTime, flashPower,
+    starDensity; defaults 0), the functions DiamondGradient, RadialGradientExponential and Blend_Screen, two samples of
+    T_ky_dust_longStar (sRGB; one at TexCoord 0, one at a Rotator) and the static switch swSQdust (on by default; A a
+    Multiply_28, B a Multiply_9), of 40 expressions. T_ky_dust_longStar is 1 along its middle row and falls to 0.37 at
+    its top and bottom, so a high power of it is a thin line. The instance turns swSQdust off (and sets maskRadius and
+    maskDensity, which the editor shows only where they are used). The estimate's off side is a four-pointed star:
+    each sample's R to the power starDensity (35 – 68 from the particle system), the second at the TexCoord turned by
+    a Rotator over Time × flashTime (the two lines turn against each other, and the star twinkles), screened together,
+    × RadialGradientExponential(maskRadius, maskDensity) (the arms fade out) × flashPower. Its on side, which no
+    instance here uses, is DiamondGradient at its default, so that the master compiles with the original's default.
+    The opacity is saturate(the switch) × the particle's alpha, faded over fadeValue. useDistanceSize's on side
+    (threshold) and starPower are not made, and the world position offset is left unconnected."""
+    dd_assets.particle_material(mat, responsive_aa=True)
+    g = dd_stage._Graph(mat, checked=True)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -400, 400)
+    g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
+    dynamic = dd_assets.dynamic_parameter(g, ("flashTime", "flashPower", "starDensity", "Param4"), -1900, 250)
+    star = _ky09_texture("T_ky_dust_longStar")
+    colour = unreal.MaterialSamplerType.SAMPLERTYPE_COLOR
+    along = _sample(g, star, colour, None, -1400, -250)
+    turn = g.node(unreal.MaterialExpressionRotator, -1600, 50)
+    dd_assets.connect(g.multiply(g.node(unreal.MaterialExpressionTime, -1900, 50), "", dynamic, "flashTime",
+                                 -1750, 50), "", turn, "Time")
+    across = _sample(g, star, colour, turn, -1400, 50)
+    line_a = g.power(along, "R", dynamic, "starDensity", -1150, -200)
+    line_b = g.power(across, "R", dynamic, "starDensity", -1150, 50)
+    screen = dd_assets.function_call(g, "Blends/Blend_Screen", -950, -100, dd_assets.FUNCTIONS_03)
+    dd_assets.connect(line_a, "", screen, "Base")
+    dd_assets.connect(line_b, "", screen, "Blend")
+    cross = dd_assets.channel(g, screen, "Result", "R", -750, -100)
+    arms = dd_assets.radial_gradient(g, g.scalar("maskRadius", d["maskRadius"], -950, 150),
+                                     g.scalar("maskDensity", d["maskDensity"], -950, 250), -750, 150)
+    shaped = g.multiply(cross, "", arms, "RadialGradientExponential", -550, 0)
+    glint = g.multiply(shaped, "", dynamic, "flashPower", -400, 50)
+    square = dd_assets.function_call(g, "Gradient/DiamondGradient", -550, -250)
+    dust = g.switch("swSQdust", square, "DiamondGradient", glint, "", -250, -100)
+    dust.set_editor_property("default_value", True)
+    clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, dust, "", -100, -100)
+    faded = g.multiply(clamped, "", particle, "A", 50, 0)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("fadeValue", d["fadeValue"], 50, 150), 250, 50)
+
+
+# (the original's material, the master holding our estimate, its builder, the original's instances of it)
+TELEKINESIS_MATERIALS = (
+    ("M_ky_wall02_4x4_two", "M_DD_KyWall02", _build_wall02, ()),
+    ("M_ky_aura7", "M_DD_KyAura7", _build_aura7, ("MI_ky_aura7c",)),
+    ("M_ky_shockWave02_4x4", "M_DD_KyShockWave02", _build_shockwave02, ("MI_ky_shockWave02_4x4_nonD",)),
+    ("M_ky_starDust", "M_DD_KyStarDust", _build_star_dust, ("MI_ky_starDust_sq",)),
+)
+
+
+def make_telekinesis_materials():
+    """The force field's materials (dd_assets.estimated_materials). Returns the package paths."""
+    return [a.get_path_name() for a in dd_assets.estimated_materials(KY09 + "Materials/", TELEKINESIS_MATERIALS, 2)]
+
+
 def slash_parameters():
     """M_ky_slash01_4x4's parameter defaults and texture, from its export: ({name: value}, {name: [r, g, b, a]}, the
     texture's rel)."""
@@ -466,7 +701,7 @@ def make_materials():
                                     domain=unreal.MaterialDomain.MD_UI, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
     shake = dd_assets.material(CAMERA_SHAKE_MASTER, _build_camera_shake, domain=unreal.MaterialDomain.MD_POST_PROCESS)
     return ([speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials() + make_primal_material()
-            + make_vanish_materials() + make_telepathy_materials())
+            + make_vanish_materials() + make_telepathy_materials() + make_telekinesis_materials())
 
 
 def import_all():

@@ -66,7 +66,6 @@ FLASH_TEXTURES = (
     (2, KY + "Textures/T_ky_deco_rainbow"),     # a rainbow down V
 )
 PARTICLE_SYSTEMS = ((2, KY + "Particles/P_ky_flash3"),)  # after the materials it uses
-PIPELINE_MATERIALS = paths.PIPELINE_ROOT + "/Materials/"
 MP = unreal.MaterialProperty
 
 
@@ -162,64 +161,6 @@ def make_map_mark():
     return [master.get_path_name(), mark.get_path_name()]
 
 
-def _particle_material(mat, beam_trails=False, responsive_aa=False):
-    """The settings the cook kept on AdvancedMagicFX13's particle materials (their blend is translucent)."""
-    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
-    mat.set_editor_property("used_with_particle_sprites", True)
-    mat.set_editor_property("used_with_mesh_particles", True)
-    mat.set_editor_property("used_with_beam_trails", beam_trails)
-    mat.set_editor_property("enable_responsive_aa", responsive_aa)
-
-
-def _depth_faded_opacity(g, opacity, distance, x, y):
-    """opacity × how far the scene lies behind it (DepthFade over distance), as the material's opacity."""
-    fade = g.node(unreal.MaterialExpressionDepthFade, x, y)
-    dd_assets.connect(opacity, "", fade, "Opacity")
-    dd_assets.connect(distance, "", fade, "FadeDistance")
-    g.out(fade, "", MP.MP_OPACITY)
-
-
-def _gradient(g, radius, density, x, y):
-    """RadialGradientExponential with the given radius and density (None leaves the function's default)."""
-    call = dd_assets.function_call(g, "Gradient/RadialGradientExponential", x, y)
-    if radius is not None:
-        dd_assets.connect(radius, "", call, "Radius")
-    if density is not None:
-        dd_assets.connect(density, "", call, "Density")
-    return call
-
-
-def _add(g, a, a_pin, b, b_pin, x, y):
-    return g.binary(unreal.MaterialExpressionAdd, a, a_pin, b, b_pin, x, y)
-
-
-def _single(g, cls, source, pin, x, y):
-    """A one-input expression (Saturate, OneMinus, Abs, ...) of source's output pin."""
-    e = g.node(cls, x, y)
-    dd_assets.connect(source, pin, e, "")
-    return e
-
-
-def _channel(g, source, pin, channel, x, y):
-    """One channel ('R', 'G', ...) of source's output pin (a ComponentMask starts with R and G on, so each is set)."""
-    e = g.node(unreal.MaterialExpressionComponentMask, x, y)
-    for c in "RGBA":
-        e.set_editor_property(c.lower(), c == channel)
-    dd_assets.connect(source, pin, e, "")
-    return e
-
-
-def _dynamic_parameter(g, names, x, y):
-    """A DynamicParameter with the original's names (the particle system's values are named after them) and defaults
-    (0, and 1 for the unnamed fourth)."""
-    e = g.node(unreal.MaterialExpressionDynamicParameter, x, y)
-    e.set_editor_property("param_names", list(names))
-    e.set_editor_property("default_value", unreal.LinearColor(0.0, 0.0, 0.0, 1.0))
-    # The outputs take the names only when they are asked for (GetOutputs), and connecting looks them up as they are.
-    MEL.get_material_expression_output_names(e)
-    return e
-
-
 def _build_flare01(mat, d):
     """M_ky_flare01_primitive, estimated. The cook kept its settings (translucent, unlit, for sprites, beam trails and
     mesh particles), its emissive colour (the particle colour's RGB), the parameters alphaDensity, depthFade, fresPower
@@ -227,7 +168,7 @@ def _build_flare01(mat, d):
     static switch useFresnel (A a Multiply_4, B a Multiply_1), of 15 expressions. The estimate is useFresnel's off
     side, which every instance keeps: an opacity of the selected channel × alphaDensity × the particle's alpha, faded
     into the depth over depthFade (fresPower and fresDensity belong to the side not made)."""
-    _particle_material(mat, beam_trails=True)
+    dd_assets.particle_material(mat, beam_trails=True)
     g = dd_stage._Graph(mat, checked=True)
     tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1300, 0)
     tex.set_editor_property("parameter_name", "baseTex")
@@ -241,7 +182,7 @@ def _build_flare01(mat, d):
     g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
     density = g.multiply(channel, "", g.scalar("alphaDensity", d["alphaDensity"], -1050, 150), "", -850, 50)
     alpha = g.multiply(density, "", particle, "A", -650, 100)
-    _depth_faded_opacity(g, alpha, g.scalar("depthFade", d["depthFade"], -650, 250), -450, 150)
+    dd_assets.depth_faded_opacity(g, alpha, g.scalar("depthFade", d["depthFade"], -650, 250), -450, 150)
 
 
 def _build_primitive(mat, d):
@@ -254,16 +195,16 @@ def _build_primitive(mat, d):
     radiusDensity) × alphaValue × the particle's alpha, faded into the depth over depthFade. The on sides (fresnelPower,
     threshold, minValue, texPower, texDensity, texUVcorrect, the noise) are not made, and the world position offset is
     left unconnected."""
-    _particle_material(mat, beam_trails=True, responsive_aa=True)
+    dd_assets.particle_material(mat, beam_trails=True, responsive_aa=True)
     g = dd_stage._Graph(mat, checked=True)
     particle = g.node(unreal.MaterialExpressionParticleColor, -1050, 300)
     g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
     radius = g.scalar("radius", d["radius"], -1300, 0)
-    shape = _gradient(g, radius, g.scalar("radiusDensity", d["radiusDensity"], -1300, 100), -1050, 0)
+    shape = dd_assets.radial_gradient(g, radius, g.scalar("radiusDensity", d["radiusDensity"], -1300, 100), -1050, 0)
     strength = g.scalar("alphaValue", d["alphaValue"], -1050, 150)
     alpha = g.multiply(shape, "RadialGradientExponential", strength, "", -850, 50)
     faded = g.multiply(alpha, "", particle, "A", -650, 100)
-    _depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -650, 250), -450, 150)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -650, 250), -450, 150)
 
 
 def _build_primitive_dyn2(mat, d):
@@ -274,21 +215,23 @@ def _build_primitive_dyn2(mat, d):
     dynOutDen) less an inner one (radius inR + dynInR, density inDensity + dynInDen), × the particle's alpha, faded
     over depthFade. The dynamic values are taken as added to the parameters: at their defaults of 0 they leave them as
     they are (multiplied, the outer density of 0 would draw nothing)."""
-    _particle_material(mat, beam_trails=True, responsive_aa=True)
+    dd_assets.particle_material(mat, beam_trails=True, responsive_aa=True)
     g = dd_stage._Graph(mat, checked=True)
     particle = g.node(unreal.MaterialExpressionParticleColor, -700, 400)
     g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
-    dynamic = _dynamic_parameter(g, ("dynOutDen", "dynInR", "dynInDen", "Param4"), -1500, 150)
-    out_density = _add(g, g.scalar("outDensity", d["outDensity"], -1500, -100), "", dynamic, "dynOutDen", -1250, -50)
-    outer = _gradient(g, None, out_density, -1050, -50)
-    in_radius = _add(g, g.scalar("inR", d["inR"], -1500, 350), "", dynamic, "dynInR", -1250, 200)
-    in_density = _add(g, g.scalar("inDensity", d["inDensity"], -1500, 450), "", dynamic, "dynInDen", -1250, 300)
-    inner = _gradient(g, in_radius, in_density, -1050, 200)
+    dynamic = dd_assets.dynamic_parameter(g, ("dynOutDen", "dynInR", "dynInDen", "Param4"), -1500, 150)
+    out_density = dd_assets.add(g, g.scalar("outDensity", d["outDensity"], -1500, -100), "", dynamic, "dynOutDen",
+                                -1250, -50)
+    outer = dd_assets.radial_gradient(g, None, out_density, -1050, -50)
+    in_radius = dd_assets.add(g, g.scalar("inR", d["inR"], -1500, 350), "", dynamic, "dynInR", -1250, 200)
+    in_density = dd_assets.add(g, g.scalar("inDensity", d["inDensity"], -1500, 450), "", dynamic, "dynInDen",
+                               -1250, 300)
+    inner = dd_assets.radial_gradient(g, in_radius, in_density, -1050, 200)
     ring = g.binary(unreal.MaterialExpressionSubtract, outer, "RadialGradientExponential",
                     inner, "RadialGradientExponential", -850, 50)
-    clamped = _single(g, unreal.MaterialExpressionSaturate, ring, "", -700, 50)
+    clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, ring, "", -700, 50)
     faded = g.multiply(clamped, "", particle, "A", -550, 150)
-    _depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -550, 300), -350, 200)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -550, 300), -350, 200)
 
 
 def _build_polar_glow(mat, d):
@@ -311,20 +254,21 @@ def _build_polar_glow(mat, d):
                 depthFade
     The dynamic values are taken as added (their defaults of 0 leave the parameters as they are). noisePolarUV and
     noisePolarUV_val are not used: what they did is not known."""
-    _particle_material(mat)
+    dd_assets.particle_material(mat)
     g = dd_stage._Graph(mat, checked=True)
     particle = g.node(unreal.MaterialExpressionParticleColor, -500, 600)
-    dynamic = _dynamic_parameter(g, ("polarUV_den", "baseOffsetY", "Param3", "Param4"), -2300, 300)
+    dynamic = dd_assets.dynamic_parameter(g, ("polarUV_den", "baseOffsetY", "Param3", "Param4"), -2300, 300)
     polar = dd_assets.function_call(g, "Utility/VectorToRadialValue", -2300, 0, dd_assets.FUNCTIONS_02)
-    angle = _channel(g, polar, "Radial Coordinates", "R", -2050, -100)
-    distance = _channel(g, polar, "Radial Coordinates", "G", -2050, 50)
+    angle = dd_assets.channel(g, polar, "Radial Coordinates", "R", -2050, -100)
+    distance = dd_assets.channel(g, polar, "Radial Coordinates", "G", -2050, 50)
 
     # The rainbow.
     base_u = g.multiply(angle, "", g.scalar("polarUV", d["polarUV"], -2050, -250), "", -1800, -200)
-    tiling = _add(g, g.scalar("polarUV_density", d["polarUV_density"], -2050, 150), "", dynamic, "polarUV_den",
-                  -1800, 100)
-    offset = _add(g, g.scalar("baseOffsetY", d["baseOffsetY"], -2050, 250), "", dynamic, "baseOffsetY", -1800, 250)
-    base_v = _add(g, g.multiply(distance, "", tiling, "", -1600, 50), "", offset, "", -1400, 100)
+    tiling = dd_assets.add(g, g.scalar("polarUV_density", d["polarUV_density"], -2050, 150), "", dynamic, "polarUV_den",
+                           -1800, 100)
+    offset = dd_assets.add(g, g.scalar("baseOffsetY", d["baseOffsetY"], -2050, 250), "", dynamic, "baseOffsetY",
+                           -1800, 250)
+    base_v = dd_assets.add(g, g.multiply(distance, "", tiling, "", -1600, 50), "", offset, "", -1400, 100)
     base_uv = g.binary(unreal.MaterialExpressionAppendVector, base_u, "", base_v, "", -1200, -50)
     rainbow = g.texture("baseTex", unreal.load_asset(dd_assets.asset_path(KY + "Textures/T_ky_deco_rainbow")),
                         unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -1000, -50)
@@ -340,12 +284,12 @@ def _build_polar_glow(mat, d):
     time = g.node(unreal.MaterialExpressionTime, -2050, 450)
     drift_u = g.multiply(time, "", g.scalar("noiseXspd", d["noiseXspd"], -2050, 550), "", -1800, 450)
     drift_v = g.multiply(time, "", g.scalar("noiseYspd", d["noiseYspd"], -2050, 650), "", -1800, 600)
-    shifted_u = _add(g, angle, "", g.scalar("noiseU", d["noiseU"], -1800, 350), "", -1600, 350)
-    noise_u = _add(g, shifted_u, "", drift_u, "", -1400, 400)
+    shifted_u = dd_assets.add(g, angle, "", g.scalar("noiseU", d["noiseU"], -1800, 350), "", -1600, 350)
+    noise_u = dd_assets.add(g, shifted_u, "", drift_u, "", -1400, 400)
     noise_tiling = g.scalar("noisePolarUV_density", d["noisePolarUV_density"], -1800, 750)
-    shifted_v = _add(g, g.multiply(distance, "", noise_tiling, "", -1600, 650), "",
-                     g.scalar("noiseV", d["noiseV"], -1600, 800), "", -1400, 700)
-    noise_v = _add(g, shifted_v, "", drift_v, "", -1200, 650)
+    shifted_v = dd_assets.add(g, g.multiply(distance, "", noise_tiling, "", -1600, 650), "",
+                              g.scalar("noiseV", d["noiseV"], -1600, 800), "", -1400, 700)
+    noise_v = dd_assets.add(g, shifted_v, "", drift_v, "", -1200, 650)
     noise_uv = g.binary(unreal.MaterialExpressionAppendVector, noise_u, "", noise_v, "", -1000, 500)
     noise = g.texture("noiseTex", unreal.load_asset(dd_assets.asset_path(KY + "Textures/T_ky_decoLinesB_sml")),
                       unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -800, 500)
@@ -354,24 +298,26 @@ def _build_polar_glow(mat, d):
     rays = g.power(dense, "", g.scalar("noisePower", d["noisePower"], -600, 700), "", -400, 550)
 
     # The ring and the top and bottom edges.
-    ring_out = _gradient(g, g.scalar("maskRadiusOut", d["maskRadiusOut"], -1000, 900),
-                         g.scalar("maskRadiusOutDensity", d["maskRadiusOutDensity"], -1000, 1000), -800, 900)
-    ring_in = _gradient(g, g.scalar("maskRadiusIn", d["maskRadiusIn"], -1000, 1100),
-                        g.scalar("maskRadiusInDensity", d["maskRadiusInDensity"], -1000, 1200), -800, 1100)
-    hollow = _single(g, unreal.MaterialExpressionOneMinus, ring_in, "RadialGradientExponential", -600, 1100)
+    ring_out = dd_assets.radial_gradient(
+        g, g.scalar("maskRadiusOut", d["maskRadiusOut"], -1000, 900),
+        g.scalar("maskRadiusOutDensity", d["maskRadiusOutDensity"], -1000, 1000), -800, 900)
+    ring_in = dd_assets.radial_gradient(
+        g, g.scalar("maskRadiusIn", d["maskRadiusIn"], -1000, 1100),
+        g.scalar("maskRadiusInDensity", d["maskRadiusInDensity"], -1000, 1200), -800, 1100)
+    hollow = dd_assets.single(g, unreal.MaterialExpressionOneMinus, ring_in, "RadialGradientExponential", -600, 1100)
     ring = g.multiply(ring_out, "RadialGradientExponential", hollow, "", -400, 950)
     linear = dd_assets.function_call(g, "Gradient/LinearGradient", -1000, 1350)
     doubled = g.multiply(linear, "VGradient", dd_assets.constant(g, 2.0, -1000, 1450), "", -800, 1350)
     centred = g.binary(unreal.MaterialExpressionSubtract, doubled, "", dd_assets.constant(g, 1.0, -800, 1450), "",
                        -650, 1350)
-    folded = _single(g, unreal.MaterialExpressionAbs, centred, "", -500, 1350)
-    inside = _single(g, unreal.MaterialExpressionOneMinus, folded, "", -400, 1350)
+    folded = dd_assets.single(g, unreal.MaterialExpressionAbs, centred, "", -500, 1350)
+    inside = dd_assets.single(g, unreal.MaterialExpressionOneMinus, folded, "", -400, 1350)
     steep = g.multiply(inside, "", g.scalar("topAndUnderMask", d["topAndUnderMask"], -400, 1450), "", -250, 1350)
-    edges = _single(g, unreal.MaterialExpressionSaturate, steep, "", -100, 1350)
+    edges = dd_assets.single(g, unreal.MaterialExpressionSaturate, steep, "", -100, 1350)
 
     cover = g.multiply(g.multiply(rays, "", ring, "", -200, 700), "", edges, "", 0, 800)
     faded = g.multiply(cover, "", particle, "A", 150, 700)
-    _depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], 150, 850), 350, 750)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], 150, 850), 350, 750)
 
 
 def _build_empty(mat, d):
@@ -379,7 +325,7 @@ def _build_empty(mat, d):
     it had one expression, not what it was; a cook keeps no material's opacity input. The system's emitter 'light'
     draws it only to carry a particle light, and with nothing connected it would be a black plate (an opacity of 1),
     so the estimate is an opacity of 0."""
-    _particle_material(mat)
+    dd_assets.particle_material(mat)
     g = dd_stage._Graph(mat, checked=True)
     g.out(dd_assets.constant(g, 0.0, -300, 0), "", MP.MP_OPACITY)
 
@@ -396,31 +342,8 @@ FLASH_MATERIALS = (
 
 
 def make_flash_materials():
-    """The flash's materials: each estimated master, an instance of it at the original material's path with the
-    original's parameter defaults (those of the sides not made left out), and the original's instances of that
-    material as instances of it with their own values. Returns the package paths."""
-    made = []
-    for name, master_name, build, children in FLASH_MATERIALS:
-        rel = KY + "Materials/" + name
-        defaults, _ = dd_assets.parameter_defaults(rel, 2)
-        master = dd_assets.material(PIPELINE_MATERIALS + master_name, lambda mat, b=build, d=defaults: b(mat, d),
-                                    blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
-        known = {str(n) for n in MEL.get_scalar_parameter_names(master)}
-        base = dd_assets.material_instance(dd_assets.asset_path(rel), master,
-                                           scalars={k: v for k, v in defaults.items() if k in known})
-        made += [master, base]
-        for child in children:
-            child_rel = KY + "Materials/" + child
-            scalars, vectors, textures, masks = dd_assets.instance_parameters(child_rel, 2)
-            unknown = set(scalars) - known
-            if unknown:
-                raise RuntimeError("%s sets %s, which the estimate of %s does not have"
-                                   % (child, sorted(unknown), name))
-            made.append(dd_assets.material_instance(dd_assets.asset_path(child_rel), base, scalars=scalars,
-                                                    vectors=vectors, textures=textures, static_masks=masks))
-    for asset in made:
-        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
-    return [a.get_path_name() for a in made]
+    """The flash's materials (dd_assets.estimated_materials). Returns the package paths."""
+    return [a.get_path_name() for a in dd_assets.estimated_materials(KY + "Materials/", FLASH_MATERIALS, 2)]
 
 
 def import_all():

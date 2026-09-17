@@ -282,10 +282,11 @@ def material(asset_path, build, domain=None, blend_mode=None):
     return mat
 
 
-def material_instance(asset_path, parent, scalars=None, vectors=None, textures=None, static_masks=None):
+def material_instance(asset_path, parent, scalars=None, vectors=None, textures=None, static_masks=None,
+                      static_switches=None):
     """Loads or creates a MaterialInstanceConstant of parent and sets its parameters ({name: value}; a vector is 4
-    numbers, a texture an asset path, a static component mask the channels it keeps, 'G'); the parameters it had before
-    (static ones too) are cleared first. Returns the instance."""
+    numbers, a texture an asset path, a static component mask the channels it keeps, 'G', a static switch a bool); the
+    parameters it had before (static ones too) are cleared first. Returns the instance."""
     if EAL.does_asset_exist(asset_path):
         mic = unreal.load_asset(asset_path)
     else:
@@ -303,13 +304,20 @@ def material_instance(asset_path, parent, scalars=None, vectors=None, textures=N
     # Python has no setter for a static component mask (UWasamiMaterialLibrary); the update rebuilds the permutation.
     for key, channels in (static_masks or {}).items():
         unreal.WasamiMaterialLibrary.set_static_component_mask(mic, key, *[c in channels for c in "RGBA"])
+    # UE 5.8's static switch setter always returns False, so the values are read back after the update.
+    for key, value in (static_switches or {}).items():
+        MEL.set_material_instance_static_switch_parameter_value(mic, key, bool(value), update_material_instance=False)
     MEL.update_material_instance(mic)
+    for key, value in (static_switches or {}).items():
+        if MEL.get_material_instance_static_switch_parameter_value(mic, key) != bool(value):
+            raise RuntimeError("%s: the static switch %s did not take %s" % (asset_path, key, value))
     return mic
 
 
 # The engine's material function libraries.
 FUNCTIONS_01 = "/Engine/Functions/Engine_MaterialFunctions01/"
 FUNCTIONS_02 = "/Engine/Functions/Engine_MaterialFunctions02/"
+FUNCTIONS_03 = "/Engine/Functions/Engine_MaterialFunctions03/"
 # Parameters an instance's export lists that are the engine's own (every material has RefractionDepthBias; the
 # original's particle and UI materials do not use it).
 ENGINE_PARAMETERS = ("RefractionDepthBias",)
@@ -349,8 +357,8 @@ def parameter_defaults(rel, version):
 
 def instance_parameters(rel, version):
     """A material instance's own values from its export: ({scalar: value}, {vector: [r, g, b, a]}, {texture: our asset
-    path}, {static component mask: the channels it keeps, 'G'}), without the engine's parameters (ENGINE_PARAMETERS).
-    Static parameters of other kinds raise (nothing writes them yet)."""
+    path}, {static component mask: the channels it keeps, 'G'}, {static switch: bool}), without the engine's parameters
+    (ENGINE_PARAMETERS). Static parameters of other kinds raise (nothing writes them yet)."""
     props = main_export(export_json(rel, version), rel)["props"]
 
     def own(key):
@@ -365,9 +373,112 @@ def instance_parameters(rel, version):
     static = dict(props.get("StaticParameters") or {})
     masks = {p["ParameterInfo"]["Name"]: "".join(c for c in "RGBA" if p.get(c))
              for p in static.pop("StaticComponentMaskParameters", []) if p.get("bOverride")}
+    switches = {p["ParameterInfo"]["Name"]: bool(p.get("Value")) for p in static.pop("StaticSwitchParameters", [])
+                if p.get("bOverride")}
     if any(static.values()):
         raise NotImplementedError("%s has static parameters %s" % (rel, sorted(k for k, v in static.items() if v)))
-    return scalars, vectors, textures, masks
+    return scalars, vectors, textures, masks, switches
+
+
+# Helpers for the estimated masters of particle materials (graphs of dd_stage._Graph).
+PIPELINE_MATERIALS = paths.PIPELINE_ROOT + "/Materials/"
+MP = unreal.MaterialProperty
+
+
+def particle_material(mat, beam_trails=False, responsive_aa=False, two_sided=False):
+    """The settings a cook keeps on the particle packs' materials (their blend is translucent, set by material())."""
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    mat.set_editor_property("two_sided", two_sided)
+    mat.set_editor_property("used_with_particle_sprites", True)
+    mat.set_editor_property("used_with_mesh_particles", True)
+    mat.set_editor_property("used_with_beam_trails", beam_trails)
+    mat.set_editor_property("enable_responsive_aa", responsive_aa)
+
+
+def depth_faded_opacity(g, opacity, distance, x, y):
+    """opacity × how far the scene lies behind it (DepthFade over distance; UE clamps a distance of 0 to a tiny one,
+    which fades nothing), as the material's opacity."""
+    fade = g.node(unreal.MaterialExpressionDepthFade, x, y)
+    connect(opacity, "", fade, "Opacity")
+    connect(distance, "", fade, "FadeDistance")
+    g.out(fade, "", MP.MP_OPACITY)
+
+
+def radial_gradient(g, radius, density, x, y, uvs=None, centre=None):
+    """RadialGradientExponential with the given radius, density, UVs and centre (None leaves the function's default:
+    TexCoord 0, the middle)."""
+    call = function_call(g, "Gradient/RadialGradientExponential", x, y)
+    for source, pin in ((radius, "Radius"), (density, "Density"), (uvs, "UVs"), (centre, "CenterPosition")):
+        if source is not None:
+            connect(source, "", call, pin)
+    return call
+
+
+def add(g, a, a_pin, b, b_pin, x, y):
+    return g.binary(unreal.MaterialExpressionAdd, a, a_pin, b, b_pin, x, y)
+
+
+def single(g, cls, source, pin, x, y):
+    """A one-input expression (Saturate, OneMinus, Abs, ...) of source's output pin."""
+    e = g.node(cls, x, y)
+    connect(source, pin, e, "")
+    return e
+
+
+def channel(g, source, pin, keep, x, y):
+    """One channel ('R', 'G', ...) of source's output pin (a ComponentMask starts with R and G on, so each is set)."""
+    e = g.node(unreal.MaterialExpressionComponentMask, x, y)
+    for c in "RGBA":
+        e.set_editor_property(c.lower(), c == keep)
+    connect(source, pin, e, "")
+    return e
+
+
+def dynamic_parameter(g, names, x, y, defaults=(0.0, 0.0, 0.0, 1.0)):
+    """A DynamicParameter with the original's names (the particle system's values are named after them) and defaults."""
+    e = g.node(unreal.MaterialExpressionDynamicParameter, x, y)
+    e.set_editor_property("param_names", list(names))
+    e.set_editor_property("default_value", unreal.LinearColor(*defaults))
+    # The outputs take the names only when they are asked for (GetOutputs), and connecting looks them up as they are.
+    MEL.get_material_expression_output_names(e)
+    return e
+
+
+def estimated_materials(folder, entries, version):
+    """Particle materials whose graphs the cook took away. entries: (the original's material under folder, the master
+    holding our estimate under /Game/Pipeline/Materials, its builder(mat, the original's scalar and vector defaults by
+    name), the original's instances of that material). Makes each master (translucent), an instance of it at the
+    original material's path with the original's defaults of the parameters the estimate has (those of the sides not
+    made left out), and the original's instances as instances of that one with their own values (a value the estimate
+    has no parameter for raises). Returns the assets, saved."""
+    made = []
+    for name, master_name, build, children in entries:
+        rel = folder + name
+        scalars, vectors = parameter_defaults(rel, version)
+        defaults = dict(scalars, **vectors)
+        master = material(PIPELINE_MATERIALS + master_name, lambda mat, b=build, d=defaults: b(mat, d),
+                          blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
+        known = {kind: {str(n) for n in names(master)} for kind, names in (
+            ("scalars", MEL.get_scalar_parameter_names), ("vectors", MEL.get_vector_parameter_names),
+            ("textures", MEL.get_texture_parameter_names), ("switches", MEL.get_static_switch_parameter_names))}
+        base = material_instance(asset_path(rel), master,
+                                 scalars={k: v for k, v in scalars.items() if k in known["scalars"]},
+                                 vectors={k: v for k, v in vectors.items() if k in known["vectors"]})
+        made += [master, base]
+        for child in children:
+            child_rel = folder + child
+            c_scalars, c_vectors, c_textures, c_masks, c_switches = instance_parameters(child_rel, version)
+            for kind, values in (("scalars", c_scalars), ("vectors", c_vectors), ("textures", c_textures),
+                                 ("switches", c_switches)):
+                unknown = set(values) - known[kind]
+                if unknown:
+                    raise RuntimeError("%s sets %s, which the estimate of %s does not have"
+                                       % (child, sorted(unknown), name))
+            made.append(material_instance(asset_path(child_rel), base, scalars=c_scalars, vectors=c_vectors,
+                                          textures=c_textures, static_masks=c_masks, static_switches=c_switches))
+    for asset in made:
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return made
 
 
 def _curve_points(points, point_cls, convert):
