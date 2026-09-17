@@ -51,7 +51,7 @@ main()
 
 ## 3. ベースラインを確かめる
 
-- **エディタが起動して応答するか**: 上の `ue_remote.py` が答えれば起きている。答えなければ `tasklist | grep -i UnrealEditor` で確認し、起動していなければ `python Tools/editor_cycle.py`（Claude は Windows のセッション 0 にいるので `UnrealEditor.exe` を直接起動しても落ちる）。**エディタを閉じる・開き直すのはユーザーの確認を取ってから**（`.claude/guides/verification.md`）。
+- **エディタが起動して応答するか**: 上の `ue_remote.py` が答えれば起きている。答えなければ `tasklist | grep -i UnrealEditor` で確認し、起動していなければ `python Tools/editor_cycle.py`（Claude は Windows のセッション 0 にいるので `UnrealEditor.exe` を直接起動しても落ちる）。エディタを閉じる・開き直すのに確認は要らない（`.claude/guides/verification.md`。閉じる前に保存する）。
 - **PIE が残っていたら止める**（`editor_request_end_play`）。残っているとアセットの操作が `The Editor is currently in a play mode.` で失敗する。
 - **MCP が応答しないとき**は `Tools/ue_remote.py` で作業できる（この PC は Docker Desktop が 127.0.0.1:8000 を掴むため、エディタを開き直すと MCP の接続が切れる。`/mcp` で再接続する）。
 - **C++ を変える作業なら**、ビルドが通る状態から始める（`python Tools/editor_cycle.py`）。
@@ -63,7 +63,7 @@ main()
 1. そのステップを記録で「作業中」にし、**変更する予定のファイルとアセット**（`/Game/...`）を書く。
 2. 実装する。時間のかかる処理（取り込み、レベルの組み立て、ライティングのビルド、シェーダーのコンパイル、C++ のビルド）は**先に「再開時の注意」へ、実行する手順・出力先・完了の確かめ方を書いてから**走らせる。バックグラウンドで走らせ、待つ間に別の作業を進める。
 3. 判断したこと・ユーザーに確認して決めたことは、その場で「決定事項」に理由つきで書く。
-4. 検証する（`.claude/guides/verification.md`。PIE を使うならユーザーの確認を取り、終わったら必ず止める）。
+4. 検証する（`.claude/guides/verification.md`。PIE・エディタの開き直し・本家の起動に確認は要らない。PIE は終わったら必ず止める）。
 5. ソースを変えたなら対応する実装記録を直し、`python .claude/scripts/check_records.py --update` を通す。
 6. 記録のステップを完了にし、「次にやること」を次のステップに更新してから、**記録も一緒にコミットする**。
 7. push の条件（未 push 2 件以上 / 最終コミットから 10 分以上 / 大規模改修のマージ後）を満たしていれば main を push する。

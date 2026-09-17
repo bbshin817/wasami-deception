@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(python Tools/editor_cycle.py *)",
+      "PowerShell(python Tools/editor_cycle.py *)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {

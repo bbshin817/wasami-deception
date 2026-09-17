@@ -20,7 +20,7 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_stage.py
   - Content/Python/wasami_tools/pipeline/dd_level.py
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # 取り込みの仕組み
@@ -152,6 +152,7 @@ updated: 2026-09-16
 - PIE の中で使う相手は `UnrealEditorSubsystem.get_game_world()`。`get_editor_world()` は PIE 中もエディタのワールドを返すので、この道具は PIE の絵を撮れない。
 
 ## 変更履歴
+- 2026-09-17: `Tools/desktop.py` の説明文を、エディタへの入力に確認は要らない（ユーザーが操作している間は送らない）という決まりに合わせた（ユーザーの指示。処理は変えていない）。
 - 2026-09-16: 焼き込みの警告（インポータンスボリュームが無い・ライトマップ UV の重なり）がどちらも原作どおりであることを「既知の制約・注意点」に書いた（ソースは変えていない）
 - 2026-09-16: `apply_texture_settings` が、UE が sRGB を切る圧縮（HDR など）で sRGB を求めないようにした（HDR の空 2 枚が `refresh_settings` のたびに変わったと数えられていた）
 - 2026-09-16: ライトマップの解像度と UV の番号を原作のメッシュの値から取るようにし（`Export.lightmap`）、UV1 を持たないメッシュにも UE の展開を作らせないようにした（`setup_lightmap`。`refresh_settings` が既存のメッシュにもかけ直す）。それまでは解像度を表面積から決め（最大 2048）、番号を 1 に決め打ちし、結合メッシュに UV を作らせていたため、原作では 1 点の値だったステージ本体の間接光が面ごとに焼かれ、壁と床が実機より明るかった。表面積の計測（`gltf_surface`・`areaM2`・`lightmapUvUsed`）は使わなくなったので外した

@@ -14,7 +14,8 @@
     python Tools/desktop.py stop                       stop the agent
 
 Input is only delivered while the foreground window belongs to an allowed process — the reference game by default.
-Pass --allow <image.exe> (repeatable) for anything else, and ask the user first: the editor and PIE are their app
+Pass --allow <image.exe> (repeatable) for anything else. Input to the editor (UnrealEditor.exe) needs no asking unless
+the user forbids it, but the editor is their app too: don't send while they are using it
 (`.claude/guides/verification.md`). Exit code 0 when the agent answered ok, 1 otherwise.
 """
 import argparse
