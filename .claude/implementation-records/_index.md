@@ -12,6 +12,7 @@
 | [03-tablet.md](03-tablet.md) | タブレットの画面（`UWasamiTabletWidget`。パワーの枠の出し分けと弾み、シャードの回収の Count Shake）、素材の取り込み（`dd_tablet.py`）、ミニマップの仕掛け |
 | [04-powers.md](04-powers.md) | タブレットのパワー（`UWasamiPowerComponent`）。左右の枠と Q / E / 1 / 2、2 段の連打防止、ゲージ、強化段階の値、死亡のリセット、スピードブーストとその演出（赤い色調・集中線とビネット・画面の揺れ）、テレポーテーション（旧版。照準のアクタ `AWasamiTeleportAim`・移動・取り消し・再使用・カメラアニメ）、一瞬の演出の共通の基底 `AWasamiPowerBurst` と Primal Fear（`AWasamiPrimalPower`）、テレキネシス（`AWasamiTelekinesisPower`。半径の中のシャードを引き寄せる。力場の粒子と推定の材質）、Vanish（`AWasamiVanishPower`・画面の `UWasamiVanishWidget`・カプセルの Camera 応答）、Telepathy（`AWasamiTelepathyPower`・敵ごとの画面空間の印 `AWasamiTelepathyTracker` と `UWasamiTelepathyTrackerWidget`）、仮の的 `AWasamiTestEnemy`、UE4 の CameraAnim の再生（`UWasamiCameraAnim`。PP と FOV のトラック）、プレイヤーの FX（本家の Chameleon）、敵とシャードのインターフェース |
 | [06-game-flow-save.md](06-game-flow-save.md) | ゲームの流れ。いまはシャード（`AWasamiShard`: 本作のワサミ餅・紫の灯・拾うカプセル・地図の印・回転、触れて回収〈数の −1・Count Shake・揺れ・閃光・音〉、テレキネシスの引き寄せ）と回収の閃光 `P_ky_flash3`（推定の材質 5 つ）、その素材の取り込み（`dd_shards.py`）。チェックポイント・セーブ・ライフ・死亡・脱出はこれから |
+| [07-enemies.md](07-enemies.md) | 敵ワサミ。素材の取り込み（`dd_enemy.py`: ユーザーのモデルを 30 fps に標本化し直し、役の名前のアニメ 19 本〈ループを閉じる・追跡中の変化をその場の形に・気絶をループと起き上がりに分ける・旧モデルの捕獲の 3 本を載せ替える〉とスケルタルメッシュ・材質にする）と、アニメの再生（`UWasamiEnemyAnimInstance`: 本家のナースの ABP の木〈気絶・Idle ↔ Moving・歩き / 走り〉を C++ の状態と Proxy で持ち、気絶の起き上がりを 17 s の終わりに合わせ、全身の 1 回再生の口を持つ）、敵のアクタ（`AWasamiEnemy`: 本家のナースの部品・`CanSpawn`・0.5 s ごとの判断と 17 s の気絶・パワーの受け口・`SpawnEnemy`）。AI・捕獲はこれから |
 
 ## ソース → 記録 対応表
 
@@ -26,6 +27,8 @@
 | `Source/wasami_deception/WasamiGameMode.*`、`WasamiPlayerCharacter.*` | 02 |
 | `Source/wasami_deception/WasamiTabletWidget.*`、`Content/Python/wasami_tools/pipeline/dd_tablet.py` | 03 |
 | `Source/wasami_deception/WasamiShard.*`、`Tests/WasamiShardTests.cpp`、`Content/Python/wasami_tools/pipeline/dd_shards.py`、`SourceArt/Wasami/wasami_mochi.glb` | 06（`dd_shards.py` は 01 にも載せる） |
+| `Content/Python/wasami_tools/pipeline/dd_enemy.py`、`SourceArt/Wasami/enemy_wasami_v3.glb`、`SourceArt/Wasami/enemy_wasami_capture.glb` | 07（`dd_enemy.py` は 01 にも載せる） |
+| `Source/wasami_deception/WasamiEnemy.*`、`WasamiEnemyAnimInstance.*`、`Tests/WasamiEnemyTests.cpp` | 07 |
 | `Source/wasami_deception/WasamiPowerTypes.*`、`WasamiPowerComponent.*`、`WasamiEnemyInterface.h`、`WasamiTelekinesisInterface.h`、`WasamiCameraAnim.*`、`WasamiChameleonComponent.*`、`WasamiSpeedBoostWidget.*`、`WasamiTeleportAim.*`、`WasamiPowerBurst.*`、`WasamiPrimalPower.*`、`WasamiTelekinesisPower.*`、`WasamiVanishPower.*`、`WasamiVanishWidget.*`、`WasamiTelepathyPower.*`、`WasamiTelepathyTracker.*`、`WasamiTelepathyTrackerWidget.*`、`Tests/WasamiPowerTests.cpp`、`Tests/WasamiCameraAnimTests.cpp`、`Tests/WasamiTestEnemy.*` | 04 |
 
 ## これから増える記録（予定）
@@ -33,7 +36,6 @@
 | 記録 | 内容 |
 | --- | --- |
 | 05-interact | 視線の手のマーク（左クリックの調べる処理もここ。テレポーテーションは 04） |
-| 07-enemies | ワサミの敵、巡回・発見・追跡・グリッチ・捕獲 |
 | 08-stage-gimmicks | 扉 6 種・罠の扉・噴出・車・街灯・脱出のトラックと群れ |
 | 09-ui | タイトル・OPTIONS・ポーズ・死亡・脱出の画面・字幕・SAVING |
 | 10-audio | 曲・効果音・声・減衰 |

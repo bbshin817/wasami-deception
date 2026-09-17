@@ -9,7 +9,7 @@ namespace
 	// The hospital nurse's capsule half height, and ACharacter's radius.
 	constexpr float CapsuleRadius = 34.f;
 	constexpr float CapsuleHalfHeight = 118.058f;
-	const FName EnemyTag(TEXT("Enemy"));
+	const FName TestEnemyTag(TEXT("Enemy"));
 }
 
 AWasamiTestEnemy::AWasamiTestEnemy()
@@ -19,7 +19,7 @@ AWasamiTestEnemy::AWasamiTestEnemy()
 	Capsule->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
 	Capsule->SetHiddenInGame(false);
 	RootComponent = Capsule;
-	Tags.Add(EnemyTag);
+	Tags.Add(TestEnemyTag);
 }
 
 AWasamiTestEnemy* AWasamiTestEnemy::SpawnTestEnemy(const UObject* WorldContextObject, FVector Location)

@@ -88,8 +88,8 @@ MP = unreal.MaterialProperty
 FLASH = MOCHI_FOLDER + "/P_WasamiShardFlash"
 FLASH_SOURCE = PARTICLE_SYSTEMS[0]
 FLASH_COLOR = MOCHI_PULSE_COLOR[:3]
-FLASH_GAMMA = 0.5       # TODO(仮)
-FLASH_STRENGTH = 0.8    # TODO(仮)
+FLASH_GAMMA = 0.5       # the user approved these two (2026-09-17)
+FLASH_STRENGTH = 0.8
 FLASH_COLOUR_MODULES = 7  # one per emitter
 
 

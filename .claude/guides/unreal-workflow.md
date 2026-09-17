@@ -23,9 +23,10 @@
 | ツールセット | 内容 |
 | --- | --- |
 | `WasamiStageTools` | 病院ステージ（`06_Hospital_Zone_01`・`_02`）の取り込み（メッシュ・テクスチャ・マテリアル）とレベルの組み立て |
-| `WasamiDDTools` | 本家の資産（今はカメラシェイク）を原作データから `/Game/DD/…` に作る |
+| `WasamiDDTools` | 本家の資産（カメラシェイク、タブレット、パワー、シャード）を原作データから `/Game/DD/…` に作り、本作の素材（敵ワサミ = `import_wasami_enemy`）を `SourceArt/` から `/Game/Wasami/…` に作る |
 | `WasamiDevTools` | コンソールコマンド |
 
+- MCP の `call_tool` の `toolset_name` には**完全なクラスのパス**を渡す（`wasami_tools.toolsets.dd.WasamiDDTools`。短い名前 `WasamiDDTools` では見つからない。2026-09-18）。
 - 各ツールは呼ばれるたびに `wasami_tools.pipeline` の中身を読み込み直すので、パイプラインの Python を直したらそのまま呼べる。
 - ツールセットのクラス（引数や新しいツール）を変えたときは、読み込み直して登録し直す（ToolsetRegistry の `reload_module`。MCP のツールから自分自身を読み込み直すと危ないので、リモート実行で行う）:
   `python Tools/ue_remote.py -c "import wasami_tools; from toolset_registry import _reload; _reload.reload_module(wasami_tools)"`

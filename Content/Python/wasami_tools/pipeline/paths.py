@@ -18,6 +18,8 @@ DD_STAGE = os.path.join(PROJECT, "Intermediate", "Pipeline", "dd", "stage_ue.jso
 
 # Pipeline assets: the Interchange pipeline for the stage's glTF meshes and the master materials its materials use.
 MESH_PIPELINE = "/Game/Pipeline/Interchange/PL_DD_StaticMesh"
+# ... and the one for this game's skinned models with their animations (dd_enemy).
+SKELETAL_PIPELINE = "/Game/Pipeline/Interchange/PL_Wasami_Skeletal"
 MASTER_SUBSTANCE = "/Game/Pipeline/Materials/M_DD_Substance"
 MASTER_DECAL = "/Game/Pipeline/Materials/M_DD_Decal"
 MASTER_UNLIT = "/Game/Pipeline/Materials/M_DD_Unlit"

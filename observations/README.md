@@ -417,6 +417,28 @@ Zone 1 の −Y へ延びる廊下で、プレイヤーをシャードの 4.4 m 
 | 餅の箱の明るい所（b、`--stat peak`） | 最大 164〜207、250 以上の画素なし（白飛びなし）。山の p99 以上の色 (216, 190, 223) 前後、色相 276〜316°（紫）。谷では色相なし |
 | 個体ごとの位相（c） | 手前の餅 330 に対して、奥の餅（`far`）は約 −0.15 s、右奥（`605,338,616,349`）は約 +0.3 s、左奥（`536,338,547,349`）は約 +1.0 s（ほぼ逆位相）。b（位置から）では奥が −0.3 s |
 
+### 敵ワサミ（2026-09-18、作業一覧の項目 4 のステップ 4）
+
+本家とは比べない（モデルが違う）。Zone 1 の待合の廊下（幅 6 m、壁は X ±300、Y 300〜−3598 に障害物なし）で、シャードを隠し `DisableAllScreenMessages`・`t.MaxFPS 60`。敵は `tools/enemy_probe.py`（`WasamiEnemy.spawn_enemy`、毎フレーム `add_movement_input`、骨の標本を `Saved/enemy_probe/<名前>.json` へ）で動かし、足の滑りは `tools/enemy_slide.py`。ビューポートは画面の (1827, 193)〜(2983, 883)、1156 × 690。
+
+| ファイル | 撮り方 | 中身 |
+| --- | --- | --- |
+| `pie-enemy-idle-side.png`・`-front.png`・`pie-enemy-alert-side.png`・`-front.png` | `place 15 385 --yaw -90`、敵は 4 m 先 (15, −15)。横向き（Yaw 0）と正面（Yaw 90） | `Idle`（直立、頭は少しうつむく）と見張りの `Idle_Alert`（足を前後に開いた低い構え） |
+| `pie-enemy-walk.mkv`・`-run.mkv`・`-nightmare.mkv`・`-nightmare2.mkv` | `place -250 -250 --yaw 0 --pitch -8`、敵は X 120 で Y 60 ↔ −560 を往復、`slomo 0.5`、10 s | 巡回 350・追跡 800・Nightmare 800 cm/s。`nightmare2` は分母を 500 にした後 |
+| `pie-enemy-stun.mkv` | 同じ画角、`slomo 1`、22 s。追跡の往復の途中（Y −250）で `WasamiPrimalPower.stun_enemies` | 走り → 気絶 → 起き上がり → 明けて走り出す。気絶は映像の約 0.83 s |
+| `pie-enemy-telepathy.png` | 立ち姿と同じ | Telepathy の印（赤い光）が胸に重なる |
+| `pie-enemy-once-Chase_*.mkv`（6 本） | 新しい敵を (100, 300) から Y −3400 へ 800 cm/s で走らせ、プレイヤーを横 2.5 m に付けて追い撮り（`follow`）、Y −150 で `play_once`、`slomo 0.5`、8 s | 追跡中の変化。映像の約 1.35 s に始まる。`VaultLand` は形を直した後（ステップ 4b）に撮り直した（`-sheet.png` は 1.1〜7.3 s の 25 コマ） |
+| `pie-enemy-once-Capture_*.mkv`（3 本） | 止まった敵 (120, 150)・Yaw −90 を `place -250 -100 --yaw 0 --pitch -8` から、`slomo 0.5` | 捕獲の 3 本 |
+
+| 項目 | 値 |
+| --- | --- |
+| 大きさ | 床は Z 0、カプセルの中心 Z 120.06。`head_end` 170 cm（見張りの構え 151 cm）、骨盤 93.6 cm（構え 82.3 cm）、`ball` 12.7〜13.4 cm |
+| 接地中の足の前向きの速さ（`enemy_slide.py`、接地の幅 1・2・3・5 cm で同じ傾向） | `Walk` 350 cm/s・再生の速さ 2.00（上限）: +83 cm/s（速さの 24 %）。クリップの足の速さ 134〜145 cm/s（滑らない速さは 2.4〜2.6）。`Run` 800 cm/s・1.78: +8 cm/s（1 %）、足の速さ 442〜459。`Run_Nightmare` 800 cm/s・1.75（分母 460）: −64 cm/s（−8 %）、足の速さ 490〜507 → 分母 500・1.60 で −4 cm/s（−0.5 %） |
+| 気絶（送った時刻を 0） | 0.134 s で主のクリップが `Stun_Loop`（重み 0.53）、0.184 s の判断で止まる（それまでに 147 cm 滑る）。`Stun_Recover` の始まり 9.618 s（期待 0.184 + 9.433）。17.184 s に起き上がりの終わり（7.5667 s）と Patrol が同時。明けの 0.15 s で `head_end` 141 → 170 cm、動き出しと重なって跳ねては見えない |
+| Telepathy・Vanish・Primal | 印の位置は敵のアクタの位置（Z 120）。`WasamiVanishPower.notify_enemies` は 1 体に届く（`bSeenPlayerRecently` は Python から書けないので真 → 偽はテストで確かめる）。`stun_enemies`（範囲 1500、4 m 先）で気絶 |
+| `Chase_VaultLand` の骨（送った時刻を 0） | 直す前（元の 3.067 s）: 0.3〜0.8 s 足 87 cm（台の上でしゃがむ）、0.83 s に離れ足は最高 140 cm、1.56 s に着地（足 12 cm、骨盤 77 → 70 cm）、2.3 s から立ったまま（骨盤 92 cm）、2.9 s で走りへ。直した後（2.4 s、ステップ 4b）: 足は 0.13〜0.87 s に 10〜11 cm（床。右足は 0.65 s から振り上げる）、骨盤 92 → 85 cm にかがみ、0.98 s に両足が離れ、1.08〜1.19 s に足 76〜80 cm、1.29 s に骨盤が最高 130.5 cm、1.62 s に着地（足 10 cm）、1.83 s に骨盤 70 cm までかがみ、2.24 s に 90 cm で走りへ戻り始める |
+| 見え方 | `Chase_PickUp`（前かがみに手を伸ばす）・`_Charge`（頭を下げて突っ込む）・`_RunFast`・`_VaultRoll`（かがんで跳び、転がって起き上がる）・`_Slide`（床すれすれまで滑り込む）は走りから自然につながる。`_VaultLand` は直す前は宙から始まった。直した後は床でかがみ、片手を下へ伸ばし、脚をたたんで横向きに跳び、着地してかがんでから走りに戻る（見えない低い障害物を跳び越える形）。捕獲の 3 本は腕のねじれなし、終わると元の位置へ跳んで戻る（進んだ形のまま） |
+
 **`zone1-start-pie-fixedmat.png` より前の本作の絵は、すべて病院の壁・床が既定のマテリアル（灰色の市松）で描かれている**（`M_DD_Substance` のコンパイル失敗）。
 **`zone1-start-pie-fixedcolor.png` より前の本作の絵は、灯の色の R と B が入れ替わっている**（天井灯が黄色、扉枠の灯が青。本来は青白と赤）。どちらも 01 記録。
 これより前の数値の比較（下の表）は、この 2 つの誤りを含んだ絵のもの。
@@ -437,6 +459,7 @@ Zone 1 の −Y へ延びる廊下で、プレイヤーをシャードの 4.4 m 
 | `tools/bake_level.py` | `python Tools/ue_remote.py -c "$(cat observations/tools/bake_level.py; echo; echo "main('L_Hospital_Zone1', 'QUALITY_HIGH')")"`。`bake_zone1.py` のレベルと品質を指定できる形（レベルを開いてから焼く）。**原作と同じ High 品質**で Zone 1 は 106 秒、Zone 2 は 48 秒。出力の最後に `bake ok True` と秒数 |
 | `tools/pie_cmd.py` | `python observations/tools/pie_cmd.py [--shot <名前>] "<コマンド>" …`。PIE のゲームのワールドでコンソールコマンドを打ち、`--shot` なら `HighResShot 3440x1440` を撮って `ours/<名前>.png` に写す。`ShowFlag.*` は全体に効く cvar なので、切ったら `2` に戻す |
 | `tools/pie_frametime.py` | PIE 中に `python Tools/ue_remote.py observations/tools/pie_frametime.py`。フレーム時間を 5 秒集めて `Saved/pie_frametime.txt` に書く（エディタの描画込み。同じ条件での比較用） |
+| `tools/enemy_probe.py`・`enemy_reload.txt`・`enemy_move_rec.sh <名前> <walk> <nightmare>`・`enemy_once_rec.sh <役> [秒]`・`enemy_capture_rec.sh <役> [秒]`・`enemy_slide.py <名前> …` | PIE の敵ワサミを動かして撮る（項目 4 のステップ 4）。`enemy_probe` はエディタの Python に import して使う（`sys.path` に `observations/tools` を足す。直したら `enemy_reload.txt` を `ue_remote.py -c` で送る）: `spawn`・`shuttle`（往復）・`line`（1 回走る）・`follow`/`unfollow`（プレイヤーを敵に付けて追い撮り）・`stun_at`・`once_at`・`sample`（骨の標本）。`enemy_slide.py` は標本から接地中の足の滑りを出す |
 
 PIE の手順: MCP の `EditorAppToolset.StartPIE`（`startTransform` = (-25, 3735, 97)・ヨー -90、`warmupSeconds` 3）→ `tools/pie_pose.py` → ゲームのワールドで `HighResShot 3440x1440`
 （`unreal.SystemLibrary.execute_console_command(get_game_world(), …)`）→ `Saved/Screenshots/WindowsEditor/` の最新を `ours/` へ写す → `StopPIE`。

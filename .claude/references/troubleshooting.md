@@ -61,7 +61,7 @@
 
 - 症状: 作業ブランチを main へマージしようとすると、main が Claude の一時フォルダ（`%LOCALAPPDATA%\Temp\claude\<プロジェクト>\<セッション>\scratchpad\main-wt`）の worktree で開かれていて切り替えられない。その worktree の `git status` は大量の「staged の変更」を示す。
 - 原因: 前のセッション（2026-09-17 の昼）が main 用の worktree を作り、後で main の参照だけを別の場所から進めた（`update-ref` のマージ）。worktree の索引とファイルは古い main（`a8ef1ad`）のままなので、進んだ HEAD との差が変更に見える。独自の作業は入っていない（`git -C <worktree> diff --cached a8ef1ad` が空、`git -C <worktree> diff` も空で確かめた）。
-- 対処（未解決の片付け）: worktree は消していない（`git worktree remove` は変更ありとして断り、`--force` は変更を捨てる形の操作なのでユーザーの確認待ち。作業一覧の「未回答の要確認」）。それまでのマージは、ファイルを動かさない形で行う: 作業ブランチで `git commit-tree HEAD^{tree} -p main -p HEAD -m …` → `git update-ref refs/heads/main <新> <旧>` → `git checkout --ignore-other-worktrees main`（木が同じなのでファイルは変わらない）→ `git branch -d <作業ブランチ>` → `git push origin main`。`--no-ff` のマージと同じ形になる。main は必ず作業ブランチの祖先であることを先に確かめる（`git merge-base --is-ancestor main HEAD`）。
+- 対処: 2026-09-17 23:37 にユーザーの許可を得て `git worktree remove --force <パス>` → `git worktree prune` で消した（解決済み。以後のマージは普通の `git checkout main` → `git merge --no-ff`）。消す前に、索引が古い main の木と同じ（`git -C <worktree> write-tree` = `git rev-parse a8ef1ad^{tree}`）で、未ステージ・未追跡の変更が無いこと（`git -C <worktree> status --short` が `M `・`D `・`A ` の行だけ）を確かめた。`git worktree remove` は変更ありとして断り、`--force` は変更を捨てる形の操作なので、**同じ症状がまた出たら、同じ確かめ方をしてからユーザーに消してよいか聞く**（無人では消さない）。消すまでのマージは、ファイルを動かさない形で行う: 作業ブランチで `git commit-tree HEAD^{tree} -p main -p HEAD -m …` → `git update-ref refs/heads/main <新> <旧>` → `git checkout --ignore-other-worktrees main`（木が同じなのでファイルは変わらない）→ `git branch -d <作業ブランチ>` → `git push origin main`。`--no-ff` のマージと同じ形になる。main は必ず作業ブランチの祖先であることを先に確かめる（`git merge-base --is-ancestor main HEAD`）。
 - 確かめ方: `git worktree list` に `scratchpad/main-wt` が出るか。
 - 出典: 2026-09-17 夜の無人運転（作業一覧の項目 2 のマージ）。
 
@@ -235,8 +235,9 @@
 
 - 症状: 変えていないファイルで再定義や曖昧な参照のエラー、または `warning C4458: declaration of 'Slot' hides class member`（警告がエラー扱い）。
 - 原因: ユニティビルドでファイルのまとまり方が変わり、無名名前空間の同じ名前（`WaveVolume`・`WavePitch`・`FadeKeys`・`EnemyTag`・`VignetteScale`）が 1 つの翻訳単位に入る。C4458 はローカル変数が `UWidget::Slot`・`UUserWidget::bInitialized` などを隠す。
-- 対処: 定数や補助の名前はファイルごとに固有にし、UE のメンバー名と同じローカル変数を避ける。
-- 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）。
+- 対処: 定数や補助の名前はファイルごとに固有にし、UE のメンバー名と同じローカル変数を避ける。ファイルを足さなくても、ヘッダーを 1 つ変えて再コンパイルの範囲が変わるだけで起きる（2026-09-18: `WasamiEnemyAnimInstance.h` の定数を変えたら `WasamiEnemy.cpp` と `Tests/WasamiTestEnemy.cpp` の `EnemyTag` がぶつかった。テスト側を `TestEnemyTag` にした）。
+- `Tools/editor_cycle.py` はビルドに失敗するとエディタを閉じたままにする。直したら `python Tools/editor_cycle.py --no-quit` でビルドして開く。
+- 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4。
 
 ### Automation テストで、一時的なワールドのアクタがイベントを捨てる
 
@@ -244,6 +245,14 @@
 - 原因: アクタが初期化前（`InitializeActorsForPlay` を通っていない）。
 - 対処: ワールドを作ったら `InitializeActorsForPlay` を呼ぶ（`Wasami.Powers.PrimalStun`）。
 - 出典: 進捗記録 `20260916-tablet-powers.md` の検証（ステップ 6）。
+
+### Automation テストで、タイマーが 1〜2 刻み遅れて発火する（手で進めるワールド）
+
+- 症状: `FTestWorldWrapper::TickTestWorld` を 0.0625 s 刻みで回すと、BeginPlay で入れた 0.5 s のループのタイマーが 0.5 s ではなく 0.625 s の更新で発火し、発火の中で入れた 17 s のタイマーの残りが 1 刻み長い（`Expected … to be 17.250000, but it was 17.312500`）。
+- 原因: UE 5.8 の `FTimerManager`（UE4 も同じ）は、(1) 期限を**過ぎた**最初の更新で発火する（`InternalTime > ExpireTime`。ちょうど同じ時刻では発火しない）、(2) 更新の外（BeginPlay・テストの本文）や発火の処理の中（`LastTickedFrame` がまだ前のフレーム）で入れたタイマーは保留になり、その更新の終わりの `InternalTime` を足して数え始める。刻みが 2 進数で割り切れると期限がちょうど更新の時刻に重なり、(1) の 1 刻みが必ず出る。
+- 対処: 実装は直さない（エンジンの規則）。テストの期待の時刻を規則に合わせて書く（`Wasami.Enemy.Actor.Stun` の冒頭の注釈）。`GetTimerRemaining` は更新の間では `ExpireTime − InternalTime`（保留中は入れた秒数そのもの）。
+- 確かめ方: エンジンの `Engine/Source/Runtime/Engine/Private/TimerManager.cpp` の `Tick`（`InternalTime > Top->ExpireTime`、末尾の `PendingTimerSet` の `ExpireTime += InternalTime`）。
+- 出典: 07 記録の「エンジンのタイマーの刻み」、進捗記録 `20260917-enemy-wasami-body.md` のステップ 3（2026-09-18。期待の時刻を直すのにビルドを 1 回やり直した）。
 
 ### ヘッダーや UCLASS / UPROPERTY の変更が Live Coding で効かない
 
@@ -347,6 +356,14 @@
 - 原因: 特定していない（参照しているアセットを作り直したためと見ている）。
 - 対処: 地図は git の外で作り直せるので、灯 783・シャード 337・選択なしを数えて前と同じことを確かめてから保存する。数が違えば保存せずに調べる。
 - 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 9b・10b2）。
+
+### 取り込み直しても、アニメ（やほかのアセット）が前のまま（Interchange の置き換えの取り込み）
+
+- 症状: `import_asset`（`replace_existing` 真）で glb を取り込み直すと、メッシュは置き換わるのにアニメは前の長さ・中身のまま。エラーも警告も出ず、`save_directory` もアニメを保存しない（`Content/.../A_*.uasset` の日時が古いまま）。
+- 原因: UE 5.8 の `InterchangeManager.cpp`（`ImportAssetParameters.ReimportAsset` が空のとき）は、行き先に**ファイル名と同じ名前のアセット**があると、取り込みをそのアセットだけの再取り込みに変える（`bReplaceExisting` なら確認なし）。前処理の glb が `SK_WasamiEnemy.glb` でメッシュと同名だったので、メッシュの再取り込みになりアニメは作り直されなかった。
+- 対処: 前処理の出力を、どのアセットとも違う名前にする（`dd_enemy.prepared_file()` = `WasamiEnemy.glb`）。ファイル名が違えば普通の取り込みになり、既にあるアセットは同じオブジェクトに書き戻される（`InterchangeTaskImportObject.cpp` が既存のアセットを工場の参照にする）。
+- 確かめ方: 取り込みの後に `unreal.AnimationLibrary.get_num_frames(アニメ)` と `.uasset` の日時を見る。
+- 出典: 2026-09-18、作業一覧の項目 4 のステップ 4b（07 記録の「取り込み」）。
 
 ### 粒子の煙が見えない（粒子は出ているのに、PIE で何も映らない）
 
