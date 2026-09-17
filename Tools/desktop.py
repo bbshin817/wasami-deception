@@ -10,6 +10,9 @@
     python Tools/desktop.py hold w --ms 1500           hold keys down (walking, sprinting)
     python Tools/desktop.py look --dx 300 --dy 0       relative mouse movement (mouse look)
     python Tools/desktop.py type "some text"
+    python Tools/desktop.py record --seconds 8 --name x.mkv   record the screen at 60 fps in the background
+    python Tools/desktop.py record --grab gdi --region L T R B …   the same through GDI (when ddagrab hangs)
+    python Tools/desktop.py record_status              are the recordings still running? (exit code when done)
     python Tools/desktop.py status                     is the agent running?
     python Tools/desktop.py stop                       stop the agent
 
@@ -17,6 +20,10 @@ Input is only delivered while the foreground window belongs to an allowed proces
 Pass --allow <image.exe> (repeatable) for anything else. Input to the editor (UnrealEditor.exe) needs no asking unless
 the user forbids it, but the editor is their app too: don't send while they are using it
 (`.claude/guides/verification.md`). Exit code 0 when the agent answered ok, 1 otherwise.
+
+In unattended mode (WASAMI_UNATTENDED=1, .claude/guides/autonomy.md) a shot taken while the window in front belongs to
+this game (the editor, or our packaged game) is also posted to the Discord webhook (Tools/discord_notify.py); a shot of
+the reference game never is. What happened is added to the printed answer as "discord".
 """
 import argparse
 import json
@@ -28,6 +35,7 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import console_session  # noqa: E402  (same folder)
+import discord_notify  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SPOOL = os.path.join(ROOT, "Intermediate", "DesktopAgent")
@@ -64,6 +72,32 @@ def request(cmd, timeout=30, **payload):
     return {"ok": False, "error": "the agent did not answer within %d s (is it running? try 'start')" % timeout}
 
 
+def shows_this_game(process):
+    """The editor (PIE and the viewport) or our packaged game; never the reference game (DDeception-*.exe)."""
+    name = (process or "").lower()
+    return name == "unrealeditor.exe" or name.startswith("wasami_deception")
+
+
+def post_shot(answer):
+    """In unattended mode, posts a shot of this game to Discord. Returns what happened (None outside that mode)."""
+    if os.environ.get("WASAMI_UNATTENDED") != "1" or not answer.get("ok"):
+        return None
+    result = answer.get("result") or {}
+    front = result.get("foreground") or {}
+    if not shows_this_game(front.get("process")):
+        return "送らない（前面が %s）" % (front.get("process") or "不明")
+    if result.get("all_black"):
+        return "送らない（真っ黒）"
+    url, _ = discord_notify.webhook_url()
+    if not url:
+        return "送らない（webhook の URL が無い）"
+    errors = []
+    caption = "スクリーンショット %s（%s）" % (os.path.basename(result["path"]), front.get("title", ""))
+    if discord_notify.Webhook(url, errors.append).post_images([result["path"]], caption):
+        return "送った"
+    return "送れない: " + " / ".join(errors)
+
+
 def agent_running():
     out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq pythonw.exe", "/FO", "CSV", "/NH"],
                          capture_output=True, text=True).stdout
@@ -97,7 +131,7 @@ def start(timeout=90):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", help="start / status / stop / ping / shot / click / key / combo / hold / look / type / "
-                               "scroll / wait")
+                               "scroll / wait / record / record_status")
     ap.add_argument("args", nargs="*", help="keys for key/combo/hold, X Y for click, the text for type")
     ap.add_argument("--allow", action="append", help="image name of a process whose window may receive the input")
     ap.add_argument("--scale", type=float, default=1.0)
@@ -113,6 +147,10 @@ def main():
     ap.add_argument("--dy", type=int, default=0)
     ap.add_argument("--steps", type=int, default=10)
     ap.add_argument("--timeout", type=int, default=30)
+    ap.add_argument("--seconds", type=float, default=10.0)
+    ap.add_argument("--fps", type=int, default=60)
+    ap.add_argument("--grab", choices=("dda", "gdi"), default="dda",
+                    help="record: Desktop Duplication (default) or GDI (use --region to keep it at 60 fps)")
     opts = ap.parse_args()
 
     if opts.cmd == "start":
@@ -148,8 +186,18 @@ def main():
         payload["delta"] = opts.dx or 120
     elif opts.cmd == "wait":
         payload["ms"] = opts.ms
+    elif opts.cmd == "record":
+        payload.update(seconds=opts.seconds, fps=opts.fps, grab=opts.grab)
+        if opts.name:
+            payload["name"] = opts.name
+        if opts.region:
+            payload["region"] = opts.region
 
     answer = request(opts.cmd, timeout=opts.timeout, **payload)
+    if opts.cmd == "shot":
+        posted = post_shot(answer)
+        if posted:
+            answer["discord"] = posted
     print(json.dumps(answer, ensure_ascii=False, indent=2))
     return 0 if answer.get("ok") else 1
 

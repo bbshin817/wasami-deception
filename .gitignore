@@ -51,6 +51,8 @@
 /Content/DD/
 /Content/Pipeline/
 /Content/Stage/
+# 本作の素材の原本（SourceArt/、Git LFS）から作り直せるもの
+/Content/Wasami/
 /Content/Developers/
 /Content/Collections/
 
@@ -59,6 +61,9 @@ __pycache__/
 
 # ---- Claude Code の個人設定 ----
 .claude/settings.local.json
+
+# ---- 道具の手元の設定（無人運転の Discord の webhook の URL など。URL を知っていれば誰でも投稿できる） ----
+/Tools/*.local.json
 
 # ---- OS が生成するファイル ----
 Thumbs.db

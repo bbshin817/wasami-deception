@@ -13,16 +13,22 @@ class UInputMappingContext;
 class USceneCaptureComponent2D;
 class USoundBase;
 class USpringArmComponent;
+class UStaticMesh;
 class UStaticMeshComponent;
+class UTextureRenderTarget2D;
+class UWasamiChameleonComponent;
+class UWasamiPowerComponent;
+class UWasamiTabletWidget;
 class UWidgetComponent;
 struct FInputActionValue;
 
 /**
  * The player, after Dark Deception's BP_DD_PlayerCharacter (pak_reference): a capsule of radius 50 whose camera sits on
  * a zero-length spring arm 95 cm over its centre with rotation lag, walking at 300 and sprinting at 600 cm/s, the
- * camera's horizontal FOV following the speed, the walk / run head bob shakes, the 180° turn and the speed boost.
- * It also holds the tablet: the plate in front of the camera, its screen (UWasamiTabletWidget) and the scene capture
- * that draws the minimap.
+ * camera's horizontal FOV following the speed, the walk / run head bob shakes and the 180° turn. It also holds the
+ * tablet: the plate in front of the camera, its screen (UWasamiTabletWidget) and the scene capture that draws the
+ * minimap, the tablet's powers (UWasamiPowerComponent), and the post-process effects the powers switch on
+ * (UWasamiChameleonComponent, the original's Chameleon FX).
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiPlayerCharacter : public ACharacter
@@ -39,16 +45,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Player")
 	bool IsSprintOn() const { return bToggleSprint ? bSprintLatch : bSprintHeld; }
 
-	UFUNCTION(BlueprintPure, Category = "Player|Boost")
-	bool IsBoosting() const { return BoostTimeLeft > 0.f; }
-
-	/** The speed boost's charge: 0 on use, rising to 1 when it can be used again. */
-	UFUNCTION(BlueprintPure, Category = "Player|Boost")
-	float GetBoostCharge() const;
-
-	/** The right socket's `Percent`: 1 → 0 while the boost lasts, 0 → 1 over the cooldown that follows. */
-	UFUNCTION(BlueprintPure, Category = "Player|Boost")
-	float GetBoostSocketPercent() const;
+	/** Writes Walking Speed and Sprinting Speed (the speed boost sets both) and applies the one in use. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
+	void SetMoveSpeeds(float Walking, float Sprinting);
 
 	/** Whether the tablet is up (the original's isTabletUp?). */
 	UFUNCTION(BlueprintPure, Category = "Player|Tablet")
@@ -62,6 +61,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
 	void ResizeMap();
 
+	/** The screen on the tablet, once the widget component has made it. */
+	UWasamiTabletWidget* GetTabletScreen() const;
+
+	UWasamiPowerComponent* GetPowers() const { return Powers; }
+
+	/** The original's Chameleon FX. */
+	UWasamiChameleonComponent* GetChameleon() const { return Chameleon; }
+
 	/** Walking Speed (cm/s). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
 	float WalkingSpeed = 300.f;
@@ -69,18 +76,6 @@ public:
 	/** Sprinting Speed (cm/s); Shift gives it whichever way the player moves. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
 	float SprintingSpeed = 600.f;
-
-	/** Both speeds while the speed boost lasts (cm/s: the original's 870 without upgrades). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Boost")
-	float BoostSpeed = 870.f;
-
-	/** Seconds the speed boost lasts. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Boost")
-	float BoostDuration = 6.75f;
-
-	/** Seconds after the boost ends before it can be used again (its cooldown starts on use and includes the boost). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Boost")
-	float BoostCooldown = 8.5f;
 
 	/** The OPTIONS' TOGGLE SPRINT. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Options")
@@ -102,11 +97,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
 	bool bCanMove = true;
 
-	/** The original's Can Use Tablet?. */
+	/** The original's Has Input (its scripted scenes turn it off): the powers need it. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+	bool bHasInput = true;
+
+	/** The original's Can Interact?: Q and E need it. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
+	bool bCanInteract = true;
+
+	/** The original's Can Use Tablet?: the tablet and the powers need it. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Tablet")
 	bool bCanUseTablet = true;
 
-	/** What the shard count on the screen counts; empty until the shards exist, and the screen then shows 0. */
+	/** What the shard count on the screen counts and the minimap shows (AWasamiShard); with none, the screen shows 0. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TSubclassOf<AActor> ShardActorClass;
 
@@ -127,12 +130,30 @@ public:
 	float FOVInterpSpeed = 0.5f;
 
 	/** Head bob while walking: the original's BP_DD_PlayerCharacter_WalkShake (built under /Game/DD by WasamiDDTools). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Camera")
-	TSubclassOf<UCameraShakeBase> WalkShakeClass;
+	UPROPERTY(EditAnywhere, Category = "Player|Camera")
+	TSoftClassPtr<UCameraShakeBase> WalkShakeClass;
 
 	/** Head bob while sprinting: BP_DD_PlayerCharacter_RunShake. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Camera")
-	TSubclassOf<UCameraShakeBase> RunShakeClass;
+	UPROPERTY(EditAnywhere, Category = "Player|Camera")
+	TSoftClassPtr<UCameraShakeBase> RunShakeClass;
+
+	/** tablet_new_pCube2: the plate. */
+	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
+	TSoftObjectPtr<UStaticMesh> TabletMesh;
+
+	/** T_NewMap: what the minimap's scene capture draws into. */
+	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
+	TSoftObjectPtr<UTextureRenderTarget2D> MinimapTarget;
+
+	/** 05_Tablet_Woosh_v2_1 (raising), 05_Tablet_Woosh_v1_1 (lowering) and UI_Select_V3 (the map's resize). */
+	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
+	TSoftObjectPtr<USoundBase> TabletUpSound;
+
+	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
+	TSoftObjectPtr<USoundBase> TabletDownSound;
+
+	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
+	TSoftObjectPtr<USoundBase> ResizeMapSound;
 
 protected:
 	virtual void BeginPlay() override;
@@ -155,6 +176,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TObjectPtr<USceneCaptureComponent2D> MinimapCapture;
 
+	/** The tablet's powers: its sockets, Q / E / 1 / 2, the gauges and the speed boost. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Powers")
+	TObjectPtr<UWasamiPowerComponent> Powers;
+
+	/** FX: the Chameleon's unbound post-process, which the speed boost shakes. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Powers")
+	TObjectPtr<UWasamiChameleonComponent> Chameleon;
+
 private:
 	void CreateInput();
 	void Move(const FInputActionValue& Value);
@@ -162,7 +191,8 @@ private:
 	void SprintPressed();
 	void SprintReleased();
 	void TurnAround();
-	void UseBoost();
+	void LeftMousePressed();
+	void MouseWheel(const FInputActionValue& Value);
 	void ApplySpeed();
 	void ApplyTabletInterp(float Value);
 	void PlaceTablet();
@@ -189,7 +219,16 @@ private:
 	TObjectPtr<UInputAction> TurnAction;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UInputAction> BoostAction;
+	TObjectPtr<UInputAction> UsePowerLeftAction;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> UsePowerRightAction;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> CyclePowerLeftAction;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> CyclePowerRightAction;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> TabletAction;
@@ -197,15 +236,28 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> ResizeMapAction;
 
-	/** 05_Tablet_Woosh_v2_1 (raising), 05_Tablet_Woosh_v1_1 (lowering) and UI_Select_V3 (the map's resize). */
-	UPROPERTY()
-	TObjectPtr<USoundBase> TabletUpSound;
+	/** The left mouse button and the wheel, which the original's teleport aim takes straight from the keys. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> LeftMouseAction;
 
-	UPROPERTY()
-	TObjectPtr<USoundBase> TabletDownSound;
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> MouseWheelAction;
 
-	UPROPERTY()
-	TObjectPtr<USoundBase> ResizeMapSound;
+	/** The sounds and shakes above, loaded at BeginPlay. */
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedTabletUpSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedTabletDownSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedResizeMapSound;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UCameraShakeBase> LoadedWalkShake;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UCameraShakeBase> LoadedRunShake;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiGameMode> WasamiGameMode;
@@ -222,8 +274,6 @@ private:
 	bool bTabletUp = false;
 	bool bTabletMoving = false;
 	bool bMapZoomedOut = false;
-	float BoostTimeLeft = 0.f;
-	float BoostCooldownLeft = 0.f;
 	bool bSprintHeld = false;
 	bool bSprintLatch = false;
 	bool bBobSprint = false;

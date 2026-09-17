@@ -14,7 +14,7 @@
 
 ## 本家のゲームを動かすとき
 
-この PC には遊べる本家が 2 つ入っている（旧版 = `pak_reference` と同一、最新版 = `pak_reference_2` と同一）。何をどちらで観察するか、どのステージをどう出すかは `.claude/guides/original-fidelity.md` の「本家のゲームを手元で動かす」。ここには動かし方の作法だけを書く。
+この PC には遊べる本家が 2 つ入っている（旧版 = `pak_reference` と同一、最新版 = `pak_reference_2` と同一）。何をどちらで観察するか、どのステージをどう出すかは `.claude/guides/original-fidelity.md` の「本家のゲームを手元で動かす」。**観察の順番・MOD のメニューの座標・PIE で同じものを撮って測るコマンドは `.claude/guides/observation.md`**。ここには動かし方の作法だけを書く。
 
 - **本家のゲームはユーザーの画面と音を占有する**（`GameUserSettings.ini` は 2211x1247 の `FullscreenMode=1`）。起動に確認は要らない（2026-09-17 のユーザーの指示。上の「作業の許可は求めずに進める」）が、**エディタとは同時に動かさず**、観察が終わったら閉じて、出しっぱなしにしない。
 - **どちらのビルドを動かすかを先に決める**。2 つを同時に起動しない（ランチャは既に動いているときは起動を拒む）。
@@ -43,12 +43,19 @@
 | `shot --scale 0.3 --name x.png` | 画面を撮って PNG に保存（`--region LEFT TOP RIGHT BOTTOM` で範囲） |
 | `click X Y` / `look --dx N --dy N` / `scroll` | 絶対座標のクリック・相対のマウス移動（視点）・ホイール |
 | `key esc enter` / `combo ctrl s` / `hold shift w --ms 1500` / `type "text"` | キーを順に・同時に・押しっぱなし・文字入力 |
+| `record --seconds 5 --name x.mkv` / `record_status` | 画面を 60 fps の動画に撮る（バックグラウンド。すぐ返るので、続けて入力を送れる）・終わったか |
 
 - **入力は許可した窓にだけ届く**。前面の窓の実行ファイルが許可の一覧に無ければエージェントが断る。既定は本家のゲーム（`DDeception-Win64-Shipping.exe`・`DDeception.exe`）だけ。エディタに送るときは `--allow UnrealEditor.exe` を付ける（**確認は要らない**。2026-09-17 のユーザーの指示。ユーザーが操作している間は送らない）。
 - **OS 全体に効くものは送らない**（Win キー、Alt+Tab、Alt+F4 はエージェントが断る）。
+- **エディタを前面にするには、エディタの窓（ほかの小窓と重ならない所）を 1 回クリックする**。PIE を始めてもエディタは前面に来ない（2026-09-16）。VS Code が前面のときは、そのクリックだけ `--allow Code.exe --allow UnrealEditor.exe` で送ってよい（クリックの位置がエディタの窓の上であることを撮った画面で確かめてから）。
+- **Automation テストを始めると、エンジンが PIE を止める**。テストと PIE の確認は続けて行い、同時には走らせない。テストはエディタが前面で 10 fps を超えるまで待つ（背面では 3 fps のまま最大 600 秒待つ）。
+- **PIE にキーを送るときは、先にビューポートを 1 回クリックして焦点を渡す**（PIE を始めただけではキーが届かなかった。2026-09-16）。PIE でないときにビューポートをクリックすると、エディタでアクタを選んでしまう（選択だけならレベルは汚れない）。PIE を始める前に前面にある小窓（Automation のログなど）は閉じておく。撮影は 1 回に数秒かかるので、時間に依存する値は `unreal.GameplayStatics.get_time_seconds` と一緒にリモート実行で読む。
 - **ユーザーが操作している間は送らない**。ユーザーがマウスやキーボードを使う必要が出たら、先に `stop` する（入力がぶつかる）。エージェントは 30 分何も来なければ自分で終了する。
+- **一瞬の演出（カメラアニメ、閃光など）は `record` で撮る**（2026-09-16）。`shot` は 1 枚に数秒かかる。`record` を始めて 1 秒ほど待ち（ffmpeg の起動）、入力を送り、終わってから `ffprobe -show_entries frame=pts_time` で各フレームの時刻を、`ffmpeg -fps_mode passthrough` でフレームを取り出す（付けないと一定の速さに複製され、時刻と組にならない）。画面が変わらない間はフレームが間引かれる。入力の瞬間は絵の変化（明るさの急変など）から逆算する。動画は `Intermediate/DesktopAgent/shots/`（本家のものは `observations/` へ写す）。
+- **`record` が終わらないとき**（2026-09-17）: `record_status` が秒数を過ぎても `running` のまま、動画ができず `.mkv.log` も空なら、ffmpeg の `ddagrab` が最初のフレームを待って止まっている（その日は `Opened dxgi output 0` の後に進まなかった。原因は未特定）。止まった ffmpeg は自分が起動したものなので `taskkill` で止め、`gdigrab`（CPU での取り込み）で撮る: `ffmpeg -f gdigrab -framerate 60 -draw_mouse 0 -offset_x <左> -offset_y <上> -video_size <幅>x<高さ> -i desktop -t 5 -c:v libx264 -preset ultrafast -qp 18 <出力>`。Claude のシェルがセッション 1 にいるとき（`console_session.py` が「started directly」と出す）はそのままバックグラウンドで走らせられる。範囲をビューポートに絞れば 60 fps で撮れる。**Claude のシェルがセッション 0 にいるとき**（2026-09-17）は、同じ ffmpeg を `python Tools/console_session.py --wait ffmpeg.exe 'C:\ffmpeg\bin\ffmpeg.exe' -y -f gdigrab …` でセッション 1 に起動する。ffmpeg の端末（`WindowsTerminal.exe`。画面の左に出て、エディタのビューポートとは重ならない）が前面に来て PIE へのキーが断られるので、起動の約 1.5 秒後にビューポートを `click … --allow WindowsTerminal.exe --allow UnrealEditor.exe` でクリックしてエディタを前面に戻してから、キーを送る（エディタが背面のままだと 3 fps に落ちる）。取り出すフレームの番号（`-frame_pts 1`）は 1/60 秒単位になる。エージェントの `record --grab gdi [--region L T R B]` でも同じ `gdigrab` で撮れる（2026-09-17。セッション 0 からでもそのまま使える）。**本家の全画面は `gdigrab` で 1 秒に約 10 枚しか撮れない**ので、一瞬の演出は MOD の `Console Command` で `slomo 0.25` にしてから撮る（症状索引）。
 - この PC の画面は **3440x1440**。座標は物理ピクセル（エージェントは DPI 対応済み）。撮った PNG は `--scale 0.2`〜`0.35` に縮めて読む（原寸は 5〜6 MB になるので会話に読み込まない。比較用に原寸を残すときは `--scale 1.0` で保存だけする）。
 - 何を送ったかは `Intermediate/DesktopAgent/agent.log` に残る（前面の窓の名前つき）。
+- 撮った動画は `python Tools/video_probe.py`（フレームの一覧・時刻つきのシート・色の時系列・周期）で測る。本家と PIE を同じコマンドで測る（`.claude/guides/observation.md` の「測る」）。
 
 ## 本家のゲームに MOD を入れるとき
 
@@ -62,6 +69,7 @@ Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの�
 
 ## 見た目の確認
 
+- PIE の開始・停止・プレイヤーの配置・コンソールコマンドは `python Tools/pie.py`（`.claude/guides/observation.md`）。
 - 静止画は MCP の `EditorToolset.EditorAppToolset.CaptureViewport`（カメラの位置と向きを渡せる）か、PIE 中のコンソールコマンド `HighResShot 1280x720`（`Saved/Screenshots/WindowsEditor/` に出る）。
 - 比べる相手は原作の収録と、WebGL 版の画面（`.claude/references/webgl/`、`docs/screenshots/`）。**同じ場所・同じ向き**で撮って並べる。ステージの位置は原作データの配置（`pak_reference_2/_levels/06_Hospital_Zone_0*.scene.json` の `world.location`、PlayerStart やトリガー）から取る。
 - 撮った画像は会話に貼る前に縮小する（`CaptureViewport` の戻り値は base64 で大きいので、ファイルに保存してから縮小して読む）。
@@ -70,10 +78,11 @@ Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの�
 
 - **エディタが背面にあるとティックが 3 fps ほどに落ちる**（`Use Less CPU when in Background`）。リモート実行から `LaunchCharacter` などで動かしても速さが出ず、時間に依存する確認（FOV の追従、頭の揺れ、クールダウン）はあてにならない。
   - 入力を伴う確認は、ユーザーに PIE で触ってもらうか、入力を流す Automation テスト（`AutomationTestToolset`）を書く。
-  - どうしてもリモートで確かめるときは、エディタを前面にしてもらうか、`Use Less CPU when in Background` を切ってから行い、確認後に戻す。
+  - どうしてもリモートで確かめるときは、エディタを前面にしてもらうか、`Use Less CPU when in Background` を切ってから行い、確認後に戻す。（2026-09-16: この設定は Python から見えず、コンソールの `set EditorPerformanceSettings bThrottleCPUWhenNotForeground False` も効かなかった。前面にするのは上の「画面を操作する」のクリックで行う）
+- **PIE で動いている最中の絵を撮る**（2026-09-16）: `desktop.py hold w` の間はエージェントが撮影できない。エディタが前面のまま、エディタの Python で `unreal.register_slate_post_tick_callback` に `player.add_movement_input(前方, 1.0, False)` を入れて毎フレーム前進させ、その間に `desktop.py shot` で撮り、終わったら `unregister_slate_post_tick_callback` で外す。PIE の `shot showui` はエディタの窓全体を撮ってビューポートが黒くなるので使えない（UI を含む絵はエージェントで撮る）。
 - ゲームの音はユーザーのスピーカーから鳴る。音を確かめる必要がないときは PIE の音量を上げない。
 
 ## テスト
 
-- 純粋な規則（ゲームの状態、ギミックの時間、セーブ）は C++ の Automation テスト（`Source/.../Tests/`）にして、`AutomationTestToolset` の `DiscoverTests` → `RunTests` で回す。エディタを開いていないときは `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests <filter>;quit" -Unattended -NullRHI`。
+- 純粋な規則（ゲームの状態、ギミックの時間、セーブ）は C++ の Automation テスト（`Source/.../Tests/`）にして、`AutomationTestToolset` の `DiscoverTests` → `RunTests` で回す。エディタを開いていないときは `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests <filter>;quit" -Unattended -NullRHI`。MCP が切れているとき（エディタを開き直した後など）は、リモート実行で `unreal.SystemLibrary.execute_console_command(None, 'Automation RunTests Wasami')` を送り、`Saved/Logs/wasami_deception.log` の `Test Completed` を数える（エディタを前面にしておく。背面では 3 fps のまま進まない）。
 - 実装記録の同期は `python .claude/scripts/check_records.py`（`.claude/guides/implementation-records.md`）。

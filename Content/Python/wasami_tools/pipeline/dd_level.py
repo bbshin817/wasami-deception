@@ -1,6 +1,7 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
-placed meshes, the lights, the reflection captures, the fog, the sky light, the post process volumes, the player
-starts and the minimap's map plane. Every actor it places carries the tag 'dd', which a rebuild removes first."""
+placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
+fog, the sky light, the post process volumes, the player starts, the minimap's map plane and the soul shards. Every
+actor it places carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -33,6 +34,16 @@ MAP_PLANE_CLASSES = ("BP_MapTexture_C", "BP_MapTexture_MultiFloor_C")
 MAP_PLANE_MATERIAL = {"Zone1": "/Game/DD/UI/Minimap/MM_Map_06_Zone01", "Zone2": "/Game/DD/UI/Minimap/MM_Map_06_Zone2"}
 # WasamiPlayerCharacter's scene capture shows only the actors with this tag and the shards.
 MINIMAP_TAG = "dd_minimap"
+# The soul shards (BP_Shard): an AWasamiShard where the original places each. A shard's light is a component of it, so
+# the lights the preprocessing lists under a shard are not placed on their own (builds before 2026-09-17 did, into
+# SHARD_LIGHT_FOLDER). Its components are movable, so placing shards leaves the baked lighting as it is.
+SHARD_CLASS = "BP_Shard_C"
+SHARD_TAG = "dd_shard"
+SHARD_FOLDER = "Hospital/Gameplay/Shards"
+SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
+
+# The original's custom collision channels by slot, as Config/DefaultEngine.ini names them.
+CUSTOM_CHANNELS = {"ECC_GameTraceChannel1": "ECC_Teleport"}
 
 # Component properties the placement handles itself.
 SKIP_COMPONENT_PROPS = ("Mobility", "CollisionProfileName", "bVisible", "bHiddenInGame")
@@ -53,13 +64,32 @@ def _set_mobility(comp, props):
         comp.set_mobility(ue_props.enum_member(unreal.ComponentMobility, value.split("::")[-1]))
 
 
+def _channel(name):
+    """An exported channel ('ECC_WorldStatic', 'ECC_GameTraceChannel1') as the Python enum member; Python names a custom
+    channel by its name in the project's collision settings (Config/DefaultEngine.ini), not by its slot."""
+    return ue_props.enum_member(unreal.CollisionChannel, CUSTOM_CHANNELS.get(name, name))
+
+
+def _set_collision(comp, collision):
+    """A custom collision from the preprocessing (the teleport zones'): the object type, what the body takes part in
+    and each channel's response. Setting them makes the profile 'Custom', as in the original. A StaticMeshActor's
+    component takes the mesh's own collision (bUseDefaultCollision, StaticMeshActor.cpp) until that is turned off."""
+    comp.set_editor_property("use_default_collision", False)
+    comp.set_collision_object_type(_channel(collision["objectType"]))
+    comp.set_collision_enabled(ue_props.enum_member(unreal.CollisionEnabled, collision["enabled"].split("::")[-1]))
+    for channel, response in collision["responses"].items():
+        comp.set_collision_response_to_channel(_channel("ECC_" + channel),
+                                               ue_props.enum_member(unreal.CollisionResponseType, response))
+
+
 def _tag(actor, label, folder, *tags):
     actor.set_actor_label(label)
     actor.set_folder_path(folder)
     actor.tags = [unreal.Name(TAG)] + [unreal.Name(t) for t in tags if t]
 
 
-def _open_level(map_path):
+def _open_level(map_path, clear=True):
+    """Opens the level (made when missing) and, with clear, removes what an earlier build placed."""
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     if EAL.does_asset_exist(map_path):
         if not les.load_level(map_path):
@@ -67,7 +97,7 @@ def _open_level(map_path):
     elif not les.new_level(map_path):
         raise RuntimeError("could not create " + map_path)
     eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-    old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(TAG)]
+    old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(TAG)] if clear else []
     if old:
         eas.destroy_actors(old)
     return les, eas
@@ -104,6 +134,8 @@ def _meshes(eas, stage, zone, counts, failures):
             _set_mobility(comp, props)
             if decal:
                 comp.set_collision_profile_name("NoCollision")   # the original's decals are planes, not colliders
+            elif p.get("collision"):
+                _set_collision(comp, p["collision"])
             elif props.get("CollisionProfileName"):
                 comp.set_collision_profile_name(props["CollisionProfileName"])
             if props.get("bVisible") is False:
@@ -122,6 +154,8 @@ def _lights(eas, zone, counts, failures):
     with unreal.ScopedSlowTask(len(zone["lights"]), "Placing the hospital's lights") as task:
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
+            if lt["actorClass"] == SHARD_CLASS:
+                continue
             cls = LIGHT_CLASS.get(lt["class"])
             if cls is None or not lt["world"]:
                 failures.append("light %s: no class for %s" % (lt["path"], lt["class"]))
@@ -253,6 +287,38 @@ def _map_plane(eas, zone, zone_name, counts, failures):
         counts["mapPlane"] += 1
 
 
+# ------------------------------------------------------------------------------------------------ shards
+def _shards(eas, zone, counts):
+    for a in zone["actors"]:
+        if a["class"] != SHARD_CLASS or not a["world"]:
+            continue
+        actor = eas.spawn_actor_from_class(unreal.WasamiShard, _vec(a["world"]["location"]), _rot(a["world"]["quat_xyzw"]))
+        actor.set_actor_scale3d(_vec(a["world"]["scale"]))
+        _tag(actor, a["name"], SHARD_FOLDER, SHARD_TAG)
+        counts["shards"] += 1
+
+
+def place_shards(zone="Zone1", map_path=""):
+    """Puts the zone's shards in again (and takes out the shard lights an earlier build placed on their own), leaving
+    the rest of the level and its baked lighting as they are, and saves the level. Returns what was removed and
+    placed."""
+    stage = paths.load_dd_stage()
+    if zone not in stage["zones"]:
+        raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
+    z = stage["zones"][zone]
+    les, eas = _open_level(map_path or z["level"], clear=False)
+    old = [a for a in eas.get_all_level_actors()
+           if a.actor_has_tag(SHARD_TAG) or (a.actor_has_tag(TAG) and str(a.get_folder_path()) == SHARD_LIGHT_FOLDER)]
+    counts = {"removed_shards": sum(1 for a in old if a.actor_has_tag(SHARD_TAG)), "shards": 0}
+    counts["removed_lights"] = len(old) - counts["removed_shards"]
+    if old:
+        eas.destroy_actors(old)
+    _shards(eas, z, counts)
+    if not les.save_current_level():
+        raise RuntimeError("could not save " + (map_path or z["level"]))
+    return counts
+
+
 # ------------------------------------------------------------------------------------------------ build
 def build(zone="Zone1", map_path=""):
     stage = paths.load_dd_stage()
@@ -261,7 +327,7 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane")}
+                             "mapPlane", "shards")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)
@@ -270,6 +336,7 @@ def build(zone="Zone1", map_path=""):
     _post_process(eas, z, counts, failures)
     _player_starts(eas, z, counts)
     _map_plane(eas, z, zone, counts, failures)
+    _shards(eas, z, counts)
     for f in failures[:50]:
         unreal.log_warning("build_dd_stage_level: " + f)
     counts["failed_settings"] = len(failures)

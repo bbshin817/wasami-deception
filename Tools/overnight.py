@@ -20,6 +20,11 @@ Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log wit
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
 printed at the end and appended to the log.
 
+Discord (Tools/discord_notify.py, which also says where the webhook URL comes from): the start, the reply of Claude
+after each run (with the run's footer line) followed by the HighResShot images the run left in Saved/Screenshots/, the
+waits and the summary are posted to the webhook. Without a URL, or with --no-discord, nothing is posted; a dry run only
+says whether it would post. A post that fails is logged and the night goes on.
+
 Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop); 2 budget or usage not readable;
 3 no progress or Claude could not be started; 4 bad arguments; 130 interrupted.
 """
@@ -33,6 +38,9 @@ import shutil
 import subprocess
 import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import discord_notify  # noqa: E402  (same folder)
 
 # The replies of Claude and the records hold characters this console's code page (cp932) cannot show: print what we
 # can rather than dying with a UnicodeEncodeError in the middle of the night. The log file is written as UTF-8.
@@ -50,6 +58,9 @@ LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.
 LIMIT_EPOCH = re.compile(r"limit reached\|(\d{9,})")
 LIMIT_BACKOFF = datetime.timedelta(minutes=30)
 STALL_LIMIT = 2
+# PIE's HighResShot writes here (Saved/Screenshots/WindowsEditor/); only this game ever lands in it.
+SCREENSHOT_DIR = os.path.join(ROOT, "Saved", "Screenshots")
+SCREENSHOTS_PER_RUN = 20
 
 
 def now():
@@ -89,6 +100,23 @@ class Log:
         if self.file:
             self.file.close()
             self.file = None
+
+
+def new_screenshots(since):
+    """Images under Saved/Screenshots/ written at or after `since` (epoch seconds), oldest first."""
+    found = []
+    for folder, _, names in os.walk(SCREENSHOT_DIR):
+        for name in names:
+            if os.path.splitext(name)[1].lower() not in discord_notify.IMAGE_TYPES:
+                continue
+            path = os.path.join(folder, name)
+            try:
+                written = os.path.getmtime(path)
+            except OSError:
+                continue
+            if written >= since:
+                found.append((written, path))
+    return [path for _, path in sorted(found)]
 
 
 def git(*args):
@@ -225,10 +253,12 @@ def limit_reset(output, exit_code):
     return None
 
 
-def sleep_until(when, deadline, log):
+def sleep_until(when, deadline, log, discord, why):
     """Sleeps until `when` (but never past the deadline). Returns False when the deadline came first."""
     target = when if deadline is None or when <= deadline else deadline
-    log.say("待機: %s まで" % stamp(target))
+    text = "待機: %s まで（%s）" % (stamp(target), why)
+    log.say(text)
+    discord.post(text)
     while True:
         rest = (target - now()).total_seconds()
         if rest <= 0:
@@ -271,20 +301,23 @@ def run_claude(command, log):
     return proc.returncode, "".join(chunks), time.time() - started
 
 
-def summarize(log, runs, reason, status, code):
+def summarize(log, discord, runs, reason, status, code):
     pending = pending_lines()
-    log.say("--- まとめ ---")
-    log.say("反復: %d 回、終了の理由: %s" % (runs, reason))
+    lines = ["反復: %d 回、終了の理由: %s" % (runs, reason)]
     if status:
-        log.say("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
+        lines.append("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
             status.get("result", "?"), status.get("step", ""), status.get("commit", ""), status.get("reason", "")))
     else:
-        log.say("最後の状態ファイル: （この夜は書かれていない）")
-    log.say("HEAD: %s (%s)" % (head(), branch()))
-    log.say("要確認（ユーザー）: %d 件" % len(pending))
+        lines.append("最後の状態ファイル: （この夜は書かれていない）")
+    lines.append("HEAD: %s (%s)" % (head(), branch()))
+    lines.append("要確認（ユーザー）: %d 件" % len(pending))
     for name, line in pending:
-        log.say("  %s: %s" % (name, line))
-    log.say("ログ: %s" % log.path)
+        lines.append("  %s: %s" % (name, line))
+    lines.append("ログ: %s" % log.path)
+    log.say("--- まとめ ---")
+    for line in lines:
+        log.say(line)
+    discord.post("**無人運転を終えた**（終了コード %d）\n%s" % (code, "\n".join(lines)))
     return code
 
 
@@ -300,6 +333,7 @@ def main():
                     help="how to start Claude Code (a command line; the prompt and modes are appended)")
     ap.add_argument("--prompt", default="/continue", help="what each run is asked (default /continue)")
     ap.add_argument("--pause", type=float, default=5.0, metavar="SEC", help="pause between runs (default 5)")
+    ap.add_argument("--no-discord", action="store_true", help="do not post to the Discord webhook")
     args = ap.parse_args()
 
     if args.claude == "claude" and os.environ.get("CLAUDECODE") and not args.dry_run:
@@ -324,6 +358,16 @@ def main():
     log.say("環境: WASAMI_UNATTENDED=1、終了の時刻 %s、反復の上限 %s、使用量 %s" % (
         stamp(deadline) if deadline else "なし", args.max_iterations if args.max_iterations is not None else "なし",
         ("`%s`" % args.usage_cmd) if args.usage_cmd else "読まない（--no-usage-check）"))
+    url, source = discord_notify.webhook_url()
+    if args.no_discord:
+        url = None
+        log.say("Discord: 送らない（--no-discord）")
+    elif url:
+        log.say("Discord: %s の webhook へ送る%s" % (source, "（dry run なので送らない）" if args.dry_run else ""))
+    else:
+        log.say("Discord: 送らない（環境変数 %s も %s も無い）" % (
+            discord_notify.ENV, os.path.relpath(discord_notify.LOCAL_CONFIG, ROOT)))
+    discord = discord_notify.Webhook(None if args.dry_run else url, log.say)
     previous = read_status()
     if previous:
         log.say("前回の状態ファイル: result=%s written=%s reason=%s" % (
@@ -346,6 +390,9 @@ def main():
         log.say("dry run なので走らせない")
         return 0 if probe.returncode == 0 else 3
 
+    discord.post("**無人運転を始めた**\nブランチ %s、HEAD %s、終了の時刻 %s、反復の上限 %s" % (
+        branch(), head(), stamp(deadline) if deadline else "なし",
+        args.max_iterations if args.max_iterations is not None else "なし"))
     runs = 0
     stalled = 0
     last_status = None
@@ -370,30 +417,38 @@ def main():
                     reason, code = "予算: %s" % text, 2
                     break
                 if action == "wait":
-                    if not sleep_until(wait_until, deadline, log):
+                    if not sleep_until(wait_until, deadline, log, discord, "5 時間の枠が尽きた"):
                         reason = "終了の時刻 %s（5 時間の枠の待ちの途中）" % stamp(deadline)
                         break
                     continue
             runs += 1
             before = head()
             stamp_before = status_stamp()
+            run_started = time.time()
             log.say("=== 反復 %d 開始: HEAD %s (%s)" % (runs, before, branch()))
             exit_code, output, seconds = run_claude(command, log)
             after = head()
             status = read_status() if status_stamp() != stamp_before else None
             if status:
                 last_status = status
-            log.say("=== 反復 %d 終了: exit %s、%.0f 秒、HEAD %s → %s、状態ファイル %s" % (
+            footer = "反復 %d 終了: exit %s、%.0f 秒、HEAD %s → %s、状態ファイル %s" % (
                 runs, exit_code, seconds, before, after,
                 ("result=%s step=%s reason=%s" % (status.get("result", "?"), status.get("step", ""),
-                                                  status.get("reason", ""))) if status else "書かれていない"))
+                                                  status.get("reason", ""))) if status else "書かれていない")
+            log.say("=== " + footer)
+            discord.post("**%s**\n%s" % (footer, output.strip() or "（出力なし）"))
+            shots = new_screenshots(run_started)
+            if shots:
+                discord.post_images(shots[:SCREENSHOTS_PER_RUN], "反復 %d の HighResShot（%d 枚%s）" % (
+                    runs, len(shots),
+                    "、先頭の %d 枚を送る" % SCREENSHOTS_PER_RUN if len(shots) > SCREENSHOTS_PER_RUN else ""))
             if exit_code is None:
                 reason, code = "Claude を起動できない", 3
                 break
             reset = limit_reset(output, exit_code)
             if reset is not None and after == before:
                 log.say("使用量の上限に達した返事（5 時間の枠とみなす）")
-                if not sleep_until(reset, deadline, log):
+                if not sleep_until(reset, deadline, log, discord, "使用量の上限に達した返事"):
                     reason = "終了の時刻 %s（上限の待ちの途中）" % stamp(deadline)
                     break
                 continue
@@ -411,7 +466,7 @@ def main():
                 time.sleep(args.pause)
     except KeyboardInterrupt:
         reason, code = "中断（Ctrl+C）", 130
-    result = summarize(log, runs, reason, last_status, code)
+    result = summarize(log, discord, runs, reason, last_status, code)
     log.close()
     return result
 

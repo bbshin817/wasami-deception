@@ -21,8 +21,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
-#include "UObject/ConstructorHelpers.h"
+#include "WasamiAssets.h"
+#include "WasamiChameleonComponent.h"
 #include "WasamiGameMode.h"
+#include "WasamiPowerComponent.h"
+#include "WasamiShard.h"
 #include "WasamiTabletWidget.h"
 
 namespace
@@ -101,8 +104,6 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	// under the view. Straight on the camera, those heights put it exactly where the original's recording shows it.
 	Tablet = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Tablet"));
 	Tablet->SetupAttachment(Camera);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> TabletMesh(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2"));
-	Tablet->SetStaticMesh(TabletMesh.Object);
 	Tablet->SetCollisionProfileName(TEXT("NoCollision"));
 	Tablet->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Tablet->bSelfShadowOnly = true;
@@ -135,15 +136,21 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	// The original captures every frame; here it only runs while the tablet is up, where the map can be seen
 	// (.claude/guides/performance.md — what draws every frame has to earn it). The picture is the same either way.
 	MinimapCapture->bCaptureEveryFrame = false;
-	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> MinimapTarget(TEXT("/Game/DD/UI/Minimap/T_NewMap"));
-	MinimapCapture->TextureTarget = MinimapTarget.Object;
 
-	static ConstructorHelpers::FObjectFinder<USoundBase> WooshUp(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1"));
-	static ConstructorHelpers::FObjectFinder<USoundBase> WooshDown(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v1_1"));
-	static ConstructorHelpers::FObjectFinder<USoundBase> Select(TEXT("/Game/DD/Audio/UI/UI_Select_V3"));
-	TabletUpSound = WooshUp.Object;
-	TabletDownSound = WooshDown.Object;
-	ResizeMapSound = Select.Object;
+	Powers = CreateDefaultSubobject<UWasamiPowerComponent>(TEXT("Powers"));
+
+	// FX: the original's child actor sits 20 m over the capsule, but its volume is unbound, so where it is changes nothing.
+	Chameleon = CreateDefaultSubobject<UWasamiChameleonComponent>(TEXT("FX"));
+
+	// The pipeline's assets, loaded at BeginPlay (WasamiAssets.h says why not here).
+	TabletMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2")));
+	MinimapTarget = TSoftObjectPtr<UTextureRenderTarget2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Minimap/T_NewMap")));
+	ShardActorClass = AWasamiShard::StaticClass();
+	TabletUpSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1")));
+	TabletDownSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v1_1")));
+	ResizeMapSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
+	WalkShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake")));
+	RunShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_RunShake")));
 
 	// TabletInterp's CurveFloat_1 and Timeline_1's CurveFloat_1_2, key for key.
 	AddCurveKey(TabletRaiseCurve, 0.f, 0.f, RCIM_Cubic, 0.f, 0.f);
@@ -154,16 +161,19 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	AddCurveKey(TabletLowerCurve, TabletLowerLength, 0.f, RCIM_Linear, 0.f, 0.f);
 
 	GetCharacterMovement()->MaxWalkSpeed = WalkingSpeed;
-
-	static ConstructorHelpers::FClassFinder<UCameraShakeBase> WalkShake(TEXT("/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake"));
-	static ConstructorHelpers::FClassFinder<UCameraShakeBase> RunShake(TEXT("/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_RunShake"));
-	WalkShakeClass = WalkShake.Class;
-	RunShakeClass = RunShake.Class;
 }
 
 void AWasamiPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	Tablet->SetStaticMesh(TabletMesh.LoadSynchronous());
+	MinimapCapture->TextureTarget = MinimapTarget.LoadSynchronous();
+	LoadedTabletUpSound = TabletUpSound.LoadSynchronous();
+	LoadedTabletDownSound = TabletDownSound.LoadSynchronous();
+	LoadedResizeMapSound = ResizeMapSound.LoadSynchronous();
+	LoadedWalkShake = WalkShakeClass.LoadSynchronous();
+	LoadedRunShake = RunShakeClass.LoadSynchronous();
+
 	// PlaceTablet reads the point of view the camera manager has just worked out, so the tick has to come after it.
 	SetTickGroup(ETickingGroup::TG_PostUpdateWork);
 	ApplySpeed();
@@ -177,40 +187,20 @@ void AWasamiPlayerCharacter::BeginPlay()
 void AWasamiPlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
-	if (BoostTimeLeft > 0.f)
-	{
-		BoostTimeLeft = FMath::Max(0.f, BoostTimeLeft - DeltaSeconds);
-		if (BoostTimeLeft == 0.f)
-		{
-			ApplySpeed();
-		}
-	}
-	BoostCooldownLeft = FMath::Max(0.f, BoostCooldownLeft - DeltaSeconds);
-
 	UpdateTablet(DeltaSeconds);
 	UpdateHeadBob();
 }
 
-float AWasamiPlayerCharacter::GetBoostCharge() const
+void AWasamiPlayerCharacter::SetMoveSpeeds(float Walking, float Sprinting)
 {
-	const float Total = BoostDuration + BoostCooldown;
-	return Total > 0.f ? 1.f - BoostCooldownLeft / Total : 1.f;
+	WalkingSpeed = Walking;
+	SprintingSpeed = Sprinting;
+	ApplySpeed();
 }
 
-float AWasamiPlayerCharacter::GetBoostSocketPercent() const
+UWasamiTabletWidget* AWasamiPlayerCharacter::GetTabletScreen() const
 {
-	// Set Delay Speed Boost is a FlipFlop: the use reverses the socket's timeline over the boost, and the end of the
-	// boost plays it forward again over the cooldown.
-	if (IsBoosting())
-	{
-		return BoostDuration > 0.f ? BoostTimeLeft / BoostDuration : 0.f;
-	}
-	if (BoostCooldownLeft > 0.f && BoostCooldown > 0.f)
-	{
-		return 1.f - BoostCooldownLeft / BoostCooldown;
-	}
-	return 1.f;
+	return Cast<UWasamiTabletWidget>(TabletScreen->GetUserWidgetObject());
 }
 
 void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -232,9 +222,14 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(SprintAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::SprintPressed);
 	Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &AWasamiPlayerCharacter::SprintReleased);
 	Input->BindAction(TurnAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::TurnAround);
-	Input->BindAction(BoostAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::UseBoost);
+	Input->BindAction(UsePowerLeftAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::UsePowerLeftPressed);
+	Input->BindAction(UsePowerRightAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::UsePowerRightPressed);
+	Input->BindAction(CyclePowerLeftAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::CyclePowerLeft);
+	Input->BindAction(CyclePowerRightAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::CyclePowerRight);
 	Input->BindAction(TabletAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ToggleTablet);
 	Input->BindAction(ResizeMapAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ResizeMap);
+	Input->BindAction(LeftMouseAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::LeftMousePressed);
+	Input->BindAction(MouseWheelAction, ETriggerEvent::Triggered, this, &AWasamiPlayerCharacter::MouseWheel);
 }
 
 void AWasamiPlayerCharacter::CreateInput()
@@ -254,9 +249,14 @@ void AWasamiPlayerCharacter::CreateInput()
 	LookAction = NewAction(TEXT("IA_Look"), EInputActionValueType::Axis2D);
 	SprintAction = NewAction(TEXT("IA_Sprint"), EInputActionValueType::Boolean);
 	TurnAction = NewAction(TEXT("IA_180Turn"), EInputActionValueType::Boolean);
-	BoostAction = NewAction(TEXT("IA_UsePowerRight"), EInputActionValueType::Boolean);
+	UsePowerLeftAction = NewAction(TEXT("IA_UsePowerLeft"), EInputActionValueType::Boolean);
+	UsePowerRightAction = NewAction(TEXT("IA_UsePowerRight"), EInputActionValueType::Boolean);
+	CyclePowerLeftAction = NewAction(TEXT("IA_CyclePowerLeft"), EInputActionValueType::Boolean);
+	CyclePowerRightAction = NewAction(TEXT("IA_CyclePowerRight"), EInputActionValueType::Boolean);
 	TabletAction = NewAction(TEXT("IA_ToggleTablet"), EInputActionValueType::Boolean);
 	ResizeMapAction = NewAction(TEXT("IA_ResizeMap"), EInputActionValueType::Boolean);
+	LeftMouseAction = NewAction(TEXT("IA_LeftMouseButton"), EInputActionValueType::Boolean);
+	MouseWheelAction = NewAction(TEXT("IA_MouseWheelAxis"), EInputActionValueType::Axis1D);
 
 	InputContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Player"));
 	auto Map = [this](const UInputAction* Action, const FKey& Key, const TArray<UInputModifier*>& Modifiers = {})
@@ -297,9 +297,29 @@ void AWasamiPlayerCharacter::CreateInput()
 
 	Map(SprintAction, EKeys::LeftShift);
 	Map(TurnAction, EKeys::MiddleMouseButton);
-	Map(BoostAction, EKeys::E);
+	// The original's Use Power Left / Right and Cycle Power Left / Right; its Use Power (R) has no handler anywhere.
+	Map(UsePowerLeftAction, EKeys::Q);
+	Map(UsePowerRightAction, EKeys::E);
+	Map(CyclePowerLeftAction, EKeys::One);
+	Map(CyclePowerRightAction, EKeys::Two);
 	Map(TabletAction, EKeys::SpaceBar);
 	Map(ResizeMapAction, EKeys::Z);
+	// Pressed, and the wheel's value (±1 a notch; the original's MouseWheelAxis has sensitivity 1). An Axis1D only
+	// triggers on a frame the wheel moves, which is when the original's every-frame binding changes anything.
+	Map(LeftMouseAction, EKeys::LeftMouseButton);
+	Map(MouseWheelAction, EKeys::MouseWheelAxis);
+}
+
+void AWasamiPlayerCharacter::LeftMousePressed()
+{
+	// The teleport's aim takes the click without consuming it; the player's own use of the click (Interact) comes with
+	// the things to interact with.
+	Powers->ConfirmTeleport();
+}
+
+void AWasamiPlayerCharacter::MouseWheel(const FInputActionValue& Value)
+{
+	Powers->AdjustTeleportDistance(Value.Get<float>());
 }
 
 void AWasamiPlayerCharacter::Move(const FInputActionValue& Value)
@@ -361,20 +381,9 @@ void AWasamiPlayerCharacter::TurnAround()
 	}
 }
 
-void AWasamiPlayerCharacter::UseBoost()
-{
-	if (BoostCooldownLeft > 0.f)
-	{
-		return;
-	}
-	BoostTimeLeft = BoostDuration;
-	BoostCooldownLeft = BoostDuration + BoostCooldown;
-	ApplySpeed();
-}
-
 void AWasamiPlayerCharacter::ApplySpeed()
 {
-	GetCharacterMovement()->MaxWalkSpeed = IsBoosting() ? BoostSpeed : (IsSprintOn() ? SprintingSpeed : WalkingSpeed);
+	GetCharacterMovement()->MaxWalkSpeed = IsSprintOn() ? SprintingSpeed : WalkingSpeed;
 }
 
 void AWasamiPlayerCharacter::ToggleTablet()
@@ -392,7 +401,7 @@ void AWasamiPlayerCharacter::ToggleTablet()
 	{
 		MinimapCapture->bCaptureEveryFrame = true;
 	}
-	UGameplayStatics::PlaySound2D(this, bTabletUp ? TabletUpSound : TabletDownSound, WooshVolume, WooshPitch);
+	UGameplayStatics::PlaySound2D(this, bTabletUp ? LoadedTabletUpSound : LoadedTabletDownSound, WooshVolume, WooshPitch);
 }
 
 void AWasamiPlayerCharacter::ResizeMap()
@@ -402,7 +411,7 @@ void AWasamiPlayerCharacter::ResizeMap()
 	{
 		return;
 	}
-	UGameplayStatics::PlaySound2D(this, ResizeMapSound, ResizeVolume, ResizePitch);
+	UGameplayStatics::PlaySound2D(this, LoadedResizeMapSound, ResizeVolume, ResizePitch);
 	bMapZoomedOut = !bMapZoomedOut;
 	MinimapCapture->OrthoWidth = bMapZoomedOut ? MinimapZoomedOrthoWidth : MinimapOrthoWidth;
 }
@@ -458,12 +467,17 @@ void AWasamiPlayerCharacter::UpdateTablet(float DeltaSeconds)
 		ApplyTabletInterp(Curve.Eval(TabletTime));
 	}
 
-	if (UWasamiTabletWidget* Screen = Cast<UWasamiTabletWidget>(TabletScreen->GetUserWidgetObject()))
+	if (UWasamiTabletWidget* Screen = GetTabletScreen())
 	{
-		// The left socket is Teleportation, the right one Speed Boost, as the original's tablet has them. The teleport
-		// is not implemented yet (M2's rest), so its socket stays ready.
-		Screen->SetPowerCharge(true, 1.f);
-		Screen->SetPowerCharge(false, GetBoostSocketPercent());
+		// UMG_TabletPowers: the sockets show the powers they point at, each icon filled as far as its gauge.
+		Screen->SetPowersVisible(Powers->HasPowers());
+		Screen->ShowSocketPowers(Powers->GetSocketPower(true), Powers->GetSocketPower(false));
+		for (int32 Index = 0; Index < WasamiPowerCount; ++Index)
+		{
+			const EWasamiPower Power = static_cast<EWasamiPower>(Index);
+			Screen->SetPowerPercent(Power, Powers->GetGaugePercent(Power));
+		}
+		Screen->TickAnimations(DeltaSeconds);
 		Screen->SetObjective(WasamiGameMode ? WasamiGameMode->CurrentObjective : FText::GetEmpty());
 	}
 }
@@ -471,7 +485,7 @@ void AWasamiPlayerCharacter::UpdateTablet(float DeltaSeconds)
 void AWasamiPlayerCharacter::UpdateTabletScreen()
 {
 	RefreshMinimapContents();
-	if (UWasamiTabletWidget* Screen = Cast<UWasamiTabletWidget>(TabletScreen->GetUserWidgetObject()))
+	if (UWasamiTabletWidget* Screen = GetTabletScreen())
 	{
 		Screen->SetShardCount(ShardsLeft);
 	}
@@ -523,7 +537,7 @@ void AWasamiPlayerCharacter::UpdateHeadBob()
 	}
 	bBobStarted = true;
 	const APlayerController* PC = Cast<APlayerController>(GetController());
-	const TSubclassOf<UCameraShakeBase> Shake = bSprint ? RunShakeClass : WalkShakeClass;
+	const TSubclassOf<UCameraShakeBase> Shake = bSprint ? LoadedRunShake : LoadedWalkShake;
 	if (bHeadBob && Shake && PC && PC->PlayerCameraManager)
 	{
 		PC->PlayerCameraManager->StartCameraShake(Shake);
@@ -542,7 +556,7 @@ void AWasamiPlayerCharacter::StopHeadBob()
 	{
 		return;
 	}
-	for (const TSubclassOf<UCameraShakeBase>& Shake : {WalkShakeClass, RunShakeClass})
+	for (const TSubclassOf<UCameraShakeBase>& Shake : {LoadedWalkShake, LoadedRunShake})
 	{
 		if (Shake)
 		{

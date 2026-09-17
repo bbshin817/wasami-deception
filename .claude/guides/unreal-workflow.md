@@ -53,5 +53,6 @@ Project Settings > Plugins > Python の Remote Execution を有効にしてあ�
   & "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" wasami_deceptionEditor Win64 Development "-Project=C:\Users\User\Desktop\wasami_deception\wasami_deception.uproject" -WaitMutex
   Start-Process "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" '"C:\Users\User\Desktop\wasami_deception\wasami_deception.uproject"'
   ```
+- **C++ はパイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）を `ConstructorHelpers` で読まない**。ソフト参照の UPROPERTY にして、使うときに読む（`Source/wasami_deception/WasamiAssets.h`）。コンストラクタで読んだものはエディタの起動時にルートに入り、ツールセットがマテリアルを作り直すとエディタが `Assertion failed: !IsRooted()` で落ちる（2026-09-16 に一度落ちた）。
 - エディタを閉じる前にすべて保存する。閉じる・ビルドする・開き直すことに確認は要らない（2026-09-17 のユーザーの指示。同日「この操作に限り許可を求めず常に実行を許可」と重ねて指示された。`.claude/guides/verification.md`）。**C++ を書き終えたら、「閉じてよいですか」と尋ねずにそのまま `python Tools/editor_cycle.py` を走らせ**、取り込み・テスト・PIE へ進む。閉じたら必ず開き直す。
 - **`Tools/editor_cycle.py` は Claude から実行できる**（閉じる → ビルド → 開き直す → 応答を待つ）。Claude Code は Windows のセッション 0 で動いていて、そこから直接起動したエディタはディスプレイが見えず即落ちる（`DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`）ので、スクリプトは一度きりのスケジュールタスクでログオン中のセッションに起動する（01 記録）。開き直した後は MCP の再接続（`/mcp`）だけユーザーに頼む。

@@ -20,6 +20,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
+PROGRESS_LIMIT = 30 * 1024  # bytes; above this a record is folded before the next step (progress-tracking.md)
 STATUS_FILE = os.path.join(ROOT, "Intermediate", "Overnight", "status.json")
 
 
@@ -71,6 +72,10 @@ def main():
             waiting = bool(status_line and "ユーザー待ち" in status_line.group(1))
             nxt = section(text, "次にやること")
             lines.append("- .claude/progress/%s — %s%s" % (name, title.group(1).strip() if title else "", "（ユーザー待ち）" if waiting else ""))
+            size = len(text.encode("utf-8"))
+            if size > PROGRESS_LIMIT:
+                lines.append("  大きさ: %d KB（上限 30 KB を超えています。次のステップの前に、"
+                             "`.claude/guides/progress-tracking.md` の「記録を畳む」で全体を畳んでコミットしてください）" % (size // 1024))
             if nxt:
                 lines.append("  次にやること: " + nxt[:300])
             pending = section(text, "要確認（ユーザー）")

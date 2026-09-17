@@ -16,6 +16,8 @@ import ctypes
 import ctypes.wintypes as wt
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
 
@@ -44,6 +46,12 @@ SCAN = {
     "up": 0xE048, "left": 0xE04B, "right": 0xE04D, "down": 0xE050,
     "home": 0xE047, "end": 0xE04F, "pageup": 0xE049, "pagedown": 0xE051, "delete": 0xE053, "insert": 0xE052,
 }
+# Numpad digits go out as virtual keys (with their scan code), so they stay digits whatever the NumLock state is (a
+# bare scan code turns into Home / End / … while NumLock is off). The reference game's mod menu toggles its cheats
+# with them.
+NUMPAD_VK = {"num%d" % d: 0x60 + d for d in range(10)}
+NUMPAD_SCAN = {"num0": 0x52, "num1": 0x4F, "num2": 0x50, "num3": 0x51, "num4": 0x4B, "num5": 0x4C, "num6": 0x4D,
+               "num7": 0x47, "num8": 0x48, "num9": 0x49}
 BLOCKED_KEYS = {"win", "lwin", "rwin"}
 BLOCKED_WITH_ALT = {"tab", "f4", "esc"}
 
@@ -81,6 +89,10 @@ def send(*inputs):
 
 
 def key_input(name, up=False):
+    if name in NUMPAD_VK:
+        return INPUT(type=INPUT_KEYBOARD,
+                     union=_INPUTunion(ki=KEYBDINPUT(wVk=NUMPAD_VK[name], wScan=NUMPAD_SCAN[name],
+                                                     dwFlags=KEYEVENTF_KEYUP if up else 0, time=0, dwExtraInfo=None)))
     scan = SCAN[name]
     flags = KEYEVENTF_SCANCODE | (KEYEVENTF_KEYUP if up else 0)
     if scan > 0xFF:
@@ -144,7 +156,7 @@ def check_keys(names):
     for name in names:
         if name in BLOCKED_KEYS:
             raise PermissionError("%s acts on the whole OS and is not sent" % name)
-        if name not in SCAN:
+        if name not in SCAN and name not in NUMPAD_VK:
             raise KeyError("unknown key %r" % name)
     bad = BLOCKED_WITH_ALT & set(names)
     if "alt" in names and bad:
@@ -252,6 +264,52 @@ def do_wait(req):
     return {"waited_ms": req.get("ms", 100)}
 
 
+RECORDINGS = {}
+
+
+def do_record(req):
+    """Starts recording the screen to a video in the background (a single screenshot takes seconds, which is too slow
+    for effects that last a fraction of a second). ffmpeg's Desktop Duplication grabber hands GPU frames straight to
+    NVENC, so the game being watched keeps its frame rate. Returns at once; input commands can follow while it runs.
+
+    grab "gdi" uses the CPU grabber instead (ddagrab sometimes never delivers its first frame); "region" (left, top,
+    right, bottom) narrows it, which is what keeps it near 60 fps."""
+    ffmpeg = shutil.which("ffmpeg") or r"C:\ffmpeg\bin\ffmpeg.exe"
+    seconds, fps = float(req.get("seconds", 10)), int(req.get("fps", 60))
+    name = req.get("name") or ("rec-%s.mkv" % time.strftime("%H%M%S"))
+    path = os.path.join(SHOT_DIR, name)
+    if req.get("grab", "dda") == "gdi":
+        source = ["-f", "gdigrab", "-framerate", str(fps), "-draw_mouse", "0"]
+        if req.get("region"):
+            left, top, right, bottom = (int(v) for v in req["region"])
+            source += ["-offset_x", str(left), "-offset_y", str(top),
+                       "-video_size", "%dx%d" % (right - left, bottom - top)]
+        source += ["-i", "desktop"]
+    else:
+        source = ["-f", "lavfi", "-i", "ddagrab=output_idx=%d:draw_mouse=0:framerate=%d"
+                  % (int(req.get("output_idx", 0)), fps)]
+    cmd = [ffmpeg, "-hide_banner", "-loglevel", req.get("loglevel", "warning"), "-y"] + source + [
+        "-t", "%.3f" % seconds, "-c:v", "h264_nvenc", "-preset", "p1", "-rc", "constqp",
+        "-qp", str(int(req.get("qp", 20))), path]
+    errors = open(path + ".log", "w", encoding="utf-8")
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=errors, stderr=errors,
+                            creationflags=subprocess.CREATE_NO_WINDOW)
+    RECORDINGS[proc.pid] = (proc, errors)
+    return {"path": path, "pid": proc.pid, "seconds": seconds, "fps": fps, "started": time.time()}
+
+
+def do_record_status(req):
+    """Reports the recordings started by this agent: still running, or the exit code."""
+    result = []
+    for pid, (proc, errors) in list(RECORDINGS.items()):
+        code = proc.poll()
+        if code is not None:
+            errors.close()
+            del RECORDINGS[pid]
+        result.append({"pid": pid, "running": code is None, "exit_code": code, "path": proc.args[-1]})
+    return {"recordings": result}
+
+
 def do_ping(req):
     ours = ctypes.c_ulong()
     kernel32.ProcessIdToSessionId(ctypes.c_ulong(os.getpid()), ctypes.byref(ours))
@@ -260,7 +318,8 @@ def do_ping(req):
 
 
 HANDLERS = {"ping": do_ping, "shot": do_shot, "click": do_click, "key": do_key, "combo": do_combo, "hold": do_hold,
-            "look": do_look, "type": do_type, "scroll": do_scroll, "wait": do_wait}
+            "look": do_look, "type": do_type, "scroll": do_scroll, "wait": do_wait, "record": do_record,
+            "record_status": do_record_status}
 
 
 def log(line):

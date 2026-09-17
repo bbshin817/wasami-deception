@@ -39,6 +39,7 @@
 - 原因: Windows の `core.autocrlf=true` で checkout のたびに行末が CRLF になり、ハッシュが行末だけで変わっていた。
 - 対処: `.gitattributes` に `* text=auto eol=lf`（2026-09-16、コミット 511ac5c。LFS の 2 行は `-text` 付きで後に置いてあるので影響しない）。作業ツリーを取り込み直して追跡ファイルを LF にし、`--update` でハッシュを取り直した（e5a428c）。
 - 確かめ方: `git ls-files --eol | grep w/crlf` が空。ずれたときは `git diff` が空であることを見てから `--update`。
+- もう 1 つの原因（2026-09-17）: Python の `open(p, 'w')` で書き戻すと、Windows では行末が CRLF になる（`git diff` が「CRLF will be replaced by LF」と警告する）。書き戻すときは `open(p, 'w', encoding='utf-8', newline='\n')` にする。
 - 出典: コミット 511ac5c・d4c2006・e5a428c（2026-09-16）。
 
 ### `Tools/editor_cycle.py` がビルドの失敗を報告する途中で `UnicodeEncodeError` で落ちる
@@ -166,7 +167,7 @@
 ### `connect_material_expressions` が失敗しても例外にならない / 入力が 1 本のノードにつながらない
 
 - 症状: つないだつもりの式が外れていて、コンパイル時に `Missing … input` になる。
-- 原因: `MaterialEditingLibrary` は失敗を False で返すだけ。入力が 1 本のノード（`Frac`・`Saturate`・`Ceil`・`ComponentMask`）のピン名は `""`（`"Input"` は失敗する）。
+- 原因: `MaterialEditingLibrary` は失敗を False で返すだけ。入力が 1 本のノード（`Frac`・`Saturate`・`Ceil`・`ComponentMask`）のピン名は `""`（`"Input"` は失敗する）。`Desaturation` の最初の入力も名前が無い（`get_material_expression_input_names` が `['None', 'Fraction']`。2026-09-17 のステップ 6）。
 - 対処: `dd_stage._Graph(mat, checked=True)` で例外にする。ピン名は `""`。
 - 出典: 03 記録、01 記録（`_Graph`）。
 
@@ -316,6 +317,35 @@
 - 対処: ブレンド → ドメインの順で入れる（`dd_assets.material` はこの順）。
 - 出典: 01 記録。
 
+### 取り込みや PIE の後に `L_Hospital_Zone1` が未保存になる
+
+- 症状: `import_dd_shards`（餅のメッシュの取り込み直し）や PIE の後に、`get_dirty_map_packages()` が `L_Hospital_Zone1` を返す（2026-09-17 のステップ 9b・10b2）。
+- 原因: 特定していない（参照しているアセットを作り直したためと見ている）。
+- 対処: 地図は git の外で作り直せるので、灯 783・シャード 337・選択なしを数えて前と同じことを確かめてから保存する。数が違えば保存せずに調べる。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 9b・10b2）。
+
+### 粒子の煙が見えない（粒子は出ているのに、PIE で何も映らない）
+
+- 症状: Vanish の `PPP_VanishPuff` が `get_num_active_particles()` で 5 個あるのに、見下ろしても映らない（2026-09-17 のステップ 11b3）。
+- 切り分け: PIE の中で `ps.set_material(0, unreal.load_asset('/Engine/EngineMaterials/DefaultMaterial'))` にすると、粒子が画面を覆う → 位置は正しく、材質の側の問題。
+- 原因: 材質の `CameraDepthFade` を既定の入力のまま使っていた。関数の既定は `Fade Length` 512・`Fade Offset` 24（プレビュー値を既定に使う）で、92 cm 先の粒子は 1/8 ほどしか見えない。関数の入力の既定は `MaterialEditingLibrary.get_material_function_expressions` の `FunctionInput` の `preview_value`（`export_text()` で読む。`.x` は無い）。
+- 対処: 入力をパラメータにして、止めた PIE の中で MID の値を変えて撮る（`observations/tools/vanish_knobs.py`）。
+- 出典: 04 記録、`observations/README.md` の「Vanish の見直し」。
+
+### 本家と本作で、同じ値の粒子の出る位置が違って見える（Vanish の煙）
+
+- 症状: 本家の煙はエレベーターの扉枠（234 cm 先）に隠され、画面の中央に明るく出る。本作はコードどおり 92 cm 先・目の 97 cm 下に出て、画面全体を暗く覆う（2026-09-17 のステップ 11b3）。
+- 調べたこと（どれも原因ではなかった）: 部品の相対位置とスポーンの変換（バイトコード @22349〜@22741 で確認）、カメラの位置（本家もカプセル + (0, 0, 95)）、3 つの LOD（同じ値）、UE 5.8 の Cascade のバーストの位置の補間（`ParticleEmitterInstances.cpp` の `PostSpawn`。補間は移動の前後の差 = 真下の 50 m だけで、前へはずらさない）、`bJustRegistered`（描画の状態を作るたびに立つ）、柱の材質（どれも不透明）。
+- 対処: 未解決（下の「未解決」）。粒子の値は原作のまま残す。
+- 出典: 04 記録、進捗記録 `20260916-tablet-powers.md` の要確認。
+
+### 本家の収録より粒子の数が多い（倍ほど）・粒子の灯が違って見える
+
+- 症状: 同じ値の粒子なのに、PIE の火花（テレポートの照準）が本家の収録の倍ほど出る（2026-09-17 のステップ 11b4）。
+- 原因: 本家の収録が画質「高」だった（本家の `%LOCALAPPDATA%\DDeception\Saved\Config\WindowsNoEditor\GameUserSettings.ini` の `sg.EffectsQuality=2`）。「高」は `r.EmitterSpawnRateScale 0.5`・`r.DetailMode 1`・`r.ParticleLightQuality 1`（UE 4.24 と 5.8 の `BaseScalability.ini`）で、本作のエディタの「最高」は 1・3・2。出現の率が半分になるのは、`bApplyGlobalSpawnRateScale` が真のエミッタだけ（斬撃のエミッタは偽）。
+- 対処: 比べるときだけ、PIE の中で 3 つの cvar を本家に合わせる（`observations/tools/aim_setup.py`。終わったら戻す）。材質や粒子の値は変えない。
+- 出典: 04 記録、観察の手順書の「5.」。
+
 ## 画面の操作・本家の実機
 
 ### PIE にキーを送っても届かない
@@ -326,8 +356,35 @@
 ### `desktop.py record` が終わらない（`record_status` が `running` のまま、動画も `.mkv.log` も空）
 
 - 原因: ffmpeg の `ddagrab` が `Opened dxgi output 0` の後、最初のフレームを待って止まる（原因は未特定。「未解決」）。
-- 対処: 止まった ffmpeg は自分が起動したものなので `taskkill` で止め、`gdigrab` で撮る（コマンドは `.claude/guides/verification.md` の「画面を操作する」）。Claude のシェルがセッション 1 なら直接バックグラウンドで走らせられる。フレームの取り出しは `-fps_mode passthrough`（無いと一定の速さに複製され、時刻と組にならない）。
-- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 6）、`.claude/guides/verification.md`。
+- 対処: 止まった ffmpeg は自分が起動したものなので `taskkill` で止め、`gdigrab` で撮る（`python Tools/desktop.py record --grab gdi [--region L T R B]`。エージェントがセッション 1 で撮るので、Claude のシェルがセッション 0 でもそのまま使える。手で打つコマンドは `.claude/guides/verification.md` の「画面を操作する」）。フレームの取り出しは `-fps_mode passthrough`（無いと一定の速さに複製され、時刻と組にならない）。
+- 試して駄目だったこと（2026-09-17）: `output_idx=1`（`Failed to enumerate DXGI output 1`。出力は 1 つだけ）、`-loglevel debug`（`Opened dxgi output 0 with dimensions 3440x1440` の後に何も出ない）。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 6・11a）、`.claude/guides/verification.md`。
+
+### PIE のビューポートが `gdigrab` で 1 秒に 4〜10 枚しか撮れない
+
+- 症状: 10b3 では 1 秒に約 48 枚撮れたビューポートの収録が、`frames` で 1 秒に 4〜10 枚（最初に 1.5 秒以上の穴）。ビューポートの外（VS Code の上）を撮っても同じ。`ddagrab` は最初のフレームで止まった（上の節）。
+- 原因: PIE が上限なしで約 89 fps で描き、GPU の使用率が 96 %（`nvidia-smi`）。デスクトップの合成が待たされ、GDI の取り込みが遅れる。
+- 対処: 撮る前に `python Tools/pie.py cmd "t.MaxFPS 60"`（GPU 63 %、1 秒に約 48 枚に戻った）。終わったら `t.MaxFPS 0` に戻す。手順は `.claude/guides/observation.md` の「5.」。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11b1）。
+
+### 本家の一瞬の演出が `gdigrab` で粗くしか撮れない（1 秒に約 10 枚）
+
+- 症状: 本家（全画面）を `record --grab gdi` で撮ると、`--fps 60` でも 1 秒に約 10 枚。範囲を 1720 × 720 や 860 × 360 に絞っても 3 秒で 16 枚だった（エディタのビューポートなら 60 fps で撮れた）。
+- 対処: MOD の `Console Command` に `slomo 0.25` と打ってから撮る（シッピングでも効く。テレキネシスの演出が 1.3 秒 → 4.7 秒に延びた）。レベルを読み直すと 1 に戻る。タブレットの出し入れは slomo でも約 0.7 秒のままだった（理由は未確認）。`Console Command` の欄は 1 回クリックしてから `type` で打ち、`enter`。
+- 注意: 入力の直前に 0.3 s ほど途切れることがある（`orig-primal-a` は 1.683 → 2.067 s）。最初に写った変化を始まりとすると、演出が本作より短く見える。終わりの時刻から逆算して合わせる（`.claude/guides/observation.md` の「6. 測る」。11b1 の「Primal の閃光が 1.5 倍長い」はこれで、11b2 で見直した）。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a・11b2）、`observations/README.md`。
+
+### 本家の MOD の無敵が効かず、Zone 1 で Reaper Nurse に捕まる
+
+- 症状: MOD の Maps の ZONE 1（シャードの並ぶ待合の廊下）に飛ぶと、Reaper Nurse 3 体が約 7 秒で来て捕まる。MOD の Settings で `God Mode` を見ると OFF のことがあり、テンキーの 3 を送っても効いたか分からないまま捕まった。MOD のメニューを開いている間もゲームは進む。捕まり続けると `You Are Dead` → `Restart?` で入口（`06_Hospital`）からやり直しになる。
+- 対処: 無敵は当てにしない。着いたらすぐ `M` → Active Enemy の `Find All`（(1327, 860)）→ `Remove All`（(1947, 860)）で敵を消す（敵が要る観察は、消す前の数秒で済ませる。順番は `.claude/guides/observation.md`）。敵のいない開始地点（ZONE 1 STARTING POINT）で済む観察はそこで行う。テンキーはエージェントの `num0`〜`num9`。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
+
+### 本家で `desktop.py click` を送ると視点が大きく回る / MOD のメニューの押し間違い
+
+- 症状: ゲーム中の `click X Y` はカーソルを絶対座標へ動かすので、その分だけ視点が回る（真下を向いた）。MOD のメニューの左の列は、ホイールで送った位置のまま残るので、前に測った座標で別の項目（W-Editor）を押した。
+- 対処: ゲーム中のクリックは画面の中央 (1720, 720) で行う。MOD のメニューは押す前に列を上端へ戻し（`scroll` 8 回）、撮って項目の位置を確かめる（上端の座標の表は `.claude/guides/observation.md`。W-Editor は (990, 487)、ボタンは y 457〜517 で、11a の「Logs のつもり」の (987, 510) はここに当たった）。**W-Editor の画面が開いたら何も動かさずに `Close` で閉じる**（開いただけで、カーソルの下の扉 `BP_06_DoubleDoors13` の変換が元の値のまま `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` に書かれた。値は原作と同じなので見え方は変わらない）。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
 
 ### PIE で動いている最中の絵が撮れない
 
@@ -368,6 +425,7 @@
 
 - **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
 - **エンジンの起動時の `LogAutomationTest: Error: Condition failed` 19 件** — エンジン自身の自己テスト。毎回同じ数（04 記録の「確かめたこと」）。
+- **Automation テストの後に `get_dirty_map_packages()` が `/Temp/Untitled_1`・`/Temp/Untitled_3` を返す** — `Wasami.Powers.PrimalStun`・`VanishNotify` などが作った一時的なワールドのパッケージ。ガベージコレクションでも消えないが、`/Temp` なので保存されず、その後の `editor_cycle.py` の終了も妨げない（2026-09-17 の 3 つのセッションのログで確かめた）。「未保存なし」を確かめるときは `/Game` のものだけを見る。
 - **VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」2 件** — 前のセッションから出ているもの（04 記録）。
 - **PIE のビューポートの外周に、縮尺の違う絵が枠のように出る** — 2026-09-17 のステップ 6 の撮影から。Vanish の前からある（04 記録）。
 - **焼き込みの警告 2 種**（`LightmassImportanceVolume` が無い、ライトマップ UV の重なり 7 メッシュ）— 原作の Zone 1・Zone 2 にもボリュームは無く、UV は原作のまま。直さない（01 記録の「ライトマップ」）。
@@ -379,7 +437,7 @@
 - **シャードを回収した瞬間の −1 の閃きが 1 フレームぶん進んで見えることがある** — 本作の画面はプレイヤーのティックで進むため（03 記録・06 記録）。
 - **テレポートの閃光の白が旧版の Manor (234, 245, 244) と本作の病院 (252, 252, 251) で違う** — ステージのポストプロセス（色の補正）の差と見ている（04 記録）。
 - **`Tools/overnight.py` がセッションの中で exit 4** — 意図どおり（上の hooks の節）。
-- **Vanish の煙が正面を向いているとほとんど見えない** — 本家の粒子の書き出しどおりに作ったもの（04 記録の「確かめたこと」）。
+- **UI の材質の `Time` と UMG のアニメは `slomo` に従わない** — 本家も本作も同じ（`observations/README.md` の「Vanish の見直し」）。`slomo` で撮った収録の縁のもやの明滅は、実時間の周期で読む。
 
 ## 試して駄目だった案
 
@@ -403,6 +461,8 @@
 ## 未解決
 
 - **`ddagrab` が最初のフレームで止まる原因**（2026-09-17）。回避は `gdigrab`。
+- **Vanish の煙の位置と明るさ**（2026-09-17）— 本家の煙は 2 m 以上先に明るく出るが、原作の値からは 92 cm 先になる（上の「取り込み・レベル・描画」の節）。本家の実機で、煙の出る向き（見下ろす・横を向く）を撮れば、位置の手がかりになる。
+- **テレキネシスの球の粒子の灯が、本家より明るく照らす**（2026-09-17、ステップ 11b4）— 同じ画質（「高」）で、線形の明るさの寄与が本家の約 1.4〜2 倍。灯の値は原作どおりで、GI は無く反射は SSR。UE 4.24 と 5.8 の単純な灯（`FSimpleLightEntry`。非逆二乗の減衰）の扱いの違いを疑っているが、UE 4.24 のソースが手元に無く確かめていない（04 記録）。
 - **スカイライトのキューブマップ（`HDRI_Epic_Courtyard_Daylight`・`TC_HDR01`）が回収できない** — 書き出しは 512×512 の平面 PNG 1 面で、UE に取り込むと Texture2D になる。シーンのキャプチャに任せている。寄与はほぼ無い（強度を 0〜50 に振っても原作の 0.5 では平均が 0.05 も動かない）ので急がない（01 記録）。
 - **Zone 2 のポストプロセスボリュームの `ColorGradingLUT`**（書き出しがアセットのパスの文字列で、取り込んだテクスチャに解決する仕組みが無い）**と `WeightedBlendables`**（`M_SharpenFilter_Inst`。マスターの式が cook で消えている）— `ColorGradingIntensity` が 0 なので見た目の寄与は無い（01 記録）。
 - **焼いた後も残る 1〜2 割の明るさの差**（床の手前 72 対 57、エレベーターの壁、天井の中央）— 焼き込みの品質ではない（Preview → High で ±2 以内）。床の中ほどは正面の両開き扉（BP 由来、未実装）が無いための映り込み（00 記録の「灯の焼き込み」）。

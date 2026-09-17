@@ -13,6 +13,7 @@ sources:
   - Source/wasami_deception/wasami_deception.Build.cs
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
+  - Source/wasami_deception/WasamiAssets.h
 updated: 2026-09-16
 ---
 
@@ -25,7 +26,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 | 場所 | 中身 |
 | --- | --- |
-| `Source/wasami_deception/` | ゲームの C++ モジュール（`Runtime`、`LoadingPhase: Default`）。プレイヤーとゲームモードは 02 記録 |
+| `Source/wasami_deception/` | ゲームの C++ モジュール（`Runtime`、`LoadingPhase: Default`）。プレイヤーとゲームモードは 02 記録、タブレットの画面は 03 記録、パワーは 04 記録 |
 | `Content/Python/` | エディタの Python。`init_unreal.py` が `wasami_tools` のツールセットを ToolsetRegistry に登録し、MCP から呼べるようにする（01 記録） |
 | `Tools/` | エディタの外で動かすスクリプト（参照データの前処理、リモート実行、エディタの開き直し。01 記録） |
 | `Intermediate/Pipeline/` | 前処理の出力（git の対象外、作り直せる） |
@@ -37,6 +38,8 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）。非公開依存: `Slate`、`SlateCore`。
 - ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V5`、`IncludeOrderVersion.Unreal5_6`（テンプレートのまま）。
 - `wasami_deception.cpp` / `.h` はモジュールの実装（`IMPLEMENT_PRIMARY_GAME_MODULE`）。
+- **パイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）の参照の決まり**（`WasamiAssets.h`）: C++ はそれらをソフト参照で持ち（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に、`WasamiAssets::Path("/Game/…/Name")`〈→ `/Game/…/Name.Name`〉や `WasamiAssets::ClassPath`〈→ `…/BP_Name.BP_Name_C`〉で既定のパスを入れる）、使うとき（`BeginPlay`・`RebuildWidget`）に `LoadSynchronous` で読む。`ConstructorHelpers` で読むとエディタの起動時の読み込みでルートに入り、パイプラインが作り直そうとするとエディタが落ちる（01 記録の注意点）。
+- Automation テストは `Source/wasami_deception/Tests/`（名前は `Wasami.*`）。モジュールのヘッダーは `../` で読む（`Tests/` はモジュールの include パスに入っていない）。
 - ビルドと開き直しの手順は `.claude/guides/unreal-workflow.md`、自動化は `Tools/editor_cycle.py`（01 記録）。
 
 ## プラグイン（`wasami_deception.uproject`）
@@ -56,8 +59,9 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
   - `[/Script/EngineSettings.GameMapsSettings]`: `GameDefaultMap` と `EditorStartupMap` は `/Game/Stage/Maps/L_Hospital_Zone1`、`GlobalDefaultGameMode` は `/Script/wasami_deception.WasamiGameMode`。
   - `[/Script/Engine.RendererSettings]`: **静的ライティング有効**（`r.AllowStaticLighting=True`）、仮想シャドウマップ有効、**メッシュ距離フィールドは作らない**（`r.GenerateMeshDistanceFields=False`）、**動的 GI なし**（`r.DynamicGlobalIlluminationMethod=0`）、**反射は SSR**（`r.ReflectionMethod=2`）、Substrate 有効、**`r.RayTracing=False`**（この PC の GeForce GTX 1660 SUPER に RT コアが無い）。最初の 4 つは 2026-09-16 に Lumen から切り替えたもの。理由は下の「灯の焼き込み」。
   - `[/Script/Engine.LocalPlayer]`: `AspectRatioAxisConstraint=AspectRatio_MaintainXFOV`（2026-09-16）。カメラの FOV 90 は原作では**水平**（UE 4.24 のエンジン既定が `MaintainXFOV` で、原作のプロジェクト設定は上書きしていない）。UE 5 の既定は `MaintainYFOV` に変わっており、そのままだとこの PC の 21:9（3440x1440）で水平 107° になって何もかも小さく写る。16:9 ではどちらでも同じ。
-  - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。根拠と効果は下の「露出」。
+  - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。原作の `r.UsePreExposure=False`（プレエクスポージャ無し）は、代わりに `r.EyeAdaptation.PreExposureOverride=1`（プレエクスポージャを 1.0 に固定）で写す（2026-09-16、ユーザーの決定。下の「既知の制約・注意点」）。根拠と効果は下の「露出」。
   - `[/Script/WindowsTargetPlatform.WindowsTargetSettings]`: DX12 / SM6、音声 48 kHz。
+  - `[/Script/Engine.CollisionProfile]`（2026-09-16）: 独自のオブジェクトチャンネル **`Teleport`**（`ECC_GameTraceChannel1`、既定の応答 **Overlap**）。本家の旧版 `DefaultEngine.ini` の値（最新版は既定 Ignore。テレポーテーションは旧版に従う）。テレポートの照準が病院のゾーンをこのチャンネルで探す（04 記録）。旧版のもう 1 つの `Malak`（`ECC_GameTraceChannel2`、Block）は別の章の敵のものなので写していない。チャンネルの設定はエディタの起動時に読まれる。
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
@@ -148,12 +152,15 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - Substrate を有効のままにしている（テンプレートの既定）。本家（UE 4.24）は Substrate を使っていないので、見た目を突き詰める段で切ることを検討する。
 - `r.RayTracing=False` はこの PC に合わせた設定。RT コアのある GPU で動かすときは戻す。
 - 原作のプロジェクト設定のうち、**写していない 2 つ**（`Config/DefaultEngine.ini` にも理由を書いてある）:
-  - `r.UsePreExposure=False` … プリ露出はトーンマッパーで打ち消される精度の工夫で、露出を 1.0 に固定した今は何も変えない。切り替えるとシェーダーが全部コンパイルし直しになる。
+  - `r.UsePreExposure=False` … プリ露出はトーンマッパーで打ち消される精度の工夫で、露出を 1.0 に固定した今は何も変えない。切り替えるとシェーダーが全部コンパイルし直しになる。**ただし一つだけ目に見える違いがあった**（2026-09-16）: UE 5.8 はプリ露出に 1〜2 フレーム前の目の順応の読み戻しを使う（自動露出を切っても計測方式は Histogram のまま。`PostProcessEyeAdaptation.cpp` の `FViewInfo::UpdatePreExposure`）ので、テレポートの `CameraAnim_Teleport` の +100 EV の閃光の後、2^100 のプリ露出でシーンカラーが溢れて**真っ黒なフレームが 1 枚**出た（PIE の 60 fps の収録で、白 → 赤 → 黒 → 赤）。ユーザーの決定で `r.EyeAdaptation.PreExposureOverride=1` を入れた（シェーダーの再コンパイルは要らない。原作の「プリ露出無し」と同じく 1.0 に固定する）。入れる前後で開始地点の廊下の絵の平均は 0.02 以内で同じ、白が出た回でも黒は出なかった（04 記録）。
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
 - 2026-09-16: 初版（現行の構成・設定を記録）
+- 2026-09-16: パイプラインのアセットをソフト参照で持つ決まり（`WasamiAssets.h`）と、Automation テストの置き場所を足した
 - 2026-09-16: 露出を原作のプロジェクト設定に合わせた（「露出」の節）。写していない 2 つの設定を「既知の制約・注意点」に足した
 - 2026-09-16: 「灯の焼き込み」の結果を、マテリアルのコンパイル失敗と灯の色の取り違え（01 記録）を直した後の値に書き換えた
 - 2026-09-16: 「灯の焼き込み」を、灯の Mobility・両面の影・原作のライトマップの解像度と UV に揃えた後の値に書き換え、床の残りの差が扉の不在による映り込みであることと、開始地点のフレーム時間と VRAM を足した
+- 2026-09-16: 当たりのチャンネル `Teleport`（旧版の既定 Overlap）を足した
 - 2026-09-16: 焼き込みを原作と同じ High 品質にし（Zone 1 は 105.7 秒、Zone 2 は 48.0 秒で初めて焼いた）、結果の表に High の列を足した。残りの差は品質によらないこと、焼き込みの警告が原作どおりであることを書いた
+- 2026-09-16: 原作の `r.UsePreExposure=False` の代わりに `r.EyeAdaptation.PreExposureOverride=1` を入れた（テレポートの閃光の後の黒いフレームの対処。ユーザーの決定）

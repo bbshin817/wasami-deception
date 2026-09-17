@@ -8,15 +8,14 @@ ourselves (the originals' graphs are cooked away), which go next to the stage's 
   M_DD_MapScreen  M_NewMap — the capture's render target on the tablet's screen (a User Interface material)
   M_DD_Powers     MM_Powers — a power's icon in colour over the grey one, clockwise from 12 o'clock by `Percent`
 
-Sources: pak_reference (UE 4.21) for the tablet and its UI, pak_reference_2 (UE 4.24) for the hospital's map images,
-which the older version does not have.
+Sources: pak_reference (UE 4.21) for the tablet and its UI, pak_reference_2 (UE 4.24) for the hospital's map images
+and the icons of the four powers the older tablet does not show (Telepathy, Primal Fear, Telekinesis, Vanish).
 """
-import json
 import os
 
 import unreal
 
-from wasami_tools.pipeline import dd_stage, paths
+from wasami_tools.pipeline import dd_assets, dd_stage, paths
 
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
@@ -48,6 +47,15 @@ TEXTURES = (
     (1, "UI/RingAltar_UI/Textures/ring_altar_power_teleport_icon_inactive"),
     (1, "UI/RingAltar_UI/Textures/ring_altar_power_speed_boost_icon"),
     (1, "UI/RingAltar_UI/Textures/ring_altar_power_speed_boost_icon_inactive"),
+    # The four powers the older version does not put on the tablet (the PNGs and settings are the same in both).
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_telepathy_icon"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_telepathy_icon_inactive"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_primal_icon"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_primal_icon_inactive"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_telekinesis_icon"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_telekinesis_icon_inactive"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_vanish_icon"),
+    (2, "UI/RingAltar_UI/Textures/ring_altar_power_vanish_icon_inactive"),
     # The hospital's baked maps (the plane in the level carries them; chapter 6 is not in the older export).
     (2, "UI/Minimap/T_06_Zone01"),
     (2, "UI/Minimap/T_06_Zone2"),
@@ -61,23 +69,26 @@ BODY_MATERIALS = (
 BODY_NORMAL = "Textures/Characters/Player/Tablet/Tablet_N"
 BODY_PACKED = "Textures/Characters/Player/Tablet/Tablet_S"
 
-# The original's sounds: (its path under /Game, the SoundWave's own Volume).
+# The original's sounds, under its /Game (the SoundWave's own settings come from the export).
 SOUNDS = (
-    ("Audio/SharedGameplay/05_Tablet_Woosh_v1_1", None),
-    ("Audio/SharedGameplay/05_Tablet_Woosh_v2_1", None),
-    ("Audio/UI/UI_Select_V3", 0.7),
+    "Audio/SharedGameplay/05_Tablet_Woosh_v1_1",
+    "Audio/SharedGameplay/05_Tablet_Woosh_v2_1",
+    "Audio/UI/UI_Select_V3",
 )
 
 # One material instance per zone's map image, as the original's MM_Map_06_Zone01 / _Zone2.
 MAPS = (("UI/Minimap/MM_Map_06_Zone01", "UI/Minimap/T_06_Zone01"),
         ("UI/Minimap/MM_Map_06_Zone2", "UI/Minimap/T_06_Zone2"))
-# The power sockets, as the original's MM_Powers instances: (instance, colour icon, grey icon).
-POWERS = (("Materials/MasterMaterials/MM_Powers_Inst_Teleport",
-           "UI/RingAltar_UI/Textures/ring_altar_power_teleport_icon",
-           "UI/RingAltar_UI/Textures/ring_altar_power_teleport_icon_inactive"),
-          ("Materials/MasterMaterials/MM_Powers_SpeedBoost",
-           "UI/RingAltar_UI/Textures/ring_altar_power_speed_boost_icon",
-           "UI/RingAltar_UI/Textures/ring_altar_power_speed_boost_icon_inactive"))
+# The power icons, as the latest version's MM_Powers instances in Enum_RingAltar_Skills order:
+# (instance, the icon file's stem under UI/RingAltar_UI/Textures). DisabledPower is the colour icon, EnabledPower the
+# grey `_inactive` one, as the instances have them.
+POWERS = (("Materials/MasterMaterials/MM_Powers_SpeedBoost", "ring_altar_power_speed_boost_icon"),
+          ("Materials/MasterMaterials/MM_Powers_Inst_Teleport", "ring_altar_power_teleport_icon"),
+          ("Materials/MasterMaterials/MM_Powers_Inst_Telepathy", "ring_altar_power_telepathy_icon"),
+          ("Materials/MasterMaterials/MM_Powers_PrimalFear", "ring_altar_power_primal_icon"),
+          ("Materials/MasterMaterials/MM_Powers_Inst_Telekinesis", "ring_altar_power_telekinesis_icon"),
+          ("Materials/MasterMaterials/MM_Powers_Vanish", "ring_altar_power_vanish_icon"))
+POWER_ICONS = "UI/RingAltar_UI/Textures/"
 
 
 def _tools():
@@ -96,45 +107,25 @@ def _instance(asset_path, parent):
     return mic
 
 
-def _pak(version):
-    return paths.DD_PAK if version == 1 else paths.DD_PAK2
-
-
 def asset(rel):
     """The original's /Game/<rel> under our /Game/DD."""
     return paths.DD_ROOT + "/" + rel
 
 
-def _texture_settings(version, rel):
-    """The original texture's sRGB, compression and LOD group, from the export's _textures.json."""
-    with open(os.path.join(_pak(version), "_textures.json"), encoding="utf-8") as f:
-        table = json.load(f)
-    key = "DDeception/Content/%s.uasset" % rel
-    entry = table.get(key)
-    if entry is None:
-        raise KeyError("no texture %s in %s/_textures.json" % (key, _pak(version)))
-    return {"srgb": entry["srgb"], "compression": entry["compression"], "lodGroup": entry["lod_group"]}
-
-
 # ------------------------------------------------------------------------------------------------ textures / mesh
 def import_textures():
     """Imports the PNGs the tablet uses with the original's texture settings."""
-    done = []
-    for version, rel in TEXTURES:
-        entry = _texture_settings(version, rel)
-        entry["file"] = os.path.join(_pak(version), "DDeception", "Content", *rel.split("/")) + ".png"
-        entry["asset"] = asset(rel)
-        if not os.path.exists(entry["file"]):
-            raise FileNotFoundError(entry["file"])
-        dd_stage.import_texture(entry)
-        done.append(entry["asset"])
-    return done
+    return [dd_assets.texture(rel, version) for version, rel in TEXTURES]
 
 
 def import_mesh():
     """The tablet plate (18.5 × 1 × 23.8 cm, slots phong2 = back and phong3 = front), with its two materials."""
     gltf = os.path.join(paths.DD_PAK2, "_meshes_gltf", "Meshes", "Player", "Tablet", "tablet_new_pCube2.gltf")
-    mesh = dd_stage.import_mesh({"file": gltf, "asset": asset(MESH), "slots": ["phong2", "phong3"]}, nanite=False)
+    # The StaticMesh's own lightmap settings (64 texels on UV 2), with UStaticMesh's defaults where the export has none.
+    props = dd_assets.main_export(dd_assets.export_json(MESH, 2), MESH)["props"]
+    mesh = dd_stage.import_mesh({"file": gltf, "asset": asset(MESH), "slots": ["phong2", "phong3"],
+                                 "lightmapResolution": props.get("LightMapResolution", 4),
+                                 "lightmapUv": props.get("LightMapCoordinateIndex", 0)}, nanite=False)
     slots = [unreal.StaticMaterial(material_interface=unreal.load_asset(asset(rel)), material_slot_name=name)
              for (rel, _), name in zip(BODY_MATERIALS, ("phong2", "phong3"))]
     mesh.set_editor_property("static_materials", slots)
@@ -189,29 +180,8 @@ def import_font():
 
 
 def import_sounds():
-    """The tablet's woosh up / down and the UI select the map's resize plays, with the SoundWave's own Volume."""
-    out = []
-    for rel, volume in SOUNDS:
-        ogg = os.path.join(paths.DD_PAK, "DDeception", "Content", *rel.split("/")) + ".ogg"
-        if not os.path.exists(ogg):
-            raise FileNotFoundError(ogg)
-        folder, name = paths.split(asset(rel))
-        task = unreal.AssetImportTask()
-        task.filename = ogg
-        task.destination_path = folder
-        task.destination_name = name
-        task.replace_existing = True
-        task.automated = True
-        task.save = False
-        task.factory = unreal.SoundFactory()
-        _tools().import_asset_tasks([task])
-        wave = unreal.load_asset(asset(rel))
-        if wave is None:
-            raise RuntimeError("the sound did not import to %s" % asset(rel))
-        if volume is not None:
-            wave.set_editor_property("volume", volume)
-        out.append(asset(rel))
-    return out
+    """The tablet's woosh up / down and the UI select the map's resize plays."""
+    return [dd_assets.sound(rel, 1) for rel in SOUNDS]
 
 
 # ------------------------------------------------------------------------------------------------ minimap / powers
@@ -227,22 +197,6 @@ def ensure_render_target():
     rt.set_editor_property("size_y", 512)
     rt.set_editor_property("render_target_format", unreal.TextureRenderTargetFormat.RTF_RGBA8)
     return path
-
-
-def _master(asset_path, build, domain_ui=False):
-    """Loads or creates one of our master materials and (re)builds its graph."""
-    if EAL.does_asset_exist(asset_path):
-        mat = unreal.load_asset(asset_path)
-        MEL.delete_all_material_expressions(mat)
-    else:
-        folder, name = paths.split(asset_path)
-        mat = _tools().create_asset(name, folder, unreal.Material, unreal.MaterialFactoryNew())
-    if domain_ui:
-        mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_UI)
-        mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-    build(mat)
-    MEL.recompile_material(mat)
-    return mat
 
 
 def _build_map_plane(mat):
@@ -323,19 +277,22 @@ def _build_powers(mat):
 def make_minimap_materials():
     """The three masters and the instances the level and the screen use."""
     ensure_render_target()
-    plane = _master(MAP_PLANE_MASTER, _build_map_plane)
-    _master(MAP_SCREEN_MASTER, _build_map_screen, domain_ui=True)
-    powers = _master(POWERS_MASTER, _build_powers, domain_ui=True)
+    plane = dd_assets.material(MAP_PLANE_MASTER, _build_map_plane)
+    ui = {"domain": unreal.MaterialDomain.MD_UI, "blend_mode": unreal.BlendMode.BLEND_TRANSLUCENT}
+    dd_assets.material(MAP_SCREEN_MASTER, _build_map_screen, **ui)
+    powers = dd_assets.material(POWERS_MASTER, _build_powers, **ui)
 
     out = []
     for rel, tex_rel in MAPS:
         mic = _instance(asset(rel), plane)
         MEL.set_material_instance_texture_parameter_value(mic, "Texture", unreal.load_asset(asset(tex_rel)))
         out.append(asset(rel))
-    for rel, colour_rel, grey_rel in POWERS:
+    for rel, icon in POWERS:
         mic = _instance(asset(rel), powers)
-        MEL.set_material_instance_texture_parameter_value(mic, "DisabledPower", unreal.load_asset(asset(colour_rel)))
-        MEL.set_material_instance_texture_parameter_value(mic, "EnabledPower", unreal.load_asset(asset(grey_rel)))
+        colour = unreal.load_asset(asset(POWER_ICONS + icon))
+        grey = unreal.load_asset(asset(POWER_ICONS + icon + "_inactive"))
+        MEL.set_material_instance_texture_parameter_value(mic, "DisabledPower", colour)
+        MEL.set_material_instance_texture_parameter_value(mic, "EnabledPower", grey)
         MEL.set_material_instance_scalar_parameter_value(mic, "Percent", 1.0)
         out.append(asset(rel))
     return out

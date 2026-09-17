@@ -49,7 +49,8 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     @staticmethod
     def build_dd_stage_level(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Builds one zone's level from the imported assets (meshes, lights, reflection captures, fog, sky light, post
-        process volumes, player starts), replacing what an earlier build placed, and saves it. The level is left open.
+        process volumes, player starts, the minimap's plane, the soul shards), replacing what an earlier build placed,
+        and saves it. The level is left open. The meshes are made again, so the level's lighting has to be baked again.
 
         Args:
             zone: 'Zone1' (06_Hospital_Zone_01) or 'Zone2' (06_Hospital_Zone_02).
@@ -61,3 +62,19 @@ class WasamiStageTools(unreal.ToolsetDefinition):
             output log under LogPython).
         """
         return _module("dd_level").build(zone, map_path)
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def place_dd_shards(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
+        """Puts one zone's soul shards (WasamiShard) in again where the original places them, taking out the shards and
+        the separate shard lights an earlier build placed, and saves the level. Nothing else changes, and the baked
+        lighting stays valid (the shards are movable). The shard assets come from WasamiDDTools.import_dd_shards.
+
+        Args:
+            zone: 'Zone1' (337 shards) or 'Zone2' (342).
+            map_path: Package path of the level; the zone's own is used when this is empty.
+
+        Returns:
+            'removed_shards', 'removed_lights' and 'shards' (placed).
+        """
+        return _module("dd_level").place_shards(zone, map_path)

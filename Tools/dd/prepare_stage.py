@@ -78,6 +78,11 @@ COMPONENT_MOBILITY = {"SkyLightComponent": STATIONARY}
 LIGHT_BOOKKEEPING = ("LightGuid", "MapBuildDataId", "PreviewInfluenceRadius", "AttachParent", "UCSModifiedProperties",
                      "CreationMethod", "bNetAddressable")
 RELATIVE = ("RelativeLocation", "RelativeRotation", "RelativeScale3D")
+# The teleport's zones (BP_Power_Teleport_Zone): the class's Cube is a hidden, query-only mesh of the Teleport object
+# channel, which the teleport's aim traces for. The level writes only what differs from the class's Cube_GEN_VARIABLE:
+# Zone 1's floor mesh keeps the class's Z scale of 0.05, and the ambulances' roof boxes keep its engine cube as well.
+TELEPORT_ZONE_CLASS = "BP_Power_Teleport_Zone_C"
+TELEPORT_ZONE_COMPONENT = "Cube"
 # Component properties of a placement worth carrying over (the rest is either the transform or editor bookkeeping).
 # bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
 # seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's
@@ -291,6 +296,14 @@ class Export:
         parent = self.parent_class(bp, class_name)
         return self.light_template(parent, comp_name, depth + 1) if parent and parent.endswith("_C") else None
 
+    def component_template(self, class_name, comp_name):
+        """The class defaults of a Blueprint's construction-script component (its <name>_GEN_VARIABLE), or None."""
+        bp = self.blueprint(class_name)
+        for x in (bp or {}).get("exports", []):
+            if x.get("name") == comp_name + "_GEN_VARIABLE":
+                return x.get("props") or {}
+        return None
+
     def default_mobility(self, class_name, comp_name, comp_class, depth=0):
         """The Mobility of an actor's component when the level leaves it out: its archetype's. In a Blueprint that is
         the class's own record of the component (the CDO's subobject, or the construction script's <name>_GEN_VARIABLE),
@@ -390,6 +403,96 @@ def note_texture(ex, png, kind, textures, problems):
 
 
 # ------------------------------------------------------------------------------------------------ one zone
+def note_mesh(ex, mesh_path, info, meshes, problems):
+    """Adds a mesh the level uses to `meshes` once (re-sectioning its glTF when sections share a material, with its
+    lightmap settings) and returns its key."""
+    key = mesh_path.split(".")[0]
+    if key in meshes:
+        return key
+    gltf = info.get("gltf")
+    file = os.path.join(REF, gltf.replace("/", os.sep)) if gltf else None
+    if file and not os.path.exists(file):
+        problems.append("mesh gltf missing: " + gltf)
+        file = None
+    slots = [s.get("material") for s in (info.get("material_slots") or [])]
+    resectioned = False
+    if file and len(set(slots)) != len(slots):     # sections sharing a material would collapse into one slot
+        try:
+            file = sectioned_gltf(file, gltf, slots, problems)
+            resectioned = True
+        except Exception as e:  # noqa: BLE001
+            problems.append("could not re-section %s: %s" % (gltf, e))
+    lightmap_res, lightmap_uv = ex.lightmap(key) if key.startswith("/Game/") else (None, None)
+    meshes[key] = {
+        "asset": asset_of(key), "source": key, "file": file, "engine": not key.startswith("/Game/"),
+        "slots": slots, "resectioned": resectioned,
+        "lightmapUv": lightmap_uv, "lightmapResolution": lightmap_res, "bodySetup": bool(info.get("body_setup")),
+        "bounds": info.get("bounds"),
+    }
+    return key
+
+
+def slot_materials(ex, slots, over, materials, problems):
+    """Each slot's material key: the component's override, else the mesh's own (None for none or UE's grid)."""
+    used = []
+    for i in range(max(len(slots), len(over))):
+        m = (over[i] if i < len(over) else None) or (slots[i] if i < len(slots) else None)
+        if not m or "WorldGridMaterial" in m:
+            used.append(None)
+            continue
+        used.append(resolve_material(ex, m, materials, problems) if m.startswith("/Game/") else None)
+    return used
+
+
+def teleport_zones(ex, prefix, full, actor_class, meshes, materials, problems):
+    """Every teleport zone's Cube as a placement: the class's Cube_GEN_VARIABLE under what the level changes (its mesh,
+    visibility, materials), the class's relative transform where the level has none, and the class's collision as
+    `collision` (BP_Power_Teleport_Zone: object type Teleport, query only, an overlap with every engine channel)."""
+    template = ex.component_template(TELEPORT_ZONE_CLASS, TELEPORT_ZONE_COMPONENT)
+    if template is None:
+        problems.append("no %s in %s" % (TELEPORT_ZONE_COMPONENT, TELEPORT_ZONE_CLASS))
+        return []
+    body = template.get("BodyInstance") or {}
+    collision = {
+        "objectType": body.get("ObjectType"), "enabled": body.get("CollisionEnabled"),
+        "responses": {r["Channel"]: r["Response"]
+                      for r in (body.get("CollisionResponses") or {}).get("ResponseArray", [])},
+    }
+    out = []
+    for e in full:
+        path = e.get("path") or ""
+        parts = path[len(prefix):].split(".") if path.startswith(prefix) else []
+        if (len(parts) != 2 or parts[1] != TELEPORT_ZONE_COMPONENT
+                or actor_class.get(parts[0]) != TELEPORT_ZONE_CLASS or not e.get("world")):
+            continue
+        own = e.get("props") or {}
+        world = world_of(e)                            # holds the level's relative transform only
+        rel = {k: template[k] for k in RELATIVE if k in template and k not in own}
+        if rel:
+            world = compose(world, rel.get("RelativeLocation") or [0, 0, 0], rel.get("RelativeRotation") or [0, 0, 0],
+                            rel.get("RelativeScale3D") or [1, 1, 1])
+        mesh_path = own.get("StaticMesh") or template.get("StaticMesh")
+        info = ex.mesh(mesh_path) if mesh_path else None
+        if not info:
+            problems.append("teleport zone mesh not in _meshes.json: %s (%s)" % (mesh_path, path))
+            continue
+        key = note_mesh(ex, mesh_path, info, meshes, problems)
+        over = own.get("OverrideMaterials") or template.get("OverrideMaterials") or []
+        props = {
+            "bVisible": own.get("bVisible", template.get("bVisible", True)),
+            "bHiddenInGame": own.get("bHiddenInGame", template.get("bHiddenInGame", False)),
+            "CastShadow": own.get("CastShadow", template.get("CastShadow", True)),
+            "Mobility": own.get("Mobility") or ex.default_mobility(TELEPORT_ZONE_CLASS, TELEPORT_ZONE_COMPONENT,
+                                                                   e.get("class") or "StaticMeshComponent"),
+        }
+        out.append({
+            "path": path, "actor": parts[0], "actorClass": TELEPORT_ZONE_CLASS, "mesh": key,
+            "materials": slot_materials(ex, meshes[key]["slots"], over, materials, problems),
+            "world": world, "props": props, "collision": collision,
+        })
+    return out
+
+
 def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     scene = jload("_levels/%s.scene.json" % map_name)
     full = jload("_levels/%s.full.json" % map_name)
@@ -419,37 +522,10 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
         if not info:
             problems.append("mesh not in _meshes.json: %s (%s)" % (mesh_path, e["path"]))
             continue
-        key = mesh_path.split(".")[0]
-        if key not in meshes:
-            gltf = info.get("gltf")
-            file = os.path.join(REF, gltf.replace("/", os.sep)) if gltf else None
-            if file and not os.path.exists(file):
-                problems.append("mesh gltf missing: " + gltf)
-                file = None
-            slots = [s.get("material") for s in (info.get("material_slots") or [])]
-            resectioned = False
-            if file and len(set(slots)) != len(slots):     # sections sharing a material would collapse into one slot
-                try:
-                    file = sectioned_gltf(file, gltf, slots, problems)
-                    resectioned = True
-                except Exception as e:  # noqa: BLE001
-                    problems.append("could not re-section %s: %s" % (gltf, e))
-            lightmap_res, lightmap_uv = ex.lightmap(key) if key.startswith("/Game/") else (None, None)
-            meshes[key] = {
-                "asset": asset_of(key), "source": key, "file": file, "engine": not key.startswith("/Game/"),
-                "slots": slots, "resectioned": resectioned,
-                "lightmapUv": lightmap_uv, "lightmapResolution": lightmap_res, "bodySetup": bool(info.get("body_setup")),
-                "bounds": info.get("bounds"),
-            }
-        slots = meshes[key]["slots"]
-        over = e.get("override_materials") or []
-        used = []
-        for i in range(max(len(slots), len(over))):
-            m = (over[i] if i < len(over) else None) or (slots[i] if i < len(slots) else None)
-            if not m or "WorldGridMaterial" in m:
-                used.append(None)
-                continue
-            used.append(resolve_material(ex, m, materials, problems) if m.startswith("/Game/") else None)
+        key = note_mesh(ex, mesh_path, info, meshes, problems)
+        if actor_class.get(actor_of(e["path"])) == TELEPORT_ZONE_CLASS:
+            continue                                   # teleport_zones() places these, with the class's collision
+        used = slot_materials(ex, meshes[key]["slots"], e.get("override_materials") or [], materials, problems)
         props = {k: v for k, v in ((by_path.get(e["path"]) or {}).get("props") or {}).items() if k in KEEP_COMPONENT_PROPS}
         if not props.get("Mobility"):
             props["Mobility"] = ex.default_mobility(actor_class.get(actor_of(e["path"])), e["path"].rsplit(".", 1)[-1],
@@ -461,6 +537,8 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
             "path": e["path"], "actor": actor_of(e["path"]), "actorClass": actor_class.get(actor_of(e["path"])),
             "mesh": key, "materials": used, "world": world_of(e), "props": props,
         })
+    zones = teleport_zones(ex, prefix, full, actor_class, meshes, materials, problems)
+    placements.extend(zones)
 
     # ---------------------------------------------------------------- lights (the sky light comes in this list too)
     lights, sky = [], None
@@ -544,7 +622,7 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     return {
         "map": map_name, "level": level_path, "placements": placements, "lights": lights, "captures": captures,
         "fog": fog, "sky": sky, "postProcess": post, "actors": actors,
-        "counts": {"placements": len(placements), "lights": len(lights), "captures": len(captures),
+        "counts": {"placements": len(placements), "teleportZones": len(zones), "lights": len(lights), "captures": len(captures),
                    "postProcess": len(post), "actors": len(actors)},
     }
 
