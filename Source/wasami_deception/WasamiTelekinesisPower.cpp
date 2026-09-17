@@ -48,7 +48,7 @@ AWasamiTelekinesisPower::AWasamiTelekinesisPower()
 
 	WaveSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04")));
 	ShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop")));
-	ForceFieldParticles = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis")));
+	ForceFieldParticles = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/Wasami/Powers/P_WasamiForceField")));
 }
 
 void AWasamiTelekinesisPower::LoadAssets(TArray<TObjectPtr<UObject>>& Out)

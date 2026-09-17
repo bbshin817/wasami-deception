@@ -13,7 +13,7 @@ class USoundBase;
  * player with the upgrade level's Range; it moves onto the player, sounds Stun_Wave_Attack_New_04, shakes the camera,
  * pulls once every shard (every actor with the telekinesis interface) within Range, through walls, and over its 2 s
  * timeline the screen washes blue and flashes white; 0.2 s in, the force field's particles
- * (P_ky_forceField_Telekinesis, at twice their size) burst where the player was.
+ * (P_WasamiForceField, at twice their size) burst where the player was.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiTelekinesisPower : public AWasamiPowerBurst
@@ -52,7 +52,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Telekinesis|Assets")
 	TSoftClassPtr<UCameraShakeBase> ShakeClass;
 
-	/** P_ky_forceField_Telekinesis: the blue force field (a sphere that closes in, an aura, a ground ring, star dust). */
+	/** P_WasamiForceField: the blue force field (a sphere that closes in, an aura, a ground ring, star dust).
+	 * P_ky_forceField_Telekinesis with its sphere's light weakened (dd_powers.FORCE_FIELD_LIGHT_SCALE). */
 	UPROPERTY(EditAnywhere, Category = "Telekinesis|Assets")
 	TSoftObjectPtr<UParticleSystem> ForceFieldParticles;
 

@@ -198,6 +198,20 @@ AURA_LAYERS = (
 )
 SHOCKWAVE_PANS = ((0.05, 0.1), (-0.08, 0.06))  # the ground ring's two T_ky_maskRGB3 samples (Panner_2, Panner_3)
 
+# The force field this game spawns, its own (the user's request, 2026-09-18): P_ky_forceField_Telekinesis with the
+# light of its 'sphere' emitter weakened. The original's module (ParticleModuleLight_0, shared by the emitter's three
+# LOD levels) lights the room at BrightnessOverLife 5, and under UE 5.8 that washes the screen out between the veils.
+# Recording both sides the same way (the original's own quality settings, Lv4, slomo 0.25, 1.6 - 2.2 s after the blue
+# flash) the whole screen averaged (97.0, 144.4, 190.1) in the latest version and (125.0, 175.2, 217.5) here, so the
+# copy multiplies BrightnessOverLife by FORCE_FIELD_LIGHT_SCALE: at 0.35 ours is (95.1, 148.7, 193.0), within the
+# original's own frame-to-frame spread. Nothing else changes: the rebuild under /Game/DD keeps every value the cook
+# saved. (observations/README.md, step 11b6; 04 record.)
+POWERS_FOLDER = paths.WASAMI_ROOT + "/Powers"
+FORCE_FIELD = POWERS_FOLDER + "/P_WasamiForceField"
+FORCE_FIELD_SOURCE = PARTICLE_SYSTEMS[2]
+FORCE_FIELD_LIGHT_SCALE = 0.35
+FORCE_FIELD_LIGHT_BRIGHTNESS = 5.0  # what the export holds, which the copy is checked against
+
 
 def _build_speedlines(mat):
     """M_Speedlines (pak_reference_2's export keeps its two named expressions): a FlipBook call of 2 × 5 frames with
@@ -719,6 +733,26 @@ def make_telekinesis_materials():
     return [a.get_path_name() for a in dd_assets.estimated_materials(KY09 + "Materials/", TELEKINESIS_MATERIALS, 2)]
 
 
+def _dim_force_field_light(exports):
+    """dd_particles' adjust for P_WasamiForceField: the sphere's light brightness x FORCE_FIELD_LIGHT_SCALE."""
+    lights = [e for e in exports.values() if e["class"] == "ParticleModuleLight"]
+    if len(lights) != 1:
+        raise RuntimeError("P_ky_forceField_Telekinesis has %d light modules, not one" % len(lights))
+    raw = lights[0]["props"]["BrightnessOverLife"]
+    values = raw["Table"]["Values"]
+    if values != [FORCE_FIELD_LIGHT_BRIGHTNESS] or raw["Table"]["EntryCount"] != 1:
+        raise RuntimeError("the sphere's light brightness is not the one known: %r" % (raw["Table"],))
+    raw["Table"]["Values"] = [v * FORCE_FIELD_LIGHT_SCALE for v in values]
+    raw["MinValue"] = raw["MinValue"] * FORCE_FIELD_LIGHT_SCALE
+    raw["MaxValue"] = raw["MaxValue"] * FORCE_FIELD_LIGHT_SCALE
+
+
+def make_force_field():
+    """P_WasamiForceField (after P_ky_forceField_Telekinesis' materials). Returns the package path."""
+    version, rel = FORCE_FIELD_SOURCE
+    return dd_particles.particle_system(rel, version, FORCE_FIELD, _dim_force_field_light)
+
+
 def slash_parameters():
     """M_ky_slash01_4x4's parameter defaults and texture, from its export: ({name: value}, {name: [r, g, b, a]}, the
     texture's rel)."""
@@ -794,7 +828,8 @@ def import_all():
     result["textures"] = len([dd_assets.texture(rel, version) for version, rel in TEXTURES])
     result["meshes"] = len([dd_assets.static_mesh(rel, version) for version, rel in MESHES])
     result["materials"] = len(make_materials())
-    result["particle_systems"] = len([dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS])
-    for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT):
+    systems = [dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS] + [make_force_field()]
+    result["particle_systems"] = len(systems)
+    for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT, paths.WASAMI_ROOT):
         EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

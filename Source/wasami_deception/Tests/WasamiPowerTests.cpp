@@ -21,10 +21,47 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Tests/AutomationCommon.h"
+#include "Particles/ParticleEmitter.h"
+#include "Particles/ParticleLODLevel.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Particles/Light/ParticleModuleLight.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	/** The one light module of a force field system (the 'sphere' emitter's, shared by its LOD levels): its
+	 * brightness, or -1 where the system, the module or a second one of them says the asset is not the one known. */
+	float SphereLightBrightness(UParticleSystem* System)
+	{
+		if (!System)
+		{
+			return -1.f;
+		}
+		UParticleModuleLight* Found = nullptr;
+		for (const UParticleEmitter* Emitter : System->Emitters)
+		{
+			for (int32 Level = 0; Emitter && Level < Emitter->LODLevels.Num(); ++Level)
+			{
+				const UParticleLODLevel* LOD = Emitter->LODLevels[Level];
+				for (int32 Index = 0; LOD && Index < LOD->Modules.Num(); ++Index)
+				{
+					UParticleModuleLight* Light = Cast<UParticleModuleLight>(LOD->Modules[Index]);
+					if (Light && Light != Found)
+					{
+						if (Found)
+						{
+							return -1.f;  // more than one light module: not the system this checks
+						}
+						Found = Light;
+					}
+				}
+			}
+		}
+		return Found ? Found->BrightnessOverLife.GetValue(0.f) : -1.f;
+	}
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiPowerGaugeTest, "Wasami.Powers.Gauge",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
@@ -261,13 +298,17 @@ bool FWasamiTelekinesisTimelineTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the wave"), Defaults->WaveSound.ToSoftObjectPath().ToString(), FString(TEXT("/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04.Stun_Wave_Attack_New_04")));
 	TestEqual(TEXT("the shake"), Defaults->ShakeClass.ToSoftObjectPath().ToString(), FString(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.01_Hotel_Lobby_ElevatorShakeStop_C")));
 	TestEqual(TEXT("the force field"), Defaults->ForceFieldParticles.ToSoftObjectPath().ToString(),
-		FString(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis.P_ky_forceField_Telekinesis")));
+		FString(TEXT("/Game/Wasami/Powers/P_WasamiForceField.P_WasamiForceField")));
 	// What the power loads ahead (after import_dd_powers): the wave, the shake and the force field, none missing.
 	TArray<TObjectPtr<UObject>> Loaded;
 	AWasamiTelekinesisPower::LoadAssets(Loaded);
 	TestEqual(TEXT("three assets are loaded ahead"), Loaded.Num(), 3);
 	TestFalse(TEXT("none is missing"), Loaded.Contains(nullptr));
 	TestTrue(TEXT("the force field is loaded"), Loaded.Num() == 3 && Cast<UParticleSystem>(Loaded[2]) != nullptr);
+	// This game's copy weakens the sphere's light; the rebuilt original keeps the value the cook saved (dd_powers).
+	TestEqual(TEXT("the copy's light"), SphereLightBrightness(Cast<UParticleSystem>(Loaded.Num() == 3 ? Loaded[2] : nullptr)), 1.75f);
+	TestEqual(TEXT("the original's light"), SphereLightBrightness(LoadObject<UParticleSystem>(nullptr,
+		TEXT("/Game/DD/ThirdParty/AdvancedMagicFX09/Particles/P_ky_forceField_Telekinesis.P_ky_forceField_Telekinesis"))), 5.f);
 	TestEqual(TEXT("the force field's wait"), AWasamiTelekinesisPower::ForceFieldDelay, 0.2f);
 	TestEqual(TEXT("the force field's scale"), AWasamiTelekinesisPower::ForceFieldScale, 2.f);
 	return true;
