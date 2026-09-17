@@ -368,6 +368,7 @@ Player.Reset Teleport (@31827) の実行順:
 - 使う関数: `/Engine/Functions/Engine_MaterialFunctions01/Gradient/RadialGradientExponential`、`ImageAdjustment/CheapContrast`、`Gradient/LinearGradient`、`Density/ExponentialDensity`（RadialGradientExponential の中）。テクスチャは無し。スカラー・ベクターのパラメータも無い（インラインのシェーダマップの uniform expression は既定の `SelectionColor`・`RefractionDepthBias` だけ）。
 - **色・半径・密度・コントラストの定数はコンパイル済みシェーダにしか無く、回収できていない**（旧版 `M_Decal_Teleport.uexp` 158 KB には DXBC が無く、共有シェーダコードのアーカイブも展開物に無い）。形と色は観察で決める必要がある（WebGL 版も推定）。
 - **2026-09-17 に旧版の実機で観察**（Deadly Decadence の噴水の前の芝、最短 250 cm、動かないカメラで 60 fps・3 秒と、取り消した後の背景。`observations/classic/aim-top-a*`）: **1 秒周期で明滅する**（表示値 R ≈ 50 ↔ 177。なめらかで山が広い。消えた式に `Time` と `Sine`〈周期 1〉がある形）、**縁の鋭い円**（内側はほぼ一様、縁の幅は半径の約 1 割）、**加算**（芝の模様が残る）。半径は斬撃の輪との比で決め、`RadialGradientExponential` の既定（中心 0.5・半径 0.5・密度 2.333）を `CheapContrast`（5）で切った約 70 cm と、PIE で同じ比になった（実装記録 04）。光る範囲に出る直線の縁は床の起伏（デカールの箱は上下 ±10 cm で、当たるのはゾーンの箱の上面）で、`LinearGradient` の効きは見えない。Manor はポストプロセスの色の補正が強く（`ColorGain` (1.43, 0, 0.56)・LUT `LUT_U1_Filmic_Cold_Blood_Murderer` 0.9・ブルーム 2.5 / しきい値 −0.49）、色と明るさは表示値から戻せない → 最新版の病院で見比べる（同じ材質）。
+- **2026-09-17 に最新版の病院の収録（`observations/original/orig-aim-a*`、Lv3・画質「高」）から色と明るさを推定**（実装記録 04）: 表示値をフィルミックのトーンマッパー（既定の値）で線形に戻すと、明滅で足されるのはほぼ純粋な赤で、約 0.2 ↔ 約 1.0（周期 1 秒）。
 
 ### 5.4 `P_ky_cutter2`（`pak_reference/_particles.json` の `/Game/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2`、確定）
 
@@ -503,7 +504,7 @@ Player.Reset Teleport (@31827) の実行順:
 ## 9. 未解決・観察が要るもの
 
 1. ~~CameraAnim の FOV の基準（90 か BaseFOV 137.24 か）~~ → 2026-09-16 に旧版の実機で 90（t=0 のキー）と確定。§5.1。
-2. `M_Decal_Teleport` の**色と明るさ**（形・半径・鋭さ・明滅の周期は 2026-09-17 に旧版で観察して決めた。§5.3）、`M_ky_slash01_4x4`・`PPP_Radial_Gradient_Doffed` のグラフ（定数は cook で消えている。推定で作った。火花は旧版の Manor より PIE のほうが大きく見える）。最新版の病院と見比べる。
+2. ~~`M_Decal_Teleport` の色と明るさ、`M_ky_slash01_4x4`・`PPP_Radial_Gradient_Doffed` のグラフ~~ → 2026-09-17 に最新版の病院と見比べて推定した（実装記録 04）。グラフは推定のまま。火花の数の差は本家の画質設定（「高」では `r.EmitterSpawnRateScale` 0.5 で、火花のエミッタだけが半分になる）によるものだった。
 3. UE4.21 のカメラアニメの PP がカメラの PP の上か下か（本作のカメラは PP を上書きしていないので結果は同じはず）。
 4. ~~UE5.8 で +100 EV のプレエクスポージャが問題を起こさないか~~ → 起こした（黒いフレーム）。`r.EyeAdaptation.PreExposureOverride=1` で対処（§7-3）。
 5. Zone 1 の `BP_Power_Teleport_Zone_2.Cube` と救急車の Cube がアーキタイプの Z スケール 0.05 を継ぐこと（書き出しの world scale とは食い違う。本作のパイプラインがアーキタイプの値を補っているかを確認）。

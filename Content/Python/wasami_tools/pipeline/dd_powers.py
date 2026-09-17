@@ -101,13 +101,16 @@ DECAL_TELEPORT = "Blueprints/Main/Powers/M_Decal_Teleport"
 DECAL_TELEPORT_MASTER = "/Game/Pipeline/Materials/M_DD_DecalTeleport"
 # The estimate of M_Decal_Teleport. The classic game shows (2026-09-17, 04 record) a disc with a sharp edge that
 # glows additively and pulses once a second. Its size is RadialGradientExponential at its defaults cut by CheapContrast,
-# whose contrast sets the edge's width (about a tenth of the radius). The colour and the brightness are placeholders
-# until they are compared with the latest version's hospital (the classic's Manor grades its colours too heavily to
-# read them back).
+# whose contrast sets the edge's width (about a tenth of the radius). The classic's Manor grades its colours too
+# heavily to read them back, so the colour and the brightness come from the latest version's hospital (step 11b4,
+# observations/README.md): through the engine's filmic tonemapper back to linear light, the pulse adds pure red
+# (green and blue under 0.3 % of it) and swings between about 0.2 and 1.0 of it.
+# TODO(仮): the pulse's two ends are rounded from that fit (0.17 – 0.22 and 0.94 – 1.05, with the floor under the
+# decal unknown).
 DECAL_CONTRAST = 5.0
-DECAL_COLOR = (1.0, 0.105, 0.09, 1.0)
-DECAL_PULSE_LOW = 0.04
-DECAL_PULSE_HIGH = 0.6
+DECAL_COLOR = (1.0, 0.0, 0.0, 1.0)
+DECAL_PULSE_LOW = 0.2
+DECAL_PULSE_HIGH = 1.0
 
 # Primal Fear's sphere (pak_reference_2): the original's path, and the master holding our estimate of its graph.
 PRIMAL = "Materials/05_Circus/M_05_Primal"
@@ -228,11 +231,15 @@ def _build_camera_shake(mat):
 def _build_ky_slash(mat):
     """M_ky_slash01_4x4 (AdvancedMagicFX13), estimated. The cook kept its settings (translucent, unlit, two-sided, for
     sprites and mesh particles), a ParticleSubUV of T_ky_slash01_4x4 and the parameters hilightColor, alphaDensity,
-    colorCorrect and depthFade; its emissive colour comes from a Lerp. The texture packs the slash in R and its bright
-    edge in G (B holds a cross the game never shows). The estimate: the particle's colour × R^colorCorrect, lerped to
-    hilightColor by G, over an opacity of saturate(R × alphaDensity) × the particle's alpha faded into the depth over
-    depthFade. (The classic game's slashes darken what lies under their dim parts, as an opacity from R with a colour
-    from a power of R does.)"""
+    colorCorrect and depthFade; its emissive colour comes from a Lerp, and it had six more expressions. The texture
+    packs the slash in R and its bright edge in G (B holds a cross the game never shows). The estimate spends those six
+    on the particle's colour, the Lerp, a Power, two Multiplies and a DepthFade:
+      emissive  the particle's colour lerped to hilightColor by G
+      opacity   R^colorCorrect × alphaDensity × the particle's alpha, faded into the depth over depthFade
+    The emissive is the particle's whole colour (13, 0, 0.22), which the tonemapper shows as salmon, and the power of R
+    shapes only the opacity: the latest version's hospital shows a thick salmon ring with a white core where the
+    slashes overlap (step 11b4, observations/README.md), which an emissive of the colour × R^colorCorrect under an
+    opacity of saturate(R × alphaDensity) left thin and dark. (The engine saturates a translucent opacity itself.)"""
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_particle_sprites", True)
@@ -243,15 +250,12 @@ def _build_ky_slash(mat):
     tex.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(KY_SLASH_TEXTURE)))
     tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     particle = g.node(unreal.MaterialExpressionParticleColor, -1300, 250)
-    shape = g.power(tex, "R", g.scalar("colorCorrect", 2.0, -1100, 50), "", -900, -50)
-    base = g.multiply(particle, "RGB", shape, "", -700, 0)
     hilight = g.vector("hilightColor", (3.9051918983459473, 4.095554828643799, 5.0, 1.0), -900, -300)
-    g.out(g.lerp(base, "", hilight, "RGB", tex, "G", -450, -100), "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    density = g.multiply(tex, "R", g.scalar("alphaDensity", 1.5, -1100, 150), "", -900, 150)
-    clamped = g.node(unreal.MaterialExpressionSaturate, -750, 150)
-    dd_assets.connect(density, "", clamped, "")
+    g.out(g.lerp(particle, "RGB", hilight, "RGB", tex, "G", -450, -100), "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    shape = g.power(tex, "R", g.scalar("colorCorrect", 2.0, -1100, 50), "", -900, 50)
+    density = g.multiply(shape, "", g.scalar("alphaDensity", 1.5, -1100, 150), "", -750, 100)
     fade = g.node(unreal.MaterialExpressionDepthFade, -400, 200)
-    dd_assets.connect(g.multiply(clamped, "", particle, "A", -600, 200), "", fade, "Opacity")
+    dd_assets.connect(g.multiply(density, "", particle, "A", -600, 200), "", fade, "Opacity")
     dd_assets.connect(g.scalar("depthFade", 100.0, -600, 350), "", fade, "FadeDistance")
     g.out(fade, "", unreal.MaterialProperty.MP_OPACITY)
 
@@ -633,14 +637,19 @@ def _build_star_dust(mat, d):
     RGB), a static switch useDistanceSize as the world position offset (B a constant), the parameters threshold,
     starPower (no default: 0), maskRadius, maskDensity and fadeValue, a DynamicParameter (flashTime, flashPower,
     starDensity; defaults 0), the functions DiamondGradient, RadialGradientExponential and Blend_Screen, two samples of
-    T_ky_dust_longStar (sRGB; one at TexCoord 0, one at a Rotator) and the static switch swSQdust (on by default; A a
-    Multiply_28, B a Multiply_9), of 40 expressions. T_ky_dust_longStar is 1 along its middle row and falls to 0.37 at
-    its top and bottom, so a high power of it is a thin line. The instance turns swSQdust off (and sets maskRadius and
-    maskDensity, which the editor shows only where they are used). The estimate's off side is a four-pointed star:
-    each sample's R to the power starDensity (35 – 68 from the particle system), the second at the TexCoord turned by
-    a Rotator over Time × flashTime (the two lines turn against each other, and the star twinkles), screened together,
-    × RadialGradientExponential(maskRadius, maskDensity) (the arms fade out) × flashPower. Its on side, which no
-    instance here uses, is DiamondGradient at its default, so that the master compiles with the original's default.
+    T_ky_dust_longStar (sRGB; one at TexCoord 0, one at a Rotator) and the static switch swSQdust (on by default; A
+    (on) a Multiply_28, B (off) a Multiply_9), of 40 expressions. T_ky_dust_longStar is 1 along its middle row and
+    falls to 0.37 at its top and bottom, so a high power of it is a thin line. The instance (_sq) turns swSQdust off,
+    and the latest version's recording (observations/README.md, step 11b4) shows its dust as small squares, flat
+    inside with a soft edge about as wide, a tenth of the sprite across: so the off side, whose Multiply's number is
+    older than the star's expressions, is the square. DiamondGradient is the product of two tents, (1 − |2u − 1|) ×
+    (1 − |2v − 1|), to the power of its Falloff; near its centre that is a diamond, and a power of starDensity (35 –
+    68 from the particle system) × flashPower (3 – 10) leaves ln(flashPower) / starDensity of it opaque and fades over
+    about as much again. The estimate:
+      off  DiamondGradient(Falloff = starDensity) × flashPower
+      on   a four-pointed star: each sample's R to the power starDensity, the second at the TexCoord turned by a
+           Rotator over Time × flashTime (the two lines turn against each other, and the star twinkles), screened
+           together, × RadialGradientExponential(maskRadius, maskDensity) (the arms fade out) × flashPower
     The opacity is saturate(the switch) × the particle's alpha, faded over fadeValue. useDistanceSize's on side
     (threshold) and starPower are not made, and the world position offset is left unconnected."""
     dd_assets.particle_material(mat, responsive_aa=True)
@@ -665,8 +674,10 @@ def _build_star_dust(mat, d):
                                      g.scalar("maskDensity", d["maskDensity"], -950, 250), -750, 150)
     shaped = g.multiply(cross, "", arms, "RadialGradientExponential", -550, 0)
     glint = g.multiply(shaped, "", dynamic, "flashPower", -400, 50)
-    square = dd_assets.function_call(g, "Gradient/DiamondGradient", -550, -250)
-    dust = g.switch("swSQdust", square, "DiamondGradient", glint, "", -250, -100)
+    diamond = dd_assets.function_call(g, "Gradient/DiamondGradient", -750, -350)
+    dd_assets.connect(dynamic, "starDensity", diamond, "Falloff")
+    square = g.multiply(diamond, "DiamondGradient", dynamic, "flashPower", -400, -300)
+    dust = g.switch("swSQdust", glint, "", square, "", -250, -100)
     dust.set_editor_property("default_value", True)
     clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, dust, "", -100, -100)
     faded = g.multiply(clamped, "", particle, "A", 50, 0)

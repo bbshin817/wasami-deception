@@ -29,7 +29,7 @@ Space でタブレットを出すと、残りのシャードの数・地図・�
 - **Telekinesis** … 周りのシャードをまとめて引き寄せる
 - **Vanish** … 一定時間、敵から見えなくなる
 
-Teleport の照準の輪。
+Teleport の照準。床に赤く脈打つ円と、渦を巻く斬撃の輪が出ます。
 
 ![Teleport の照準の輪](../../observations/ours/note/03-teleport.jpg)
 
@@ -45,7 +45,7 @@ Telekinesis を使った瞬間。画面が青く光り、周りのシャード�
 
 ![Telekinesis を使った瞬間](../../observations/ours/note/05-telekinesis.jpg)
 
-続けて青い力場が広がり、風の筋・床を走る光の輪・回る星の光がプレイヤーを包みます。
+続けて青い力場が広がり、風の筋・床を走る光の輪・小さな青い光の粒がプレイヤーを包みます。
 
 ![Telekinesis の力場](../../observations/ours/note/06-telekinesis-field.jpg)
 
@@ -68,6 +68,7 @@ Telekinesis を使った瞬間。画面が青く光り、周りのシャード�
 
 ## 更新履歴
 
+- 2026-09-17: Teleport の照準の輪と Telekinesis の光の粒を原作の実機に合わせて調整
 - 2026-09-17: Primal Fear と Vanish の見た目を原作の実機に合わせて調整
 - 2026-09-17: Telekinesis の青い力場の演出を追加
 - 2026-09-17: 記事を作成。病院ステージ・タブレット・シャード・パワー 6 種の仕組みまで

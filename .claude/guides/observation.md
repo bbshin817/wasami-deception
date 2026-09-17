@@ -150,12 +150,15 @@ python Tools/pie.py stop                                    # 必ず止める。
   - 前面に出ている小窓（Automation のログなど）は、先に閉じる。
 - **枠の中身**: `python Tools/ue_remote.py -c` で `WasamiPowerComponent` の `get_socket_power(True)`（左）と `get_socket_power(False)`（右）を読めば確かめられる。
 - **ビューポートの収録**: `t.MaxFPS 60` を付ければ 1 秒に約 48 枚で撮れる（`frames` で確かめる）。本家とは枚数が違うが、時刻（pts）で比べるので揃えなくてよい。
-- **照準**（`orig-aim-a` と同じ絵）: `place 15 385 --yaw -90 --pitch -26.7` の後に E。距離はリモート実行で `WasamiPowerComponent.adjust_teleport_distance(-1)` を 10 回（最短）→ `+1` を 3 回（Lv5 で 625 cm。本家の約 5.9 m に合わせた推定）。`HighResShot 3440x1440` で床の市松の十字が本家と同じ大きさになる。取り消しは同じ側の E。
+- **`desktop.py record` はすぐ戻り、収録は裏で続く**。`--seconds` より長く待ってから写す（すぐ `cp` すると 0 バイトのファイルになる）。
+- **照準**（`orig-aim-a` と同じ絵）: `place 15 385 --yaw -90 --pitch -26.7` の後に E（右の枠を `2` でテレポートにしてから）。本家と同じ Lv3 にし、距離はリモート実行で `WasamiPowerComponent.adjust_teleport_distance(-1)` を 10 回（最短）→ `+1` を 3 回（**512.5 cm**。本家は初期値 1.0 からホイール 7 目盛り。11b4 で輪の大きさが本家と重なった）。`HighResShot 3440x1440` で床の市松の十字が本家と同じ大きさになる。取り消しは同じ側の E。手順は `observations/tools/aim_begin.sh`。
 - **比べられるもの**: ビューポートの縦横比は本家（21:9）と違う。色と時間は比べられるが、画面上の位置と大きさは比べられない。
   - 位置を比べるときは `python Tools/pie.py cmd "HighResShot 3440x1440"` で静止画を撮る（`Saved/Screenshots/WindowsEditor/`）。
 - **敵の代わり**: 敵（作業一覧の項目 4）ができるまでは、仮の的を使う。リモート実行で `unreal.WasamiTestEnemy.spawn_test_enemy(<ゲームのワールド>, <位置>)` を呼んで出す。
+- **パワーを使い直す**: リモート実行で `WasamiPowerComponent` の `reset_powers()`（再使用の待ちを消す）の後、`use_power(True)`（左の枠）でキーを送らずに使える。
 - **値の読み取り**: 状態（位置・時刻・時間の遅さ）は `python Tools/pie.py state` で読める。演出の中の値（ゲージ・コンポーネント）は、時刻と一緒にリモート実行で読む。
 - **本家と条件を揃える**: 本家のセーブの強化段階（11a では Primal 3 など）に合わせる。
+  - **画質**: 本家の収録は画質「高」（本家の `GameUserSettings.ini` の `sg.EffectsQuality=2`）で、本作のエディタは「最高」。粒子の数（`r.EmitterSpawnRateScale` 0.5。エミッタの `bApplyGlobalSpawnRateScale` が真のものだけ）と粒子の灯が変わるので、PIE の中で `r.EmitterSpawnRateScale 0.5`・`r.DetailMode 1`・`r.ParticleLightQuality 1` にして撮る（`observations/tools/aim_setup.py`）。cvar はエディタ全体に効くので、終わったら 1・3・2 に戻す（`aim_restore.py`）。本家の設定を撮り直しの前に読み、変わっていれば合わせる。
   - リモート実行で `WasamiPowerComponent` の `upgrade_level` を `set_editor_property` で書く。全パワー共通の値。
   - 本作にまだ無い配置物がある場所では、代わりの物で奥をふさぐ。開始地点の正面 1,036 cm には両開き扉がある。代わりに、遠くのエレベーターの扉 2 枚を (−159.5 / 161, 2699) へ動かす（Movable にしてから）。
   - 枠を送る `1` の回数は、`get_socket_power` で確かめる（11b2 では開始時がスピードブーストで、Primal まで 3 回）。
