@@ -218,8 +218,8 @@ def sound_cue(rel, version=1):
 
 
 def texture(rel, version=1):
-    """Imports the original's /Game/<rel>.png under /Game/DD with its sRGB, compression and LOD group (_textures.json).
-    Returns the package path."""
+    """Imports the original's /Game/<rel>.png under /Game/DD with its sRGB, compression and LOD group (_textures.json)
+    and its NeverStream (the export). Returns the package path."""
     with open(os.path.join(pak(version), "_textures.json"), encoding="utf-8") as f:
         table = json.load(f)
     key = "DDeception/Content/%s.uasset" % rel
@@ -230,8 +230,10 @@ def texture(rel, version=1):
     if not os.path.exists(png):
         raise FileNotFoundError(png)
     target = asset_path(rel)
-    dd_stage.import_texture({"file": png, "asset": target, "srgb": entry["srgb"], "compression": entry["compression"],
-                             "lodGroup": entry["lod_group"]})
+    tex = dd_stage.import_texture({"file": png, "asset": target, "srgb": entry["srgb"],
+                                   "compression": entry["compression"], "lodGroup": entry["lod_group"]})
+    props = main_export(export_json(rel, version), rel)["props"]
+    tex.set_editor_property("never_stream", bool(props.get("NeverStream")))
     return target
 
 
