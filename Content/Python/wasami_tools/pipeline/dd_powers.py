@@ -550,14 +550,14 @@ def _build_wall02(mat, d):
     emissive colour runs from baseColor in the gaps to the particle's colour on the wisps (a lerp by R), over an opacity
     of saturate(R + opacity) × the particle's alpha: a faint dark-blue veil with bright wisps.
 
-    Checked against the original's burst (observations/README.md, "幕を本家と比べた" and "幕の流れは合わせる対象から
-    外した"; steps 5c and 5c2a of item 23). Over the screen's centre at the same tau, this estimate's fine feature
-    width (27 against 25 - 31 of the original's pixels across, 12 against 13 along), how fast the pattern stops being
-    itself (about 1.0 recorded s on both sides) and its drift while it fades (none on either) follow the original.
-    One difference is left, for step 5c2b: the broad structure is about half the original's (40 - 48 against 82 px
-    across, 65 against 92 - 102 along). The original's veil carries wide soft bands of light as well as the fine
-    wisps, and this estimate does not; it is the veil alone - the aura's broad structure in the same recordings
-    matches - so it is not the bloom. TODO(仮): that.
+    Compared with the original's burst (observations/README.md, "幕を本家と比べた", "幕の流れは合わせる対象から外した"
+    and "幕の広い模様は背景だった"; steps 5c, 5c2a and 5c2b of item 23). Nothing there tells this estimate from the
+    original, and nothing there can: what the veil covers at that moment is the corridor, blown out blue, and the
+    pattern those windows measure is mostly the room, not the veil. The one difference that looked like the veil's
+    (broad structure at half the original's) is the background - ours stands a moved lift door, polished metal, where
+    the original has matte red double doors, and only ours burns to white (89% of B at 255 against 28%) - and its
+    sign flips from window to window. TODO(仮): the graph is still an estimate. Telling it apart needs the original
+    recorded where the veil covers a dark, featureless background, and ours recorded the same way.
 
     How fast the pattern crosses the screen while the sphere closes in is not this graph's to answer for. The camera
     sits 85 cm under the sphere's centre and stays inside it all its life (the radius runs 2600 cm down to 132 cm),
