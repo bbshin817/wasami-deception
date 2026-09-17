@@ -237,6 +237,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-17: `Tools/desktop.py` の説明文を、エディタへの入力に確認は要らない（ユーザーが操作している間は送らない）という決まりに合わせた（ユーザーの指示。処理は変えていない）。
 - 2026-09-17: シャードの回収の閃光の素材（`dd_shards` のテクスチャ 4・推定のマスター 5 とインスタンス 8・`P_ky_flash3`）を足した。`dd_particles` が `FVector2D` と動的パラメータの配列を書けるようにし、C++ の道具が構造体の配列を照合し、配列の中の分布を使用中に数えるようにした。材質の小道具を `dd_powers` から `dd_assets` へ移し、`instance_parameters` と `material_instance` の静的マスク（C++ の `UWasamiMaterialLibrary` を新設）を足した。式を消し残す UE の不具合に `dd_stage.clear_expressions` で対処し、`_Graph` に接続の失敗を例外にする `checked` を足した
 - 2026-09-17: シャードの素材の取り込み（`pipeline/dd_shards.py`、`WasamiDDTools.import_dd_shards`）、Cue の取り込み（`dd_assets.sound_cue` と C++ の `UWasamiSoundCueLibrary`）、シャードの配置（`dd_level._shards`・`place_shards`、`WasamiStageTools.place_dd_shards`）を足した。組み立てはシャードの灯を単独で置かなくなった。`paths` に本作の素材の置き場所（`SOURCE_ART`・`WASAMI_ROOT`）を足した。両ゾーンのシャードを `place_dd_shards` で置いた（組み立て直しはしていない）
 - 2026-09-17: `dd_powers` に Telepathy の素材（開始の音 `Telepathy`、`T_ky_noise16`・`T_ky_noise`、推定のマスター `M_DD_Telepathy` とインスタンス `MM_Telepathy`・`MM_Telepathy_Inst`）を足した
