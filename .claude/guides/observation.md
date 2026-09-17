@@ -141,6 +141,7 @@ cp Intermediate/DesktopAgent/shots/pie-<項目>-a.mkv observations/ours/
 python Tools/pie.py stop                                    # 必ず止める。未保存が無いことも表示される
 ```
 
+- **場所**: PIE の開始地点は、レベルの 4 つのプレイヤースタートからランダムに選ばれる。だから、毎回 `place` で置く。
 - **焦点**: VS Code が前面にあるときは、最初のクリックだけ `--allow Code.exe --allow UnrealEditor.exe` を付けてよい（押す位置がエディタの上であることを、撮った画面で確かめてから）。
   - エディタが背面のままだと、PIE は 1 秒に 3 フレームほどに落ちる。
   - 前面に出ている小窓（Automation のログなど）は、先に閉じる。
@@ -148,6 +149,7 @@ python Tools/pie.py stop                                    # 必ず止める。
 - **ビューポートの収録**: 60 fps で撮れる。本家とは枚数が違うが、時刻（pts）で比べるので揃えなくてよい。
 - **比べられるもの**: ビューポートの縦横比は本家（21:9）と違う。色と時間は比べられるが、画面上の位置と大きさは比べられない。
   - 位置を比べるときは `python Tools/pie.py cmd "HighResShot 3440x1440"` で静止画を撮る（`Saved/Screenshots/WindowsEditor/`）。
+- **敵の代わり**: 敵（作業一覧の項目 4）ができるまでは、仮の的を使う。リモート実行で `unreal.WasamiTestEnemy.spawn_test_enemy(<ゲームのワールド>, <位置>)` を呼んで出す。
 - **値の読み取り**: 状態（位置・時刻・時間の遅さ）は `python Tools/pie.py state` で読める。演出の中の値（ゲージ・コンポーネント）は、時刻と一緒にリモート実行で読む。
 
 ## 6. 測る（`Tools/video_probe.py`）

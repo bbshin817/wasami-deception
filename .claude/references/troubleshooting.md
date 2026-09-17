@@ -166,7 +166,7 @@
 ### `connect_material_expressions` が失敗しても例外にならない / 入力が 1 本のノードにつながらない
 
 - 症状: つないだつもりの式が外れていて、コンパイル時に `Missing … input` になる。
-- 原因: `MaterialEditingLibrary` は失敗を False で返すだけ。入力が 1 本のノード（`Frac`・`Saturate`・`Ceil`・`ComponentMask`）のピン名は `""`（`"Input"` は失敗する）。
+- 原因: `MaterialEditingLibrary` は失敗を False で返すだけ。入力が 1 本のノード（`Frac`・`Saturate`・`Ceil`・`ComponentMask`）のピン名は `""`（`"Input"` は失敗する）。`Desaturation` の最初の入力も名前が無い（`get_material_expression_input_names` が `['None', 'Fraction']`。2026-09-17 のステップ 6）。
 - 対処: `dd_stage._Graph(mat, checked=True)` で例外にする。ピン名は `""`。
 - 出典: 03 記録、01 記録（`_Graph`）。
 
@@ -315,6 +315,13 @@
 - 症状: `dd_assets.material` でデカールのドメインに不透明のブレンドが重なる瞬間、コンパイルの失敗がログに出る（変えるたびにコンパイルされる）。
 - 対処: ブレンド → ドメインの順で入れる（`dd_assets.material` はこの順）。
 - 出典: 01 記録。
+
+### 取り込みや PIE の後に `L_Hospital_Zone1` が未保存になる
+
+- 症状: `import_dd_shards`（餅のメッシュの取り込み直し）や PIE の後に、`get_dirty_map_packages()` が `L_Hospital_Zone1` を返す（2026-09-17 のステップ 9b・10b2）。
+- 原因: 特定していない（参照しているアセットを作り直したためと見ている）。
+- 対処: 地図は git の外で作り直せるので、灯 783・シャード 337・選択なしを数えて前と同じことを確かめてから保存する。数が違えば保存せずに調べる。
+- 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 9b・10b2）。
 
 ## 画面の操作・本家の実機
 
