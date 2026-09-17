@@ -77,7 +77,7 @@
 - 完了の条件: 原本を `SourceArt/Wasami/enemy_wasami.glb`（Git LFS。`tmp/` は git の対象外）に写し、取り込み（`wasami_tools` のツールセット）が `/Game/Wasami` にメッシュ・スケルトン・アニメ 11 本を作る。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で無名のモーションの前屈をループして明けに起き上がる。本家の Chameleon の赤い縁取り（`SetRenderCustomDepth`。実装記録 04 の決定事項）が付く。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。モーションの割り当て（上の「決めたこと」）を要確認に 1 行残す。
 - 根拠: `tmp/enemy_wasami.glb`（Blender 4.5 の glTF、骨 22、UE のマネキン系の名前）、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.txt`（部品と縁取り）、実装記録 04（インターフェース）。
 - 依存: 1。
-- 状態: 未着手。
+- 状態: **進行中**（進捗記録 `20260917-enemy-wasami-body.md`、ブランチ `feature/enemy-wasami-body`。2026-09-17 に計画。縁取りは最新版では呼ぶ者がいないと分かったので、仕組みだけ作って要確認に書いた）。
 
 ### 5. ゲームの流れの土台（死亡・ライフ・チェックポイントとセーブ・死亡画面）
 
@@ -98,7 +98,7 @@
 ### 7. NavMesh と敵の AI（追跡型）
 
 - 目標: 敵ワサミを本家のナースの追跡型の行動（巡回・発見・追跡・見失い・見張り・Nightmare・出現）で動かす。透明化・薬投げ・ガスは作らない（ユーザーの回答）。
-- 完了の条件: 両ゾーンに NavMesh（本家の `NavMeshBoundsVolume` はブラシの形が書き出しに無いので、ステージ全体を覆う箱と `NavModifierVolume` 相当を本作で置く）。行動ツリーの値（速さ・視界の距離と角度・Camera チャンネルの視線・見失うまでの時間・巡回の行き先）と出現（Zone 1 の `Spawn Nurses_06`、Zone 2 の `BP_06_ReaperNurse_Sentry` ×6 の位置）がコードどおり。Nightmare（全回収後）で `run_fast_2`。パワーの作用（Primal・オーブの気絶 15 s、Vanish で見失う、Telepathy の印）が効く。PIE で巡回 → 発見 → 追跡 → 接触までを収録で確かめる（接触の先は項目 9）。
+- 完了の条件: 両ゾーンに NavMesh（本家の `NavMeshBoundsVolume` はブラシの形が書き出しに無いので、ステージ全体を覆う箱と `NavModifierVolume` 相当を本作で置く）。行動ツリーの値（速さ・視界の距離と角度・Camera チャンネルの視線・見失うまでの時間・巡回の行き先）と出現（Zone 1 の `Spawn Nurses_06`、Zone 2 の `BP_06_ReaperNurse_Sentry` ×6 の位置）がコードどおり。Nightmare（全回収後）で `run_fast_2`。パワーの作用（Primal・オーブの気絶 17 s〈ナースの BP の `Delay 17.0`。15 s はホテルの猿の行動ツリーの値。項目 4 の調査〉、Vanish で見失う、Telepathy の印）が効く。PIE で巡回 → 発見 → 追跡 → 接触までを収録で確かめる（接触の先は項目 9）。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse*.txt`、`Animation/Enemies/Nurse/Reaper/*AnimBlueprint*.txt`、行動ツリー（`_assets/DDeception/Content/AI/**`。無ければ `_bytecode` の BTT）、WebGL 版 15 記録（頭脳の作り）。
 - 依存: 4、6。
 - 状態: 未着手。
@@ -121,7 +121,7 @@
 
 ### 10. 特殊シャード 2 種（スタンオーブ・敵の位置が地図に出るボーナスシャード）
 
-- 目標: 本家と同一の見た目の `BP_PowerOrb`（オーブ）と `BP_BonusShard`（赤いシャード）を、本家の出現点と周期で出し、取ると敵が 15 s 気絶（気絶モーション）／敵が 60 s タブレットの地図に出る。
+- 目標: 本家と同一の見た目の `BP_PowerOrb`（オーブ）と `BP_BonusShard`（赤いシャード）を、本家の出現点と周期で出し、取ると敵が 17 s 気絶（気絶モーション。秒数は敵の側。項目 4）／敵が 60 s タブレットの地図に出る。
 - 完了の条件: 出現点（Zone 1: オーブ 11・ボーナス 10、Zone 2: 10・10）と周期・最初の出現の時刻がレベル BP とアクタのコードどおり。メッシュと材質は原作のアセット（`power_orb`、赤いシャードの材質）。取得で `UMG_VignetteSides`（`ENEMIES STUNNED` / `ENEMIES REVEALED`。WebGL 版 10 記録）が出て、全敵に `SetState(Stun, byOrb)`、地図に敵の印。テレキネシスでは引き寄せられない。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_PowerOrb.txt`・`BP_BonusShard.txt`、`_assets/**/BP_PowerOrbSpawnPoint*`・`BP_BonusShardSpawnPoint*`、`.claude/references/dark-deception/04-mechanics-items.md`（原作データの値）、WebGL 版 08 記録。
 - 依存: 7、9（気絶のモーションと敵の印）。
