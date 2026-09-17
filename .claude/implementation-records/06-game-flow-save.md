@@ -66,8 +66,8 @@ updated: 2026-09-18
 
 | パス | 中身 |
 | --- | --- |
-| `/Game/Wasami/Shard/SM_WasamiMochi` | 餅のメッシュ（`SourceArt/Wasami/wasami_mochi.glb`、6,000 三角形、Nanite、スロット 1 に `MI_WasamiMochi`）。1 m の大きさで原点が中心 |
-| `/Game/Wasami/Shard/T_WasamiMochi_BaseColor`・`_MetallicRoughness`・`_Normal` | glb に埋め込まれた 1024² の JPEG を `Intermediate/Pipeline/wasami/shard/` に書き出して取り込む。ベースカラーは sRGB、金属と粗さはリニア、法線は `TC_Normalmap`・`TEXTUREGROUP_WorldNormalMap`・緑を反転（glTF の法線は Y が上向き、UE は下向き） |
+| `/Game/Wasami/Shard/SM_WasamiMochi` | 餅のメッシュ（`SourceArt/Wasami/wasami_mochi.glb` = ユーザーの `wasami_mochi_v3`、101,368 三角形、LOD 1 枚、Nanite、スロット 1 に `MI_WasamiMochi`）。1.00 × 1.00 × 0.88 m で原点が中心（UE の X・Y・Z。顔は横を向く） |
+| `/Game/Wasami/Shard/T_WasamiMochi_BaseColor`・`_MetallicRoughness`・`_Normal` | glb に埋め込まれた PNG（色 2048²・法線 2048²・金属と粗さ 4096²）を `Intermediate/Pipeline/wasami/shard/` に書き出して取り込む。ベースカラーは sRGB、金属と粗さはリニア、法線は `TC_Normalmap`・`TEXTUREGROUP_WorldNormalMap`・緑を反転（glTF の法線は Y が上向き、UE は下向き）。**大きさは焼いたままにし、上限は設けない**（下の「餅のモデル」） |
 | `/Game/Pipeline/Materials/M_DD_WasamiMochi`、`/Game/Wasami/Shard/MI_WasamiMochi` | glTF の金属・粗さの材質（係数はすべて 1）: ベースカラー、金属 = B、粗さ = G、法線、両面。自己発光 = ベースカラー × `Glow`〈0.3。WebGL 版の `game.shard.glow`〉 |
 | `/Game/Pipeline/Materials/M_DD_MapMark`、`/Game/DD/Materials/Shared/M_Shard` | 地図の印の推定のマスターと、その原作のパスのインスタンス。`Color` をベースカラー（シーンキャプチャが読む）と自己発光に出す。`M_Shard` の色は (0.70, 0.0071, 1.0)（下の「印の色」） |
 | `/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2`・`Soul_Shard_Pickup_v2_Cue` | 回収の音（0.43775 s）と、その Cue（`SoundNodeModulator` のピッチ 0.9〜1.1、音量は既定の 0.95〜1.05 → `SoundNodeWavePlayer`）。`dd_assets.sound_cue`（01 記録） |
@@ -130,8 +130,25 @@ updated: 2026-09-18
 - エンジン: `UCapsuleComponent`・`UPointLightComponent`・`UStaticMeshComponent`、`UGameplayStatics`（`PlaySound2D`・`GetPlayerCharacter`・`GetPlayerController`）、`UKismetMathLibrary::VEase`、`FRichCurve`、`APlayerController::ClientStartCameraShake`。
 
 ## 既知の制約・注意点
-- **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光を足したもの。大きさだけはユーザーの依頼で原作の 1.5 倍。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。2026-09-17 のユーザーの回答に従い、**紫の明滅を外して餅を 1.5 倍（0.825 m）にした**（作業一覧の項目 22）。回り方は顔が真上を向いた餅のヨーなので回って見えにくく、本家のシャードに合わせるのは同じ項目の残り。回収の閃光の値（`FLASH_GAMMA` 0.5・`FLASH_STRENGTH` 0.8）は同じ回答で確定した。
+- **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光を足したもの。大きさだけはユーザーの依頼で原作の 1.5 倍。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。2026-09-17 のユーザーの回答に従い、**紫の明滅を外して餅を 1.5 倍（0.825 m）にした**（作業一覧の項目 22）。2026-09-18 に**モデルをユーザーの `wasami_mochi_v3` に替えた**（同じ項目。下の「餅のモデル」）。本家のシャードに回り方を合わせるのは同じ項目の残り。回収の閃光の値（`FLASH_GAMMA` 0.5・`FLASH_STRENGTH` 0.8）は同じ回答で確定した。
 - 原作の結晶の `Material`（`m_crystal_Inst1`）は、餅がメッシュの材質を持つので使わない。
+
+### 餅のモデル（`wasami_mochi_v3`、2026-09-18）
+
+ユーザーの指示（`.claude/references/enemy-wasami-motions.md`）で、WebGL 版が 6,000 三角形・1024² の JPEG に落としたものから、焼いたままの `wasami_mochi_v3` に替えた。**そのまま取り込む**（減らさない・上限を設けない）: シャードは両ゾーンで 679 個あるが全部が同じメッシュとテクスチャ 3 枚を共有するので、個数では増えない。
+
+`MochiSize` 0.825 m はメッシュのいちばん長い軸（X）に掛かる。v3 も旧モデルも X が 1.00 m なので拡縮 0.0825 は変えていない。ただし v3 は上から見て丸い（1.00 × 1.00、旧は 1.00 × 0.86）ので、回っても幅が縮まなくなり、画面では約 1.1 倍に見える。
+
+Zone 1 の待合（`place 0 -157 --yaw -90`、餅 337 個が見える）で測った、入れ替えの前後（`observations/README.md`）:
+
+| | 旧（6,000 三角形・1024²） | v3（101,368 三角形・2048²/4096²） |
+| --- | --- | --- |
+| フレーム時間（`stat unit` 表示中、`t.MaxFPS 0`） | 12.11 ms | 11.98 ms |
+| GPU 時間 | 9.1 ms | 9.1〜9.2 ms |
+| VRAM（`stat RHI`） | 2.98 GB / 5.08 GB | 3.18 GB / 5.08 GB |
+| プリミティブ | 604.4K | 601.4K |
+
+Nanite が画面の大きさに合わせて三角形を出すので、17 倍の密度でも描画は増えない（プリミティブはむしろ減った）。VRAM は +0.20 GB で、`.claude/guides/performance.md` の目安（6 GB に対して 5 GB 程度まで）に収まる。**このため開発中のテクスチャの上限も設けない。**
 - `M_Shard` の色は推定（原作の値は cook で消えた。上の「印の色」）。病院の実機の地図にシャードが写る場面をまだ撮っていない。
 - 回収の音の同時発音は、2 つ目で 1 つ目が止まらない（上の「確かめたこと」）。
 - 回転のティックは 340 個ほどのシャードすべてで走るが、描かれていないシャードは回転を書かない。
@@ -143,7 +160,7 @@ updated: 2026-09-18
 
 ## 確かめたこと（2026-09-17、PIE、Zone 1 の −Y へ延びる廊下。シャード 331・330・4・_2・5 が X≈0 に並ぶ）
 - 配置: Zone 1 に 337、Zone 2 に 342。単独で置いていたシャードの灯は外れ、Zone 1 の灯は 1,120 → 783。シャードの部品は Movable なので焼き込みはそのまま。PIE の開始でシャード 337・画面の数「337」。
-- 見た目: 廊下の中央に餅が並んで見え、近づくとワサミの顔の餅（glb の +Y の暗い面が上。WebGL 版と同じ向き）。描かれている 3 つのヨーを 3.5 秒おいて読むと、毎秒 27.3・23.1・16.1°（範囲 10.8〜32.4 の中）。地図の印は本編では描かれない（`WasRecentlyRendered` が偽）。
+- 見た目: 廊下の中央に餅が並んで見え、近づくとワサミの顔の餅。**v3 は顔が横を向き、暗い髪が上に乗る**ので、ヨーで回すと顔が正面に来ては裏へ回る（2026-09-18。旧モデルは顔が真上を向いていて回って見えにくかった）。描かれている 3 つのヨーを 3.5 秒おいて読むと、毎秒 27.3・23.1・16.1°（範囲 10.8〜32.4 の中）。地図の印は本編では描かれない（`WasRecentlyRendered` が偽）。
 - 地図: タブレットを上げると、廊下に並ぶシャードが紫の四角で出る（上の「印の色」）。
 - 触れて回収（前進の入力で歩いてシャード 331 へ）: プレイヤーの中心がシャードから 97 cm（カプセルの半径の和 99.6 cm）に来たフレームで、アクタが消え、画面の数が 337 → 336。同じフレームの `Count Shake` は約 0.03 秒ぶん進んだ値（数の移動 (−8.4, 6.2)・拡縮 1.06・閃きの α 0.236。プレイヤーの画面の更新が回収より後のフレーム順のため）で、0.09 秒後に数の変換が元の (0, −12)・1.0 に戻り、α は 0 のまま。揺れは FOV が最大 +0.78°・ロールが最大 0.39° で、0.1 秒で 0 に戻った。
 - 音（`ListWaves`）: `Soul_Shard_Pickup_v2` が 1 つ、音量 0.47〜0.51 で鳴る。0.65 × Cue の既定の `VolumeMultiplier` 0.75（UE 5.8 も 0.75。原作の書き出しは既定と同じ値を省くので原作も 0.75。書き出した Cue 126 個のうち 20 個だけが別の値を持つ）× Modulator の音量 0.95〜1.05 = 0.46〜0.51 と合う。
@@ -158,6 +175,7 @@ updated: 2026-09-18
 - `Wasami.Tablet.CountShake`（03 記録）。
 
 ## 変更履歴
+- 2026-09-18: 餅のモデルを `wasami_mochi_v3` に替えた（6,000 → 101,368 三角形、テクスチャは PNG の 2048²・2048²・4096²。下の「餅のモデル」。作業一覧の項目 22 のステップ 3）
 - 2026-09-18: 餅の紫の明滅を外し、大きさを 0.55 → 0.825 m（1.5 倍）にした（`M_DD_WasamiMochi` の自己発光は `Glow` だけ、`PulsePhaseData` と `BeginPlay` の乱数を削除、テスト。作業一覧の項目 22 のステップ 2）
 - 2026-09-17: 要確認の回答を反映した（閃光の係数は確定〈`dd_shards` の `TODO(仮)` を外した〉、同時発音の差はこのまま、餅の明滅は作業一覧の項目 22 で外す。コメントと記録だけで、値は変えていない）
 - 2026-09-17: 回収の閃光の色の係数を「最大 ^ 0.5 × 0.8」にした（線形 0.6 では衝撃波の輪が見えなくなったため。PIE で 3 通りを測った）

@@ -1,7 +1,8 @@
 """The soul shard (AWasamiShard, after the latest version's BP_Shard): what it shows and plays.
 
-  SM_WasamiMochi   this game's shard, the Wasami mochi (SourceArt/Wasami/wasami_mochi.glb, the WebGL version's 6000
-                   triangles with its three 1024² JPEGs), under /Game/Wasami/Shard with its textures and MI_WasamiMochi
+  SM_WasamiMochi   this game's shard, the Wasami mochi (SourceArt/Wasami/wasami_mochi.glb, the user's wasami_mochi_v3:
+                   101,368 triangles, 1.00 × 0.88 × 1.00 m, with PNGs of 2048² base colour, 2048² normal and 4096²
+                   metallic-roughness), under /Game/Wasami/Shard with its textures and MI_WasamiMochi
   M_DD_WasamiMochi the mochi's master: the glTF's metallic-roughness material, two-sided, glowing with its own base
                    colour × Glow (the WebGL version's game.shard.glow, which keeps it legible on a dark stage)
   M_DD_MapMark     the estimated master of the minimap's marks; M_Shard (the shard's plane) is an instance of it
@@ -41,6 +42,8 @@ MOCHI_MASTER = "/Game/Pipeline/Materials/M_DD_WasamiMochi"
 MOCHI_GLOW = 0.3
 # The glb's embedded pictures, taken out to be imported: (the glTF material's texture, our parameter and texture name,
 # sRGB, compression, LOD group). glTF's normal maps point Y up; UE's point it down, so the green channel is flipped.
+# The pictures keep the size the model was baked at (the user's, so the original-fidelity rule about the original's
+# settings does not apply): the 679 shards of both zones share these three, so the count does not grow with them.
 MOCHI_TEXTURES = (
     ("baseColorTexture", "BaseColor", True, None, None),
     ("metallicRoughnessTexture", "MetallicRoughness", False, None, None),
