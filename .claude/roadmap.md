@@ -69,7 +69,7 @@
 - 完了の条件: PIE の収録で、餅の発光が周期的に強弱し（周期・強さは仮でよい。要確認に書く）、回収の閃光の色相が紫で、画面の最大輝度が今の `P_ky_flash3` より低い。本家の紫の灯（175、半径 200、(194, 0, 255)）は変えない。
 - 根拠: 実装記録 06（`AWasamiShard`、`M_DD_WasamiMochi`、`P_ky_flash3` の推定の材質）。本家に無い本作独自の見た目なので、色と強さは仮の値（`.claude/guides/autonomy.md` の線引き）。
 - 依存: 1。
-- 状態: **進行中**（進捗記録 `20260917-shard-glow.md`、ブランチ `feature/shard-glow`。2026-09-17 に計画）。
+- 状態: **完了（2026-09-17）**。餅は `M_DD_WasamiMochi` の自己発光に紫の波（強さ 1.0・周期 2 s、位相は個体ごとの乱数）を足して明滅し、回収の閃光は本作の版 `/Game/Wasami/Shard/P_WasamiShardFlash`（`P_ky_flash3` の色を紫 × 各色の最大 ^ 0.5 × 0.8）にした。本家の紫の灯は変えていない。PIE の 4.4 m 先で、閃光の中心の最大輝度 247 → 170・色相 299°（実装記録 06、測り方と値は `observations/README.md` の「シャードの光の基準」「餅の紫の明滅」「紫の回収の閃光」）。仮の値は下の「未回答の要確認」。
 
 ### 4. 敵ワサミの素体（モデル・アニメ・敵の受け口）
 
@@ -223,6 +223,11 @@
 
 - 2026-09-17: 駆動役の使用量の読み方 — 仮に `--usage-cmd` で外から差し込む形にし、差し込みが無ければ止まる。理由: auto モードの分類器が認証情報のファイルと CLI 本体の読み取りを拒否した。選べるのは (a) ユーザーが使用量を JSON で出すコマンドを用意して `--usage-cmd` に渡す、(b) `--no-usage-check` で回す（5 時間の枠だけ待つ。週間の枠の判定は無い。`--until` で区切る）、(c) Claude に `.credentials.json` の読み取りを許すか、応答の形を教える。場所: `Tools/overnight.py` の `read_usage`・`budget_verdict`、`.claude/guides/autonomy.md` の「予算」。
 - 2026-09-17: 使用量の上限に達したときの `claude -p` の返事の文言 — 仮に `usage limit reached` / `hit your limit` / `rate limit`（`|エポック秒` 付きならその時刻まで待つ）にした。理由: 実物を上限まで使って確かめられない。場所: `Tools/overnight.py` の `LIMIT_PATTERN`・`LIMIT_EPOCH`。
+
+**`20260917-shard-glow.md`（作業一覧の項目 3。ワサミシャードの光）**
+
+- 2026-09-17: 餅の紫の明滅の強さと周期 — 仮に `PulseStrength` 1.0・`PulsePeriod` 2.0 s、色は本家の灯と同じ紫にした（4.4 m 先で餅の平均の赤と青が 117 → 202、白飛びなし。明滅はテクスチャに掛けるので顔の模様は残る）。理由: 本家にも WebGL 版にも無い本作独自の見た目で、値の根拠が無い。場所: `Content/Python/wasami_tools/pipeline/dd_shards.py` の `MOCHI_PULSE_*`（変えたら `import_mochi()` を回す）、実装記録 06
+- 2026-09-17: 回収の閃光の色と強さ — 仮に原作の `P_ky_flash3` の色の表を、灯と同じ紫 × (各色の最大 ^ 0.5) × 0.8 にした（0.25 倍速・4.4 m 先で、中心の星は輝度 247〈白〉→ 170〈紫、色相 299°〉、紫の円と衝撃波の輪は原作と同じ広がりでやや淡い。虹の円は紫の濃淡になる）。理由: 「紫でやや弱く」の度合いが決まっていない。場所: `dd_shards.py` の `FLASH_GAMMA`・`FLASH_STRENGTH`・`FLASH_COLOR`（`make_flash()` を回すだけでよい）、実装記録 06
 
 **`20260917-look-speedlines.md`（作業一覧の項目 2。視点の速さと集中線）**
 
