@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/look-and-speedlines
 base: 7208432
 started: 2026-09-17 20:54
-updated: 2026-09-17 21:15
+updated: 2026-09-17 21:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -27,7 +27,7 @@ updated: 2026-09-17 21:15
 ## 計画
 
 - [x] 1. PIE で今の値を測り、原因を切り分けた（測った値と撮った物は `observations/README.md` の「視点の速さと集中線」）
-- [ ] 2. 本家の実機（最新版）で同じものを撮る（1 回・30 分目安。`.claude/guides/observation.md`）
+- [ ] 2. 本家の実機（最新版）で同じものを撮る（1 回・30 分目安。`.claude/guides/observation.md`）← **作業中**（21:30〜）
   - エディタを保存して閉じ → `Launch-Latest.cmd` → MOD の Maps で Zone 1 の開始地点 → 敵を消す。
   - 視点: 開始地点で前の画面を撮り、`look --dx 2057 --steps 17`（期待値 0.175°/カウントなら 360.0°）→ 撮る、`look --dx 1029 --steps 7`（180.1°）→ 撮る、`look --dy 300 --steps 10` → 撮る（52.5° 見下ろす）。前後の画面のずれ（px）と水平 FOV から回転角を出す（直す前の本作なら 360° のはずが 25.2° しか回らない）。本家の設定の値（`Character.MouseSensitivity`・`Character.MouseSmoothing`）を `%LOCALAPPDATA%\DDeception\Saved\` の中から探して**読むだけ**（編集しない）。見つからなければ OPTIONS の画面で表示を撮る。
   - 集中線: 長くまっすぐ走れる所（本作では Zone 1 の待合から北。本家でも見通しのよい廊下を選ぶ）で Speed Boost を使って走り、ブースト中の静止画を十数枚（`shot`）と、時刻つきの連続撮影（`record`）を撮る。静止画を `T_Speedlines`（2 列 × 5 段、1 コマ 1920 × 1080 相当）の 10 コマと突き合わせ、(a) 1 画面に映るのが 1 コマか（2 × 5 読み）2.5 段ぶんか（2 × 2 読み）、(b) 線が集まる六角形の「目」が画面の中央にあるか上下の端にあるか（テクスチャの目は行 1080 × k にある）、(c) コマ送りの速さ（撮影の時刻とコマ番号の並びから）を決める。赤い線は不透明度 0.15 で薄いので、明るさを上げた切り抜きで見る。
@@ -41,7 +41,20 @@ updated: 2026-09-17 21:15
 
 ## 次にやること
 
-ステップ 2。エディタを保存して閉じ（`python Tools/editor_cycle.py` の閉じる側、または MCP で保存してから終了）、`Launch-Latest.cmd` で本家を起動し、`.claude/guides/observation.md` の手順で Zone 1 の開始地点へ出て敵を消し、上の計画の視点と集中線を撮る。
+ステップ 2。下の表を上から撮る（エディタを閉じる → `Launch-Latest.cmd` → 開始地点 → Zone 1 で敵を消す）。
+
+| 項目 | 場所 | 操作 | 測り方 | ファイル名（`observations/original/`） |
+| --- | --- | --- | --- | --- |
+| 視点の基準 | 開始地点（ヨー −90） | なし | — | `orig-look-0.png` |
+| 360° | 同 | `look --dx 2057 --steps 17` | 基準との差 | `orig-look-360.png` |
+| 180° | 同 | `look --dx 1029 --steps 7` | 背面の絵か | `orig-look-180.png` |
+| 戻し | 同 | `look --dx -1029 --steps 7` | 基準との差 | `orig-look-back.png` |
+| 小さく | 同 | `look --dx 100` | ずれの px（17.5° なら水平 FOV から） | `orig-look-dx100.png` |
+| 縦 | 同 | `look --dy 300 --steps 10` | 見下ろし 52.5° か | `orig-look-dy300.png` |
+| 集中線の収録 | Zone 1 の待合（敵を消す）を北へ | 左の枠を Speed → Q → `hold w` | `frames`・`sheet` | `orig-speedlines-a.mkv` |
+| 集中線の連写 | 同 | 同じ走りの間に `observations/tools/burst.py`（無劣化、約 12 枚/s） | `T_Speedlines` の 10 コマと照合 | `orig-speedlines-burst/` |
+
+- 本家の感度の設定は保存されていない（`Saved/Config/WindowsNoEditor/*.ini` にも `settingsSlot.sav` にも `MouseSensitivity`・`MouseSmoothing` の文字列が無い）= 既定の 1.0・1 のはず。
 
 ## 決定事項
 
@@ -57,6 +70,7 @@ updated: 2026-09-17 21:15
 
 ## 再開時の注意
 
+- **本家の観察の途中で止まったら**: `tasklist | grep -i -E "DDeception|ffmpeg"` で残りを見て、本家は observation.md の 7 の手順で閉じる（動かなければ `taskkill`）。エディタは `python Tools/editor_cycle.py --no-build --no-quit` で開き直す。セーブの控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-<時刻>`（戻さない）。
 - エディタ: ステップ 1 の終わりに起動中（L_Hospital_Zone1、PIE なし、未保存なし）。`t.MaxFPS` は 0 に戻した。PIE と本家は反復の終わりに必ず止める・閉じる。
 - `desktop.py look` は `dx // steps` を steps 回送る（割り切れない量は丸められる）。
 - 本家の設定のファイルは読むだけにする（本家のセーブの編集は夜間に行わない）。
