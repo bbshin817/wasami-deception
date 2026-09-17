@@ -5,14 +5,16 @@ are compared the same way (.claude/guides/observation.md).
     python Tools/video_probe.py sheet <video> <out.png> [--start T] [--end T] [--every N] [--cols C] [--width W]
                                                         [--crop L,T,R,B]
     python Tools/video_probe.py series <video> [--start T] [--end T] [--every N] [--box NAME=L,T,R,B ...]
-                                               [--stat mean|median] [--dark V]
+                                               [--stat mean|median|peak] [--dark V]
     python Tools/video_probe.py period <video> --box L,T,R,B [--start T] [--end T] [--min-lag S] [--max-lag S]
 
 frames  prints the size, the number of frames, the capture rate and the time of every frame.
 sheet   tiles frames into one PNG with each frame's time written on it (read the PNG, not the frames one by one).
 series  prints one line per frame: the mean RGB of the whole frame, then each box (mean or median RGB), and with
         --dark V the share of pixels whose luma is below V in the lower half of the frame (the tablet crossing the
-        view during a camera shake).
+        view during a camera shake). --stat peak prints, per box, the brightest part instead: the maximum, 99th and
+        90th percentile luma, the share of pixels at luma 250 or above (a flash clips there), and the mean RGB and
+        hue (degrees, "-" when grey) of the pixels at or above the 99th percentile.
 period  compares the box between every pair of frames and prints the mean difference per time lag, smallest first
         (how long a spinning or pulsing thing takes to look the same again).
 
@@ -21,6 +23,7 @@ screen does not change, and slow captures (the reference game in full screen giv
 uneven. Boxes and crops are in the video's own pixels (left, top, right, bottom).
 """
 import argparse
+import colorsys
 import os
 import shutil
 import subprocess
@@ -81,6 +84,17 @@ def frames(video, vf=None, size=None):
         proc.wait()
 
 
+def peak(pixels):
+    """Nx3 uint8 -> (max, p99, p90 luma, share at 250+, mean RGB of the p99 pixels, their hue in degrees or None)."""
+    rgb = pixels.astype(np.float32)
+    luma = rgb @ LUMA
+    p99, p90 = np.percentile(luma, (99, 90))
+    top = rgb[luma >= p99].mean(0)
+    hue, sat, _ = colorsys.rgb_to_hsv(*(top / 255.0))
+    hue = hue * 360.0 if sat >= 0.05 else None
+    return float(luma.max()), float(p99), float(p90), float((luma >= 250).mean()), top, hue
+
+
 def selected(args, t, index):
     return args.start <= t <= args.end and index % args.every == 0
 
@@ -133,7 +147,10 @@ def cmd_series(args):
     boxes = args.box or []
     head = "time      whole (R G B)"
     for name, _ in boxes:
-        head += "   %s %s" % (name, args.stat)
+        if args.stat == "peak":
+            head += "   %s: max p99 p90 >=250 | p99 R G B hue" % name
+        else:
+            head += "   %s %s" % (name, args.stat)
     if args.dark is not None:
         head += "   dark<%d lower half" % args.dark
     print(head)
@@ -144,8 +161,13 @@ def cmd_series(args):
         whole = frame[::4, ::4].reshape(-1, 3).mean(0)
         line = "%8.3f  %5.1f %5.1f %5.1f" % (t, *whole)
         for _, (left, top, right, bottom) in boxes:
-            value = reduce(frame[top:bottom, left:right].reshape(-1, 3), axis=0)
-            line += "   %5.1f %5.1f %5.1f" % tuple(value)
+            pixels = frame[top:bottom, left:right].reshape(-1, 3)
+            if args.stat == "peak":
+                high, p99, p90, clipped, color, hue = peak(pixels)
+                line += "   %5.1f %5.1f %5.1f %.4f | %5.1f %5.1f %5.1f %s" % (
+                    high, p99, p90, clipped, *color, "%5.1f" % hue if hue is not None else "    -")
+            else:
+                line += "   %5.1f %5.1f %5.1f" % tuple(reduce(pixels, axis=0))
         if args.dark is not None:
             lower = frame[frame.shape[0] // 2::2, ::2].astype(np.float32)
             luma = lower @ LUMA  # ffmpeg's gray, as in the step 11a measurements
@@ -207,7 +229,7 @@ def main():
     p = sub.add_parser("series")
     ranged(p)
     p.add_argument("--box", type=box_arg, action="append")
-    p.add_argument("--stat", choices=("mean", "median"), default="mean")
+    p.add_argument("--stat", choices=("mean", "median", "peak"), default="mean")
     p.add_argument("--dark", type=int)
     p = sub.add_parser("period")
     ranged(p, every=False)

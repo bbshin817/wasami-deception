@@ -14,7 +14,7 @@ updated: 2026-09-17
 ## 役割
 本家のソウルシャード（最新版 `pak_reference_2` の `Blueprints/Main/BP_Shard`）。ステージに置かれ、触れると回収され（タブレットの数が 1 減る）、テレキネシスで引き寄せられる。見た目は本作のワサミ餅（ユーザーの決定）。チェックポイント・セーブ・ライフ・死亡・脱出（M3 の残り）はこの記録に書き足していく。
 
-いまは**シャードの最小限**（タブレットのパワーの作業〈作業一覧の項目 1〉のステップ 9 で作った）: ゲームモードの `Check Shards`（`Collect Shard` の通知と連続回収の判定 `Check Streak`）、ゲームインスタンスの `Shards To Be Removed`（チェックポイントからのやり直しで取ったシャードを消す）、`bDisabled` と `Enable` はまだ無い。回収の閃光 `P_ky_flash3` はステップ 9b で足した。
+いまは**シャードの最小限**（タブレットのパワーの作業〈作業一覧の項目 1〉のステップ 9 で作った）: ゲームモードの `Check Shards`（`Collect Shard` の通知と連続回収の判定 `Check Streak`）、ゲームインスタンスの `Shards To Be Removed`（チェックポイントからのやり直しで取ったシャードを消す）、`bDisabled` と `Enable` はまだ無い。回収の閃光 `P_ky_flash3` はステップ 9b で足し、作業一覧の項目 3 で本作の紫でやや弱い版 `P_WasamiShardFlash` に替えた。
 
 ## 公開インターフェース
 - `AWasamiShard`（`AActor`、`IWasamiTelekinesisInterface` を実装）
@@ -24,7 +24,7 @@ updated: 2026-09-17
   - 静的関数: `EvaluatePullAlpha(Seconds)`（`Shard Pull` の `Alpha`）、`PullLocation(From, Player, Alpha)`（ExpoIn で水平だけ寄せた位置）、`SpinSpeed(PlayRate)`（餅の回る速さ °/s）。定数 `PullLength` = 1。
   - 部品: `DefaultSceneRoot`、`Body`（本家の `SkeletalMesh` の位置と拡縮だけを持つ `USceneComponent`）、その子の `Mochi`（`UStaticMeshComponent`）・`PointLight`・`Capsule`、ルートの子の `Plane`（ミニマップの印）。
   - 値: `LightIntensity` 175（本家の `Light Intensity`）、`MinimapPlaneHeight` 2000（`Minimap Plane Height`）。
-  - 素材（ソフト参照、`WasamiAssets.h`）: `MochiMesh` `/Game/Wasami/Shard/SM_WasamiMochi`、`PlaneMesh` `/Engine/BasicShapes/Plane`、`MapMarkMaterial` `/Game/DD/Materials/Shared/M_Shard`、`PickupSound` `/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue`、`PickupConcurrency` `/Game/DD/Audio/OnlyFew`、`CollectShake` `/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect`、`CollectFlash` `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3`。
+  - 素材（ソフト参照、`WasamiAssets.h`）: `MochiMesh` `/Game/Wasami/Shard/SM_WasamiMochi`、`PlaneMesh` `/Engine/BasicShapes/Plane`、`MapMarkMaterial` `/Game/DD/Materials/Shared/M_Shard`、`PickupSound` `/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue`、`PickupConcurrency` `/Game/DD/Audio/OnlyFew`、`CollectShake` `/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect`、`CollectFlash` `/Game/Wasami/Shard/P_WasamiShardFlash`（本家は `P_ky_flash3`。下の「本作の回収の閃光」）。
 - ツール: `WasamiDDTools.import_dd_shards()`（素材）、`WasamiStageTools.place_dd_shards(zone)`（配置。01 記録）。
 
 ## 内部構造と処理の流れ
@@ -38,7 +38,14 @@ updated: 2026-09-17
 - `Plane`: ルートの子、`/Engine/BasicShapes/Plane`、材質 `M_Shard`、拡縮 (1.5, 1.5, 10)、当たりなし・影なし。構築時に相対位置を (0, 0, `MinimapPlaneHeight`) にする（本家の構築スクリプトの `MakeVector(0, 0, Minimap Plane Height)`）。上向きの片面なので下からは見えず、プレイヤーのシーンキャプチャ（真上から、`ShowOnlyActors` にシャードが入る。02・03 記録）にだけ写る。地図の板（`dd_minimap`）はゾーンの床より下にあるので、20 m 上の印は地図の上に写る。
 
 ### BeginPlay
-回収の音・同時発音・シェイク・閃光を読み込んで持つ。餅の再生速度 `SpinRate` を `RandomFloatInRange(0.05, 0.15)`（本家の結晶の `SetPlayRate`）、`PreviousLocation` を今の位置にする。
+回収の音・同時発音・シェイク・閃光を読み込んで持つ。餅の再生速度 `SpinRate` を `RandomFloatInRange(0.05, 0.15)`（本家の結晶の `SetPlayRate`）、`PreviousLocation` を今の位置にする。餅のカスタム プリミティブ データ `PulsePhaseData`（0）に `FRand()`（0〜1）を入れる（紫の明滅の位相。下の「餅の紫の明滅」）。
+
+### 餅の紫の明滅（本作独自）
+ユーザーの依頼（2026-09-17）「置かれている間は本家の紫の灯に加えて餅が紫に明滅」。本家にも WebGL 版にも無い見た目。材質 `M_DD_WasamiMochi` だけで行い、アクタのティックも動的マテリアルも使わない（両ゾーンで約 680 個のシャードの処理を増やさないため）。
+
+- 自己発光 = ベースカラー × (`Glow` + `PulseColor` × `PulseStrength` × (0.5 + 0.5 sin(2π (`Time` / `PulsePeriod` + `PulsePhase`))))。紫を足すだけだと顔の模様が白く飛ぶので、ベースカラーに掛けて濃淡を残す。
+- `PulseColor` (0.539, 0, 1) は本家の灯の色 (194, 0, 255) をリニアにしたもの。`PulseStrength` 1.0・`PulsePeriod` 2.0 s は仮の値（コードに `TODO(仮)`）。4.4 m 先で、明滅が分かり（餅の平均 R 117 → 202・B 113 → 202）、白飛びしない（最大 207）値を画面で決めた（`observations/README.md` の「シャードの光」）。
+- `PulsePhase` はカスタム プリミティブ データ 0 を読むスカラー。個体ごとに位相がずれ、そろって光らない（本家の結晶も個体ごとに再生速度が乱数）。位置から位相を取ると、テレキネシスで引き寄せられる間（最後に速く動く）に位相が速く回ってちらつくので、`BeginPlay` で 1 回だけ乱数を入れる。エディタ（プレイ前）では全部 0。
 
 ### 餅の回転（ティック）
 本家の結晶はスケルタルのループアニメ `soul_shard_skeletal_anim_loop`（長さ 1.6667 s・`RateScale` 0.5・`OnlyTickPoseWhenRendered`）で回る。餅はスタティックメッシュなので、アクタのティックで `Mochi` のヨーを `SpinSpeed(SpinRate)` = 720 / 1.6667 × 0.5 × 再生速度（10.8〜32.4 °/s）ずつ増やす。スキンのメッシュと同じく、**最近 1 秒以内に描かれたときだけ**回す（`WasRecentlyRendered(1)`。UE 5.8 の `USkinnedMeshComponent` の `bRecentlyRendered` と同じ幅）。本家の `BP_Shard` 自身はティックを使わない（`bStartWithTickEnabled` 偽）ので、これは餅にしたための差。
@@ -56,7 +63,7 @@ updated: 2026-09-17
 3. 画面の数を `Clamp(数 − 1, 0, 9999)` にして（本家は文字列を整数にして引く）、`PlayCountShake()`（本家の `PlayAnimation(Count Shake, 0, 1, Forward, 2.0)`。03 記録）。
 4. （本家のゲームモードの `Check Shards` はまだ無い。）
 5. `ClientStartCameraShake(BP_CameraShake_ShardCollect, 0.4, CameraLocal)`。
-6. `SpawnEmitterAtLocation(P_ky_flash3, Body の位置, 回転 0, 拡縮 0.2, 自動破棄, プールなし, 自動起動)`（本家は `SkeletalMesh` の `K2_GetComponentLocation`。`BP_Shard` @900〜@950）。部品はワールドの `WorldSettings` に付き、シャードの破棄の影響を受けない。エミッタの長さ（`RequiredModule` の既定の 1 秒）で終わって消える。（`NoSound` が偽のときの `Shards To Be Removed` はまだ無い。）
+6. `SpawnEmitterAtLocation(P_WasamiShardFlash, Body の位置, 回転 0, 拡縮 0.2, 自動破棄, プールなし, 自動起動)`（本家は `P_ky_flash3` を `SkeletalMesh` の `K2_GetComponentLocation` に。`BP_Shard` @900〜@950）。部品はワールドの `WorldSettings` に付き、シャードの破棄の影響を受けない。エミッタの長さ（`RequiredModule` の既定の 1 秒）で終わって消える。（`NoSound` が偽のときの `Shards To Be Removed` はまだ無い。）
 7. `PlaySound2D(Soul_Shard_Pickup_v2_Cue, NoSound ? 0 : 0.65, 1.0, 0, OnlyFew)` → `Destroy()`。本家は破棄してから鳴らすが、同じフレームなので聞こえ方は同じ。破棄の後のワールドの取り方を当てにしないよう、音を先にした。
 - 重なりの開始（`OnCapsuleBeginOverlap`）: 相手がプレイヤー（`GetPlayerCharacter(0)`）なら `Collect(false)`。本家の重なりの経路は `NoSound` を書かずに回収へ飛ぶが、そこへ来るのは DoOnce が開いているとき（＝`Collect` がまだ呼ばれていない、`NoSound` が既定の偽）だけなので同じ。
 - タブレットの数は、プレイヤーが 0.1 秒ごとにシャードのアクタを数え直す（02 記録。破棄されたアクタは数えない）。回収の直後の −1 は本家どおり画面に直接書く。
@@ -68,12 +75,13 @@ updated: 2026-09-17
 | --- | --- |
 | `/Game/Wasami/Shard/SM_WasamiMochi` | 餅のメッシュ（`SourceArt/Wasami/wasami_mochi.glb`、6,000 三角形、Nanite、スロット 1 に `MI_WasamiMochi`）。1 m の大きさで原点が中心 |
 | `/Game/Wasami/Shard/T_WasamiMochi_BaseColor`・`_MetallicRoughness`・`_Normal` | glb に埋め込まれた 1024² の JPEG を `Intermediate/Pipeline/wasami/shard/` に書き出して取り込む。ベースカラーは sRGB、金属と粗さはリニア、法線は `TC_Normalmap`・`TEXTUREGROUP_WorldNormalMap`・緑を反転（glTF の法線は Y が上向き、UE は下向き） |
-| `/Game/Pipeline/Materials/M_DD_WasamiMochi`、`/Game/Wasami/Shard/MI_WasamiMochi` | glTF の金属・粗さの材質（係数はすべて 1）: ベースカラー、金属 = B、粗さ = G、法線、両面。自己発光 = ベースカラー × `Glow`（0.3。WebGL 版の `game.shard.glow`） |
+| `/Game/Pipeline/Materials/M_DD_WasamiMochi`、`/Game/Wasami/Shard/MI_WasamiMochi` | glTF の金属・粗さの材質（係数はすべて 1）: ベースカラー、金属 = B、粗さ = G、法線、両面。自己発光 = ベースカラー × (`Glow`〈0.3。WebGL 版の `game.shard.glow`〉 + 紫の明滅〈上の「餅の紫の明滅」。`PulseColor`・`PulseStrength`・`PulsePeriod`、`PulsePhase` はカスタム プリミティブ データ 0〉) |
 | `/Game/Pipeline/Materials/M_DD_MapMark`、`/Game/DD/Materials/Shared/M_Shard` | 地図の印の推定のマスターと、その原作のパスのインスタンス。`Color` をベースカラー（シーンキャプチャが読む）と自己発光に出す。`M_Shard` の色は (0.70, 0.0071, 1.0)（下の「印の色」） |
 | `/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2`・`Soul_Shard_Pickup_v2_Cue` | 回収の音（0.43775 s）と、その Cue（`SoundNodeModulator` のピッチ 0.9〜1.1、音量は既定の 0.95〜1.05 → `SoundNodeWavePlayer`）。`dd_assets.sound_cue`（01 記録） |
 | `/Game/DD/Audio/OnlyFew` | 同時発音（`MaxCount` 1・`StopOldest`・`VolumeScale` 0.5） |
 | `/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect` | 回収の揺れ（0.1 s、ブレンドアウト 0.05 s、ロール 1.5°・FOV 3° を周波数 15 で、ほかは振幅 0） |
-| `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3` | 回収の閃光（下の「回収の閃光」）。`dd_particles` が書き出しから組む（01 記録） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3` | 原作の回収の閃光（下の「回収の閃光」）。`dd_particles` が書き出しから組む（01 記録）。シャードは使わず、比べるために残す |
+| `/Game/Wasami/Shard/P_WasamiShardFlash` | 本作の回収の閃光（下の「本作の回収の閃光」）。`dd_shards.make_flash` が `P_ky_flash3` の書き出しの色を直して組む |
 | `/Game/DD/ThirdParty/AdvancedMagicFX13/Textures/T_ky_flare01`・`T_ky_flareVertical02`・`T_ky_decoLinesB_sml`・`T_ky_deco_rainbow` | 閃光のテクスチャ（原作の設定のまま） |
 | `/Game/Pipeline/Materials/M_DD_KyFlare01Primitive`・`M_DD_KyPrimitive`・`M_DD_KyPrimitiveDyn2`・`M_DD_KyPolarGlow02`・`M_DD_KyEmpty` | 閃光の材質の推定のマスター（下の「閃光の材質」） |
 | `/Game/DD/ThirdParty/AdvancedMagicFX13/Materials/M_ky_flare01_primitive`・`M_ky_primitive`・`M_ky_primitive_dyn2`・`M_ky_polarGlow02`・`M_ky_empty` | 原作のパスに置く推定のマスターのインスタンス（原作の既定値のうち、作ったパラメータ） |
@@ -92,6 +100,14 @@ updated: 2026-09-17
 | glow | `M_ky_polarGlow02` | 0 s と 0.02 s に 1 つずつ、寿命 0.1 s、70 × 70 cm（`PSA_Rectangle`。大きさの表は Y も 350）、色 (6.75, 6.56, 7) → 白、α 5 → 0。`RequiredModule` の `bEnabled` は偽だが、UE 5.8 は LOD の `bEnabled` だけを見るので描かれる（`ParticleEmitterInstances.cpp`。LOD へ写す処理は `ParticleLODLevel.cpp` でコメントアウト） |
 | dust_line | `MI_ky_primitive2_trs` | 35 本（LOD 1 は 20）、寿命 0.08〜0.15 s、半径 60〜70 cm の球面から中心へ速さ ×(−8〜−2)、速さの向きの細長い板（`SizeScaleBySpeed` で縦 1〜3 倍） |
 | light | `M_ky_empty`（見えない） | 1 つ、寿命 0.1 s、`ParticleModuleLight`（逆二乗でない指数 16、明るさ 2.5、半径は大きさ 20 cm × 8）で紫 (0.319, 0.130, 1.0) の灯 |
+
+### 本作の回収の閃光（`P_WasamiShardFlash`）
+ユーザーの依頼（「紫色のやや弱めな閃光」）による本作独自の見た目で、本家にも WebGL 版にも無い。`P_ky_flash3` の書き出しを `dd_particles.particle_system(…, target, adjust)` に渡し、組む前に色の表だけを直す（`dd_shards._purple_flash`。構造・寿命・大きさ・α・材質は原作のまま。材質は原作のパスのものを共有する）。
+- 7 つの `ParticleModuleColorOverLife` の参照表の色ごとに、色 → `FLASH_COLOR` × (その色の最大のチャンネル ^ `FLASH_GAMMA`) × `FLASH_STRENGTH`。`FLASH_COLOR` は餅の明滅と同じシャードの灯の紫 (194, 0, 255) のリニア (0.539, 0, 1.0)、`FLASH_GAMMA` は仮の 0.5、`FLASH_STRENGTH` は仮の 0.8。表の範囲（`MinValueVec`・`MaxValueVec`〈チャンネルごと〉、`MinValue`・`MaxValue`〈その最小・最大〉）も直した表から出す（cook が残した値の関係と同じ）。書き出しの色のモジュールが 7 つでない、または別の色のモジュールがあれば例外。
+- その結果: core (0.96, 0, 1.79)、glow (1.14, 0, 2.12) → (0.43, 0, 0.8)、shockwave (0.43, 0, 0.8) → (0.37, 0, 0.70)、glowSub・decoCore (0.37, 0, 0.70)、dust_line (0.75, 0, 1.39)、light (0.43, 0, 0.8)。
+- 指数を掛ける理由: 紫は輝度が白の約 0.19 倍なので、ただの係数（線形の 0.6 を PIE で試した）では明るい中心の星は残っても、半透明の白い衝撃波の輪と虹の円が 1/9 の輝度になってほぼ見えなくなった。歩いてシャードに触れたときに画面に出るのは主にこの輪。指数 0.5 で明るい所を抑え、薄い所を残す。係数は、1.34（中心を線形 0.6 と同じ 3.0 に保つ値）では紫のもやが原作の閃光より強くなったので 0.8 にした（PIE の測り方と値は `observations/README.md` の「紫の回収の閃光」）。
+- 灯の明るさ（2.5）は変えない: 粒子の灯の色は粒子の色 × α × `ParticleModuleLight` の色 × 明るさ（UE 5.8 の `ParticleSystemRender.cpp`・`ParticleModules.cpp`）なので、色の係数だけで灯も同じだけ弱まる。
+- `M_ky_polarGlow02` の自己発光は虹のテクスチャ × 粒子の色なので、緑が 0 の紫を掛けると虹の緑が消える。
 
 ### 閃光の材質（推定。グラフは cook で消えている）
 共通: 半透明・Unlit・スプライトとメッシュの粒子用。原作のインスタンスと粒子が使う静的スイッチの側だけを作る（`dd_shards.py` の各ビルダーの説明に、残っていた式と推定を書いた）。マスター・原作のパスのインスタンス・原作のインスタンスは `dd_assets.estimated_materials` が作り、グラフの小道具も `dd_assets` のもの（01 記録。テレキネシスの力場も同じ作り方）。
@@ -112,7 +128,7 @@ updated: 2026-09-17
 - 閃光: `_bytecode/.../BP_Shard.txt` @900〜@1019（`SpawnEmitterAtLocation`）、`_assets/DDeception/Content/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3.json`（両版で同じ。違いは `FixedRelativeBoundingBox` の詰め物のバイトだけ）、`.../Materials/M_ky_*.json`・`MI_ky_*.json`・`Mfunction/MF_ky_VectorToRadialValue.json`（説明文が UE の `VectorToRadialValue` と同じ）、`_textures.json`。UE 5.8 の `RadialGradientExponential` と `VectorToRadialValue` の出力は、レンダーターゲットに描いて数値で確かめた（2026-09-17。前者は中心 ≈ 1 − exp(−密度) から半径で 0、密度 0 で全面 0。後者の `Radial Coordinates` は R が角度 0〜1、G が中心からの距離 × 2）。
 - 地図の印: `_assets/.../Materials/Shared/M_Shard.json`（残る式は `Constant3Vector_0` 1 つ、Emissive に接続、値なし）。色は WebGL 版の `.claude/references/webgl/implementation-records/11-minimap.md`。
 - 配置: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`・`06_Hospital_Zone_02.full.json` の `BP_Shard_C`（どれも回転・拡縮なし、`bDisabled` なし）→ 前処理の `stage_ue.json` の `actors`。
-- 餅: WebGL 版の `public/assets/models/wasami_mochi.glb`（`scripts/prepare-shard-model.mjs` が原本の 300 万三角形・2048² から作ったもの）と `src/world/shards.ts`・`src/config.ts` の `game.shard`（大きさ 0.55・`glow` 0.3）。浮き沈み・脈動は WebGL 版の表現で本家に無いので採らない。
+- 餅: WebGL 版の `public/assets/models/wasami_mochi.glb`（`scripts/prepare-shard-model.mjs` が原本の 300 万三角形・2048² から作ったもの）と `src/world/shards.ts`・`src/config.ts` の `game.shard`（大きさ 0.55・`glow` 0.3）。浮き沈み・脈動は WebGL 版の表現で本家に無いので採らない（紫の明滅はユーザーの依頼による本作独自のもので、WebGL 版の脈動とは別）。
 - UE 5.8: `ShapeComponent.cpp`（`OverlapAllDynamic`、`AreaClass` の既定）、`SkinnedMeshComponent.cpp`（`bRecentlyRendered` の 1 秒）、`Timeline.cpp`（`PlayFromStart` の更新）、`KismetMathLibrary`（`VEase`）、`GameplayStatics.h`（`PlaySound2D` の `bIsUISound` 既定 真。UE 4.24 も真）。
 
 ## 依存関係
@@ -121,14 +137,14 @@ updated: 2026-09-17
 - エンジン: `UCapsuleComponent`・`UPointLightComponent`・`UStaticMeshComponent`、`UGameplayStatics`（`PlaySound2D`・`GetPlayerCharacter`・`GetPlayerController`）、`UKismetMathLibrary::VEase`、`FRichCurve`、`APlayerController::ClientStartCameraShake`。
 
 ## 既知の制約・注意点
-- **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光を足したもの。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。
+- **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光と本作独自の紫の明滅を足したもの。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。
 - 原作の結晶の `Material`（`m_crystal_Inst1`）は、餅がメッシュの材質を持つので使わない。
 - `M_Shard` の色は推定（原作の値は cook で消えた。上の「印の色」）。病院の実機の地図にシャードが写る場面をまだ撮っていない。
 - 回収の音の同時発音は、2 つ目で 1 つ目が止まらない（上の「確かめたこと」）。
 - 回転のティックは 340 個ほどのシャードすべてで走るが、描かれていないシャードは回転を書かない。
 - ゲームモードの `Check Shards`、`Shards To Be Removed`、`bDisabled`/`Enable` は未実装（上の「役割」）。
 - **閃光の材質は推定**（上の「閃光の材質」）。見え方は本家と見比べていない（パワーの作業のステップ 11 では撮らなかった。作業一覧の項目 3 で色と強さを変えるときに合わせる）。
-- **エディタで最初の閃光だけ、描画が約 0.6 秒止まる**。初めて使う粒子の材質のシェーダー（3 件）をエディタがその場でコンパイルするため（ログの `LogShaderCompilers` のジョブ 0.5〜0.6 秒）。ゲームの時間は止まらず、2 回目からは止まらない。パッケージしたゲームではシェーダーが先に作られているので起きないはず。
+- **エディタで最初の閃光だけ、描画が約 0.6 秒止まる**。初めて使う粒子の材質のシェーダー（3 件）をエディタがその場でコンパイルするため（ログの `LogShaderCompilers` のジョブ 0.5〜0.6 秒）。ゲームの時間は止まらず、2 回目からは止まらない。2026-09-17（作業一覧の項目 3 のステップ 1）に、シェーダーが作られた後のエディタのセッションで撮ったときは、描画は止まらず、**最初の閃光の粒子が描かれなかった**（灯だけが床を少し照らした）。2 回目からは描かれた。見え方を撮るときは、先に 1 回捨ての回収をする。パッケージしたゲームではシェーダーが先に作られているので起きないはず。
 - 本家の数の読み取りは文字列を整数にする（`Conv_StringToInt`）ので、1,000 以上で桁区切りが入ると 1 と読む癖がある。本作は整数を持つので起きない（病院は 342 以下）。
 - テストのワールドにはプレイヤーがいないので、回収はタブレットが無いところで止まる（本家と同じ）。回収の結果は PIE で確かめる。
 
@@ -145,10 +161,13 @@ updated: 2026-09-17
 
 ## テスト（`Tests/WasamiShardTests.cpp`）
 - `Wasami.Shard.PullCurve` … `Alpha` の値（0 / 0.375 / 0.75 / 1 秒）、ExpoIn の位置（Alpha 0 で元の位置、0.5 で 1/32、0.9 で 1/2、1 でプレイヤーの X・Y、高さは元のまま）、回る速さ（0.05 で 10.8、0.15 で 32.4 °/s）。
-- `Wasami.Shard.Actor` … 一時的なゲームのワールドに置いて、閃光の既定のパス（`CollectFlash`）、カプセル（半径と半高さ 49.57、高さ約 100 cm、`WorldStatic`・`Custom`・QueryOnly・Pawn とワールドへ Overlap・重なりのイベントあり）、灯（位置・強さ 175・単位なし・半径 200・色・影なし・Movable）、餅（0.55 m・97.085 cm・描画距離 3000）、印（20 m 上・拡縮・当たりなし）、再生速度の範囲。`Activate` でその場の位置の更新、再生速度の範囲、0.45 の時点でわずかにしか寄らないこと、終わりに原点へ着いて止まること、プレイヤーがいないので破棄されないこと。
+- `Wasami.Shard.Actor` … 一時的なゲームのワールドに置いて、閃光の既定のパス（`CollectFlash`）、カプセル（半径と半高さ 49.57、高さ約 100 cm、`WorldStatic`・`Custom`・QueryOnly・Pawn とワールドへ Overlap・重なりのイベントあり）、灯（位置・強さ 175・単位なし・半径 200・色・影なし・Movable）、餅（0.55 m・97.085 cm・描画距離 3000）、印（20 m 上・拡縮・当たりなし）、再生速度の範囲、明滅の位相（カスタム プリミティブ データ 0 が 0〜1）。`Activate` でその場の位置の更新、再生速度の範囲、0.45 の時点でわずかにしか寄らないこと、終わりに原点へ着いて止まること、プレイヤーがいないので破棄されないこと。
 - `Wasami.Tablet.CountShake`（03 記録）。
 
 ## 変更履歴
+- 2026-09-17: 回収の閃光の色の係数を「最大 ^ 0.5 × 0.8」にした（線形 0.6 では衝撃波の輪が見えなくなったため。PIE で 3 通りを測った）
+- 2026-09-17: 回収の閃光を本作の紫でやや弱い `P_WasamiShardFlash` に替えた（`dd_shards.make_flash`、`CollectFlash` の既定のパスとテスト。作業一覧の項目 3）
+- 2026-09-17: 餅の紫の明滅を足した（`M_DD_WasamiMochi` の自己発光、`BeginPlay` で位相の乱数、テスト。作業一覧の項目 3）
 - 2026-09-17: 閃光の材質を作る繰り返しと小道具を `dd_assets` へ移した（`make_flash_materials` は `estimated_materials` を呼ぶ。作るものは同じで、取り込み直して `flash_materials` 13・静的マスク G / R を確かめた）
 - 2026-09-17: 回収の閃光 `P_ky_flash3` を足した（`Collect` の揺れの後に出す。素材の取り込みは `dd_shards.py` のテクスチャ 4・推定のマスター 5・インスタンス 8・粒子 1）
 - 2026-09-17: 初版（シャードの最小限: `AWasamiShard`〈ワサミ餅・灯・カプセル・地図の印・回転〉、回収、引き寄せ、素材の取り込み `dd_shards.py`、配置、テスト）

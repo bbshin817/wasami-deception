@@ -3,14 +3,16 @@
   SM_WasamiMochi   this game's shard, the Wasami mochi (SourceArt/Wasami/wasami_mochi.glb, the WebGL version's 6000
                    triangles with its three 1024² JPEGs), under /Game/Wasami/Shard with its textures and MI_WasamiMochi
   M_DD_WasamiMochi the mochi's master: the glTF's metallic-roughness material, two-sided, glowing with its own base
-                   colour × Glow (the WebGL version's game.shard.glow, which keeps it legible on a dark stage)
+                   colour × Glow (the WebGL version's game.shard.glow, which keeps it legible on a dark stage) and a
+                   purple pulse of our own (the original's crystal does not pulse)
   M_DD_MapMark     the estimated master of the minimap's marks; M_Shard (the shard's plane) is an instance of it
   the pickup       Soul_Shard_Pickup_v2 and its cue (a modulator of pitch 0.9 – 1.1), OnlyFew, and
                    BP_CameraShake_ShardCollect
   the flash        P_ky_flash3 (AdvancedMagicFX13's Cascade system: a shockwave, glows, a star, converging lines and a
                    light) with its textures; its five materials' graphs are cooked away, so masters holding our
                    estimates (M_DD_Ky*) sit under /Game/Pipeline, and instances of them at the original's paths, the
-                   original's instances being instances of those (MI_ky_flare01_primitiveG / R keep their channel)
+                   original's instances being instances of those (MI_ky_flare01_primitiveG / R keep their channel);
+                   the shards play P_WasamiShardFlash, our purple and weaker version of it under /Game/Wasami/Shard
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the shards follow; the pickup's sound, cue and shake and
 the flash are the same in both versions.
@@ -38,6 +40,14 @@ MOCHI_MESH = MOCHI_FOLDER + "/SM_WasamiMochi"
 MOCHI_MATERIAL = MOCHI_FOLDER + "/MI_WasamiMochi"
 MOCHI_MASTER = "/Game/Pipeline/Materials/M_DD_WasamiMochi"
 MOCHI_GLOW = 0.3
+# The purple pulse, this game's own (the user's request; neither the original nor the WebGL version has it): the base
+# colour × PulseColor × PulseStrength × (0.5 + 0.5 sin(2π (time / PulsePeriod + PulsePhase))) joins the glow. The
+# colour is the shard light's (194, 0, 255) in linear. PulsePhase is the mochi's custom primitive data, a random
+# fraction AWasamiShard gives each at BeginPlay (AWasamiShard::PulsePhaseData).
+MOCHI_PULSE_COLOR = (0.539, 0.0, 1.0, 1.0)
+MOCHI_PULSE_STRENGTH = 1.0  # TODO(仮)
+MOCHI_PULSE_PERIOD = 2.0    # TODO(仮) seconds
+MOCHI_PULSE_PHASE_DATA = 0
 # The glb's embedded pictures, taken out to be imported: (the glTF material's texture, our parameter and texture name,
 # sRGB, compression, LOD group). glTF's normal maps point Y up; UE's point it down, so the green channel is flipped.
 MOCHI_TEXTURES = (
@@ -67,6 +77,20 @@ FLASH_TEXTURES = (
 )
 PARTICLE_SYSTEMS = ((2, KY + "Particles/P_ky_flash3"),)  # after the materials it uses
 MP = unreal.MaterialProperty
+# The collect flash the shards play, this game's own (the user's request: purple and a little weaker): P_ky_flash3 with
+# each emitter's colours turned to the shard light's purple at (their brightest channel ^ FLASH_GAMMA) × FLASH_STRENGTH.
+# The power keeps the faint parts seen: purple is about a fifth as bright as white, so a plain factor all but hid the
+# translucent white shockwave (what shows when the player walks into a shard) while the bright core stayed. With these
+# the core (5) gets 1.79 and the shockwave's white (1) 0.8 (a plain 0.6 gave 3.0 and 0.6; 1.34 after the power made
+# the purple haze stronger than the original's). The light emitter's light is its particle's colour ×
+# alpha × the light module's brightness (UE's ParticleSystemRender), so the same factor sets it and the brightness
+# (2.5) stays. The materials are the original's, shared (M_ky_polarGlow02's rainbow × purple loses its green).
+FLASH = MOCHI_FOLDER + "/P_WasamiShardFlash"
+FLASH_SOURCE = PARTICLE_SYSTEMS[0]
+FLASH_COLOR = MOCHI_PULSE_COLOR[:3]
+FLASH_GAMMA = 0.5       # TODO(仮)
+FLASH_STRENGTH = 0.8    # TODO(仮)
+FLASH_COLOUR_MODULES = 7  # one per emitter
 
 
 def _glb(path):
@@ -110,13 +134,30 @@ def _extract_textures():
 
 def _build_mochi(mat, textures):
     """glTF's metallic-roughness material with every factor at 1 (the glb's): the base colour, metallic from B and
-    roughness from G of the metallic-roughness map, the normal map, two-sided; and the base colour × Glow as emissive."""
+    roughness from G of the metallic-roughness map, the normal map, two-sided; and the base colour × (Glow + the
+    purple pulse) as emissive."""
     mat.set_editor_property("two_sided", True)
-    g = dd_stage._Graph(mat)
+    g = dd_stage._Graph(mat, checked=True)
     tcs = unreal.MaterialSamplerType
     base = g.texture("BaseColor", textures["BaseColor"], tcs.SAMPLERTYPE_COLOR, -900, -300)
     g.out(base, "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
-    glow = g.multiply(base, "RGB", g.scalar("Glow", MOCHI_GLOW, -900, -100), "", -600, -200)
+
+    # The pulse: a Sine's period of 1 makes it sin(2π x).
+    time = g.node(unreal.MaterialExpressionTime, -1900, -700)
+    cycles = g.binary(unreal.MaterialExpressionDivide, time, "",
+                      g.scalar("PulsePeriod", MOCHI_PULSE_PERIOD, -1900, -600), "", -1700, -650)
+    phase = g.scalar("PulsePhase", 0.0, -1700, -450)
+    phase.set_editor_property("use_custom_primitive_data", True)
+    phase.set_editor_property("primitive_data_index", MOCHI_PULSE_PHASE_DATA)
+    wave = dd_assets.single(g, unreal.MaterialExpressionSine,
+                            dd_assets.add(g, cycles, "", phase, "", -1350, -550), "", -1200, -550)
+    lifted = dd_assets.add(g, wave, "", dd_assets.constant(g, 1.0, -1200, -450), "", -1050, -550)
+    level = g.multiply(lifted, "", dd_assets.constant(g, 0.5, -1050, -450), "", -900, -550)
+    strength = g.multiply(g.scalar("PulseStrength", MOCHI_PULSE_STRENGTH, -1100, -750), "", level, "", -750, -650)
+    pulse = g.multiply(g.vector("PulseColor", MOCHI_PULSE_COLOR, -900, -850), "RGB", strength, "", -600, -700)
+
+    lit = dd_assets.add(g, g.scalar("Glow", MOCHI_GLOW, -900, -100), "", pulse, "", -450, -400)
+    glow = g.multiply(base, "RGB", lit, "", -300, -250)
     g.out(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     packed = g.texture("MetallicRoughness", textures["MetallicRoughness"], tcs.SAMPLERTYPE_LINEAR_COLOR, -900, 100)
     g.out(packed, "B", unreal.MaterialProperty.MP_METALLIC)
@@ -131,7 +172,10 @@ def import_mochi():
         raise FileNotFoundError("%s is missing (git lfs pull)" % MOCHI_SOURCE)
     textures = _extract_textures()
     master = dd_assets.material(MOCHI_MASTER, lambda mat: _build_mochi(mat, textures))
-    instance = dd_assets.material_instance(MOCHI_MATERIAL, master, scalars={"Glow": MOCHI_GLOW},
+    instance = dd_assets.material_instance(MOCHI_MATERIAL, master,
+                                           scalars={"Glow": MOCHI_GLOW, "PulseStrength": MOCHI_PULSE_STRENGTH,
+                                                    "PulsePeriod": MOCHI_PULSE_PERIOD},
+                                           vectors={"PulseColor": MOCHI_PULSE_COLOR},
                                            textures={p: t.get_path_name().split(".")[0] for p, t in textures.items()})
     mesh = dd_stage.import_mesh({"file": MOCHI_SOURCE, "asset": MOCHI_MESH, "slots": [None],
                                  "lightmapResolution": 4, "lightmapUv": 0}, nanite=True)
@@ -341,6 +385,41 @@ FLASH_MATERIALS = (
 )
 
 
+def _purple(raw):
+    """A colour distribution's lookup table (RGB triples) turned purple: each colour → FLASH_COLOR × (its brightest
+    channel ^ FLASH_GAMMA) × FLASH_STRENGTH, with the ranges the table now spans (the minimum and maximum of each channel, and of
+    them all, as the cook saved them)."""
+    table = raw["Table"]
+    values = table["Values"]
+    if raw.get("Distribution") or table.get("EntryStride", 0) % 3 or len(values) % 3:
+        raise ValueError("not a baked table of colours: %r" % (raw,))
+    out = []
+    for i in range(0, len(values), 3):
+        peak = max(max(values[i:i + 3]), 0.0) ** FLASH_GAMMA * FLASH_STRENGTH
+        out.extend(c * peak for c in FLASH_COLOR)
+    table["Values"] = out
+    raw["MinValueVec"] = [min(out[k::3]) for k in range(3)]
+    raw["MaxValueVec"] = [max(out[k::3]) for k in range(3)]
+    raw["MinValue"] = min(raw["MinValueVec"])
+    raw["MaxValue"] = max(raw["MaxValueVec"])
+
+
+def _purple_flash(exports):
+    """dd_particles' adjust for P_WasamiShardFlash: every colour over life of P_ky_flash3 turned purple."""
+    colours = [e for e in exports.values() if e["class"] == "ParticleModuleColorOverLife"]
+    others = {e["class"] for e in exports.values() if e["class"].startswith("ParticleModuleColor")}
+    if len(colours) != FLASH_COLOUR_MODULES or others != {"ParticleModuleColorOverLife"}:
+        raise RuntimeError("P_ky_flash3's colours are not the ones known: %d, %s" % (len(colours), sorted(others)))
+    for e in colours:
+        _purple(e["props"]["ColorOverLife"])
+
+
+def make_flash():
+    """P_WasamiShardFlash (after P_ky_flash3's materials). Returns the package path."""
+    version, rel = FLASH_SOURCE
+    return dd_particles.particle_system(rel, version, FLASH, _purple_flash)
+
+
 def make_flash_materials():
     """The flash's materials (dd_assets.estimated_materials). Returns the package paths."""
     return [a.get_path_name() for a in dd_assets.estimated_materials(KY + "Materials/", FLASH_MATERIALS, 2)]
@@ -357,7 +436,8 @@ def import_all():
     result["mochi"] = len(import_mochi())
     result["flash_textures"] = len([dd_assets.texture(rel, version) for version, rel in FLASH_TEXTURES])
     result["flash_materials"] = len(make_flash_materials())
-    result["particle_systems"] = len([dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS])
+    systems = [dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS] + [make_flash()]
+    result["particle_systems"] = len(systems)
     for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT, paths.WASAMI_ROOT):
         EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

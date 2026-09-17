@@ -122,6 +122,14 @@
 - 対処: `from wasami_tools.toolsets.dd import WasamiDDTools` で読む。
 - 出典: 01 記録。
 
+### `ue_remote.py -c` が `FAILED: Could not load Python file 'C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/<コードの先頭>'` で失敗する
+
+- 症状: `python Tools/ue_remote.py -c "$(cat 道具; echo; echo "main(...)")"` が、コードを実行せずに、コードの先頭から「.py」までをファイル名にした `Could not load Python file` を返す。
+- 原因: リモート実行はファイルの実行のモードで送っている（`MODE_EXEC_FILE`）。PythonScriptPlugin は、文字列に「.py」があると、そこまでをファイル名、残りを引数と読む。コメントの中の「ue_remote.py」でも起きる。
+- 対処: 送るコードに「.py」を書かない（使い方のコメントは「ue_remote -c で送る」のように書く）。
+- 確かめ方: `grep -n "\.py" <道具>` が何も返さない。
+- 出典: 2026-09-17、作業一覧の項目 3 のステップ 1（進捗記録 `20260917-shard-glow.md`。`observations/tools/shard_glow/collect.py`）。
+
 ### MCP のツールを並べて呼ぶとエディタが止まる
 
 - 症状: 1 つの応答で複数の `call_tool` を並べると返ってこない。
@@ -419,7 +427,7 @@
 ### エージェントが入力を断る / 反応しない
 
 - 症状: 「前面の窓が許可の一覧に無い」で断られる。Win・Alt+Tab・Alt+F4 も断る。30 分何も来ないと自分で終了する。
-- 対処: エディタに送るときは `--allow UnrealEditor.exe`（VS Code が前面で、エディタを前面にするクリックだけなら `--allow Code.exe` も）。終了していたら `python Tools/desktop.py start`。何を送ったかは `Intermediate/DesktopAgent/agent.log`。
+- 対処: エディタに送るときは `--allow UnrealEditor.exe`（VS Code が前面で、エディタを前面にするクリックだけなら `--allow Code.exe` も。無人運転で駆動役のターミナルが前面のときは `--allow WindowsTerminal.exe`。2026-09-17、撮った画面でタイトルバーの空き〈2957, 95〉がエディタの上であることを確かめて押した）。終了していたら `python Tools/desktop.py start`。何を送ったかは `Intermediate/DesktopAgent/agent.log`。
 - 出典: `.claude/guides/verification.md`。
 
 ### 撮った PNG が大きくて会話に読めない（5〜6 MB）

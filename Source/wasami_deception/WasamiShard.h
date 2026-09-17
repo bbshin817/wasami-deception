@@ -21,9 +21,10 @@ struct FHitResult;
  * A soul shard, after the latest version's Blueprints/Main/BP_Shard (pak_reference_2). Its purple light, its pickup
  * capsule and its mark for the tablet's minimap (a plane 20 m up that only the map's scene capture sees from above) are
  * the original's; the shard itself is this game's Wasami mochi, turning as the original's crystal does. Touching it
- * collects it: the tablet's count goes down by one with Count Shake, the camera shakes, a purple flash (P_ky_flash3)
- * bursts where the crystal was, the pickup sound plays (one at a time, OnlyFew) and the shard is gone. The telekinesis (Activate) pulls it to the player over about a second and
- * collects it at the end even when it has not arrived.
+ * collects it: the tablet's count goes down by one with Count Shake, the camera shakes, a flash bursts where the
+ * crystal was (the original's P_ky_flash3; this game's is P_WasamiShardFlash, purple and weaker), the pickup sound
+ * plays (one at a time, OnlyFew) and the shard is gone. The telekinesis (Activate) pulls it to the player over about a
+ * second and collects it at the end even when it has not arrived.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiShard : public AActor, public IWasamiTelekinesisInterface
@@ -64,6 +65,9 @@ public:
 
 	/** Shard Pull's length (s) at a play rate of 1. */
 	static constexpr float PullLength = 1.f;
+
+	/** The mochi's custom primitive data that holds where its purple pulse starts (M_DD_WasamiMochi's PulsePhase). */
+	static constexpr int32 PulsePhaseData = 0;
 
 protected:
 	virtual void BeginPlay() override;
@@ -121,7 +125,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Shard|Assets")
 	TSoftClassPtr<UCameraShakeBase> CollectShake;
 
-	/** P_ky_flash3, spawned at the crystal's place (Body) at a fifth of its size. */
+	/** P_WasamiShardFlash (this game's purple, weaker P_ky_flash3), spawned at the crystal's place (Body) at a fifth of
+	 * its size. */
 	UPROPERTY(EditAnywhere, Category = "Shard|Assets")
 	TSoftObjectPtr<UParticleSystem> CollectFlash;
 
