@@ -78,14 +78,18 @@ FLASH_TEXTURES = (
 PARTICLE_SYSTEMS = ((2, KY + "Particles/P_ky_flash3"),)  # after the materials it uses
 MP = unreal.MaterialProperty
 # The collect flash the shards play, this game's own (the user's request: purple and a little weaker): P_ky_flash3 with
-# each emitter's colours turned to the shard light's purple at their brightest channel × FLASH_STRENGTH. The light
-# emitter's light is its particle's colour × alpha × the light module's brightness (UE's ParticleSystemRender), so the
-# same factor dims it and the brightness (2.5) stays. The materials are the original's, shared (M_ky_polarGlow02's
-# rainbow × purple loses its green).
+# each emitter's colours turned to the shard light's purple at (their brightest channel ^ FLASH_GAMMA) × FLASH_STRENGTH.
+# The power keeps the faint parts seen: purple is about a fifth as bright as white, so a plain factor all but hid the
+# translucent white shockwave (what shows when the player walks into a shard) while the bright core stayed. With these
+# the core (5) gets 1.79 and the shockwave's white (1) 0.8 (a plain 0.6 gave 3.0 and 0.6; 1.34 after the power made
+# the purple haze stronger than the original's). The light emitter's light is its particle's colour ×
+# alpha × the light module's brightness (UE's ParticleSystemRender), so the same factor sets it and the brightness
+# (2.5) stays. The materials are the original's, shared (M_ky_polarGlow02's rainbow × purple loses its green).
 FLASH = MOCHI_FOLDER + "/P_WasamiShardFlash"
 FLASH_SOURCE = PARTICLE_SYSTEMS[0]
 FLASH_COLOR = MOCHI_PULSE_COLOR[:3]
-FLASH_STRENGTH = 0.6  # TODO(仮)
+FLASH_GAMMA = 0.5       # TODO(仮)
+FLASH_STRENGTH = 0.8    # TODO(仮)
 FLASH_COLOUR_MODULES = 7  # one per emitter
 
 
@@ -382,8 +386,8 @@ FLASH_MATERIALS = (
 
 
 def _purple(raw):
-    """A colour distribution's lookup table (RGB triples) turned purple: each colour → FLASH_COLOR × its brightest
-    channel × FLASH_STRENGTH, with the ranges the table now spans (the minimum and maximum of each channel, and of
+    """A colour distribution's lookup table (RGB triples) turned purple: each colour → FLASH_COLOR × (its brightest
+    channel ^ FLASH_GAMMA) × FLASH_STRENGTH, with the ranges the table now spans (the minimum and maximum of each channel, and of
     them all, as the cook saved them)."""
     table = raw["Table"]
     values = table["Values"]
@@ -391,7 +395,7 @@ def _purple(raw):
         raise ValueError("not a baked table of colours: %r" % (raw,))
     out = []
     for i in range(0, len(values), 3):
-        peak = max(values[i:i + 3]) * FLASH_STRENGTH
+        peak = max(max(values[i:i + 3]), 0.0) ** FLASH_GAMMA * FLASH_STRENGTH
         out.extend(c * peak for c in FLASH_COLOR)
     table["Values"] = out
     raw["MinValueVec"] = [min(out[k::3]) for k in range(3)]

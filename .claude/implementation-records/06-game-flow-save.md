@@ -103,8 +103,9 @@ updated: 2026-09-17
 
 ### 本作の回収の閃光（`P_WasamiShardFlash`）
 ユーザーの依頼（「紫色のやや弱めな閃光」）による本作独自の見た目で、本家にも WebGL 版にも無い。`P_ky_flash3` の書き出しを `dd_particles.particle_system(…, target, adjust)` に渡し、組む前に色の表だけを直す（`dd_shards._purple_flash`。構造・寿命・大きさ・α・材質は原作のまま。材質は原作のパスのものを共有する）。
-- 7 つの `ParticleModuleColorOverLife` の参照表の色ごとに、色 → `FLASH_COLOR` × その色の最大のチャンネル × `FLASH_STRENGTH`。`FLASH_COLOR` は餅の明滅と同じシャードの灯の紫 (194, 0, 255) のリニア (0.539, 0, 1.0)、`FLASH_STRENGTH` は仮の 0.6。表の範囲（`MinValueVec`・`MaxValueVec`〈チャンネルごと〉、`MinValue`・`MaxValue`〈その最小・最大〉）も直した表から出す（cook が残した値の関係と同じ）。書き出しの色のモジュールが 7 つでない、または別の色のモジュールがあれば例外。
-- その結果: core (1.62, 0, 3.0)、glow (2.26, 0, 4.2) → (0.32, 0, 0.6)、shockwave (0.32, 0, 0.6) → (0.24, 0, 0.45)、glowSub・decoCore (0.24, 0, 0.45)、dust_line (0.97, 0, 1.8)、light (0.32, 0, 0.6)。
+- 7 つの `ParticleModuleColorOverLife` の参照表の色ごとに、色 → `FLASH_COLOR` × (その色の最大のチャンネル ^ `FLASH_GAMMA`) × `FLASH_STRENGTH`。`FLASH_COLOR` は餅の明滅と同じシャードの灯の紫 (194, 0, 255) のリニア (0.539, 0, 1.0)、`FLASH_GAMMA` は仮の 0.5、`FLASH_STRENGTH` は仮の 0.8。表の範囲（`MinValueVec`・`MaxValueVec`〈チャンネルごと〉、`MinValue`・`MaxValue`〈その最小・最大〉）も直した表から出す（cook が残した値の関係と同じ）。書き出しの色のモジュールが 7 つでない、または別の色のモジュールがあれば例外。
+- その結果: core (0.96, 0, 1.79)、glow (1.14, 0, 2.12) → (0.43, 0, 0.8)、shockwave (0.43, 0, 0.8) → (0.37, 0, 0.70)、glowSub・decoCore (0.37, 0, 0.70)、dust_line (0.75, 0, 1.39)、light (0.43, 0, 0.8)。
+- 指数を掛ける理由: 紫は輝度が白の約 0.19 倍なので、ただの係数（線形の 0.6 を PIE で試した）では明るい中心の星は残っても、半透明の白い衝撃波の輪と虹の円が 1/9 の輝度になってほぼ見えなくなった。歩いてシャードに触れたときに画面に出るのは主にこの輪。指数 0.5 で明るい所を抑え、薄い所を残す。係数は、1.34（中心を線形 0.6 と同じ 3.0 に保つ値）では紫のもやが原作の閃光より強くなったので 0.8 にした（PIE の測り方と値は `observations/README.md` の「紫の回収の閃光」）。
 - 灯の明るさ（2.5）は変えない: 粒子の灯の色は粒子の色 × α × `ParticleModuleLight` の色 × 明るさ（UE 5.8 の `ParticleSystemRender.cpp`・`ParticleModules.cpp`）なので、色の係数だけで灯も同じだけ弱まる。
 - `M_ky_polarGlow02` の自己発光は虹のテクスチャ × 粒子の色なので、緑が 0 の紫を掛けると虹の緑が消える。
 
@@ -164,6 +165,7 @@ updated: 2026-09-17
 - `Wasami.Tablet.CountShake`（03 記録）。
 
 ## 変更履歴
+- 2026-09-17: 回収の閃光の色の係数を「最大 ^ 0.5 × 0.8」にした（線形 0.6 では衝撃波の輪が見えなくなったため。PIE で 3 通りを測った）
 - 2026-09-17: 回収の閃光を本作の紫でやや弱い `P_WasamiShardFlash` に替えた（`dd_shards.make_flash`、`CollectFlash` の既定のパスとテスト。作業一覧の項目 3）
 - 2026-09-17: 餅の紫の明滅を足した（`M_DD_WasamiMochi` の自己発光、`BeginPlay` で位相の乱数、テスト。作業一覧の項目 3）
 - 2026-09-17: 閃光の材質を作る繰り返しと小道具を `dd_assets` へ移した（`make_flash_materials` は `estimated_materials` を呼ぶ。作るものは同じで、取り込み直して `flash_materials` 13・静的マスク G / R を確かめた）
