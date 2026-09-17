@@ -548,7 +548,18 @@ def _build_wall02(mat, d):
     two-sided, for sprites and mesh particles), the parameters opacity and baseColor, a SubUV sample of baseTex
     (T_ky_wall02_4x4: grey wisps) and a LinearInterpolate as the emissive colour, of ten expressions. The estimate: the
     emissive colour runs from baseColor in the gaps to the particle's colour on the wisps (a lerp by R), over an opacity
-    of saturate(R + opacity) × the particle's alpha: a faint dark-blue veil with bright wisps."""
+    of saturate(R + opacity) × the particle's alpha: a faint dark-blue veil with bright wisps.
+
+    Checked against the original's burst (observations/README.md, "幕を本家と比べた"; step 5c of item 23). Over the
+    screen's centre at the same tau, this estimate's fine feature width (27 against 25 - 31 of the original's pixels
+    across, 12 against 13 along), how fast the pattern stops being itself (about 1.0 recorded s on both sides) and its
+    drift while it fades (none on either) follow the original. Two differences are left, for step 5c2:
+      * the broad structure is about half the original's (40 - 48 against 82 px across, 65 against 92 - 102 along):
+        the original's veil carries wide soft bands of light as well as the fine wisps, and this estimate does not.
+        It is the veil alone - the aura's broad structure in the same recordings matches - so it is not the bloom.
+      * while the sphere sweeps past the camera the pattern moves 112 - 257 px per recorded second against the
+        original's 20 - 63, which may be the distance our C++ spawns the sphere at rather than this graph.
+    TODO(仮): both of those."""
     dd_assets.particle_material(mat, two_sided=True)
     g = dd_stage._Graph(mat, checked=True)
     tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1000, 0)
