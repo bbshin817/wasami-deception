@@ -98,7 +98,7 @@ sleep 20; python Tools/desktop.py shot --scale 0.25 --name obs-title.png   # タ
 **撮り方**
 既定の `ddagrab` は最初のフレームで止まる日があるので、最初から `--grab gdi` で撮る。
 
-**無劣化の連写**（薄い線や細い模様を見るとき。`record` は h264 の 4:2:0 で、不透明度 0.15 の赤い 1 px の線が崩れる）: Claude が対話デスクトップ（セッション 1）にいれば `python observations/tools/burst.py <出力> --count 50 --delay 0.3 [--region L T R B]` をバックグラウンドで走らせ、その間に `hold w` などを送る。本家の全画面で約 17 枚/s（範囲を絞っても同じ）。PNG の書き出しに 1 枚約 0.5 秒かかるので、`times.json` ができるまで待つ。
+**無劣化の連写**（薄い線や細い模様を見るとき。`record` は h264 の 4:2:0 で、不透明度 0.15 の赤い 1 px の線が崩れる）: Claude が対話デスクトップ（セッション 1）にいれば `python observations/tools/burst.py <出力> --count 50 --delay 0.3 [--region L T R B]` をバックグラウンドで走らせ、その間に `hold w` などを送る。**本家は全画面でも範囲を絞っても 19〜20 枚/s**（`record --grab gdi` の約 10 枚/s の 2 倍）。PNG の書き出しに 1 枚約 0.5 秒かかるので、`times.json` ができるまで待つ（全画面 220 枚でメモリ約 3.3 GB・書き出し約 110 秒）。並べて見るときは `observations/tools/burst_sheet.py`。
 
 ```bash
 python Tools/desktop.py record --grab gdi --seconds 10 --name orig-<項目>-a.mkv >/dev/null
@@ -120,11 +120,13 @@ cp Intermediate/DesktopAgent/shots/orig-<項目>-a.mkv observations/original/
   2. `scroll --dx -120` を 7 回で照準を手前へ寄せる。
   3. `look --dy 300` で見下ろす。
   4. 確定は (1720, 720) のクリック。
-- **敵**: Zone 1 に着いたら、敵が要る撮影を先に済ませる。
+- **敵**: Zone 1 に着いたら、敵が要る撮影を先に済ませる。**捕まるまでの時間は回ごとに大きく違う**（着いて約 7 秒のこともあれば、約 2 分のこともある）。
+  - **Telepathy の印は画面空間のウィジェット**なので、敵が視野の中に入っていないと 1 枚も写らない。`python observations/tools/tele_scout.py <出力> <枚数>` は Q を押して赤の増えた画素を数え、印が出たときだけ連写を始める（クールダウン 8.5 秒ごとに撮り直す）。
   1. 着いたら数秒で撮る（例: Telepathy。`sleep 22` で読み込みを待ってすぐ `record` → Q）。
   2. `M` → Active Enemy (990, 303) → Find All (1327, 860) → Remove All (1947, 860) で敵を消す。
   3. Find All をもう一度押して 0 体を確かめる。捕まって読み直した後は、敵がまた出る。
-- **捕まったら**: 死亡画面で「続ける」(1717, 1007) → 確認 (1568, 952) を押す。入口 `06_Hospital` からやり直しになる（約 25 秒）。Maps で戻り、`slomo` を打ち直す。
+- **捕まったら**: 死亡画面（`YOU ARE DEAD`）の「再開する」(1720, 1007) → 「RESTART?」の「はい」(1568, 955) を押す。入口 `06_Hospital` からやり直しになる（約 30 秒）。Maps で戻り、`slomo` を打ち直す。ほかの行は「最後のチェックポイントへ」(1720, 1110)・「タイトルへ」(1700, 1220)。**死亡画面では `M` を押しても MOD のメニューは開かない**（Maps で飛べるのはゲーム中とタイトル画面）。
+  - **ゲーム外の画面（死亡・確認・タイトル）のボタンは、カーソルを一度動かしてからでないと押せない。** `python Tools/desktop.py look --dx 25 --dy -10` を送ってから `click` する（`click` の中の移動だけでは hover にならず、1 回目が空振りする）。
 
 ## 5. PIE で同じものを撮る
 
@@ -208,6 +210,7 @@ python Tools/pie.py stop                                    # 必ず止める。
 **本家を閉じる**
 1. Esc → 「やめる」(1720, 1020) → 「デスクトップへ戻る」(1720, 1044) を押す。
    - 設定を見るだけなら、Esc → 「オプション」(1717, 933) → GAMEPLAY (980, 463)（マウスの感度・平滑化・上下反転）。閉じるのは右上の × (2530, 243)。値は変えない。
+   - **死亡画面から閉じるとき**は「タイトルへ」(1700, 1220) → タイトルの「やめる」(280, 1176) → 「GIVING UP?」の「はい」(1562, 944)。どれも押す前に `look` でカーソルを一度動かす（4 節）。
 2. 約 10 秒待って、`tasklist | grep -i -E "DDeception|ffmpeg"` で消えたことを確かめる。
 3. `python Tools/editor_cycle.py --no-build --no-quit` でエディタを開き直す（ビルドしない）。
 
