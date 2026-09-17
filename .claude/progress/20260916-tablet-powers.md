@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 16:15
+updated: 2026-09-17 16:30
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -36,7 +36,10 @@ updated: 2026-09-17 16:15
 - [x] 10b. テレキネシスの粒子 `P_ky_forceField_Telekinesis`（10b1 道具と素材、10b2 推定の材質 4 つと粒子、10b3 C++ の参照と PIE）… 2026-09-17。01・04 記録
 - [ ] 11. 実機との見比べ（推定したマテリアルとパーティクル）
   - [x] 11a. 最新版の実機の観察 … 2026-09-17。収録は `observations/original/orig-*`、測った値は `observations/README.md` の「パワーの演出」
-  - [ ] 11b. PIE で同じものを撮って見比べ、仮の値（`TODO(仮)`）を直す。量が多ければ 11b1・11b2… に分ける。見比べる項目（本家の結果 → 本作で確かめること）:
+  - [ ] 11b. PIE で同じものを撮って見比べ、仮の値（`TODO(仮)`）を直す。次の 2 つ以上に分ける（2026-09-17）:
+    - [ ] 11b1. **作業中**。PIE で下の項目 1〜7 を本家と同じ条件で撮り、同じコマンドで測って `observations/README.md` の ours に並べる（値は変えない）。変更するファイル: `observations/README.md`、この記録。アセットは変えない（PIE と仮の的だけ）
+    - [ ] 11b2 以降. 違いの大きいものから仮の値を直し、取り込み直す（11b1 の結果で分ける）
+    見比べる項目（本家の結果 → 本作で確かめること）:
     1. **テレポートの照準**（最新版の病院。材質は両版で同じ）
        - 本家: 赤い渦の輪、赤いデカール、小さな赤い火花が数個。デカールの内側の中央値の R は 139 ↔ 238（約 1.0 s 周期）。
        - 本作で確かめること: `dd_powers.DECAL_COLOR`・`DECAL_PULSE_LOW`・`DECAL_PULSE_HIGH`・`DECAL_CONTRAST`、斬撃の色の出方、火花の大きさと数（ステップ 5 では PIE のほうが大きく多く見えた）。
@@ -66,12 +69,21 @@ updated: 2026-09-17 16:15
 
 ## 次にやること
 
-ステップ 11b。`.claude/guides/observation.md` の「5. PIE で同じものを撮る」と「6. 測る」に沿って、本家の収録と同じ場所・同じ速さ（`slomo 0.25`）で撮り、同じコマンドで測って比べる。
+ステップ 11b1。`.claude/guides/observation.md` の「5.」「6.」に沿って撮って測る。撮るものの一覧（本家の条件は `observations/README.md` の「パワーの演出」）:
 
-1. 撮るものの一覧（observation.md の「0.」）を、計画の 11b の項目 1〜7 から作り、ここに書く。本家のファイル名・速さ・場所は、`observations/README.md` の「パワーの演出」の表にある。
-2. 開始地点（`python Tools/pie.py place -25 3735 --yaw -90`）で、Primal・テレキネシス・Vanish・Telepathy（仮の的を置く）を撮る。本家と並べて `python Tools/video_probe.py series`（`--dark 8` も）と `sheet` で比べる。
-3. 照準とシャードは Zone 1 の待合（推定 `place 15 385 --yaw -90`）で撮る。最初に、本家の `orig-aim-a-full.png` と同じ絵になるかを確かめる。
-4. 違いの大きいものから仮の値を直し、取り込み直す。量が多ければ 11b1・11b2… に分ける。
+| 項目 | 場所 | 速さ | 長さ | 操作 | 測り方 | 本家 / 本作 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Primal | 開始地点 | 0.25 | 10 s | 左 = Primal → Q | `series`・`--dark 8`・`sheet` | `orig-primal-a` / `pie-primal-a` |
+| テレキネシス | 開始地点 | 0.25 | 10 s | 左 = Telekinesis → Q | `series`・`--dark 8`・`sheet` | `orig-telekinesis-a` / `pie-telekinesis-a` |
+| テレキネシス（速さ 1） | 開始地点 | 1 | 6 s | 同上 | `series` | `orig-telekinesis-b` / `pie-telekinesis-b` |
+| Vanish | 開始地点 | 0.25 | 16 s | 左 = Vanish → Q | `series`・`sheet` | `orig-vanish-a` / `pie-vanish-a` |
+| Telepathy | 開始地点＋仮の的 | 1 | 10 s | 左 = Telepathy → Q | `sheet` | `orig-telepathy-b` / `pie-telepathy-c` |
+| 照準 | Zone 1 の待合 | 1 | 5 s | 右 = Teleport → E、ホイールで手前へ、見下ろし | `series --box --stat median`・`HighResShot` | `orig-aim-a` / `pie-aim-b` |
+| シャードの回転 | Zone 1 の待合（4 m 先） | 1 | 45 s | 見るだけ | `period` | `orig-shard-spin-long` / `pie-shard-spin-long` |
+
+1. 開始地点（`python Tools/pie.py place -25 3735 --yaw -90`）で上の 5 本を撮る。枠の中身は `get_socket_power` で確かめる。
+2. Zone 1 の待合（推定 `place 15 385 --yaw -90`）で照準とシャードを撮る。最初に、本家の `orig-aim-a-full.png` と同じ絵になるかを確かめる。
+3. 測った値を `observations/README.md` の ours に本家と並べて書き、違いの大きい順に 11b2 以降のステップを決めてここに書く。
 
 ## 決定事項
 
