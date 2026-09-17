@@ -4,17 +4,18 @@
             animations), and SourceArt/Wasami/enemy_wasami_capture.glb, the capture's three animations of the user's
             older model with the run_fast_2 both models have (its bones and those animations only: make_capture_source
             took them out of the user's tmp/enemy_wasami.glb)
-  prepared  Intermediate/Pipeline/wasami/enemy/SK_WasamiEnemy.glb: the model with the animations the code asks for by
+  prepared  Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb: the model with the animations the code asks for by
             role (ROLES, .claude/references/enemy-wasami-motions.md), each resampled on a 30 fps grid from 0 — the
             sources' keys mix 24 and 30 fps and start at 1/24 s, and Interchange refuses an animation that does not end
             on a frame. Loops are closed (their last key is their first), the chase variants and the Nightmare run are
-            made in place, the stun is cut into a loop and a recovery, and the capture's are carried onto v3's bones
-            (_Retarget).
+            made in place, the stun is cut into a loop and a recovery, the vault off a ledge is made a vault from the
+            floor (VAULT_FRAMES), and the capture's are carried onto v3's bones (_Retarget).
   imported  /Game/Wasami/Enemy: SK_WasamiEnemy with SK_WasamiEnemy_Skeleton and SK_WasamiEnemy_PhysicsAsset,
             A_WasamiEnemy_<role>, T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
             material). The mesh faces +Y, as UE's mannequins do.
 """
 import copy
+import math
 import os
 
 import unreal
@@ -52,12 +53,20 @@ STUN_LOOP_FRAMES = (29, 74)
 # first ones cross from the loop's continuation, so it starts on the loop's first key.
 STUN_BLEND_FRAMES = 15
 
+# Vault_and_Land vaults off a ledge (its feet are 77 cm higher at the start than at the end), in the source's 30 fps
+# frames: the left foot leaves the ledge after 28 (0.933 s; the right one swings up from 0.567 s), the feet reach the
+# floor at 50 (1.667 s), and the pelvis stops rising at 74 (2.467 s), where the clip is cut (then it only stands).
+VAULT = "Vault_and_Land"
+VAULT_FRAMES = (28, 50, 74)
+FEET = ("ball_l", "ball_r")
+
 # (role, source, glTF animation, how):
 #   loop           closed: the first key is repeated after the last (the sources' loops stop a frame short)
 #   once           as it is
 #   in_place       the pelvis's horizontal motion (glTF x and z) held at its first key; its height stays
 #   loop_in_place  both
 #   stun_loop / stun_recover   see STUN_LOOP_FRAMES
+#   vault          see _vault
 V3, CAPTURE = "v3", "capture"
 ROLES = (
     ("Idle", V3, "Idle_11", "loop"),
@@ -73,7 +82,7 @@ ROLES = (
     ("Chase_PickUp", V3, "Female_Run_Forward_Pick_Up_Right", "in_place"),
     ("Chase_Charge", V3, "Male_Head_Down_Charge", "in_place"),
     ("Chase_VaultRoll", V3, "Parkour_Vault_with_Roll", "in_place"),
-    ("Chase_VaultLand", V3, "Vault_and_Land", "in_place"),
+    ("Chase_VaultLand", V3, VAULT, "vault"),
     ("Chase_RunFast", V3, "run_fast_5", "in_place"),
     ("Chase_Slide", V3, "slide_right", "in_place"),
     # not given a role yet: candidates for the scenes (the list's 場面の代用)
@@ -178,6 +187,34 @@ def _stun_recover(chans, target):
     _pelvis_offset(tracks, [((target[0] - x) * _smooth(k / last), (target[1] - z) * _smooth(k / last))
                             for k in range(len(own))])
     return tracks, (target[0] - x, target[1] - z)
+
+
+def _lowest_foot(model, tracks, k):
+    """How high (glTF y, metres) the lower of FEET is at key k."""
+    rotations = {node: v[k] for (node, path), v in tracks.items() if path == "rotation"}
+    translations = {node: v[k] for (node, path), v in tracks.items() if path == "translation"}
+    world = gltf.world_transforms(model, rotations, translations)
+    return min(world[foot][1][1] for foot in FEET)
+
+
+def _vault(model, chans):
+    """VAULT as a vault from the floor, as the chase has no ledge: cut at VAULT_FRAMES' end, the pelvis lowered by the
+    ledge's height (the lower foot's at the first key less at the last) until the take-off and brought back to its own
+    by the landing, and all of it turned about the up axis so that it goes straight ahead (+Z) as the other chase
+    variants do (the source goes 31° aside). Returns the tracks, the height and the turn in degrees."""
+    takeoff, landing, end = VAULT_FRAMES
+    frames = range(CONTENT_START_FRAME, end + 1)
+    tracks = _sample(chans, frames)
+    height = _lowest_foot(model, tracks, 0) - _lowest_foot(model, tracks, -1)
+    key = (ROOT_BONE, "translation")
+    lowered = [height * (1.0 - _smooth((f - takeoff) / (landing - takeoff))) for f in frames]
+    tracks[key] = [(x, y - dy, z) for (x, y, z), dy in zip(tracks[key], lowered)]
+    (x0, _, z0), (x1, _, z1) = tracks[key][0], tracks[key][-1]
+    turn = -math.degrees(math.atan2(x1 - x0, z1 - z0))
+    q = gltf.yaw(turn)
+    tracks[(ROOT_BONE, "rotation")] = [gltf.qmul(q, r) for r in tracks[(ROOT_BONE, "rotation")]]
+    tracks[key] = [gltf.rotate(q, p) for p in tracks[key]]
+    return tracks, height, turn
 
 
 def _in_place(tracks):
@@ -287,6 +324,11 @@ def prepare():
             tracks = _stun_loop(chans)
         elif how == "stun_recover":
             tracks, moved = _stun_recover(chans, target)
+        elif how == "vault":
+            tracks, height, turn = _vault(model, chans)
+            unreal.log("enemy: %s is lowered by %.1f cm until its take-off and turned by %.1f°"
+                       % (name, height * 100.0, turn))
+            moved = _in_place(tracks)
         else:
             tracks = _sample(chans, _content_frames(chans))
             if source == CAPTURE:
@@ -308,7 +350,9 @@ def prepare():
 
 
 def prepared_file():
-    return os.path.join(PREPARED_DIR, MESH_NAME + ".glb")
+    # Not named after an asset: Interchange turns the import of a file named as an asset in the folder into a reimport
+    # of that asset alone, and a reimport of the mesh leaves the animations as they were.
+    return os.path.join(PREPARED_DIR, "WasamiEnemy.glb")
 
 
 # ------------------------------------------------------------------------------------------------ assets

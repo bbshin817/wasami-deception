@@ -150,7 +150,7 @@ updated: 2026-09-18
 `import_all()` が本作のモデル `SourceArt/Wasami/enemy_wasami_v3.glb` と捕獲のアニメ `enemy_wasami_capture.glb` から、アニメを役の名前で 30 fps に標本化し直した写し `Intermediate/Pipeline/wasami/enemy/SK_WasamiEnemy.glb` を書き（`prepare`）、埋め込みのテクスチャ 3 枚を同じ所に書き出して取り込み、マスター `M_DD_WasamiGltf` とインスタンス `MI_WasamiEnemy` を建て、写しをスケルタル用の Interchange のパイプライン `PL_Wasami_Skeletal`（`ensure_skeletal_pipeline`。版 `PIPELINE_VERSION` をメタデータ `WasamiGraphVersion` に持ち、違えば設定し直す）で `/Game/Wasami/Enemy` に取り込んで、メッシュのスロットにインスタンスを入れ、保存する。前処理の中身と根拠は 07 記録。
 
 ### glTF（`pipeline/gltf.py`）
-numpy の無いエディタの Python で glb を読み書きする小道具（`dd_enemy` が使う。`dd_shards` は自前の `_glb` のまま）: `read`（JSON と BIN）・`write`（BIN 1 つの glb。4 バイト境界にそろえる）・`accessor`（要素をタプルで。`byteStride` を読み、疎な accessor は読まない）・`add_accessor`（float の要素を末尾に足す。アニメの入力は `bounds` で min/max を付ける）・`copy_accessor`、アニメの `channels`（LINEAR だけ。{(節の名前, パス): (時刻, 値)}）・`sample`（端は止め、同じ時刻のキーは後のもの）・`slerp`・`blend`・`qmul`・`qinv`・`angle`・`parents`・`world_rotations`（節の回転を根から掛ける）・`continuous`（四元数の符号を前のキーにそろえる）・`add_animation`（等間隔のキーのアニメを足す。回転は `continuous` を通す）。
+numpy の無いエディタの Python で glb を読み書きする小道具（`dd_enemy` が使う。`dd_shards` は自前の `_glb` のまま）: `read`（JSON と BIN）・`write`（BIN 1 つの glb。4 バイト境界にそろえる）・`accessor`（要素をタプルで。`byteStride` を読み、疎な accessor は読まない）・`add_accessor`（float の要素を末尾に足す。アニメの入力は `bounds` で min/max を付ける）・`copy_accessor`、アニメの `channels`（LINEAR だけ。{(節の名前, パス): (時刻, 値)}）・`sample`（端は止め、同じ時刻のキーは後のもの）・`slerp`・`blend`・`qmul`・`qinv`・`angle`・`rotate`（ベクトルを回す）・`yaw`（上下の軸まわりの回転）・`parents`・`world_transforms`（節の回転と位置を根から重ねる。拡縮は 1 とみなす）・`world_rotations`（その回転だけ）・`continuous`（四元数の符号を前のキーにそろえる）・`add_animation`（等間隔のキーのアニメを足す。回転は `continuous` を通す）。
 
 ### Cascade のパーティクル（`pipeline/dd_particles.py`、`UWasamiCascadeLibrary`）
 Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced)` だけで Python から見えず、モジュールと分布のクラスも Python に出ていない。そこで**構造を C++ の道具で作り、値はすべてプロパティ名ごとに UE のテキスト形式で書く**。`particle_system(rel, version)` は原作のパッケージの書き出し（`_assets/…/P_*.json`。要約の `_particles.json` には無い値〈`bUseLegacySpawningBehavior` など〉も持つ）を読み、次の順に作る（出力先は既定で `/Game/DD/<rel>`。`target` と `adjust` を渡すと、書き出しの値を `adjust`〈書き出しのオブジェクトの辞書を受けて `props` をその場で直す〉で直してから `target` に組む。構造は原作のままであることが前提で、下の 4 の照合もそのまま行う。本作の版を作るためのもの〈`dd_shards.make_flash`〉）。
@@ -265,6 +265,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-18: `gltf.py` に骨の世界位置（`world_transforms`・`rotate`・`yaw`）を足した（`dd_enemy` の `Chase_VaultLand` の形を足の高さから決めるため。07 記録）
 - 2026-09-18: 敵ワサミの素材の取り込み（`pipeline/dd_enemy.py`、`WasamiDDTools.import_wasami_enemy`）と glb の小道具（`pipeline/gltf.py`）、`paths.SKELETAL_PIPELINE` を足した（作業一覧の項目 4。07 記録）
 - 2026-09-17: 要確認の回答に合わせて `dd_shards`（閃光の係数の `TODO(仮)` を外した）と `dd_powers`（Vanish の煙のフェードは今の値で了承、力場の仮の値は作業一覧の項目 23 で詰める）のコメントを直した（値は変えていない。04・06 記録）
 - 2026-09-17: `dd_particles.particle_system` に出力先 `target` と値の調整 `adjust` を足し、`dd_shards.make_flash` がシャードの紫でやや弱い閃光 `P_WasamiShardFlash` を作るようにした（作業一覧の項目 3。06 記録）

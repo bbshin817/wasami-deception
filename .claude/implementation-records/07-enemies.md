@@ -45,6 +45,7 @@ glb のキーは 30 fps の動きを 24 fps の場面に焼いたもので、骨
 役ごとの作り方（`ROLES` の 4 列目）:
 - `loop`: 最初のキーを最後の後にもう 1 つ置いて閉じる（元のループは 1 コマ手前で止まっている。`Running` の最初と最後の差は 1 コマの動きの 0.35 倍、`Walking` は 1.5 倍、`run_fast_2` は 1.1 倍で、周期 = 中身 + 1 コマと読んだ）。
 - `in_place`: 骨盤の水平（glTF の x と z）を最初のキーの値に止める（高さは残す）。
+- `vault`（`Vault_and_Land` だけ。`_vault` の後に `in_place`）: 元は「高さ 76.6 cm の台の上に立ち、少しかがんで右脚を振り上げ（0.567 s〜）、左足が台を離れ（コマ 28 = 0.933 s の後）、床に着地し（コマ 50 = 1.667 s）、かがんでから起き上がる（骨盤はコマ 74 = 2.467 s で止まり、その後は立っているだけ）」動き（`VAULT_FRAMES`。コマは元の 30 fps の番号）。追跡の廊下には台が無いので床から跳び越える形にする: (1) コマ 74 で切る（2.4 s）。(2) 台の高さ（最初のキーと最後のキーの、`FEET`〈`ball_l`・`ball_r`〉の低いほうの高さの差。骨の世界位置は `gltf.world_transforms`）だけ骨盤を下げ、離れる時刻から着地までに smoothstep で 0 に戻す。こうすると床に立ったまま手を約 70 cm の高さにつき、足は 1.1 s に約 78 cm、骨盤は 1.3 s に 128 cm まで上がり、1.6 s に着地する。(3) 元はこの 1 本だけ 31° 斜めへ進み（ほかの 5 本は真っすぐ +z。体の向きも 25° → 53°）、その場の形にすると足の運びが進む向きと合わないので、骨盤の回転と位置を上下の軸まわりに −31.7°（最初と最後の骨盤を結ぶ向きを +z へ）回す。向きは −7° で始まり、跳ぶ間は約 48° の横向き、21° で終わる。前後は元の 1.24 m を止める。**仮の扱い**（2026-09-18、要確認）。
 - `stun_loop`: 無名のモーション（`STUN`、10.04 s）の 0.967〜2.467 s（30 fps のコマ 29〜74、`STUN_LOOP_FRAMES`）。前屈して揺れる部分で、1.5 s 以上離れた姿勢の組のうち最もそろう組（関節の平均のずれ 3.3 cm）。最後の 15 コマ（`STUN_BLEND_FRAMES`、0.5 s）を、ループの始まりの前の動き（コマ − 45）へ smoothstep で混ぜ、最後のキーを最初のキーにする。
 - `stun_recover`: 元のモーションでループの後に続く 2.467 s〜終わり（前屈のまま 4.8 s まで、8.0 s で直立、10 s まで落ち着く）。最初の 15 コマはループの続き（コマ 29 + k）から混ぜて入るので、最初のキーがループの最初のキーと同じ。元は終わりで骨盤が横へ 0.2〜0.3 m ずれるので、全体に smoothstep で骨盤の水平をずらし、終わりを `Idle` の最初の骨盤（x 0.004、z −0.022 m）に合わせる（足は合計 0.29 m 滑る）。
 - 捕獲（`CAPTURE`）: `once` のみ。`_Retarget` で v3 の骨へ載せ替える。
@@ -66,7 +67,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 | `Chase_PickUp` | `Female_Run_Forward_Pick_Up_Right` | in_place | 1.233 s | 0.00 / 4.02 m |
 | `Chase_Charge` | `Male_Head_Down_Charge` | in_place | 0.533 s | 0.01 / 2.17 m |
 | `Chase_VaultRoll` | `Parkour_Vault_with_Roll` | in_place | 2.100 s | −0.01 / 4.61 m（途中で横に最大 0.22 m） |
-| `Chase_VaultLand` | `Vault_and_Land` | in_place | 3.067 s | 0.64 / 1.05 m（始めの骨盤が 1.67 m と高い） |
+| `Chase_VaultLand` | `Vault_and_Land` | vault | 2.400 s | 0.00 / 1.24 m（−31.7° 回した後。骨盤を離れるまで 76.6 cm 下げた） |
 | `Chase_RunFast` | `run_fast_5` | in_place | 1.833 s | 0.00 / 3.46 m |
 | `Chase_Slide` | `slide_right` | in_place | 1.767 s | 0.01 / 3.35 m（途中で横に最大 0.17 m） |
 | `BeHit_FlyUp`・`Knock_Down`・`Push_Up_To_Idle` | 同名（`push_up_to_idle`） | once | 1.533・2.500・3.100 s | 役なし（場面の代用の候補）。`Knock_Down` は骨盤が始めから 1.15 m 後ろにある |
@@ -113,7 +114,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
 2. `M_DD_WasamiGltf`（`dd_assets.material` + `_build_master`）: glTF の metallic-roughness の係数 1 の形。色 → Base Color、金属と粗さの B → Metallic、G → Roughness、法線 → Normal。片面、`used_with_skeletal_mesh`。`MI_WasamiEnemy` はそのインスタンスでテクスチャ 3 枚を入れる。
 3. `ensure_skeletal_pipeline`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を `PL_Wasami_Skeletal` に写し、種類ごとのフォルダなし、`use_source_name_for_asset` 偽・`asset_name` 空（こうするとメッシュは glTF のメッシュの名前、スケルトンと物理アセットはその `_Skeleton`・`_PhysicsAsset`、アニメは glTF のアニメの名前そのままになる。Interchange の `ImplementUseSourceNameForAssetOption`）、材質とテクスチャの取り込みなし、スタティックメッシュなし、Nanite なし、物理アセットあり、モーフなし、アニメあり・30 Hz で焼く。
-4. `_import_model`: 前処理した glb（メッシュと節の名前を `SK_WasamiEnemy` にしてある）を `/Game/Wasami/Enemy` に置き換えで取り込み、スロット 1（`BakedMaterial`）に `MI_WasamiEnemy` を入れ、`ROLES` のアニメが全部あるかを確かめる。取り込みは呼び出しの中で終わる。
+4. `_import_model`: 前処理した glb（メッシュと節の名前を `SK_WasamiEnemy` にしてある）を `/Game/Wasami/Enemy` に置き換えで取り込み（既にあるアセットは同じオブジェクトに書き戻す。**ファイル名はどのアセットとも違う `WasamiEnemy.glb`**: UE 5.8 の `InterchangeManager.cpp` は、置き換えの取り込みでファイル名と同じ名前のアセットが行き先にあると、そのアセットだけの再取り込みに変える。2026-09-18 まで `SK_WasamiEnemy.glb` だったので、2 回目からはメッシュだけが置き換わりアニメは最初の取り込みのままだった）、スロット 1（`BakedMaterial`）に `MI_WasamiEnemy` を入れ、`ROLES` のアニメが全部あるかを確かめる。取り込みは呼び出しの中で終わる。
 
 ## 作るアセット
 
@@ -125,7 +126,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 | `…/A_WasamiEnemy_<役>` | 上の表の 19 本 |
 | `…/T_WasamiEnemy_*`・`MI_WasamiEnemy`、`/Game/Pipeline/Materials/M_DD_WasamiGltf` | 材質 |
 | `/Game/Pipeline/Interchange/PL_Wasami_Skeletal` | 取り込みのパイプライン（`paths.SKELETAL_PIPELINE`） |
-| `Intermediate/Pipeline/wasami/enemy/SK_WasamiEnemy.glb`・PNG 3 枚 | 前処理の出力（git の外。元の glb の BIN をそのまま持ち、使われなくなった元のアニメの accessor も残る） |
+| `Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb`・PNG 3 枚 | 前処理の出力（git の外。元の glb の BIN をそのまま持ち、使われなくなった元のアニメの accessor も残る） |
 
 ## 原作データの根拠
 - モデルとモーションはユーザーの作ったもの（2026-09-18 の指示「`enemy_wasami_v3`・`wasami_mochi_v3`・`boss_wasami` をそれぞれ使用」、捕獲は「旧 glb の 3 本を流用」）。役の対応は一覧（`.claude/references/enemy-wasami-motions.md`）。
@@ -144,7 +145,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 ## 既知の制約・注意点
 - glb に**ルートの骨が無い**ので、UE のルートモーションは使えない。前へ進むアニメは前処理でその場の形にした（捕獲の 3 本は捕獲の別室で使うので進んだまま）。
 - Interchange は「Node [SK_WasamiEnemy] with a skinned mesh is not root」と警告する（根 `target_character` は単位の変換なので効かない）。
-- 追跡中の変化 `Chase_VaultLand` は「高さ約 76 cm の台の上にしゃがみ（足の高さ 87 cm、0.3〜0.8 s）、片手をついて脚を振り上げ（足は最高 140 cm）、0.83 s に離れて 1.56 s に床へ着地し、2.3 s からは立ったまま」の動き。平らな廊下では台が無いので宙に浮いて見え、着地後の約 0.7 s は立ったまま体が滑る（PIE で確かめた）。
+- 追跡中の変化 `Chase_VaultLand` の元は台の上から跳び降りる動きで、そのままでは平らな廊下で宙に浮いて見え、着地後の約 0.7 s は立ったまま体が滑った（2026-09-18 の PIE）。前処理の `vault` で床から跳び越える形にした（上）。見えない障害物を跳び越える形なので、前に物が無い所では不自然かもしれない（要確認）。着地からの 0.8 s（かがんで起き上がる間）は、ほかの変化と同じく体が前へ滑る。
 - 気絶のモーションは、載せ替えの物差しとしては頭だけ 4° 合わない（旧と v3 で作り直されている）。捕獲の 3 本には関係しない。
 - 前処理は純粋な Python（エディタの Python に numpy が無い）で、全体で数秒かかる。
 - クリップの名前は `ClipNames` と取り込みの `ROLES` の両方にある。役を足す・名前を変えるときは両方を直す（`Wasami.Enemy.Anim.Clips` が食い違いを見つける）。
@@ -161,3 +162,4 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - 2026-09-18: アニメの再生 `UWasamiEnemyAnimInstance`（本家の ABP の木・気絶の位相合わせ・1 回再生の口）とテスト `Wasami.Enemy.Anim.*` を追加
 - 2026-09-18: 敵のアクタ `AWasamiEnemy`（本家のナースの部品・`CanSpawn`・0.5 s の判断と 17 s の気絶・インターフェース・`SpawnEnemy`）とテスト `Wasami.Enemy.Actor.*` を追加。アニメの再生が持ち主の敵から値を読むようにした
 - 2026-09-18: PIE で確かめた（立ち姿・歩き・走り・気絶と明け・Telepathy・Vanish・1 回再生 9 本。値は `observations/README.md`）。足の運びの速さを測り直し、`Run_Nightmare` の分母を 460 → 500 にした
+- 2026-09-18: 追跡中の変化 `Chase_VaultLand` を前処理の `vault` で床から跳び越える形にし（台の高さ 76.6 cm を離れるまで下げる・2.4 s で切る・−31.7° 回す）、前処理の glb を `WasamiEnemy.glb` に改名した（`SK_WasamiEnemy.glb` ではメッシュだけの再取り込みになり、アニメが置き換わっていなかった）。テストの長さの期待を直した（作業一覧の項目 4 のステップ 4b）

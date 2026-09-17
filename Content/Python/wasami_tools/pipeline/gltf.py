@@ -133,22 +133,45 @@ def angle(a, b):
     return math.degrees(2.0 * math.acos(min(1.0, abs(sum(x * y for x, y in zip(a, b))))))
 
 
-def world_rotations(gltf, local):
-    """{node name: rotation in the scene} for local rotations {node name: quaternion}; a node without one keeps its
-    own."""
+def rotate(q, v):
+    """The vector v turned by the unit quaternion q."""
+    return qmul(qmul(q, (v[0], v[1], v[2], 0.0)), qinv(q))[:3]
+
+
+def yaw(degrees):
+    """The quaternion of a turn about the up axis (+Y), from +Z towards +X."""
+    half = math.radians(degrees) / 2.0
+    return (0.0, math.sin(half), 0.0, math.cos(half))
+
+
+def world_transforms(gltf, rotations, translations):
+    """{node name: (rotation, position) in the scene} for local rotations and translations {node name: value}; a node
+    without one keeps its own. Nodes are taken as unscaled."""
     names = node_names(gltf)
     up = parents(gltf)
     out = {}
 
     def world(name):
         if name not in out:
-            own = local.get(name) or tuple(gltf["nodes"][names.index(name)].get("rotation", (0.0, 0.0, 0.0, 1.0)))
-            out[name] = qmul(world(up[name]), own) if name in up else own
+            node = gltf["nodes"][names.index(name)]
+            r = rotations.get(name) or tuple(node.get("rotation", (0.0, 0.0, 0.0, 1.0)))
+            t = translations.get(name) or tuple(node.get("translation", (0.0, 0.0, 0.0)))
+            if name in up:
+                parent_r, parent_t = world(up[name])
+                out[name] = (qmul(parent_r, r), tuple(a + b for a, b in zip(parent_t, rotate(parent_r, t))))
+            else:
+                out[name] = (r, t)
         return out[name]
 
     for name in names:
         world(name)
     return out
+
+
+def world_rotations(gltf, local):
+    """{node name: rotation in the scene} for local rotations {node name: quaternion}; a node without one keeps its
+    own."""
+    return {name: r for name, (r, _) in world_transforms(gltf, local, {}).items()}
 
 
 def _normalized(q):

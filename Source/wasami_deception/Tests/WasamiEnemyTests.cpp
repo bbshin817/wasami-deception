@@ -23,7 +23,7 @@ namespace
 	/** The imported clips' lengths (30 fps frames, implementation record 07). */
 	TArray<float> ImportedLengths()
 	{
-		const int32 Frames[WasamiEnemyClip::Num] = {58, 57, 31, 20, 18, 45, 227, 64, 83, 106, 37, 16, 63, 92, 55, 53, 46, 75, 93};
+		const int32 Frames[WasamiEnemyClip::Num] = {58, 57, 31, 20, 18, 45, 227, 64, 83, 106, 37, 16, 63, 72, 55, 53, 46, 75, 93};
 		TArray<float> Lengths;
 		for (int32 Count : Frames)
 		{

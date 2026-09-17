@@ -357,6 +357,14 @@
 - 対処: 地図は git の外で作り直せるので、灯 783・シャード 337・選択なしを数えて前と同じことを確かめてから保存する。数が違えば保存せずに調べる。
 - 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 9b・10b2）。
 
+### 取り込み直しても、アニメ（やほかのアセット）が前のまま（Interchange の置き換えの取り込み）
+
+- 症状: `import_asset`（`replace_existing` 真）で glb を取り込み直すと、メッシュは置き換わるのにアニメは前の長さ・中身のまま。エラーも警告も出ず、`save_directory` もアニメを保存しない（`Content/.../A_*.uasset` の日時が古いまま）。
+- 原因: UE 5.8 の `InterchangeManager.cpp`（`ImportAssetParameters.ReimportAsset` が空のとき）は、行き先に**ファイル名と同じ名前のアセット**があると、取り込みをそのアセットだけの再取り込みに変える（`bReplaceExisting` なら確認なし）。前処理の glb が `SK_WasamiEnemy.glb` でメッシュと同名だったので、メッシュの再取り込みになりアニメは作り直されなかった。
+- 対処: 前処理の出力を、どのアセットとも違う名前にする（`dd_enemy.prepared_file()` = `WasamiEnemy.glb`）。ファイル名が違えば普通の取り込みになり、既にあるアセットは同じオブジェクトに書き戻される（`InterchangeTaskImportObject.cpp` が既存のアセットを工場の参照にする）。
+- 確かめ方: 取り込みの後に `unreal.AnimationLibrary.get_num_frames(アニメ)` と `.uasset` の日時を見る。
+- 出典: 2026-09-18、作業一覧の項目 4 のステップ 4b（07 記録の「取り込み」）。
+
 ### 粒子の煙が見えない（粒子は出ているのに、PIE で何も映らない）
 
 - 症状: Vanish の `PPP_VanishPuff` が `get_num_active_particles()` で 5 個あるのに、見下ろしても映らない（2026-09-17 のステップ 11b3）。
