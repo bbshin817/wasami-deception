@@ -196,14 +196,19 @@ def do_click(req):
 
 
 def do_look(req):
-    """Relative mouse movement, in steps, which is what a game's mouse look reads."""
+    """Relative mouse movement, in steps, which is what a game's mouse look reads.
+
+    burst splits each step into that many back-to-back events, like a high-rate mouse: UE4's mouse smoothing
+    (UPlayerInput::SmoothMouse) only keeps the total when several samples arrive per frame."""
     check_target(req)
     steps = max(1, int(req.get("steps", 10)))
+    burst = max(1, int(req.get("burst", 1)))
     dx, dy = int(req.get("dx", 0)), int(req.get("dy", 0))
     for _ in range(steps):
-        send(mouse_input(dx=dx // steps, dy=dy // steps, flags=MOUSEEVENTF["move"]))
+        for _ in range(burst):
+            send(mouse_input(dx=dx // steps // burst, dy=dy // steps // burst, flags=MOUSEEVENTF["move"]))
         time.sleep(float(req.get("step_ms", 16)) / 1000.0)
-    return {"dx": dx, "dy": dy, "steps": steps}
+    return {"dx": dx, "dy": dy, "steps": steps, "burst": burst}
 
 
 def do_key(req):

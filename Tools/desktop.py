@@ -8,7 +8,7 @@
     python Tools/desktop.py key esc enter              press keys one after another
     python Tools/desktop.py combo ctrl s               press together, release in reverse
     python Tools/desktop.py hold w --ms 1500           hold keys down (walking, sprinting)
-    python Tools/desktop.py look --dx 300 --dy 0       relative mouse movement (mouse look)
+    python Tools/desktop.py look --dx 300 --dy 0       relative mouse movement (mouse look; --burst N = N events per step)
     python Tools/desktop.py type "some text"
     python Tools/desktop.py record --seconds 8 --name x.mkv   record the screen at 60 fps in the background
     python Tools/desktop.py record --grab gdi --region L T R B …   the same through GDI (when ddagrab hangs)
@@ -146,6 +146,7 @@ def main():
     ap.add_argument("--dx", type=int, default=0)
     ap.add_argument("--dy", type=int, default=0)
     ap.add_argument("--steps", type=int, default=10)
+    ap.add_argument("--burst", type=int, default=1, help="look: events per step (a high-rate mouse)")
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--seconds", type=float, default=10.0)
     ap.add_argument("--fps", type=int, default=60)
@@ -179,7 +180,7 @@ def main():
     elif opts.cmd == "hold":
         payload.update(keys=opts.args, ms=opts.ms)
     elif opts.cmd == "look":
-        payload.update(dx=opts.dx, dy=opts.dy, steps=opts.steps)
+        payload.update(dx=opts.dx, dy=opts.dy, steps=opts.steps, burst=opts.burst)
     elif opts.cmd == "type":
         payload["text"] = " ".join(opts.args)
     elif opts.cmd == "scroll":

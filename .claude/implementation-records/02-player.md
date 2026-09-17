@@ -31,7 +31,7 @@ updated: 2026-09-17
 - **体とカメラ**（コンストラクタ）: カプセルは半径 50・半高 88（本家の `CollisionCylinder` は半径 50、半高は `ACharacter` の既定 88）、歩ける斜面は 44°（`WalkableSlope_Increase`）。`USpringArmComponent` をカプセルに付け、相対位置 (0, 0, 95)、`TargetArmLength` 0、当たり判定なし、`bUsePawnControlRotation` true、回転ラグ 20（`CameraRotationLagSpeed`）、位置ラグの速さ 8。`UCameraComponent` をアームのソケットに付け、FOV 90。目の高さは床から約 183 cm。
 - **入力**（`CreateInput`、`SetupPlayerInputComponent`）: Enhanced Input の `UInputAction` と `UInputMappingContext` を実行時に作る（アセットにしない）。
   - 移動: W / ↑（Swizzle で Y に）、S / ↓（Swizzle + Negate）、D / →、A / ←（Negate）。`Move` は操作の向き（ヨーだけ）の前と右へ `AddMovementInput`。
-  - 視点: `EKeys::Mouse2D` に Smooth → Scalar 0.07 → FOVScaling（`FOVScale` 0.01111、`UE4_BackCompat`）の順で修飾子を付ける（本家の `DefaultInput.ini` の `MouseX/Y` の感度 0.07、UE4 のマウススムージングと FOV スケーリングと同じ）。`Look` は `AddControllerYawInput` / `AddControllerPitchInput`（`bInvertY` でなければ Y を反転）。コントローラ側の 2.5 / −2.5 は `bEnableLegacyInputScales=True` により掛かる。
+  - 視点: `EKeys::Mouse2D` に Smooth → FOVScaling（`FOVScale` 0.01111、`UE4_BackCompat`）の順で修飾子を付ける（UE4 のマウススムージングと FOV スケーリングと同じ）。感度 0.07（本家の `DefaultInput.ini` の `MouseX/Y`）は C++ では掛けず、`Config/DefaultInput.ini` の `AxisConfig`（Mouse2D 0.07）で効かせる: Enhanced Input の `ApplyAxisPropertyModifiers`（UE 5.8 `EnhancedInputSubsystemInterface.cpp`）が、マウスのキーの対応づけに旧入力の `AxisConfig` の感度を `UInputModifierScalar` として先頭に自動で足す（CVar `input.GlobalAxisConfigMode` の既定 0 = マウスだけ）。C++ でも Scalar を足すと 0.07² になり、視点が 1/14 の速さになる（2026-09-17 に直した。1 カウント 0.01225° → 0.175°）。自動の修飾子は Smooth より前に入るが、どれも値に比例するので順は結果を変えない。1 カウント 0.175°（= 0.07 × 感度 1 × FOV 90 × 0.01111 × 2.5）は最新版の実機で測った値と一致する（`observations/README.md` の「視点の速さと集中線」）。`Look` は `AddControllerYawInput` / `AddControllerPitchInput`（`bInvertY` でなければ Y を反転）。コントローラ側の 2.5 / −2.5 は `bEnableLegacyInputScales=True` により掛かる。
   - Shift（ダッシュ）、中クリック（180° ターン）、Space（タブレット）、Z（地図の拡縮）。
   - Q / E / 1 / 2（本家の `Use Power Left` / `Use Power Right` / `Cycle Power Left` / `Cycle Power Right`）は `Powers` の `UsePowerLeftPressed` / `UsePowerRightPressed` / `CyclePowerLeft` / `CyclePowerRight` に直に結ぶ（中身は 04 記録）。本家の `Use Power`（R）はどの BP も受けていないので割り当てない。
   - 左クリック（`IA_LeftMouseButton`、押した瞬間 = `Started`）とホイール（`IA_MouseWheelAxis`、`EKeys::MouseWheelAxis` の Axis1D、1 目盛り ±1）は、`LeftMousePressed` / `MouseWheel` から `Powers` の `ConfirmTeleport` / `AdjustTeleportDistance` へ渡す（テレポートの照準が出ているときだけ効く。04 記録）。本家では照準のアクタ（`BP_Power_Teleport`）がキーを直に受け、入力を消費しない。本家のプレイヤー自身の左クリック（手持ちの `Use` か前方 200 cm の `InteractWithObject`）は、調べる物ができたとき（M2）にここへ足す。ホイールの Axis1D は値が 0 のフレームでは呼ばれないが、本家の毎フレームの軸の束縛も値が変わるフレームでしか結果が変わらないので同じ。どちらも `bCanMove` などの条件を見ない（本家の照準のアクタも見ない）。
@@ -71,7 +71,7 @@ updated: 2026-09-17
 - FOV の 90→115（`MapRangeClamped(Speed, 300, 900, 90, 115)` を 0.001 秒のタイマーで `FInterpTo` 0.5）、180° ターン、マウスの感度 0.07 と FOV スケーリング: WebGL 版の実装記録 05（`.claude/references/webgl/implementation-records/05-player-controller.md`）にバイトコードの根拠がある。
 
 ## 依存関係
-- `EnhancedInput`（`UInputAction`、`UInputMappingContext`、修飾子 `UInputModifierSwizzleAxis` / `Negate` / `Scalar` / `Smooth` / `FOVScaling`）。
+- `EnhancedInput`（`UInputAction`、`UInputMappingContext`、修飾子 `UInputModifierSwizzleAxis` / `Negate` / `Smooth` / `FOVScaling`）。
 - タブレットの画面は `UWasamiTabletWidget`（03 記録）、板・画面・地図の素材は `WasamiDDTools.import_dd_tablet` が作る `/Game/DD` のアセット（03 記録）、地図の板はレベルの組み立てが置く（01 記録）。`UMG`（`UWidgetComponent`）と `Engine`（`USceneCaptureComponent2D`、`FRichCurve`）。
 - `UCameraShakeBase`（`/Game/DD` の `LegacyCameraShake` の Blueprint を `TSoftClassPtr` で読む）。
 - パワーは `UWasamiPowerComponent`（04 記録）。コンポーネントはこのクラスの `bCanInteract`・`bCanUseTablet`・`bHasInput`・`IsTabletUp()`・`SetMoveSpeeds()`・`GetTabletScreen()`・`GetChameleon()` を使う。FX は `UWasamiChameleonComponent`（04 記録）。
@@ -88,6 +88,7 @@ updated: 2026-09-17
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-17: 視点の対応づけから Scalar 0.07 を外した（`AxisConfig` の 0.07 と重なって視点が遅すぎた。ユーザーの指摘、作業一覧の項目 2）
 - 2026-09-17: `ShardActorClass` の既定を `AWasamiShard` にした。画面のアニメを進める呼び出しを `TickAnimations` に改めた（シャードの `Count Shake` も進める）
 - 2026-09-16: 左クリックとホイールの入力を足し、テレポートの照準（04 記録）へ渡すようにした
 - 2026-09-16: 本家の子アクタ `FX`（Chameleon）にあたる `UWasamiChameleonComponent` を足した（`GetChameleon()`。スピードブーストの画面の揺れが使う）

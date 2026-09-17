@@ -5,7 +5,7 @@ Vanish (AWasamiVanishPower, UWasamiVanishWidget), the telekinesis (AWasamiTeleki
 tablet's sockets are the tablet's own (dd_tablet). The telepathy's markers (UWasamiTelepathyTrackerWidget) show
 MM_Telepathy_Inst.
 
-  M_Speedlines                  the original's graph, node for node (FlipBook at its defaults → T_Speedlines)
+  M_Speedlines                  the original's graph (FlipBook over T_Speedlines' 2 × 5 frames, 30 a second)
   M_DD_ChameleonCameraShake     the Chameleon pack's M_CameraShake, estimated (its graph is cooked away)
   M_DD_KySlash, M_DD_PPPRadialGradient, M_DD_DecalTeleport
                                 estimated masters of the teleport aim's materials (their graphs are cooked away); the
@@ -53,7 +53,7 @@ CAMERA_ANIMS = (
     (1, "Animation/Camera/CameraAnim_Teleport"),    # the teleport's click: the view widens, flashes and settles
 )
 TEXTURES = (
-    (2, "UI/Main/Powers/T_Speedlines"),    # UMG_SpeedBoost's lines (a 2 × 5 sheet; M_Speedlines reads it as 2 × 2)
+    (2, "UI/Main/Powers/T_Speedlines"),    # UMG_SpeedBoost's lines (2 × 5 frames)
     (2, "UI/Menu/Streaks/T_VignetteNew"),  # UMG_SpeedBoost's vignette
     (1, "ThirdParty/AdvancedMagicFX13/Textures/T_ky_slash01_4x4"),  # the teleport aim's slashes (4 × 4 frames)
     (2, "Textures/05_Circus/T_05_PortalMaps"),  # Primal Fear's sphere (R sparkles, G a centred glow, B cloudy noise)
@@ -86,9 +86,15 @@ PARTICLE_SYSTEMS = (
 )
 
 SPEEDLINES = "UI/Main/Powers/M_Speedlines"
-FLIPBOOK = "/Engine/Functions/Engine_MaterialFunctions02/Texturing/FlipBook"
+FLIPBOOK = "Texturing/FlipBook"  # in dd_assets.FUNCTIONS_02
 # The FlipBook call's output M_Speedlines takes its UVs from (its expression input's OutputIndex).
 FLIPBOOK_UV_OUTPUT = 2
+# The FlipBook call's inputs. The export keeps neither them nor the four expressions behind them (cooked away), so they
+# come from the latest version's recording (observations/README.md, 項目 2): the sheet's 2 columns × 5 rows, each frame
+# filling the screen, frames 0 – 9 in order at 30 a second (Time × 3 as the phase, whose fraction FlipBook takes).
+FLIPBOOK_COLUMNS = 2
+FLIPBOOK_ROWS = 5
+FLIPBOOK_CYCLES_PER_SECOND = 3.0
 CAMERA_SHAKE_MASTER = "/Game/Pipeline/Materials/M_DD_ChameleonCameraShake"
 
 # The teleport aim's materials (pak_reference): the original's path, and the master holding our estimate of its graph.
@@ -194,14 +200,21 @@ SHOCKWAVE_PANS = ((0.05, 0.1), (-0.08, 0.06))  # the ground ring's two T_ky_mask
 
 
 def _build_speedlines(mat):
-    """M_Speedlines (pak_reference_2's export keeps its graph): a FlipBook call with every input at its default (2 × 2
-    frames, phase from Time, TexCoord 0), its output 2 as a TextureSample of T_Speedlines' UVs, and that sample's RGB as
-    the emissive colour. The opacity is not connected (1)."""
-    call = MEL.create_material_expression(mat, unreal.MaterialExpressionMaterialFunctionCall, -700, 0)
-    call.set_editor_property("material_function", unreal.load_asset(FLIPBOOK))
+    """M_Speedlines (pak_reference_2's export keeps its two named expressions): a FlipBook call of 2 × 5 frames with
+    Time × 3 as its phase and TexCoord 0 as its UVs, its output 2 as a TextureSample of T_Speedlines' UVs, and that
+    sample's RGB as the emissive colour. The opacity is not connected (1)."""
+    g = dd_stage._Graph(mat, checked=True)
+    call = dd_assets.function_call(g, FLIPBOOK, -700, 0, dd_assets.FUNCTIONS_02)
     outputs = MEL.get_material_expression_output_names(call)
     if len(outputs) <= FLIPBOOK_UV_OUTPUT:
         raise RuntimeError("FlipBook has only the outputs %s" % (outputs,))
+    time = g.node(unreal.MaterialExpressionTime, -1100, -100)
+    phase = g.node(unreal.MaterialExpressionMultiply, -950, -100)
+    phase.set_editor_property("const_b", FLIPBOOK_CYCLES_PER_SECOND)
+    g.link(time, "", phase, "A")
+    g.link(phase, "", call, "Animation  Phase (0-1)")  # two spaces, as the engine's function names it
+    g.link(dd_assets.constant(g, FLIPBOOK_ROWS, -950, 0), "", call, "Number of Rows")
+    g.link(dd_assets.constant(g, FLIPBOOK_COLUMNS, -950, 100), "", call, "Number of Columns")
     sample = MEL.create_material_expression(mat, unreal.MaterialExpressionTextureSample, -300, 0)
     sample.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path("UI/Main/Powers/T_Speedlines")))
     dd_assets.connect(call, str(outputs[FLIPBOOK_UV_OUTPUT]), sample, "UVs")

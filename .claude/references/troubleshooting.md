@@ -57,6 +57,14 @@
 - 対処: 駆動役はユーザーの端末から起動する。セッションの中で確かめてよいのは `--dry-run` だけ（`.claude/settings.json` の allow もそれだけ）。
 - 出典: 進捗記録 `20260917-autonomy.md` の決定事項（ステップ 2）、01 記録の表。
 
+### `git checkout main` が `'main' is already checked out at '…/scratchpad/main-wt'` で失敗する / `git branch` の main に `+` が付く
+
+- 症状: 作業ブランチを main へマージしようとすると、main が Claude の一時フォルダ（`%LOCALAPPDATA%\Temp\claude\<プロジェクト>\<セッション>\scratchpad\main-wt`）の worktree で開かれていて切り替えられない。その worktree の `git status` は大量の「staged の変更」を示す。
+- 原因: 前のセッション（2026-09-17 の昼）が main 用の worktree を作り、後で main の参照だけを別の場所から進めた（`update-ref` のマージ）。worktree の索引とファイルは古い main（`a8ef1ad`）のままなので、進んだ HEAD との差が変更に見える。独自の作業は入っていない（`git -C <worktree> diff --cached a8ef1ad` が空、`git -C <worktree> diff` も空で確かめた）。
+- 対処（未解決の片付け）: worktree は消していない（`git worktree remove` は変更ありとして断り、`--force` は変更を捨てる形の操作なのでユーザーの確認待ち。作業一覧の「未回答の要確認」）。それまでのマージは、ファイルを動かさない形で行う: 作業ブランチで `git commit-tree HEAD^{tree} -p main -p HEAD -m …` → `git update-ref refs/heads/main <新> <旧>` → `git checkout --ignore-other-worktrees main`（木が同じなのでファイルは変わらない）→ `git branch -d <作業ブランチ>` → `git push origin main`。`--no-ff` のマージと同じ形になる。main は必ず作業ブランチの祖先であることを先に確かめる（`git merge-base --is-ancestor main HEAD`）。
+- 確かめ方: `git worktree list` に `scratchpad/main-wt` が出るか。
+- 出典: 2026-09-17 夜の無人運転（作業一覧の項目 2 のマージ）。
+
 ## エディタ・MCP・リモート実行
 
 ### エディタ（や本家のゲーム）が起動直後に落ちる: `DXGI_ERROR_NOT_CURRENTLY_AVAILABLE`
@@ -242,6 +250,14 @@
 - 確かめ方: シェイク中に POV が揺れる間、板の視点空間の位置が不動。
 - 出典: コミット bdb11ef（2026-09-16）、02 記録。
 
+### マウスの視点移動が本家の約 1/14 と遅い（Enhanced Input の感度が 0.07 × 0.07 になる）
+
+- 症状: `Tools/desktop.py look --dx 100` で 1.22° しか回らない（本家の式の期待値は 17.5°）。縦も同じ比。実行中に対応づけの `UInputModifierScalar` を書き換えても変わらない。
+- 原因: Enhanced Input の `ApplyAxisPropertyModifiers`（UE 5.8 `EnhancedInputSubsystemInterface.cpp`）が、マウスのキー（`Mouse2D` を含む。CVar `input.GlobalAxisConfigMode` の既定 0）の対応づけに、旧入力の `AxisConfig` の感度（`DefaultInput.ini` の Mouse2D 0.07）を Scalar 修飾子として自動で先頭に足す。対応づけに自分で Scalar を足すと重なる。修飾子はプレイヤーの入力へ `DuplicateObject` で写されるので、IMC の持ち主の下の修飾子を書き換えても効かない（写しは `/Engine/Transient.InputModifierScalar_N`）。
+- 対処: 感度は `AxisConfig` の側だけに置き、対応づけに Scalar を足さない（作業一覧の項目 2 のステップ 3）。
+- 確かめ方: PIE で `pie.py place` の後に `look --dx 1000 --allow UnrealEditor.exe` → `pie.py state` のヨーの差が 175°（0.175°/カウント、FOV 90）。実行中に試すなら `unreal.ObjectIterator(unreal.InputModifier)` で `/Engine/Transient` の写しを探して書き換える。
+- 出典: 02 記録、`observations/README.md` の「視点の速さと集中線」（2026-09-17。直した後の PIE で dx 100 → 17.5°、dx 2057 → 359.94°）。
+
 ## 取り込み・レベル・描画
 
 ### 壁・床が灰色の市松（`DefaultMaterial`）で描かれる
@@ -379,6 +395,14 @@
 - 症状: MOD の Maps の ZONE 1（シャードの並ぶ待合の廊下）に飛ぶと、Reaper Nurse 3 体が約 7 秒で来て捕まる。MOD の Settings で `God Mode` を見ると OFF のことがあり、テンキーの 3 を送っても効いたか分からないまま捕まった。MOD のメニューを開いている間もゲームは進む。捕まり続けると `You Are Dead` → `Restart?` で入口（`06_Hospital`）からやり直しになる。
 - 対処: 無敵は当てにしない。着いたらすぐ `M` → Active Enemy の `Find All`（(1327, 860)）→ `Remove All`（(1947, 860)）で敵を消す（敵が要る観察は、消す前の数秒で済ませる。順番は `.claude/guides/observation.md`）。敵のいない開始地点（ZONE 1 STARTING POINT）で済む観察はそこで行う。テンキーはエージェントの `num0`〜`num9`。
 - 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
+
+### 本家で `desktop.py look` の回転量が送った量に比例しない（同じ量でも毎回違う・入力の後も動く）
+
+- 症状: 本家で `look --dx 2057 --steps 17`（1 周のはず）を繰り返すと、回る角度が毎回違う。同じ量の往復で元の向きに戻らない。`--dy 300` の往復の後は上を向いたまま。
+- 原因: 本家は UE4 のマウスの平滑化（`UPlayerInput::SmoothMouse`。OPTIONS の MOUSE SMOOTHING が既定でオン）が効く。平滑化は「1 フレームに入力がいくつ届いたか」と、それまでの平均の入力の間隔（`MouseSamplingTotal / MouseSamples`）で値を伸び縮みさせる。16 ms ごとに大きな値を 1 回ずつ送ると、フレームごとの値の伸縮と、入力の無いフレームへの持ち越しで合計が崩れる。実際のマウス（125〜1000 Hz）のように 1 フレームに入力が複数届けば、合計はほぼ保たれる。
+- 対処: `look` に `--burst N` を付け、1 刻みを N 個の細かい入力に分けて続けて送る（1 個 7〜12 カウント。`SampleCount` は uint8 なので 1 フレームに 255 個を超えないこと）。レベルに入った直後は平均の間隔が初期値なので、測る前に往復を数回送って慣らす。`look --dx 2057 --steps 17 --burst 11` で 2 回とも元の絵に戻り（ずれ 2 px）、`--dx 1029 --steps 21 --burst 7` で真後ろを向いた。
+- 確かめ方: `shot` の前後の絵の位相相関（ずれ 0 px・相関 0.4 以上）。壁ばかりの向きでは相関が弱いので、待合の廊下のような絵で測る。
+- 出典: 進捗記録 `20260917-look-speedlines.md`（2026-09-17 ステップ 2）、`observations/README.md` の「視点の速さと集中線」。
 
 ### 本家で `desktop.py click` を送ると視点が大きく回る / MOD のメニューの押し間違い
 

@@ -58,10 +58,10 @@
 ### 2. 既存の修正 2 件（マウスの視点移動が遅い・スピードブーストの集中線がノイズに見える）
 
 - 目標: 視点移動の速さを本家と同じにし、集中線を本家と同じ絵にする。
-- 完了の条件: (1) 同じマウスの移動量に対する回転角が最新版の実機と一致する（`Tools/desktop.py` の `look` で同じ量を送って収録し、画面の回転を測る）。まず疑うのは `Config/DefaultInput.ini` の `AxisConfig`（Mouse2D の感度 0.07）と Enhanced Input の `Scalar` 0.07 の二重掛け（`WasamiPlayerCharacter.cpp` の `MouseAxisSensitivity`）。(2) ブースト中の画面（`observations/ours/`）で集中線が本家の実機の収録と同じ形（放射状の線のコマ送り）に見える。疑うのは `T_Speedlines`（3841 × 5404、2 列 × 5 段）の取り込み（非圧縮・ミップ 1・`TEXTUREGROUP_UI`）と `M_Speedlines` の FlipBook の読み方（2 × 2）。
+- 完了の条件: (1) 同じマウスの移動量に対する回転角が最新版の実機と一致する（`Tools/desktop.py` の `look` で同じ量を送って収録し、画面の回転を測る）。(2) ブースト中の画面（`observations/ours/`）で集中線が本家の実機の収録と同じ形（放射状の線のコマ送り）に見える。
 - 根拠: 実装記録 02・04、`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini`、`pak_reference_2/_bytecode/DDeception/Content/UI/Main/Powers/UMG_SpeedBoost.txt`、最新版の実機。
 - 依存: 1（同じ C++ とマスターを触るので、マージの後）。
-- 状態: 未着手。
+- 状態: **完了（2026-09-17）**。視点は Enhanced Input が `AxisConfig` の感度 0.07 を自動で重ねていたための 0.07² の二重掛けで、C++ の Scalar を外して実機と同じ 0.175°/カウントにした（02 記録・症状索引）。集中線は `M_Speedlines` の FlipBook を実機に合わせて 2 × 5・30 コマ/s にした（04・01 記録。測り方と値は `observations/README.md` の「視点の速さと集中線」）。
 
 ### 3. ワサミシャードの光（紫の明滅と、紫でやや弱い回収の閃光）
 
@@ -186,7 +186,7 @@
 ### 18. オプション画面とポーズ画面（WebGL 版と同じ）
 
 - 目標: `UMG_Options`（画質・解像度・明るさ・音量 3 種・字幕・マウス感度・頭の揺れ・Y 反転・ダッシュの切り替え・マウスのスムージング・難易度。設定のセーブ `BP_DD_Settings_SaveGame`）と `UMG_Pause`（Esc）を WebGL 版の記録どおりに作る。
-- 完了の条件: WebGL 版 04 記録（`settings.ts`）の既定値と適用先、10 記録（`options.ts`・`pause.ts`）の配置・アニメ・音どおり。マウス感度の適用は項目 2 の結果に合わせる。
+- 完了の条件: WebGL 版 04 記録（`settings.ts`）の既定値と適用先、10 記録（`options.ts`・`pause.ts`）の配置・アニメ・音どおり。マウス感度は `AWasamiPlayerCharacter::MouseSensitivity`（`Look` の値に掛ける。本家の `Character.MouseSensitivity` と同じ）に入れ、`DefaultInput.ini` の `AxisConfig` の 0.07 と視点の修飾子には触らない（項目 2 の結果。02 記録）。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Main/UMG_Options.txt`、`UI/Menu/Pause/UMG_Pause.txt`、`Blueprints/Save/BP_DD_Settings_SaveGame`、WebGL 版 04・10 記録。
 - 依存: 17。
 - 状態: 未着手。
@@ -223,6 +223,10 @@
 
 - 2026-09-17: 駆動役の使用量の読み方 — 仮に `--usage-cmd` で外から差し込む形にし、差し込みが無ければ止まる。理由: auto モードの分類器が認証情報のファイルと CLI 本体の読み取りを拒否した。選べるのは (a) ユーザーが使用量を JSON で出すコマンドを用意して `--usage-cmd` に渡す、(b) `--no-usage-check` で回す（5 時間の枠だけ待つ。週間の枠の判定は無い。`--until` で区切る）、(c) Claude に `.credentials.json` の読み取りを許すか、応答の形を教える。場所: `Tools/overnight.py` の `read_usage`・`budget_verdict`、`.claude/guides/autonomy.md` の「予算」。
 - 2026-09-17: 使用量の上限に達したときの `claude -p` の返事の文言 — 仮に `usage limit reached` / `hit your limit` / `rate limit`（`|エポック秒` 付きならその時刻まで待つ）にした。理由: 実物を上限まで使って確かめられない。場所: `Tools/overnight.py` の `LIMIT_PATTERN`・`LIMIT_EPOCH`。
+
+**`20260917-look-speedlines.md`（作業一覧の項目 2。視点の速さと集中線）**
+
+- 2026-09-17: 取り残された main の worktree — Claude の一時フォルダの `scratchpad/main-wt`（`git worktree list` に出る）が古い main（`a8ef1ad`）のまま main を開いていて、`git checkout main` を妨げる。独自の作業は入っていないことを確かめたが、消すには `git worktree remove --force` が要るので、仮に残した。理由: 無人では変更を捨てる形の操作をしない。場所: 症状索引の「`git checkout main` が … already checked out」。消してよければ `git worktree remove --force <そのパス>`（その後は普通の `git checkout main` と `git merge --no-ff` に戻せる）
 
 **`20260916-tablet-powers.md`（作業一覧の項目 1。タブレットのパワー）**
 

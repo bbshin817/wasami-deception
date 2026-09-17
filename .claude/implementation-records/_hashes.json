@@ -19,8 +19,8 @@
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "0252f069d3c45d94f410928fe292e577c8c2b3c5",
     "Tools/console_session.py": "79504ece5845d94fa038c18ab4f20d73945363fa",
-    "Tools/desktop.py": "54f674c9c428e0fe4b62c493c6bc0ba40fae54e4",
-    "Tools/desktop_agent.py": "c1871d54fb7ff2eb60e05991a152753fa1a62a3f",
+    "Tools/desktop.py": "ff4aea9a3f7b6d2f735112ff0494ab2b47adbad7",
+    "Tools/desktop_agent.py": "0a03ed8b704f285813b032861f34f12e08723b00",
     "Tools/pie.py": "e023b71c5f66291e475ca19d19d648073eb86d64",
     "Tools/video_probe.py": "f0aa41e4b9d65b703117cbd4121868d200a756cd",
     "Tools/overnight.py": "687bb9d448f7f4f7741c36a43312caed344a7e90",
@@ -34,11 +34,11 @@
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "a5b8f2671fe3aa2b94c4927a83a316a6a30cf591",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
-    "Content/Python/wasami_tools/pipeline/dd_assets.py": "42b9ea261a8f7c4024bfed44c05213fbd3f1506c",
+    "Content/Python/wasami_tools/pipeline/dd_assets.py": "c27c05c997985513d4475303115534bec008b55a",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "179170e9e72f63c15b2f245ddff5b4c93e99a245",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "eb1af1ae7cef723142514cf233ca1004c6496bef",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "c4ad6486b3e11293c30a85c427184e2535763b62",
-    "Content/Python/wasami_tools/pipeline/dd_powers.py": "b72189cc8a98e2076eca778bd66b3e1cf5b670ac",
+    "Content/Python/wasami_tools/pipeline/dd_powers.py": "3ceb4b2f7f8eb76590d292521b78d38cd63bdb7d",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "db53bb3865ef85b287a2eaf8d515585d5b14c9ed",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "58945fb9d1d71caf35ac31acccbe03669dba4b2a",
     "Source/wasami_deception/WasamiCascadeLibrary.h": "e027c46f9347c34166382c4740bca5f4a452f248",
@@ -53,7 +53,7 @@
     "Source/wasami_deception/WasamiGameMode.h": "a1271ddcb0d06113947b55c45a483ae86d3fccb9",
     "Source/wasami_deception/WasamiGameMode.cpp": "f0be668d22ce3427c581f1ce5fcf903cb1f610b7",
     "Source/wasami_deception/WasamiPlayerCharacter.h": "8e779db712f5b1fa76a37f7d667d8b461b57c9f0",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "2567ff609c3bb4290391efdadd9f0a0fb0094fec"
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "eb0657bb94854b9f9ef08dc4aaaa46cf99eaf16b"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
