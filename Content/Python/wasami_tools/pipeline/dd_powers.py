@@ -155,7 +155,7 @@ WOBBLE_GAIN = 0.67
 # The puff's CameraDepthFade: the export keeps the call without its inputs. The engine's defaults (512, 24) leave the
 # puff, 92 cm ahead, at an eighth of its opacity, where the recording shows a haze as thick as the particles' alpha
 # (observations/README.md, step 11b3), so the fade is whole by about 2.3 m there; any shorter fade looks the same.
-# TODO(仮): the fade's values are only bounded by the recording (要確認「Vanish の煙の位置と明るさ」).
+# The fade's values are only bounded by the recording; the user accepted the result as it is (2026-09-17).
 SMOKE_FADE_LENGTH = 64.0
 SMOKE_FADE_OFFSET = 0.0
 
@@ -189,7 +189,7 @@ KY09 = "ThirdParty/AdvancedMagicFX09/"
 # layers is (its TexCoord tiling (U across a wind line, V along it), its pan speed, the pan speed of the sample that
 # bends its coordinates, how far that sample's B bends them).
 # TODO(仮): the force field's four estimated graphs and these values are placeholders (their graphs are cooked away;
-# 要確認「テレキネシスの力場の材質の推定」 in .claude/roadmap.md).
+# more recordings of the original refine them: item 23 in .claude/roadmap.md).
 AURA_LAYERS = (
     ((1.0, 1.0), (0.0, -1.5), (0.1, -0.5), 0.1),
     ((1.0, 2.0), (0.0, -2.2), (-0.1, -0.7), 0.1),

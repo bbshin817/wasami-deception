@@ -61,7 +61,7 @@
 
 - 症状: 作業ブランチを main へマージしようとすると、main が Claude の一時フォルダ（`%LOCALAPPDATA%\Temp\claude\<プロジェクト>\<セッション>\scratchpad\main-wt`）の worktree で開かれていて切り替えられない。その worktree の `git status` は大量の「staged の変更」を示す。
 - 原因: 前のセッション（2026-09-17 の昼）が main 用の worktree を作り、後で main の参照だけを別の場所から進めた（`update-ref` のマージ）。worktree の索引とファイルは古い main（`a8ef1ad`）のままなので、進んだ HEAD との差が変更に見える。独自の作業は入っていない（`git -C <worktree> diff --cached a8ef1ad` が空、`git -C <worktree> diff` も空で確かめた）。
-- 対処（未解決の片付け）: worktree は消していない（`git worktree remove` は変更ありとして断り、`--force` は変更を捨てる形の操作なのでユーザーの確認待ち。作業一覧の「未回答の要確認」）。それまでのマージは、ファイルを動かさない形で行う: 作業ブランチで `git commit-tree HEAD^{tree} -p main -p HEAD -m …` → `git update-ref refs/heads/main <新> <旧>` → `git checkout --ignore-other-worktrees main`（木が同じなのでファイルは変わらない）→ `git branch -d <作業ブランチ>` → `git push origin main`。`--no-ff` のマージと同じ形になる。main は必ず作業ブランチの祖先であることを先に確かめる（`git merge-base --is-ancestor main HEAD`）。
+- 対処: 2026-09-17 23:37 にユーザーの許可を得て `git worktree remove --force <パス>` → `git worktree prune` で消した（解決済み。以後のマージは普通の `git checkout main` → `git merge --no-ff`）。消す前に、索引が古い main の木と同じ（`git -C <worktree> write-tree` = `git rev-parse a8ef1ad^{tree}`）で、未ステージ・未追跡の変更が無いこと（`git -C <worktree> status --short` が `M `・`D `・`A ` の行だけ）を確かめた。`git worktree remove` は変更ありとして断り、`--force` は変更を捨てる形の操作なので、**同じ症状がまた出たら、同じ確かめ方をしてからユーザーに消してよいか聞く**（無人では消さない）。消すまでのマージは、ファイルを動かさない形で行う: 作業ブランチで `git commit-tree HEAD^{tree} -p main -p HEAD -m …` → `git update-ref refs/heads/main <新> <旧>` → `git checkout --ignore-other-worktrees main`（木が同じなのでファイルは変わらない）→ `git branch -d <作業ブランチ>` → `git push origin main`。`--no-ff` のマージと同じ形になる。main は必ず作業ブランチの祖先であることを先に確かめる（`git merge-base --is-ancestor main HEAD`）。
 - 確かめ方: `git worktree list` に `scratchpad/main-wt` が出るか。
 - 出典: 2026-09-17 夜の無人運転（作業一覧の項目 2 のマージ）。
 
