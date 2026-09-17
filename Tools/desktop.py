@@ -20,6 +20,10 @@ Input is only delivered while the foreground window belongs to an allowed proces
 Pass --allow <image.exe> (repeatable) for anything else. Input to the editor (UnrealEditor.exe) needs no asking unless
 the user forbids it, but the editor is their app too: don't send while they are using it
 (`.claude/guides/verification.md`). Exit code 0 when the agent answered ok, 1 otherwise.
+
+In unattended mode (WASAMI_UNATTENDED=1, .claude/guides/autonomy.md) a shot taken while the window in front belongs to
+this game (the editor, or our packaged game) is also posted to the Discord webhook (Tools/discord_notify.py); a shot of
+the reference game never is. What happened is added to the printed answer as "discord".
 """
 import argparse
 import json
@@ -31,6 +35,7 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import console_session  # noqa: E402  (same folder)
+import discord_notify  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SPOOL = os.path.join(ROOT, "Intermediate", "DesktopAgent")
@@ -65,6 +70,32 @@ def request(cmd, timeout=30, **payload):
             return answer
         time.sleep(0.05)
     return {"ok": False, "error": "the agent did not answer within %d s (is it running? try 'start')" % timeout}
+
+
+def shows_this_game(process):
+    """The editor (PIE and the viewport) or our packaged game; never the reference game (DDeception-*.exe)."""
+    name = (process or "").lower()
+    return name == "unrealeditor.exe" or name.startswith("wasami_deception")
+
+
+def post_shot(answer):
+    """In unattended mode, posts a shot of this game to Discord. Returns what happened (None outside that mode)."""
+    if os.environ.get("WASAMI_UNATTENDED") != "1" or not answer.get("ok"):
+        return None
+    result = answer.get("result") or {}
+    front = result.get("foreground") or {}
+    if not shows_this_game(front.get("process")):
+        return "送らない（前面が %s）" % (front.get("process") or "不明")
+    if result.get("all_black"):
+        return "送らない（真っ黒）"
+    url, _ = discord_notify.webhook_url()
+    if not url:
+        return "送らない（webhook の URL が無い）"
+    errors = []
+    caption = "スクリーンショット %s（%s）" % (os.path.basename(result["path"]), front.get("title", ""))
+    if discord_notify.Webhook(url, errors.append).post_images([result["path"]], caption):
+        return "送った"
+    return "送れない: " + " / ".join(errors)
 
 
 def agent_running():
@@ -163,6 +194,10 @@ def main():
             payload["region"] = opts.region
 
     answer = request(opts.cmd, timeout=opts.timeout, **payload)
+    if opts.cmd == "shot":
+        posted = post_shot(answer)
+        if posted:
+            answer["discord"] = posted
     print(json.dumps(answer, ensure_ascii=False, indent=2))
     return 0 if answer.get("ok") else 1
 

@@ -20,11 +20,10 @@ Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log wit
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
 printed at the end and appended to the log.
 
-Discord: the start, the reply of Claude after each run (with the run's footer line), the waits and the summary are also
-posted to a Discord webhook. The URL is read from the environment variable WASAMI_DISCORD_WEBHOOK, else from
-"discord_webhook" in Tools/overnight.local.json (ignored by git: whoever knows the URL can post); with neither, or with
---no-discord, nothing is posted. A dry run only says whether it would post. A post that fails is logged and the night
-goes on.
+Discord (Tools/discord_notify.py, which also says where the webhook URL comes from): the start, the reply of Claude
+after each run (with the run's footer line) followed by the HighResShot images the run left in Saved/Screenshots/, the
+waits and the summary are posted to the webhook. Without a URL, or with --no-discord, nothing is posted; a dry run only
+says whether it would post. A post that fails is logged and the night goes on.
 
 Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop); 2 budget or usage not readable;
 3 no progress or Claude could not be started; 4 bad arguments; 130 interrupted.
@@ -39,8 +38,9 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import discord_notify  # noqa: E402  (same folder)
 
 # The replies of Claude and the records hold characters this console's code page (cp932) cannot show: print what we
 # can rather than dying with a UnicodeEncodeError in the middle of the night. The log file is written as UTF-8.
@@ -58,15 +58,9 @@ LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.
 LIMIT_EPOCH = re.compile(r"limit reached\|(\d{9,})")
 LIMIT_BACKOFF = datetime.timedelta(minutes=30)
 STALL_LIMIT = 2
-LOCAL_CONFIG = os.path.join(ROOT, "Tools", "overnight.local.json")
-DISCORD_ENV = "WASAMI_DISCORD_WEBHOOK"
-DISCORD_NAME = "WASAMI 無人運転"
-# Discord refuses the default "Python-urllib" agent (Cloudflare error 1010).
-DISCORD_AGENT = "DiscordBot (wasami_deception Tools/overnight.py, 1.0)"
-# A message holds at most 2000 characters; keep clear of it (and of emoji counted twice).
-DISCORD_LIMIT = 1900
-# Room for the ``` lines added when a piece is cut inside a code block.
-FENCE_MARGIN = 32
+# PIE's HighResShot writes here (Saved/Screenshots/WindowsEditor/); only this game ever lands in it.
+SCREENSHOT_DIR = os.path.join(ROOT, "Saved", "Screenshots")
+SCREENSHOTS_PER_RUN = 20
 
 
 def now():
@@ -108,101 +102,21 @@ class Log:
             self.file = None
 
 
-def discord_webhook():
-    """The webhook URL and where it came from (never the URL itself in a log line): WASAMI_DISCORD_WEBHOOK, else
-    "discord_webhook" of Tools/overnight.local.json. (None, None) when neither has one."""
-    url = os.environ.get(DISCORD_ENV, "").strip()
-    if url:
-        return url, "環境変数 " + DISCORD_ENV
-    try:
-        with open(LOCAL_CONFIG, encoding="utf-8") as f:
-            url = str(json.load(f).get("discord_webhook") or "").strip()
-    except (OSError, ValueError, AttributeError):
-        url = ""
-    if url:
-        return url, os.path.relpath(LOCAL_CONFIG, ROOT)
-    return None, None
-
-
-def split_message(text, limit=DISCORD_LIMIT):
-    """Cuts text into pieces of at most `limit` characters, at line ends where it can (a longer line is cut where it
-    must). A piece that ends inside a ``` block closes it and the next piece opens it again."""
-    width = limit - FENCE_MARGIN
-    parts = []
-    for line in text.split("\n"):
-        while len(line) > width:
-            parts.append(line[:width])
-            line = line[width:]
-        parts.append(line)
-    pieces = []
-    lines, used, carried, fence = [], 0, 0, None
-    for part in parts:
-        if len(lines) > carried and used + len(part) + 1 > width:
-            pieces.append("\n".join(lines) + ("\n```" if fence else ""))
-            lines, used, carried = ([fence], len(fence) + 1, 1) if fence else ([], 0, 0)
-        lines.append(part)
-        used += len(part) + 1
-        if part.lstrip().startswith("```"):
-            fence = None if fence else part.strip()[:20]
-    pieces.append("\n".join(lines))
-    return [p for p in pieces if p.strip()]
-
-
-def retry_after(error, body):
-    """Seconds Discord asks us to wait (the JSON body of a 429, else the Retry-After header, else 5)."""
-    try:
-        return float(json.loads(body)["retry_after"])
-    except (ValueError, KeyError, TypeError):
-        pass
-    try:
-        return float(error.headers.get("Retry-After"))
-    except (AttributeError, TypeError, ValueError):
-        return 5.0
-
-
-class Discord:
-    """Posts to the Discord webhook. Without a URL it does nothing. A post that fails is written to the log and
-    otherwise ignored: the night goes on without Discord."""
-
-    def __init__(self, url, log):
-        self.url = url
-        self.log = log
-
-    def post(self, text):
-        if not self.url:
-            return
-        for piece in split_message(text.strip() or "（空）"):
-            if not self.send(piece):
-                return
-            time.sleep(1)  # a webhook takes about 5 posts per 2 seconds
-
-    def send(self, content):
-        body = json.dumps({"content": content, "username": DISCORD_NAME, "allowed_mentions": {"parse": []}},
-                          ensure_ascii=False).encode("utf-8")
-        for attempt in range(4):
+def new_screenshots(since):
+    """Images under Saved/Screenshots/ written at or after `since` (epoch seconds), oldest first."""
+    found = []
+    for folder, _, names in os.walk(SCREENSHOT_DIR):
+        for name in names:
+            if os.path.splitext(name)[1].lower() not in discord_notify.IMAGE_TYPES:
+                continue
+            path = os.path.join(folder, name)
             try:
-                request = urllib.request.Request(self.url, data=body, method="POST", headers={
-                    "Content-Type": "application/json", "User-Agent": DISCORD_AGENT})
-                with urllib.request.urlopen(request, timeout=30):
-                    return True
-            except urllib.error.HTTPError as e:
-                detail = e.read().decode("utf-8", errors="replace")
-                if (e.code == 429 or e.code >= 500) and attempt < 3:
-                    time.sleep(min(retry_after(e, detail), 60))
-                    continue
-                self.log.say("Discord に送れない: HTTP %d %s" % (e.code, detail.strip()[:200]))
-                return False
-            except ValueError:
-                # The message of urllib would show the URL, which holds the token.
-                self.log.say("Discord に送れない: webhook の URL の形が正しくない")
-                return False
-            except (urllib.error.URLError, OSError) as e:
-                if attempt < 3:
-                    time.sleep(5)
-                    continue
-                self.log.say("Discord に送れない: %s" % getattr(e, "reason", e))
-                return False
-        return False
+                written = os.path.getmtime(path)
+            except OSError:
+                continue
+            if written >= since:
+                found.append((written, path))
+    return [path for _, path in sorted(found)]
 
 
 def git(*args):
@@ -444,15 +358,16 @@ def main():
     log.say("環境: WASAMI_UNATTENDED=1、終了の時刻 %s、反復の上限 %s、使用量 %s" % (
         stamp(deadline) if deadline else "なし", args.max_iterations if args.max_iterations is not None else "なし",
         ("`%s`" % args.usage_cmd) if args.usage_cmd else "読まない（--no-usage-check）"))
-    url, source = discord_webhook()
+    url, source = discord_notify.webhook_url()
     if args.no_discord:
         url = None
         log.say("Discord: 送らない（--no-discord）")
     elif url:
         log.say("Discord: %s の webhook へ送る%s" % (source, "（dry run なので送らない）" if args.dry_run else ""))
     else:
-        log.say("Discord: 送らない（環境変数 %s も %s も無い）" % (DISCORD_ENV, os.path.relpath(LOCAL_CONFIG, ROOT)))
-    discord = Discord(None if args.dry_run else url, log)
+        log.say("Discord: 送らない（環境変数 %s も %s も無い）" % (
+            discord_notify.ENV, os.path.relpath(discord_notify.LOCAL_CONFIG, ROOT)))
+    discord = discord_notify.Webhook(None if args.dry_run else url, log.say)
     previous = read_status()
     if previous:
         log.say("前回の状態ファイル: result=%s written=%s reason=%s" % (
@@ -509,6 +424,7 @@ def main():
             runs += 1
             before = head()
             stamp_before = status_stamp()
+            run_started = time.time()
             log.say("=== 反復 %d 開始: HEAD %s (%s)" % (runs, before, branch()))
             exit_code, output, seconds = run_claude(command, log)
             after = head()
@@ -521,6 +437,11 @@ def main():
                                                   status.get("reason", ""))) if status else "書かれていない")
             log.say("=== " + footer)
             discord.post("**%s**\n%s" % (footer, output.strip() or "（出力なし）"))
+            shots = new_screenshots(run_started)
+            if shots:
+                discord.post_images(shots[:SCREENSHOTS_PER_RUN], "反復 %d の HighResShot（%d 枚%s）" % (
+                    runs, len(shots),
+                    "、先頭の %d 枚を送る" % SCREENSHOTS_PER_RUN if len(shots) > SCREENSHOTS_PER_RUN else ""))
             if exit_code is None:
                 reason, code = "Claude を起動できない", 3
                 break
