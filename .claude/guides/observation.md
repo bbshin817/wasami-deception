@@ -167,6 +167,7 @@ python Tools/pie.py stop                                    # 必ず止める。
   - 止まったアクタの MID には、リモート実行でパラメータを書ける。材質の値を撮りながら合わせられる（材質を作り直すのは PIE を止めてから）。
   - Python からは PIE のワールドにアクタを出せない（`GameplayStatics` にアクタのスポーンが無い）。だからパワーはキーで使う。
   - 使った道具は `observations/tools/primal_*`（git の外）。`primal_begin.sh` が準備、`primal_freeze.py <位置> <名前>` が止めて撮る、`primal_knobs.py <名前> 名前=値 …` が MID を変えて撮る、`primal_reset.py` がアクタを消して使い直せるようにする。無ければ上の手順で書き直す。
+  - Vanish 用は `observations/tools/vanish_*`（11b3。`vanish_knobs.py` は粒子の部品に MID を作って煙の値を変える）。`HighResShot` には UI が写らないので、縁のビネットは収録で比べる。
   - 閃光の終わり際は、0.001 s の差で画面の明るさが大きく変わる。比べる時刻は、閃光の後に選ぶ。
 
 ## 6. 測る（`Tools/video_probe.py`）
@@ -180,6 +181,7 @@ python Tools/pie.py stop                                    # 必ず止める。
 | 色の移り変わり | `series <mkv> --start T --end T` | テレキネシス（速さ 1）: 2.28 s に (86, 222, 240)、2.48 s に (152, 218, 239) |
 | 一部の明滅 | `series <mkv> --box decal=950,70,995,95 --stat median` | 照準のデカール: R 140 ↔ 237、約 1.0 s 周期 |
 | シェイク中の黒 | `series <mkv> --dark 8` の最後の列の最大 | primal-a 0.099・primal-b 0.075・telekinesis-a 0.045 |
+| 半透明の重なりの色と濃さ | `observations/tools/vanish_fit/fit.py <mkv> <元の始め> <終わり> <効果の始め> <終わり> --region L,T,R,B`（混ざる色 C と画素ごとの不透明度の分布）、`amap.py`（不透明度の絵と時系列） | Vanish の縁: C = (142, 110, 194)、左端の中央値 0.11 |
 | 回転や明滅の周期 | `period <mkv> --box L,T,R,B --min-lag 1 --max-lag 30` | シャード（`orig-shard-spin-long.mkv`、`--box 250,300,420,720`）: 20.9〜21.0 s |
 
 - **時刻**: 時刻は各フレームの pts（秒）で、フレームの番号ではない。`slomo 0.25` で撮ったものは、実時間 = 収録の時間 × 0.25。

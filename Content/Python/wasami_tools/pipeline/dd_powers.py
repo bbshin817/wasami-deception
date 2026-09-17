@@ -136,13 +136,19 @@ WOBBLY_VIGNETTE = "Materials/Special/MM_WobblyVignette"
 WOBBLY_VIGNETTE_MASTER = "/Game/Pipeline/Materials/M_DD_WobblyVignette"
 VIGNETTE_TEXTURE = "UI/Menu/Streaks/T_VignetteNew"
 PERLIN_TEXTURE = "Textures/FX_Textures/T_perlinnoise"
-# The export keeps two Panners (Panner_2, Panner_3) and a LinearSine without their values: placeholders until the
-# vignette is compared with the latest version (the noises' speeds, the sine's period, and how strongly the noise
-# scales the vignette's alpha; the two noises' product averages 0.47).
-WOBBLE_PAN_A = (0.03, 0.02)
-WOBBLE_PAN_B = (-0.02, 0.03)
-WOBBLE_PERIOD = 2.0
-WOBBLE_GAIN = 2.0
+# The export keeps two Panners (Panner_2, Panner_3) and a LinearSine without their values. These are measured from the
+# latest version's recording (observations/README.md, step 11b3): the two noises' speeds (UV a second, the widget's own
+# UVs), the sine's period (each noise's blobs swell every half period, and the two take turns), and the gain.
+WOBBLE_PAN_A = (0.16, 0.006)
+WOBBLE_PAN_B = (0.095, -0.011)
+WOBBLE_PERIOD = 10.4
+WOBBLE_GAIN = 0.67
+# The puff's CameraDepthFade: the export keeps the call without its inputs. The engine's defaults (512, 24) leave the
+# puff, 92 cm ahead, at an eighth of its opacity, where the recording shows a haze as thick as the particles' alpha
+# (observations/README.md, step 11b3), so the fade is whole by about 2.3 m there; any shorter fade looks the same.
+# TODO(仮): the fade's values are only bounded by the recording (要確認「Vanish の煙の位置と明るさ」).
+SMOKE_FADE_LENGTH = 64.0
+SMOKE_FADE_OFFSET = 0.0
 
 # The telepathy's marker (pak_reference_2): the original's master and its instance, and the master holding our estimate.
 TELEPATHY = "Blueprints/Main/Powers/Telepathy/MM_Telepathy"
@@ -356,9 +362,10 @@ def _build_looping_smoke(mat):
     """M_LoopingSmoke1_Sheet (pak_reference_2), estimated. The cook kept its settings (translucent, no separate
     translucency, for sprites; the default lit shading, as the cook writes any other), a ParticleSubUV of
     T_LoopingSmoke_8x8 and a CameraDepthFade call, of ten expressions; it kept no emissive colour, which it keeps where
-    one is connected. The estimate: a base colour of the frame's RGB × the particle's colour (UE saturates a base colour,
-    so the puff's colours over 1 come out near white) and an opacity of the frame's alpha × the particle's alpha × the
-    depth fade (at its defaults)."""
+    one is connected (296 of the export's 408 materials keep one; none keeps a base colour or an opacity). The estimate: a
+    base colour of the frame's RGB × the particle's colour (UE saturates a base colour, so the puff's colours over 1 come
+    out near white) and an opacity of the frame's alpha × the particle's alpha × the depth fade (its Fade Length and Fade
+    Offset are the parameters FadeLength and FadeOffset, SMOKE_FADE_*)."""
     mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
     mat.set_editor_property("used_with_particle_sprites", True)
     g = dd_stage._Graph(mat)
@@ -367,6 +374,8 @@ def _build_looping_smoke(mat):
     particle = g.node(unreal.MaterialExpressionParticleColor, -900, 300)
     g.out(g.multiply(frame, "RGB", particle, "RGB", -600, 0), "", unreal.MaterialProperty.MP_BASE_COLOR)
     fade = dd_assets.function_call(g, "Opacity/CameraDepthFade", -900, 500)
+    dd_assets.connect(g.scalar("FadeLength", SMOKE_FADE_LENGTH, -1150, 500), "", fade, "Fade Length")
+    dd_assets.connect(g.scalar("FadeOffset", SMOKE_FADE_OFFSET, -1150, 600), "", fade, "Fade Offset")
     alpha = g.multiply(frame, "A", particle, "A", -600, 250)
     g.out(g.multiply(alpha, "", fade, "Result", -400, 300), "", unreal.MaterialProperty.MP_OPACITY)
 
@@ -374,9 +383,12 @@ def _build_looping_smoke(mat):
 def _build_wobbly_vignette(mat):
     """MM_WobblyVignette (pak_reference_2), estimated (see WOBBLE_*). The cook kept its settings (the UI domain,
     translucent), its emissive colour (the RGB of T_VignetteNew at a TextureCoordinate: white), a second T_VignetteNew
-    sample, two samples of T_perlinnoise at two Panners and a LinearSine call, of 22 expressions. The estimate: an
-    opacity of the second vignette's alpha × the two panning noises crossfaded by LinearSine(Time) × a gain. The widget's
-    purple tints the white."""
+    sample, two samples of T_perlinnoise at two Panners and a LinearSine call, of 22 expressions. The estimate, fitted to
+    the latest version's recording (observations/README.md, step 11b3): an opacity of the second vignette's alpha ×
+    Lerp(A × (1 − s), B × s, s) × a gain, where A and B are the two noises panning over the widget's UVs and s is
+    LinearSine(Time, WobblePeriod). Each noise so fades with s squared: its blobs swell when s is at its end and all but
+    go when s is halfway, which the recording shows twice a period, with the two noises' blobs taking turns. The widget's
+    purple tints the white (the recording and PIE both blend toward sRGB (142, 110, 194))."""
     g = dd_stage._Graph(mat)
     vignette = unreal.load_asset(dd_assets.asset_path(VIGNETTE_TEXTURE))
     noise = unreal.load_asset(dd_assets.asset_path(PERLIN_TEXTURE))
@@ -398,7 +410,11 @@ def _build_wobbly_vignette(mat):
     sine = dd_assets.function_call(g, "Utility/LinearSine", -1250, 500, dd_assets.FUNCTIONS_02)
     dd_assets.connect(g.node(unreal.MaterialExpressionTime, -1500, 500), "", sine, "Value")
     dd_assets.connect(g.scalar("WobblePeriod", WOBBLE_PERIOD, -1500, 600), "", sine, "Period")
-    wobble = g.lerp(noises[0], "R", noises[1], "R", sine, "Linear Sine", -950, 150)
+    fade_a = g.node(unreal.MaterialExpressionOneMinus, -1100, 600)
+    dd_assets.connect(sine, "Linear Sine", fade_a, "")
+    part_a = g.multiply(noises[0], "R", fade_a, "", -1000, 50)
+    part_b = g.multiply(noises[1], "R", sine, "Linear Sine", -1000, 300)
+    wobble = g.lerp(part_a, "", part_b, "", sine, "Linear Sine", -850, 150)
     edge = g.node(unreal.MaterialExpressionTextureSample, -1250, -100)
     edge.set_editor_property("texture", vignette)
     shaped = g.multiply(edge, "A", wobble, "", -750, 0)
