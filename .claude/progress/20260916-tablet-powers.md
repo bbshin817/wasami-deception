@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/tablet-powers
 base: ef11ea6
 started: 2026-09-16 19:47
-updated: 2026-09-17 16:10
+updated: 2026-09-17 14:40
 ---
 
 # タブレットから使える特殊効果（パワー）をすべて実装する
@@ -142,7 +142,7 @@ updated: 2026-09-17 16:10
 
 ## 再開時の注意
 
-- **2026-09-17 16:10 ごろ（ステップ 10b2 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE なし、未保存なし〈取り込みの後に Zone 1 が未保存になったので数えてから保存した〉）。取り込み `import_dd_powers` と `import_dd_shards` は済み（`P_ky_forceField_Telekinesis` あり）。ビルドは 10b1 のまま最新（C++ は変えていない）。MCP はつながっている。操作エージェントは使っていない。確認の台本は `$TEMP/wasami/tk_check.py`（セッションをまたいで残るとは限らない。粒子の `describe`・材質の読み戻し・未保存）。
+- **2026-09-17 14:40 ごろ（ステップ 10b2 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE なし、未保存なし〈取り込みの後に Zone 1 が未保存になったので数えてから保存した〉）。取り込み `import_dd_powers` と `import_dd_shards` は済み（`P_ky_forceField_Telekinesis` あり）。ビルドは 10b1 のまま最新（C++ は変えていない）。MCP はつながっている。操作エージェントは使っていない。確認の台本は `$TEMP/wasami/tk_check.py`（セッションをまたいで残るとは限らない。粒子の `describe`・材質の読み戻し・未保存）。
 - **2026-09-17 14:50 ごろ（ステップ 10b1 の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE なし、`/Game` の未保存なし。`/Temp/Untitled_1`・`_3` はテストの一時的なワールドで無害〈症状索引〉）。ビルドは最新（警告なし）。操作エージェントは止めた（エディタを前面にしてテストを走らせた後）。MCP はつながっている。取り込み `import_dd_powers` は済み（`textures` 14・`meshes` 2）。`P_ky_forceField_Telekinesis` はまだ作っていない（一時的な組み立ての確認だけ。確認の台本は `$TEMP/wasami/dryrun_tk.py` にあるが、セッションをまたいで残るとは限らない）。
 - **2026-09-17 13:15（ステップ 10a の終わり）**: エディタは起動している（セッション 1、`L_Hospital_Zone1`、PIE は止めた、未保存なし）。操作エージェントは止めた。ビルドは最新（警告なし）。MCP はつながっている（テストは `AutomationTestToolset.AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter` の `StartsWith:Wasami`）。Claude のシェルはセッション 0（`editor_cycle.py` の表示）。**このリポジトリのテキストは LF**（`.gitattributes` の `eol=lf`）。Git Bash の `grep -c $'\r'` は全行に一致して当てにならないので、改行は Python でバイト列を数えて確かめる。
 - **PIE でテレキネシスを確かめる手順**（10a で使った。scratchpad の `tk_probe.py` はセッションごとに消えるので、要るときは作り直す）: エディタを前面にする（起動直後とテストの後はメッセージログの小窓が出る。× は (2200, 410)。VS Code が前面なら `--allow Code.exe --allow UnrealEditor.exe`）→ `editor_request_begin_play()` → プレイヤーを (0, 700, 90.15)・ヨー −90（半径 3000 にシャード 8 個）か (2, −10500, 90.15)・ヨー −90（41 個）に置く → ビューポート (2620, 600) をクリック → Space、1 × 4（左が Telekinesis）、Space → 毎フレームの記録（`register_slate_post_tick_callback`。`powers = player.get_component_by_class(unreal.WasamiPowerComponent)` の `get_gauge_percent` / `is_power_available` / `is_using_power`（`unreal.WasamiPower.TELEKINESIS`）、`get_all_actors_of_class(world, unreal.WasamiTelekinesisPower)` の `timeline_position`・`post_process` / `post_process1` の `blend_weight`、シャードの数、カメラの位置）を始めて Q。音は記録の中から `execute_console_command(world, 'au.Debug.ListWaves')`（ログに波形と音量）。収録は `desktop.py record` が `ddagrab` で止まったので、`console_session.py` で gdigrab の ffmpeg をセッション 1 に起動した（検証のガイドに書いた。ffmpeg の端末が前面に来るので、ビューポートを `--allow WindowsTerminal.exe --allow UnrealEditor.exe` でクリックしてから Q）。ビューポートは (2046, 217) の 1152x652。
