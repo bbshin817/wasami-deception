@@ -160,11 +160,16 @@ TELEPATHY_MASTER = "/Game/Pipeline/Materials/M_DD_Telepathy"
 TELEPATHY_NOISE_A = "ThirdParty/AdvancedMagicFX13/Textures/T_ky_noise16"
 TELEPATHY_NOISE_B = "ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise"
 # The export keeps the samples' Panners (Panner_0, Panner_1) without their speeds, and nothing of how the noises and
-# the radial gradient make the opacity: placeholders until the marker is compared with the latest version (the speeds,
-# and the gain that makes the dim noises show).
+# the radial gradient make the opacity. Step 11b5 fitted the gain and the texture coordinate's tiling to the latest
+# version's recorded markers (observations/README.md, "Telepathy の印の見直し"): the UI's additive blend adds
+# sRGB(opacity) to the screen, and the recorded markers add a soft cloud of opacity about 0.02 (at most about 0.07)
+# whose detail is coarser than the noises at a tiling of 1.
+# TODO(仮): the speeds only fit how fast the recorded cloud changes (their direction is not known); the gain (0.38 to
+# 0.42 fit) and the tiling (0.5 to 0.7) are fitted, not the original's values.
 TELEPATHY_PAN_A = (0.05, -0.1)
 TELEPATHY_PAN_B = (-0.04, -0.15)
-TELEPATHY_GAIN = 3.0
+TELEPATHY_GAIN = 0.4
+TELEPATHY_UV_TILING = 0.6
 # MM_Telepathy_Inst's values its parent has (its Size is not one of MM_Telepathy's parameters, and
 # RefractionDepthBias is the engine's, which a UI material does not use).
 TELEPATHY_INST_SCALARS = ("Speed",)
@@ -432,12 +437,14 @@ def _build_telepathy(mat):
     """MM_Telepathy (pak_reference_2), estimated (see TELEPATHY_*). The cook kept its settings (the UI domain,
     additive), its emissive colour (the Color parameter's RGB, red), the parameters Tiling and Speed, a sample of
     T_ky_noise16 (linear) at Panner_0 and one of T_ky_noise at Panner_1, and a RadialGradientExponential call, of 21
-    expressions (the ExponentialDensity it lists is the gradient's own). The estimate: both noises read at TexCoord 0 ×
-    Tiling, panning by Time × Speed, and an opacity of saturate((the noises' R summed) × the gradient × a gain). UI
-    additive blending adds the colour × the opacity (× the widget's opacity)."""
+    expressions (the ExponentialDensity it lists is the gradient's own). The estimate: both noises read at TexCoord 0
+    (tiled TELEPATHY_UV_TILING) × Tiling, panning by Time × Speed, and an opacity of saturate((the noises' R summed) ×
+    the gradient × a gain). UI additive blending adds the colour × the opacity (× the widget's opacity)."""
     g = dd_stage._Graph(mat)
     g.out(g.vector("Color", (1.0, 0.0, 0.0, 1.0), -600, -350), "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     coords = g.node(unreal.MaterialExpressionTextureCoordinate, -1700, 0)
+    coords.set_editor_property("u_tiling", TELEPATHY_UV_TILING)
+    coords.set_editor_property("v_tiling", TELEPATHY_UV_TILING)
     tiled = g.multiply(coords, "", g.scalar("Tiling", 1.0, -1700, 100), "", -1500, 50)
     time = g.node(unreal.MaterialExpressionTime, -1700, 250)
     flow = g.multiply(time, "", g.scalar("Speed", 1.0, -1700, 350), "", -1500, 300)

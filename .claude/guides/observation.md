@@ -154,6 +154,9 @@ python Tools/pie.py stop                                    # 必ず止める。
 - **照準**（`orig-aim-a` と同じ絵）: `place 15 385 --yaw -90 --pitch -26.7` の後に E（右の枠を `2` でテレポートにしてから）。本家と同じ Lv3 にし、距離はリモート実行で `WasamiPowerComponent.adjust_teleport_distance(-1)` を 10 回（最短）→ `+1` を 3 回（**512.5 cm**。本家は初期値 1.0 からホイール 7 目盛り。11b4 で輪の大きさが本家と重なった）。`HighResShot 3440x1440` で床の市松の十字が本家と同じ大きさになる。取り消しは同じ側の E。手順は `observations/tools/aim_begin.sh`。
 - **比べられるもの**: ビューポートの縦横比は本家（21:9）と違う。色と時間は比べられるが、画面上の位置と大きさは比べられない。
   - 位置を比べるときは `python Tools/pie.py cmd "HighResShot 3440x1440"` で静止画を撮る（`Saved/Screenshots/WindowsEditor/`）。
+  - **UI（`HighResShot` に写らない）を本家と同じ縦横比で撮るとき**（11b5）は、別窓の PIE にする: MCP の `ConfigSettingsToolset.SetSectionProperties`（`Editor`・`LevelEditor`・`PlayIn`）で `NewWindowWidth` 2580・`NewWindowHeight` 1080・`CenterNewWindow` 真にして、`EditorAppToolset.StartPIE` を `playMode` `PlayMode_InEditorFloating` で始める（`pie.py start` はビューポートにしか出せない）。中身は 2580 × 1082、画面の (433, 191) から。UI の DPI の倍率は 1.0 で、本家（1440 の高さで 1.333）のちょうど 0.75 倍。**終わったら 1280・720・偽に戻す**（ユーザーの設定）。手順は `observations/tools/tele_fit/begin.sh`。
+  - PIE の UMG の部品（`WidgetTree` の中）は Python から名前で引けない。`unreal.ObjectIterator(unreal.Image)` で回し、`get_typed_outer(unreal.UserWidget)` が目当てのウィジェットのものを取る（`observations/tools/tele_fit/trackers.py`）。
+  - UI の加算の材質は、Emissive × Opacity を sRGB にしてから画面に足される（UE 5.8 の `SlateElementPixelShader.usf`）。収録の足された値から不透明度に戻すときは sRGB を外す。
 - **敵の代わり**: 敵（作業一覧の項目 4）ができるまでは、仮の的を使う。リモート実行で `unreal.WasamiTestEnemy.spawn_test_enemy(<ゲームのワールド>, <位置>)` を呼んで出す。
 - **パワーを使い直す**: リモート実行で `WasamiPowerComponent` の `reset_powers()`（再使用の待ちを消す）の後、`use_power(True)`（左の枠）でキーを送らずに使える。
 - **値の読み取り**: 状態（位置・時刻・時間の遅さ）は `python Tools/pie.py state` で読める。演出の中の値（ゲージ・コンポーネント）は、時刻と一緒にリモート実行で読む。

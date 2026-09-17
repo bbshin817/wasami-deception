@@ -353,7 +353,7 @@ updated: 2026-09-17
 | `/Game/DD/ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise` | Telepathy の印のノイズ B（512²、どのチャンネルも雲状。sRGB・`TC_Default`〈DXT1〉・`TEXTUREGROUP_Effects`。原作の cook も同じ） |
 | `/Game/DD/Blueprints/Main/Powers/Telepathy/MM_Telepathy` | `M_DD_Telepathy` のインスタンス。原作のパラメータ `Color` (1, 0, 0, 1)・`Tiling` 1・`Speed` 1 |
 | `/Game/DD/Blueprints/Main/Powers/Telepathy/MM_Telepathy_Inst` | `MM_Telepathy` のインスタンス（原作と同じ親子）。`Speed` 1。原作の `Size` 1（親に無いパラメータ）・`RefractionDepthBias` 0（UI では使われない）と、親と同じになる `BlendMode` Additive・`ShadingModel` Unlit の上書きは写していない |
-| `/Game/Pipeline/Materials/M_DD_Telepathy` | **推定**（`MM_Telepathy`。cook に残るのは設定〈UI・Additive〉、Emissive = `Color` の RGB〈原作どおり〉、パラメータ `Tiling`・`Speed`、`Panner_0` を座標にした `T_ky_noise16` のサンプル〈Linear Color〉、`Panner_1` を座標にした `T_ky_noise` のサンプル〈Color〉、`RadialGradientExponential` の呼び出し、式が 21 個あったこと。`MaterialFunctionInfos` の `ExponentialDensity` は `RadialGradientExponential` の中の依存）。座標 = TexCoord 0 × `Tiling`、パンの時間 = `Time` × `Speed`、Opacity = `saturate((A の R + B の R) × RadialGradientExponential〈既定〉× Gain)`。**パンの速さ（(0.05, −0.1)・(−0.04, −0.15)）と `Gain` 3 は仮の値**（`dd_powers.TELEPATHY_*`）。UI の加算は Emissive × saturate(Opacity) × ウィジェットの色と不透明度（Substrate でも同じ。`SubstrateCreateUIMaterial`）。進捗記録のステップ 11 で最新版と見比べる |
+| `/Game/Pipeline/Materials/M_DD_Telepathy` | **推定**（`MM_Telepathy`。cook に残るのは設定〈UI・Additive〉、Emissive = `Color` の RGB〈原作どおり〉、パラメータ `Tiling`・`Speed`、`Panner_0` を座標にした `T_ky_noise16` のサンプル〈Linear Color〉、`Panner_1` を座標にした `T_ky_noise` のサンプル〈Color〉、`RadialGradientExponential` の呼び出し、式が 21 個あったこと。`MaterialFunctionInfos` の `ExponentialDensity` は `RadialGradientExponential` の中の依存）。座標 = TexCoord 0（繰り返し 0.6）× `Tiling`、パンの時間 = `Time` × `Speed`、Opacity = `saturate((A の R + B の R) × RadialGradientExponential〈既定〉× Gain)`（`Gain` 0.4）。UI の加算は Emissive × saturate(Opacity) × ウィジェットの色と不透明度で、画面には sRGB にしてから足される（Substrate でも同じ。`SubstrateCreateUIMaterial`）。**`Gain` 0.4 と繰り返し 0.6 は 2026-09-17（ステップ 11b5）に最新版の収録から当てはめた値**: 本家の印が足す赤を不透明度に戻すと、中央値 約 0.02・最大 約 0.07 のなめらかな雲だった（前の `Gain` 3 は中がほぼ飽和した明るい丸）。候補の式を numpy で描き、大きさに依らない統計（しきい値ごとの面積比・足す赤の分布・縁の凹凸・細かさ）を本家と比べると、この式の `Gain` 0.38〜0.42・繰り返し 0.5〜0.7 がいちばん近かった（`observations/README.md` の「Telepathy の印の見直し」）。繰り返し 1 のままでは、本家より細かい筋と穴が出る。**グラフの形・この 2 つの値・パンの速さ（(0.05, −0.1)・(−0.04, −0.15)。本家の雲の変わる速さとは合うが、向きは分からない）は推定**（`dd_powers.TELEPATHY_*`） |
 | `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04` | Primal Fear の音（1.710 秒、44.1 kHz。SoundWave の値は既定のまま） |
 | `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop` | Primal Fear のシェイク（`LegacyCameraShake`。振動 0.5 秒・ブレンドイン 0・アウト 0.5、位置 X 2/50・Y 2/35・Z 3/10〈始まりの位相は乱数、正弦波〉、回転と FOV なし。倍率 25 で鳴らす） |
 | `/Game/DD/Textures/05_Circus/T_05_PortalMaps` | Primal の球（2048²、R に星状の粒・G に中心の丸い光・B に雲状のノイズ。sRGB なし・`TC_Default`〈DXT1〉・`TEXTUREGROUP_World`。原作の cook も DXT1・sRGB なし・12 ミップ） |
@@ -520,13 +520,21 @@ updated: 2026-09-17
 - **初回だけ**、新しい材質のシェーダーをその場でコンパイルして描画が約 0.1 秒ずつ 3 回止まった（画面の左上に「シェーダーをコンパイルしています」。2 回目は止まらない。9b の閃光と同じ）。
 - PIE の間、ログに警告やエラーは無かった。色・明るさ・大きさ・速さは推定の材質のまま（本家と見比べていない。進捗記録のステップ 11）。PIE は止めた。
 
+### Telepathy の印の見直し（2026-09-17、ステップ 11b5、PIE の別窓 2580 × 1080、`L_Hospital_Zone1` の開始地点。キーは `Tools/desktop.py`、値はリモート実行。詳細は `observations/README.md` の「Telepathy の印の見直し」）
+- エンジンの `RadialGradientExponential`（既定の入力）を描画先に描いて読むと、`1 − exp(−(2.33 × (1 − 距離 / 0.5))²)`（半径の外は 0）だった。
+- 模様を止めた印（`Tiling` 1・`Speed` 0・角度 0、箱 229.8 px）の足す赤は、numpy の予測と画素ごとに平均 1.2 段階で合った。
+- 材質を作り直した後（`Gain` 0.4・繰り返し 0.6）、仮の的 5 体（9 m・右前 4.3 m・37 m・60 m の左右）の印を 12 秒撮った（`observations/ours/pie-telepathy-f.mkv`）。足す赤の中央値は 31〜36（本家 36〜39）、90 % 点は 52〜64（本家 58〜64）、しきい値 20 を超える面積の割合は 0.76〜0.78（本家 0.80〜0.81）。前の `Gain` 3 では、模様を止めた印の足す赤の平均が 93 で、中はほぼ飽和していた。
+- `M_DD_Telepathy` はエラーなくコンパイルされた（ノード 17、TexCoord の繰り返し 0.6）。`MM_Telepathy_Inst` の `Gain` は 0.4。PIE を止め、`t.MaxFPS` と PIE の別窓の設定（1280 × 720・中央に置かない）を戻し、未保存なし。C++ は変えていない。
+
 ## 既知の制約・注意点
 - **倍率 25 のシェイク（Primal Fear・テレキネシス）の間、下げたタブレットが視界を横切って黒いフレームが出る**（2026-09-17、テレキネシスの収録で見つけた）。シェイクは視点だけを最大 50 / 50 / 75 cm 動かし、カメラの子のタブレット（下げた状態で視点の前 35 cm・下 40 cm・右 22 cm。02 記録。本家の値で、本家も隠さない）は動かないため。仕組みも値も本家の写しなので直していない。**ステップ 11a・11b1（2026-09-17）の測定では、本家にも本作にも見えなかった**（`video_probe.py series --dark 8` の下半分の暗い画素の割合: 本家 primal-a 0.045 → 0.099・telekinesis-a 0.044 → 0.045、本作 primal-a 0.030 → 0.042・telekinesis-a / b 0.030 のまま。本作は 1 秒約 48 枚 × slomo 0.25 で撮った。`observations/README.md`）。10a で見えた黒は、その後の変更で出なくなったか、刻みの違いによる。見直しは要らないと決めた。
 - **テレキネシスの力場の粒子の材質 4 つはグラフが推定**（オーラと地面の輪のパンの速さなどは仮の値）。敵はテレキネシスの対象ではない（本家どおり）。
   - 星屑は 2026-09-17（ステップ 11b4）に最新版の収録と見比べて直した（上の `M_DD_KyStarDust`）。
   - **力場の間の画面は本家より明るい**（ステップ 11b4。Lv4・速さ 0.25・画質「高」で、発動の約 0.7 秒後の画面全体の平均が本家 (95〜99, 141〜147, 186〜192)、本作 (123〜127, 174〜176, 216〜218)）。明るさの大半は球の粒子の灯（`ParticleModuleLight`。値は原作どおり、単純な灯なので画質「高」でも出る）で、灯を切ると本家よりずっと暗い。線形の明るさで比べると、本家の灯の寄与は本作の約 0.5〜0.7 倍。GI は無く反射は SSR なので Lumen の二次光ではない。UE 4.24 と 5.8 の単純な灯の扱いの違いは確かめていない（UE 4.24 のソースは手元に無い）。原作の値は変えていない（進捗記録の要確認）。
   - 本家の力場の終わりに見える、端のぎざぎざの明るい破片（球の電気の筋）は本作では少ない。
-- **Telepathy の印の材質 `M_DD_Telepathy` はグラフが推定**（ノイズのつなぎ方・パンの速さ・`Gain` は仮の値）。印の画面上の大きさ（500 × 500 の枠に広がること、DPI の拡大率）も本家と見比べていない。進捗記録のステップ 11 で最新版の病院（ナースが出る）と見比べる。敵（M4）が無いので、印は仮の的でしか確かめていない。
+- **Telepathy の印の材質 `M_DD_Telepathy` はグラフが推定**（ノイズのつなぎ方と、`Gain`・繰り返し・パンの速さは収録からの当てはめ）。2026-09-17（ステップ 11b5）に最新版の収録と見比べ、濃さと模様の細かさを合わせた（上の表）。本家の雲は、縁にこぶのある塊（丸より少しいびつ）で、本作は丸に近い。敵（M4）が無いので、印は仮の的でしか確かめていない。
+  - 印の画面上の大きさは、本家と同じ縦横比の別窓の PIE（2580 × 1080、UI の DPI の倍率 1.0）で、`500 × 箱の拡縮 × 0.95 × DPI` どおりだった。本家の印の大きさは、ナースの距離が分からないので直接は比べられない。雲の直径が箱の約 0.87 倍になる、という形では合う。
+  - 表示の式（背景 + 255 × sRGB(不透明度)。UE 5.8 の `SlateElementPixelShader.usf`）は、模様を止めた印（`Tiling` 1・`Speed` 0・角度 0）の PIE の画面と numpy の予測が画素ごとに平均 1.2 段階で合うことで確かめた。UE 4.24 も同じ式と見ている（UE 4.24 のソースは手元に無い）。
 - Telepathy の印の `Appear` が角度を触らないこと（2D 変換のトラックはデータのあるチャンネルだけを書く）と、アニメの最後の評価の時刻は UE 5.8 のソースに拠る。UE 4.24 のソースは手元に無い（本家も乱数の角度を入れているので、角度は残る前提）。
 - ユニティビルドで無名名前空間の名前がぶつからないよう、定数や補助の名前はファイルごとに固有にする（ステップ 8 でファイルが増えてまとまり方が変わり、Vanish と Primal の定数がぶつかった）。
 - **Vanish の煙の材質 `M_DD_LoopingSmoke` とビネットの材質 `M_DD_WobblyVignette` はグラフが推定**。敵（M4）が無いので、見えない扱いは応答の値と仮の的への `PlayerVanish` でしか確かめていない。

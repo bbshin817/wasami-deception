@@ -33,7 +33,7 @@ Teleport の照準。床に赤く脈打つ円と、渦を巻く斬撃の輪が�
 
 ![Teleport の照準の輪](../../observations/ours/note/03-teleport.jpg)
 
-Telepathy。壁の向こうの相手に赤い印が付きます（敵はまだ居ないので、写っているのは仮の的）。
+Telepathy。壁の向こうの相手に、赤い煙のような薄い印が付きます（敵はまだ居ないので、写っているのは仮の的）。
 
 ![Telepathy の赤い印](../../observations/ours/note/04-telepathy.jpg)
 
@@ -68,6 +68,7 @@ Telekinesis を使った瞬間。画面が青く光り、周りのシャード�
 
 ## 更新履歴
 
+- 2026-09-17: Telepathy の印を原作の実機に合わせて、薄い赤い煙に調整
 - 2026-09-17: Teleport の照準の輪と Telekinesis の光の粒を原作の実機に合わせて調整
 - 2026-09-17: Primal Fear と Vanish の見た目を原作の実機に合わせて調整
 - 2026-09-17: Telekinesis の青い力場の演出を追加
