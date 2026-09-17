@@ -14,6 +14,7 @@
   1. コミットまで終える（記録の更新を含む。`.claude/guides/progress-tracking.md`）。
   2. 状態ファイル `Intermediate/Overnight/status.json` を書く: `{"result": "continue" | "stop", "reason": "<理由>", "step": "<終えたステップ>", "commit": "<HEAD の短縮ハッシュ>", "written": "<ISO 8601>"}`。`continue` はまだやることがある、`stop` はこの夜はここまで（理由は必ず書く: 作業が全部終わった / 要確認で進めない / 直せない失敗 / 予算）。
   3. 最後の応答に「何が終わったか・次に何をするか・要確認の件数」を 1〜3 行書く（駆動役がログに残す）。
+- **Discord への通知**（2026-09-17 のユーザーの指示「無人運転中の Claude の応答を、Discord webhook に投げてください」）: 駆動役が、開始・反復ごとの Claude の応答（その反復の終わりの 1 行つき）・待機・終わりのまとめを Discord の webhook へ送る。URL は環境変数 `WASAMI_DISCORD_WEBHOOK`、無ければ `Tools/overnight.local.json` の `discord_webhook`（git の外。URL を知っていれば誰でも投稿できるので、リポジトリ・記録・コミットには書かない）。`--no-discord` で送らない。送れなくても駆動役は止まらない（ログに 1 行書く）。Claude の最後の応答がそのまま届くので、上の 3. の 1〜3 行は朝に Discord で読める形にする。
 - **駆動役が止める条件**（Claude は気にしなくてよい）: 状態ファイルが `stop`、反復の前後で HEAD が動かないことが 2 回続いた（進捗なし）、予算（下の「予算」）、`--max-iterations` / `--until`。
 
 ## 何を作業するか
@@ -72,5 +73,5 @@
 ## 朝の見方（ユーザー向け）
 
 1. 新しいセッションを開くと、SessionStart hook が「前回の無人運転の結果（状態ファイル）」と「未完了の記録の要確認」を出す。
-2. 生の足跡は `Intermediate/Overnight/<YYYYMMDD-HHMM>.log`（駆動役の起動ごとに 1 つ。反復ごとの Claude の最後の応答・HEAD・使用量と、末尾のまとめ）。
+2. 夜の間の様子は Discord（開始・反復ごとの応答・待機・まとめ）で、生の足跡は `Intermediate/Overnight/<YYYYMMDD-HHMM>.log`（駆動役の起動ごとに 1 つ。反復ごとの Claude の最後の応答・HEAD・使用量と、末尾のまとめ）。
 3. 要確認に答えると、Claude がその場で決定事項に移して仮の値を直す。

@@ -20,6 +20,12 @@ Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log wit
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
 printed at the end and appended to the log.
 
+Discord: the start, the reply of Claude after each run (with the run's footer line), the waits and the summary are also
+posted to a Discord webhook. The URL is read from the environment variable WASAMI_DISCORD_WEBHOOK, else from
+"discord_webhook" in Tools/overnight.local.json (ignored by git: whoever knows the URL can post); with neither, or with
+--no-discord, nothing is posted. A dry run only says whether it would post. A post that fails is logged and the night
+goes on.
+
 Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop); 2 budget or usage not readable;
 3 no progress or Claude could not be started; 4 bad arguments; 130 interrupted.
 """
@@ -33,6 +39,8 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 
 # The replies of Claude and the records hold characters this console's code page (cp932) cannot show: print what we
 # can rather than dying with a UnicodeEncodeError in the middle of the night. The log file is written as UTF-8.
@@ -50,6 +58,15 @@ LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.
 LIMIT_EPOCH = re.compile(r"limit reached\|(\d{9,})")
 LIMIT_BACKOFF = datetime.timedelta(minutes=30)
 STALL_LIMIT = 2
+LOCAL_CONFIG = os.path.join(ROOT, "Tools", "overnight.local.json")
+DISCORD_ENV = "WASAMI_DISCORD_WEBHOOK"
+DISCORD_NAME = "WASAMI 無人運転"
+# Discord refuses the default "Python-urllib" agent (Cloudflare error 1010).
+DISCORD_AGENT = "DiscordBot (wasami_deception Tools/overnight.py, 1.0)"
+# A message holds at most 2000 characters; keep clear of it (and of emoji counted twice).
+DISCORD_LIMIT = 1900
+# Room for the ``` lines added when a piece is cut inside a code block.
+FENCE_MARGIN = 32
 
 
 def now():
@@ -89,6 +106,103 @@ class Log:
         if self.file:
             self.file.close()
             self.file = None
+
+
+def discord_webhook():
+    """The webhook URL and where it came from (never the URL itself in a log line): WASAMI_DISCORD_WEBHOOK, else
+    "discord_webhook" of Tools/overnight.local.json. (None, None) when neither has one."""
+    url = os.environ.get(DISCORD_ENV, "").strip()
+    if url:
+        return url, "環境変数 " + DISCORD_ENV
+    try:
+        with open(LOCAL_CONFIG, encoding="utf-8") as f:
+            url = str(json.load(f).get("discord_webhook") or "").strip()
+    except (OSError, ValueError, AttributeError):
+        url = ""
+    if url:
+        return url, os.path.relpath(LOCAL_CONFIG, ROOT)
+    return None, None
+
+
+def split_message(text, limit=DISCORD_LIMIT):
+    """Cuts text into pieces of at most `limit` characters, at line ends where it can (a longer line is cut where it
+    must). A piece that ends inside a ``` block closes it and the next piece opens it again."""
+    width = limit - FENCE_MARGIN
+    parts = []
+    for line in text.split("\n"):
+        while len(line) > width:
+            parts.append(line[:width])
+            line = line[width:]
+        parts.append(line)
+    pieces = []
+    lines, used, carried, fence = [], 0, 0, None
+    for part in parts:
+        if len(lines) > carried and used + len(part) + 1 > width:
+            pieces.append("\n".join(lines) + ("\n```" if fence else ""))
+            lines, used, carried = ([fence], len(fence) + 1, 1) if fence else ([], 0, 0)
+        lines.append(part)
+        used += len(part) + 1
+        if part.lstrip().startswith("```"):
+            fence = None if fence else part.strip()[:20]
+    pieces.append("\n".join(lines))
+    return [p for p in pieces if p.strip()]
+
+
+def retry_after(error, body):
+    """Seconds Discord asks us to wait (the JSON body of a 429, else the Retry-After header, else 5)."""
+    try:
+        return float(json.loads(body)["retry_after"])
+    except (ValueError, KeyError, TypeError):
+        pass
+    try:
+        return float(error.headers.get("Retry-After"))
+    except (AttributeError, TypeError, ValueError):
+        return 5.0
+
+
+class Discord:
+    """Posts to the Discord webhook. Without a URL it does nothing. A post that fails is written to the log and
+    otherwise ignored: the night goes on without Discord."""
+
+    def __init__(self, url, log):
+        self.url = url
+        self.log = log
+
+    def post(self, text):
+        if not self.url:
+            return
+        for piece in split_message(text.strip() or "（空）"):
+            if not self.send(piece):
+                return
+            time.sleep(1)  # a webhook takes about 5 posts per 2 seconds
+
+    def send(self, content):
+        body = json.dumps({"content": content, "username": DISCORD_NAME, "allowed_mentions": {"parse": []}},
+                          ensure_ascii=False).encode("utf-8")
+        for attempt in range(4):
+            try:
+                request = urllib.request.Request(self.url, data=body, method="POST", headers={
+                    "Content-Type": "application/json", "User-Agent": DISCORD_AGENT})
+                with urllib.request.urlopen(request, timeout=30):
+                    return True
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode("utf-8", errors="replace")
+                if (e.code == 429 or e.code >= 500) and attempt < 3:
+                    time.sleep(min(retry_after(e, detail), 60))
+                    continue
+                self.log.say("Discord に送れない: HTTP %d %s" % (e.code, detail.strip()[:200]))
+                return False
+            except ValueError:
+                # The message of urllib would show the URL, which holds the token.
+                self.log.say("Discord に送れない: webhook の URL の形が正しくない")
+                return False
+            except (urllib.error.URLError, OSError) as e:
+                if attempt < 3:
+                    time.sleep(5)
+                    continue
+                self.log.say("Discord に送れない: %s" % getattr(e, "reason", e))
+                return False
+        return False
 
 
 def git(*args):
@@ -225,10 +339,12 @@ def limit_reset(output, exit_code):
     return None
 
 
-def sleep_until(when, deadline, log):
+def sleep_until(when, deadline, log, discord, why):
     """Sleeps until `when` (but never past the deadline). Returns False when the deadline came first."""
     target = when if deadline is None or when <= deadline else deadline
-    log.say("待機: %s まで" % stamp(target))
+    text = "待機: %s まで（%s）" % (stamp(target), why)
+    log.say(text)
+    discord.post(text)
     while True:
         rest = (target - now()).total_seconds()
         if rest <= 0:
@@ -271,20 +387,23 @@ def run_claude(command, log):
     return proc.returncode, "".join(chunks), time.time() - started
 
 
-def summarize(log, runs, reason, status, code):
+def summarize(log, discord, runs, reason, status, code):
     pending = pending_lines()
-    log.say("--- まとめ ---")
-    log.say("反復: %d 回、終了の理由: %s" % (runs, reason))
+    lines = ["反復: %d 回、終了の理由: %s" % (runs, reason)]
     if status:
-        log.say("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
+        lines.append("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
             status.get("result", "?"), status.get("step", ""), status.get("commit", ""), status.get("reason", "")))
     else:
-        log.say("最後の状態ファイル: （この夜は書かれていない）")
-    log.say("HEAD: %s (%s)" % (head(), branch()))
-    log.say("要確認（ユーザー）: %d 件" % len(pending))
+        lines.append("最後の状態ファイル: （この夜は書かれていない）")
+    lines.append("HEAD: %s (%s)" % (head(), branch()))
+    lines.append("要確認（ユーザー）: %d 件" % len(pending))
     for name, line in pending:
-        log.say("  %s: %s" % (name, line))
-    log.say("ログ: %s" % log.path)
+        lines.append("  %s: %s" % (name, line))
+    lines.append("ログ: %s" % log.path)
+    log.say("--- まとめ ---")
+    for line in lines:
+        log.say(line)
+    discord.post("**無人運転を終えた**（終了コード %d）\n%s" % (code, "\n".join(lines)))
     return code
 
 
@@ -300,6 +419,7 @@ def main():
                     help="how to start Claude Code (a command line; the prompt and modes are appended)")
     ap.add_argument("--prompt", default="/continue", help="what each run is asked (default /continue)")
     ap.add_argument("--pause", type=float, default=5.0, metavar="SEC", help="pause between runs (default 5)")
+    ap.add_argument("--no-discord", action="store_true", help="do not post to the Discord webhook")
     args = ap.parse_args()
 
     if args.claude == "claude" and os.environ.get("CLAUDECODE") and not args.dry_run:
@@ -324,6 +444,15 @@ def main():
     log.say("環境: WASAMI_UNATTENDED=1、終了の時刻 %s、反復の上限 %s、使用量 %s" % (
         stamp(deadline) if deadline else "なし", args.max_iterations if args.max_iterations is not None else "なし",
         ("`%s`" % args.usage_cmd) if args.usage_cmd else "読まない（--no-usage-check）"))
+    url, source = discord_webhook()
+    if args.no_discord:
+        url = None
+        log.say("Discord: 送らない（--no-discord）")
+    elif url:
+        log.say("Discord: %s の webhook へ送る%s" % (source, "（dry run なので送らない）" if args.dry_run else ""))
+    else:
+        log.say("Discord: 送らない（環境変数 %s も %s も無い）" % (DISCORD_ENV, os.path.relpath(LOCAL_CONFIG, ROOT)))
+    discord = Discord(None if args.dry_run else url, log)
     previous = read_status()
     if previous:
         log.say("前回の状態ファイル: result=%s written=%s reason=%s" % (
@@ -346,6 +475,9 @@ def main():
         log.say("dry run なので走らせない")
         return 0 if probe.returncode == 0 else 3
 
+    discord.post("**無人運転を始めた**\nブランチ %s、HEAD %s、終了の時刻 %s、反復の上限 %s" % (
+        branch(), head(), stamp(deadline) if deadline else "なし",
+        args.max_iterations if args.max_iterations is not None else "なし"))
     runs = 0
     stalled = 0
     last_status = None
@@ -370,7 +502,7 @@ def main():
                     reason, code = "予算: %s" % text, 2
                     break
                 if action == "wait":
-                    if not sleep_until(wait_until, deadline, log):
+                    if not sleep_until(wait_until, deadline, log, discord, "5 時間の枠が尽きた"):
                         reason = "終了の時刻 %s（5 時間の枠の待ちの途中）" % stamp(deadline)
                         break
                     continue
@@ -383,17 +515,19 @@ def main():
             status = read_status() if status_stamp() != stamp_before else None
             if status:
                 last_status = status
-            log.say("=== 反復 %d 終了: exit %s、%.0f 秒、HEAD %s → %s、状態ファイル %s" % (
+            footer = "反復 %d 終了: exit %s、%.0f 秒、HEAD %s → %s、状態ファイル %s" % (
                 runs, exit_code, seconds, before, after,
                 ("result=%s step=%s reason=%s" % (status.get("result", "?"), status.get("step", ""),
-                                                  status.get("reason", ""))) if status else "書かれていない"))
+                                                  status.get("reason", ""))) if status else "書かれていない")
+            log.say("=== " + footer)
+            discord.post("**%s**\n%s" % (footer, output.strip() or "（出力なし）"))
             if exit_code is None:
                 reason, code = "Claude を起動できない", 3
                 break
             reset = limit_reset(output, exit_code)
             if reset is not None and after == before:
                 log.say("使用量の上限に達した返事（5 時間の枠とみなす）")
-                if not sleep_until(reset, deadline, log):
+                if not sleep_until(reset, deadline, log, discord, "使用量の上限に達した返事"):
                     reason = "終了の時刻 %s（上限の待ちの途中）" % stamp(deadline)
                     break
                 continue
@@ -411,7 +545,7 @@ def main():
                 time.sleep(args.pause)
     except KeyboardInterrupt:
         reason, code = "中断（Ctrl+C）", 130
-    result = summarize(log, runs, reason, last_status, code)
+    result = summarize(log, discord, runs, reason, last_status, code)
     log.close()
     return result
 
