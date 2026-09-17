@@ -339,13 +339,13 @@
 ### 本家の MOD の無敵が効かず、Zone 1 で Reaper Nurse に捕まる
 
 - 症状: MOD の Maps の ZONE 1（シャードの並ぶ待合の廊下）に飛ぶと、Reaper Nurse 3 体が約 7 秒で来て捕まる。MOD の Settings で `God Mode` を見ると OFF のことがあり、テンキーの 3 を送っても効いたか分からないまま捕まった。MOD のメニューを開いている間もゲームは進む。捕まり続けると `You Are Dead` → `Restart?` で入口（`06_Hospital`）からやり直しになる。
-- 対処: 着いたらすぐ `M` → Active Enemy の `Find All`（(1325, 860)）→ `Remove All`（(1950, 860)）で敵を消す（敵が要る観察は、消す前の数秒で済ませる）。敵のいない開始地点（ZONE 1 STARTING POINT）で済む観察はそこで行う。テンキーはエージェントの `num0`〜`num9`。
+- 対処: 無敵は当てにしない。着いたらすぐ `M` → Active Enemy の `Find All`（(1327, 860)）→ `Remove All`（(1947, 860)）で敵を消す（敵が要る観察は、消す前の数秒で済ませる。順番は `.claude/guides/observation.md`）。敵のいない開始地点（ZONE 1 STARTING POINT）で済む観察はそこで行う。テンキーはエージェントの `num0`〜`num9`。
 - 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
 
 ### 本家で `desktop.py click` を送ると視点が大きく回る / MOD のメニューの押し間違い
 
 - 症状: ゲーム中の `click X Y` はカーソルを絶対座標へ動かすので、その分だけ視点が回る（真下を向いた）。MOD のメニューの左の列は、ホイールで送った位置のまま残るので、前に測った座標で別の項目（W-Editor）を押した。
-- 対処: ゲーム中のクリックは画面の中央 (1720, 720) で行う。MOD のメニューは押す前に撮って項目の位置を確かめる（列を上まで戻すと Active Enemy (987, 303)・Settings (987, 670)・Maps (987, 760)・Logs (987, 850)）。**W-Editor の画面が開いたら何も動かさずに `Close` で閉じる**（開いただけで、カーソルの下の扉 `BP_06_DoubleDoors13` の変換が元の値のまま `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` に書かれた。値は原作と同じなので見え方は変わらない）。
+- 対処: ゲーム中のクリックは画面の中央 (1720, 720) で行う。MOD のメニューは押す前に列を上端へ戻し（`scroll` 8 回）、撮って項目の位置を確かめる（上端の座標の表は `.claude/guides/observation.md`。W-Editor は (990, 487)、ボタンは y 457〜517 で、11a の「Logs のつもり」の (987, 510) はここに当たった）。**W-Editor の画面が開いたら何も動かさずに `Close` で閉じる**（開いただけで、カーソルの下の扉 `BP_06_DoubleDoors13` の変換が元の値のまま `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` に書かれた。値は原作と同じなので見え方は変わらない）。
 - 出典: 進捗記録 `20260916-tablet-powers.md`（2026-09-17 ステップ 11a）。
 
 ### PIE で動いている最中の絵が撮れない

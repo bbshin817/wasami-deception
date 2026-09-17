@@ -21,6 +21,8 @@
     "Tools/console_session.py": "79504ece5845d94fa038c18ab4f20d73945363fa",
     "Tools/desktop.py": "5b41e49311d68e151ab626744cb748bc2448180f",
     "Tools/desktop_agent.py": "c1871d54fb7ff2eb60e05991a152753fa1a62a3f",
+    "Tools/pie.py": "e023b71c5f66291e475ca19d19d648073eb86d64",
+    "Tools/video_probe.py": "f0aa41e4b9d65b703117cbd4121868d200a756cd",
     "Tools/overnight.py": "7251d46b91041934e260a76ad2423010795c1b09",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",

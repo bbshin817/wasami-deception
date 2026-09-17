@@ -13,6 +13,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 症状索引（**エラーやおかしな挙動に会ったら先に grep する。解決にエディタの開き直し 1 回以上か 30 分以上かかったら、次に進む前にその場で書く**）: `.claude/references/troubleshooting.md`
 - エディタの操作（**MCP のツールは 1 つずつ順に呼び、結果を必ず確かめる。一括の変更の前後で保存する。取り込みとステージの組み立ては `Content/Python/wasami_tools` のツールセットを MCP から呼ぶ。C++ のビルドの手順**）: `.claude/guides/unreal-workflow.md`
 - 検証（**作業の許可は求めずに進める（エディタの開き直し〈C++ のビルドのための `Tools/editor_cycle.py` も、C++ を書き終えたら尋ねずに走らせる〉・PIE・エディタへの入力・本家の起動。明示的な禁止があれば従う）。ただし変更を捨てる操作・配布・本家のセーブの編集は先に確認する。エディタはユーザーのアプリでもあるので、閉じる前に保存し、閉じたら開き直す。PIE は必ず止める。本家はエディタと同時に動かさず、終わったら閉じる。OS 全体の入力は操作しない。**画面の操作は `Tools/desktop.py` で Claude が行う**（入力は許可した窓だけ）。MOD は観察の足場までで、World Editor は使わない**）: `.claude/guides/verification.md`
+- 観察の手順（**本家と PIE を同じ場所・同じ速さ・同じ撮り方・同じ測り方で比べる台本。撮るものの一覧を先に作り、本家は 1 回・30 分を目安に撮り終えて閉じる。MOD のメニューは上端に戻してから表の座標で押す（W-Editor は押さない）。無敵は当てにせず敵は消す。PIE は `Tools/pie.py`、測るのは `Tools/video_probe.py`**）: `.claude/guides/observation.md`
 - 原作への忠実さ（**本家 Dark Deception の原作データ `pak_reference/` に忠実に倣う。ステージも本家の病院「Torment Therapy」の入口・Zone 1・Zone 2（`pak_reference_2/` の `06_Hospital`・`06_Hospital_Zone_01`・`06_Hospital_Zone_02`。ボス戦は作らず、Zone 2 のガレージの祭壇とポータルで脱出）。本家に無いギミックは複雑にせず、壊せる物は本家のホテルの板張りのバリケードのように 1 クリックで崩れて消える。原作のロゴとキャラクターのモデルは使わない。UE に同じ仕組みがあれば値を写すだけにし、作り直さない。視覚的な比較が要るときは手元で遊べる本家（旧版は `pak_reference`、最新版は `pak_reference_2` と同一のビルド。病院は最新版だけ）で観察してよいが、根拠は原則コード**）: `.claude/guides/original-fidelity.md`
 - コミットとブランチ（**実装ごとにコミット、大規模改修は作業ブランチ→main へマージ→ローカルブランチ削除、最終コミットから 10 分経過・未 push 2 件以上・大規模改修のマージ後のいずれかで main を push。参照データから作り直せる素材は git の外、手作りのアセットは Git LFS**）: `.claude/guides/git-workflow.md`
 - 性能とメモリ（**この PC は GTX 1660 SUPER の VRAM 6 GB・RAM 32 GB。開発中は VRAM と RAM の逼迫を避ける設定にし、そのための設定はエディタにだけ効く場所に置く。パッケージした本編の品質は落とさない**）: `.claude/guides/performance.md`
@@ -43,6 +44,8 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - エディタで Python を実行: `python Tools/ue_remote.py <file.py>`
 - エディタを閉じて C++ をビルドし開き直す: `python Tools/editor_cycle.py`
 - 対話デスクトップ（コンソールのセッション）でプログラムを起動する: `python Tools/console_session.py <exe> [--wait <画像名>]`
+- PIE を始める・プレイヤーを置く・コンソールコマンド・止める: `python Tools/pie.py start` → `place X Y --yaw N` / `cmd "slomo 0.25"` / `state` → `stop`
+- 収録を測る（本家と PIE で同じ測り方）: `python Tools/video_probe.py frames` / `sheet` / `series` / `period`
 - 画面を撮る・入力を送る（対話デスクトップ）: `python Tools/desktop.py start` → `shot` / `click` / `key` / `hold` / `look` → `stop`
 - 実装記録の同期チェック / ハッシュ更新: `python .claude/scripts/check_records.py [--update]`
 - 夜間の無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N`。決まりは `.claude/guides/autonomy.md`）

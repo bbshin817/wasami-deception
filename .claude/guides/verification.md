@@ -14,7 +14,7 @@
 
 ## 本家のゲームを動かすとき
 
-この PC には遊べる本家が 2 つ入っている（旧版 = `pak_reference` と同一、最新版 = `pak_reference_2` と同一）。何をどちらで観察するか、どのステージをどう出すかは `.claude/guides/original-fidelity.md` の「本家のゲームを手元で動かす」。ここには動かし方の作法だけを書く。
+この PC には遊べる本家が 2 つ入っている（旧版 = `pak_reference` と同一、最新版 = `pak_reference_2` と同一）。何をどちらで観察するか、どのステージをどう出すかは `.claude/guides/original-fidelity.md` の「本家のゲームを手元で動かす」。**観察の順番・MOD のメニューの座標・PIE で同じものを撮って測るコマンドは `.claude/guides/observation.md`**。ここには動かし方の作法だけを書く。
 
 - **本家のゲームはユーザーの画面と音を占有する**（`GameUserSettings.ini` は 2211x1247 の `FullscreenMode=1`）。起動に確認は要らない（2026-09-17 のユーザーの指示。上の「作業の許可は求めずに進める」）が、**エディタとは同時に動かさず**、観察が終わったら閉じて、出しっぱなしにしない。
 - **どちらのビルドを動かすかを先に決める**。2 つを同時に起動しない（ランチャは既に動いているときは起動を拒む）。
@@ -55,6 +55,7 @@
 - **`record` が終わらないとき**（2026-09-17）: `record_status` が秒数を過ぎても `running` のまま、動画ができず `.mkv.log` も空なら、ffmpeg の `ddagrab` が最初のフレームを待って止まっている（その日は `Opened dxgi output 0` の後に進まなかった。原因は未特定）。止まった ffmpeg は自分が起動したものなので `taskkill` で止め、`gdigrab`（CPU での取り込み）で撮る: `ffmpeg -f gdigrab -framerate 60 -draw_mouse 0 -offset_x <左> -offset_y <上> -video_size <幅>x<高さ> -i desktop -t 5 -c:v libx264 -preset ultrafast -qp 18 <出力>`。Claude のシェルがセッション 1 にいるとき（`console_session.py` が「started directly」と出す）はそのままバックグラウンドで走らせられる。範囲をビューポートに絞れば 60 fps で撮れる。**Claude のシェルがセッション 0 にいるとき**（2026-09-17）は、同じ ffmpeg を `python Tools/console_session.py --wait ffmpeg.exe 'C:\ffmpeg\bin\ffmpeg.exe' -y -f gdigrab …` でセッション 1 に起動する。ffmpeg の端末（`WindowsTerminal.exe`。画面の左に出て、エディタのビューポートとは重ならない）が前面に来て PIE へのキーが断られるので、起動の約 1.5 秒後にビューポートを `click … --allow WindowsTerminal.exe --allow UnrealEditor.exe` でクリックしてエディタを前面に戻してから、キーを送る（エディタが背面のままだと 3 fps に落ちる）。取り出すフレームの番号（`-frame_pts 1`）は 1/60 秒単位になる。エージェントの `record --grab gdi [--region L T R B]` でも同じ `gdigrab` で撮れる（2026-09-17。セッション 0 からでもそのまま使える）。**本家の全画面は `gdigrab` で 1 秒に約 10 枚しか撮れない**ので、一瞬の演出は MOD の `Console Command` で `slomo 0.25` にしてから撮る（症状索引）。
 - この PC の画面は **3440x1440**。座標は物理ピクセル（エージェントは DPI 対応済み）。撮った PNG は `--scale 0.2`〜`0.35` に縮めて読む（原寸は 5〜6 MB になるので会話に読み込まない。比較用に原寸を残すときは `--scale 1.0` で保存だけする）。
 - 何を送ったかは `Intermediate/DesktopAgent/agent.log` に残る（前面の窓の名前つき）。
+- 撮った動画は `python Tools/video_probe.py`（フレームの一覧・時刻つきのシート・色の時系列・周期）で測る。本家と PIE を同じコマンドで測る（`.claude/guides/observation.md` の「測る」）。
 
 ## 本家のゲームに MOD を入れるとき
 
@@ -68,6 +69,7 @@ Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの�
 
 ## 見た目の確認
 
+- PIE の開始・停止・プレイヤーの配置・コンソールコマンドは `python Tools/pie.py`（`.claude/guides/observation.md`）。
 - 静止画は MCP の `EditorToolset.EditorAppToolset.CaptureViewport`（カメラの位置と向きを渡せる）か、PIE 中のコンソールコマンド `HighResShot 1280x720`（`Saved/Screenshots/WindowsEditor/` に出る）。
 - 比べる相手は原作の収録と、WebGL 版の画面（`.claude/references/webgl/`、`docs/screenshots/`）。**同じ場所・同じ向き**で撮って並べる。ステージの位置は原作データの配置（`pak_reference_2/_levels/06_Hospital_Zone_0*.scene.json` の `world.location`、PlayerStart やトリガー）から取る。
 - 撮った画像は会話に貼る前に縮小する（`CaptureViewport` の戻り値は base64 で大きいので、ファイルに保存してから縮小して読む）。
