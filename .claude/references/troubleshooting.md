@@ -16,6 +16,14 @@
 - 確かめ方: `python .claude/scripts/session_start_hook.py > out.json` して、Python で `open(out.json, encoding="utf-8")` から `additionalContext` を読む。**パイプの先の Python に読ませない**（cp932 で読むと `）` の UTF-8 の 3 バイト目 0x89 が続く `\` を巻き込んで 1 文字に化け、JSON の `\n` が `n` だけ残って行が繋がって見える）。
 - 出典: 2026-09-17 の無人運転の作業（進捗記録 `20260917-autonomy.md`。コミットは git log で「無人運転の決まり」を引く）。
 
+### auto モードの分類器が `[Credential Exploration]` で Bash を拒否する（認証情報のファイルや CLI 本体を読むとき）
+
+- 症状: `Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Credential Exploration].` `%USERPROFILE%\.claude\.credentials.json` の形を見るだけ（値は出さない）でも、`claude` の CLI 本体（npm の `@anthropic-ai/claude-code/cli.js`）を使用量 API の文字列で grep するだけでも拒否される。同じコマンドに無関係な処理（`git log` など）が混ざっていると、それごと落ちる。
+- 原因: auto モードの分類器は、認証情報の置き場所と CLI の内部の探索を内容によらず拒否する（意図どおりの振る舞い）。
+- 対処: 認証情報と CLI 本体に触れない設計にする。使用量は `Tools/overnight.py --usage-cmd` で外から差し込む（2026-09-17）。認証情報に触れない処理は別のコマンドに分けて出す。
+- 確かめ方: 拒否の文言に `[Credential Exploration]` があれば同じもの。
+- 出典: 2026-09-17 の無人運転のステップ 2（進捗記録 `20260917-autonomy.md`、実装記録 01 の変更履歴）。
+
 ## エディタ・MCP・リモート実行
 
 （ステップ 3 で拾う）

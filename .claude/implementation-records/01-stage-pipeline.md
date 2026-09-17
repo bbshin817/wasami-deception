@@ -7,6 +7,7 @@ sources:
   - Tools/console_session.py
   - Tools/desktop.py
   - Tools/desktop_agent.py
+  - Tools/overnight.py
   - Content/Python/init_unreal.py
   - Content/Python/wasami_tools/__init__.py
   - Content/Python/wasami_tools/toolsets/__init__.py
@@ -62,6 +63,7 @@ updated: 2026-09-17
 | `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、**対話デスクトップで**開き直して、リモート実行が応答するまで待つ |
 | `python Tools/console_session.py <exe> [args] [--wait <画像名>]` | 任意のプログラムを**対話デスクトップ（コンソールのセッション）で**起動する。Claude はセッション 0 にいて GPU の出力が見えないので、GUI のプログラムは一度きりのスケジュールタスク（ログオン中のユーザーの SID・`LogonType Interactive`）経由で起動する。起動したらタスクを消す。本家のゲームのランチャを動かすのに使う（`.claude/guides/verification.md`） |
 | `python Tools/desktop.py <start\|shot\|click\|key\|hold\|look\|record\|record_status\|stop\|…>` | 対話デスクトップの画面を撮り、入力を送る。セッション 1 に常駐する `Tools/desktop_agent.py`（`pythonw.exe`、`console_session.py` が起動）と `Intermediate/DesktopAgent/` の JSON でやり取りする。入力は前面の窓が許可した対象（既定は本家のゲーム）のときだけ届き、OS 全体に効くキーは断る。`record --seconds N --name x.mkv` は画面を 60 fps の動画に撮り始めてすぐ返る（エージェントが ffmpeg の `ddagrab` → `h264_nvenc` をバックグラウンドで起動する。1 枚数秒の `shot` では撮れない一瞬の演出のため）。`record_status` で終わりと終了コードを見る。使い方と枠は `.claude/guides/verification.md` の「画面を操作する」 |
+| `python Tools/overnight.py --until HH:MM (--usage-cmd "<cmd>" \| --no-usage-check) [--max-iterations N] [--dry-run]` | 夜間の無人運転の駆動役（`.claude/guides/autonomy.md`）。**ユーザーの端末から**起動し、`WASAMI_UNATTENDED=1` を付けて `claude -p "/continue" --permission-mode auto --permission-prompts none` をプロジェクトの直下で繰り返す。Claude が応答を終える（プロセスが終わる）ことが次の反復の合図で、反復にタイムアウトは無い。反復の前に `--usage-cmd`（使用量を `{"seven_day": {"utilization": 0〜100, "resets_at": ISO 8601}, "five_hour": {…}}` で出す任意のコマンド）で予算を判定し、後に `Intermediate/Overnight/status.json`（Claude が書く `result` / `reason` / `step` / `commit` / `written`）と HEAD の変化を見る。止まるのは Claude の `stop`、HEAD が 2 回続けて動かない、`--until`、`--max-iterations`、予算、使用量が読めない。Claude の出力は `Intermediate/Overnight/<YYYYMMDD-HHMM>.log` に反復ごとの見出しつきで流し、終わりに朝向けのまとめ（反復数・理由・最後の状態・要確認の件数）を出す。終了コードは 0 予定どおり / 2 予算か使用量が読めない / 3 進捗なしか起動できない / 4 引数（Claude Code のセッションの中からの起動を含む） |
 
 | C++（`UWasamiCascadeLibrary`、エディタだけ。Python からは `unreal.WasamiCascadeLibrary`） | 内容 |
 | --- | --- |
@@ -237,6 +239,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-17: `Tools/overnight.py`（夜間の無人運転の駆動役）を足した。使用量は自分では読まず `--usage-cmd` で差し込む形にした（auto モードの分類器が認証情報のファイルと CLI 本体の読み取りを `[Credential Exploration]` で拒否したため。症状索引に書いた）。Claude の「usage limit reached」の返事の形は推定（`|エポック秒` が付く旧来の形と、付かない形の両方を見る。付かない形は 30 分待つ）。
 - 2026-09-17: `Tools/desktop.py` の説明文を、エディタへの入力に確認は要らない（ユーザーが操作している間は送らない）という決まりに合わせた（ユーザーの指示。処理は変えていない）。
 - 2026-09-17: シャードの回収の閃光の素材（`dd_shards` のテクスチャ 4・推定のマスター 5 とインスタンス 8・`P_ky_flash3`）を足した。`dd_particles` が `FVector2D` と動的パラメータの配列を書けるようにし、C++ の道具が構造体の配列を照合し、配列の中の分布を使用中に数えるようにした。材質の小道具を `dd_powers` から `dd_assets` へ移し、`instance_parameters` と `material_instance` の静的マスク（C++ の `UWasamiMaterialLibrary` を新設）を足した。式を消し残す UE の不具合に `dd_stage.clear_expressions` で対処し、`_Graph` に接続の失敗を例外にする `checked` を足した
 - 2026-09-17: シャードの素材の取り込み（`pipeline/dd_shards.py`、`WasamiDDTools.import_dd_shards`）、Cue の取り込み（`dd_assets.sound_cue` と C++ の `UWasamiSoundCueLibrary`）、シャードの配置（`dd_level._shards`・`place_shards`、`WasamiStageTools.place_dd_shards`）を足した。組み立てはシャードの灯を単独で置かなくなった。`paths` に本作の素材の置き場所（`SOURCE_ART`・`WASAMI_ROOT`）を足した。両ゾーンのシャードを `place_dd_shards` で置いた（組み立て直しはしていない）

@@ -8,6 +8,7 @@
 
 - **合図**: 環境変数 `WASAMI_UNATTENDED=1`。駆動役 `Tools/overnight.py` が `claude -p "/continue"` を起動するときに付け、SessionStart hook（`.claude/scripts/session_start_hook.py`）が「無人モード」を文脈に入れる。この合図が無ければ、人がいるときの決まりどおり（質問してよい、`/clear` を頼む）。
 - **誰が回すか**: Claude は自分で `/clear` を実行できない。駆動役が `claude -p "/continue" --permission-mode auto` を繰り返し、**Claude がステップを終えて応答を終える（プロセスが終わる）ことが「文脈を消して続行」の合図**。反復にタイムアウトは無い（ユーザーの回答）。
+- **起動**（ユーザーが寝る前に、Claude Code の外の端末から。セッションの中からは入れ子になるので断る）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（使用量を読まずに回すなら `--no-usage-check`。`--dry-run` は計画と起動の確認だけ、`--max-iterations N` は反復の上限）。
 - **1 反復 = `/continue` の 1 ステップ**（`.claude/skills/continue/SKILL.md`）。記録と git とエディタの状態だけから再開し、ステップを 1 つ終えてコミットし、終える。
 - **セッションの終え方**（`/clear` を頼む代わりに）:
   1. コミットまで終える（記録の更新を含む。`.claude/guides/progress-tracking.md`）。
@@ -59,7 +60,7 @@
 
 ## 予算と環境
 
-- **週間の枠**（`/usage` の 7 日）: リセットまで 3 日以上あるのに残りが 50% を切る、または 1 日以上あるのに 25% を切ったら止める（ユーザーの回答）。**5 時間の枠**が尽きたらリセットまで待って続ける。使用量が読めなければ止めて報告する。判定は駆動役が反復の前に行う。
+- **週間の枠**（`/usage` の 7 日）: リセットまで 3 日以上あるのに残りが 50% を切る、または 1 日以上あるのに 25% を切ったら止める（ユーザーの回答）。**5 時間の枠**が尽きたらリセットまで待って続ける。使用量が読めなければ止めて報告する。判定は駆動役が反復の前に行う。**駆動役は使用量を自分では読まない**（OAuth の認証情報や CLI の内部に触れない。2026-09-17）。`--usage-cmd "<コマンド>"` で読み方を差し込む（そのコマンドは `{"seven_day": {"utilization": 0〜100, "resets_at": "<ISO 8601>"}, "five_hour": {…}}` を標準出力に出す。`five_hour` は省略可）。差し込みが無ければ「使用量が読めない」で止まる。`--no-usage-check` を付けたときだけ読まずに回し、Claude の返事の「usage limit reached」を 5 時間の枠の合図にして、返事にあるリセットの時刻（無ければ 30 分）まで待つ。
 - 権限モードは `auto`（`bypassPermissions` は使わない）。
 - 画面: ユーザーは Chrome Remote Desktop で操作し、HDMI にダミーモニタを付けてある（ロック・スリープの対策済み。2026-09-17）。対話デスクトップ（セッション 1）の操作エージェント（`Tools/desktop.py`）は 30 分無入力で終わるので、反復ごとに `start` する。
 - Docker Desktop は止めてある（MCP の 127.0.0.1:8000 と衝突していた）。反復の始まりにエディタが起きていれば MCP はつながる。反復の途中でエディタを開き直した後は `Tools/ue_remote.py` で続ける（`/mcp` は打てない）。
@@ -71,5 +72,5 @@
 ## 朝の見方（ユーザー向け）
 
 1. 新しいセッションを開くと、SessionStart hook が「前回の無人運転の結果（状態ファイル）」と「未完了の記録の要確認」を出す。
-2. 生の足跡は `Intermediate/Overnight/<日付>.log`（反復ごとの Claude の最後の応答・HEAD・使用量）。
+2. 生の足跡は `Intermediate/Overnight/<YYYYMMDD-HHMM>.log`（駆動役の起動ごとに 1 つ。反復ごとの Claude の最後の応答・HEAD・使用量と、末尾のまとめ）。
 3. 要確認に答えると、Claude がその場で決定事項に移して仮の値を直す。
