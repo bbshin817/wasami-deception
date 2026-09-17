@@ -53,7 +53,7 @@
 - 完了の条件: 進捗記録 `20260916-tablet-powers.md` のステップ 10a〜12 が完了し、記録が消えて `feature/tablet-powers` が main にマージされている。
 - 根拠: `.claude/references/powers/`、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_TelekinesisPower.txt`。
 - 依存: なし。
-- 状態: **進行中**（`.claude/progress/20260916-tablet-powers.md`、ブランチ `feature/tablet-powers`）。
+- 状態: **完了（2026-09-17）**。結果は実装記録 04・06、残った差と仮の値は 04 記録の「既知の制約・注意点」と下の「未回答の要確認」。
 
 ### 2. 既存の修正 2 件（マウスの視点移動が遅い・スピードブーストの集中線がノイズに見える）
 
