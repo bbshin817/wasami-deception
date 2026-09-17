@@ -41,7 +41,7 @@ updated: 2026-09-17
 # タブレットのパワー
 
 ## 役割
-本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の土台。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。いま中身まであるのはスピードブースト（演出を含む）、テレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）、Telepathy（`AWasamiTelepathyPower` と、敵ごとの画面空間の印 `AWasamiTelepathyTracker`・`UWasamiTelepathyTrackerWidget`）、Primal Fear（`AWasamiPrimalPower`）、Vanish（`AWasamiVanishPower` と `UWasamiVanishWidget`）で、Telekinesis は枠に出て入力を受けるところまで（進捗記録 `.claude/progress/20260916-tablet-powers.md` のステップ 10 で足す）。Primal・Telekinesis・Vanish が共有する一瞬の演出（全画面のポストプロセス 2 つと 2 秒のタイムライン）は基底 `AWasamiPowerBurst` にまとめた。敵はまだ無いので、確かめには仮の的 `AWasamiTestEnemy` を使う。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
+本家 Dark Deception のタブレットのパワー 6 種（Speed Boost・Teleport・Telepathy・Primal Fear・Telekinesis・Vanish）の仕組みと演出。本家がプレイヤー（`BP_DD_PlayerCharacter`）・ゲージのアクタ（`BP_Powers`）・タブレットの枠（`UMG_TabletPowers`）に分けて持つものを、プレイヤーに付ける `UWasamiPowerComponent` 1 つにまとめる。**6 種とも中身まである**（2026-09-17）: スピードブースト（演出を含む）、テレポーテーション（照準とその見た目・移動・取り消し・再使用・カメラアニメ）、Telepathy（`AWasamiTelepathyPower` と、敵ごとの画面空間の印 `AWasamiTelepathyTracker`・`UWasamiTelepathyTrackerWidget`）、Primal Fear（`AWasamiPrimalPower`）、テレキネシス（`AWasamiTelekinesisPower` と力場の粒子 `P_ky_forceField_Telekinesis`）、Vanish（`AWasamiVanishPower` と `UWasamiVanishWidget`）。推定した材質は最新版の実機の収録と見比べて値を決めた（下の「作るアセット」と「既知の制約・注意点」。収録と測った値は `observations/README.md`）。Primal・Telekinesis・Vanish が共有する一瞬の演出（全画面のポストプロセス 2 つと 2 秒のタイムライン）は基底 `AWasamiPowerBurst` にまとめた。敵はまだ無いので、確かめには仮の的 `AWasamiTestEnemy` を使う。パワーの演出に使う共通の部品として、UE 5 に無い UE4 の `CameraAnim` の再生（`UWasamiCameraAnim` / `UWasamiCameraAnimModifier`）と、プレイヤーの FX（本家の Chameleon、`UWasamiChameleonComponent`）もここに書く。原作の調査は `.claude/references/powers/`。**テレポーテーションだけ `pak_reference`（旧版）、それ以外は `pak_reference_2`（最新版）に従う**（ユーザーの指示）。
 
 ## 公開インターフェース
 
@@ -179,7 +179,7 @@ updated: 2026-09-17
 2. **枠を弾ませる**（`UWasamiTabletWidget::BounceSocket`）。使えるかの判定より前なので、使えないときも弾む。
 3. 枠のパワーを取る（添字が範囲外なら構造体の既定 = 使えない）。`bAvailable` が偽なら終わる。**音も何も出さない**（最新版どおり。旧版は `power_not_ready` を鳴らしていた。ユーザーの回答）。
    - **例外（旧版から採る。ユーザーの回答）**: 解放済みが 1 つ以上あり、テレポートを使用中（`Active Powers` にある）で、押した側がテレポートを使った側（`bTeleportLeft`。本家の `CurrentSide`）なら、テレポートを取り消す（`ResetTeleport`）。枠のパワーが何かは見ない（使った側の枠は照準中に切り替えられないので、ふつうはテレポートのまま）。キーごとの 0.5 秒の連打防止を通った後なので、照準を出してから 0.5 秒は取り消せない。
-4. `Use Power` 側の DoOnce（`bUseClosed`）を通ったら、`OnPowerUsed` を出し、パワーごとの処理へ（いまは `SpeedBoost`・`Teleport`・`Telepathy`・`PrimalFear`・`Vanish`。`Telekinesis` は何もしない）。
+4. `Use Power` 側の DoOnce（`bUseClosed`）を通ったら、`OnPowerUsed` を出し、パワーごとの処理へ（`UseSpeedBoost`・`UseTeleport(bLeft)`・`UseTelepathy`・`UsePrimal`・`UseTelekinesis`・`UseVanish`）。
 5. 最後に 0.5 秒の Delay で DoOnce を戻す。**連打防止は Q / E ごとと、発動全体の 2 段**。
 
 ### 1 / 2（`CyclePower`）
@@ -376,7 +376,7 @@ updated: 2026-09-17
 | `/Game/Pipeline/Materials/M_DD_KyAura7` | **推定**（`M_ky_aura7`。cook に残るのは設定〈Translucent・Unlit・両面・スプライト・ビーム・メッシュの粒子〉、Emissive が `Multiply_8` から来ること、パラメータ 8 つ、動的パラメータ〈`maskOffsetY` 0、`Param2〜4` 1〉、`RadialGradientExponential`、`T_ky_maskRGB5`〈Linear Color〉のサンプル 8 つ〈4 つは `Add` の座標、4 つは `Panner` の座標で、式の並びで 2 つずつ組になる〉、式が 61 個あったこと）。メッシュの帯は U が幅（0・0.5・1）、V が長さ。サンプルを 4 層と読み、各層は「パンした TexCoord に、別のパンのサンプルの B × 強さを足した座標」の R。base = 層 1・2 の平均、hilight = (層 3・4 の平均)^`hilightPower` × `hilightDensity`、Emissive = 粒子の色 × (base × `baseDensity` + hilight)、Opacity = `saturate(base × baseOpacity + hilight)` × マスク × 粒子の α を `depthFade` で薄める。マスク = `RadialGradientExponential`（UV = TexCoord × (`maskU`, `maskV`)、中心 = (`maskRadiusControl` の R, G + `maskOffsetY`)、半径 B、密度 A）で、帯の中央の線を残し、粒子が `maskOffsetY` を 0.1 → 0.2 と動かすと線の V = 0 の側から消える。`Param2〜4` は使わない（粒子も 1 のまま）。**4 層のタイリング・パンの速さ・曲げの速さと強さは仮の値**（`dd_powers.AURA_LAYERS`） |
 | `/Game/Pipeline/Materials/M_DD_KyShockWave02` | **推定**（`M_ky_shockWave02_4x4`。cook に残るのは設定〈Translucent・Unlit・両面・スプライトとメッシュの粒子〉、Emissive が `Add_3` から来ること、パラメータ 7 つ、`baseTex` の SubUV のサンプル〈Linear Color〉→ 静的マスク `selectCh`〈既定 R。インスタンスは上書きしない〉、`Panner_2` / `Panner_3` を座標にした `T_ky_maskRGB3` のサンプル 2 つ〈Color〉、式が 32 個あったこと）。shape = 選んだチャンネル、noise = 2 つのサンプルの R の和。base = shape × `baseDensity`、core = `saturate(shape^coreHilightPower × coreDensity)`（輪のいちばん明るい線）、detail = `saturate((shape × noise)^hilightDetailPower × coreHardness)`（輪に沿う火花）。Emissive = 粒子の色 × base + `coreColor` × (core + detail)、Opacity = `saturate(base + core + detail)` × 粒子の α を `depthFade` で薄める（インスタンスの 0 は UE が小さな値に直すので薄めない = 名前の `nonD`）。**パンの速さは仮の値**（`dd_powers.SHOCKWAVE_PANS`） |
 | `/Game/Pipeline/Materials/M_DD_KyStarDust` | **推定**（`M_ky_starDust`。cook に残るのは設定〈Translucent・Unlit・Responsive AA・スプライトとメッシュの粒子〉、Emissive = 粒子の色の RGB〈原作どおり〉、WPO = 静的スイッチ `useDistanceSize`〈既定 偽 = B の定数〉、パラメータ `threshold`・`starPower`・`maskRadius`・`maskDensity`・`fadeValue`、動的パラメータ `flashTime`・`flashPower`・`starDensity`、関数 `DiamondGradient`・`RadialGradientExponential`・`Blend_Screen`、`T_ky_dust_longStar` のサンプル 2 つ〈1 つは TexCoord 0、1 つは `Rotator_1` の座標〉、静的スイッチ `swSQdust`〈既定 真。A（真）`Multiply_28`・B（偽）`Multiply_9`〉、式が 40 個あったこと）。インスタンス（名前の `_sq`）が `swSQdust` を偽にする。最新版の収録（ステップ 11b4）では、星屑は中が平らで同じくらいの幅の柔らかい縁を持つ小さな四角（3440 × 1440 で約 43 px。スプライトの 1 割ほど）なので、偽の側（番号の古い `Multiply_9`）を四角と読んだ。偽の側 = `DiamondGradient`（2 つの山形の積 (1 − |2u − 1|) × (1 − |2v − 1|) の `Falloff` 乗）の `Falloff` に `starDensity`（粒子が 35〜68 を入れる）を入れ、`flashPower`（3〜10）を掛けたもの。中心の近くはひし形で、`ln(flashPower) / starDensity` ほどが不透明になり、同じくらいの幅で薄れる。真の側（この粒子では使わない）= 4 本の光の星: 2 つのサンプルの R を `starDensity` 乗して細い線にし、2 つ目は TexCoord を `Rotator`（時間 = Time × `flashTime`）で回して、`Blend_Screen` で重ね、`RadialGradientExponential(maskRadius, maskDensity)` で腕の先を消し、`flashPower` を掛ける。2026-09-17（ステップ 11b4）までは真と偽を逆に読んでいて、画面を横切るほど大きな十字が出ていた。Opacity = `saturate(スイッチ)` × 粒子の α を `fadeValue` で薄める。`useDistanceSize` の真の側（`threshold`）と `starPower` は作らず、WPO はつながない |
-| `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` | **推定**。Chameleon の `M_CameraShake`（Post Process）。書き出しに残るのはパラメータ `ShakePower`（既定 0.01）・`ShakeFQ`（既定 50）と `MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking` だけで、HLSL・数式・シーンテクスチャは無い。本作は `ScreenPosition.ViewportUV + Append(sin(Time × ShakeFQ), cos(Time × ShakeFQ)) × ShakePower` で `PostProcessInput0` を読み、その色を Emissive に出す（UE の Sine / Cosine は周期 1 = `ShakeFQ` 回/秒の円）。ブレンドの位置は既定（トーンマップの後）。実機との見比べは進捗記録のステップ 11 |
+| `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` | **推定**。Chameleon の `M_CameraShake`（Post Process）。書き出しに残るのはパラメータ `ShakePower`（既定 0.01）・`ShakeFQ`（既定 50）と `MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking` だけで、HLSL・数式・シーンテクスチャは無い。本作は `ScreenPosition.ViewportUV + Append(sin(Time × ShakeFQ), cos(Time × ShakeFQ)) × ShakePower` で `PostProcessInput0` を読み、その色を Emissive に出す（UE の Sine / Cosine は周期 1 = `ShakeFQ` 回/秒の円）。ブレンドの位置は既定（トーンマップの後）。**実機と見比べていない**（作業一覧の項目 2 で本家のブーストを撮るときに合わせる） |
 
 ## 原作データの根拠
 - 仕組みの全体と各値: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_PlayerCharacter.txt`（`Use Power` @29314〜、使えないときの @16335、DoOnce_11 @11731、スピードブースト @13628〜@16280、終わり @30、充填 @1206、Reset 系 @37067〜@37753）、`UI/BP_Powers.txt`（`Set Delay`・FlipFlop・`Reset All Powers`）、`UI/Tablet/UMG_TabletPowers.txt`（`Check`・`Cycle Power Left/Right`・`Update Powers`）。まとめは `.claude/references/powers/01-player-system.md`。
@@ -409,7 +409,7 @@ updated: 2026-09-17
 - 取り込み: `WasamiDDTools.import_dd_powers()`（01 記録の `dd_powers.py` と `dd_assets.camera_anim` / `texture` / `material`）。
 
 ## テスト（`Tests/WasamiPowerTests.cpp`）
-`Automation RunTests Wasami`（20 件。うち `Wasami.Cascade.Build` は 01 記録、`Wasami.Tablet.CountShake` は 03 記録、`Wasami.Shard.PullCurve`・`Shard.Actor` は 06 記録）。
+`Automation RunTests Wasami`（21 件。うち `Wasami.Cascade.Build`・`Cascade.MeshEmitter` は 01 記録、`Wasami.Tablet.CountShake` は 03 記録、`Wasami.Shard.PullCurve`・`Shard.Actor` は 06 記録）。
 - `Wasami.Powers.Gauge` … FlipFlop の交互の向き、途中の値（2 秒で 1 秒後 0.5 など）、端で止まる、`Stop` で 1、テレポートの向きの決まり方。
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
@@ -432,7 +432,7 @@ updated: 2026-09-17
 - E: 歩き・ダッシュ・`MaxWalkSpeed` が 950 になり、`IsUsingPower(SpeedBoost)` が真、使えない状態、約 2 秒後のゲージが 0.796（1 − 2 / 9.75 = 0.795）。使ってから約 18 秒後（効果 9.75 秒と再使用 7.5 秒を過ぎた時点）に読むと、300 / 600・使える・ゲージ 1 に戻っていた。
 - Q（左 = Speed Boost）で同じように効き、タブレットの左の枠のアイコンが扇形に灰色へ変わっていくのを撮った。
 - タブレットを上げて 1 で左が Teleport に、2 で右が Teleport → Telepathy → … → Vanish → Speed Boost と巡回した。右の枠を 6 種すべてに切り替えて撮り、どのアイコンも出た。
-- タブレットを下ろすと 1 / 2 は効かない。Q で Teleport（中身が未実装）を使っても使える状態のまま。
+- タブレットを下ろすと 1 / 2 は効かない。Q で Teleport を使っても使える状態のまま（このときはテレポートの中身が未実装。4a で足した）。
 - ブースト中に `ResetPowers` を呼ぶと、即座に 300 / 600・使える・ゲージ 1 に戻った。
 - PIE のログにこの仕組みの警告やエラーは無かった。
 
@@ -476,7 +476,7 @@ updated: 2026-09-17
 - プレイヤーを (−25, 3000)・南向きに置き、仮の的を 800 cm 先・3350 cm 先・3700 cm 先・真上 30 m に出して Q: 800・3350・真上の 3 体だけ `SetState(Stun, false)` を受け、3700 の的は受けなかった。2 回目の使用で 3 体とも 2 回になった。
 - 毎フレームの記録（約 98 fps）: アクタはプレイヤーの位置 (−25, 3000, 90.1) にあり、`Range` 3500、材質は `M_05_Primal` の MID。スポーンしたフレームにそのままティックも来るので、最初に描かれるのは位置 0.0102（本家もコンポーネントのティックは同じ仕組み）。球の半径は位置 0.49 で 2116 cm、0.97 で 3180 cm、1.44 以降 3442 cm（= 3500 × 0.98349）。重みは 0.2485 で色 0.788・閃光 0.292、0.368 で閃光 0、0.49 で色 0.045 → 0.5 で 0。`Desaturation`・`Opacity` もトラックどおり。アクタは最初の行から 1.993 秒後（位置が 2 を超えたティック）に消えた。
 - ゲージは使ったフレームから 0.05 秒で 0、0.0625 秒で使用中が外れ、その後 23 秒で 0 → 1（11.558 秒で 0.4998）、23.065 秒で使える状態に戻った。`ResetPowers` の後も使える・ゲージ 1。
-- 画面（gdigrab で 60 fps 収録。`ddagrab` が止まったため。検証のガイド）: Q の次のフレームで画面がオレンジ〜黄に飛び（閃光 × 赤い単色）、赤い雲状の球が重なり、約 0.28 秒で閃光が消えて赤い単色になり、0.48 秒で元の色に戻った。その後は廊下の奥（壁に隠れない所）に広がる球の赤い雲が見えた。**色と見え方は本家と見比べていない**（進捗記録のステップ 11）。
+- 画面（gdigrab で 60 fps 収録。`ddagrab` が止まったため。検証のガイド）: Q の次のフレームで画面がオレンジ〜黄に飛び（閃光 × 赤い単色）、赤い雲状の球が重なり、約 0.28 秒で閃光が消えて赤い単色になり、0.48 秒で元の色に戻った。その後は廊下の奥（壁に隠れない所）に広がる球の赤い雲が見えた。このときの球の材質は最初の推定で、11b2 で最新版の収録と見比べて組み直した（上の表の `M_DD_Primal`、下の「既知の制約」）。
 - シェイク: 最初は画面の位置が揺れなかった。取り込みが新しく作ったブループリントのクラスの既定値を、コンパイルの**後**に書いていたため、インスタンスに値が届いていなかった（01 記録の `camera_shake`）。直した後、カメラの位置は Q の直後から最大 68 cm 揺れ、0.48 秒で収まった（倍率 25 の 50 / 50 / 75 cm がブレンドアウトで減る）。
 - PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」は前からのもの）。音はユーザーのスピーカーで確かめていない。PIE は止めた。
 
@@ -484,7 +484,7 @@ updated: 2026-09-17
 - 取り込み: `import_dd_powers()` が `sounds 6・camera_shakes 2・camera_anims 2・textures 6・materials 14・particle_systems 2` を作った（`Failed to compile` なし）。`PPP_VanishPuff` はエミッタ 1・LOD 3・モジュール 14 で、`LODValidity`（すべて 7）と並びが書き出しと一致し、バーストは `((Count=5))`、材質は `M_LoopingSmoke1_Sheet`。推定の 2 つのマスターは、煙が DefaultLit・Translucent・`MTP_BeforeDOF`・スプライト用で BaseColor と Opacity がつながり（Emissive なし）、ビネットが UI・Translucent で Emissive がビネットの RGB、Opacity が `Saturate` ← 強さ ← ビネットの A × `Lerp`（2 つのノイズ、`LinearSine` の `Value` に `Time`・`Period` に `WobblePeriod`）とつながっていることを読み戻した。
 - プレイヤーを (−25, 3000)・南向きに置き、仮の的を 800 cm 先と約 2.3 km 先に出して、左の枠を Vanish にして Q: そのフレームで、カプセルの `Camera` 応答が Block → Ignore（プロファイルは `Pawn`）、`IsUsingPower(Vanish)` 真、使えない状態、両方の的の `PlayerVanishCount` が 1（距離によらない）、ウィジェット 1（`Speed` 15）、Vanish のアクタがプレイヤーの位置 (−25, 3000, 90.15)・ヨー −90 にあり、粒子（`PPP_VanishPuff`、起動中）が (−25, 2907.58, −62.0) = プレイヤーの前 92.4 cm・下 152.1 cm にあった。
 - 毎フレームの記録（約 70〜100 fps）: 最初に描かれるのはタイムラインの位置 0.0125（重み 0.987 / 0.956）。閃光の重みは位置 0.107 で 0.036、次の記録（0.194）で 0。色の重みは 0.2 で 0.29、0.3 で 0。アクタは位置 1.9987 の次のフレーム（2 を超えたティック）で消えた。ウィジェットの不透明度は 0.371 秒で 0.164、0.753 秒で 0.512、1.501 秒で 1.00006、7.505 秒で 1.0123、13.876 秒で 0.834、14.251 秒で 0.488、14.996 秒で 0（曲線どおり）。ゲージは 15 秒で 1 → 0。15.005 秒でカプセルが Block に戻り使用中が外れ、ゲージが 0 → 1 を 15 秒、30.006 秒で使える状態になって同じフレームでウィジェットが外れた。
-- 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面全体が白紫に飛び（閃光 × 紫の単色）、約 0.2 秒で紫の単色、約 0.23 秒で元の色に戻り、その後 1.5 秒かけて画面の縁に紫の揺らぐビネットが出た。**初回だけ**閃光の間に約 0.09 秒の引っかかりがあった（2 回目は無い。エディタが新しい材質のシェーダーを初めて使うときのコンパイルと見ている）。下を向いて使うと、0.3〜0.8 秒に画面全体へ灰紫のもや（煙）が掛かり、約 1 秒で晴れた。煙はカメラから約 1 m にあり、`CameraDepthFade`（既定の長さ 512 cm・オフセット 24 cm）で大きく透けるので、正面を向いているとほとんど見えない。**本家の煙がどう見えるかは見比べていない**（進捗記録のステップ 11）。
+- 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面全体が白紫に飛び（閃光 × 紫の単色）、約 0.2 秒で紫の単色、約 0.23 秒で元の色に戻り、その後 1.5 秒かけて画面の縁に紫の揺らぐビネットが出た。**初回だけ**閃光の間に約 0.09 秒の引っかかりがあった（2 回目は無い。エディタが新しい材質のシェーダーを初めて使うときのコンパイルと見ている）。下を向いて使うと、0.3〜0.8 秒に画面全体へ灰紫のもや（煙）が掛かり、約 1 秒で晴れた。煙はカメラから約 1 m にあり、`CameraDepthFade`（既定の長さ 512 cm・オフセット 24 cm）で大きく透けるので、正面を向いているとほとんど見えない。本家との見比べは 11b3 で行った（下の「既知の制約」の Vanish の項）。
 - 死亡のリセット（効果の 3.7 秒後に `ResetPowers`）: 使える状態・ゲージ 1・ウィジェット 0 になり、カプセルの Ignore と使用中は残った。その 3 秒後に使い直すと、的に 2 度目の `PlayerVanish`、新しいウィジェットとアクタが出た。終わりは最初の使用から 15.0 秒（使い直しの Delay は仕掛け直されない）で、そこから 15 秒後に使える状態になり、2 つ目のウィジェットが外れた。**使い直しの `SetDelay` が 1 回多くなるのでゲージの FlipFlop がずれ**、使い直しではアイコンが 0 → 1、再使用中は 1 → 0 と逆に動き、使える状態になったときアイコンは 0 だった（本家の `Stop Vanish Timeline` も FlipFlop を戻さず、終わりの Delay も仕掛け直さないので、本家どおり）。
 - PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」は前からのもの）。音はユーザーのスピーカーで確かめていない。PIE は止めた。PIE のビューポートの外周に、縮尺の違う絵が枠のように出るのは、Vanish の前（ステップ 6 の撮影）からあるもの。
 
@@ -495,15 +495,15 @@ updated: 2026-09-17
 - プレイヤーを (−25, 3000)・南向きに置き、仮の的を 800 cm 先・30 m 先・後ろ 5 m・右前（`NoTelepathy`）に出し、左の枠を Telepathy にして Q。毎フレームの記録（約 100 fps）: 使ったフレームで Telepathy のアクタが 1 つ出て、正面・30 m 先・後ろの 3 体（と、1 回目に足した的）に印が付き、`NoTelepathy` の的には付かなかった。箱の拡縮は距離どおり（800 cm で 0.468、30 m で 0.38、5 m で 0.48、1123 cm で 0.4551）。印の Appear は曲線どおりで（0.23 秒で 0.97、0.30 秒で最大 1.055、0.5 秒以降 0.95・不透明度 1）、角度はそれぞれ乱数（131.4°・358.5°・8.9° など）。**カメラの後ろの印は画面の層で折りたたまれ、Slate がティックしないので Appear が 0 のまま進まない**（本家の UMG も Slate のティックでアニメを進めるので同じ。見える向きになったら始まる）。
 - 使ってから 4.10 秒後に足した的には、4.80 秒の検索（0.8 秒ごと）で印が付いた。
 - 9.00 秒を過ぎた最初のフレームで Telepathy のアクタが消え、同じフレームで使用中が外れた。印は Disappear（0.1 秒で最大 1.127、0.27 秒で 0.065・不透明度 0.017）を経て、9.50 秒を過ぎたフレームで全部消えた。15.51 秒で使える状態に戻った。ゲージは 2 秒で 0.777、4.5 秒で 0.498、8.9 秒で 0.010、再使用の 0.50 秒で 0.077、3.24 秒で 0.499、15.4 秒で 0.984（1 → 0 を 9 秒、0 → 1 を 6.5 秒）。
-- 画面（gdigrab で 60 fps 収録。`observations/ours/pie-telepathy-*`）: 印は壁や的に隠れずに赤い丸として重なって出た。縁のぼけた赤い円で、中はほぼ飽和し、ノイズの模様は薄い（**材質は推定。本家と見比べていない**）。正面 800 cm の印の直径は約 110〜120 px（ビューポート 884 × 596。DPI の拡大率は約 0.55 なので、500 × 0.468 × 0.95 × 0.55 ≈ 122 px と合う）。30 m 先の印は正面の印の後ろに重なって見えない（近いものが上）。出るときに膨らみ、終わりに一度膨らんでから 0.3 秒で消えた。
+- 画面（gdigrab で 60 fps 収録。`observations/ours/pie-telepathy-*`）: 印は壁や的に隠れずに赤い丸として重なって出た。縁のぼけた赤い円で、中はほぼ飽和し、ノイズの模様は薄い（**このときの材質**。11b5 で最新版の収録に合わせて濃さを下げた。下の「Telepathy の印の見直し」）。正面 800 cm の印の直径は約 110〜120 px（ビューポート 884 × 596。DPI の拡大率は約 0.55 なので、500 × 0.468 × 0.95 × 0.55 ≈ 122 px と合う）。30 m 先の印は正面の印の後ろに重なって見えない（近いものが上）。出るときに膨らみ、終わりに一度膨らんでから 0.3 秒で消えた。
 - PIE の間、この仕組みの警告やエラーは無かった（ログのエラーは計測のスクリプトの書き損じだけ）。音はユーザーのスピーカーで確かめていない。PIE は止めた。
 
 ### テレキネシス（2026-09-17、PIE、`L_Hospital_Zone1`、Space・1 × 4・Space・Q とビューポートのクリックは `Tools/desktop.py` から送り、値はエディタの Python で毎フレーム読んだ）
 - ビルドは警告なし、テストは 20 件とも成功。取り込みは足していない（音とシェイクは Primal のもの）。
 - 1 回目: プレイヤーを (0, 700)・南向きに置いて Q。アクタはプレイヤーの位置 (0, 700, 90.1) にあり `Range` 3000。半径の中の 8 個（703〜2801 cm。横の廊下のものを含む）が 0.627〜0.863 秒で回収され（シャードは `Alpha` が 1 になる 0.75 / 再生速度 秒でプレイヤーに届いて、触れて回収される）、3107 cm 先の 9 個目は残った。2 回目: (2, −10500) で 41 個が 0.595〜0.933 秒で回収された（壁越しにも寄る）。
 - 毎フレームの記録（約 100 fps）: ゲージは使ったフレームから 0.052 秒で 0、0.064 秒で使用中が外れ、その後 8 秒で 0 → 1（4 秒で 0.4925）、8.069 秒で使える状態に戻った。重みは位置 0.0624 で色 0.990・閃光 0.966、0.2055 で 0.860・0.532、0.3144 で閃光 0、0.5144 で色 0。アクタは 1.99 秒後に消えた。カメラの位置は Q の直後から最大 45 cm 揺れ、0.5 秒で収まった。
-- 音（`au.Debug.ListWaves`）: 使った直後に `Stun_Wave_Attack_New_04` が音量 1 で鳴っていた。回収の音は、8 個が約 0.24 秒の間に続いた後、8 つとも残って音量が新しい順に 0.47・0.24・0.13・0.06・0.03・0.01・0.01・0.00（06 記録の未解決の同時発音の差と同じ現象。ステップ 11 で本家と聞き比べる）。
-- 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面が明るい水色に飛び（閃光 × 青い単色）、約 0.3 秒で閃光が消えて青い単色になり、0.5 秒で元の色に戻った。その間に餅が廊下の奥から飛んでくる。**揺れの間、下げたタブレットの黒い裏面が視界を横切るフレームがある**（全面の黒が 1 枚、部分的な黒が数枚。下の「既知の制約」）。色と見え方は本家と見比べていない（ステップ 11）。
+- 音（`au.Debug.ListWaves`）: 使った直後に `Stun_Wave_Attack_New_04` が音量 1 で鳴っていた。回収の音は、8 個が約 0.24 秒の間に続いた後、8 つとも残って音量が新しい順に 0.47・0.24・0.13・0.06・0.03・0.01・0.01・0.00（06 記録の未解決の同時発音の差と同じ現象。本家の収録に音が無く、聞き比べていない。下の「既知の制約」）。
+- 画面（gdigrab で 60 fps 収録）: Q の次のフレームで画面が明るい水色に飛び（閃光 × 青い単色）、約 0.3 秒で閃光が消えて青い単色になり、0.5 秒で元の色に戻った。その間に餅が廊下の奥から飛んでくる。**揺れの間、下げたタブレットの黒い裏面が視界を横切るフレームがある**（全面の黒が 1 枚、部分的な黒が数枚。下の「既知の制約」）。色と見え方は 11b1 で最新版の収録と見比べた（`observations/README.md`）。
 - PIE の間、この仕組みの警告やエラーは無かった。音はユーザーのスピーカーで確かめていない。PIE は止めた。
 
 ### テレキネシスの力場の素材（2026-09-17、取り込みと読み戻し。PIE は次の節）
@@ -518,7 +518,7 @@ updated: 2026-09-17
 - 画面（プレイヤーの視点）: 閃光と青の色調の後、0.3 秒ごろから水色の 4 本の光（星屑）がプレイヤーの周りを回りながら散り、0.7〜1.2 秒に青い風の筋（オーラ）と床の紫白の稲妻のような輪（地面の輪）、暗い青の幕（球）が重なって、約 1.4 秒で星屑が消え、元の色に戻った。**球の粒子の灯（`ParticleModuleLight`）が 0.2〜0.7 秒ごろ廊下を明るい水色に照らす**（青の色調が消えた後も画面が白っぽい）。
 - 外から（同じ粒子を 15 m 先に拡縮 2 で出し、`slomo 0.25`。`pie-telekinesis-forcefield-outside-slomo025.mkv`）: 出た直後から廊下全体が水色に照らされ、約 0.45 秒（実時間）で青い球の壁が出現点の周りに見え、約 0.55 秒で廊下の奥の小さな青い球まで縮み、約 0.9 秒で消えた（球が外から内へ縮む。調査 03 §2.6 の計算どおり）。
 - **初回だけ**、新しい材質のシェーダーをその場でコンパイルして描画が約 0.1 秒ずつ 3 回止まった（画面の左上に「シェーダーをコンパイルしています」。2 回目は止まらない。9b の閃光と同じ）。
-- PIE の間、ログに警告やエラーは無かった。色・明るさ・大きさ・速さは推定の材質のまま（本家と見比べていない。進捗記録のステップ 11）。PIE は止めた。
+- PIE の間、ログに警告やエラーは無かった。このときは最初の推定の材質のまま（11b4 で星屑を直し、明るさの差は下の「既知の制約」に書いた）。PIE は止めた。
 
 ### Telepathy の印の見直し（2026-09-17、ステップ 11b5、PIE の別窓 2580 × 1080、`L_Hospital_Zone1` の開始地点。キーは `Tools/desktop.py`、値はリモート実行。詳細は `observations/README.md` の「Telepathy の印の見直し」）
 - エンジンの `RadialGradientExponential`（既定の入力）を描画先に描いて読むと、`1 − exp(−(2.33 × (1 − 距離 / 0.5))²)`（半径の外は 0）だった。
@@ -540,7 +540,7 @@ updated: 2026-09-17
 - **Vanish の煙の材質 `M_DD_LoopingSmoke` とビネットの材質 `M_DD_WobblyVignette` はグラフが推定**。敵（M4）が無いので、見えない扱いは応答の値と仮の的への `PlayerVanish` でしか確かめていない。
   - ビネットは 2026-09-17（ステップ 11b3）に最新版の収録と見比べて値を決めた。本家の塊の位置は、ノイズのテクスチャを繰り返し 1 で貼ったものと相関 0.84 で重なり、2 つのノイズの流れる速さと入れ替わりの周期もこの式で再現できた（当てはめの誤差 0.061。フレームごとに自由に合わせても 0.048）。塊の位置と明滅の山の時刻は、エディタの起動からの時刻（UI の材質の `Time`）で決まるので、毎回違う。
   - **煙の位置と明るさは本家と合っていない**（ステップ 11b3）。本家のもやはエレベーターの扉枠（234 cm 先）に隠され、画面の中央の約 40 % に明るい藤色（sRGB (153, 121, 204) へ約 0.6）で出る。本作の煙はコードどおり 92 cm 先・目の 97 cm 下に出て、画面全体を暗い紫に薄く覆う（中央で (+18, −7, +25)。本家は (+67, +43, +86)）。消えるまでの長さ（実時間で約 0.9 秒）は合う。粒子の値・スポーンの位置・部品の位置は原作どおりで、UE 5.8 の Cascade のコード（バーストの位置の補間、`bJustRegistered`、LOD）にも前へずらす仕組みは見つからなかった。原因が分かるまで粒子の値は変えない（進捗記録の要確認）。
-- **Primal Fear の球の材質 `M_DD_Primal` はグラフが推定**（パンの速さと `PRIMAL_KNOBS` は仮の値）。2026-09-17（ステップ 11b2）に最新版の収録と見比べて値を決めた。本家と同じ条件（Lv3 = 半径 2500、正面 1,036 cm を扉でふさぐ）では、画面全体の色の推移が本家と合い、球が扉を越えるときの菱形（エンジンの球の頂点が正面に来る形）も同じ形で出た。違いは、閃光の終わり際の明るさの落ち方（本家は約 0.07 秒かけて下がり、本作は 0.01 秒ほどで落ちる。ポストプロセスの値は原作どおりなので、UE4 と UE 5.8 の色の処理の違いと見ている）と、閃光の直後の黄みが本家より少し強いこと。本作の病院には廊下の奥の両開き扉がまだ無い（作業一覧の項目 3）ので、扉が入るまでは球が奥まで見え、Lv5（半径 3500）では +3.5 s まで赤い雲が残る。
+- **Primal Fear の球の材質 `M_DD_Primal` はグラフが推定**（パンの速さと `PRIMAL_KNOBS` は仮の値）。2026-09-17（ステップ 11b2）に最新版の収録と見比べて値を決めた。本家と同じ条件（Lv3 = 半径 2500、正面 1,036 cm を扉でふさぐ）では、画面全体の色の推移が本家と合い、球が扉を越えるときの菱形（エンジンの球の頂点が正面に来る形）も同じ形で出た。違いは、閃光の終わり際の明るさの落ち方（本家は約 0.07 秒かけて下がり、本作は 0.01 秒ほどで落ちる。ポストプロセスの値は原作どおりなので、UE4 と UE 5.8 の色の処理の違いと見ている）と、閃光の直後の黄みが本家より少し強いこと。本作の病院には廊下の奥の両開き扉がまだ無い（作業一覧の項目 8）ので、扉が入るまでは球が奥まで見え、Lv5（半径 3500）では +3.5 s まで赤い雲が残る。
 - 敵（M4）がまだ無いので、Primal の気絶は仮の的でしか確かめていない。
 - **Vanish の効果中に死亡のリセットが来て、元の 15 秒が終わる前に使い直すと、ゲージの FlipFlop が 1 つずれ、以後アイコンの動きが逆になる**（使い直しの `SetDelay` だけが増え、終わりは 1 回のまま。本家の `BP_Powers` と Delay の作りどおり。ブーストはリセットがその場で終わりの処理を通すので、ずれない）。
 - Vanish の煙は、2026-09-17（ステップ 11b3）までは `CameraDepthFade` の既定の値のため、正面を向いているとほとんど見えなかった（上の「確かめたこと」）。いまは仮の `FadeLength` 64 で見えるが、本家より暗く、手前に出る（上の Vanish の項）。本家の見張りナースのように、気絶の処理を後から動かす敵の扱いは敵の側で作る。
@@ -554,7 +554,7 @@ updated: 2026-09-17
 - ゲームパッドの割り当て（LT / RT / LB / RB）はまだ入れていない（プレイヤーの入力がキーボードとマウスだけのため）。
 - 音と揺れはユーザーのスピーカーと画面で確かめていない（PIE の確認は値と絵）。
 - テレポートの閃光の白は、本作の病院では (252, 252, 251)、旧版の Manor では (234, 245, 244)。トーンマッパーの上限の色がステージのポストプロセス（色の補正）で違うためと見ている（病院の Zone 1 はボリュームが無い）。最新版の病院の絵とは比べていない。
-- **推定のもの**: `M_DD_ChameleonCameraShake` の揺れ方（円・sin/cos）。本家の実機で見比べる（進捗記録のステップ 11）。
+- **推定のもの**: `M_DD_ChameleonCameraShake` の揺れ方（円・sin/cos）。本家の実機と見比べていない（作業一覧の項目 2 で本家のブーストを撮るときに合わせる）。
 - `Duration` の扱い（ブレンドアウトを含む）は UE 5.8 の説明に拠る。UE4 の `CameraAnimInst.cpp` で確かめていない。違っていれば色調の消え方が 0.5 秒ずれるだけ。
 - `UMG_SpeedBoost` の最初のフレームが不透明度 1 で出る（本家の Delay の順の写し）。1 フレームなので撮影では確かめていない。
 - `T_Speedlines` は原作どおり非圧縮で約 81 MB あり、プレイヤーの `BeginPlay` から持ち続ける（本家もプレイヤーがクラスを参照しているので同じ）。
