@@ -37,7 +37,7 @@
 
 ## 最終目標について決めたこと（2026-09-17、ユーザーの回答）
 
-- **敵のモーションの割り当て**（`enemy_wasami.glb` の 11 本）: 巡回 = `Walking`、追跡 = `Running`、全回収後（Nightmare）の追跡 = `run_fast_2`、**気絶 = 無名のモーション `01a0a88f-…`（10.0 s）**（ユーザーの指摘を数値で確かめた: 最初の約 5 s は両足がほぼ固定〈ずれ 20 cm 以内〉で頭が腰より約 30 cm 前に出た前屈、6〜8 s で起き上がり直立で終わる。気絶中は前屈の区間をループし、明けに起き上がりを再生する）、捕獲 3 種 = `Backflip`・`sliding_rool`・`Stylish_Walk`、`restpose` は基準姿勢。`BeHit_FlyUp`・`Shot_and_Fall_Forward`・`Stand_Up6` は使わない（気絶の復帰は無名のモーションの後半で足りる）。気絶以外の割り当ては Claude の提案で、2026-09-17 にユーザーが承認した。**待機のモーションは glb に無く、ユーザーが後で追加する**（それまでは無名のモーションの終わりの直立の姿勢で仮）。
+- **敵のモーションの割り当て**（`enemy_wasami.glb` の 11 本）: 巡回 = `Walking`、追跡 = `Running`、全回収後（Nightmare）の追跡 = `run_fast_2`、**気絶 = 無名のモーション `01a0a88f-…`（10.0 s）**（ユーザーの指摘を数値で確かめた: 最初の約 5 s は両足がほぼ固定〈ずれ 20 cm 以内〉で頭が腰より約 30 cm 前に出た前屈、6〜8 s で起き上がり直立で終わる。気絶中は前屈の区間をループし、明けに起き上がりを再生する）、捕獲 3 種 = `Backflip`・`sliding_rool`・`Stylish_Walk`、`restpose` は基準姿勢。`BeHit_FlyUp`・`Shot_and_Fall_Forward`・`Stand_Up6` は使わない（気絶の復帰は無名のモーションの後半で足りる）。気絶以外の割り当ては Claude の提案で、2026-09-17 にユーザーが承認した。**2026-09-18: 通常の敵ワサミはユーザーがモデルとモーションを作り直す**。必要なモーションの一式と名前は `.claude/references/enemy-wasami-motions.md`（基本・捕獲・場面の演技）で、今の glb は届くまでの仮（上の割り当ては一覧の「仮の対応」で読み替える）。
 - **敵の赤い縁取り**: 作らない（2026-09-17 のユーザーの回答「不要」。最新版ではナースの `Custom Depth(Duration)` を呼ぶ者がいない）。
 - **捕獲のカメラ**: 本家ホテル（旧版 `01_Hotel`）の捕獲のシーケンスのカメラを写し、ワサミの 3 モーションの長さに合わせる（「本家ホテルの 3 本を写す」）。
 - **開始**: 入口レベル `06_Hospital`（ナースの導入・注射室・レントゲン室のカウントダウン・追走・エレベーター）も作る。ステージは `06_Hospital` → `06_Hospital_Zone_01` → `06_Hospital_Zone_02`。
@@ -78,10 +78,10 @@
 ### 4. 敵ワサミの素体（モデル・アニメ・敵の受け口）
 
 - 目標: `enemy_wasami.glb` をスケルタルメッシュとアニメとして取り込み、敵のアクタ `AWasamiEnemy` の土台（モーションの再生、パワーからの受け口）を作る。AI はまだ入れない。赤い縁取りは作らない（上の「決めたこと」）。
-- 完了の条件: 原本を `SourceArt/Wasami/enemy_wasami.glb`（Git LFS。`tmp/` は git の対象外）に写し、取り込み（`wasami_tools` のツールセット）が `/Game/Wasami` にメッシュ・スケルトン・アニメ 11 本（ユーザーが待機を足せばその分も）を作る。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で無名のモーションの前屈をループして明けに起き上がる。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。
+- 完了の条件: 取り込み（`wasami_tools` のツールセット）が `/Game/Wasami` にメッシュ・スケルトン・アニメを一覧（`.claude/references/enemy-wasami-motions.md`）の名前で作る。新しいモデルが届いていれば `SourceArt/Wasami/enemy_wasami.glb`（Git LFS）に置いて使い、届く前は仮の `tmp/enemy_wasami.glb`（git の対象外）で仕組みを作る。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で `Stun_Loop` をループして明けに `Stun_Recover` で起き上がる（仮の glb では無名のモーションの前半と後半）。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。
 - 根拠: `tmp/enemy_wasami.glb`（Blender 4.5 の glTF、骨 22、UE のマネキン系の名前）、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.txt`（部品と気絶）、実装記録 04（インターフェース）。
 - 依存: 1。
-- 状態: **進行中**（進捗記録 `20260917-enemy-wasami-body.md`、ブランチ `feature/enemy-wasami-body`。2026-09-17 に計画。同日の回答で、割り当ては確定、縁取りは作らない、待機はユーザーが後で足す）。
+- 状態: **進行中**（進捗記録 `20260917-enemy-wasami-body.md`、ブランチ `feature/enemy-wasami-body`。2026-09-17 に計画。同日の回答で、割り当ては確定、縁取りは作らない。2026-09-18 にユーザーがモデルとモーションの作り直しを決め、一覧を示した）。
 
 ### 22. ワサミシャードの見た目の変更（明滅をやめる・1.5 倍・本家のシャードのように回す）
 

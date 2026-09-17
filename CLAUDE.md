@@ -25,6 +25,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - WebGL 版の仕様と実装記録（ゲームの流れ・値・ユーザーの決定の経緯。**ゲームの規則の正本**）: `.claude/references/webgl/README.md`、`.claude/references/webgl/implementation-records/`（00 が全体像）
 - 本家の原作データ（UE 4.21。**実装値の根拠として最優先**）: `pak_reference/README.md`
 - 手元で遊べる本家 2 つ（旧版 = `pak_reference` と同一、最新版 = `pak_reference_2` と同一。コードで確定できない見え方の観察に使う。起動の作法は verification.md、どちらで何を観察するかとステージの出し方は original-fidelity.md）: `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`・`C:\Users\User\AppData\Local\DDeception\Launch-Latest.cmd`
+- 通常の敵ワサミのモーション一式（**ユーザーが作り直すモデルの、用途と名前の一覧。取り込みとアニメの再生はこの名前で選ぶ**）: `.claude/references/enemy-wasami-motions.md`
 - タブレットのパワー 6 種の原作調査（枠・入力・クールダウン・強化段階、各パワーの処理と演出。テレポーテーションは旧版、ほかは最新版）: `.claude/references/powers/README.md`
 - 本家の新しい版（UE 4.24。pak_reference に無いものの根拠。両方にあって違うものはユーザーに確認）: `pak_reference_2/README.md`
 - 旧方針のステージ（ファンゲーム CC2）の調査（2026-09-16 に不採用。経緯として残す）: `.claude/references/chaotic-customer-2/README.md`（書き出しの本体は `cc2_reference/`）
