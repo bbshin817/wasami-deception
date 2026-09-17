@@ -1,7 +1,9 @@
 ---
-title: 敵ワサミ（素体の素材とアニメの再生）
+title: 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）
 sources:
   - Content/Python/wasami_tools/pipeline/dd_enemy.py
+  - Source/wasami_deception/WasamiEnemy.h
+  - Source/wasami_deception/WasamiEnemy.cpp
   - Source/wasami_deception/WasamiEnemyAnimInstance.h
   - Source/wasami_deception/WasamiEnemyAnimInstance.cpp
   - Source/wasami_deception/Tests/WasamiEnemyTests.cpp
@@ -10,18 +12,24 @@ sources:
 updated: 2026-09-18
 ---
 
-# 敵ワサミ（素体の素材とアニメの再生）
+# 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）
 
 ## 役割
-本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）と**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）まで（作業一覧の項目 4 のステップ 1・2）。敵のアクタ（`AWasamiEnemy`）、AI・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
+本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）まで（作業一覧の項目 4 のステップ 1〜3）。AI（巡回・追跡・追跡中の変化）と捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
 
 ## 公開インターフェース
 - `WasamiDDTools.import_wasami_enemy()`（01 記録）→ `dd_enemy.import_all()`。戻り値 `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 19。
 - `dd_enemy.make_capture_source(old_glb)`: ユーザーの旧モデル（`tmp/enemy_wasami.glb`、git の外）から `SourceArt/Wasami/enemy_wasami_capture.glb` を書く（2026-09-18 に 1 回走らせた。旧 glb が変わらない限り再び走らせる必要はない）。
 - `dd_enemy.prepare()`: 前処理した glb を書き、役ごとの（長さ、骨盤を動かした量）を返す。`prepared_file()` がその場所。
 - `UWasamiEnemyAnimInstance`（ネイティブの AnimInstance。メッシュの `AnimClass` にする。持ち主が毎フレームのフラグを書く）:
-  - `bStunned`（持ち主の State が Stun。立ち上がりで気絶のクリップを `StunDuration` の長さで始める）、`StunDuration`（既定 17.0 = `BP_06_ReaperNurse` の `Delay 17.0`。敵のアクタが自分の値を入れる）、`bAggressiveIdle`（見張り）、`bNightmare`（全回収後の追跡の走り）。`Speed` は読み取り専用（持ち主の `GetVelocity().Size()`）。
+  - `bStunned`（持ち主の State が Stun。立ち上がりで気絶のクリップを `StunDuration` の長さで始める）、`StunDuration`（既定 17.0 = `BP_06_ReaperNurse` の `Delay 17.0`）、`bAggressiveIdle`（見張り）、`bNightmare`（全回収後の追跡の走り）。**持ち主が `AWasamiEnemy` なら毎フレーム、この 4 つを持ち主から読む**（`IsStunned()`・`GetStunTimeLeft()`・`bAggressiveIdle`・`bNightmare`。本家の ABP のイベントグラフと同じ引き方）。ほかの持ち主では外から入れる。`Speed` は読み取り専用（持ち主の `GetVelocity().Size()`）。
   - `PlayOnce(Clip, PlayRate=1, BlendIn=0.25, BlendOut=0.25)`: 名前（`WasamiEnemyAnim::ClipNames`。`'Chase_Slide'` など）のクリップを全身に 1 回かぶせる。持ち主は動いたまま。戻り値は再生の秒数（長さ / 速さ）。無い名前・速さ ≤ 0 は 0 を返して警告する。`StopOnce(BlendOut=0.25)`、`IsPlayingOnce()`（ブレンドアウトが始まったら偽）、`GetMainClip(OutTime, OutWeight)`（いちばん重いクリップの名前。PIE の確かめ用）。いずれも Blueprint から呼べる（Python からも）。
+- `AWasamiEnemy : ACharacter, IWasamiEnemyInterface`（`WasamiEnemy.h`）:
+  - static `SpawnEnemy(WorldContext, Location, Yaw=0, bSentry=false)`（BlueprintCallable。カプセルの中心を Location に置き、`bCanSpawn` を真にして出す。重なりは可能ならずらして必ず出す。PIE の Python から `unreal.WasamiEnemy.spawn_enemy(world, loc, yaw)`）。
+  - インターフェース: `SetState`（State を入れるだけ。`bByOrb` は使わない）、`GetState`（**常に Patrol**。本家のナースと同じ）、`PlayerVanish`（`bSeenPlayerRecently` を偽に）、`NoTelepathy`（偽）。
+  - `SetWalkState(bNormal)`（`MaxWalkSpeed` を `NormalSpeed` 350 / `SkateSpeed` 800 に）、`GetCurrentState()`（本当の State）、`IsStunned()`（State == Stun）、`IsStunRunning()`（判断が気絶を始め 17 s を待っている）、`GetStunTimeLeft()`（巡回に戻るまでの秒。下の「敵のアクタ」）、`GetEnemyAnim()`（メッシュの `UWasamiEnemyAnimInstance`）。
+  - 設定: `bCanSpawn`（既定 偽。ExposeOnSpawn）、`bAggressiveIdle`（見張り。ExposeOnSpawn）、`bNightmare`（全回収後の追跡の走り）、`NormalSpeed`・`SkateSpeed`、`bNormalWalk`、`bSeenPlayerRecently`（項目 7 の AI が使う）。
+  - 定数: `CapsuleRadius` 34、`CapsuleHalfHeight` 118.058、`MaxSpeed` 800、`TurnRate` 300、`MeshX/Y/Z`・`MeshYaw`（メッシュの相対位置と向き）、`DecisionInterval` 0.5、`StunSeconds` 17。
 - `WasamiEnemyClip`（クリップの番号。移動と気絶の 7 本、捕獲 3 本、追跡中の変化 6 本、役なし 3 本の順）、`WasamiEnemyAnim::ClipNames`・`FindClip(Name)`・`ClipPath(Clip)`（`/Game/Wasami/Enemy/A_WasamiEnemy_<名前>`。名前は取り込みの `ROLES` の 1 列目と同じ並び）。
 - 定数: `MESH` = `/Game/Wasami/Enemy/SK_WasamiEnemy`、`SKELETON` = `…_Skeleton`、`PHYSICS_ASSET` = `…_PhysicsAsset`、`ANIM_PREFIX` = `A_WasamiEnemy_`、`MATERIAL` = `/Game/Wasami/Enemy/MI_WasamiEnemy`、`MASTER` = `/Game/Pipeline/Materials/M_DD_WasamiGltf`、`ROLES`（下の表）。
 
@@ -86,7 +94,20 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - **気絶**（`FWasamiStunPlayback::Start(Duration, ループの長さ, 起き上がりの長さ)`）: 起き上がりを気絶の終わりにちょうど終わるよう `Duration − 起き上がりの長さ`（17 s なら 9.433 s）で始め、ループはその時刻に境目（時刻 0 = 起き上がりの最初のキーと同じ姿勢）が来る位相から始める（`LoopStart` = 1.5 − (9.433 mod 1.5) = 1.067 s）。気絶が起き上がりより短いときは、起き上がりを途中（長さ − Duration）から始める。起き上がりは終わりの姿勢で止まる。`bStunned` の立ち上がり（ブレンドアウト中の 2 回目も）で始め直し、同時に 1 回再生を 0.25 s でブレンドアウトさせる。
 - **1 回再生**（`FWasamiOncePlayback`。UE のモンタージュの更新の順に倣う）: 重みを先に動かし（ブレンドインは 1 / BlendIn、ブレンドアウトは 1 / BlendOut の速さ）、次に時刻を進め（速さを掛け、長さで止める）、残りの実時間（(長さ − 時刻) / 速さ）が BlendOut 以下になったらブレンドアウトを始める。重み 0 で消える。新しい `PlayOnce` は前のものを新しい BlendIn でブレンドアウトさせ、既にブレンドアウト中のものは短い方の時間にする（BlendIn 0 なら前のものはすぐ消える）。`StopOnce` も同じ規則。
 
-テスト（`Tests/WasamiEnemyTests.cpp`、`Wasami.Enemy.Anim.*`）: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s と 5 s の位相、走り → 気絶 → 起き上がり → 明け、2 回目）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 19 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。取り込みが変わったらここが落ちる）。
+テスト（`Tests/WasamiEnemyTests.cpp`）— 敵のアクタ `Wasami.Enemy.Actor.*`: `Defaults`（CDO と部品の値）、`Stun`（手で進めるゲームのワールドで 0.0625 s 刻み。上のタイマーの刻みで、判断は 0.625・1.125 … s の更新に来る: `CanSpawn` なしは消える、AI が付く、メッシュとアニメ、`Set Walk State`、`SetState` の直後は気絶だが動いたまま → 判断で止まる、アニメの残り、2 回目と Patrol への往復で延びない（Patrol の間の残りは 0）、17.625 s の更新で起き上がりが終わり次の更新で Patrol、明けの次の判断から 2 回目）、`Powers`（Primal Fear・Vanish・Telepathy が届く）。アニメの再生 `Wasami.Enemy.Anim.*`: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s と 5 s の位相、走り → 気絶 → 起き上がり → 明け、2 回目）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 19 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。取り込みが変わったらここが落ちる）。
+
+### 敵のアクタ（`AWasamiEnemy`）
+
+本家のナース `BP_06_ReaperNurse`（親 `BP_DD_Character_Base` → `Character`）の CDO と部品の値を写す。
+
+- **CDO**: タグ `Enemy`、`AutoPossessAI = PlacedInWorldOrSpawned`（エンジンの既定の `AIController` が付く。付くと移動の計算が走る）、`bUseControllerRotationYaw = false`。
+- **カプセル**: 半分の高さ 118.05822（本家の上書き）、半径 34（本家は上書きしない。UE 5.8 の `ACharacter` の既定。UE4 から同じ値で、4.24 のソースは手元に無い）。当たりはエンジンの既定の `Pawn`。本家の基底の `AreaClass = NavArea_Obstacle` は 4.24 の `ShapeComponent` の既定と同じなので書かない（UE5 は `bUseSystemDefaultObstacleAreaClass`）。
+- **移動**: `MaxWalkSpeed` 800、`RotationRate` (0, 300, 0)、`bUseControllerDesiredRotation`・`bOrientRotationToMovement` 真。`Set Walk State` は `bNormalWalk` で 350 / 800 を選ぶ。
+- **メッシュ**（`CharacterMesh0`）: 相対位置 (−0.00006, −0.0002, −117.84394)・Yaw −90.00012（本家のまま。`SK_WasamiEnemy` も正面が +Y なので、アクタの前を向く。足はカプセルの底から 0.2 cm 上）、`AnimClass = UWasamiEnemyAnimInstance`。メッシュ `/Game/Wasami/Enemy/SK_WasamiEnemy` はソフト参照で、`OnConstruction` で読む（`WasamiAssets.h` の起動時の読み込みを避ける。シャードと同じ）。
+- **BeginPlay**: 基底どおり `bCanSpawn` が偽なら自分を消す（本家は既定が偽で、Zone 1 のレベルのスクリプト `Spawn Nurses` が `CanSpawn` を真にして出す。`SpawnEnemy` が同じことをする）。真なら、基底の `Ignore All Speed Barriers`（項目 8）の後、ナースの `Generate Random Point`（項目 7）と、`Make Choice` の 0.5 s ごとのループのタイマー（最初は 0.5 s 後）。
+- **気絶**（ナースの Make Choice の DoOnce）: `SetState` は State を入れるだけ。判断（`MakeChoice`）が State == Stun を見たら、1 回だけ（`bStunRunning`）`StopMovementImmediately` → 17 s のタイマー → `EndStun` で State = Patrol・`bStunRunning` 偽。待っている間は判断は何もしない。待っている間の 2 回目の気絶は時間を延ばさず、State を Patrol にしてまた Stun にしても始め直さない（最初の 17 s で終わる）。ナースの `Cloak(False)`（透明化）と気絶の台詞（`Nurse_Hospital_Zone01_Stunned`。項目 20 でワサミの声）は作らない。判断のほかの枝（薬投げ・`Chase Player` / `Not Seeing Player`）は項目 7。
+- **アニメとの受け渡し**: アニメは毎フレーム `IsStunned()` を読む（本家の ABP の `bStunned = State == 2`。`SetState` の直後から気絶の姿勢になり、止まるのは次の判断）。立ち上がりで `GetStunTimeLeft()` を読み、起き上がりを巡回に戻る瞬間に終える。残りは、気絶でなければ 0、判断の前なら「次の判断までの残り（判断のタイマーの残り）+ 17 s」、判断の後なら 17 s のタイマーの残り。エンジンではタイマーが移動とメッシュの更新（TG_PrePhysics）の後に進むので、アニメが読む残りはその前のフレームの終わりの値で、そのフレームの経過と合わせて合う。
+- **エンジンのタイマーの刻み**（UE 5.8 の `FTimerManager`。UE4 も同じ作り）: タイマーは「期限を**過ぎた**最初の更新」で発火する（`InternalTime > ExpireTime`）。更新の外（BeginPlay・テストの本文）や発火の処理の中で入れたタイマーは保留になり、その更新の終わりの時刻から数え始める。そのため判断はフレームの粒で最大 1 フレーム遅れ、気絶の 17 s は判断のフレームの終わりから数える。アニメが判断の前に読んだ残りは実際の終わりより最大 2 フレーム短く、起き上がりの終わりの姿勢を最大 2 フレーム保ってから明ける（見た目には分からない）。
 
 ### 取り込み
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
@@ -110,13 +131,15 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - モデルとモーションはユーザーの作ったもの（2026-09-18 の指示「`enemy_wasami_v3`・`wasami_mochi_v3`・`boss_wasami` をそれぞれ使用」、捕獲は「旧 glb の 3 本を流用」）。役の対応は一覧（`.claude/references/enemy-wasami-motions.md`）。
 - アニメの再生の木と値: `pak_reference_2/_assets/DDeception/Content/Animation/Enemies/Nurse/Reaper/nurse_idle1_Skeleton_AnimBlueprint.json`（`BakedStateMachines` の遷移 3 本の `CrossfadeDuration`・`BlendMode`、`AnimGraphNode_BlendListByBool` 4 つの `BlendTime`・`BlendType`〈0.25 = 根の気絶と走り、1.0 = Alert、0.1 = Alert の 2 本〉、シーケンスプレーヤーの `PlayRate` 1）と、同じ場所の `_bytecode` の `.txt`（`bStunned = (BP_06_ReaperNurse.State == 2)`、`Speed = VSize(TryGetPawnOwner().GetVelocity())`、`bAgressiveIdle = bAggressiveIdle`、Skating → Stop は Speed < 5）。
 - 気絶の長さ 17.0 s は `BP_06_ReaperNurse` の Make Choice の `Delay 17.0`。起き上がりをその中に収めるのはユーザーの「明けに起き上がる」の読み（本家に起き上がりのアニメは無く、0.25 s のブレンドで戻る）。
-- 本家のナースのアクタの値（部品・気絶の流れ）は進捗記録 `20260917-enemy-wasami-body` の決定事項にあり、アクタを作るときにこの記録へ移す。
+- 敵のアクタの値: `pak_reference_2/_assets/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.json`（CDO と `CollisionCylinder`・`CharMoveComp`・`CharacterMesh0`）、`BP_06_ReaperNurse_Sentry.json`（`bAggressiveIdle`）、`_bytecode/…/BP_06_ReaperNurse.txt`（BeginPlay の `K2_SetTimer('Make Choice', 0.5, 真)`、Make Choice の入口 @7107 の `State == 2` → DoOnce → `StopMovementImmediately` → `Cloak(False)` → `Talk` → `Delay 17.0` → @355 `State = 0` と DoOnce を開く、`Set State`・`Get State`〈ByteConst 0〉・`Player Vanish`〈@10871 `Seen Player Recently = False`〉・`No Telepathy`〈偽〉、`Set Walk State`）、`_bytecode/…/Shared/BP_DD_Character_Base.txt`（`CanSpawn` と `Ignore All Speed Barriers`）、`_bytecode/DDeception/Content/06_Hospital_Zone_01.json`（`Spawn Nurses` が `SetBoolPropertyByName(CanSpawn, True)`）。
+- 本家のナースのほかの部品（捕獲の判定 `Sphere`〈半径 54.928、Pawn だけ Overlap。捕獲は State ≠ Stun のときだけ〉は項目 9、上空の板 `StaticMesh`〈`M_Enemy`、(0, 21.9, 1117.8)、拡縮 (2.52, 2.52, 10)。地図の印と推測〉は項目 10、`Talk Audio` は項目 20。`Camera`〈本家の病院の捕獲用〉・`PillSpawn`・`Skate Audio`・`Cloak Timeline` は作らない）。
 
 ## 依存関係
 - `pipeline/gltf.py`（glb の読み書き・標本化・四元数）、`dd_stage`（`import_texture`・`_Graph`・`VERSION_TAG`）、`dd_assets`（`material`・`material_instance`）、`paths`（01 記録）。
 - エンジン: `InterchangeManager`・`InterchangeGenericAssetsPipeline`、`SkeletalMesh`・`AnimSequence`。
 - アニメの再生: エンジンの `FAnimInstanceProxy`（`PreEvaluateAnimation`・`Evaluate`）、`FAnimationRuntime::BlendPosesTogether`、`FAlphaBlend::AlphaToBlendOption`、`WasamiAssets::Path`（00 記録）。追加のモジュールは要らない（`Engine` だけ）。
-- 使う側: アニメの再生が取り込んだクリップを名前で読む。敵のアクタ（項目 4 のステップ 3）がアニメの再生を使う。
+- 敵のアクタ: `ACharacter`・`UCharacterMovementComponent`・`FTimerManager`、`IWasamiEnemyInterface`（04 記録）、`WasamiAssets::Path`。
+- 使う側: アニメの再生が取り込んだクリップを名前で読み、持ち主の敵のアクタから値を読む。パワー（04 記録）の Primal Fear（球の重なりの Pawn とインターフェース）・Vanish（タグ `Enemy` とインターフェース）・Telepathy（インターフェース）が敵のアクタに届く。
 
 ## 既知の制約・注意点
 - glb に**ルートの骨が無い**ので、UE のルートモーションは使えない。前へ進むアニメは前処理でその場の形にした（捕獲の 3 本は捕獲の別室で使うので進んだまま）。
@@ -128,7 +151,11 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - クリップはゲームのワールドでしか読まないので、エディタのレベルに置いた敵は参照姿勢（腕を広げた形）で見える。
 - 1 回再生にアニメ通知・終わりのイベントは無い。終わりは `IsPlayingOnce()` で見る。
 - `FAnimInstanceProxy::IsSkeletonCompatible` は UE 5.8 で非推奨（警告 C4996）なので使わない。
+- 敵のアクタのカプセルは本家のナースの高さ（約 236 cm）で、ワサミ（170 cm）より 66 cm 高い。Telepathy の印はアクタの位置（カプセルの中心、胸の高さ）に付く。大きさの見え方は項目 4 のステップ 4 の PIE で見る。
+- `bCanSpawn` が既定で偽なので、エディタのレベルに置いた敵は PIE で消える（置くなら詳細で真にする）。エディタのレベルでは参照姿勢で見える。
+- 気絶の間も AI の移動の要求は止めていない（本家も `StopMovementImmediately` だけ）。項目 7 で AI の移動を入れるときに、気絶の間に動き出さないかを確かめる。
 
 ## 変更履歴
 - 2026-09-18: 初版。敵ワサミの素材の取り込み（`dd_enemy.py`、原本 2 つ）を記録
 - 2026-09-18: アニメの再生 `UWasamiEnemyAnimInstance`（本家の ABP の木・気絶の位相合わせ・1 回再生の口）とテスト `Wasami.Enemy.Anim.*` を追加
+- 2026-09-18: 敵のアクタ `AWasamiEnemy`（本家のナースの部品・`CanSpawn`・0.5 s の判断と 17 s の気絶・インターフェース・`SpawnEnemy`）とテスト `Wasami.Enemy.Actor.*` を追加。アニメの再生が持ち主の敵から値を読むようにした

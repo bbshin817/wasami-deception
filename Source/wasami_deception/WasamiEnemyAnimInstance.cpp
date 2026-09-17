@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "WasamiAssets.h"
+#include "WasamiEnemy.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogWasamiEnemyAnim, Log, All);
 
@@ -498,6 +499,15 @@ void UWasamiEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	const AActor* Owner = GetOwningActor();
 	Speed = Owner ? static_cast<float>(Owner->GetVelocity().Size()) : 0.f;
+	// The ABP's event graph: its nurse's State == Stun and bAggressiveIdle. What is left of the stun is read with it, so
+	// that the recovery ends as the enemy goes back to Patrol. Another owner sets the flags itself.
+	if (const AWasamiEnemy* Enemy = Cast<AWasamiEnemy>(Owner))
+	{
+		bStunned = Enemy->IsStunned();
+		StunDuration = Enemy->GetStunTimeLeft();
+		bAggressiveIdle = Enemy->bAggressiveIdle;
+		bNightmare = Enemy->bNightmare;
+	}
 
 	FWasamiEnemyAnimInputs Inputs;
 	Inputs.Speed = Speed;

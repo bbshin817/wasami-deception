@@ -245,6 +245,14 @@
 - 対処: ワールドを作ったら `InitializeActorsForPlay` を呼ぶ（`Wasami.Powers.PrimalStun`）。
 - 出典: 進捗記録 `20260916-tablet-powers.md` の検証（ステップ 6）。
 
+### Automation テストで、タイマーが 1〜2 刻み遅れて発火する（手で進めるワールド）
+
+- 症状: `FTestWorldWrapper::TickTestWorld` を 0.0625 s 刻みで回すと、BeginPlay で入れた 0.5 s のループのタイマーが 0.5 s ではなく 0.625 s の更新で発火し、発火の中で入れた 17 s のタイマーの残りが 1 刻み長い（`Expected … to be 17.250000, but it was 17.312500`）。
+- 原因: UE 5.8 の `FTimerManager`（UE4 も同じ）は、(1) 期限を**過ぎた**最初の更新で発火する（`InternalTime > ExpireTime`。ちょうど同じ時刻では発火しない）、(2) 更新の外（BeginPlay・テストの本文）や発火の処理の中（`LastTickedFrame` がまだ前のフレーム）で入れたタイマーは保留になり、その更新の終わりの `InternalTime` を足して数え始める。刻みが 2 進数で割り切れると期限がちょうど更新の時刻に重なり、(1) の 1 刻みが必ず出る。
+- 対処: 実装は直さない（エンジンの規則）。テストの期待の時刻を規則に合わせて書く（`Wasami.Enemy.Actor.Stun` の冒頭の注釈）。`GetTimerRemaining` は更新の間では `ExpireTime − InternalTime`（保留中は入れた秒数そのもの）。
+- 確かめ方: エンジンの `Engine/Source/Runtime/Engine/Private/TimerManager.cpp` の `Tick`（`InternalTime > Top->ExpireTime`、末尾の `PendingTimerSet` の `ExpireTime += InternalTime`）。
+- 出典: 07 記録の「エンジンのタイマーの刻み」、進捗記録 `20260917-enemy-wasami-body.md` のステップ 3（2026-09-18。期待の時刻を直すのにビルドを 1 回やり直した）。
+
 ### ヘッダーや UCLASS / UPROPERTY の変更が Live Coding で効かない
 
 - 対処: `python Tools/editor_cycle.py`（保存 → 閉じる → UBT → 開き直す）。尋ねずに走らせる。Live Coding で直したファイルは次のフルビルドで取り込まれる。

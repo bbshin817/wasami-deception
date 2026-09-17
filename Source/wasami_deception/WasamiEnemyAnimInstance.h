@@ -246,8 +246,9 @@ private:
 /**
  * The enemy Wasami's animation, after Dark Deception's nurse's ABP (nurse_idle1_Skeleton_AnimBlueprint): a native
  * anim instance whose proxy samples the imported clips (/Game/Wasami/Enemy/A_WasamiEnemy_*) and blends them. The
- * enemy sets the flags; the speed is the owner's velocity. The clips load when a game world starts it (never at the
- * editor's start up, WasamiAssets.h), so in the editor's level the enemy shows its reference pose.
+ * flags are read from an AWasamiEnemy owner every frame (another owner sets them); the speed is the owner's velocity.
+ * The clips load when a game world starts it (never at the editor's start up, WasamiAssets.h), so in the editor's
+ * level the enemy shows its reference pose.
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiEnemyAnimInstance : public UAnimInstance
@@ -259,7 +260,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Enemy")
 	bool bStunned = false;
 
-	/** How long a stun lasts: BP_06_ReaperNurse's Make Choice waits 17.0 s before it goes back to Patrol. */
+	/**
+	 * How long a stun that starts now lasts: BP_06_ReaperNurse's Make Choice waits 17.0 s before it goes back to Patrol
+	 * (an AWasamiEnemy owner gives what is left of its stun).
+	 */
 	UPROPERTY(BlueprintReadWrite, Category = "Enemy")
 	float StunDuration = 17.f;
 

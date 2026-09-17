@@ -1,7 +1,20 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/Skeleton.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Misc/AutomationTest.h"
+#include "Tests/AutomationCommon.h"
+#include "../WasamiEnemy.h"
 #include "../WasamiEnemyAnimInstance.h"
+#include "../WasamiPowerTypes.h"
+#include "../WasamiPrimalPower.h"
+#include "../WasamiTelepathyPower.h"
+#include "../WasamiTelepathyTracker.h"
+#include "../WasamiVanishPower.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -339,6 +352,197 @@ bool FWasamiEnemyAnimClipsTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("%s's length"), WasamiEnemyAnim::ClipNames[Clip]), Sequence->GetPlayLength(), Lengths[Clip], 1e-3f);
 		TestTrue(FString::Printf(TEXT("%s is on the skeleton"), WasamiEnemyAnim::ClipNames[Clip]), Sequence->GetSkeleton() == Skeleton);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorDefaultsTest, "Wasami.Enemy.Actor.Defaults",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
+{
+	// BP_06_ReaperNurse's CDO and components (pak_reference_2).
+	const AWasamiEnemy* Enemy = GetDefault<AWasamiEnemy>();
+	TestTrue(TEXT("the Enemy tag"), Enemy->ActorHasTag(TEXT("Enemy")));
+	TestTrue(TEXT("the enemy interface"), Enemy->GetClass()->ImplementsInterface(UWasamiEnemyInterface::StaticClass()));
+	TestTrue(TEXT("an AI possesses it, placed or spawned"), Enemy->AutoPossessAI == EAutoPossessAI::PlacedInWorldOrSpawned);
+	TestFalse(TEXT("the controller does not turn it"), Enemy->bUseControllerRotationYaw);
+	TestFalse(TEXT("CanSpawn is off"), Enemy->bCanSpawn);
+	TestFalse(TEXT("not a sentry"), Enemy->bAggressiveIdle);
+	TestEqual(TEXT("Normal Speed"), Enemy->NormalSpeed, 350.f);
+	TestEqual(TEXT("Skate Speed"), Enemy->SkateSpeed, 800.f);
+
+	const UCapsuleComponent* Capsule = Enemy->GetCapsuleComponent();
+	TestEqual(TEXT("the capsule's radius"), Capsule->GetUnscaledCapsuleRadius(), 34.f);
+	TestEqual(TEXT("the capsule's half height"), Capsule->GetUnscaledCapsuleHalfHeight(), 118.05822f, 1e-4f);
+	TestTrue(TEXT("a pawn's collision"), Capsule->GetCollisionObjectType() == ECC_Pawn);
+
+	const UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
+	TestEqual(TEXT("the top speed"), Movement->MaxWalkSpeed, 800.f);
+	TestTrue(TEXT("the turn rate"), Movement->RotationRate.Equals(FRotator(0., 300., 0.)));
+	TestTrue(TEXT("it turns to the controller's wish"), Movement->bUseControllerDesiredRotation);
+	TestTrue(TEXT("and to its movement"), Movement->bOrientRotationToMovement);
+
+	const USkeletalMeshComponent* Body = Enemy->GetMesh();
+	TestTrue(TEXT("the mesh's place"), Body->GetRelativeLocation().Equals(FVector(-6.216e-5, -2.155e-4, -117.84394), 1e-4));
+	TestEqual(TEXT("the mesh's turn"), Body->GetRelativeRotation().Yaw, -90.00012, 1e-4);
+	TestTrue(TEXT("the mesh plays the enemy's animation"), Body->AnimClass.Get() == UWasamiEnemyAnimInstance::StaticClass());
+	TestEqual(TEXT("the decisions' interval"), AWasamiEnemy::DecisionInterval, 0.5f);
+	TestEqual(TEXT("the stun's wait"), AWasamiEnemy::StunSeconds, 17.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorStunTest, "Wasami.Enemy.Actor.Stun",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorStunTest::RunTest(const FString& Parameters)
+{
+	// A game world that plays and is ticked by hand, in steps a float adds up exactly, so that the timers' ticks are known.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	TestNull(TEXT("an enemy without CanSpawn is gone as it begins play"), World->SpawnActor<AWasamiEnemy>());
+	AWasamiEnemy* Enemy = AWasamiEnemy::SpawnEnemy(World, FVector(0., 0., 500.), 90.f);
+	if (!TestNotNull(TEXT("a spawned enemy"), Enemy))
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	TestEqual(TEXT("turned"), Enemy->GetActorRotation().Yaw, 90., 1e-4);
+	TestNotNull(TEXT("with its AI"), Enemy->GetController());
+	const USkeletalMesh* Mesh = Enemy->GetMesh()->GetSkeletalMeshAsset();
+	TestTrue(TEXT("with SK_WasamiEnemy"), Mesh && Mesh->GetName() == TEXT("SK_WasamiEnemy"));
+	const UWasamiEnemyAnimInstance* Anim = Enemy->GetEnemyAnim();
+	if (!TestNotNull(TEXT("and its animation"), Anim))
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	const float Recover = Anim->GetAnimState().GetLength(WasamiEnemyClip::StunRecover);
+	TestEqual(TEXT("the recovery is loaded"), Recover, 227 / 30.f, 1e-3f);
+	TestTrue(TEXT("Get State reads Patrol"), IWasamiEnemyInterface::Execute_GetState(Enemy) == EWasamiEnemyState::Patrol);
+	TestFalse(TEXT("it shows in the telepathy"), IWasamiEnemyInterface::Execute_NoTelepathy(Enemy));
+	Enemy->SetWalkState(true);
+	TestEqual(TEXT("the walk's speed"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	Enemy->SetWalkState(false);
+	TestEqual(TEXT("the skate's speed"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+
+	// It floats and keeps the speed it is given. A timer set outside a tick counts from the end of the next one and
+	// fires on the first tick past its time: the decision set at the spawn is due at 0.5625 s and comes on the ticks at
+	// 0.625, 1.125, … s, and a stun that the decision at 0.625 s starts is due at 17.625 s.
+	UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
+	Movement->GravityScale = 0.f;
+	TickTo(0.25f);
+	Movement->Velocity = FVector(300., 0., 0.);
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, false);
+	TestTrue(TEXT("Set State stuns at once"), Enemy->IsStunned());
+	TestTrue(TEXT("its State"), Enemy->GetCurrentState() == EWasamiEnemyState::Stun);
+	TestTrue(TEXT("Get State still reads Patrol"), IWasamiEnemyInterface::Execute_GetState(Enemy) == EWasamiEnemyState::Patrol);
+	TestFalse(TEXT("the stun waits for the decision"), Enemy->IsStunRunning());
+	TestEqual(TEXT("to the decision, then 17 s"), Enemy->GetStunTimeLeft(), 0.3125f + 17.f, 1e-4f);
+
+	TickTo(0.3125f);
+	TestTrue(TEXT("the animation is stunned"), Anim->bStunned);
+	TestEqual(TEXT("for what is left of the stun"), Anim->GetAnimState().StunPlayback.RecoverStart, 17.3125f - Recover, 1e-4f);
+	TestTrue(TEXT("before the decision it still moves"), Movement->Velocity.X > 250.);
+	TickTo(0.5625f);
+	TestFalse(TEXT("not yet decided"), Enemy->IsStunRunning());
+	TickTo(0.625f);
+	TestTrue(TEXT("the decision starts the stun"), Enemy->IsStunRunning());
+	TestTrue(TEXT("and stops the movement"), Movement->Velocity.IsNearlyZero());
+	TestEqual(TEXT("for 17 s"), Enemy->GetStunTimeLeft(), 17.f, 1e-4f);
+	TickTo(1.f);
+	TestTrue(TEXT("it stays still"), Movement->Velocity.IsNearlyZero());
+
+	// While it waits, another stun changes nothing, and a State set to Patrol and back does not start it over.
+	TickTo(5.f);
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, true);
+	TestEqual(TEXT("a second stun does not add time"), Enemy->GetStunTimeLeft(), 12.625f, 1e-4f);
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Patrol, false);
+	TestFalse(TEXT("Patrol is not stunned"), Enemy->IsStunned());
+	TestEqual(TEXT("nothing is left for the animation"), Enemy->GetStunTimeLeft(), 0.f);
+	TestTrue(TEXT("but the wait goes on"), Enemy->IsStunRunning());
+	TickTo(6.f);
+	TestFalse(TEXT("the animation came out of the stun"), Anim->bStunned);
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, false);
+	TestEqual(TEXT("stunned again, it ends with the first wait"), Enemy->GetStunTimeLeft(), 11.625f, 1e-4f);
+
+	TickTo(17.5625f);
+	TestTrue(TEXT("still stunned"), Enemy->IsStunned());
+	TestTrue(TEXT("recovering"), Anim->GetAnimState().StunPlayback.IsRecovering());
+	TestEqual(TEXT("one step before the recovery's end"), Anim->GetAnimState().StunPlayback.GetClipTime(), Recover - Step, 1e-3f);
+	TickTo(17.625f);
+	TestTrue(TEXT("stunned while the wait is due"), Enemy->IsStunRunning());
+	TestEqual(TEXT("the recovery ends with the wait"), Anim->GetAnimState().StunPlayback.GetClipTime(), Recover, 1e-3f);
+	TickTo(17.6875f);
+	TestTrue(TEXT("past it, Patrol"), Enemy->GetCurrentState() == EWasamiEnemyState::Patrol);
+	TestFalse(TEXT("the stun has ended"), Enemy->IsStunRunning());
+	TickTo(17.75f);
+	TestFalse(TEXT("the animation follows"), Anim->bStunned);
+
+	// A stun after the end starts again at the next decision (due at 18.0625 s).
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, true);
+	TestEqual(TEXT("a new stun waits for the decision"), Enemy->GetStunTimeLeft(), 0.3125f + 17.f, 1e-4f);
+	TickTo(18.0625f);
+	TestFalse(TEXT("not before it is past"), Enemy->IsStunRunning());
+	TickTo(18.125f);
+	TestTrue(TEXT("and runs again"), Enemy->IsStunRunning());
+	TestEqual(TEXT("for 17 s"), Enemy->GetStunTimeLeft(), 17.f, 1e-4f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorPowersTest, "Wasami.Enemy.Actor.Powers",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorPowersTest::RunTest(const FString& Parameters)
+{
+	// The powers find it as they find the stand-in: Primal Fear by its pawn body, Vanish by its tag, the telepathy by
+	// its interface.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	AWasamiEnemy* Enemy = AWasamiEnemy::SpawnEnemy(World, FVector(500., 0., 0.));
+	if (!TestNotNull(TEXT("a spawned enemy"), Enemy))
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+
+	TestEqual(TEXT("Primal Fear stuns it"), AWasamiPrimalPower::StunEnemies(World, FVector::ZeroVector, 1500.f), 1);
+	TestTrue(TEXT("stunned"), Enemy->IsStunned());
+
+	Enemy->bSeenPlayerRecently = true;
+	TestEqual(TEXT("Vanish tells it"), AWasamiVanishPower::NotifyEnemies(World), 1);
+	TestFalse(TEXT("it has not seen the player"), Enemy->bSeenPlayerRecently);
+
+	const FTransform AtOrigin = FTransform::Identity;
+	AWasamiTelepathyPower* Telepathy = World->SpawnActorDeferred<AWasamiTelepathyPower>(AWasamiTelepathyPower::StaticClass(), AtOrigin);
+	Telepathy->Time = FWasamiPowerTuning::ForLevel(5).TelepathyDuration;
+	Telepathy->FinishSpawning(AtOrigin);
+	int32 OnEnemy = 0;
+	for (TActorIterator<AWasamiTelepathyTracker> It(World); It; ++It)
+	{
+		OnEnemy += It->Actor.Get() == Enemy ? 1 : 0;
+	}
+	TestEqual(TEXT("the telepathy marks it"), OnEnemy, 1);
 	return true;
 }
 
