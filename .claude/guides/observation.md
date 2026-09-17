@@ -98,6 +98,8 @@ sleep 20; python Tools/desktop.py shot --scale 0.25 --name obs-title.png   # タ
 **撮り方**
 既定の `ddagrab` は最初のフレームで止まる日があるので、最初から `--grab gdi` で撮る。
 
+**無劣化の連写**（薄い線や細い模様を見るとき。`record` は h264 の 4:2:0 で、不透明度 0.15 の赤い 1 px の線が崩れる）: Claude が対話デスクトップ（セッション 1）にいれば `python observations/tools/burst.py <出力> --count 50 --delay 0.3 [--region L T R B]` をバックグラウンドで走らせ、その間に `hold w` などを送る。本家の全画面で約 17 枚/s（範囲を絞っても同じ）。PNG の書き出しに 1 枚約 0.5 秒かかるので、`times.json` ができるまで待つ。
+
 ```bash
 python Tools/desktop.py record --grab gdi --seconds 10 --name orig-<項目>-a.mkv >/dev/null
 sleep 1.5; python Tools/desktop.py key q >/dev/null; sleep 10
@@ -109,6 +111,8 @@ cp Intermediate/DesktopAgent/shots/orig-<項目>-a.mkv observations/original/
   - 一瞬の演出は `slomo 0.25` にして撮る。効いたかどうかは、演出の長さで確かめる（テレキネシスは 1.3 s → 4.7 s に延びる）。
   - 長く撮るもの（回転の周期など）は、`--fps 10 --region L T R B` で範囲を絞る。
 - **視点**: `look --dx N --dy N`（相対）で動かす。**ゲーム中は `click` しない。** カーソルが絶対座標へ動き、その分だけ視点が回る。
+  - **回転量を測るときは `--burst` を付ける**（例: `look --dx 2057 --steps 17 --burst 11`。1 個 7〜12 カウント）。本家はマウスの平滑化がオンで、16 ms おきの大きな入力では合計が崩れる。レベルに入った直後は往復を数回送って慣らしてから測る（症状索引）。
+  - 回転の確かめ方: 前後の `shot` の位相相関（ずれ 0 px なら 1 周）。壁ばかりの向きは相関が弱いので、Zone 1 の待合の廊下で測る。
   - 左クリックが要るとき（テレポートの確定など）は、画面の中央 (1720, 720) を押す。
 - **歩く**: `hold w --ms 3000` で進む。赤い両開き扉は、押しても左クリックしても開かなかった（11a）。
 - **テレポートの照準**:
@@ -201,6 +205,7 @@ python Tools/pie.py stop                                    # 必ず止める。
 
 **本家を閉じる**
 1. Esc → 「やめる」(1720, 1020) → 「デスクトップへ戻る」(1720, 1044) を押す。
+   - 設定を見るだけなら、Esc → 「オプション」(1717, 933) → GAMEPLAY (980, 463)（マウスの感度・平滑化・上下反転）。閉じるのは右上の × (2530, 243)。値は変えない。
 2. 約 10 秒待って、`tasklist | grep -i -E "DDeception|ffmpeg"` で消えたことを確かめる。
 3. `python Tools/editor_cycle.py --no-build --no-quit` でエディタを開き直す（ビルドしない）。
 

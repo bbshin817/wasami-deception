@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/look-and-speedlines
 base: 7208432
 started: 2026-09-17 20:54
-updated: 2026-09-17 21:30
+updated: 2026-09-17 22:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -27,42 +27,24 @@ updated: 2026-09-17 21:30
 ## 計画
 
 - [x] 1. PIE で今の値を測り、原因を切り分けた（測った値と撮った物は `observations/README.md` の「視点の速さと集中線」）
-- [ ] 2. 本家の実機（最新版）で同じものを撮る（1 回・30 分目安。`.claude/guides/observation.md`）← **作業中**（21:30〜）
-  - エディタを保存して閉じ → `Launch-Latest.cmd` → MOD の Maps で Zone 1 の開始地点 → 敵を消す。
-  - 視点: 開始地点で前の画面を撮り、`look --dx 2057 --steps 17`（期待値 0.175°/カウントなら 360.0°）→ 撮る、`look --dx 1029 --steps 7`（180.1°）→ 撮る、`look --dy 300 --steps 10` → 撮る（52.5° 見下ろす）。前後の画面のずれ（px）と水平 FOV から回転角を出す（直す前の本作なら 360° のはずが 25.2° しか回らない）。本家の設定の値（`Character.MouseSensitivity`・`Character.MouseSmoothing`）を `%LOCALAPPDATA%\DDeception\Saved\` の中から探して**読むだけ**（編集しない）。見つからなければ OPTIONS の画面で表示を撮る。
-  - 集中線: 長くまっすぐ走れる所（本作では Zone 1 の待合から北。本家でも見通しのよい廊下を選ぶ）で Speed Boost を使って走り、ブースト中の静止画を十数枚（`shot`）と、時刻つきの連続撮影（`record`）を撮る。静止画を `T_Speedlines`（2 列 × 5 段、1 コマ 1920 × 1080 相当）の 10 コマと突き合わせ、(a) 1 画面に映るのが 1 コマか（2 × 5 読み）2.5 段ぶんか（2 × 2 読み）、(b) 線が集まる六角形の「目」が画面の中央にあるか上下の端にあるか（テクスチャの目は行 1080 × k にある）、(c) コマ送りの速さ（撮影の時刻とコマ番号の並びから）を決める。赤い線は不透明度 0.15 で薄いので、明るさを上げた切り抜きで見る。
-  - 本家を閉じてエディタを開き直す。本家の画面は Discord へ送らない。
-  - 変更予定: `observations/original/orig-look-*`・`orig-speedlines-*`（git の外）、`observations/README.md`。
-- [ ] 3. 視点移動を直す: `WasamiPlayerCharacter.cpp` の `Look` の対応づけから `UInputModifierScalar`（`MouseAxisSensitivity`）を外す（下の決定事項）→ `python Tools/editor_cycle.py` でビルド → ステップ 1 と同じ測り方（`observations/README.md`）で 0.175°/カウント（ステップ 2 の本家の値）になることを確かめる
+- [x] 2. 本家の実機（最新版）で撮った: 視点は **0.175°/カウント**（感度 1・平滑化オン）、集中線は **2 × 5 を行 0 から 1 画面 1 コマ・1 秒に 30 コマ**（測り方と値は `observations/README.md` の original の「視点の速さと集中線」）
+- [ ] 3. 視点移動を直す: `WasamiPlayerCharacter.cpp` の `Look` の対応づけから `UInputModifierScalar`（`MouseAxisSensitivity`）を外す（下の決定事項）→ `python Tools/editor_cycle.py` でビルド → ステップ 1 と同じ測り方（`observations/README.md`。`pie.py state` のヨーの差）で 0.175°/カウント（本家の値）になることを確かめる。`look` は本家と同じく `--burst` を付けて送る（例: `--dx 2057 --steps 17 --burst 11` で 360.0°、`--dx 100 --steps 10 --burst 10` で 17.5°）
   - 変更予定: `Source/wasami_deception/WasamiPlayerCharacter.cpp`（`MouseAxisSensitivity` の定数と説明、`Map(LookAction, EKeys::Mouse2D, …)`）、実装記録 02（視点の係数の説明）。`Config/DefaultInput.ini` の Mouse2D の行は残す（これが効いている 0.07）。
-- [ ] 4. 集中線を直す（`M_Speedlines` の FlipBook の列・段・位相をステップ 2 の観察に合わせる。テクスチャの設定が原因ならそれも）→ `WasamiDDTools.import_dd_powers()` で作り直す → PIE でブースト中を撮り本家と見比べる
+- [ ] 4. 集中線を直す（`M_Speedlines` の FlipBook を 2 列 × 5 段・位相 `Time × 3`〈下の決定事項〉にする。UE 5.8 の FlipBook が位相の小数部を取るかを先に読む。テクスチャの `NeverStream` も原作に揃える）→ `WasamiDDTools.import_dd_powers()` で作り直す → PIE でブースト中を撮り本家と見比べる
   - 変更予定: `Content/Python/wasami_tools/pipeline/dd_powers.py`（`_build_speedlines`・`FLIPBOOK_*`）、`/Game/DD/UI/Main/Powers/M_Speedlines`（必要なら `T_Speedlines`。原作は `NeverStream` 真で本作は偽なので揃える）、実装記録 04（「入力はすべて既定 = 2 × 2」「原作のまま」の記述）・01。
 - [ ] 5. 仕上げ: 作業一覧の項目 2 を「完了」、handover の「現状と次の一歩」、note の原稿 `docs/note/progress.md`（note へは会話でセッションの値が渡されていなければ未反映）、症状索引（要れば）、`check_records.py --update`、記録を消して main へマージ → ブランチを削除 → push。
 
 ## 次にやること
 
-ステップ 2。下の表を上から撮る（エディタを閉じる → `Launch-Latest.cmd` → 開始地点 → Zone 1 で敵を消す）。
-
-| 項目 | 場所 | 操作 | 測り方 | ファイル名（`observations/original/`） |
-| --- | --- | --- | --- | --- |
-| 視点の基準 | 開始地点（ヨー −90） | なし | — | `orig-look-0.png` |
-| 360° | 同 | `look --dx 2057 --steps 17` | 基準との差 | `orig-look-360.png` |
-| 180° | 同 | `look --dx 1029 --steps 7` | 背面の絵か | `orig-look-180.png` |
-| 戻し | 同 | `look --dx -1029 --steps 7` | 基準との差 | `orig-look-back.png` |
-| 小さく | 同 | `look --dx 100` | ずれの px（17.5° なら水平 FOV から） | `orig-look-dx100.png` |
-| 縦 | 同 | `look --dy 300 --steps 10` | 見下ろし 52.5° か | `orig-look-dy300.png` |
-| 集中線の収録 | Zone 1 の待合（敵を消す）を北へ | 左の枠を Speed → Q → `hold w` | `frames`・`sheet` | `orig-speedlines-a.mkv` |
-| 集中線の連写 | 同 | 同じ走りの間に `observations/tools/burst.py`（無劣化、約 12 枚/s） | `T_Speedlines` の 10 コマと照合 | `orig-speedlines-burst/` |
-
-- 本家の感度の設定は保存されていない（`Saved/Config/WindowsNoEditor/*.ini` にも `settingsSlot.sav` にも `MouseSensitivity`・`MouseSmoothing` の文字列が無い）= 既定の 1.0・1 のはず。
+ステップ 3。`WasamiPlayerCharacter.cpp` の `Map(LookAction, EKeys::Mouse2D, …)` から `Sensitivity`（`UInputModifierScalar`、`MouseAxisSensitivity` 0.07）を外し、定数と説明を直す → `python Tools/editor_cycle.py` → PIE（`pie.py start` → `place 15 385 --yaw -90` → ビューポートを押す → `look --burst` → `pie.py state`）で 0.175°/カウントを確かめる → 実装記録 02 → `check_records.py --update` → コミット。
 
 ## 決定事項
 
 - 2026-09-17（ステップ 1 で確定）: **視点が遅い原因は感度 0.07 の二重掛け**。Enhanced Input の `IEnhancedInputSubsystemInterface::ApplyAxisPropertyModifiers`（UE 5.8 `EnhancedInputSubsystemInterface.cpp` 614〜690 行）が、マウスのキー（`Mouse2D` も `IsMouseButton()` が真。CVar `input.GlobalAxisConfigMode` の既定 0 = マウスだけ）の対応づけに、旧入力の `AxisConfig` の感度（`Config/DefaultInput.ini` の Mouse2D 0.07）を `UInputModifierScalar` として先頭に自動で足す（「Sensitivity stacks with user defined」）。本作は C++ でも Scalar 0.07 を足していたので 0.07² になった。実測 0.01225°/カウント = 0.07 × 0.07 × FOV 90 × 0.01111 × 2.5。`InputYawScale_DEPRECATED` の 2.5 / −2.5 は効いている（`bEnableLegacyInputScales` 真）。先の「`AxisConfig` は `KeyState->Value` にだけ掛かるので効かない」は誤りだった（`RawValue` を読むのは正しいが、別の経路で修飾子になる）。
 - 2026-09-17: 直し方は **C++ の Scalar を外し、`DefaultInput.ini` の `AxisConfig`（原作の DefaultInput.ini の値 0.07）を効かせる**。UE4 と同じ仕組み（軸の設定の感度）に値を写す形で、original-fidelity の「UE に同じ仕組みがあれば値を写すだけ」に合う。実行中に C++ 側の複製を 1.0 にすると 0.175°/カウント（本家の式の期待値）になった。自動の修飾子は Smooth・FOV の前に入るが、どれも値に比例するので順は結果を変えない。
 - 2026-09-17: 本家の視点の処理（`BP_DD_PlayerCharacter` @36429〜@36968）は、軸の値 × CVar `Character.MouseSensitivity` を `AddControllerYawInput` へ、縦は × （`Character.InvertY` が 1 なら 1、0 なら −1）× 感度を `AddControllerPitchInput` へ。感度の既定は 1.0（`BP_DD_GameInstance` の `RegisterFloatCVarSetting`。OPTIONS のスライダーは右端 2.0）。最新版には `Character.MouseSmoothing`（既定 1、プレイヤーの `Mouse Smoothing Change` で切り替え）もある。本作の `Look` はこの形（`MouseSensitivity` 1.0）で、ここは変えない。
-- 2026-09-17: `M_Speedlines` の FlipBook の入力（列・段・位相・UV）は原作データに無い — 関数の呼び出しの `FunctionInputs` は cook で消え、`M_Speedlines` の `Expressions` には消えた式が 4 つ（`null`）ある（定数や Time などが入力につながっていたはず）。実装記録 04 の「入力はすべて既定 = 2 × 2（原作のまま）」はコードの根拠ではなく推定。WebGL 版は検証映像から 2 列 × 5 段・`floor(t × 60) mod 10` にしていた（WebGL 05 記録の `boost-fx.ts`）。列・段・位相・速さはステップ 2 の観察で決める（見た目なので、決めきれなければ仮で進めてよい）。
-- 2026-09-17（ステップ 1）: ノイズに見える主因の見立て — 2 × 2 読みで 2.5 段ぶんを縦に縮め（ビューポートで約 3.3 倍、全画面でも約 1.5 倍の縮小）、ミップの無いテクスチャの 1 px の水平線の束がちらつく。2 × 5 読みなら全画面では拡大になる。ただしテクスチャ自体にも水平線が多いので、2 × 5 でも水平線は出る。本家の絵と比べて決める。
+- 2026-09-17（ステップ 2）: **`M_Speedlines` の FlipBook は 2 列 × 5 段、位相は 1 秒に 3 周（30 コマ/s）、UV は `TexCoord 0` のまま（ずらさない）**。入力は原作データに無い（関数の呼び出しの `FunctionInputs` は cook で消え、`Expressions` に消えた式が 4 つある = 定数 2・定数 5・`Time`・×3 の `Multiply` などと読める）ので、最新版の実機の無劣化の連写とテクスチャの照合で決めた（`observations/README.md`）。1 コマ 1081 行の読みが 2 × 2（2702 行）と半コマずらしより明らかに合い、コマは 0〜9 の順、30.005 コマ/s で確かなフレームの 37/46 が合う。WebGL 版の 60 コマ/s とは違う（実機を採る）。見た目の値なので要確認にはしない。実装記録 04 の「2 × 2（原作のまま）」の記述はステップ 4 で直す。
+- 2026-09-17（ステップ 1）: ノイズに見える主因の見立て — 2 × 2 読みで 2.5 段ぶんを縦に縮め、ミップの無いテクスチャの 1 px の水平線の束がちらつく。2 × 5 なら全画面では拡大になる。
 
 ## 要確認（ユーザー）
 
@@ -70,14 +52,13 @@ updated: 2026-09-17 21:30
 
 ## 再開時の注意
 
-- **本家の観察の途中で止まったら**: `tasklist | grep -i -E "DDeception|ffmpeg"` で残りを見て、本家は observation.md の 7 の手順で閉じる（動かなければ `taskkill`）。エディタは `python Tools/editor_cycle.py --no-build --no-quit` で開き直す。セーブの控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-<時刻>`（戻さない）。
-- エディタ: ステップ 1 の終わりに起動中（L_Hospital_Zone1、PIE なし、未保存なし）。`t.MaxFPS` は 0 に戻した。PIE と本家は反復の終わりに必ず止める・閉じる。
-- `desktop.py look` は `dx // steps` を steps 回送る（割り切れない量は丸められる）。
-- 本家の設定のファイルは読むだけにする（本家のセーブの編集は夜間に行わない）。
-- MOD の W-Editor のファイル `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` は前の作業の要確認のまま（作業一覧の「未回答の要確認」）。触らない。
+- エディタ: ステップ 2 の終わりに `editor_cycle.py --no-build --no-quit` で開き直した（L_Hospital_Zone1、PIE なし）。本家は閉じた。PIE と本家は反復の終わりに必ず止める・閉じる。
+- 本家のセーブ: 観察で本家が `SaveSlot.sav`・`structSlot.sav` を書き換えた（21:25。いつもの動き）。控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-20260917-211519`。戻さない。
+- `desktop.py look` は `dx // steps // burst` を送る（割り切れる量にする）。
+- MOD の W-Editor のファイル `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\World\OBJ-06_Hospital_Zone_01.sav` は前の作業の要確認のまま（作業一覧の「未回答の要確認」。今回は書き込みなし）。触らない。
 
 ## 検証
 
-- check_records: 未実行（ソースの変更なし）
+- check_records: ステップ 2 で OK（`Tools/desktop.py` の `--burst` を 01 記録に書いた）
 - C++ ビルド: 未実行
 - エディタでの確認（取り込み・組み立て・PIE）: ステップ 1 で PIE の測定（視点・集中線）。コードの変更はまだ無い

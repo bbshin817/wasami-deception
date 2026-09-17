@@ -66,6 +66,32 @@
 - **倍率 25 のシェイクの間の黒いフレーム**: Primal（a・b）とテレキネシス（a・c）の画面の下半分で、ほぼ黒（< 8）の画素は最大 7 %（172 × 72 に縮めた絵の輝度。原寸の輝度で測る `python Tools/video_probe.py series <mkv> --dark 8` では primal-a 0.099・primal-b 0.075・telekinesis-a 0.045。PIE と比べるときはこちらの値を使う）。**タブレットが横切る黒いフレームは見えない**（0.25 倍で 1 秒 10 枚 = 実時間で約 40 枚相当）。
 - 回収の音の重なりは音を撮っていないので分からない（人が聞いて確かめる）。
 
+### 視点の速さと集中線（2026-09-17、作業一覧の項目 2 のステップ 2、MOD 入り）
+
+OPTIONS の GAMEPLAY（`orig-options-gameplay.png`）: MOUSE SENSITIVITY **1**、MOUSE SMOOTHING **オン**、HEADBOBBING オン、INVERT Y オフ（見ただけ。設定のファイルとセーブには感度の値が無い = 既定）。
+
+**視点**: ZONE 1（待合の廊下、敵は MOD で消した）で、`look --steps S --burst B`（症状索引の「回転量が送った量に比例しない」）の前後を `shot` し、位相相関でずれを測った（`orig-look/`。`cyaw-pre/post-N`・`half-N`・`*-sheet.png`）。
+
+| 送った量 | 刻み | 結果 |
+| --- | --- | --- |
+| dx 2057 | 17 × 11 | 2 回とも元の絵（ずれ 2 px・相関 0.44 / 0.63）= **360°** |
+| dx 1029 → 1029 | 21 × 7 | 真後ろ（待合の奥の赤い両開き扉）→ 元の絵 = **180°** |
+| dx 2000 | 20 × 10 | 右へ 734 px ずれた（約 −10°） |
+
+- **1 カウント 0.175°**（= 0.07 × 感度 1 × FOV 90 × 0.01111 × 2.5。2057 × 0.175 = 359.98°）。180° の結果で 0.35°（2 周）の読みは外れる。
+- 小さい角度（dx 100・300）の画面のずれは平滑化の揺れで比例しなかった（690 px / 1830 px）。水平の画角はここからは決めていない。
+- 平滑化を慣らす前の測定（開始地点の `orig-look-*`・`yaw-*`・`byaw-*`。Shots のフォルダーだけに残した）は合計が崩れていて使えない。`dy 300` の往復の後に上を向いたままになったのもこの時で、縦の限界は確かめていない。
+
+**集中線**: 待合から北へ、右の枠のスピードブースト（E）を使って `hold w` で走り、`observations/tools/burst.py` で無劣化の連写を撮った。`orig-speedlines-burst1/`（全画面、50 枚・2.9 s）、`orig-speedlines-burst2/`（左半分 (0, 0)〜(1720, 1440)、90 枚・5.1 s。ブーストは 3.7 s まで）。`times.json` の `started` は `time.time()`。`orig-speedlines-burst1-red.png` は赤みを強めたシート。
+
+- 線の取り出し: 線は「不透明度 0.15 で赤を混ぜる」ので、画面の R − 2.2 G の高域（半径 6 の箱を引く）が線だけ明るくなる（無地の壁の `burst2` 55〜64 で線がはっきり見える）。
+- 照合（`observations/tools/speedlines/`: `match2.py <連写> <番号…>` が候補の読み方の上位、`frames.py` が全フレームのコマ番号を `frames.json` へ）: `T_Speedlines` を「列・上端の行・1 コマの高さ」で切り、描画の拡縮 1.25 の中央 80 % を画面に写した絵と相関を取った。
+  - **1 コマの高さは 1081 行（2 × 5）**。上端は 0・1080・2160・3240・4320 ちょうどに集まり、半コマずらし（540 + 1080k）・2 × 2（2702 行）・1 × 1 はほとんど選ばれない（線が最もよく見えた `burst2` 63・64 で相関 0.22・0.30、次点は 0.07・0.14）。
+  - 映る範囲は中央 80〜85 % で相関が最大（0.6: 0.01、0.8: 0.165、0.85: 0.168、1.0: 0.12）= 描画の拡縮 1.25 のとおり。
+  - ブーストの無いフレームの相関は 0.05〜0.06、ブースト中は 0.1〜0.3。
+- **コマ送りは 1 秒に 30.0 コマ**（10 コマを 1 秒に 3 周）。2 回の連写（約 40 秒離れている）の確かなフレーム 46 枚のうち 37 枚が `floor(30.005 × t + φ) mod 10` に合う（連写ごとでは 29.86 → 18/21、30.08 → 22/25）。コマは 0 → 1 → … → 9 の順（左の列 → 右の列、上の段 → 下の段）。
+- 見え方: 画面の中央は空き、縁に細い楔と水平の線（赤、薄い）。縁は赤いビネットで明るい。
+
 ## classic/（旧版 = `pak_reference` と同一のビルド、v1.6.1、3440x1440、MOD なし）
 
 2026-09-16 に撮影。REPLAY → Deadly Decadence（`03_Manor_Zone1`）の入口の噴水の周り（テレポートのゾーン `BP_Power_Teleport_Zone5_77`）で、タブレットの 1 で左の枠をテレポートにして使った。動画は `Tools/desktop.py record`（60 fps、画面が変わらない間はフレームが間引かれる）。
@@ -328,6 +354,7 @@
 | `tools/aim_setup.py`・`aim_restore.py`・`aim_begin.sh`・`aim_distance.py`・`aim_knobs.py <名前> <MIC> 名前=値 …` | 本家の画質（「高」の 3 つの cvar）と強化段階に合わせる・戻す、照準を本家と同じ場所と距離で出す、材質のインスタンスの値を変えて `HighResShot` を撮る（`tmp/aim/` へ）。11b4 |
 | `tools/aim_fit/tonemap.py`・`cmp.py`・`sparks.py` | UE のフィルミックのトーンマッパー（既定の値）を numpy で組んだもの（線形 → 表示、表示 → 線形）、本家の照準の静止画と PIE の静止画を並べる、火花を数えて大きさを測る。11b4 |
 | `tools/tele_fit/`（`dmap.py`・`seq.py`・`model.py`・`calib.py`・`grad_rt.py`・`trackers.py`・`gallery.py`・`stats.py`・`fitgain*.py`・`fitjoint.py`・`variants.py`・`decay.py`・`flow.py`・`begin.sh`） | Telepathy の印の足す赤を収録から出す、材質の numpy の模型と表示の式の確かめ、勾配関数の読み取り、PIE の印の値を読む・変える（`main(tiling=…, speed=…, angle=…, knobs=…, tiling_scale=…)`）、候補の式の描画と大きさに依らない統計の比較、別窓の PIE の準備。11b5 |
+| `tools/burst.py` | `python observations/tools/burst.py <出力> --count N [--delay S] [--region L T R B]`。画面を無劣化の PNG で続けて撮り、`times.json` に時刻を書く（Claude が対話デスクトップにいるとき。本家の全画面で約 17 枚/s）。項目 2 のステップ 2 |
 | `tools/cmp.py` | `python observations/tools/cmp.py <画像> <画像> …`（3440x1440）。画面全体・床・壁・天井・天井灯の面・エレベーターの壁・廊下の奥の中央値と平均輝度を並べる |
 | `tools/bake_zone1.py` | `python Tools/ue_remote.py observations/tools/bake_zone1.py`。`L_Hospital_Zone1` を開いた状態で Preview 品質で焼き、反射キャプチャを撮り直して保存する（原作の解像度に揃えた後は 30 秒ほど） |
 | `tools/bake_level.py` | `python Tools/ue_remote.py -c "$(cat observations/tools/bake_level.py; echo; echo "main('L_Hospital_Zone1', 'QUALITY_HIGH')")"`。`bake_zone1.py` のレベルと品質を指定できる形（レベルを開いてから焼く）。**原作と同じ High 品質**で Zone 1 は 106 秒、Zone 2 は 48 秒。出力の最後に `bake ok True` と秒数 |
