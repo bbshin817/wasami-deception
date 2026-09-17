@@ -248,7 +248,7 @@
 - 原因: Enhanced Input の `ApplyAxisPropertyModifiers`（UE 5.8 `EnhancedInputSubsystemInterface.cpp`）が、マウスのキー（`Mouse2D` を含む。CVar `input.GlobalAxisConfigMode` の既定 0）の対応づけに、旧入力の `AxisConfig` の感度（`DefaultInput.ini` の Mouse2D 0.07）を Scalar 修飾子として自動で先頭に足す。対応づけに自分で Scalar を足すと重なる。修飾子はプレイヤーの入力へ `DuplicateObject` で写されるので、IMC の持ち主の下の修飾子を書き換えても効かない（写しは `/Engine/Transient.InputModifierScalar_N`）。
 - 対処: 感度は `AxisConfig` の側だけに置き、対応づけに Scalar を足さない（作業一覧の項目 2 のステップ 3）。
 - 確かめ方: PIE で `pie.py place` の後に `look --dx 1000 --allow UnrealEditor.exe` → `pie.py state` のヨーの差が 175°（0.175°/カウント、FOV 90）。実行中に試すなら `unreal.ObjectIterator(unreal.InputModifier)` で `/Engine/Transient` の写しを探して書き換える。
-- 出典: 進捗記録 `20260917-look-speedlines.md` のステップ 1（2026-09-17）、`observations/README.md` の「視点の速さと集中線」。
+- 出典: 02 記録、`observations/README.md` の「視点の速さと集中線」（2026-09-17。直した後の PIE で dx 100 → 17.5°、dx 2057 → 359.94°）。
 
 ## 取り込み・レベル・描画
 

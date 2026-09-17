@@ -30,10 +30,10 @@
 
 namespace
 {
-	// The original's mouse axes (its DefaultInput.ini): Sensitivity 0.07 after UE4's mouse smoothing, then UE4's FOV
-	// scaling (FOVScale 0.01111); AddControllerYaw/PitchInput scale by the controller's legacy 2.5 / −2.5
-	// (bEnableLegacyInputScales in Config/DefaultInput.ini).
-	constexpr float MouseAxisSensitivity = 0.07f;
+	// The original's mouse axes: UE4's mouse smoothing, then UE4's FOV scaling (FOVScale 0.01111). Their sensitivity
+	// 0.07 is the Mouse2D AxisConfig in Config/DefaultInput.ini, which Enhanced Input adds to every mouse mapping by
+	// itself (ApplyAxisPropertyModifiers), so the mapping must not scale it again. AddControllerYaw/PitchInput scale by
+	// the controller's legacy 2.5 / −2.5 (bEnableLegacyInputScales in the same file).
 	constexpr float MouseFOVScale = 0.01111f;
 
 	// The original's FOV Multiplier runs on a 0.001 s looping timer: several times a frame, each with the frame's delta.
@@ -288,12 +288,10 @@ void AWasamiPlayerCharacter::CreateInput()
 		Map(MoveAction, Key, {Negate()});
 	}
 
-	UInputModifierScalar* Sensitivity = NewObject<UInputModifierScalar>(this);
-	Sensitivity->Scalar = FVector(MouseAxisSensitivity, MouseAxisSensitivity, 1.f);
 	UInputModifierFOVScaling* FOVScaling = NewObject<UInputModifierFOVScaling>(this);
 	FOVScaling->FOVScale = MouseFOVScale;
 	FOVScaling->FOVScalingType = EFOVScalingType::UE4_BackCompat;
-	Map(LookAction, EKeys::Mouse2D, {NewObject<UInputModifierSmooth>(this), Sensitivity, FOVScaling});
+	Map(LookAction, EKeys::Mouse2D, {NewObject<UInputModifierSmooth>(this), FOVScaling});
 
 	Map(SprintAction, EKeys::LeftShift);
 	Map(TurnAction, EKeys::MiddleMouseButton);
