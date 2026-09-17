@@ -43,6 +43,7 @@
 
 ## スクショ
 
+- **撮り直しの持ち越し（2026-09-18、作業一覧の項目 22）**: `01-corridor.jpg` と `08-shard-glow.jpg` は、餅が小さく紫に明滅していた頃の絵。いまの餅は 1.5 倍で明滅せず、モデルも `wasami_mochi_v3` に替わっているので、**次に note を更新するときに撮り直す**（廊下は (0, 700)・ヨー −90、回収は下の `08-shard-glow.jpg` の撮り方）。原稿の本文は 2026-09-18 に直してある。
 - 新しく見えるものが増えたときだけ撮り足す。撮り方は `.claude/guides/verification.md`（PIE を始める → `DisableAllScreenMessages` → プレイヤーを置く → `python Tools/desktop.py shot --scale 1.0 --region <ビューポートの左 上 右 下> --name x.png`（2026-09-17 夕方の配置では 1825 205 2978 859。エディタの窓が動くと変わるので、撮る前に全体を `shot --scale 0.3` で見て確かめる） → PIE を止める → `stop`。キーとクリックには `--allow UnrealEditor.exe` を付ける）。一瞬の演出は `unreal.GameplayStatics.set_global_time_dilation(world, 0.1)` で遅くしてから撮り、終わったら 1.0 に戻す。
 - 上端と左端にエディタの枠線が写るので切り落とし、JPEG にして置く: `ffmpeg -i <png> -vf "crop=1146:644:3:5" -q:v 2 observations/ours/note/<番号>-<名前>.jpg`。
 - 2026-09-17 に撮った場所: 廊下 (0, 700)・ヨー −90、タブレット (0, −330)、テレポートの照準 (0, −60)・ピッチ −30 で `adjust_distance(-1)` × 5、Telepathy (−25, 3000) に仮の的 3 つ（(−330, 2150)・(−25, 2250)・(130, 2450)、z 118。使って 2 秒後）、Telekinesis (0, 700) で時間を 0.1 倍。
