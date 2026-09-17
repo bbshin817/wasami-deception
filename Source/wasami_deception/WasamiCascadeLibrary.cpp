@@ -10,6 +10,7 @@
 #include "Particles/ParticleModuleRequired.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/Spawn/ParticleModuleSpawn.h"
+#include "Particles/TypeData/ParticleModuleTypeDataBase.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectHash.h"
 
@@ -393,7 +394,7 @@ bool UWasamiCascadeLibrary::AddEmitter(UParticleSystem* System, UObject* Emitter
 }
 
 bool UWasamiCascadeLibrary::AddLODLevel(UObject* Emitter, UObject* LODLevel, UObject* RequiredModule, UObject* SpawnModule,
-	const TArray<UObject*>& Modules)
+	const TArray<UObject*>& Modules, UObject* TypeDataModule)
 {
 	UParticleEmitter* ParticleEmitter = Cast<UParticleEmitter>(Emitter);
 	UParticleLODLevel* Level = Cast<UParticleLODLevel>(LODLevel);
@@ -410,7 +411,8 @@ bool UWasamiCascadeLibrary::AddLODLevel(UObject* Emitter, UObject* LODLevel, UOb
 	for (UObject* Object : Modules)
 	{
 		UParticleModule* Module = Cast<UParticleModule>(Object);
-		if (!Module || Module->GetOuter() != System || Module->IsA<UParticleModuleRequired>() || Module->IsA<UParticleModuleSpawn>())
+		if (!Module || Module->GetOuter() != System || Module->IsA<UParticleModuleRequired>() || Module->IsA<UParticleModuleSpawn>()
+			|| Module->IsA<UParticleModuleTypeDataBase>())
 		{
 			UE_LOG(LogWasamiCascade, Error, TEXT("AddLODLevel: %s is not a module made in %s"), *GetNameSafe(Object), *GetNameSafe(System));
 			return false;
@@ -422,9 +424,23 @@ bool UWasamiCascadeLibrary::AddLODLevel(UObject* Emitter, UObject* LODLevel, UOb
 		UE_LOG(LogWasamiCascade, Error, TEXT("AddLODLevel: the required and spawn modules must be made in %s"), *GetNameSafe(System));
 		return false;
 	}
+	UParticleModuleTypeDataBase* TypeData = Cast<UParticleModuleTypeDataBase>(TypeDataModule);
+	if (TypeDataModule && (!TypeData || TypeData->GetOuter() != System))
+	{
+		UE_LOG(LogWasamiCascade, Error, TEXT("AddLODLevel: %s is not a type data module made in %s"), *GetNameSafe(TypeDataModule), *GetNameSafe(System));
+		return false;
+	}
+	// The engine takes an emitter's LOD levels to share one type data module (UParticleLODLevel::GenerateFromLODLevel).
+	if (ParticleEmitter->LODLevels.Num() > 0 && ParticleEmitter->LODLevels[0] && ParticleEmitter->LODLevels[0]->TypeDataModule != TypeData)
+	{
+		UE_LOG(LogWasamiCascade, Error, TEXT("AddLODLevel: %s's type data module %s differs from its first LOD level's %s"),
+			*GetNameSafe(LODLevel), *GetNameSafe(TypeDataModule), *GetNameSafe(ParticleEmitter->LODLevels[0]->TypeDataModule.Get()));
+		return false;
+	}
 	Level->RequiredModule = Required;
 	Level->SpawnModule = Spawn;
 	Level->Modules = MoveTemp(LevelModules);
+	Level->TypeDataModule = TypeData;
 	ParticleEmitter->LODLevels.Add(Level);
 	return true;
 }
@@ -566,5 +582,11 @@ TArray<UObject*> UWasamiCascadeLibrary::GetLODModules(UObject* LODLevel)
 		}
 	}
 	return Out;
+}
+
+UObject* UWasamiCascadeLibrary::GetLODTypeDataModule(UObject* LODLevel)
+{
+	const UParticleLODLevel* Level = Cast<UParticleLODLevel>(LODLevel);
+	return Level ? Level->TypeDataModule.Get() : nullptr;
 }
 #endif

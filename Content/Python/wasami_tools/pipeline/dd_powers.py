@@ -1,6 +1,7 @@
 """Dark Deception's tablet powers: the sounds, camera shakes, camera anims, textures, materials and particle systems
 the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim), Primal Fear (AWasamiPrimalPower),
-Vanish (AWasamiVanishPower, UWasamiVanishWidget) and the player's FX (UWasamiChameleonComponent) use. The icons on the
+Vanish (AWasamiVanishPower, UWasamiVanishWidget), the telekinesis (AWasamiTelekinesisPower) and the player's FX
+(UWasamiChameleonComponent) use. The icons on the
 tablet's sockets are the tablet's own (dd_tablet). The telepathy's markers (UWasamiTelepathyTrackerWidget) show
 MM_Telepathy_Inst.
 
@@ -56,6 +57,20 @@ TEXTURES = (
     # MM_Telepathy's noises: smoky R, streaky G, blotchy B (linear); cloudy in each channel (sRGB)
     (2, "ThirdParty/AdvancedMagicFX13/Textures/T_ky_noise16"),
     (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise"),
+    # the telekinesis's force field (P_ky_forceField_Telekinesis): the aura's mask (linear), the ground ring's sheets
+    # (M_ky_shockWave02_4x4's own and the circle MI_ky_shockWave02_4x4_nonD swaps in, both linear) and its panned mask
+    # (sRGB), the dust's star (sRGB) and the sphere's wall sheet (sRGB)
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_maskRGB5"),
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_shockWave02_4x4"),
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_circle01_4x4"),
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_maskRGB3"),
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_dust_longStar"),
+    (2, "ThirdParty/AdvancedMagicFX09/Textures/T_ky_wall02_4x4"),
+)
+# Static meshes the mesh emitters draw (dd_assets.static_mesh), made before the systems.
+MESHES = (
+    (2, "ThirdParty/AdvancedMagicFX09/Meshes/SM_ky_sphere"),             # the force field's sphere (radius 10 cm)
+    (2, "ThirdParty/AdvancedMagicFX09/Meshes/SM_ky_windLine27midPoly"),  # the force field's swirling aura
 )
 # Cascade systems (dd_particles), made after the materials they use.
 PARTICLE_SYSTEMS = (
@@ -461,6 +476,7 @@ def import_all():
     result["camera_shakes"] = len([dd_assets.camera_shake(rel, version) for version, rel in CAMERA_SHAKES])
     result["camera_anims"] = len([dd_assets.camera_anim(rel, version) for version, rel in CAMERA_ANIMS])
     result["textures"] = len([dd_assets.texture(rel, version) for version, rel in TEXTURES])
+    result["meshes"] = len([dd_assets.static_mesh(rel, version) for version, rel in MESHES])
     result["materials"] = len(make_materials())
     result["particle_systems"] = len([dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS])
     for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT):

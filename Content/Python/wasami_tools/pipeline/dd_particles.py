@@ -1,6 +1,9 @@
 """Dark Deception's Cascade particle systems, rebuilt under /Game/DD from their exported packages (_assets/.../P_*.json)
 through UWasamiCascadeLibrary (C++): every emitter, LOD level and module with the values the cook saved.
 
+A mesh emitter is a sprite emitter whose LOD levels share a type data module (ParticleModuleTypeDataMesh), made in the
+system like the other modules and handed to each LOD level beside them.
+
 The cook keeps a module's distributions as their baked lookup tables (FRawDistribution: Table, MinValue, MaxValue)
 without the distribution objects, and that table is what the game reads. They are written as they are, with no
 distribution object, which UE 5.8 reads the same way (FRawDistributionFloat::GetValue uses the table; the editor only
@@ -23,7 +26,7 @@ LIB = unreal.WasamiCascadeLibrary
 STRUCTURE = {
     "system": ("Emitters",),
     "emitter": ("LODLevels",),
-    "lod": ("RequiredModule", "SpawnModule", "Modules"),
+    "lod": ("RequiredModule", "SpawnModule", "Modules", "TypeDataModule"),
 }
 # Recomputed from where each module is used (UParticleSystem::SetupLODValidity) and compared with the export after.
 DERIVED = ("LODValidity",)
@@ -261,13 +264,12 @@ class _Build:
             for lod_key in emitter_props["LODLevels"]:
                 lod = self._make(emitter, lod_key)
                 lod_props = self.exports[lod_key]["props"]
-                if lod_props.get("TypeDataModule"):
-                    raise NotImplementedError("%s: %s has a type data module" % (self.rel, lod_key))
-                self._write(lod, lod_props, STRUCTURE["lod"] + ("TypeDataModule",))
+                self._write(lod, lod_props, STRUCTURE["lod"])
                 required = self._module(lod_props["RequiredModule"])
                 spawn = self._module(lod_props["SpawnModule"])
                 modules = [self._module(k) for k in lod_props.get("Modules", ())]
-                if not LIB.add_lod_level(emitter, lod, required, spawn, modules):
+                type_data = self._module(lod_props["TypeDataModule"]) if lod_props.get("TypeDataModule") else None
+                if not LIB.add_lod_level(emitter, lod, required, spawn, modules, type_data):
                     raise RuntimeError("%s: %s was not added" % (self.rel, lod_key))
         LIB.finish_particle_system(self.system)
         self._check()
@@ -292,6 +294,10 @@ class _Build:
                 got = [by_object.get(o.get_path_name()) for o in LIB.get_lod_modules(lod)]
                 if got != want:
                     raise RuntimeError("%s: the modules of %s are %s" % (self.rel, lod_key, got))
+                type_data = LIB.get_lod_type_data_module(lod)
+                got_type = by_object.get(type_data.get_path_name()) if type_data else None
+                if got_type != p.get("TypeDataModule"):
+                    raise RuntimeError("%s: the type data module of %s is %s" % (self.rel, lod_key, got_type))
         for key, obj in self.made.items():
             saved = self.exports[key]["props"].get("LODValidity")
             if saved is not None and int(LIB.get_property_text(obj, "LODValidity")) != saved:
@@ -307,7 +313,8 @@ def particle_system(rel, version=1):
 
 
 def describe(asset_path):
-    """The particle system's emitters, LOD levels and modules with a few values, for checking a rebuild."""
+    """The particle system's emitters, LOD levels, modules and type data (a mesh emitter's) with a few values, for
+    checking a rebuild."""
     system = unreal.load_asset(asset_path)
     out = []
     for emitter in LIB.get_emitters(system):
@@ -317,6 +324,12 @@ def describe(asset_path):
         for lod in LIB.get_lod_levels(emitter):
             modules = [(m.get_class().get_name(), m.get_name(), LIB.get_property_text(m, "LODValidity"))
                        for m in LIB.get_lod_modules(lod)]
-            entry["lods"].append({"level": LIB.get_property_text(lod, "Level"), "modules": modules})
+            level = {"level": LIB.get_property_text(lod, "Level"), "modules": modules}
+            type_data = LIB.get_lod_type_data_module(lod)
+            if type_data:
+                level["type_data"] = (type_data.get_class().get_name(), type_data.get_name(),
+                                      LIB.get_property_text(type_data, "LODValidity"),
+                                      LIB.get_property_text(type_data, "Mesh"))
+            entry["lods"].append(level)
         out.append(entry)
     return json.dumps(out, indent=1)

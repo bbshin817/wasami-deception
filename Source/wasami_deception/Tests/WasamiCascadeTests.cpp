@@ -5,6 +5,8 @@
 
 #include "Distributions/DistributionFloat.h"
 #include "Distributions/DistributionVector.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
 #include "Math/RandomStream.h"
 #include "Particles/ParticleEmitter.h"
 #include "Particles/ParticleLODLevel.h"
@@ -14,6 +16,7 @@
 #include "Particles/Size/ParticleModuleSize.h"
 #include "Particles/Spawn/ParticleModuleSpawn.h"
 #include "Particles/SubUV/ParticleModuleSubUV.h"
+#include "Particles/TypeData/ParticleModuleTypeDataMesh.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectHash.h"
 
@@ -180,6 +183,80 @@ bool FWasamiCascadeBuildTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the old module has left the system"), Size->GetOuter() != System);
 	UObject* Again = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleSize"), TEXT("ParticleModuleSize_0"));
 	TestTrue(TEXT("a module of an old name is made anew"), Again && Again != Size && Again->GetFName() == FName(TEXT("ParticleModuleSize_0")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiCascadeMeshEmitterTest, "Wasami.Cascade.MeshEmitter",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiCascadeMeshEmitterTest::RunTest(const FString& Parameters)
+{
+	// P_ky_forceField_Telekinesis's 'sphere': a sprite emitter whose LOD levels share one mesh type data module.
+	UParticleSystem* System = NewObject<UParticleSystem>(GetTransientPackage(), NAME_None, RF_Transient);
+	UObject* Emitter = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleSpriteEmitter"), TEXT("ParticleSpriteEmitter_1"));
+	UObject* Near = UWasamiCascadeLibrary::MakeObject(Emitter, TEXT("ParticleLODLevel"), TEXT("ParticleLODLevel_6"));
+	UObject* Far = UWasamiCascadeLibrary::MakeObject(Emitter, TEXT("ParticleLODLevel"), TEXT("ParticleLODLevel_2"));
+	UObject* Required = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleRequired"), TEXT("ParticleModuleRequired_1"));
+	UObject* Spawn = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleSpawn"), TEXT("ParticleModuleSpawn_1"));
+	UObject* Size = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleSize"), TEXT("ParticleModuleSize_7"));
+	UObject* TypeData = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleTypeDataMesh"), TEXT("ParticleModuleTypeDataMesh_0"));
+	UObject* OtherTypeData = UWasamiCascadeLibrary::MakeObject(System, TEXT("ParticleModuleTypeDataMesh"), TEXT("ParticleModuleTypeDataMesh_2"));
+	// A module has to be made within a particle system (its class's Within), so the outside one is in another system.
+	UParticleSystem* OtherSystem = NewObject<UParticleSystem>(GetTransientPackage(), NAME_None, RF_Transient);
+	UObject* Outside = UWasamiCascadeLibrary::MakeObject(OtherSystem, TEXT("ParticleModuleTypeDataMesh"), TEXT("ParticleModuleTypeDataMesh_0"));
+	if (!TestTrue(TEXT("every object is made"), Emitter && Near && Far && Required && Spawn && Size && TypeData && OtherTypeData && Outside))
+	{
+		return false;
+	}
+	UParticleModuleTypeDataMesh* Mesh = Cast<UParticleModuleTypeDataMesh>(TypeData);
+	UParticleModuleRequired* RequiredModule = Cast<UParticleModuleRequired>(Required);
+	const UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/WorldGridMaterial.WorldGridMaterial"));
+	if (!TestNotNull(TEXT("the engine's sphere"), Sphere) || !TestNotNull(TEXT("the engine's grid material"), Material))
+	{
+		return false;
+	}
+
+	// The type data's values as the export has them: the mesh, the material override, a table for its orientation.
+	SetText(*this, TypeData, TEXT("Mesh"), TEXT("\"/Engine/BasicShapes/Sphere.Sphere\""));
+	SetText(*this, TypeData, TEXT("bOverrideMaterial"), TEXT("True"));
+	SetText(*this, TypeData, TEXT("RollPitchYawRange"), TEXT("(MinValue=0.0,MaxValue=0.0,MinValueVec=(X=0.0,Y=0.0,Z=0.0),")
+		TEXT("MaxValueVec=(X=0.0,Y=0.0,Z=0.0),Table=(Op=1,EntryCount=1,EntryStride=3,Values=(0.0,0.0,0.0)),Distribution=None)"));
+	SetText(*this, Required, TEXT("Material"), TEXT("\"/Engine/EngineMaterials/WorldGridMaterial.WorldGridMaterial\""));
+	TestTrue(TEXT("the mesh is written"), Mesh->Mesh.Get() == Sphere);
+	TestEqual(TEXT("the type data's type"), UWasamiCascadeLibrary::GetPropertyType(TypeData, TEXT("Mesh")), FString(TEXT("TObjectPtr<UStaticMesh>")));
+
+	// Refusals: not type data, type data outside the system, type data among the modules, a second one on the emitter.
+	AddExpectedError(TEXT("is not a type data module made in"), EAutomationExpectedErrorFlags::Contains, 2);
+	AddExpectedError(TEXT("is not a module made in"), EAutomationExpectedErrorFlags::Contains, 1);
+	AddExpectedError(TEXT("differs from its first LOD level's"), EAutomationExpectedErrorFlags::Contains, 2);
+	TestFalse(TEXT("a module that is not type data"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, Spawn, { Size }, Size));
+	TestFalse(TEXT("type data outside the system"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, Spawn, { Size }, Outside));
+	TestFalse(TEXT("type data among the modules"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, Spawn, { Size, TypeData }, TypeData));
+	TestEqual(TEXT("nothing was added by the refusals"), Cast<UParticleEmitter>(Emitter)->LODLevels.Num(), 0);
+
+	TestTrue(TEXT("the emitter is added"), UWasamiCascadeLibrary::AddEmitter(System, Emitter));
+	TestTrue(TEXT("the near LOD level is added"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Near, Required, Spawn, { Size }, TypeData));
+	TestFalse(TEXT("another type data on the same emitter"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Far, Required, Spawn, { Size }, OtherTypeData));
+	TestFalse(TEXT("no type data on a mesh emitter's LOD level"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Far, Required, Spawn, { Size }));
+	TestTrue(TEXT("the far LOD level is added"), UWasamiCascadeLibrary::AddLODLevel(Emitter, Far, Required, Spawn, { Size }, TypeData));
+	UWasamiCascadeLibrary::FinishParticleSystem(System);
+
+	const UParticleLODLevel* NearLevel = Cast<UParticleLODLevel>(Near);
+	TestTrue(TEXT("the near LOD level's type data"), NearLevel->TypeDataModule.Get() == Mesh);
+	TestTrue(TEXT("the far LOD level's type data reads back"), UWasamiCascadeLibrary::GetLODTypeDataModule(Far) == TypeData);
+	TestNull(TEXT("an object that is not a LOD level has no type data"), UWasamiCascadeLibrary::GetLODTypeDataModule(Size));
+	TestTrue(TEXT("the type data stays out of the modules"),
+		UWasamiCascadeLibrary::GetLODModules(Near) == TArray<UObject*>({ Required, Spawn, Size }));
+	TestEqual(TEXT("the shared type data is valid in both LOD levels"), (int32)Mesh->LODValidity, 3);
+	TestTrue(TEXT("a mesh emitter"), Mesh->IsAMeshEmitter());
+	TestTrue(TEXT("the material override keeps the emitter's material"), RequiredModule->Material.Get() == Material);
+	TestNull(TEXT("no orientation distribution object"), Mesh->RollPitchYawRange.Distribution.Get());
+	TestTrue(TEXT("the orientation's table counts as made (no default distribution is made for it)"), Mesh->RollPitchYawRange.IsCreated());
+
+	// A rebuild moves the type data out with the rest.
+	UWasamiCascadeLibrary::ResetParticleSystem(System);
+	TestTrue(TEXT("the type data has left the system"), TypeData->GetOuter() != System);
 	return true;
 }
 

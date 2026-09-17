@@ -366,6 +366,9 @@ updated: 2026-09-17
 | `/Game/DD/Materials/Special/MM_WobblyVignette` | `M_DD_WobblyVignette` のインスタンス（原作にパラメータは無い） |
 | `/Game/Pipeline/Materials/M_DD_LoopingSmoke` | **推定**（`M_LoopingSmoke1_Sheet`。cook に残るのは設定〈Translucent・分離透過なし・スプライト。シェーディングモデルは書き出しに無いので既定の DefaultLit〉、`ParticleSubUV`〈`T_LoopingSmoke_8x8`〉、関数 `CameraDepthFade`、式が 10 個あったこと。Emissive の入力は残っていない〈cook は接続があれば残す〉）。BaseColor = コマの RGB × 粒子の色、Opacity = コマのアルファ × 粒子のアルファ × `CameraDepthFade`（既定）。UE は BaseColor を 0〜1 に切るので、粒子の色の 1 を超える部分（紫の 3.7 / 1.4 / 10）は白に近くなる。分離透過なしは UE 5 の `MTP_BeforeDOF`。ライティングを受ける半透明なので、見え方は場所の明るさで変わる。進捗記録のステップ 11 で最新版の病院と見比べる |
 | `/Game/Pipeline/Materials/M_DD_WobblyVignette` | **推定**（`MM_WobblyVignette`。cook に残るのは設定〈UI・Translucent〉、Emissive = `TexCoord` の `T_VignetteNew` の RGB〈原作どおり。白〉、もう 1 つの `T_VignetteNew` のサンプル、`Panner_2` / `Panner_3` を座標にした `T_perlinnoise` のサンプル 2 つ〈LinearGrayscale〉、関数 `LinearSine`、式が 22 個あったこと）。Opacity = `saturate(T_VignetteNew の A × Lerp(ノイズ A, ノイズ B, LinearSine(Time, WobblePeriod)) × WobbleGain)`。**パンの速さ（(0.03, 0.02)・(−0.02, 0.03)）・`WobblePeriod` 2・`WobbleGain` 2 は仮の値**（`dd_powers.WOBBLE_*`）。ウィジェットの紫が白に掛かる。進捗記録のステップ 11 で最新版と見比べる |
+| `/Game/DD/ThirdParty/AdvancedMagicFX09/Meshes/SM_ky_sphere` | テレキネシスの粒子 `sphere` のメッシュ（最新版。半径 10 cm の球、559 頂点。Nanite なし、ライトマップ 64・UV 0、スロット `WorldGridMaterial`〈エミッタが材質を上書きするので描かれない〉） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX09/Meshes/SM_ky_windLine27midPoly` | テレキネシスの粒子 `aura` のメッシュ（最新版。外接球 15.70 cm の渦巻く帯、294 頂点。設定は上と同じ） |
+| `/Game/DD/ThirdParty/AdvancedMagicFX09/Textures/T_ky_maskRGB5`・`T_ky_shockWave02_4x4`・`T_ky_circle01_4x4`・`T_ky_maskRGB3`・`T_ky_dust_longStar`・`T_ky_wall02_4x4` | テレキネシスの粒子の材質のテクスチャ（最新版。どれも `TC_Default`〈DXT1〉。sRGB は `T_ky_maskRGB3`・`T_ky_dust_longStar`・`T_ky_wall02_4x4` だけ、グループは `T_ky_circle01_4x4` だけ World で残りは Effects。1024² / 2048² / 2048² / 1024² / 512² / 2048²。原作の cook と同じ）。材質と粒子 `P_ky_forceField_Telekinesis` は進捗記録のステップ 10b2 で作る |
 | `/Game/Pipeline/Materials/M_DD_ChameleonCameraShake` | **推定**。Chameleon の `M_CameraShake`（Post Process）。書き出しに残るのはパラメータ `ShakePower`（既定 0.01）・`ShakeFQ`（既定 50）と `MakeFloat2` 1 つ・`MF_SetBlending`・`MF_DepthOnlyMasking` だけで、HLSL・数式・シーンテクスチャは無い。本作は `ScreenPosition.ViewportUV + Append(sin(Time × ShakeFQ), cos(Time × ShakeFQ)) × ShakePower` で `PostProcessInput0` を読み、その色を Emissive に出す（UE の Sine / Cosine は周期 1 = `ShakeFQ` 回/秒の円）。ブレンドの位置は既定（トーンマップの後）。実機との見比べは進捗記録のステップ 11 |
 
 ## 原作データの根拠
@@ -519,6 +522,7 @@ updated: 2026-09-17
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）はまだ無い（M4）。
 
 ## 変更履歴
+- 2026-09-17: テレキネシスの粒子のメッシュ 2 つとテクスチャ 6 枚を取り込み対象に足した（`dd_powers`。01 記録。ソースの C++ は変えていない）
 - 2026-09-17: テレキネシス（`AWasamiTelekinesisPower`〈半径の中のシャードに `Activate` を 1 回ずつ、青い画面と閃光、音、シェイク〉、`UseTelekinesis`〈0.05 秒でアイコンが落ち、0.06 秒後に再使用 8 秒〉、粒子の枠〈空〉）とテスト `Wasami.Powers.TelekinesisTimeline`・`TelekinesisPull` を足した。粒子 `P_ky_forceField_Telekinesis` は次のステップ
 - 2026-09-17: テレキネシスのインターフェースを実装するシャード（`AWasamiShard`、06 記録）ができたことを書き足した（ソースは変えていない）
 - 2026-09-17: Telepathy（`AWasamiTelepathyPower`〈0.8 秒ごとにレベルの全敵に印、時間で全部外す〉、`AWasamiTelepathyTracker`〈画面空間のウィジェットで敵を追い、距離で大きさ〉、`UWasamiTelepathyTrackerWidget`〈赤い煙の円、Appear / Disappear〉、開始と終わりの音、シェイク、9 秒と再使用 6.5 秒）とテスト `Wasami.Powers.TelepathyTracker`・`TelepathyTargets` を足した。印の材質は推定。ユニティビルドでぶつかった Vanish の無名名前空間の名前を変えた

@@ -235,6 +235,34 @@ def texture(rel, version=1):
     return target
 
 
+def static_mesh(rel, version=1):
+    """Imports the original's static mesh /Game/<rel> under /Game/DD from its glTF (_meshes.json), without Nanite (a
+    particle's mesh, drawn with translucent materials), with the StaticMesh's lightmap settings (UStaticMesh's defaults,
+    4 texels on UV 0, where the export has none). Its slots keep the original's engine materials where this engine has
+    them (a mesh emitter that overrides the material never draws them). Returns the package path."""
+    with open(os.path.join(pak(version), "_meshes.json"), encoding="utf-8") as f:
+        entry = json.load(f).get("/Game/" + rel)
+    if entry is None or entry["class"] != "StaticMesh":
+        raise KeyError("no static mesh /Game/%s in %s/_meshes.json" % (rel, pak(version)))
+    gltf = os.path.join(pak(version), *entry["gltf"].split("/"))
+    if not os.path.exists(gltf):
+        raise FileNotFoundError(gltf)
+    props = main_export(export_json(rel, version), rel)["props"]
+    target = asset_path(rel)
+    slots = entry["material_slots"]
+    mesh = dd_stage.import_mesh({"file": gltf, "asset": target, "slots": [s["slot"] for s in slots],
+                                 "lightmapResolution": props.get("LightMapResolution", 4),
+                                 "lightmapUv": props.get("LightMapCoordinateIndex", 0)}, nanite=False)
+    for index, slot in enumerate(slots):
+        material = slot["material"] or ""
+        if material.startswith(ENGINE_REL) and index < len(mesh.get_editor_property("static_materials")):
+            engine_material = unreal.load_asset(material.split(".")[0])
+            if engine_material is not None:
+                mesh.set_material(index, engine_material)
+    EAL.save_loaded_asset(mesh, only_if_is_dirty=False)
+    return target
+
+
 def material(asset_path, build, domain=None, blend_mode=None):
     """Loads or creates a material, clears its graph, sets its domain and blend mode, and has build(mat) make the graph.
     Returns the material, recompiled."""

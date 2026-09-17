@@ -44,10 +44,12 @@ public:
 	/**
 	 * Adds LODLevel (made in Emitter) after the emitter's other LOD levels, with its required and spawn modules and the
 	 * rest of its modules in order (all made in the system; a module shared by LOD levels is passed to each).
+	 * TypeDataModule, when given, makes the emitter a mesh (or beam, trail, GPU) emitter: a type data module made in the
+	 * system, kept apart from Modules and the same one on every LOD level of the emitter.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Wasami|Cascade")
 	static bool AddLODLevel(UObject* Emitter, UObject* LODLevel, UObject* RequiredModule, UObject* SpawnModule,
-		const TArray<UObject*>& Modules);
+		const TArray<UObject*>& Modules, UObject* TypeDataModule = nullptr);
 
 	/**
 	 * Finishes System as Cascade does after an edit: the modules' LOD validity from where they are used, the LOD
@@ -85,5 +87,9 @@ public:
 	/** LODLevel's required module, spawn module, then the rest of its modules in order. */
 	UFUNCTION(BlueprintCallable, Category = "Wasami|Cascade")
 	static TArray<UObject*> GetLODModules(UObject* LODLevel);
+
+	/** LODLevel's type data module (None for a sprite emitter's). */
+	UFUNCTION(BlueprintCallable, Category = "Wasami|Cascade")
+	static UObject* GetLODTypeDataModule(UObject* LODLevel);
 #endif
 };
