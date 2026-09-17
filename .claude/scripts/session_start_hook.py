@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """SessionStart hook: 中断からの再開のために、未完了の進捗記録・main 以外のブランチ・直前のコミット・
 未コミットの変更を知らせる（`.claude/guides/progress-tracking.md` の「再開の手順」）。
+
+無人モード（環境変数 WASAMI_UNATTENDED=1。駆動役 Tools/overnight.py が付ける）ならそれを先頭で知らせ、
+未完了の記録の「要確認（ユーザー）」と前回の無人運転の状態ファイル（Intermediate/Overnight/status.json）も出す
+（`.claude/guides/autonomy.md`）。
 """
 import json
 import os
@@ -8,8 +12,15 @@ import re
 import subprocess
 import sys
 
+# Claude Code は hook の出力を UTF-8 として読む。この PC のコンソールは cp932 で、「—」のような cp932 に無い文字が
+# 1 つでもあると print が UnicodeEncodeError になり、外側の try が握りつぶして出力ごと消えていた（2026-09-17 に発見）。
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
+STATUS_FILE = os.path.join(ROOT, "Intermediate", "Overnight", "status.json")
 
 
 def git(*args):
@@ -24,8 +35,29 @@ def section(text, heading):
     return " ".join(m.group(1).split()) if m else ""
 
 
+def read_status():
+    """前回の無人運転の状態ファイル。無ければ None。"""
+    try:
+        with open(STATUS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
 def main():
     lines = []
+    unattended = os.environ.get("WASAMI_UNATTENDED") == "1"
+    if unattended:
+        lines.append("**無人モード**（駆動役 Tools/overnight.py が起動。`.claude/guides/autonomy.md` に従う）: ユーザーに質問せず、"
+                     "本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて記録の「要確認（ユーザー）」に書く。"
+                     "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
+                     "Intermediate/Overnight/status.json を書いて応答を終える。変更を捨てる操作・配布・本家のセーブの編集は行わない。")
+    status = read_status()
+    if status:
+        lines.append("前回の無人運転: %s %s — %s（ステップ: %s、コミット: %s）" % (
+            status.get("written", "?"), status.get("result", "?"), status.get("reason", ""),
+            status.get("step", "?"), status.get("commit", "?")))
     records = []
     if os.path.isdir(PROGRESS_DIR):
         records = sorted(f for f in os.listdir(PROGRESS_DIR) if f.endswith(".md") and f != "_template.md")
@@ -35,10 +67,15 @@ def main():
             with open(os.path.join(PROGRESS_DIR, name), encoding="utf-8") as f:
                 text = f.read()
             title = re.search(r"^title:\s*(.+)$", text, re.M)
+            status_line = re.search(r"^status:\s*(.+)$", text, re.M)
+            waiting = bool(status_line and "ユーザー待ち" in status_line.group(1))
             nxt = section(text, "次にやること")
-            lines.append("- .claude/progress/%s — %s" % (name, title.group(1).strip() if title else ""))
+            lines.append("- .claude/progress/%s — %s%s" % (name, title.group(1).strip() if title else "", "（ユーザー待ち）" if waiting else ""))
             if nxt:
                 lines.append("  次にやること: " + nxt[:300])
+            pending = section(text, "要確認（ユーザー）")
+            if pending and "（なし）" not in pending and not pending.startswith("<"):
+                lines.append("  要確認（ユーザー）: " + pending[:600])
     else:
         lines.append("未完了の進捗記録はありません（続きを頼まれたら `/continue`: handover の「次の一歩」から始め、進捗記録を作る）。")
 
