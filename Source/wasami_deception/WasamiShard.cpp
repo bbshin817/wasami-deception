@@ -41,8 +41,9 @@ namespace
 	const FColor ShardLightColour(194, 0, 255, 255);
 	constexpr float ShardLightScattering = 2.5f;
 
-	// This game's mochi is 1 m across as imported; the WebGL version drew it 0.55 m, here under the crystal's scale.
-	constexpr double MochiSize = 0.55;
+	// This game's mochi is 1 m across as imported; the WebGL version drew it 0.55 m, and the user asked for 1.5 times
+	// that (2026-09-17), here under the crystal's scale.
+	constexpr double MochiSize = 0.825;
 
 	// BeginPlay: SetPlayRate(RandomFloatInRange(0.05, 0.15)) on the crystal. Its animation (soul_shard_skeletal_anim_loop)
 	// lasts 1.6667 s at a RateScale of 0.5 and turns the crystal twice around Z (its two bones turn 7° a frame each,
@@ -160,10 +161,6 @@ void AWasamiShard::BeginPlay()
 	LoadedCollectShake = CollectShake.LoadSynchronous();
 	LoadedCollectFlash = CollectFlash.LoadSynchronous();
 	SpinRate = FMath::FRandRange(MinSpinRate, MaxSpinRate);
-	// This game's purple pulse (the mochi's material) starts at a random point of its period on each, so that
-	// neighbours do not glow together, as the crystals each turn at a random rate. Set once: a phase taken from the
-	// position would race while the shard is pulled.
-	Mochi->SetCustomPrimitiveDataFloat(PulsePhaseData, FMath::FRand());
 	PreviousLocation = GetActorLocation();
 }
 

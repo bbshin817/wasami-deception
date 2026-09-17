@@ -66,9 +66,6 @@ public:
 	/** Shard Pull's length (s) at a play rate of 1. */
 	static constexpr float PullLength = 1.f;
 
-	/** The mochi's custom primitive data that holds where its purple pulse starts (M_DD_WasamiMochi's PulsePhase). */
-	static constexpr int32 PulsePhaseData = 0;
-
 protected:
 	virtual void BeginPlay() override;
 	virtual void Activate_Implementation() override;

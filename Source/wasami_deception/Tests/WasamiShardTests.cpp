@@ -100,7 +100,7 @@ bool FWasamiShardActorTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("the mochi is 0.55 m"), Mochi->GetComponentScale().Equals(FVector(0.55), 1e-6));
+	TestTrue(TEXT("the mochi is 0.825 m"), Mochi->GetComponentScale().Equals(FVector(0.825), 1e-6));
 	TestEqual(TEXT("the mochi at the crystal's middle"), Mochi->GetComponentLocation().Z, 97.08537292480469, 1e-3);
 	TestEqual(TEXT("the mochi's draw distance"), Mochi->LDMaxDrawDistance, 3000.f);
 	TestEqual(TEXT("the mark 20 m up"), Plane->GetComponentLocation().Z, 2000., 1e-3);
@@ -108,9 +108,7 @@ bool FWasamiShardActorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the mark does not collide"), static_cast<int32>(Plane->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
 
 	TestTrue(TEXT("a play rate from 0.05 to 0.15"), Shard->GetSpinRate() >= 0.05f && Shard->GetSpinRate() <= 0.15f);
-	const TArray<float>& MochiData = Mochi->GetCustomPrimitiveData().Data;
-	TestTrue(TEXT("a pulse phase from 0 to 1"), MochiData.IsValidIndex(AWasamiShard::PulsePhaseData)
-		&& MochiData[AWasamiShard::PulsePhaseData] >= 0.f && MochiData[AWasamiShard::PulsePhaseData] < 1.f);
+	TestEqual(TEXT("the mochi keeps no custom primitive data"), Mochi->GetCustomPrimitiveData().Data.Num(), 0);
 	const FSoftObjectProperty* FlashProperty = FindFProperty<FSoftObjectProperty>(AWasamiShard::StaticClass(), TEXT("CollectFlash"));
 	TestTrue(TEXT("the collect flash is P_WasamiShardFlash"), FlashProperty && FlashProperty->GetPropertyValue_InContainer(Shard).ToSoftObjectPath()
 		== FSoftObjectPath(TEXT("/Game/Wasami/Shard/P_WasamiShardFlash.P_WasamiShardFlash")));
