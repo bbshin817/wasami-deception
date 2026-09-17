@@ -94,7 +94,7 @@ def _burst(value):
 class _Build:
     """One particle system's rebuild: the export's objects by their path in the package, and what was made for them."""
 
-    def __init__(self, rel, version):
+    def __init__(self, rel, version, target=None, adjust=None):
         self.rel = rel
         self.version = version
         pkg = dd_assets.export_json(rel, version)
@@ -106,8 +106,10 @@ class _Build:
         self.system_export = self.exports[self.name]
         if self.system_export["class"] != "ParticleSystem":
             raise ValueError("%s is a %s, not a particle system" % (rel, self.system_export["class"]))
+        if adjust is not None:
+            adjust(self.exports)
         self.made = {}
-        self.target = dd_assets.asset_path(rel)
+        self.target = target or dd_assets.asset_path(rel)
 
     # ------------------------------------------------------------------------------------------ values
     def _object(self, value):
@@ -305,11 +307,15 @@ class _Build:
                                    % (self.rel, key, LIB.get_property_text(obj, "LODValidity"), saved))
 
 
-def particle_system(rel, version=1):
+def particle_system(rel, version=1, target=None, adjust=None):
     """Rebuilds the original's Cascade system /Game/<rel> ('ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2')
     under /Game/DD from pak_reference (1) or pak_reference_2 (2). The materials it uses have to be made first. Returns
-    the package path."""
-    return _Build(rel, version).run()
+    the package path.
+
+    A version of our own is made elsewhere by giving its package path as target and a function adjust, which gets the
+    export's objects ({path in the package: export}) and may change their values ("props") in place before anything is
+    made; the structure has to stay the original's, which the rebuild is checked against."""
+    return _Build(rel, version, target, adjust).run()
 
 
 def describe(asset_path):

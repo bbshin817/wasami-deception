@@ -11,7 +11,8 @@
   the flash        P_ky_flash3 (AdvancedMagicFX13's Cascade system: a shockwave, glows, a star, converging lines and a
                    light) with its textures; its five materials' graphs are cooked away, so masters holding our
                    estimates (M_DD_Ky*) sit under /Game/Pipeline, and instances of them at the original's paths, the
-                   original's instances being instances of those (MI_ky_flare01_primitiveG / R keep their channel)
+                   original's instances being instances of those (MI_ky_flare01_primitiveG / R keep their channel);
+                   the shards play P_WasamiShardFlash, our purple and weaker version of it under /Game/Wasami/Shard
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the shards follow; the pickup's sound, cue and shake and
 the flash are the same in both versions.
@@ -76,6 +77,16 @@ FLASH_TEXTURES = (
 )
 PARTICLE_SYSTEMS = ((2, KY + "Particles/P_ky_flash3"),)  # after the materials it uses
 MP = unreal.MaterialProperty
+# The collect flash the shards play, this game's own (the user's request: purple and a little weaker): P_ky_flash3 with
+# each emitter's colours turned to the shard light's purple at their brightest channel × FLASH_STRENGTH. The light
+# emitter's light is its particle's colour × alpha × the light module's brightness (UE's ParticleSystemRender), so the
+# same factor dims it and the brightness (2.5) stays. The materials are the original's, shared (M_ky_polarGlow02's
+# rainbow × purple loses its green).
+FLASH = MOCHI_FOLDER + "/P_WasamiShardFlash"
+FLASH_SOURCE = PARTICLE_SYSTEMS[0]
+FLASH_COLOR = MOCHI_PULSE_COLOR[:3]
+FLASH_STRENGTH = 0.6  # TODO(仮)
+FLASH_COLOUR_MODULES = 7  # one per emitter
 
 
 def _glb(path):
@@ -370,6 +381,41 @@ FLASH_MATERIALS = (
 )
 
 
+def _purple(raw):
+    """A colour distribution's lookup table (RGB triples) turned purple: each colour → FLASH_COLOR × its brightest
+    channel × FLASH_STRENGTH, with the ranges the table now spans (the minimum and maximum of each channel, and of
+    them all, as the cook saved them)."""
+    table = raw["Table"]
+    values = table["Values"]
+    if raw.get("Distribution") or table.get("EntryStride", 0) % 3 or len(values) % 3:
+        raise ValueError("not a baked table of colours: %r" % (raw,))
+    out = []
+    for i in range(0, len(values), 3):
+        peak = max(values[i:i + 3]) * FLASH_STRENGTH
+        out.extend(c * peak for c in FLASH_COLOR)
+    table["Values"] = out
+    raw["MinValueVec"] = [min(out[k::3]) for k in range(3)]
+    raw["MaxValueVec"] = [max(out[k::3]) for k in range(3)]
+    raw["MinValue"] = min(raw["MinValueVec"])
+    raw["MaxValue"] = max(raw["MaxValueVec"])
+
+
+def _purple_flash(exports):
+    """dd_particles' adjust for P_WasamiShardFlash: every colour over life of P_ky_flash3 turned purple."""
+    colours = [e for e in exports.values() if e["class"] == "ParticleModuleColorOverLife"]
+    others = {e["class"] for e in exports.values() if e["class"].startswith("ParticleModuleColor")}
+    if len(colours) != FLASH_COLOUR_MODULES or others != {"ParticleModuleColorOverLife"}:
+        raise RuntimeError("P_ky_flash3's colours are not the ones known: %d, %s" % (len(colours), sorted(others)))
+    for e in colours:
+        _purple(e["props"]["ColorOverLife"])
+
+
+def make_flash():
+    """P_WasamiShardFlash (after P_ky_flash3's materials). Returns the package path."""
+    version, rel = FLASH_SOURCE
+    return dd_particles.particle_system(rel, version, FLASH, _purple_flash)
+
+
 def make_flash_materials():
     """The flash's materials (dd_assets.estimated_materials). Returns the package paths."""
     return [a.get_path_name() for a in dd_assets.estimated_materials(KY + "Materials/", FLASH_MATERIALS, 2)]
@@ -386,7 +432,8 @@ def import_all():
     result["mochi"] = len(import_mochi())
     result["flash_textures"] = len([dd_assets.texture(rel, version) for version, rel in FLASH_TEXTURES])
     result["flash_materials"] = len(make_flash_materials())
-    result["particle_systems"] = len([dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS])
+    systems = [dd_particles.particle_system(rel, version) for version, rel in PARTICLE_SYSTEMS] + [make_flash()]
+    result["particle_systems"] = len(systems)
     for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT, paths.WASAMI_ROOT):
         EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

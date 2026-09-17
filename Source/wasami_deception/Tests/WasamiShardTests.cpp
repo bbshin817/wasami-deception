@@ -112,8 +112,8 @@ bool FWasamiShardActorTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a pulse phase from 0 to 1"), MochiData.IsValidIndex(AWasamiShard::PulsePhaseData)
 		&& MochiData[AWasamiShard::PulsePhaseData] >= 0.f && MochiData[AWasamiShard::PulsePhaseData] < 1.f);
 	const FSoftObjectProperty* FlashProperty = FindFProperty<FSoftObjectProperty>(AWasamiShard::StaticClass(), TEXT("CollectFlash"));
-	TestTrue(TEXT("the collect flash is P_ky_flash3"), FlashProperty && FlashProperty->GetPropertyValue_InContainer(Shard).ToSoftObjectPath()
-		== FSoftObjectPath(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash3.P_ky_flash3")));
+	TestTrue(TEXT("the collect flash is P_WasamiShardFlash"), FlashProperty && FlashProperty->GetPropertyValue_InContainer(Shard).ToSoftObjectPath()
+		== FSoftObjectPath(TEXT("/Game/Wasami/Shard/P_WasamiShardFlash.P_WasamiShardFlash")));
 
 	// Activate with no player: the shard heads for the origin, and at the end Collect finds no tablet and stops.
 	TestFalse(TEXT("not pulled before"), Shard->IsPulling());
