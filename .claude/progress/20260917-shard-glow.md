@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/shard-glow
 base: c8aaf7a
 started: 2026-09-17 22:06
-updated: 2026-09-17 22:06
+updated: 2026-09-17 22:40
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -21,13 +21,10 @@ updated: 2026-09-17 22:06
 
 ## 計画
 
-- [ ] 1. 測る道具と基準の収録 ← 次
-  - `Tools/video_probe.py series` に、箱の中の明るさの上位（最大と 99 パーセンタイルの輝度、その画素の平均色）を出す `--stat peak`（名前は実装で決める）を足す。
-  - PIE（`L_Hospital_Zone1`）で、今の餅（明滅なし）と今の `P_ky_flash3` の回収を撮る（`observations/ours/`）。場所は実装記録 06 の「確かめたこと」の −Y の廊下（プレイヤー (0, −157)、シャード 331・330・4・_2・5 が X≈0）。閃光は Python から 4 m 先のシャードの `collect`。60 fps の gdigrab。餅の箱の平均色の時系列と、閃光の箱の最大輝度・色相を `observations/README.md` の「ours/」に書く。
-  - 変更予定: `Tools/video_probe.py`、`observations/README.md`（git の外）、実装記録 01（`video_probe.py` の説明）
-- [ ] 2. 餅の紫の明滅
+- [x] 1. 測る道具と基準の収録 — `video_probe.py series --stat peak` を足し、4.4 m 先の餅と `P_ky_flash3` を PIE で撮った（値は `observations/README.md` の「シャードの光の基準」。閃光の `core` は最大 247・p99 244、ほぼ白）
+- [ ] 2. 餅の紫の明滅 ← 次
   - `dd_shards._build_mochi` の自己発光に、`PulseColor` × `PulseStrength` × (0.5 + 0.5 sin(2π (Time / `PulsePeriod` + 位相))) を足す。位相はオブジェクトの位置から（`ObjectPositionWS` を frac に）。`MI_WasamiMochi` に仮の値。`dd_shards.import_mochi()` を走らせ直す（メッシュは Nanite。Nanite の材質で `Time` と `ObjectPositionWS` が効くかを確かめる）。
-  - PIE で同じ場所を撮り、`video_probe.py period` で周期、`series` で餅の箱の強弱を測る。強さは、明滅が分かり、白飛びしない値を画面で決める（仮）。
+  - PIE で同じ場所（ステップ 1 の `pie-shard-mochi-a` と同じ置き方・範囲・箱 `mochi=555,422,612,472`）を撮り、`video_probe.py period` で周期、`series` で餅の箱の強弱を測る。強さは、明滅が分かり、白飛びしない値を画面で決める（仮）。
   - 変更予定: `Content/Python/wasami_tools/pipeline/dd_shards.py`、`/Game/Pipeline/Materials/M_DD_WasamiMochi`、`/Game/Wasami/Shard/MI_WasamiMochi`、実装記録 06
 - [ ] 3. 回収の閃光の本作の版
   - `dd_particles.particle_system` に、出力先のパスと、書き出しの値を組む前に直す関数を渡せるようにする（組み立てと照合はそのまま使う）。
@@ -42,7 +39,7 @@ updated: 2026-09-17 22:06
 
 ## 次にやること
 
-ステップ 1: `Tools/video_probe.py series` に明るさの上位を出す統計を足し、PIE で今の餅と今の `P_ky_flash3` の回収を撮って測る（`.claude/guides/observation.md` の PIE の手順、`Tools/pie.py`・`Tools/desktop.py record`）。
+ステップ 2: `dd_shards._build_mochi` の自己発光に紫の明滅（`PulseColor` × `PulseStrength` × (0.5 + 0.5 sin(2π (Time / `PulsePeriod` + 位相)))、位相は `ObjectPositionWS` から）を足し、`dd_shards.import_mochi()` を走らせ直して、PIE で `pie-shard-mochi-b.mkv` を撮って測る。
 
 ## 決定事項
 
@@ -57,11 +54,12 @@ updated: 2026-09-17 22:06
 
 ## 再開時の注意
 
-- エディタ: 2026-09-17 22:06 の時点で `L_Hospital_Zone1` が開いていて、PIE なし、保存していないマップなし。
+- エディタ: 2026-09-17 22:40 の時点で `L_Hospital_Zone1` が開いていて、PIE なし、保存していないマップなし。PIE でシャード 330・4・_2 を回収したが、PIE の中だけなのでレベルは変わっていない。
+- 撮り方（ステップ 2・4）: `pie.py start` → `cmd "t.MaxFPS 60"` → `place 0 -157 --yaw -90`（餅 330 が 4.4 m 先）→ `desktop.py click 2600 500 --allow UnrealEditor.exe` → `record --grab gdi --region 1826 204 2978 858`。回収は `python Tools/ue_remote.py -c "$(cat observations/tools/shard_glow/collect.py; echo; echo "main('BP_Shard4')")"`（`place 0 -757` で 4、`place 0 -1360` で _2 が 4.4 m 先）。**エディタのセッションで最初の閃光は粒子が描かれない**ので、先に 1 つ捨てで回収する。閃光の箱は `core=548,412,608,472`・`flash=498,362,658,522`、測るのは `series --stat peak`。終わったら `t.MaxFPS 0`・`pie.py stop`・`desktop.py stop`。
 - main へのマージ（ステップ 5）: Claude の一時フォルダの worktree `scratchpad/main-wt` が main を開いたまま残っている（`git worktree list`。作業一覧の「未回答の要確認」）。残っていれば `git checkout main` が失敗するので、症状索引の「`git checkout main` が … already checked out」の手順（`commit-tree` → `update-ref` → `checkout --ignore-other-worktrees main`）でマージする。消えていれば普通の `git checkout main` と `git merge --no-ff`。
 
 ## 検証
 
-- check_records: 未実行
+- check_records: ステップ 1 で通した（01 のハッシュを更新）
 - C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- エディタでの確認（取り込み・組み立て・PIE）: ステップ 1 で基準を撮った（上の撮り方）

@@ -163,6 +163,7 @@ python Tools/pie.py stop                                    # 必ず止める。
   - UI の加算の材質は、Emissive × Opacity を sRGB にしてから画面に足される（UE 5.8 の `SlateElementPixelShader.usf`）。収録の足された値から不透明度に戻すときは sRGB を外す。
 - **敵の代わり**: 敵（作業一覧の項目 4）ができるまでは、仮の的を使う。リモート実行で `unreal.WasamiTestEnemy.spawn_test_enemy(<ゲームのワールド>, <位置>)` を呼んで出す。
 - **パワーを使い直す**: リモート実行で `WasamiPowerComponent` の `reset_powers()`（再使用の待ちを消す）の後、`use_power(True)`（左の枠）でキーを送らずに使える。
+- **PIE の中の物を Python で動かす**: `ue_remote.py -c` に送る文字列に「.py」を含めない（コメントの中でも）。含むと、エディタが全体をファイル名と引数と読んで `Could not load Python file` で失敗する（症状索引）。例は `observations/tools/shard_glow/collect.py`（ラベルでシャードを回収する）。
 - **値の読み取り**: 状態（位置・時刻・時間の遅さ）は `python Tools/pie.py state` で読める。演出の中の値（ゲージ・コンポーネント）は、時刻と一緒にリモート実行で読む。
 - **本家と条件を揃える**: 本家のセーブの強化段階（11a では Primal 3 など）に合わせる。
   - **画質**: 本家の収録は画質「高」（本家の `GameUserSettings.ini` の `sg.EffectsQuality=2`）で、本作のエディタは「最高」。粒子の数（`r.EmitterSpawnRateScale` 0.5。エミッタの `bApplyGlobalSpawnRateScale` が真のものだけ）と粒子の灯が変わるので、PIE の中で `r.EmitterSpawnRateScale 0.5`・`r.DetailMode 1`・`r.ParticleLightQuality 1` にして撮る（`observations/tools/aim_setup.py`）。cvar はエディタ全体に効くので、終わったら 1・3・2 に戻す（`aim_restore.py`）。本家の設定を撮り直しの前に読み、変わっていれば合わせる。
@@ -192,6 +193,7 @@ python Tools/pie.py stop                                    # 必ず止める。
 | 一部の明滅 | `series <mkv> --box decal=950,70,995,95 --stat median` | 照準のデカール: R 140 ↔ 237、約 1.0 s 周期 |
 | シェイク中の黒 | `series <mkv> --dark 8` の最後の列の最大 | primal-a 0.099・primal-b 0.075・telekinesis-a 0.045 |
 | 半透明の重なりの色と濃さ | `observations/tools/vanish_fit/fit.py <mkv> <元の始め> <終わり> <効果の始め> <終わり> --region L,T,R,B`（混ざる色 C と画素ごとの不透明度の分布）、`amap.py`（不透明度の絵と時系列） | Vanish の縁: C = (142, 110, 194)、左端の中央値 0.11 |
+| 閃光の強さと色 | `series <mkv> --box core=548,412,608,472 --stat peak`（最大・p99・p90 の輝度、250 以上の割合、p99 以上の画素の色と色相） | —（本作の `P_ky_flash3`、4.4 m 先: 最大 247・p99 243、色相なし〈白に近い〉） |
 | 回転や明滅の周期 | `period <mkv> --box L,T,R,B --min-lag 1 --max-lag 30` | シャード（`orig-shard-spin-long.mkv`、`--box 250,300,420,720`）: 20.9〜21.0 s |
 
 - **時刻**: 時刻は各フレームの pts（秒）で、フレームの番号ではない。`slomo 0.25` で撮ったものは、実時間 = 収録の時間 × 0.25。
