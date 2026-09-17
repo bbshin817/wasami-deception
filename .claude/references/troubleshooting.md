@@ -242,6 +242,14 @@
 - 確かめ方: シェイク中に POV が揺れる間、板の視点空間の位置が不動。
 - 出典: コミット bdb11ef（2026-09-16）、02 記録。
 
+### マウスの視点移動が本家の約 1/14 と遅い（Enhanced Input の感度が 0.07 × 0.07 になる）
+
+- 症状: `Tools/desktop.py look --dx 100` で 1.22° しか回らない（本家の式の期待値は 17.5°）。縦も同じ比。実行中に対応づけの `UInputModifierScalar` を書き換えても変わらない。
+- 原因: Enhanced Input の `ApplyAxisPropertyModifiers`（UE 5.8 `EnhancedInputSubsystemInterface.cpp`）が、マウスのキー（`Mouse2D` を含む。CVar `input.GlobalAxisConfigMode` の既定 0）の対応づけに、旧入力の `AxisConfig` の感度（`DefaultInput.ini` の Mouse2D 0.07）を Scalar 修飾子として自動で先頭に足す。対応づけに自分で Scalar を足すと重なる。修飾子はプレイヤーの入力へ `DuplicateObject` で写されるので、IMC の持ち主の下の修飾子を書き換えても効かない（写しは `/Engine/Transient.InputModifierScalar_N`）。
+- 対処: 感度は `AxisConfig` の側だけに置き、対応づけに Scalar を足さない（作業一覧の項目 2 のステップ 3）。
+- 確かめ方: PIE で `pie.py place` の後に `look --dx 1000 --allow UnrealEditor.exe` → `pie.py state` のヨーの差が 175°（0.175°/カウント、FOV 90）。実行中に試すなら `unreal.ObjectIterator(unreal.InputModifier)` で `/Engine/Transient` の写しを探して書き換える。
+- 出典: 進捗記録 `20260917-look-speedlines.md` のステップ 1（2026-09-17）、`observations/README.md` の「視点の速さと集中線」。
+
 ## 取り込み・レベル・描画
 
 ### 壁・床が灰色の市松（`DefaultMaterial`）で描かれる
