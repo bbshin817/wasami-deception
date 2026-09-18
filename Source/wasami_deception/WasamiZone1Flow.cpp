@@ -42,7 +42,7 @@ void AWasamiZone1Flow::Start04()
 	{
 		PlayCameraShake(ElevatorShakeStopClass);
 		BindTrigger(TEXT("04_Intercom"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On04Intercom));
-		// Not yet: BP_06_Hospital_DoorBreak_2's Enable Switch and its Finished Event bound to On04DoorBreak.
+		EnableDoorBreak(TEXT("BP_06_Hospital_DoorBreak_2"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On04DoorBreak));
 	});
 }
 

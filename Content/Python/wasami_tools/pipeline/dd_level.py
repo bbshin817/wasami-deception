@@ -1,8 +1,8 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
-zones' flow names (trigger boxes, blocking and trigger volumes) and the level sequences the flow plays (dd_sequence).
-Every actor it places carries the tag 'dd', which a rebuild removes first."""
+zones' flow names (trigger boxes, blocking and trigger volumes, door breaks) and the level sequences the flow plays
+(dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -47,6 +47,8 @@ SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
 # tag 'src:<the original's name>'. Every brush in the hospital is the default 200 cm cube, which is what UE's box volume
 # factory makes, so the actor's scale is the whole of its size.
 TRIGGER_CLASS = "BP_TriggerBox_Base_C"
+# The door breaks (BP_06_Hospital_DoorBreak → AWasamiDoorBreak), with their Progress Speed.
+DOOR_BREAK_CLASS = "BP_06_Hospital_DoorBreak_C"
 VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume}
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
@@ -349,17 +351,22 @@ def _set_brush_collision(comp, collision):
 
 
 def _flow(eas, zone, counts, failures):
-    """The trigger boxes and brush volumes, each where the original has it, and fixed to what it moves with (an
-    ambulance, the spikes) when that is in the level."""
+    """The trigger boxes, brush volumes and door breaks, each where the original has it, and fixed to what it moves
+    with (an ambulance, the spikes) when that is in the level."""
     placed = []
     for a in zone["actors"]:
-        if not a["world"] or (a["class"] != TRIGGER_CLASS and a["class"] not in VOLUME_CLASSES):
+        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS) and a["class"] not in VOLUME_CLASSES):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
             actor = eas.spawn_actor_from_class(unreal.WasamiTriggerBox, _vec(world["location"]), _rot(world["quat_xyzw"]))
             actor.set_editor_property("end_overlap", bool(a["props"].get("EndOverlap")))
             counts["triggers"] += 1
+        elif a["class"] == DOOR_BREAK_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiDoorBreak, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            if "Progress Speed" in a["props"]:
+                actor.set_editor_property("progress_speed", float(a["props"]["Progress Speed"]))
+            counts["doorBreaks"] += 1
         else:
             actor = eas.spawn_actor_from_class(VOLUME_CLASSES[a["class"]], _vec(world["location"]), _rot(world["quat_xyzw"]))
             if a.get("brushBox") != DEFAULT_BRUSH_BOX:
@@ -385,15 +392,15 @@ def _flow(eas, zone, counts, failures):
 
 
 def place_flow(zone="Zone1", map_path=""):
-    """Puts the zone's trigger boxes and brush volumes in again, leaving the rest of the level and its baked lighting
-    as they are (none of them is drawn), and saves the level."""
+    """Puts the zone's trigger boxes, brush volumes and door breaks in again, leaving the rest of the level and its
+    baked lighting as they are (none of them is lit), and saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"], clear=False)
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
-    counts = {"removed": len(old), "triggers": 0, "volumes": 0, "attached": 0}
+    counts = {"removed": len(old), "triggers": 0, "volumes": 0, "doorBreaks": 0, "attached": 0}
     if old:
         eas.destroy_actors(old)
     failures = []
@@ -414,7 +421,7 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "shards", "triggers", "volumes", "attached")}
+                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

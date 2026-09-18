@@ -123,6 +123,14 @@
 - 確かめ方: `list_toolsets`。
 - 出典: `.claude/guides/unreal-workflow.md`、01 記録。
 
+### Wasami のツールセットが全部 MCP に出ない / `from wasami_tools.pipeline import …` が `ToolCallMissingAnnotation: Type <class 'dict'>: missing specification for contained type.` で失敗する
+
+- 症状: エディタを開き直すと `list_toolsets` に `WasamiDDTools`・`WasamiStageTools`・`WasamiDevTools` が無い。リモート実行で `wasami_tools` の下を読むと上の例外（`toolsets\stage.py` の `@toolset_registry.tool_call` から）。
+- 原因: ツールの戻り値（か引数）の型注釈が素の `dict`（中身の型が無い）。クラスの定義ごと失敗し、`wasami_tools/__init__.py` の読み込みが止まる。読み込み直しの間は前のクラスが残るので、開き直すまで気付かない（2026-09-18 の `place_dd_sequences`）。
+- 対処: `dict[str, int]` のように中身の型まで書く。値の型が混ざるなら JSON の文字列（`-> str`）を返す。
+- 確かめ方: リモート実行で `import wasami_tools` が通る。開き直した後の `list_toolsets`。
+- 出典: 01 記録の「登録」。
+
 ### Python のツールセット（`WasamiDDTools` など）が `unreal.` の下に無い
 
 - 症状: リモート実行で `unreal.WasamiDDTools` が `AttributeError`。

@@ -45,6 +45,12 @@ FString UWasamiSoundCueLibrary::SetChildNodes(UObject* Node, const TArray<UObjec
 	TArray<USoundNode*> ChildNodes;
 	for (UObject* Child : Children)
 	{
+		// None is an input left empty (a random node's that plays nothing when picked).
+		if (!Child)
+		{
+			ChildNodes.Add(nullptr);
+			continue;
+		}
 		USoundNode* ChildNode = Cast<USoundNode>(Child);
 		if (!ChildNode || ChildNode->GetOuter() != SoundNode->GetOuter())
 		{

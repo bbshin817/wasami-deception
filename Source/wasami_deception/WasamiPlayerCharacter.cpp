@@ -228,6 +228,7 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(CyclePowerRightAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::CyclePowerRight);
 	Input->BindAction(TabletAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ToggleTablet);
 	Input->BindAction(ResizeMapAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ResizeMap);
+	Input->BindAction(InteractAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::InteractPressed);
 	Input->BindAction(LeftMouseAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::LeftMousePressed);
 	Input->BindAction(MouseWheelAction, ETriggerEvent::Triggered, this, &AWasamiPlayerCharacter::MouseWheel);
 }
@@ -255,6 +256,7 @@ void AWasamiPlayerCharacter::CreateInput()
 	CyclePowerRightAction = NewAction(TEXT("IA_CyclePowerRight"), EInputActionValueType::Boolean);
 	TabletAction = NewAction(TEXT("IA_ToggleTablet"), EInputActionValueType::Boolean);
 	ResizeMapAction = NewAction(TEXT("IA_ResizeMap"), EInputActionValueType::Boolean);
+	InteractAction = NewAction(TEXT("IA_Interact"), EInputActionValueType::Boolean);
 	LeftMouseAction = NewAction(TEXT("IA_LeftMouseButton"), EInputActionValueType::Boolean);
 	MouseWheelAction = NewAction(TEXT("IA_MouseWheelAxis"), EInputActionValueType::Axis1D);
 
@@ -302,10 +304,17 @@ void AWasamiPlayerCharacter::CreateInput()
 	Map(CyclePowerRightAction, EKeys::Two);
 	Map(TabletAction, EKeys::SpaceBar);
 	Map(ResizeMapAction, EKeys::Z);
+	// The original's Interact (F; like the other actions, its gamepad key is not mapped), pressed.
+	Map(InteractAction, EKeys::F);
 	// Pressed, and the wheel's value (±1 a notch; the original's MouseWheelAxis has sensitivity 1). An Axis1D only
 	// triggers on a frame the wheel moves, which is when the original's every-frame binding changes anything.
 	Map(LeftMouseAction, EKeys::LeftMouseButton);
 	Map(MouseWheelAction, EKeys::MouseWheelAxis);
+}
+
+void AWasamiPlayerCharacter::InteractPressed()
+{
+	OnInteract.Broadcast();
 }
 
 void AWasamiPlayerCharacter::LeftMousePressed()

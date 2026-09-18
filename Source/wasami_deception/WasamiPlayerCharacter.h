@@ -53,6 +53,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Player|Tablet")
 	bool IsTabletUp() const { return bTabletUp; }
 
+	/**
+	 * Interact (F) pressed. The original's player has no use for it; the things that take it (a door break's lock) take
+	 * the key themselves (AutoReceiveInput, without consuming it). Here they listen to this, which the key fires.
+	 */
+	FSimpleMulticastDelegate OnInteract;
+
+	/** Fires OnInteract (F calls it; the debug command and the tests call it directly). */
+	void InteractPressed();
+
 	/** Space raises and lowers the tablet (the original's Toggle Tablet). */
 	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
 	void ToggleTablet();
@@ -235,6 +244,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> ResizeMapAction;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> InteractAction;
 
 	/** The left mouse button and the wheel, which the original's teleport aim takes straight from the keys. */
 	UPROPERTY(Transient)

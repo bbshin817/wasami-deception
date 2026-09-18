@@ -34,8 +34,9 @@ public:
 	static UObject* AddSoundNode(USoundCue* Cue, const FString& ClassName);
 
 	/**
-	 * Makes Children (nodes of the same cue) Node's inputs in order, adding inputs as needed. Returns '' when it is
-	 * done, otherwise why not (not a node, more or fewer children than the node takes, fewer than it already has).
+	 * Makes Children (nodes of the same cue, or None for an input left empty) Node's inputs in order, adding inputs as
+	 * needed. Returns '' when it is done, otherwise why not (not a node, more or fewer children than the node takes,
+	 * fewer than it already has).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Wasami|SoundCue")
 	static FString SetChildNodes(UObject* Node, const TArray<UObject*>& Children);

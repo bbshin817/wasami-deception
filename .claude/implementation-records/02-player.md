@@ -18,6 +18,7 @@ updated: 2026-09-18
 - `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定は空 = 本家の `BP_DD_GameMode` の `Current Objective` の既定）はタブレットの帯に出す目的。ゾーンの流れ（11 記録）が区間ごとに入れる。ほかにゲームの流れの受け持ち（BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）と、シャードの `Check Shards`（全回収の通知）、開始時にゾーンの流れ（`AWasamiZoneFlow`、11 記録）を出すことを持つ。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」「シャードの確かめ（`Check Shards`）」。
 - `AWasamiPlayerCharacter : ACharacter`
   - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。2 つの速さを書いて使う方を当てる。スピードブーストが使う）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetPowers()`。
+  - `OnInteract`（`FSimpleMulticastDelegate`。C++ だけ）と `InteractPressed()`（それを流す。F が呼び、デバッグの `Wasami.Interact` も呼ぶ）。
   - 移動の値: `WalkingSpeed` 300、`SprintingSpeed` 600（cm/s）。
   - オプション: `bToggleSprint`、`MouseSensitivity` 1.0、`bInvertY`、`bHeadBob`（本家の OPTIONS の TOGGLE SPRINT / MOUSE SENSITIVITY / INVERTED Y AXIS / HEAD BOBBING）。
   - カメラ: `BaseFOV` 90、`FastFOV` 115、`FOVSpeedRange` (300, 900)、`FOVInterpSpeed` 0.5。
@@ -35,6 +36,7 @@ updated: 2026-09-18
   - Shift（ダッシュ）、中クリック（180° ターン）、Space（タブレット）、Z（地図の拡縮）。
   - Q / E / 1 / 2（本家の `Use Power Left` / `Use Power Right` / `Cycle Power Left` / `Cycle Power Right`）は `Powers` の `UsePowerLeftPressed` / `UsePowerRightPressed` / `CyclePowerLeft` / `CyclePowerRight` に直に結ぶ（中身は 04 記録）。本家の `Use Power`（R）はどの BP も受けていないので割り当てない。
   - 左クリック（`IA_LeftMouseButton`、押した瞬間 = `Started`）とホイール（`IA_MouseWheelAxis`、`EKeys::MouseWheelAxis` の Axis1D、1 目盛り ±1）は、`LeftMousePressed` / `MouseWheel` から `Powers` の `ConfirmTeleport` / `AdjustTeleportDistance` へ渡す（テレポートの照準が出ているときだけ効く。04 記録）。本家では照準のアクタ（`BP_Power_Teleport`）がキーを直に受け、入力を消費しない。本家のプレイヤー自身の左クリック（手持ちの `Use` か前方 200 cm の `InteractWithObject`）は、調べる物ができたとき（M2）にここへ足す。ホイールの Axis1D は値が 0 のフレームでは呼ばれないが、本家の毎フレームの軸の束縛も値が変わるフレームでしか結果が変わらないので同じ。どちらも `bCanMove` などの条件を見ない（本家の照準のアクタも見ない）。
+  - F（`IA_Interact`、押した瞬間 = `Started`）は `InteractPressed` → `OnInteract`。本家の `Interact` はプレイヤー自身は受けず、扉の破壊（`BP_06_Hospital_DoorBreak`）など 6 つの BP が `AutoReceiveInput` でキーを直に受ける（入力は消費しない）。本作ではそれらのアクタが `OnInteract` を聞く（扉の破壊は 11 記録）。条件（`bCanMove` など）は見ない（本家のアクタも見ない）。ゲームパッドのキーはほかの操作と同じく割り当てない。
   - 本家の割り当ての全体（`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini` の `ActionMappings` / `AxisMappings`。2026-09-16 に実機 v1.9.6 でも同じことを確認）:
 
     | 本家の操作 | キー | 本作 |
@@ -42,7 +44,8 @@ updated: 2026-09-18
     | Forward / Left | W・S（−1）/ A（−1）・D | 同じ |
     | LookHorizontal / LookVertical | MouseX / MouseY | 同じ |
     | Sprint | LeftShift | 同じ |
-    | Interact / Interact (Secondary) | F / 左クリック | M2 で実装予定（左クリックはテレポートの確定に使っている） |
+    | Interact | F | `OnInteract`（受けるアクタが聞く。扉の破壊） |
+    | Interact (Secondary) | 左クリック | M2 で実装予定（左クリックはテレポートの確定に使っている） |
     | （テレポートの照準のアクタがキーを直に受ける） | 左クリック / マウスホイール | 同じ（04 記録） |
     | Toggle Tablet | SpaceBar | 同じ |
     | Resize Map | Z | 同じ |
@@ -88,6 +91,7 @@ updated: 2026-09-18
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-18: F（`IA_Interact`）と `OnInteract`・`InteractPressed`、ゲームモードのデバッグのコマンド `Wasami.Interact [N]`（F を N 回）を足した（扉の破壊が聞く。作業一覧の項目 6 のステップ 3b）
 - 2026-09-18: 目的の既定を空にし（本家の既定。ゾーンの流れが入れる）、ゲームモードに `Check Shards` とゾーンの流れの生成を足した。中身は 06・11 記録（作業一覧の項目 6 のステップ 1）
 - 2026-09-18: ゲームモードに本家の Zone のレベル BP の受け持ち（開始の場所・死亡画面・SAVING PROGRESS・黒からの明け・デバッグのコンソールコマンド）を足した。中身は 06 記録（作業一覧の項目 5 のステップ 5）
 - 2026-09-18: ゲームモードにゲームの流れの受け持ち（セーブ・時間・死亡の受け口・チェックポイントの保存・回収済みのシャードの除去）を足した。中身は 06 記録（作業一覧の項目 5 のステップ 3）

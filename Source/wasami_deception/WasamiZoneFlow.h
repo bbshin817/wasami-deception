@@ -17,9 +17,9 @@ class UCameraShakeBase;
  * the original names by the tag 'src:<name>' the level build gives each placed actor.
  *
  * The flow moves the story on and plays what the level Blueprints play themselves: the level sequences placed in the
- * level and the camera shakes. What the events show or voice through other actors (doors, the barrier, the loading
- * screen, Bierce and the nurses' lines, the music, the nurses themselves) is left to the items that make those; each
- * has its place in the event, marked by a comment.
+ * level and the camera shakes; it wakes the door breaks and listens to them. What the events show or voice through
+ * other actors (doors, the barrier, the loading screen, Bierce and the nurses' lines, the music, the nurses themselves)
+ * is left to the items that make those; each has its place in the event, marked by a comment.
  */
 UCLASS(Abstract)
 class WASAMI_DECEPTION_API AWasamiZoneFlow : public AActor
@@ -77,6 +77,12 @@ protected:
 
 	/** BindDelegate + AddMulticastDelegate: the trigger box's Trigger calls the flow's event of that name. */
 	void BindTrigger(FName Source, FName Function);
+
+	/**
+	 * The door break of that name's Enable Switch, and its Finished Event bound to the flow's event of that name (the
+	 * zones do both together: Zone 1's lift door, Zone 2's cell door).
+	 */
+	void EnableDoorBreak(FName Source, FName Function);
 
 	/** The game mode's All Shards Collected calls the flow's event of that name. */
 	void BindAllShardsCollected(FName Function);

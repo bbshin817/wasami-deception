@@ -1,4 +1,5 @@
 import importlib
+import json
 
 import unreal
 
@@ -49,7 +50,7 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     @staticmethod
     def build_dd_stage_level(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Builds one zone's level from the imported assets (meshes, lights, reflection captures, fog, sky light, post
-        process volumes, player starts, the minimap's plane, the soul shards, the flow's trigger boxes and volumes), replacing what an earlier build placed,
+        process volumes, player starts, the minimap's plane, the soul shards, the flow's trigger boxes, volumes and door breaks), replacing what an earlier build placed,
         and saves it. The level is left open. The meshes are made again, so the level's lighting has to be baked again.
 
         Args:
@@ -82,23 +83,26 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     @toolset_registry.tool_call
     @staticmethod
     def place_dd_flow(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
-        """Puts one zone's trigger boxes (WasamiTriggerBox, the original's BP_TriggerBox_Base) and blocking and trigger
-        volumes in again where the original places them, each tagged 'src:<the original's name>' for the zone's flow
-        and fixed to the ambulance or the spikes it moves with, taking out what an earlier call placed, and saves the
-        level. Nothing else changes, and the baked lighting stays valid (none of them is drawn).
+        """Puts one zone's trigger boxes (WasamiTriggerBox, the original's BP_TriggerBox_Base), blocking and trigger
+        volumes and door breaks (WasamiDoorBreak, BP_06_Hospital_DoorBreak, with their Progress Speed) in again where
+        the original places them, each tagged 'src:<the original's name>' for the zone's flow and fixed to the
+        ambulance or the spikes it moves with, taking out what an earlier call placed, and saves the level. Nothing
+        else changes, and the baked lighting stays valid (none of them is lit).
 
         Args:
-            zone: 'Zone1' (6 trigger boxes, 9 volumes) or 'Zone2' (8 trigger boxes, 10 volumes).
+            zone: 'Zone1' (6 trigger boxes, 9 volumes, 1 door break) or 'Zone2' (8 trigger boxes, 10 volumes, 1 door
+                break).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
-            'removed', 'triggers', 'volumes', 'attached' and 'failed_settings' (listed in the output log).
+            'removed', 'triggers', 'volumes', 'doorBreaks', 'attached' and 'failed_settings' (listed in the output
+            log).
         """
         return _module("dd_level").place_flow(zone, map_path)
 
     @toolset_registry.tool_call
     @staticmethod
-    def place_dd_sequences(zone: str = "Zone1", map_path: str = "") -> dict:
+    def place_dd_sequences(zone: str = "Zone1", map_path: str = "") -> str:
         """Rebuilds one zone's level sequences from the original's (the ones its flow plays, under
         /Game/DD/Animation/06_Hospital, and the fade /Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade) bound to the
         level's actors, importing the sounds and attenuations they use and the camera shakes the flow plays with them,
@@ -112,8 +116,9 @@ class WasamiStageTools(unreal.ToolsetDefinition):
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
-            Counts ('sequences', 'bindings', 'tracks', 'sections', 'keys', 'sounds', 'attenuations',
-            'camera_shakes', 'sequence_actors', 'helpers', 'removed'), 'missing' (bindings whose actor is not in the level),
-            'skipped_tracks' and 'missing_particles' (emitters placed without their particle system).
+            JSON of the counts ('sequences', 'bindings', 'tracks', 'sections', 'keys', 'sounds', 'attenuations',
+            'camera_shakes', 'sequence_actors', 'helpers', 'removed'), 'missing' (bindings whose actor is not in the
+            level), 'skipped_tracks' and 'missing_particles' (emitters placed without their particle system). (A
+            toolset's dict has to hold one type; this one mixes counts and lists.)
         """
-        return _module("dd_sequence").place(zone, map_path)
+        return json.dumps(_module("dd_sequence").place(zone, map_path))

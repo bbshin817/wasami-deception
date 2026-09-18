@@ -53,10 +53,13 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     def import_dd_ui() -> dict[str, int]:
         """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
-        heading font and select sound come with import_dd_tablet.
+        heading font and select sound come with import_dd_tablet. Also the door breaks' lock (WasamiSwitchboxWidget,
+        WasamiDoorBreak): the ring and spark materials and their textures, the lockpicking SoundCue and the sounds of
+        the lock giving (its key's font comes with import_dd_tablet).
 
         Returns:
-            How many assets of each kind were made ('textures', 'fonts', 'sounds').
+            How many assets of each kind were made ('textures', 'fonts', 'sounds', and 'door_break_textures',
+            '_sounds', '_sound_cues', '_attenuations', '_materials').
         """
         _module("dd_stage")
         _module("dd_assets")

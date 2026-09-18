@@ -113,6 +113,18 @@ namespace
 			}
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs InteractCommand(TEXT("Wasami.Interact"),
+		TEXT("Wasami.Interact [N]: presses Interact (F) N times (1 by default), as the key does."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0));
+			const int32 Presses = Args.Num() > 0 ? FMath::Max(0, FCString::Atoi(*Args[0])) : 1;
+			for (int32 Press = 0; Player && Press < Presses; ++Press)
+			{
+				Player->InteractPressed();
+			}
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs LivesCommand(TEXT("Wasami.Lives"),
 		TEXT("Wasami.Lives N: sets the lives to N (0 to 6)."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)

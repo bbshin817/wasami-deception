@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "../WasamiDoorBreak.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiShard.h"
@@ -164,6 +165,10 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	ABlockingVolume* AmbulanceSide = SpawnBlocker(World, TEXT("BlockingVolume_Ambulance_2"), ECollisionEnabled::NoCollision);
 	AWasamiShard* Shard = World->SpawnActor<AWasamiShard>(FVector(0., 0., -90000.), FRotator::ZeroRotator);
 	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone01_ElevatorArrive"), 14.1);
+	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
+	DoorBreak->ProgressSpeed = 1.5f;
+	DoorBreak->FinishSpawning(FTransform::Identity);
+	DoorBreak->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_Hospital_DoorBreak_2")));
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -176,13 +181,21 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("no objective yet"), Objective(Mode).IsEmpty());
 	// A trigger box walked through before the zone listens is spent (its DoOnce), as in the original; these are walked
 	// through only once they are bound.
+	TestFalse(TEXT("the lift door's lock asleep"), DoorBreak->GetBox()->GetGenerateOverlapEvents());
 	Advance(Wrapper, AWasamiZone1Flow::ArrivalShakeSeconds + 0.1f);
 	Walk(World, TEXT("04_Intercom"));
 	TestEqual(TEXT("the intercom, bound once the shake is over"), Flow->GetSection(), FName(TEXT("04_Intercom")));
-
-	// The lift's door broken open (the door's own finish calls it later); the maze's trigger saves 5.
 	TestFalse(TEXT("no such event"), Flow->CallEvent(TEXT("OnNothing")));
-	TestTrue(TEXT("04_DoorBreak"), Flow->CallEvent(TEXT("On04DoorBreak")));
+
+	// The lift door's lock wakes with the intercom; picked (67 presses at 1.5), it breaks the door open. The maze's
+	// trigger saves 5.
+	TestTrue(TEXT("the lock awake"), DoorBreak->GetBox()->GetGenerateOverlapEvents());
+	DoorBreak->NotifyPlayerOverlap(true);
+	for (int32 Press = 0; Press < 67; ++Press)
+	{
+		DoorBreak->Interact();
+	}
+	TestEqual(TEXT("picked: 04_DoorBreak"), Flow->GetSection(), FName(TEXT("04_DoorBreak")));
 	Walk(World, TEXT("BP_04_Trigger_Maze"));
 	TestEqual(TEXT("05_Persistent"), Flow->GetSection(), FName(TEXT("05_Persistent")));
 	TestEqual(TEXT("checkpoint 5 saved"), SavedCheckpoint(), 5);

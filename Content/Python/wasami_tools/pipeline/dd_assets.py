@@ -183,6 +183,10 @@ def sound(rel, version=1):
 SOUND_CUE_SKIP = ("FirstNode", "SoundClassObject", "Duration", "MaxDistance")
 
 
+def _is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def sound_cue(rel, version=1):
     """A SoundCue with the original's node tree ('Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue'): each node of the export
     made with UWasamiSoundCueLibrary, its numbers written by name and its inputs linked, the wave players pointing at the
@@ -213,16 +217,22 @@ def sound_cue(rel, version=1):
             loaded = unreal.load_asset(asset_path(game_rel(wave)))
             if not isinstance(loaded, unreal.SoundWave) or not lib.set_wave(obj, loaded):
                 raise RuntimeError("%s: %s plays %s, which is not made yet" % (rel, key, wave))
-        children = [node(child) for child in props.pop("ChildNodes", [])]
-        for name, value in props.items():
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ValueError("%s: %s.%s has a value this does not write (%r)" % (rel, key, name, value))
-            error = unreal.WasamiCascadeLibrary.set_property_text(obj, name, repr(value))
-            if error is None or error:
-                raise RuntimeError("%s: %s.%s was not written: %s" % (rel, key, name, error))
+        # A None child is an input left empty (SFX_06_Lockpicking's random node has a fifth, silent one).
+        children = [node(child) if child else None for child in props.pop("ChildNodes", [])]
+        # The inputs first: adding one to a random node adds a weight of 1, which its Weights then overwrite.
         error = lib.set_child_nodes(obj, children)
         if error is None or error:
             raise RuntimeError("%s: the inputs of %s were not linked: %s" % (rel, key, error))
+        for name, value in props.items():
+            if _is_number(value):
+                text = repr(value)
+            elif isinstance(value, list) and all(_is_number(v) for v in value):
+                text = "(%s)" % ",".join(repr(v) for v in value)
+            else:
+                raise ValueError("%s: %s.%s has a value this does not write (%r)" % (rel, key, name, value))
+            error = unreal.WasamiCascadeLibrary.set_property_text(obj, name, text)
+            if error is None or error:
+                raise RuntimeError("%s: %s.%s was not written: %s" % (rel, key, name, error))
         return obj
 
     props = main_export(pkg, rel)["props"]
