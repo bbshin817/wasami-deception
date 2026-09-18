@@ -8,7 +8,8 @@
             role (ROLES, .claude/references/enemy-wasami-motions.md), each resampled on a 30 fps grid from 0 — the
             sources' keys mix 24 and 30 fps and start at 1/24 s, and Interchange refuses an animation that does not end
             on a frame. Loops are closed (their last key is their first), the chase variants and the Nightmare run are
-            made in place, the stun is cut into a loop and a recovery, the vault off a ledge is made a vault from the
+            made in place, the stun's falls start where Idle stands and each has a get-up (a roll onto the front, then
+            push_up_to_idle) that ends where Idle stands (_stun_get_up), the vault off a ledge is made a vault from the
             floor (VAULT_FRAMES), and the capture's are carried onto v3's bones (_Retarget).
   imported  /Game/Wasami/Enemy: SK_WasamiEnemy with SK_WasamiEnemy_Skeleton and SK_WasamiEnemy_PhysicsAsset,
             A_WasamiEnemy_<role>, T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
@@ -44,14 +45,21 @@ RATE = 30
 # baked into); a clip's content runs from there to the last key of its other bones.
 CONTENT_START_FRAME = 2
 
-STUN = "01a0a88f-0db6-7251-85e6-1a97b799ee52"
-# The stun's loop, in the source's 30 fps frames: its bent-over sway from 0.967 s to 2.467 s, the pair of poses that
-# match best in the bent part (a mean joint distance of 3.3 cm) — found by comparing every pair at least 1.5 s apart.
-# The recovery is what follows the loop in the source (still bent until 4.8 s, upright by 8.0 s, settling to 10 s).
-STUN_LOOP_FRAMES = (29, 74)
-# The loop's last STUN_BLEND_FRAMES cross into the poses before its start, so its last key is its first; the recovery's
-# first ones cross from the loop's continuation, so it starts on the loop's first key.
-STUN_BLEND_FRAMES = 15
+# The stun (the user's answers, 2026-09-18): BeHit_FlyUp or Knock_Down at random, lying, then push_up_to_idle. Both
+# falls end on the back with the head where the body's back was; push_up_to_idle starts face down with the head where
+# its front is. So the get-up rolls the fallen body over about its length (pelvis to neck) in ROLL_FRAMES and lays the
+# push-up along it, turned end for end. It ends on its feet turned away from where the fall started (and Knock_Down's
+# some 0.7 m behind), so the whole get-up is turned and moved to end where Idle stands, as Idle is turned; the enemy is
+# moved by as much, while it lies still, as the get-up starts (UWasamiEnemyAnimInstance).
+GET_UP = "push_up_to_idle"
+ROLL_FRAMES = 24  # TODO(仮): 0.8 s, Claude's (the user's answer: a roll Claude makes, looked at in PIE)
+# The share of the roll in which the limbs reach GET_UP's first pose (the candidates), and how far (m) a joint may go
+# below the floor before the body is lifted (the joints are the bones' heads; the fingertips' reach the skin's end).
+ROLL_LIMB_SHARES = (1.0, 0.75, 0.5, 0.35)
+ROLL_FLOOR_SLACK = 0.03
+NECK = "neck_01"
+# The v3 stun the user first chose (a bent-over sway, then straightening up), unused since 2026-09-18.
+OLD_STUN = "01a0a88f-0db6-7251-85e6-1a97b799ee52"
 
 # Vault_and_Land vaults off a ledge (its feet are 77 cm higher at the start than at the end), in the source's 30 fps
 # frames: the left foot leaves the ledge after 28 (0.933 s; the right one swings up from 0.567 s), the feet reach the
@@ -65,7 +73,8 @@ FEET = ("ball_l", "ball_r")
 #   once           as it is
 #   in_place       the pelvis's horizontal motion (glTF x and z) held at its first key; its height stays
 #   loop_in_place  both
-#   stun_loop / stun_recover   see STUN_LOOP_FRAMES
+#   stun_fall      moved to start where Idle stands (_stun_fall)
+#   stun_get_up    the fall's get-up (_stun_get_up)
 #   vault          see _vault
 V3, CAPTURE = "v3", "capture"
 ROLES = (
@@ -74,8 +83,10 @@ ROLES = (
     ("Walk", V3, "Walking", "loop"),
     ("Run", V3, "Running", "loop"),
     ("Run_Nightmare", V3, "run_fast_2", "loop_in_place"),
-    ("Stun_Loop", V3, STUN, "stun_loop"),
-    ("Stun_Recover", V3, STUN, "stun_recover"),
+    ("Stun_FlyUp", V3, "BeHit_FlyUp", "stun_fall"),
+    ("Stun_KnockDown", V3, "Knock_Down", "stun_fall"),
+    ("Stun_GetUp_FlyUp", V3, "BeHit_FlyUp", "stun_get_up"),
+    ("Stun_GetUp_KnockDown", V3, "Knock_Down", "stun_get_up"),
     ("Capture_1", CAPTURE, "Backflip", "once"),
     ("Capture_2", CAPTURE, "sliding_rool", "once"),
     ("Capture_3", CAPTURE, "Stylish_Walk", "once"),
@@ -85,14 +96,10 @@ ROLES = (
     ("Chase_VaultLand", V3, VAULT, "vault"),
     ("Chase_RunFast", V3, "run_fast_5", "in_place"),
     ("Chase_Slide", V3, "slide_right", "in_place"),
-    # not given a role yet: candidates for the scenes (the list's 場面の代用)
-    ("BeHit_FlyUp", V3, "BeHit_FlyUp", "once"),
-    ("Knock_Down", V3, "Knock_Down", "once"),
-    ("Push_Up_To_Idle", V3, "push_up_to_idle", "once"),
 )
-# restpose is the arms-out bind pose, of no use as a motion. An animation the user adds later is imported as it is,
-# under its own name.
-SKIPPED = ("restpose",)
+# restpose is the arms-out bind pose, of no use as a motion; OLD_STUN is not used. An animation the user adds later is
+# imported as it is, under its own name.
+SKIPPED = ("restpose", OLD_STUN)
 CAPTURE_ANIMATIONS = ("Backflip", "sliding_rool", "Stylish_Walk")
 # An animation the user's tool made for both models, from which _Retarget measures how one's bones map onto the other's
 # (this one's pelvis goes 2.6 m, which fixes the scale; Running's hardly moves).
@@ -153,40 +160,138 @@ def _smooth(x):
     return x * x * (3.0 - 2.0 * x)
 
 
-def _crossed(chans, frames_a, frames_b, weights):
-    """Keys blended from the source frames frames_a to frames_b by weights (0 keeps a)."""
-    a, b = _sample(chans, frames_a), _sample(chans, frames_b)
-    return {key: [gltf.blend(key[1], va, vb, w) for va, vb, w in zip(a[key], b[key], weights)] for key in a}
-
-
 def _pelvis_offset(tracks, offsets):
     """Adds a horizontal (glTF x, z) offset per key to the pelvis's translation."""
     key = (ROOT_BONE, "translation")
     tracks[key] = [(x + dx, y, z + dz) for (x, y, z), (dx, dz) in zip(tracks[key], offsets)]
 
 
-def _stun_loop(chans):
-    a, b = STUN_LOOP_FRAMES
-    span, fade = b - a, STUN_BLEND_FRAMES
-    own = range(a, b + 1)
-    # at the last key, the loop's first (the frames before the fade are not blended in)
-    before = [max(f - span, CONTENT_START_FRAME) for f in own]
-    weights = [_smooth((k - (span - fade)) / fade) for k in range(span + 1)]
-    return _crossed(chans, own, before, weights)
+def _heading(v):
+    """The degrees a horizontal direction (glTF x, z) is turned from +Z towards +X (gltf.yaw's sense)."""
+    return math.degrees(math.atan2(v[0], v[2]))
 
 
-def _stun_recover(chans, target):
-    """What follows the loop, crossing in from the loop's continuation, with the pelvis brought over its length to end
-    over target (Idle's (x, z)) instead of the source's 0.2 – 0.3 m aside."""
-    a, b = STUN_LOOP_FRAMES
-    own = range(b, _content_frames(chans)[-1] + 1)
-    weights = [_smooth(k / STUN_BLEND_FRAMES) for k in range(len(own))]
-    tracks = _crossed(chans, [a + k for k in range(len(own))], own, weights)
-    x, _, z = tracks[(ROOT_BONE, "translation")][-1]
-    last = len(own) - 1
-    _pelvis_offset(tracks, [((target[0] - x) * _smooth(k / last), (target[1] - z) * _smooth(k / last))
-                            for k in range(len(own))])
-    return tracks, (target[0] - x, target[1] - z)
+def _turn_pelvis(tracks, q):
+    """Turns the whole pose about the up axis through the origin (the pelvis is the root)."""
+    rot, pos = (ROOT_BONE, "rotation"), (ROOT_BONE, "translation")
+    tracks[rot] = [gltf.qmul(q, r) for r in tracks[rot]]
+    tracks[pos] = [gltf.rotate(q, p) for p in tracks[pos]]
+
+
+def _move_pelvis_to(tracks, k, target):
+    """Moves the whole pose horizontally so that the pelvis is over target (x, z) at key k."""
+    x, _, z = tracks[(ROOT_BONE, "translation")][k]
+    _pelvis_offset(tracks, [(target[0] - x, target[1] - z)] * len(tracks[(ROOT_BONE, "translation")]))
+
+
+def _key(tracks, k):
+    return {key: values[k] for key, values in tracks.items()}
+
+
+def _body_axis(model, pose):
+    """The horizontal direction (glTF x, 0, z, of length 1) from the pelvis to the neck in a pose {track: value}."""
+    world = gltf.world_transforms(model, {n: v for (n, p), v in pose.items() if p == "rotation"},
+                                  {n: v for (n, p), v in pose.items() if p == "translation"})
+    (px, _, pz), (nx, _, nz) = world[ROOT_BONE][1], world[NECK][1]
+    length = math.hypot(nx - px, nz - pz)
+    return ((nx - px) / length, 0.0, (nz - pz) / length)
+
+
+def _axis_angle(axis, radians):
+    s = math.sin(radians / 2.0)
+    return (axis[0] * s, axis[1] * s, axis[2] * s, math.cos(radians / 2.0))
+
+
+def _stun_fall(chans, target):
+    """A fall, moved to start with the pelvis over target (Idle's (x, z)). Returns the tracks and how far the pelvis
+    goes (x, z)."""
+    tracks = _sample(chans, _content_frames(chans))
+    _move_pelvis_to(tracks, 0, target)
+    (x0, _, z0), (x1, _, z1) = tracks[(ROOT_BONE, "translation")][0], tracks[(ROOT_BONE, "translation")][-1]
+    return tracks, (x1 - x0, z1 - z0)
+
+
+def _stun_get_up(model, fall, get_up_chans, target, forward):
+    """The get-up after the fall's tracks: the fallen body rolls onto its front about its length (pelvis to neck) over
+    ROLL_FRAMES, into GET_UP's first pose laid along it (turned so that its pelvis-to-neck runs the same way, its pelvis
+    where the fall's lies), then GET_UP. The whole is turned and moved so that it ends with the pelvis over target and
+    turned to forward (Idle's: the pelvis's own axis that points ahead at Idle's first key). Returns the tracks and the
+    turn (degrees) and move (x, z) that carry the fall's last pose to the get-up's first."""
+    last = _key(fall, -1)
+    push = _sample(get_up_chans, _content_frames(get_up_chans))
+    _turn_pelvis(push, gltf.yaw(_heading(_body_axis(model, last)) - _heading(_body_axis(model, _key(push, 0)))))
+    _move_pelvis_to(push, 0, (last[(ROOT_BONE, "translation")][0], last[(ROOT_BONE, "translation")][2]))
+    first = _key(push, 0)
+
+    # The roll: the pelvis turns half round about the body's length, and what is left of the turn to GET_UP's first pose
+    # comes in along with it; the other bones go over to theirs sooner, so that the arms flung out on the back are drawn
+    # in before the body rolls onto one. Of the two ways round and ROLL_LIMB_SHARES, the one whose joints go least
+    # below the floor; what still goes lower than ROLL_FLOOR_SLACK lifts the body.
+    axis = _body_axis(model, last)
+    joints = _joint_names(model)
+    best = None
+    for sign in (1.0, -1.0):
+        for share in ROLL_LIMB_SHARES:
+            frames = _roll(last, first, axis, sign, share)
+            low = [_lowest_joint(model, joints, pose) for pose in frames]
+            if best is None or min(low) > min(best[1]):
+                best = (frames, low, sign, share)
+    frames, low, sign, share = best
+    # The ends are the fall's and GET_UP's own poses: they are allowed their own lows and are not lifted.
+    last_k = len(low) - 1
+    floors = [min(-ROLL_FLOOR_SLACK, low[0] + (low[-1] - low[0]) * k / last_k) for k in range(len(low))]
+    lifts = [max(0.0, f - h) for f, h in zip(floors, low)]
+    lifts = [max(lifts[max(0, k - 3):k + 4]) * min(1.0, k / 3.0, (last_k - k) / 3.0)  # held a little either side
+             for k in range(len(lifts))]
+    for pose, lift in zip(frames, lifts):
+        x, y, z = pose[(ROOT_BONE, "translation")]
+        pose[(ROOT_BONE, "translation")] = (x, y + lift, z)
+    tracks = {key: [pose[key] for pose in frames] + push[key][1:] for key in push}
+
+    # Where Idle stands, as Idle is turned.
+    end = gltf.rotate(tracks[(ROOT_BONE, "rotation")][-1], forward)
+    turn = -_heading(end)
+    _turn_pelvis(tracks, gltf.yaw(turn))
+    _move_pelvis_to(tracks, -1, target)
+    lx, _, lz = gltf.rotate(gltf.yaw(turn), last[(ROOT_BONE, "translation")])
+    fx, _, fz = tracks[(ROOT_BONE, "translation")][0]
+    report = {"turn": turn, "move": (fx - lx, fz - lz), "way": sign, "limbs": share, "lowest": min(low),
+              "lift": max(lifts)}
+    return tracks, report
+
+
+def _roll(last, first, axis, sign, share):
+    """The roll's poses {track: value}, ROLL_FRAMES + 1 of them from last to first (see _stun_get_up)."""
+    identity = (0.0, 0.0, 0.0, 1.0)
+    r0, r1 = last[(ROOT_BONE, "rotation")], first[(ROOT_BONE, "rotation")]
+    rest = gltf.qmul(r1, gltf.qinv(gltf.qmul(_axis_angle(axis, sign * math.pi), r0)))
+    frames = []
+    for k in range(ROLL_FRAMES + 1):
+        s = _smooth(k / ROLL_FRAMES)
+        limbs = _smooth(k / (ROLL_FRAMES * share))
+        pose = {}
+        for (node, path), value in last.items():
+            if (node, path) == (ROOT_BONE, "rotation"):
+                pose[(node, path)] = gltf.qmul(gltf.slerp(identity, rest, s),
+                                               gltf.qmul(_axis_angle(axis, sign * math.pi * s), r0))
+            elif node == ROOT_BONE:
+                pose[(node, path)] = gltf.blend(path, value, first[(node, path)], s)
+            else:
+                pose[(node, path)] = gltf.blend(path, value, first[(node, path)], limbs)
+        frames.append(pose)
+    return frames
+
+
+def _joint_names(model):
+    names = gltf.node_names(model)
+    return {names[j] for j in model["skins"][0]["joints"]}
+
+
+def _lowest_joint(model, joints, pose):
+    """How high (glTF y) the lowest joint of a pose {track: value} is."""
+    world = gltf.world_transforms(model, {n: v for (n, p), v in pose.items() if p == "rotation"},
+                                  {n: v for (n, p), v in pose.items() if p == "translation"})
+    return min(world[j][1][1] for j in joints)
 
 
 def _lowest_foot(model, tracks, k):
@@ -305,9 +410,11 @@ def prepare():
                "strays %.3f°, %.4f m)" % retarget.report)
     idle = _sample(gltf.channels(model, blob, animations[V3]["Idle_11"]), [CONTENT_START_FRAME])
     target = idle[(ROOT_BONE, "translation")][0][0], idle[(ROOT_BONE, "translation")][0][2]
+    forward = gltf.rotate(gltf.qinv(idle[(ROOT_BONE, "rotation")][0]), (0.0, 0.0, 1.0))
+    get_up = gltf.channels(model, blob, animations[V3][GET_UP])
 
     roles = list(ROLES)
-    used = {name for _, source, name, _ in ROLES if source == V3}
+    used = {name for _, source, name, _ in ROLES if source == V3} | {GET_UP}
     for name in animations[V3]:
         if name not in used and name not in SKIPPED:
             unreal.log_warning("enemy: %s has no role; imported as it is" % name)
@@ -320,10 +427,15 @@ def prepare():
         if missing:
             raise RuntimeError("%s: bones not in the model: %s" % (name, sorted(missing)))
         moved = (0.0, 0.0)
-        if how == "stun_loop":
-            tracks = _stun_loop(chans)
-        elif how == "stun_recover":
-            tracks, moved = _stun_recover(chans, target)
+        if how == "stun_fall":
+            tracks, moved = _stun_fall(chans, target)
+        elif how == "stun_get_up":
+            tracks, got = _stun_get_up(model, _stun_fall(chans, target)[0], get_up, target, forward)
+            moved = got["move"]
+            unreal.log("enemy: %s's get-up turns the enemy by %.1f° about the origin, then moves it x %.2f m z %.2f m, "
+                       "as it starts; it rolls %s with the limbs in over %.0f %% of it, its lowest joint %.3f m, lifted "
+                       "%.3f m" % (name, got["turn"], *moved, "one way" if got["way"] > 0 else "the other way",
+                                   got["limbs"] * 100.0, got["lowest"], got["lift"]))
         elif how == "vault":
             tracks, height, turn = _vault(model, chans)
             unreal.log("enemy: %s is lowered by %.1f cm until its take-off and turned by %.1f°"
