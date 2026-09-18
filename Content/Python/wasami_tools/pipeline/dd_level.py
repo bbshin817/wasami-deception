@@ -136,6 +136,14 @@ ENEMY_FOLDER = "Hospital/Gameplay/Enemies"
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
 FLOW_FOLDER = "Hospital/Gameplay/Flow"
+# This game's garage portal (AWasamiPortal, after BP_00_Teleport), which the original's hospital does not have: the zone
+# leaves by it instead of the ambulance's ride to the boss fight (item 13). Placed as the hotel's exit is (locked,
+# masked, at 2.5 times its size), turned so its front faces the way the player comes: its +X, the side the logo and the
+# lock lie on over the disc and the hotel's exit's end trigger is on (its strobing light is behind it). It stands in the
+# mouth of the tunnel the ambulance would drive into, 600 cm past the ambulance's lift, in the middle of the tunnel's
+# 2000 cm (x -11338 to -9356; the ceiling at 1000). The zone's flow finds it by its name.
+PORTALS = {"06_Hospital_Zone_02": {"name": "Wasami_GaragePortal", "location": (-10347.0, -7700.0, 0.0), "yaw": 90.0,
+                                   "scale": 2.5}}
 
 # The original's custom collision channels by slot, as Config/DefaultEngine.ini names them.
 CUSTOM_CHANNELS = {"ECC_GameTraceChannel1": "ECC_Teleport"}
@@ -546,7 +554,7 @@ def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar and
     the ring piece, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
-    is in the level."""
+    is in the level; and this game's garage portal (PORTALS)."""
     placed = []
     level = {}
     for a in zone["actors"]:
@@ -657,6 +665,16 @@ def _flow(eas, stage, zone, counts, failures):
                   else ENEMY_FOLDER if a["class"] == SENTRY_CLASS else FLOW_FOLDER)
         _tag(actor, a["name"], folder, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
+    portal = PORTALS.get(zone["map"])
+    if portal:
+        actor = eas.spawn_actor_from_class(unreal.WasamiPortal, _vec(portal["location"]),
+                                           unreal.Rotator(roll=0.0, pitch=0.0, yaw=portal["yaw"]))
+        # Each set runs the actor's construction again (PostEditChangeProperty), which puts on the locked look.
+        actor.set_editor_property("locked", True)
+        actor.set_editor_property("masked_portal_material", True)
+        actor.set_actor_scale3d(unreal.Vector(portal["scale"], portal["scale"], portal["scale"]))
+        _tag(actor, portal["name"], FLOW_FOLDER, FLOW_TAG, "src:" + portal["name"])
+        counts["portals"] += 1
     by_source = {}
     for actor in eas.get_all_level_actors():
         for t in actor.tags:
@@ -686,7 +704,7 @@ def place_flow(zone="Zone1", map_path=""):
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
-              "ringStatues": 0, "ringPieces": 0, "attached": 0}
+              "ringStatues": 0, "ringPieces": 0, "portals": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -710,7 +728,8 @@ def build(zone="Zone1", map_path=""):
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "attached")}
+                             "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "portals",
+                             "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

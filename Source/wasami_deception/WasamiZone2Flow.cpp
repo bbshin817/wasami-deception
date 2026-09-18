@@ -6,6 +6,8 @@
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMaterialLibrary.h"
+#include "Materials/MaterialParameterCollection.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiDoubleDoors.h"
@@ -45,6 +47,17 @@ AWasamiZone2Flow::AWasamiZone2Flow()
 	DoorPickedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/04_Sewer/Bossfight/BP_04_BossFight_CameraShake_Initial")));
 	SpikesSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3")));
 	RingPiecePickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/RingStatue/Ring_Piece_Pickup_v1")));
+	ParameterCollection = TSoftObjectPtr<UMaterialParameterCollection>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Special/Mat_ParameterCol")));
+}
+
+void AWasamiZone2Flow::BeginPlay()
+{
+	// ReceiveBeginPlay (@23216): SetScalarParameterValue(Mat_ParameterCol, 'Portal Extra Brightness', 40), then Setup.
+	if (UMaterialParameterCollection* Collection = ParameterCollection.LoadSynchronous())
+	{
+		UKismetMaterialLibrary::SetScalarParameterValue(this, Collection, TEXT("Portal Extra Brightness"), PortalExtraBrightness);
+	}
+	Super::BeginPlay();
 }
 
 void AWasamiZone2Flow::StartAt(int32 Checkpoint)

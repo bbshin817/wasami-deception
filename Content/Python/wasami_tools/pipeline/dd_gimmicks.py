@@ -20,15 +20,22 @@ lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with 
 parking lot's nurses stabbing at the tunnel's doors (AWasamiEnemy06Chase's Hit FX): the slam (20-Elevator_Slams) and the
 dust (P_06_NurseDoorHit, with Whisps_additive, an additive instance of the doors' estimated smoke). Zone 2's ring piece
 over the altar (AWasamiRingPiece): its glow (P_08_RingPiece, with MI_ky_primitive_dynB_nonD1, an instance of the
-shards' estimated M_ky_primitive).
+shards' estimated M_ky_primitive). The garage's portal (AWasamiPortal, after Blueprints/00_Ballroom/BP_00_Teleport): its
+disc's mesh and textures, M_00_Portal_Vortex (its graph cooked away, rebuilt from its compiled shaders) with the
+original's instances, the lock's plane, this game's logo in place of the monkey, its sounds and camera shake, and
+Mat_ParameterCol, the material parameter collection its materials read.
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
+import math
+import os
+
 import unreal
 
 from wasami_tools.pipeline import dd_assets, dd_particles, dd_skeletal, dd_stage, paths
 
 EAL = unreal.EditorAssetLibrary
+MEL = unreal.MaterialEditingLibrary
 MP = unreal.MaterialProperty
 VERSION = 2   # the hospital is only in the latest version
 
@@ -129,6 +136,34 @@ RING_PIECE_MATERIAL = KY + "Materials/MI_ky_primitive_dynB_nonD1"
 RING_PIECE_PARENT = KY + "Materials/M_ky_primitive"
 RING_PIECE_NEEDS = (RING_PIECE_PARENT, KY + "Materials/M_ky_polarGlow02")
 RING_PIECE = "Particles/08_BearHouse/P_08_RingPiece"
+# The garage's portal (AWasamiPortal, after Blueprints/00_Ballroom/BP_00_Teleport): the disc's mesh, its textures, its
+# master material (M_00_Portal_Vortex, whose graph the cook took away, rebuilt from its compiled shaders) and the
+# original's eight instances of it (open and locked, the vortex also masked), the lock's plane (M_00_Portal_Lock, an
+# instance of our estimate of M_00_Portal_Monkey) and this game's logo in place of the monkey, the loop and the unlock's
+# sounds, the camera shake as it opens, and Mat_ParameterCol, whose Portal Extra Brightness the portal's materials read
+# (Zone 2's flow sets it to 40, as the hospital's level does).
+PORTAL_MESH = "Meshes/00_Ballroom/circle_portal_decal"
+PORTAL_TEXTURES = ("Textures/00_Ballroom/decal_vortex", "Textures/00_Ballroom/portal_inner_active",
+                   "Textures/00_Ballroom/portal_outer_active", "Textures/00_Ballroom/portal_lock")
+PORTAL_SOUNDS = ("Audio/00_Ballroom/Portal_Sound_v3", "Audio/00_Ballroom/portal_unlocked")
+PORTAL_CAMERA_SHAKE = "Blueprints/Main/BP_Portal_CameraShake"
+PARAMETER_COLLECTION = "Materials/Special/Mat_ParameterCol"
+PORTAL_VORTEX = "Materials/MasterMaterials/M_00_Portal_Vortex"
+PORTAL_VORTEX_INSTANCES = tuple("Materials/00_Ballroom/M_00_Portal_Vortex_" + n for n in (
+    "Inst", "Masked", "Locked_Inst", "Locked_Inst_Masked", "Outer_Inst", "Outer_Locked_Inst", "Inner_Inst",
+    "Inner_Locked_Inst"))
+PORTAL_MONKEY = "Materials/00_Ballroom/M_00_Portal_Monkey"
+PORTAL_LOGO_MASTER = dd_assets.PIPELINE_MATERIALS + "M_DD_PortalLogo"
+PORTAL_LOCK = "Materials/00_Ballroom/M_00_Portal_Lock"
+# This game's logo (Tools/dd/prepare_portal_logo.py draws it) and its instance of the logo's master.
+PORTAL_LOGO_FILE = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "wasami", "fx", "portal_wasami.png")
+PORTAL_LOGO_TEXTURE = paths.WASAMI_ROOT + "/Portal/T_Portal_Wasami"
+PORTAL_LOGO = paths.WASAMI_ROOT + "/Portal/MI_Portal_Wasami"
+# The monkey's texture settings (_textures.json: sRGB, default compression, the UI group).
+PORTAL_LOGO_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
+# The instances name a second texture, Albedo_1, which none of the vortex's compiled shaders samples (the graph's
+# compile dropped it), so the estimate has no such parameter and the instances' values of it are left out.
+PORTAL_LEFT_OUT = ("Albedo_1",)
 
 
 def _build_speed_barrier(mat):
@@ -173,6 +208,160 @@ def _build_speed_barrier(mat):
     opacity = g.multiply(fade, "", g.scalar("Opacity Multiplier", scalars["Opacity Multiplier"], -650, 450), "",
                          -450, 300)
     g.out(opacity, "", mp.MP_OPACITY)
+
+
+def _collection_parameter(g, name, x, y):
+    """Mat_ParameterCol's scalar name in graph g (the collection has to have been made, make_parameter_collection)."""
+    e = g.node(unreal.MaterialExpressionCollectionParameter, x, y)
+    e.set_editor_property("collection", unreal.load_asset(dd_assets.asset_path(PARAMETER_COLLECTION)))
+    e.set_editor_property("parameter_name", name)
+    return e
+
+
+def _build_portal_vortex(mat):
+    """M_00_Portal_Vortex, whose graph the cook took away; the graph writes out its compiled shaders
+    (Tools/dd/cooked_shaders.py "MasterMaterials/M_00_Portal_Vortex." --show 40, the translucent base pass, and
+    "00_Ballroom/M_00_Portal_Vortex_Masked." --show 3, the masked instance's depth pass). Albedo is sampled at the UVs
+    turned about the middle by Time x Speed x 0.25 radians; its RGB, greyed by Desaturation (the 0.3, 0.59, 0.11
+    luminance), x (a sine of Time x Strobe Speed (period 1) x Strobe Intensity + Glow Multiplier + Base Glow) x 0.2 x
+    (1 + Mat_ParameterCol's Portal Extra Brightness, lerped to its Portal Brightness Locked by Locked) is the emissive
+    colour; its alpha is the opacity, and plus DitherTemporalAA's dither the opacity mask of the masked instances. The
+    original is lit but has no base colour, so no light shows on it: the estimate is unlit."""
+    scalars, _ = dd_assets.parameter_defaults(PORTAL_VORTEX, VERSION)
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    # bEnableSeparateTranslucency false: drawn before the depth of field (UE 5's translucency pass).
+    mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    mat.set_editor_property("used_with_static_lighting", True)
+    g = dd_stage._Graph(mat, checked=True)
+    time = g.node(unreal.MaterialExpressionTime, -2600, -300)
+
+    def param(name, x, y):
+        return g.scalar(name, scalars.get(name, 0.0), x, y)
+
+    # The UVs turned about the middle.
+    angle = g.multiply(g.multiply(time, "", param("Speed", -2600, -200), "", -2400, -250), "",
+                       dd_assets.constant(g, 0.25, -2400, -150), "", -2250, -250)
+    trig = []
+    for cls, y in ((unreal.MaterialExpressionSine, -300), (unreal.MaterialExpressionCosine, -150)):
+        e = g.node(cls, -2100, y)
+        e.set_editor_property("period", 2.0 * math.pi)  # the angle in radians
+        g.link(angle, "", e, "")
+        trig.append(e)
+    sine, cosine = trig
+    uv = g.node(unreal.MaterialExpressionTextureCoordinate, -2600, 0)
+    centred = g.node(unreal.MaterialExpressionSubtract, -2400, 0)
+    centred.set_editor_property("const_b", 0.5)
+    g.link(uv, "", centred, "A")
+    u = dd_assets.channel(g, centred, "", "R", -2250, 0)
+    v = dd_assets.channel(g, centred, "", "G", -2250, 100)
+    turned_u = g.binary(unreal.MaterialExpressionSubtract, g.multiply(cosine, "", u, "", -1950, -50), "",
+                        g.multiply(sine, "", v, "", -1950, 50), "", -1800, 0)
+    turned_v = dd_assets.add(g, g.multiply(sine, "", u, "", -1950, 150), "", g.multiply(cosine, "", v, "", -1950, 250),
+                             "", -1800, 200)
+    turned = g.binary(unreal.MaterialExpressionAppendVector, turned_u, "", turned_v, "", -1650, 100)
+    back = g.node(unreal.MaterialExpressionAdd, -1500, 100)
+    back.set_editor_property("const_b", 0.5)
+    g.link(turned, "", back, "A")
+    albedo = g.texture("Albedo", unreal.load_asset(dd_assets.asset_path(PORTAL_TEXTURES[0])),
+                       unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -1350, 100)
+    g.link(back, "", albedo, "UVs")
+
+    # The colour and its strobe.
+    grey = g.node(unreal.MaterialExpressionDesaturation, -1000, 0)
+    g.link(albedo, "RGB", grey, "")
+    g.link(param("Desaturation", -1200, -100), "", grey, "Fraction")
+    strobe_phase = g.multiply(time, "", param("Strobe Speed", -1400, -500), "", -1200, -500)
+    strobe = dd_assets.single(g, unreal.MaterialExpressionSine, strobe_phase, "", -1050, -500)
+    strobe = g.multiply(strobe, "", param("Strobe Intensity", -1050, -400), "", -900, -500)
+    glow = dd_assets.add(g, param("Glow Multiplier", -1050, -300), "", param("Base Glow", -1050, -200), "", -900, -300)
+    strobe = dd_assets.add(g, strobe, "", glow, "", -750, -450)
+    strobe = g.multiply(strobe, "", dd_assets.constant(g, 0.2, -750, -350), "", -600, -450)
+    extra = g.lerp(_collection_parameter(g, "Portal Extra Brightness", -1000, -800), "",
+                   _collection_parameter(g, "Portal Brightness Locked", -1000, -700), "",
+                   param("Locked", -1000, -600), "", -750, -750)
+    extra = dd_assets.add(g, extra, "", dd_assets.constant(g, 1.0, -750, -650), "", -600, -700)
+    brightness = g.multiply(strobe, "", extra, "", -450, -550)
+    g.out(g.multiply(grey, "", brightness, "", -300, -200), "", MP.MP_EMISSIVE_COLOR)
+    g.out(albedo, "A", MP.MP_OPACITY)
+    dither = dd_assets.function_call(g, "Utility/DitherTemporalAA", -700, 300, dd_assets.FUNCTIONS_02)
+    g.link(albedo, "A", dither, "Alpha Threshold")
+    g.out(dither, "", MP.MP_OPACITY_MASK)
+
+
+def _build_portal_logo(mat):
+    """M_00_Portal_Monkey, whose graph the cook took away; the graph writes out its compiled translucent base pass
+    (Tools/dd/cooked_shaders.py "00_Ballroom/M_00_Portal_Monkey." --show 40): Albedo sampled at the UVs scaled about the
+    middle by Scale (ScaleUVsByCenter), its RGB x 0.05 x (1 + Mat_ParameterCol's Portal Extra Brightness) the emissive
+    colour and its alpha the opacity. Unlit, as the vortex (no base colour). Albedo defaults to the lock: the monkey is
+    the original's character, which this game does not show."""
+    scalars, _ = dd_assets.parameter_defaults(PORTAL_MONKEY, VERSION)
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    mat.set_editor_property("used_with_static_lighting", True)
+    g = dd_stage._Graph(mat, checked=True)
+    scaled = dd_assets.function_call(g, "Texturing/ScaleUVsByCenter", -1000, 0)
+    g.link(g.node(unreal.MaterialExpressionTextureCoordinate, -1200, 0), "", scaled, "UVs")
+    g.link(g.scalar("Scale", scalars.get("Scale", 1.0), -1200, 100), "", scaled, "Texture Scale")
+    albedo = g.texture("Albedo", unreal.load_asset(dd_assets.asset_path(PORTAL_TEXTURES[3])),
+                       unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -750, 0)
+    g.link(scaled, "", albedo, "UVs")
+    extra = dd_assets.add(g, _collection_parameter(g, "Portal Extra Brightness", -750, -300), "",
+                          dd_assets.constant(g, 1.0, -750, -200), "", -550, -250)
+    colour = g.multiply(albedo, "RGB", dd_assets.constant(g, 0.05, -550, -100), "", -400, -50)
+    g.out(g.multiply(colour, "", extra, "", -250, -150), "", MP.MP_EMISSIVE_COLOR)
+    g.out(albedo, "A", MP.MP_OPACITY)
+
+
+def make_parameter_collection():
+    """Mat_ParameterCol with the original's scalars (their names and defaults, in its order), saved. A parameter's id
+    (protected from Python) is made with it; an existing collection keeps its parameters and their ids, so the materials
+    reading it stay valid. Returns the collection."""
+    target = dd_assets.asset_path(PARAMETER_COLLECTION)
+    if EAL.does_asset_exist(target):
+        collection = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        collection = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+            name, folder, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
+    props = dd_assets.main_export(dd_assets.export_json(PARAMETER_COLLECTION, VERSION), PARAMETER_COLLECTION)["props"]
+    if props.get("VectorParameters"):
+        raise NotImplementedError("%s has vector parameters" % PARAMETER_COLLECTION)
+    existing = {str(s.get_editor_property("parameter_name")): s
+                for s in collection.get_editor_property("scalar_parameters")}
+    scalars = []
+    for p in props["ScalarParameters"]:
+        s = existing.get(p["ParameterName"]) or unreal.CollectionScalarParameter()
+        s.set_editor_property("parameter_name", p["ParameterName"])
+        s.set_editor_property("default_value", float(p.get("DefaultValue", 0.0)))
+        scalars.append(s)
+    collection.set_editor_property("scalar_parameters", scalars)
+    EAL.save_loaded_asset(collection, only_if_is_dirty=False)
+    return collection
+
+
+def make_portal_materials():
+    """The portal's materials at the original's paths (the vortex's master and its eight instances, the lock) and this
+    game's logo, saved. Returns their paths."""
+    vortex = dd_assets.material(dd_assets.asset_path(PORTAL_VORTEX), _build_portal_vortex,
+                                blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
+    logo = dd_assets.material(PORTAL_LOGO_MASTER, _build_portal_logo, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
+    made = [vortex, logo]
+    for parent, children in ((vortex, PORTAL_VORTEX_INSTANCES), (logo, (PORTAL_LOCK,))):
+        known = {kind: {str(n) for n in names(parent)} for kind, names in (
+            ("scalars", MEL.get_scalar_parameter_names), ("textures", MEL.get_texture_parameter_names))}
+        for rel in children:
+            scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(rel, VERSION)
+            textures = {k: v for k, v in textures.items() if k not in PORTAL_LEFT_OUT}
+            unknown = (set(scalars) - known["scalars"]) | (set(textures) - known["textures"])
+            if unknown or vectors or masks or switches:
+                raise RuntimeError("%s sets %s, which the estimate does not have"
+                                   % (rel, sorted(unknown) or (vectors, masks, switches)))
+            mic = dd_assets.material_instance(dd_assets.asset_path(rel), parent, scalars=scalars, textures=textures)
+            dd_assets.base_property_overrides(mic, rel, VERSION)
+            made.append(mic)
+    made.append(dd_assets.material_instance(PORTAL_LOGO, logo, textures={"Albedo": PORTAL_LOGO_TEXTURE}))
+    for asset in made:
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return [a.get_path_name() for a in made]
 
 
 def _lit_particle(mat, responsive_aa=False, spherical_normals=False):
@@ -519,6 +708,25 @@ def import_ring_statue():
     return {"materials": 1, "particle_systems": 1}
 
 
+def import_portal():
+    """The garage portal's collection, textures, mesh, materials, logo, sounds and camera shake (saved). The logo's
+    image has to have been drawn (python Tools/dd/prepare_portal_logo.py). Returns how many of each."""
+    if not os.path.exists(PORTAL_LOGO_FILE):
+        raise FileNotFoundError("%s is missing: run python Tools/dd/prepare_portal_logo.py first." % PORTAL_LOGO_FILE)
+    make_parameter_collection()
+    result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in PORTAL_TEXTURES]) + 1}
+    logo = dd_stage.import_texture(dict(PORTAL_LOGO_SETTINGS, file=PORTAL_LOGO_FILE, asset=PORTAL_LOGO_TEXTURE))
+    EAL.save_loaded_asset(logo, only_if_is_dirty=False)
+    dd_assets.static_mesh(PORTAL_MESH, VERSION)
+    result["meshes"] = 1
+    result["materials"] = len(make_portal_materials())
+    result["sounds"] = len([dd_assets.sound(rel, VERSION) for rel in PORTAL_SOUNDS])
+    dd_assets.camera_shake(PORTAL_CAMERA_SHAKE, VERSION)
+    result["camera_shakes"] = 1
+    result["parameter_collections"] = 1
+    return result
+
+
 def import_double_doors():
     """The double doors' sounds, SoundCue and attenuations. Returns how many of each."""
     result = {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in DOUBLE_DOOR_ATTENUATIONS]),
@@ -541,7 +749,7 @@ def import_garage_lift():
 
 def import_all():
     """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the
-    nurses' stabs at the doors, the lifts', the garage lifts' and the ring piece's), then saves /Game/DD."""
+    nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's and the portal's), then saves /Game/DD."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
@@ -550,5 +758,6 @@ def import_all():
     result.update({"lift_" + key: count for key, count in import_lifts().items()})
     result.update({"garage_lift_" + key: count for key, count in import_garage_lift().items()})
     result.update({"ring_piece_" + key: count for key, count in import_ring_statue().items()})
+    result.update({"portal_" + key: count for key, count in import_portal().items()})
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

@@ -4,6 +4,8 @@
 #include "WasamiZoneFlow.h"
 #include "WasamiZone2Flow.generated.h"
 
+class UMaterialParameterCollection;
+
 /**
  * Zone 2's level Blueprint (pak_reference_2's 06_Hospital_Zone_02): out of the cell (checkpoint 7) before its spikes come
  * down, past the Matron's nurses (8), through the maze for all its shards (9), and on to the ring piece (10), whose
@@ -26,13 +28,23 @@ public:
 	/** Ring Piece Collect 's Delay before the garage's trigger is bound (and Bierce talks). */
 	static constexpr float GarageBindDelay = 1.f;
 
+	/** ReceiveBeginPlay: Mat_ParameterCol's Portal Extra Brightness in this zone (the garage's portal glows by it). */
+	static constexpr float PortalExtraBrightness = 40.f;
+
 	/** Where the left-out scenes leave what they move (their sections that keep their state). */
 	static const FVector AmbulanceArrived;
 	static const FVector FalseCeilingOpen;
 	static const FRotator WallSwitchThrown;
 
 protected:
+	/** ReceiveBeginPlay: Portal Extra Brightness set, then the zone's Setup (the base's BeginPlay). */
+	virtual void BeginPlay() override;
+
 	virtual void StartAt(int32 Checkpoint) override;
+
+	/** Mat_ParameterCol, which the portal's materials read. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<UMaterialParameterCollection> ParameterCollection;
 
 	/** The cell's door picked: BP_04_BossFight_CameraShake_Initial. */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
