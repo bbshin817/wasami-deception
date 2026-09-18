@@ -166,7 +166,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse*.txt`、`Animation/Enemies/Nurse/Reaper/*AnimBlueprint*.txt`、行動ツリー（`_assets/DDeception/Content/AI/**`。無ければ `_bytecode` の BTT）、WebGL 版 15 記録（頭脳の作り）。
 - 依存: 4、6。
 - 規模: 4
-- 状態: 未着手。
+- 状態: **完了（2026-09-19）**。両ゾーンに本家のナビのボリューム（Zone 1 に 2、Zone 2 に 59）と設定で NavMesh を焼き（実装記録 01・00）、敵ワサミ `AWasamiEnemy` が本家のナースの `Make Choice`（0.5 s ごとの判断と AI MoveTo。巡回はプレイヤーの周り 3000 の乱数の点へ 350、見つけると〈前 100° 未満・`Camera` の線〉800 で追い、見失うのは Vanish と 17 s の気絶だけ）で動く。Zone 1 は迷路の 3 体（`Spawn Nurses`）と駐車場の 06 型 2 体（`Spawn Nurses_06`。毎ティック追い、トンネルの扉を突く・`NurseNear`）、Zone 2 は迷路の 3 体（階が違うとリフトへ）とミニボスの廊下の見張り 6 体（視界コーン・地図の印・見つけると跳び降りて追う）。PIE で巡回 → 発見 → 追跡 → 接触の手前（中心の間 89 cm。先は項目 9）と、Primal Fear・オーブの代わりの気絶（17 s・明けに見失う）・Vanish（見失う）・Telepathy（6 体に印）を確かめて収録した（実装記録 07・11・12・03・04）。**完了の条件の読み替え**（本家のコードに合わせた）: (1) NavMesh は本家の `NavMeshBoundsVolume` をそのまま置いた（「ブラシの形が書き出しに無い」は読み違いで、ブラシの `BodySetup` の凸の形と変換が書き出しにある）。`NavModifierVolume` 相当とリフトの部品の `AreaClass`・`NavModifier` は道を変えないので写さない。(2) 「Nightmare（全回収後）で `run_fast_2`」は作らない（下の「未回答の要確認」。本家の病院の Zone は全回収で敵を全部消し、ナースは `Activate Frenzy` を実装しないので、全回収の後に追う敵がいない。`bNightmare` とアニメの分岐は残した）。透明化・薬投げ・スケートの音は作らず、台詞は項目 20、捕獲は項目 9、見つける前に気絶した見張りの姿勢と視界コーンの地図の印の見え方は項目 28 の後回しの一覧。
 
 ### 9. 捕獲の演出（黒背景 + 敵ワサミ、3 種のシャッフル）
 
@@ -253,6 +253,7 @@
 - 目標: Zone 2 の `BP_06_Matron_MiniBoss` を、大きい敵ワサミとして本家の巡回路・視界コーン（`BP_06_Miniboss_viewcone_Matron_Long` / `_Short`）・発見で追跡型の行動に入る形で置く。
 - 完了の条件: 巡回路と視界コーンの形・速さ・見つかった後の行動がコードどおり。モデルは `tmp/boss_wasami.glb`（2026-09-18。アニメの役は `.claude/references/enemy-wasami-motions.md` の「ボスワサミ」）で、大きさは本家の Matron から決める。PIE で見つからずに通れることと、見つかると追われることを収録。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Animation/Enemies/Nurse/Matron/MiniBoss/BP_06_Matron_MiniBoss.txt`、`Blueprints/06_Hospital/Miniboss/*.txt`、`_levels/06_Hospital_Zone_02.full.json`。
+- 項目 7 から（2026-09-19）: 視界コーンの基底 `AWasamiViewcone`（本家の `BP_06_Miniboss_viewcone`）・インターフェース `IWasamiViewconeInterface`（`BPI_06_Viewcone`）・見張りの `_Nurse` と地図の印の材質、Zone 2 の流れの `Activate MiniBoss Enemies`（Matron の `MnM_Matron_Idle_2` を呼ぶ所だけ空け）は作ってある（実装記録 07・11）。この項目は Matron と `_Matron_Long`・`_Short` を足す。
 - 依存: 7。
 - 規模: 2
 - 状態: 未着手。
@@ -378,6 +379,10 @@
 ## 未回答の要確認（ユーザー）
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
+
+### 項目 7（NavMesh と敵の AI、2026-09-19 に閉じた記録 `20260919-enemy-ai`）
+
+- 2026-09-19: 完了の条件の「Nightmare（全回収後）で `run_fast_2`」— 仮に作らない（`AWasamiEnemy::bNightmare` とアニメの `Run_Nightmare` の分岐は残す）。理由: 本家の病院の Zone では全回収で敵を全部消し（Zone 1 の `05 All Shards Collected`、Zone 2 の `Postmaze Transition`。本作も項目 6 で同じ）、ナースはゲームモードの `Activate Frenzy` を実装していないので、全回収の後に追ってくる敵がいない（Nightmare のナース `BP_06_ReaperNurse_06_Chase_Nightmare` は入口 `06_Hospital` だけ）。ほかの案: 全回収の後も敵を残し `run_fast_2` で追わせる（本家に無い規則なので値が要る）。場所: 上の項目 7 の状態、実装記録 07 の「既知の制約」。
 
 ### 項目 4（敵ワサミの素体、2026-09-18 に閉じた記録 `20260917-enemy-wasami-body`）
 
