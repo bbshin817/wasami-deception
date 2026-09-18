@@ -11,11 +11,16 @@ key's font comes with the tablet; the clicks' attenuation comes with the level s
 again here.
 
 The loading screen (UWasamiLoadingWidget, after UI/Main/UMG_Loading) as Zone 1 goes on to Zone 2: the portal sound the
-level plays with it. Its level emblems (UI/Main/Loaders) are not imported until the user says whether they may be used.
+level plays with it, and the hospital's emblem — the original's magic circle with this game's Wasami symbol in place of
+the Reaper Nurse's mark (the user's answer, 2026-09-19) — which Tools/dd/prepare_loader.py composes into
+Intermediate/Pipeline/wasami/ui/loader_wasami.png and this imports under /Game/Wasami/UI with the original emblems'
+settings.
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
+import os
+
 import unreal
 
 from wasami_tools.pipeline import dd_assets, dd_stage, paths
@@ -55,6 +60,10 @@ DOOR_BREAK_ATTENUATIONS = ("Audio/01_Hotel/01_Lobby_Attenuation",)
 
 # ------------------------------------------------------------------------------------------------ the loading screen
 LOADING_SOUNDS = ("Audio/00_Ballroom/21-Ballroom_portal_V2",)
+LOADING_EMBLEM_FILE = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "wasami", "ui", "loader_wasami.png")
+LOADING_EMBLEM = paths.WASAMI_ROOT + "/UI/loader_wasami"
+# The original emblems' settings (UI/Main/Loaders/loader_reapernurse in _textures.json: sRGB, default compression, UI).
+LOADING_EMBLEM_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
 
 # M_UI_Radial: a UI material whose graph the cook took away; its compiled Slate pixel shader
 # (Tools/dd/cooked_shaders.py "Materials/04_Sewer/M_UI_Radial." --show 4) is what the graph below follows. With v the
@@ -137,8 +146,12 @@ def import_door_break():
 
 
 def import_loading():
-    """The loading screen's sound. Returns how many."""
-    return {"sounds": len([dd_assets.sound(rel, VERSION) for rel in LOADING_SOUNDS])}
+    """The loading screen's sound and the hospital's emblem (saved). Returns how many."""
+    if not os.path.exists(LOADING_EMBLEM_FILE):
+        raise FileNotFoundError("%s is missing: run python Tools/dd/prepare_loader.py first." % LOADING_EMBLEM_FILE)
+    emblem = dd_stage.import_texture(dict(LOADING_EMBLEM_SETTINGS, file=LOADING_EMBLEM_FILE, asset=LOADING_EMBLEM))
+    EAL.save_loaded_asset(emblem, only_if_is_dirty=False)
+    return {"sounds": len([dd_assets.sound(rel, VERSION) for rel in LOADING_SOUNDS]), "emblems": 1}
 
 
 def import_all():

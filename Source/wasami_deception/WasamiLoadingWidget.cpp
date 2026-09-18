@@ -7,6 +7,7 @@
 #include "Engine/Texture2D.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
 #include "WasamiWidgetAnimation.h"
 
@@ -22,6 +23,13 @@ namespace
 	// Image_23's tint: the screen's dark red (no texture).
 	const FLinearColor LoadingBackground(0.49479201436042786f, 0.f, 0.f, 1.f);
 	constexpr float LoadingEmblemSize = 512.f;
+}
+
+UWasamiLoadingWidget::UWasamiLoadingWidget(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	LevelEmblems.SetNum(AsylumLevel + 1);
+	LevelEmblems[AsylumLevel] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/UI/loader_wasami")));
 }
 
 UWasamiLoadingWidget* UWasamiLoadingWidget::Show(const UObject* WorldContextObject, uint8 InLevel)
@@ -86,7 +94,7 @@ void UWasamiLoadingWidget::NativeConstruct()
 	}
 	if (Logo)
 	{
-		UTexture2D* Texture = LevelEmblems.IsValidIndex(Level) ? LevelEmblems[Level].LoadSynchronous() : nullptr;
+		UTexture2D* Texture = GetLevelEmblem(Level).LoadSynchronous();
 		Logo->SetBrushFromTexture(Texture, false);
 		// Without one the original draws its brush blank (white); here the red screen shows alone.
 		Logo->SetVisibility(Texture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);

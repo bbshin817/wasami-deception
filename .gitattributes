@@ -8,3 +8,5 @@
 *.umap filter=lfs diff=lfs merge=lfs -text
 # 本作の手作りの素材の原本（Tools/ と Content/Python/wasami_tools が SourceArt/ から取り込む）
 *.glb filter=lfs diff=lfs merge=lfs -text
+# 本作の手作りの画像の原本（読み込み画面の紋章のシンボルなど。Tools/ が SourceArt/ から作る）
+SourceArt/**/*.png filter=lfs diff=lfs merge=lfs -text
