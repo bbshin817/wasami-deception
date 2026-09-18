@@ -8,7 +8,10 @@ shader, and the barrier's two instances of it) and the burst it breaks with (P_k
 materials on the placed barriers. The tunnel's doors broken in (the zone flow, AWasamiZone1Flow): their crash
 (DD_TT_Door_BustedOpen_02) and the burst of concrete the level's emitter Fracture_concrete_5 plays (BallisticsVFX's
 Fracture_concrete_3, whose materials' graphs the cook took away: estimated, as the particle packs' others are). Zone 2's
-cell: the needles' stab as its spikes reach the player (DD_Needle_Trap_R1_V3, AWasamiZone2Flow).
+cell: the needles' stab as its spikes reach the player (DD_Needle_Trap_R1_V3, AWasamiZone2Flow), and the particles its
+sequences fire (06_Hospital_Zone2_Spikes: the sparks the spikes throw, P_06_NurseSparks, and the dust as they come down,
+Fracture_dark_slow; 06_Hospital_Zone2_Cell_DoorPicked: the burst at the cell door, Concrete_impact_large), with the
+four materials the cook took the graphs of, estimated off their compiled shaders.
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
@@ -69,6 +72,8 @@ DOORS_BUSTED_SOUNDS = (
 CELL_SOUNDS = (
     "Audio/06_Hospital/DD_Needle_Trap_R1_V3",
 )
+NURSE = "Blueprints/Characters/Nurse/"
+FLARES = BVFX + "FXMaterials/Flares/"
 FRAGMENTS = BVFX + "FXMaterials/Fragments/"
 SMOKE_DUST = BVFX + "FXMaterials/SmokeDust/"
 DEBRIS_BASE = FRAGMENTS + "Textures/Stones2x2"
@@ -78,6 +83,17 @@ WHISP_NORMAL = SMOKE_DUST + "Textures/whisp_One_512_8x8_Normal"
 BURST_TEXTURES = (DEBRIS_BASE, DEBRIS_NORMAL, WHISP_BASE, WHISP_NORMAL,
                   SMOKE_DUST + "Textures/whisp_redux_2048_12x12", SMOKE_DUST + "Textures/whisp_redux_2048_normal")
 BURST = BVFX + "Destruction/Fractures/V2/Fracture_concrete_3"
+DUST = "Textures/FX_Textures/dust"
+FLARE_WHITE = FLARES + "Textures/Flare_white"
+SQUIB_BASE = SMOKE_DUST + "Textures/Squib_one_1024_8x8"
+SQUIB_NORMAL = SMOKE_DUST + "Textures/Squib_one_normal"
+CELL_TEXTURES = (DUST, FLARE_WHITE, SQUIB_BASE, SQUIB_NORMAL)
+# The cell's particle systems, the level's emitters the sequences fire have as their templates (P_06_NurseSparks_24,
+# Dirt_impact_2_large_57, MetalDull_impact_Dyn_27). The two of BallisticsVFX also use the smoke and debris the doors
+# broken in bring (import_doors_busted), which has to have run.
+CELL_PARTICLES = (NURSE + "P_06_NurseSparks", BVFX + "Destruction/Fractures/V2/Fracture_dark_slow",
+                  BVFX + "Impacts/LegacyFX/Small-Medium-Large/Concrete/Concrete_impact_large")
+CELL_NEEDS = (SMOKE_DUST + "Whisps_trans", SMOKE_DUST + "Whisps_trans2", FRAGMENTS + "DebrisMaster")
 
 
 def _build_speed_barrier(mat):
@@ -220,6 +236,119 @@ def _build_debris(mat, d):
     g.out(normal, "RGB", MP.MP_NORMAL)
 
 
+def _build_nurse_sparks(mat, d):
+    """M_06_NurseSparks, estimated. The cook kept its settings (additive, lit, no separate translucency, for sprites),
+    its emissive colour (the particle colour's RGB), a sample of dust and a CameraDepthFade call, of 9 expressions. Its
+    compiled translucent base pass (Tools/dd/cooked_shaders.py "Nurse/M_06_NurseSparks." --show 28) is what the graph
+    follows: a base and an emissive colour of the particle colour's RGB, and an opacity of dust's alpha to the power 50
+    x the particle's alpha, faded into the depth over 50 and by a CameraDepthFade of 400 from 24."""
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    mat.set_editor_property("used_with_particle_sprites", True)
+    g = dd_stage._Graph(mat, checked=True)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -1100, -100)
+    g.out(particle, "RGB", MP.MP_BASE_COLOR)
+    g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
+    dust = g.node(unreal.MaterialExpressionTextureSample, -1300, 200)
+    dust.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(DUST)))
+    sharp = g.power(dust, "A", dd_assets.constant(g, 50.0, -1300, 450), "", -1050, 250)
+    alpha = g.multiply(sharp, "", particle, "A", -850, 200)
+    fade = g.node(unreal.MaterialExpressionDepthFade, -650, 200)
+    dd_assets.connect(alpha, "", fade, "Opacity")
+    dd_assets.connect(dd_assets.constant(g, 50.0, -850, 350), "", fade, "FadeDistance")
+    near = dd_assets.function_call(g, "Opacity/CameraDepthFade", -650, 400)
+    dd_assets.connect(dd_assets.constant(g, 400.0, -850, 450), "", near, "Fade Length")
+    dd_assets.connect(dd_assets.constant(g, 24.0, -850, 550), "", near, "Fade Offset")
+    g.out(g.multiply(fade, "", near, "Result", -400, 300), "", MP.MP_OPACITY)
+
+
+def _build_spark(mat, d):
+    """M_Spark (BallisticsVFX), estimated. The cook kept its settings (additive, unlit, no translucent shadow, for
+    sprites) and a sample of Flare_white, of 4 expressions. Its compiled translucent base pass
+    (Tools/dd/cooked_shaders.py "Flares/M_Spark." --show 5): an emissive colour of Flare_white's RGB x the particle
+    colour's, and an opacity of their alphas multiplied."""
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    dd_assets.particle_material(mat)
+    mat.set_editor_property("used_with_mesh_particles", False)
+    mat.set_editor_property("translucent_shadow_density_scale", 0.0)
+    g = dd_stage._Graph(mat, checked=True)
+    flare = g.node(unreal.MaterialExpressionTextureSample, -900, 0)
+    flare.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(FLARE_WHITE)))
+    particle = g.node(unreal.MaterialExpressionParticleColor, -900, 300)
+    g.out(g.multiply(flare, "RGB", particle, "RGB", -600, 0), "", MP.MP_EMISSIVE_COLOR)
+    g.out(g.multiply(flare, "A", particle, "A", -600, 250), "", MP.MP_OPACITY)
+
+
+def _build_radial_gradient(mat, d):
+    """M_Radial_Gradient (BallisticsVFX), estimated. The cook kept its settings (translucent, unlit, responsive AA, for
+    sprites and beam trails) and a RadialGradient call, of 6 expressions. Its compiled translucent base pass
+    (Tools/dd/cooked_shaders.py "Flares/M_Radial_Gradient." --show 5), which the graph writes out: an emissive colour of
+    the particle colour's RGB, and an opacity of max(1 - 2 x the UVs' distance from the middle, 0) to the fourth x the
+    particle's alpha."""
+    dd_assets.particle_material(mat, beam_trails=True, responsive_aa=True)
+    mat.set_editor_property("used_with_mesh_particles", False)
+    g = dd_stage._Graph(mat, checked=True)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -900, -100)
+    g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
+    uv = g.node(unreal.MaterialExpressionTextureCoordinate, -1500, 200)
+    middle = g.node(unreal.MaterialExpressionConstant2Vector, -1500, 350)
+    middle.set_editor_property("r", 0.5)
+    middle.set_editor_property("g", 0.5)
+    distance = g.binary(unreal.MaterialExpressionDistance, uv, "", middle, "", -1300, 250)
+    doubled = g.multiply(distance, "", dd_assets.constant(g, 2.0, -1300, 400), "", -1150, 250)
+    inside = dd_assets.single(g, unreal.MaterialExpressionOneMinus, doubled, "", -1000, 250)
+    clamped = g.node(unreal.MaterialExpressionMax, -850, 250)
+    clamped.set_editor_property("const_b", 0.0)
+    g.link(inside, "", clamped, "A")
+    shape = g.power(clamped, "", dd_assets.constant(g, 4.0, -850, 400), "", -700, 250)
+    g.out(g.multiply(shape, "", particle, "A", -450, 200), "", MP.MP_OPACITY)
+
+
+# The lit translucency's values Squib_one's export sets away from UE's defaults (its names → UE 5.8's).
+SQUIB_LIGHTING = (("TranslucencyDirectionalLightingIntensity", "translucency_directional_lighting_intensity"),
+                  ("TranslucentShadowDensityScale", "translucent_shadow_density_scale"),
+                  ("TranslucentSelfShadowSecondDensityScale", "translucent_self_shadow_second_density_scale"),
+                  ("TranslucentSelfShadowSecondOpacity", "translucent_self_shadow_second_opacity"))
+
+
+def _build_squib(mat, d):
+    """Squib_one (BallisticsVFX), estimated. The cook kept its settings (translucent, lit volumetric directional,
+    spherical particle normals, for sprites, and its translucent lighting and shadow values), the parameters Base,
+    FlattenNormal, Fade Distance, Opacity and MasterOpacity, the static switch Cam close fade? (on), a SubUV sample of
+    Squib_one_normal and a FlattenNormal call, of 23 expressions. Its compiled translucent base pass
+    (Tools/dd/cooked_shaders.py "SmokeDust/Squib_one." --show 28) is what the graph follows: a base colour of Base's RGB
+    x the particle colour's (Base sampled at the sprite's own UVs, its SubUV frame), the normal Squib_one_normal's
+    blended frames eased flat by FlattenNormal, and an opacity of Base's alpha x the particle's alpha x Opacity, faded
+    into the depth over Fade Distance, faded near the camera (none at 25 cm, whole at 250: a CameraDepthFade of 225
+    from 25; the switch, which nothing turns off, is not made) and x MasterOpacity."""
+    _lit_particle(mat, spherical_normals=True)
+    props = dd_assets.main_export(dd_assets.export_json(SMOKE_DUST + "Squib_one", VERSION), SMOKE_DUST + "Squib_one")
+    for key, name in SQUIB_LIGHTING:
+        mat.set_editor_property(name, float(props["props"][key]))
+    g = dd_stage._Graph(mat, checked=True)
+    st = unreal.MaterialSamplerType
+    base = g.texture("Base", unreal.load_asset(dd_assets.asset_path(SQUIB_BASE)), st.SAMPLERTYPE_COLOR, -1300, 0)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -1300, 300)
+    g.out(g.multiply(base, "RGB", particle, "RGB", -900, 0), "", MP.MP_BASE_COLOR)
+    normal = g.node(unreal.MaterialExpressionParticleSubUV, -1300, 700)
+    normal.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(SQUIB_NORMAL)))
+    normal.set_editor_property("sampler_type", st.SAMPLERTYPE_NORMAL)
+    normal.set_editor_property("blend", True)
+    g.out(_flattened(g, normal, "RGB", g.scalar("FlattenNormal", d["FlattenNormal"], -1100, 850), -900, 700), "",
+          MP.MP_NORMAL)
+    alpha = g.multiply(base, "A", particle, "A", -1000, 200)
+    alpha = g.multiply(alpha, "", g.scalar("Opacity", d["Opacity"], -1000, 300), "", -850, 250)
+    fade = g.node(unreal.MaterialExpressionDepthFade, -650, 250)
+    dd_assets.connect(alpha, "", fade, "Opacity")
+    dd_assets.connect(g.scalar("Fade Distance", d["Fade Distance"], -850, 400), "", fade, "FadeDistance")
+    near = dd_assets.function_call(g, "Opacity/CameraDepthFade", -650, 450)
+    dd_assets.connect(dd_assets.constant(g, 225.0, -850, 500), "", near, "Fade Length")
+    dd_assets.connect(dd_assets.constant(g, 25.0, -850, 600), "", near, "Fade Offset")
+    faded = g.multiply(fade, "", near, "Result", -450, 300)
+    g.out(g.multiply(faded, "", g.scalar("MasterOpacity", d["MasterOpacity"], -650, 650), "", -300, 350), "",
+          MP.MP_OPACITY)
+
+
 # (the original's material, the master holding our estimate, its builder, the original's instances of it)
 SMOKE_MATERIALS = (
     ("whispOne_Master_directional", "M_DD_WhispDirectional", _build_whisp_directional,
@@ -228,6 +357,13 @@ SMOKE_MATERIALS = (
 )
 DEBRIS_MATERIALS = (
     ("DebrisMaster", "M_DD_Debris", _build_debris, ()),
+)
+# The cell's particles' materials, by folder. The builders set their own blend where it is additive.
+CELL_MATERIALS = (
+    (NURSE, (("M_06_NurseSparks", "M_DD_NurseSparks", _build_nurse_sparks, ()),)),
+    (FLARES, (("M_Spark", "M_DD_BvfxSpark", _build_spark, ()),
+              ("M_Radial_Gradient", "M_DD_BvfxRadialGradient", _build_radial_gradient, ()))),
+    (SMOKE_DUST, (("Squib_one", "M_DD_Squib", _build_squib, ()),)),
 )
 # What the estimates do without, which the original's instances set: whispOne_Master_amb's camera fade (its instance
 # turns it off) and whispOne_Master_directional's Radius (a fade within centimetres of the camera).
@@ -288,8 +424,19 @@ def import_doors_busted():
 
 
 def import_cell():
-    """Zone 2's cell: the needles' stab. Returns how many of each."""
-    return {"sounds": len([dd_assets.sound(rel, VERSION) for rel in CELL_SOUNDS])}
+    """Zone 2's cell: the needles' stab, and the particles its sequences fire with their textures and estimated
+    materials. The doors broken in (import_doors_busted) have to have been imported. Returns how many of each."""
+    missing = [rel for rel in CELL_NEEDS if not EAL.does_asset_exist(dd_assets.asset_path(rel))]
+    if missing:
+        raise RuntimeError("missing %s: run import_doors_busted first" % ", ".join(missing))
+    result = {"sounds": len([dd_assets.sound(rel, VERSION) for rel in CELL_SOUNDS]),
+              "textures": len([dd_assets.texture(rel, VERSION) for rel in CELL_TEXTURES])}
+    made = []
+    for folder, entries in CELL_MATERIALS:
+        made += dd_assets.estimated_materials(folder, entries, VERSION)
+    result["materials"] = len(made)
+    result["particle_systems"] = len([dd_particles.particle_system(rel, VERSION) for rel in CELL_PARTICLES])
+    return result
 
 
 def import_double_doors():

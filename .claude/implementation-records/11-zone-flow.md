@@ -102,7 +102,7 @@ updated: 2026-09-18
 - `PostmazeTransition`: `RemoveAllEnemies`、`DestroyAllShards`、`src:ring_statue_orb_5` のアクタをすべて破棄、次のティック（本家の `Delay 0`）に矢印 偽・(1, 0.8941, 0, 1)・的 `BP_08_RingPiece_NoPickup_5`（まだ置いていないので null）、目的 `COLLECT THE RING PIECE`。`BP_Collectable` ID 3 を `collec` に出す（項目 12）、`ring_statue_2` の `Interact All Shards` → `Collected Ring Piece`（項目 13）。
 
 ## 作るアセット
-独房の棘の音 `/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3` は `dd_gimmicks.import_cell`（08 記録）。ほかはなし（流れのアクタはゲームモードが実行時に出す。トリガーの箱・ボリューム・扉の破壊はレベルの組み立てが置く。01 記録。扉の破壊の画面と音の素材は `dd_ui.import_door_break`。09 記録）。
+独房の棘の音 `/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3` と、棘と独房の扉のシーケンスが起こすエミッタの粒子（`P_06_NurseSparks`・`Fracture_dark_slow`・`Concrete_impact_large`）は `dd_gimmicks.import_cell`（08 記録）。ほかはなし（流れのアクタはゲームモードが実行時に出す。トリガーの箱・ボリューム・扉の破壊はレベルの組み立てが置く。01 記録。扉の破壊の画面と音の素材は `dd_ui.import_door_break`。09 記録）。
 
 ## 原作データの根拠
 - `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`（`python Tools/dd/bp_flow.py <file> <イベント名>` で読む。番地は上に書いた入口）、`Blueprints/Main/BP_TriggerBox_Base.txt`（@244・@369）と `_assets/…/BP_TriggerBox_Base.json`（`Box_GEN_VARIABLE` の当たり、SCS の `Cube` はテンプレート無し）、`Blueprints/Macros/BP_DD_Functions.txt` の `Remove All Enemies`・`Basic DD Fade Out`、`UI/Main/UMG_Loading.txt` の `Construct`（`Shards To Be Removed` を空に）、`_assets/…/BP_ArrowPointer.json`（`Shards?` 既定 真）、`Blueprints/06_Hospital/BP_06_Hospital_DoorBreak.txt`（上の番地）と `_assets/…/BP_06_Hospital_DoorBreak.json`（`Box1_GEN_VARIABLE`・`Widget_GEN_VARIABLE`・`Progress Speed` 5・`AutoReceiveInput`・`InputActionDelegateBindings` の `Interact`）、`_raw/DDeception/Config/DefaultInput.ini`（`Interact` = F）。

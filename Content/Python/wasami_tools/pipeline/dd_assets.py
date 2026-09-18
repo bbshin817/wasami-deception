@@ -71,9 +71,15 @@ def class_defaults(pkg):
 
 
 def main_export(pkg, rel):
-    """The package's asset itself (the export named like the package)."""
+    """The package's asset itself: the export named like the package, or its only export without an outer where none is
+    (Textures/FX_Textures/dust holds dust_0)."""
     name = rel.rsplit("/", 1)[-1]
-    return next(e for e in pkg["exports"] if e["name"] == name)
+    named = [e for e in pkg["exports"] if e["name"] == name]
+    if not named:
+        named = [e for e in pkg["exports"] if not e.get("outer")]
+        if len(named) != 1:
+            raise KeyError("%s: no export named %s, and %d without an outer" % (rel, name, len(named)))
+    return named[0]
 
 
 def game_rel(object_path):

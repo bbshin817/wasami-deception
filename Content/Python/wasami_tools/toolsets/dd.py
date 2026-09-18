@@ -76,14 +76,16 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         hum and shatter, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
         after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
         their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
-        the needles' stab as its spikes reach the player. The doors' meshes and materials come with the stage's assets;
-        the level build puts them and the barriers' materials on the placed actors, and the burst's system on its
-        emitter.
+        the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
+        Fracture_dark_slow, Concrete_impact_large, their textures and estimated materials). The doors' meshes and
+        materials come with the stage's assets; the level build puts them and the barriers' materials on the placed
+        actors, and the bursts' systems on their emitters (place_dd_sequences those the sequences fire).
 
         Returns:
             How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues',
             'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
-            'doors_busted_sounds', '_textures', '_materials', '_particle_systems', and 'cell_sounds').
+            'doors_busted_sounds', '_textures', '_materials', '_particle_systems', and 'cell_sounds', '_textures',
+            '_materials', '_particle_systems').
         """
         _module("dd_stage")
         _module("dd_assets")

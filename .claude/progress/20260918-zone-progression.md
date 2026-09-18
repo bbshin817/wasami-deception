@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 22:45
+updated: 2026-09-18 23:50
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -39,14 +39,14 @@ updated: 2026-09-18 22:45
 - [x] 5. Zone 1 から Zone 2 へ（2026-09-18 完了）: `06_ReachAmbulance` の 1 s 後に救急車のシーケンスと揺れ（拡縮 4）、7 s 後に読み込み画面 `UWasamiLoadingWidget`（本家の `UMG_Loading`。Construct が回収の記憶を空にする。紋章は要確認で出さない）とポータルの音（`dd_ui.import_loading`）→ 2.5 s 後に Zone 2（実装記録 09・11・01・06）。
 - [x] 6. 地図の矢印（2026-09-18 完了）: `AWasamiArrowPointer`（本家の `BP_ArrowPointer`。プレイヤーの子のアクタ、流れの矢印の値を `Find Object` で取る）・`AWasamiZoneShardChecker`（`BP_ZoneShardChecker`。`_flow` が両ゾーンに置いた）・推定の `M_DD_Arrow`（`dd_tablet`）。テスト 2 本、PIE で最も近いシャードと駐車場を指すことを確かめた（実装記録 03・11・02・01）。
 - [x] 7a. 独房から始める（2026-09-18 完了）: 8〜10 はステップ 1 で出来ていたので、7 の始まりだけ。ゲームモードの 7 → `PlayerStart_Cell`、7 だけ飛ばした場面が残す状態（救急車・`Ambulance_Arrive_Blockers4`・偽の天井・壁のスイッチ）、棘のシーケンス・独房の扉の鍵 → `OnCellDoorBreak`（扉のシーケンスと揺れ）、棘の死に `AWasamiHitFX`（本家の `BP_HitFX`）と `DD_Needle_Trap_R1_V3`（`dd_gimmicks.import_cell`）。テスト 52 本すべて通過、PIE で確かめた（実装記録 11・08・06・01）。
-- [ ] 7b. 棘と独房の扉の粒子: Spikes・Cell_DoorPicked が発火する粒子のシステム 3 つ（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`。`dd_particles`、材質は推定）を取り込み、`place_dd_sequences Zone2` を走らせ直してエミッタにテンプレートを入れる（いまはテンプレートなし）。
+- [x] 7b. 独房の粒子（2026-09-18 完了）: `dd_gimmicks.import_cell` に `P_06_NurseSparks`・`Fracture_dark_slow`・`Concrete_impact_large` とテクスチャ 4・推定の材質 4（焼き込みのベースパスの式）を足し、`place_dd_sequences Zone2` でエミッタにテンプレートを入れた（`missing_particles` なし）。`dd_assets.main_export` の名前違いの書き出し。PIE で火花と扉の破片を確かめ、黒い塵は薄くて見えないので後回しの一覧へ（実装記録 08・01・11）。
 - [ ] 8. リフト: Zone 2 の `BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5（乗ると上がる床）と、ガレージリフト `BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると上がらない）。
 - [ ] 9. Zone 2 の地図 `BP_MapTexture_MultiFloor` と `BP_MapArea` ×2（いる階の箱で地図の絵を `T_06_Zone2` ↔ `T_06_Zone2_02` に替える）。
 - [ ] 10. 仕上げ: PIE で Zone 1 の到着 → 扉の破壊 → 全回収（デバッグで数個を残す）→ 障壁 → 駐車場 → トンネル → 扉が破られる → 救急車 → Zone 2 の独房 → 扉の破壊 → 迷路 → 全回収 → COLLECT THE RING PIECE までを通しで収録し、Discord のグリッドにする。実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
 
 ## 次にやること
 
-ステップ 7b（棘と独房の扉の粒子）を始める。記録のステップ 7b を「作業中」にし、変えるファイルを書く。まず `pak_reference_2/_sequences/06_Hospital_Zone2_Spikes.json`・`_Cell_DoorPicked.json` の粒子のトラックが結ぶエミッタ（レベルの `P_06_NurseSparks_24` ほか 3 つ。`place_dd_sequences Zone2` の戻り値の `missing_particles`）と、そのテンプレートの粒子のシステム（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`）の材質を調べ、`dd_gimmicks.import_cell` に足して取り込む（`import_doors_busted` と同じ要領。cook で式が消えた材質は `dd_assets.estimated_materials`）。
+ステップ 8（リフト）を始める。記録のステップ 8 を「作業中」にし、変えるファイルを書く。まず本家の `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/` の `BP_06_LiftBase`（`_Corner`・`BP_06_Lift_03`・`_04` はその子か確かめる）と `BP_06_GarageLift`・`BP_06_GarageLift_Zone1_Special` を `python Tools/dd/bp_flow.py <file> --list` で読み、`_assets/…` の部品（メッシュ・箱・音・`Top Location`・ABP の `PlayerOn?`・`NurseNear`）を調べる。ステップが 1 コミットに収まらなければ 8a（乗ると上がる床）・8b（ガレージリフト）に分ける。C++ のアクタに写し、組み立ての `dd_level._flow` が両ゾーンに置く（`_flow` の既存の扉・障壁と同じ形）。
 
 ## 決定事項
 
@@ -69,6 +69,7 @@ updated: 2026-09-18 22:45
 - 結ぶ前に通ったトリガーの箱は使い切られる（本家も同じ）。04 はエレベーターの前の扉が鍵を破るまで、05 は駐車場への障壁が全回収まで道をふさぐ。PIE で 05 より先を確かめるときは、`Wasami.Flow On04DoorBreak` などで進めてから箱に立つ。扉の破壊は `python Tools/pie.py place 0 1010 --yaw -90 --pitch -20`（04 から 7 s 後）→ `pie.py cmd "Wasami.Interact 67"` で外れる。
 - 収録は `desktop.py record` の既定（ddagrab）が止まるので `--grab gdi` と `t.MaxFPS 60`（症状索引）。
 - ゲームのセーブ（本作の `structSlot`）はステップ 5 の後に `Wasami.ResetSave` した（次に Zone 1 を開くと 04 から）。05 から確かめるときは `Wasami.Flow On05Transition`。すでに 05 で始まっているときに `On05Transition` を重ねると全回収が 2 回結ばれ、2 回目が「no zone barrier」を出す（害は無い）。
+- 独房の棘の箱 `Trigger_Cell_Spikes`（本家どおり棘に付いて下りる。x −14781〜−13559・y 1117〜2103）は廊下の端に少しかかる。廊下で長く待つときは箱の外（`place -13300 1000` など）に立つ。`slomo 5` 以上で待つときは `pie.py state` の間隔が長く、狙った時刻を越えやすい。Spikes の火花は Zone 2 を開いて 0〜4.3 s だけ（`--warmup 0` で始めてすぐ `place -12500 1100 --yaw 180` と `slomo 0.3`）。
 - 2026-09-18 のステップ 7a の後、ゲームのセーブは 7（Zone 2 を開くと独房から）。独房では開いて約 19 s で棘に殺される（本家どおり）ので、PIE の確かめは素早く: `python Tools/pie.py place -14145 1330 --yaw -90 --pitch -15`（独房の扉の前）→ `pie.py cmd "Wasami.Interact 34"` で扉が開く。ライフ 3 つを使い切ると YOU ARE DEAD で止まる（PIE を始め直せば戻る）。
 - 救急車に乗せるには `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` の後に `python Tools/pie.py place 11245 -20055 470 --yaw 90 --pitch -10`。10.5 s 後に Zone 2 へ移り、セーブが 7 になる（確かめたら `Wasami.ResetSave`）。
 - 06 の扉の所で PIE を確かめるときは `python Tools/pie.py place 7210 -21800 --yaw -90`（扉の 700 cm 手前。`-21300` は床が無く落ちる）。06 の箱は流れが結んでからでないと効かない（05 → `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` → `Wasami.Trigger 06_DoorsLock`）。
@@ -78,7 +79,5 @@ updated: 2026-09-18 22:45
 
 ## 検証
 
-- ステップ 7a: C++ ビルド OK、テスト `Wasami.*` 52 本すべて通過（`Wasami.HitFX.Actor` を足し、`Wasami.ZoneFlow.Zone2`・`.Start`・`Wasami.GameFlow` の PlayerStart を直した）、check_records OK。PIE のグリッド `Intermediate/Overnight/cell_grid.png`（上: 独房の扉の鍵 → 開く、下: 棘の打たれた閃き）。
-- ステップ 6: C++ ビルド OK、テスト `Wasami.*` 51 本すべて通過（`Wasami.ArrowPointer.Actor`・`.ZoneShardChecker` を足した）、check_records OK。`place_dd_flow` で両ゾーンに `shardCheckers` 1。PIE の地図の矢印のグリッド `Intermediate/Overnight/arrow_grid.png`。
-- ステップ 5: C++ ビルド OK、テスト `Wasami.*` 49 本すべて通過（`Wasami.GameFlow.Loading` を足し、`Wasami.ZoneFlow.Zone1` に救急車のシーケンスが 1 s 後に流れるのを足した）、check_records OK。音 `21-Ballroom_portal_V2`（2.48 s）。PIE: 救急車の屋根で SAVING PROGRESS → 約 1 s 後に走り出す → 乗って 8 s で暗い赤の全面 → PIE の読み込みを含め約 4.7 s 後に Zone 2（グリッド `Intermediate/Overnight/ambulance_grid.png`）。
-- ステップ 1〜4b: 各ステップのテスト・PIE の結果は実装記録 11 の「確かめたこと」と 08・09・01（最後はテスト 48 本すべて通過）。
+- ステップ 7b: テスト `Wasami.*` 52 本すべて通過（C++ の変更なし）、check_records OK。`import_cell` = 音 1・テクスチャ 4・材質 8・粒子 3、`place_dd_sequences Zone2` = `missing_particles` なし。PIE のグリッド `Intermediate/Overnight/cell_particles_grid.png`（上: 廊下を近づく赤い火花、下: 独房の扉の火花と煙・破片）。
+- ステップ 1〜7a: 各ステップのテスト・PIE の結果は実装記録 11 の「確かめたこと」と 08・09・03・01（7a でテスト 52 本すべて通過）。グリッド `Intermediate/Overnight/cell_grid.png`・`arrow_grid.png`・`ambulance_grid.png`。
