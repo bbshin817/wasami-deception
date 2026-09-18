@@ -96,7 +96,7 @@ updated: 2026-09-18
 - `OnSpikesDeath`（`Spikes_Death`、本家 @6810）: `AWasamiHitFX`（08 記録の打たれた閃き。本家の `BP_HitFX` を原点に）と `PlaySound2D(DD_Needle_Trap_R1_V3)` → 0.5 s 後にゲームモードの `DeathEvent(プレイヤー)`。
 - `OnMinibossTriggerTransition`: `MinibossTransition` → `SaveCheckpoint(8)`。
 - `MinibossTransition`（`Miniboss Transition `）: 矢印 偽・(0, 0, 0, 0)・的なし、目的 `Get past the nurses `（本家どおり後ろに空白）、`Trigger_MazeStart` → `OnMazeTriggerStart`、`Trigger_Miniboss_BehindMatron` → `OnMinibossBehindMatron`（放送の声だけ。項目 20）。実績（`06_NurseAlert`）は本作に無い。`Activate MiniBoss Enemies`（項目 11）。
-- `OnMazeTriggerStart`: `MazeTransition` → `SaveCheckpoint(9)`（1 s 後の Bierce とリフトの一言は項目 20）。
+- `OnMazeTriggerStart`: `MazeTransition` → `SaveCheckpoint(9)`（1 s 後の Bierce の一言と `Setup Bierce Lift Quip`〈全部の `AWasamiLift` の `OnPlayerOverlap` に `Bierce Lift Quip` を結ぶ。12 記録〉は項目 20）。
 - `MazeTransition`（`Maze Transition `）: `RemoveAllEnemies`、矢印 `Shards?` 真、目的 `COLLECT ALL SHARDS`、全回収 → `OnMazeAllShards`。`Spawn Nurses`（項目 7）。本家の Zone 2 には 1 s 後の `Check Shards` が無いので、9 で開き直してシャードが残っていなければ全回収には進まない（本家も同じ）。
 - `OnMazeAllShards`: `SaveCheckpoint(10)` → `PostmazeTransition`（2 s 後の Bierce は項目 20）。
 - `PostmazeTransition`: `RemoveAllEnemies`、`DestroyAllShards`、`src:ring_statue_orb_5` のアクタをすべて破棄、次のティック（本家の `Delay 0`）に矢印 偽・(1, 0.8941, 0, 1)・的 `BP_08_RingPiece_NoPickup_5`（まだ置いていないので null）、目的 `COLLECT THE RING PIECE`。`BP_Collectable` ID 3 を `collec` に出す（項目 12）、`ring_statue_2` の `Interact All Shards` → `Collected Ring Piece`（項目 13）。
@@ -158,3 +158,4 @@ updated: 2026-09-18
 - 2026-09-18: Zone 1 の救急車の上で、1 s 後に救急車のシーケンスと揺れ、7 s 後に読み込み画面（`UWasamiLoadingWidget`）とポータルの音を出すようにした。回収の記憶を空にするのは読み込み画面の Construct に移した。Zone 1 のテストに救急車のシーケンスを足した（項目 6 のステップ 5）
 - 2026-09-18: 流れに `PlayFadeOut`・`PlayWorldCameraShake`・`PlaySoundAt`・`ActivateEmitter` を足し、Zone 1 の 06 Transition のフェードと、06 の扉の塞ぎの 25 s 後に扉が破られる所（音・揺れ・破片・0.1 s 後に扉を消す）を埋めた。Zone 1 のテストに足した（項目 6 のステップ 4b）
 - 2026-09-18: Zone 2 の 7 を独房から始めるようにした: 飛ばした場面が残す状態（救急車・前の塞ぎ・偽の天井・壁のスイッチ）を入れ、棘のシーケンス・独房の扉の鍵（`OnCellDoorBreak`: 扉のシーケンスと揺れ）・棘の死の打たれた閃き（`AWasamiHitFX`、08 記録）と音を足した。ゲームモードの 7 の PlayerStart を `PlayerStart_Cell` にした（06 記録）。Zone 2 と開始のテストを足した（項目 6 のステップ 7a）
+- 2026-09-18: `OnMazeTriggerStart` の項目 20 の口のコメントに、`Setup Bierce Lift Quip` が `AWasamiLift::OnPlayerOverlap` を結ぶことを書いた（作業一覧の項目 6 のステップ 8a。リフトは 12 記録）

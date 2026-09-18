@@ -1,9 +1,9 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
-zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers) and
-the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes
-first."""
+zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers),
+Zone 2's lifts and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+a rebuild removes first."""
 import json
 import os
 
@@ -74,6 +74,19 @@ BARRIER_LIGHT_FOLDER = "Hospital/Lights/" + BARRIER_CLASS
 # The zone shard checkers (BP_ZoneShardChecker → AWasamiZoneShardChecker): the box over each zone that the tablet's arrow
 # points at the shards of. Their root's scale is the box's size.
 SHARD_CHECKER_CLASS = "BP_ZoneShardChecker_C"
+# Zone 2's lifts: BP_06_Lift_03 and _04 (BP_06_Lift, a BP_06_LiftBase → AWasamiLift) and BP_06_LiftBase_Corner
+# (→ AWasamiCornerLift). The C++ classes hold BP_06_LiftBase's box sizes; each class's own mesh (LiftMesh) and, where the
+# class changes them, LiftCollision's and LiftCollision1's scale (the children's ICH templates) are written here. The
+# mesh takes its own material, as in the original.
+LIFT_MESHES = "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_"
+LIFT_CLASSES = {
+    "BP_06_Lift_03_C": ("WasamiLift", LIFT_MESHES + "03", (4.552351474761963, 9.153595924377441, 1.1901235580444336),
+                        (4.552350997924805, 10.505670547485352, 0.6493702530860901)),
+    "BP_06_Lift_04_C": ("WasamiLift", LIFT_MESHES + "04", (8.068293571472168, 4.54220724105835, 1.1901235580444336),
+                        (8.60695743560791, 4.586122035980225, 1.1901240348815918)),
+    "BP_06_LiftBase_Corner_C": ("WasamiCornerLift", LIFT_MESHES + "01", None, None),
+}
+LIFT_FOLDER = "Hospital/Gameplay/Lifts"
 # The level's emitters the flow wakes (their ParticleSystemComponent's Activate): Zone 1's burst of concrete as the
 # tunnel's doors break in. They keep the original's bAutoActivate (false) and template.
 FLOW_EMITTERS = ("Fracture_concrete_5",)
@@ -422,16 +435,17 @@ def set_emitter(actor, zone, name, level):
 
 
 def _flow(eas, stage, zone, counts, failures):
-    """The trigger boxes, brush volumes, door breaks, the double doors and emitters the flow names, the zone barriers
-    and the zone shard checkers, each where the original has it, and fixed to what it moves with (an ambulance, the
-    spikes) when that is in the level."""
+    """The trigger boxes, brush volumes, door breaks, the double doors and emitters the flow names, the zone barriers,
+    the zone shard checkers and the lifts, each where the original has it, and fixed to what it moves with (an
+    ambulance, the spikes) when that is in the level."""
     placed = []
     level = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS)
-                              and a["class"] not in VOLUME_CLASSES and not doors and not emitter):
+                              and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
+                              and not doors and not emitter):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -467,6 +481,17 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["shardCheckers"] += 1
+        elif a["class"] in LIFT_CLASSES:
+            cls, mesh, collision_scale, top_scale = LIFT_CLASSES[a["class"]]
+            actor = eas.spawn_actor_from_class(getattr(unreal, cls), _vec(world["location"]), _rot(world["quat_xyzw"]))
+            _set_mesh(actor.get_editor_property("lift_mesh"), stage, mesh)
+            if collision_scale:
+                actor.get_editor_property("lift_collision").set_relative_scale3d(_vec(collision_scale))
+            if top_scale:
+                actor.get_editor_property("lift_collision1").set_relative_scale3d(_vec(top_scale))
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["lifts"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -482,7 +507,7 @@ def _flow(eas, stage, zone, counts, failures):
             _set_brush_collision(comp, a.get("brushCollision") or {})
             counts["volumes"] += 1
         actor.set_actor_scale3d(_vec(world["scale"]))
-        _tag(actor, a["name"], FLOW_FOLDER, FLOW_TAG, "src:" + a["name"])
+        _tag(actor, a["name"], LIFT_FOLDER if a["class"] in LIFT_CLASSES else FLOW_FOLDER, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
     by_source = {}
     for actor in eas.get_all_level_actors():
@@ -498,10 +523,10 @@ def _flow(eas, stage, zone, counts, failures):
 
 
 def place_flow(zone="Zone1", map_path=""):
-    """Puts the zone's trigger boxes, brush volumes, door breaks, double doors, emitters, zone barriers and zone shard
-    checkers in again (and takes out the barrier lights an earlier build placed on their own), leaving the rest of the
-    level and its baked lighting as they are (none of them is in the baked lighting: the doors and the barriers' lights
-    are movable), and saves the level."""
+    """Puts the zone's trigger boxes, brush volumes, door breaks, double doors, emitters, zone barriers, zone shard
+    checkers and lifts in again (and takes out the barrier lights an earlier build placed on their own), leaving the
+    rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts
+    and the barriers' lights are movable), and saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
@@ -511,7 +536,7 @@ def place_flow(zone="Zone1", map_path=""):
     lights = [a for a in eas.get_all_level_actors()
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "doorBreaks": 0,
-              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "attached": 0}
+              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -534,7 +559,7 @@ def build(zone="Zone1", map_path=""):
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "attached")}
+                             "shardCheckers", "lifts", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

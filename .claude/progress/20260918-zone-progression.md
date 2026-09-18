@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-19 00:30
+updated: 2026-09-18 23:10
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -23,7 +23,7 @@ updated: 2026-09-19 00:30
 
 流れの全体と、各イベントのうちまだ埋めていない所（コメントの `Not yet:`）は実装記録 11（`.claude/implementation-records/11-zone-flow.md`）。根拠は `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`_02.txt`、読み方は `python Tools/dd/bp_flow.py <file> <イベント名>`。
 
-- Zone 2 のリフト（`pak_reference_2/_bytecode/.../Blueprints/06_Hospital/Lifts/Zone2/`）: `BP_06_LiftBase` の Tick → `Update Position`（目標 = `Character on Top?`〈`LiftCollisionOverlap` に重なる `Character` がいる〉なら `Top Location` 535、でなければ 0。速さ = 乗っていれば Top × 0.5、でなければ Top × 1.0。`LiftMesh` の相対 Z を `FInterpTo_Constant`。`IsMoving?` は純粋ノードをもう一度評価した値）→ 動き出しで `MovementAudio`（`DD_TT_Lift_Loop` 0.7・ピッチ 1.5・`01_Lobby_Attenuation`）を 0.5 s で FadeIn と `Audio`（`DD_TT_GarageLift_Down`・`MonkeyAttenuation`）、止まると 0.5 s で FadeOut と `Audio`（DoOnce 2 つ）。重なりでプレイヤーなら多重デリゲート `Player Overlap`（Zone 2 のレベル BP が全部に `Bierce Lift Quip` を結ぶ = 項目 20）。`BP_06_Lift` は `LiftCollision1`（根の子、構築で (0,0,Top)）を BeginPlay で消す。`_03`・`_04` はメッシュと箱の拡縮だけ。`BP_06_LiftBase_Corner` は別の BP（LiftBase の子でない）: 目標 = `Player Force Movement` なら `GoUp?`、でなければ「プレイヤーの Z > 610」、`LiftCollision1` は消さない、アクタの重なりでプレイヤーなら 1 s 後の `Double Check`（まだ重なっていれば Force = 真・GoUp = 上の階にいない・`Audio`）、離れたら取り消して Force = 偽。部品: `LiftMesh`（NoCollision）→ `LiftCollision`（BlockAll・拡縮 4.55×4.59×1.19）→ `LiftCollisionOverlap`（(0,0,63.5)）と `BottomCollision`（範囲 32×32×256.75、(0,0,−288.75)、BlockAll）、`Move Location`（(0,0,149.5)）。置かれたものは Top Location の上書きなし。
+- Zone 2 のリフト（乗ると上がる床・角）はステップ 8a で作った（実装記録 12）。ガレージリフトの ABP の音の鳴らし方と、レベル BP の結び方は下。
 - ガレージリフト（`Lifts/Garage/`・`Meshes/06_Hospital/hospital_garage_lift_anim_Skeleton_AnimBlueprint`）: 骨入りのメッシュ（拡縮 30）に ABP、`Box`（当たり）・`Overlap Box`（Pawn だけ重なり）が骨 `joint4` に付く。ABP は毎更新 `PlayerOn?` = 持ち主の `Player Overlapping?`（`Overlap Box` にプレイヤー。`_Zone1_Special` は `NurseNear` なら偽）。音 `Audio` = `DD_TT_GarageLift_Up`、`Audio1` = `_Down`（`01_Lobby_Attenuation`）。Zone 1 のレベル BP が `TriggerVolume_1` にナースが入ると `NurseNear` = 真（2 か所。項目 7 のナースと一緒に結ぶ）。
 - シーケンス（ステップ 2 で置いた）: 両ゾーンのレベルの `LevelSequenceActor`（`src:06_Hospital_Zone01_ElevatorArrive` など 4 つ）を `GetSequencePlayer` → `Play` で流す。ElevatorArrive = 扉 2 枚と音（14.1 s）、AmbulanceTakeOff = 救急車（付いたボリュームごと）と音・スポットライト 2 灯（13.9 s）、Zone2_Spikes = 棘・音の点・火花（70 s）、Cell_DoorPicked = 独房の扉・粒子・音と Bierce の一言（4.3 s）。
 - ゲームモードの `Event All Shards` は `BP_Monkey` だけを Frenzy にする（2026-09-18 に読み直した。ナースには効かない）。
@@ -41,14 +41,14 @@ updated: 2026-09-19 00:30
 - [x] 6. 地図の矢印（2026-09-18 完了）: `AWasamiArrowPointer`（本家の `BP_ArrowPointer`。プレイヤーの子のアクタ、流れの矢印の値を `Find Object` で取る）・`AWasamiZoneShardChecker`（`BP_ZoneShardChecker`。`_flow` が両ゾーンに置いた）・推定の `M_DD_Arrow`（`dd_tablet`）。テスト 2 本、PIE で最も近いシャードと駐車場を指すことを確かめた（実装記録 03・11・02・01）。
 - [x] 7a. 独房から始める（2026-09-18 完了）: 8〜10 はステップ 1 で出来ていたので、7 の始まりだけ。ゲームモードの 7 → `PlayerStart_Cell`、7 だけ飛ばした場面が残す状態（救急車・`Ambulance_Arrive_Blockers4`・偽の天井・壁のスイッチ）、棘のシーケンス・独房の扉の鍵 → `OnCellDoorBreak`（扉のシーケンスと揺れ）、棘の死に `AWasamiHitFX`（本家の `BP_HitFX`）と `DD_Needle_Trap_R1_V3`（`dd_gimmicks.import_cell`）。テスト 52 本すべて通過、PIE で確かめた（実装記録 11・08・06・01）。
 - [x] 7b. 独房の粒子（2026-09-18 完了）: `dd_gimmicks.import_cell` に `P_06_NurseSparks`・`Fracture_dark_slow`・`Concrete_impact_large` とテクスチャ 4・推定の材質 4（焼き込みのベースパスの式）を足し、`place_dd_sequences Zone2` でエミッタにテンプレートを入れた（`missing_particles` なし）。`dd_assets.main_export` の名前違いの書き出し。PIE で火花と扉の破片を確かめ、黒い塵は薄くて見えないので後回しの一覧へ（実装記録 08・01・11）。
-- [ ] 8a. 乗ると上がる床（**作業中**）: Zone 2 の `BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2（`BP_06_Lift` → `BP_06_LiftBase`）と `BP_06_LiftBase_Corner` ×5 を C++ に写し、組み立ての `_flow` が置く。変えるもの: `Source/wasami_deception/WasamiLift.h/.cpp`（新規。`AWasamiLiftBase`〈共通〉・`AWasamiLift`・`AWasamiCornerLift`）、`Tests/WasamiLiftTests.cpp`（新規）、`Tools/dd/prepare_stage.py`（リフトのメッシュ 3 つを素材の一覧へ）、`Content/Python/wasami_tools/pipeline/dd_level.py`（`_flow` がリフトを置く）、`dd_gimmicks.py`・`toolsets/dd.py`（音 3 つ `DD_TT_GarageLift_Down`・`_Up`・`DD_TT_Lift_Loop`）、`WasamiZone2Flow.cpp`（Bierce の一言の口のコメント）。アセット: `/Game/DD/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01・03・04`、その材質、`/Game/DD/Audio/06_Hospital/DD_TT_*Lift*`、`L_Hospital_Zone2`（置き直し）。
-- [ ] 8b. ガレージリフト: `BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると `NurseNear` = 真で上がらない）。骨入りのメッシュ `hospital_garage_lift_anim`（glTF、骨 4 本）とアニメ `hospital_garage_lift_anim_Anim`（psa、60 コマ・2.458 s）を取り込み、ABP の状態機械（Default = 0 コマで止める、PlayerOn = 1 倍で 1 回、行き来は 0.2 s の HermiteCubic の混ぜ、PlayerOn の入りで Up の音・出で Up を 0.25 s で消して Down の音）を写す。当たりの箱 `Box`・`Overlap Box` は骨 `joint4` に付く。
+- [x] 8a. 乗ると上がる床（2026-09-18 完了）: `AWasamiLiftBase`・`AWasamiLift`（`BP_06_Lift_03`・`_04`）・`AWasamiCornerLift`（`BP_06_LiftBase_Corner`）、前処理の `CLASS_MESHES`、`_flow` が Zone 2 に 15 台、`dd_gimmicks.import_lifts`（音 3）。テスト 2 本（54 本すべて通過）、PIE で走って乗ると上の階へ運ばれる（実装記録 12・01・08・11）。
+- [ ] 8b. ガレージリフト: 変えるもの（予定）: `Source/wasami_deception/WasamiGarageLift.h/.cpp`（新規。12 記録に足す）、骨入りのメッシュとアニメの取り込み（`dd_gimmicks` か新しい `dd_*.py`。glTF の骨 4 本 + psa を glTF のアニメにして Interchange で。`dd_enemy.ensure_skeletal_pipeline` が手本）、`dd_level._flow`（両ゾーンに置く）。`BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると `NurseNear` = 真で上がらない）。骨入りのメッシュ `hospital_garage_lift_anim`（glTF、骨 4 本）とアニメ `hospital_garage_lift_anim_Anim`（psa、60 コマ・2.458 s）を取り込み、ABP の状態機械（Default = 0 コマで止める、PlayerOn = 1 倍で 1 回、行き来は 0.2 s の HermiteCubic の混ぜ、PlayerOn の入りで Up の音・出で Up を 0.25 s で消して Down の音）を写す。当たりの箱 `Box`・`Overlap Box` は骨 `joint4` に付く。
 - [ ] 9. Zone 2 の地図 `BP_MapTexture_MultiFloor` と `BP_MapArea` ×2（いる階の箱で地図の絵を `T_06_Zone2` ↔ `T_06_Zone2_02` に替える）。
 - [ ] 10. 仕上げ: PIE で Zone 1 の到着 → 扉の破壊 → 全回収（デバッグで数個を残す）→ 障壁 → 駐車場 → トンネル → 扉が破られる → 救急車 → Zone 2 の独房 → 扉の破壊 → 迷路 → 全回収 → COLLECT THE RING PIECE までを通しで収録し、Discord のグリッドにする。実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
 
 ## 次にやること
 
-ステップ 8a（乗ると上がる床）の実装を続ける（上の「変えるもの」）。本家の読み（`BP_06_LiftBase`・`BP_06_Lift`・`_03`・`_04`・`BP_06_LiftBase_Corner`）は下の「本家の流れ」のリフトの項。
+ステップ 8b（ガレージリフト）を始める。記録のステップ 8b を「作業中」にする。まず取り込み方を決める: `pak_reference_2/_meshes_gltf/Meshes/06_Hospital/hospital_garage_lift_anim.gltf`（骨 `joint1`〜`joint4`、スキン 1、アニメなし）と `_anims_psa/Meshes/06_Hospital/hospital_garage_lift_anim_Anim.psa`（ActorX。60 コマ・2.4583 s）。psa を読んで glTF にアニメとして足し、`dd_enemy` と同じ Interchange の骨入りの取り込み（`ensure_skeletal_pipeline`）で `SkeletalMesh`・`AnimSequence` にするのが第一案。ABP の状態機械は C++ の `UAnimInstance` で持つ（07 記録の `UWasamiEnemyAnimInstance` が C++ の状態と Proxy で本家の木を持つ手本）か、`UPoseableMeshComponent` で `AnimSequence` を自分で標本化して混ぜる。1 コミットに収まらなければ 8b1（取り込み）・8b2（アクタ）に分ける。
 
 ## 決定事項
 
@@ -79,7 +79,9 @@ updated: 2026-09-19 00:30
 - テストの結果はエディタのメッセージログの窓に出て、ビューポートの左に浮いて残る（収録の前に閉じる。2026-09-18 は閉じるボタンが (2198, 407)）。
 - 無人運転のときエディタは背面（駆動役のターミナルが前面）なので、テストの前にエディタのタイトルバーの空き（2026-09-18 は (2800, 78)。撮って確かめる）を `desktop.py click … --allow WindowsTerminal.exe --allow UnrealEditor.exe` で 1 回押して前面にする。
 
+- Zone 2 のリフトを PIE で確かめるとき: 長い床 `lift_4` は `python Tools/pie.py place 6304 -2740 --yaw 90 --pitch -15`（`lift_11` と `lift_4` の間。`-2850` は `lift_11` の上で、乗ると上がる）から `desktop.py hold shift w --ms 700`（歩きでは乗れない。12 記録）。角の `lift_7` は `place 4500 -3619 95`（プレイヤーが上の階〈Z > 610〉にいた直後は角のリフトが上にあり、置くと床に食い込んで押し出されるので、下りてから）。リフトの高さは `LiftMesh` の相対 Z（`GetHeight` は UFUNCTION でない）。
+
 ## 検証
 
-- ステップ 7b: テスト `Wasami.*` 52 本すべて通過（C++ の変更なし）、check_records OK。`import_cell` = 音 1・テクスチャ 4・材質 8・粒子 3、`place_dd_sequences Zone2` = `missing_particles` なし。PIE のグリッド `Intermediate/Overnight/cell_particles_grid.png`（上: 廊下を近づく赤い火花、下: 独房の扉の火花と煙・破片）。
-- ステップ 1〜7a: 各ステップのテスト・PIE の結果は実装記録 11 の「確かめたこと」と 08・09・03・01（7a でテスト 52 本すべて通過）。グリッド `Intermediate/Overnight/cell_grid.png`・`arrow_grid.png`・`ambulance_grid.png`。
+- ステップ 8a: テスト `Wasami.*` 54 本すべて通過、check_records OK。`place_flow Zone2` = リフト 15・`failed_settings` 0。PIE のグリッド `Intermediate/Overnight/lift_grid.png`。
+- ステップ 1〜7b: 各ステップのテスト・PIE の結果は実装記録 11 の「確かめたこと」と 08・09・03・01（7a でテスト 52 本すべて通過）。グリッド `Intermediate/Overnight/cell_grid.png`・`cell_particles_grid.png`・`arrow_grid.png`・`ambulance_grid.png`。

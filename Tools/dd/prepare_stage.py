@@ -83,6 +83,12 @@ RELATIVE = ("RelativeLocation", "RelativeRotation", "RelativeScale3D")
 # Zone 1's floor mesh keeps the class's Z scale of 0.05, and the ambulances' roof boxes keep its engine cube as well.
 TELEPORT_ZONE_CLASS = "BP_Power_Teleport_Zone_C"
 TELEPORT_ZONE_COMPONENT = "Cube"
+# Meshes the level build puts on Blueprint actors it places itself (the class leaves them unset, and the level export
+# leaves the component's mesh out, as the class's own): Zone 2's lifts' LiftMesh (BP_06_LiftBase_Corner's and
+# BP_06_Lift_03's / _04's). They come into `meshes` with their own materials.
+CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospital_zone_02_lifts_lift_01",
+                "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_03.hospital_zone_02_lifts_lift_03",
+                "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_04.hospital_zone_02_lifts_lift_04")
 # Component properties of a placement worth carrying over (the rest is either the transform or editor bookkeeping).
 # bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
 # seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's
@@ -670,6 +676,13 @@ def main():
     zones = {}
     for key, map_name, level in ZONES:
         zones[key] = read_zone(ex, map_name, level, meshes, textures, materials, problems)
+    for mesh_path in CLASS_MESHES:
+        info = ex.mesh(mesh_path)
+        if not info:
+            problems.append("class mesh not in _meshes.json: " + mesh_path)
+            continue
+        key = note_mesh(ex, mesh_path, info, meshes, problems)
+        slot_materials(ex, meshes[key]["slots"], [], materials, problems)
 
     for m in materials.values():
         for kind, png in m["kinds"].items():

@@ -51,7 +51,7 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     def build_dd_stage_level(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Builds one zone's level from the imported assets (meshes, lights, reflection captures, fog, sky light, post
         process volumes, player starts, the minimap's plane, the soul shards, the flow's trigger boxes, volumes, door
-        breaks and double doors), replacing what an earlier build placed, and saves it. The level is left open. The
+        breaks and double doors, Zone 2's lifts), replacing what an earlier build placed, and saves it. The level is left open. The
         meshes are made again, so the level's lighting has to be baked again.
 
         Args:
@@ -88,19 +88,21 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         volumes, door breaks (WasamiDoorBreak, BP_06_Hospital_DoorBreak, with their Progress Speed), the double doors
         and emitters the flow names (WasamiDoubleDoors, BP_06_DoubleDoors, with the original's meshes and materials;
         the emitters asleep, with their particle systems), the zone barriers (WasamiZoneBarrier, with their planes'
-        materials) and the zone shard checkers (WasamiZoneShardChecker, the tablet's arrow's box over the zone) in
-        again where the original places them, each tagged 'src:<the original's name>' for the zone's
-        flow and fixed to the ambulance or the spikes it moves with, taking out what an earlier call placed, and saves
-        the level. Nothing else changes, and the baked lighting stays valid (none of them is in it).
+        materials), the zone shard checkers (WasamiZoneShardChecker, the tablet's arrow's box over the zone) and Zone 2's
+        lifts (WasamiLift, BP_06_Lift_03 / _04, and WasamiCornerLift, BP_06_LiftBase_Corner, with their meshes and box
+        sizes; after import_dd_stage_assets) in again where the original places them, each tagged
+        'src:<the original's name>' for the zone's flow and fixed to the ambulance or the spikes it moves with, taking
+        out what an earlier call placed, and saves the level. Nothing else changes, and the baked lighting stays valid
+        (none of them is in it).
 
         Args:
             zone: 'Zone1' (6 trigger boxes, 9 volumes, 1 door break, 2 double doors, 1 emitter, 1 barrier, 1 shard
-                checker) or 'Zone2' (8 trigger boxes, 10 volumes, 1 door break, 1 barrier, 1 shard checker).
+                checker) or 'Zone2' (8 trigger boxes, 10 volumes, 1 door break, 1 barrier, 1 shard checker, 15 lifts).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
             'removed', 'removed_lights', 'triggers', 'volumes', 'doorBreaks', 'doubleDoors', 'emitters',
-            'zoneBarriers', 'shardCheckers', 'attached' and 'failed_settings' (listed in the output log).
+            'zoneBarriers', 'shardCheckers', 'lifts', 'attached' and 'failed_settings' (listed in the output log).
         """
         return _module("dd_level").place_flow(zone, map_path)
 

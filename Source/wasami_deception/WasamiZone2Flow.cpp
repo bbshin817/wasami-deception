@@ -154,7 +154,8 @@ void AWasamiZone2Flow::OnMazeTriggerStart()
 	Enter(TEXT("Maze Trigger Start"));
 	MazeTransition();
 	SaveCheckpoint(9);
-	// 1 s on: Bierce_TormentTherapy_Gameplay_08 and Setup Bierce Lift Quip (item 20).
+	// 1 s on: Bierce_TormentTherapy_Gameplay_08 and Setup Bierce Lift Quip, which binds every AWasamiLift's
+	// OnPlayerOverlap (BP_06_LiftBase's Player Overlap) to Bierce Lift Quip (item 20).
 }
 
 void AWasamiZone2Flow::MazeTransition()

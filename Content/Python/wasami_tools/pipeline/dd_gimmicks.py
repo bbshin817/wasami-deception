@@ -11,7 +11,10 @@ Fracture_concrete_3, whose materials' graphs the cook took away: estimated, as t
 cell: the needles' stab as its spikes reach the player (DD_Needle_Trap_R1_V3, AWasamiZone2Flow), and the particles its
 sequences fire (06_Hospital_Zone2_Spikes: the sparks the spikes throw, P_06_NurseSparks, and the dust as they come down,
 Fracture_dark_slow; 06_Hospital_Zone2_Cell_DoorPicked: the burst at the cell door, Concrete_impact_large), with the
-four materials the cook took the graphs of, estimated off their compiled shaders.
+four materials the cook took the graphs of, estimated off their compiled shaders. Zone 2's lifts (AWasamiLift and
+AWasamiCornerLift, after Blueprints/06_Hospital/Lifts/Zone2): the clunk as they start and stop (DD_TT_GarageLift_Down,
+through MonkeyAttenuation), the loop while they move (DD_TT_Lift_Loop, through 01_Lobby_Attenuation), and the garage
+lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets.
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
@@ -94,6 +97,12 @@ CELL_TEXTURES = (DUST, FLARE_WHITE, SQUIB_BASE, SQUIB_NORMAL)
 CELL_PARTICLES = (NURSE + "P_06_NurseSparks", BVFX + "Destruction/Fractures/V2/Fracture_dark_slow",
                   BVFX + "Impacts/LegacyFX/Small-Medium-Large/Concrete/Concrete_impact_large")
 CELL_NEEDS = (SMOKE_DUST + "Whisps_trans", SMOKE_DUST + "Whisps_trans2", FRAGMENTS + "DebrisMaster")
+LIFT_SOUNDS = (
+    "Audio/06_Hospital/DD_TT_GarageLift_Down",
+    "Audio/06_Hospital/DD_TT_GarageLift_Up",
+    "Audio/06_Hospital/DD_TT_Lift_Loop",
+)
+LIFT_ATTENUATIONS = DOUBLE_DOOR_ATTENUATIONS   # MonkeyAttenuation and 01_Lobby_Attenuation
 
 
 def _build_speed_barrier(mat):
@@ -447,12 +456,19 @@ def import_double_doors():
     return result
 
 
+def import_lifts():
+    """The lifts' sounds and attenuations. Returns how many of each."""
+    return {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in LIFT_ATTENUATIONS]),
+            "sounds": len([dd_assets.sound(rel, VERSION) for rel in LIFT_SOUNDS])}
+
+
 def import_all():
-    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in and the cell's), then
-    saves /Game/DD."""
+    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's and the
+    lifts'), then saves /Game/DD."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
     result.update({"cell_" + key: count for key, count in import_cell().items()})
+    result.update({"lift_" + key: count for key, count in import_lifts().items()})
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result
