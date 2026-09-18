@@ -71,9 +71,15 @@ def class_defaults(pkg):
 
 
 def main_export(pkg, rel):
-    """The package's asset itself (the export named like the package)."""
+    """The package's asset itself: the export named like the package, or its only export without an outer where none is
+    (Textures/FX_Textures/dust holds dust_0)."""
     name = rel.rsplit("/", 1)[-1]
-    return next(e for e in pkg["exports"] if e["name"] == name)
+    named = [e for e in pkg["exports"] if e["name"] == name]
+    if not named:
+        named = [e for e in pkg["exports"] if not e.get("outer")]
+        if len(named) != 1:
+            raise KeyError("%s: no export named %s, and %d without an outer" % (rel, name, len(named)))
+    return named[0]
 
 
 def game_rel(object_path):
@@ -129,6 +135,23 @@ def sound_concurrency(rel, version=1):
     return asset
 
 
+def sound_attenuation(rel, version=1):
+    """A SoundAttenuation asset with the original's settings ('Audio/01_Hotel/01_Lobby_Attenuation'); UE 5.8's defaults
+    for what the export leaves out are UE 4.24's (FSoundAttenuationSettings, FBaseAttenuationSettings). Returns the
+    asset."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        asset = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        asset = _tools().create_asset(name, folder, unreal.SoundAttenuation, unreal.SoundAttenuationFactory())
+    failures = ue_props.apply(asset, main_export(export_json(rel, version), rel)["props"])
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    EAL.save_asset(target, only_if_is_dirty=False)
+    return asset
+
+
 def sound(rel, version=1):
     """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
     export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names). Returns the
@@ -166,6 +189,10 @@ def sound(rel, version=1):
 SOUND_CUE_SKIP = ("FirstNode", "SoundClassObject", "Duration", "MaxDistance")
 
 
+def _is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def sound_cue(rel, version=1):
     """A SoundCue with the original's node tree ('Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue'): each node of the export
     made with UWasamiSoundCueLibrary, its numbers written by name and its inputs linked, the wave players pointing at the
@@ -196,21 +223,30 @@ def sound_cue(rel, version=1):
             loaded = unreal.load_asset(asset_path(game_rel(wave)))
             if not isinstance(loaded, unreal.SoundWave) or not lib.set_wave(obj, loaded):
                 raise RuntimeError("%s: %s plays %s, which is not made yet" % (rel, key, wave))
-        children = [node(child) for child in props.pop("ChildNodes", [])]
-        for name, value in props.items():
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ValueError("%s: %s.%s has a value this does not write (%r)" % (rel, key, name, value))
-            error = unreal.WasamiCascadeLibrary.set_property_text(obj, name, repr(value))
-            if error is None or error:
-                raise RuntimeError("%s: %s.%s was not written: %s" % (rel, key, name, error))
+        # A None child is an input left empty (SFX_06_Lockpicking's random node has a fifth, silent one).
+        children = [node(child) if child else None for child in props.pop("ChildNodes", [])]
+        # The inputs first: adding one to a random node adds a weight of 1, which its Weights then overwrite.
         error = lib.set_child_nodes(obj, children)
         if error is None or error:
             raise RuntimeError("%s: the inputs of %s were not linked: %s" % (rel, key, error))
+        for name, value in props.items():
+            if _is_number(value):
+                text = repr(value)
+            elif isinstance(value, list) and all(_is_number(v) for v in value):
+                text = "(%s)" % ",".join(repr(v) for v in value)
+            else:
+                raise ValueError("%s: %s.%s has a value this does not write (%r)" % (rel, key, name, value))
+            error = unreal.WasamiCascadeLibrary.set_property_text(obj, name, text)
+            if error is None or error:
+                raise RuntimeError("%s: %s.%s was not written: %s" % (rel, key, name, error))
         return obj
 
     props = main_export(pkg, rel)["props"]
     lib.finish_sound_cue(cue, node(props["FirstNode"]))
-    failures = ue_props.apply(cue, props, skip=SOUND_CUE_SKIP)
+    attenuation = props.get("AttenuationSettings")
+    if attenuation:   # Locked_Door's MonkeyAttenuation, made here when missing
+        cue.set_editor_property("attenuation_settings", sound_attenuation(game_rel(attenuation), version))
+    failures = ue_props.apply(cue, props, skip=SOUND_CUE_SKIP + ("AttenuationSettings",))
     if failures:
         raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
     EAL.save_asset(target, only_if_is_dirty=False)
@@ -234,6 +270,10 @@ def texture(rel, version=1):
                                    "compression": entry["compression"], "lodGroup": entry["lod_group"]})
     props = main_export(export_json(rel, version), rel)["props"]
     tex.set_editor_property("never_stream", bool(props.get("NeverStream")))
+    # The addressing the table lists (left out: UE's Wrap, which the import leaves).
+    for axis in ("address_x", "address_y"):
+        if entry.get(axis):
+            tex.set_editor_property(axis, ue_props.enum_member(unreal.TextureAddress, entry[axis]))
     return target
 
 
@@ -352,6 +392,37 @@ def material_instance(asset_path, parent, scalars=None, vectors=None, textures=N
         if MEL.get_material_instance_static_switch_parameter_value(mic, key) != bool(value):
             raise RuntimeError("%s: the static switch %s did not take %s" % (asset_path, key, value))
     return mic
+
+
+# A material instance's BasePropertyOverrides the export can have switched on (bOverride_<name>), by the Python names of
+# FMaterialInstanceBasePropertyOverrides' switch and value, and how the export's value is read.
+BASE_PROPERTY_OVERRIDES = {
+    "TwoSided": ("override_two_sided", "two_sided", bool),
+    "BlendMode": ("override_blend_mode", "blend_mode",
+                  lambda v: ue_props.enum_member(unreal.BlendMode, v.split("::")[-1])),
+    "ShadingModel": ("override_shading_model", "shading_model",
+                     lambda v: ue_props.enum_member(unreal.MaterialShadingModel, v.split("::")[-1])),
+    "OpacityMaskClipValue": ("override_opacity_mask_clip_value", "opacity_mask_clip_value", float),
+}
+
+
+def base_property_overrides(mic, rel, version):
+    """Switches on the material instance's base property overrides its export switches on (bOverride_TwoSided with
+    TwoSided, ...), with their values, and updates it. The export lists values it does not switch on (the parent's), which
+    are left alone. Returns the names switched on."""
+    props = main_export(export_json(rel, version), rel)["props"].get("BasePropertyOverrides") or {}
+    on = [k[len("bOverride_"):] for k, v in props.items() if k.startswith("bOverride_") and v]
+    unknown = [name for name in on if name not in BASE_PROPERTY_OVERRIDES]
+    if unknown:
+        raise NotImplementedError("%s overrides %s" % (rel, unknown))
+    overrides = mic.get_editor_property("base_property_overrides")
+    for name in on:
+        switch, value, convert = BASE_PROPERTY_OVERRIDES[name]
+        overrides.set_editor_property(switch, True)
+        overrides.set_editor_property(value, convert(props[name]))
+    mic.set_editor_property("base_property_overrides", overrides)
+    MEL.update_material_instance(mic)
+    return on
 
 
 # The engine's material function libraries.
@@ -485,13 +556,14 @@ def dynamic_parameter(g, names, x, y, defaults=(0.0, 0.0, 0.0, 1.0)):
     return e
 
 
-def estimated_materials(folder, entries, version):
+def estimated_materials(folder, entries, version, left_out=()):
     """Particle materials whose graphs the cook took away. entries: (the original's material under folder, the master
     holding our estimate under /Game/Pipeline/Materials, its builder(mat, the original's scalar and vector defaults by
     name), the original's instances of that material). Makes each master (translucent), an instance of it at the
     original material's path with the original's defaults of the parameters the estimate has (those of the sides not
     made left out), and the original's instances as instances of that one with their own values (a value the estimate
-    has no parameter for raises). Returns the assets, saved."""
+    has no parameter for raises, unless its parameter is named in left_out: one the estimate knowingly does without,
+    whose values are dropped). Returns the assets, saved."""
     made = []
     for name, master_name, build, children in entries:
         rel = folder + name
@@ -511,6 +583,8 @@ def estimated_materials(folder, entries, version):
             c_scalars, c_vectors, c_textures, c_masks, c_switches = instance_parameters(child_rel, version)
             for kind, values in (("scalars", c_scalars), ("vectors", c_vectors), ("textures", c_textures),
                                  ("switches", c_switches)):
+                for name in set(values) & set(left_out):
+                    del values[name]
                 unknown = set(values) - known[kind]
                 if unknown:
                     raise RuntimeError("%s sets %s, which the estimate of %s does not have"

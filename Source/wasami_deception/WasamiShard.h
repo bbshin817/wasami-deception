@@ -54,6 +54,9 @@ public:
 	/** The mochi's play rate, the original's SetPlayRate on its crystal's animation. */
 	float GetSpinRate() const { return SpinRate; }
 
+	/** The minimap's mark (Plane), which Zone 2's map shows only for the shards on the player's floor. */
+	UStaticMeshComponent* GetPlane() const { return Plane; }
+
 	/** Shard Pull's Alpha track at Seconds of the timeline: 0 → 1 over its first 0.75 s. */
 	static float EvaluatePullAlpha(float Seconds);
 

@@ -23,37 +23,37 @@ namespace
 	// The animations' keys: ticks (60000 a second), values and the tangents saved per tick (here per second). All are
 	// cubic. Appear plays [0, 30001) and ends at tick 30000; Disappear plays [0, 18001) and ends at tick 18000.
 	constexpr double AnimTicksPerSecond = 60000.;
-	struct FAnimKey
+	struct FTrackerAnimKey
 	{
 		double Ticks;
 		float Value;
 		double TangentPerTick;
 	};
-	const FAnimKey AppearScaleKeys[] = {
+	const FTrackerAnimKey AppearScaleKeys[] = {
 		{0., 0.f, 0.},
 		{15000., 1.f, 2.9999999242136255e-05},
 		{30000., 0.949999988079071f, 0.},
 	};
-	const FAnimKey AppearOpacityKeys[] = {
+	const FTrackerAnimKey AppearOpacityKeys[] = {
 		{0., 0.f, 0.},
 		{30001., 1.f, 0.},
 	};
-	const FAnimKey DisappearScaleKeys[] = {
+	const FTrackerAnimKey DisappearScaleKeys[] = {
 		{0., 1.f, 0.},
 		{9000., 1.100000023841858f, -3.333333370392211e-05},
 		{18000., 0.f, 0.},
 	};
-	const FAnimKey DisappearOpacityKeys[] = {
+	const FTrackerAnimKey DisappearOpacityKeys[] = {
 		{0., 1.f, 0.},
 		{18000., 0.f, 0.},
 	};
 	// Disappear's transform section is [0, 18000): its last tick leaves the scale as it was.
 	const float DisappearScaleSectionEnd = static_cast<float>(18000. / AnimTicksPerSecond);
 
-	FRichCurve MakeAnimCurve(TConstArrayView<FAnimKey> Keys)
+	FRichCurve MakeAnimCurve(TConstArrayView<FTrackerAnimKey> Keys)
 	{
 		FRichCurve Curve;
-		for (const FAnimKey& Each : Keys)
+		for (const FTrackerAnimKey& Each : Keys)
 		{
 			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(static_cast<float>(Each.Ticks / AnimTicksPerSecond), Each.Value));
 			Key.InterpMode = RCIM_Cubic;

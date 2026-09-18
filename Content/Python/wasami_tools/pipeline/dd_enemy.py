@@ -470,13 +470,14 @@ def prepared_file():
 
 
 # ------------------------------------------------------------------------------------------------ assets
-def ensure_skeletal_pipeline():
+def ensure_skeletal_pipeline(pipeline=paths.SKELETAL_PIPELINE, sample_rate=None):
     """The glTF assets pipeline for one skinned model with its animations: no sub folders, no materials or textures, no
-    static meshes, no Nanite, animations baked at 30 fps, assets named after the glTF's mesh and animations."""
-    pipeline = paths.SKELETAL_PIPELINE
+    static meshes, no Nanite, animations baked at 30 fps (or at sample_rate), assets named after the glTF's mesh and
+    animations."""
+    version = PIPELINE_VERSION if sample_rate is None else "%s@%d" % (PIPELINE_VERSION, sample_rate)
     if EAL.does_asset_exist(pipeline):
         pl = unreal.load_asset(pipeline)
-        if EAL.get_metadata_tag(pl, dd_stage.VERSION_TAG) == PIPELINE_VERSION:
+        if EAL.get_metadata_tag(pl, dd_stage.VERSION_TAG) == version:
             return pl
     else:
         EAL.duplicate_asset("/Interchange/Pipelines/DefaultGLTFAssetsPipeline", pipeline)
@@ -493,8 +494,9 @@ def ensure_skeletal_pipeline():
         mesh.set_editor_property(prop, value)
     anim = pl.get_editor_property("animation_pipeline")
     anim.set_editor_property("import_animations", True)
-    anim.set_editor_property("use30_hz_to_bake_bone_animation", True)
-    EAL.set_metadata_tag(pl, dd_stage.VERSION_TAG, PIPELINE_VERSION)
+    anim.set_editor_property("use30_hz_to_bake_bone_animation", sample_rate is None)
+    anim.set_editor_property("custom_bone_animation_sample_rate", sample_rate or 0)
+    EAL.set_metadata_tag(pl, dd_stage.VERSION_TAG, version)
     EAL.save_asset(pipeline, only_if_is_dirty=False)
     return pl
 

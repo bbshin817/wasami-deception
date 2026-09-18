@@ -18,6 +18,7 @@
 #include "Sound/SoundConcurrency.h"
 #include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
+#include "WasamiGameMode.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiTabletWidget.h"
 
@@ -245,7 +246,11 @@ void AWasamiShard::Collect(bool bNoSound)
 	Screen->SetShardCount(FMath::Clamp(Screen->GetShardCount() - 1, 0, MaxShardCount));
 	Screen->PlayCountShake();
 
-	// Not yet: the game mode's Check Shards.
+	// @773: the game mode's Check Shards (Collect Shard, and whether any shard is left 0.05 s on, after this one is gone).
+	if (AWasamiGameMode* Mode = GetWorld()->GetAuthGameMode<AWasamiGameMode>())
+	{
+		Mode->CheckShards();
+	}
 	if (APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		Controller->ClientStartCameraShake(LoadedCollectShake, CollectShakeScale, ECameraShakePlaySpace::CameraLocal);

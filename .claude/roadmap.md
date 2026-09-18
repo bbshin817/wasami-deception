@@ -57,7 +57,7 @@
 
 | 大目標 | 達成の姿 | 見積もり（2026-09-18） |
 | --- | --- | --- |
-| 1. 最小の通しプレイ | Zone 1 のエレベーターの到着から、敵に追われながら全部回収 → ガレージリフトで Zone 2 → 全部回収 → 祭壇 → ポータルで脱出まで、PIE で通しで遊べる。捕まると死亡画面からチェックポイントで再開する | 規模 16、9/20〜21 ごろ |
+| 1. 最小の通しプレイ | Zone 1 のエレベーターの到着から、敵に追われながら全部回収 → 救急車で Zone 2（2026-09-19 に「ガレージリフトで」から読み替えた。項目 6）→ 全部回収 → 祭壇 → ポータルで脱出まで、PIE で通しで遊べる。捕まると死亡画面からチェックポイントで再開する | 規模 16、9/20〜21 ごろ |
 | 2. ゲームとして一通り | タイトル → Zone 1 → Zone 2 → 脱出 → スコア画面まで、最終目標の要素（扉と罠・スピードバリア・スタンオーブと赤いシャード・Matron・秘密・捕獲のカメラ・場面・曲・台詞・オプションとポーズ）がそろって遊べる | 規模 26、9/22〜24 ごろ |
 | 3. 本家に忠実に | 大目標 1・2 で後に回した見た目と演出を、本家の実機の観察と原作の式で詰める | 始める前にユーザーと中身を決める |
 
@@ -137,7 +137,7 @@
 ## 大目標 1: 最小の通しプレイ
 
 - 状態: 進行中（2026-09-18 から）
-- 達成の姿: Zone 1 のエレベーターの到着から、敵に追われながら全部回収 → ガレージリフトで Zone 2 → 全部回収 → 祭壇 → ポータルで脱出まで、PIE で通しで遊べる。捕まると死亡画面からチェックポイントで再開する。タイトル・スコア画面・扉と罠・特殊シャード・Matron・場面・曲・台詞は大目標 2。
+- 達成の姿: Zone 1 のエレベーターの到着から、敵に追われながら全部回収 → 救急車で Zone 2（ガレージリフトで上がり、テレポーテーションで屋根へ。項目 6 の読み替え）→ 全部回収 → 祭壇 → ポータルで脱出まで、PIE で通しで遊べる。捕まると死亡画面からチェックポイントで再開する。タイトル・スコア画面・扉と罠・特殊シャード・Matron・場面・曲・台詞は大目標 2。
 - 決め方: 上の「大目標 1・2 の決め方」（見た目の詰めをしない）。
 - 達成の条件: この節の項目がすべて完了（最後の項目 27 が通しプレイを確かめる）。
 
@@ -150,14 +150,14 @@
 - 規模: 3
 - 状態: **完了（2026-09-18）**。ゲームインスタンス（ライフ 3・回収済みのシャードの記憶）とセーブ（`structSlot` の病院の欄と `Last Checkpoint Warning`）、ゲームモードの `DeathEvent`・`SaveCheckpoint`（右下の SAVING PROGRESS）・チェックポイントの PlayerStart から出す開始、死亡画面 `UWasamiDeathScreenWidget`（ライフ −1・アニメ 4 本・パワーのリセット・今のレベルの開き直し）、ゲームオーバーの RESTART / LAST CHECKPOINT / QUIT TO TITLE と YES / NO の問い（実装記録 06・09）。完了の条件の読み替え（進めてみて原作に合わせた）: 死亡でタブレットを下ろす・入力を止める処理は原作に無く、ゲームを止めて画面が覆うことで満たす。右下は原作の画面の `SAVING PROGRESS`（`Progress Saved` は開発用の PrintString）。回収済みのシャードはディスクではなくゲームインスタンスが覚え、死亡と LAST CHECKPOINT の開き直しで戻らない。死亡画面の声は項目 20、チェックポイントを通る場面と区間の準備は項目 6・13（ゲームモードの `GetStartCheckpoint()` を見る）。確かめるときは PIE のコンソールで `Wasami.Kill`・`Wasami.Checkpoint N`・`Wasami.Lives N`・`Wasami.ResetSave`。
 
-### 6. ゾーンの進行（開始の流れ・障壁とシャードチェッカー・全回収・ガレージリフトで Zone 2 へ）
+### 6. ゾーンの進行（開始の流れ・障壁とシャードチェッカー・全回収・救急車で Zone 2 へ）
 
-- 目標: Zone 1 の開始からガレージリフトで Zone 2 に降りるまでと、Zone 2 の開始を本家のレベル BP どおりに作る。ゲームの最初はここ（入口は作らない。2026-09-18）。
-- 完了の条件: Zone 1 の開始（エレベーターの上昇と到着 `06_Hospital_Zone01_ElevatorArrive`〈扉 2 枚の動き、14.1 s〉、`Spawn`、目的の帯 `COLLECT ALL SHARDS`、タブレットの矢印 `BP_ArrowPointer`）→ シャード 337 の全回収で `All Shards Collected`（ゾーンの障壁 `BP_ZoneBarrier` とシャードチェッカー `BP_ZoneShardChecker`）→ ガレージリフト `BP_06_GarageLift_Zone1_Special` で Zone 2 へ移り（レベルの切り替えとセーブ）、Zone 2 の開始（`BP_06_GarageLift` ×2、`BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5、地図 `BP_MapTexture_MultiFloor`・`BP_MapArea` ×2）まで PIE で通しで遊べる。Zone 2 は、本家の到着の後の捕まる場面と独房の場面（項目 25、大目標 2）を飛ばし、レベル BP で独房の場面の後にプレイヤーが動けるようになる位置と状態から始める。数と値はレベル BP とアクタのプロパティどおり。Bierce の台詞は項目 20、Zone 1 の途中の出来事 `06_Hospital_Zone1_06Event` は項目 25（どちらも大目標 2）。
+- 目標: Zone 1 の開始から救急車で Zone 2 へ移るまでと、Zone 2 の開始を本家のレベル BP どおりに作る。ゲームの最初はここ（入口は作らない。2026-09-18）。
+- 完了の条件: Zone 1 の開始（エレベーターの上昇と到着 `06_Hospital_Zone01_ElevatorArrive`〈扉 2 枚の動き、14.1 s〉、`Spawn`、目的の帯 `COLLECT ALL SHARDS`、タブレットの矢印 `BP_ArrowPointer`）→ シャード 337 の全回収で `All Shards Collected`（ゾーンの障壁 `BP_ZoneBarrier` とシャードチェッカー `BP_ZoneShardChecker`）→ 救急車の屋根 `TriggerBox_06_AmbulanceTop`（本家の `06_ReachAmbulance`。駐車場のガレージリフト `BP_06_GarageLift_Zone1_Special` で上がり、テレポーテーションで屋根へ）で Zone 2 へ移り（レベルの切り替えとセーブ）、Zone 2 の開始（`BP_06_GarageLift` ×2、`BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5、地図 `BP_MapTexture_MultiFloor`・`BP_MapArea` ×2）まで PIE で通しで遊べる。Zone 2 は、本家の到着の後の捕まる場面と独房の場面（項目 25、大目標 2）を飛ばし、レベル BP で独房の場面の後にプレイヤーが動けるようになる位置と状態から始める。数と値はレベル BP とアクタのプロパティどおり。Bierce の台詞は項目 20、Zone 1 の途中の出来事 `06_Hospital_Zone1_06Event` は項目 25（どちらも大目標 2）。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`、`_sequences/06_Hospital_Zone01_ElevatorArrive.json`、`Blueprints/06_Hospital/Lifts/**`、`Blueprints/Main/BP_ZoneBarrier.txt`、`_levels/06_Hospital_Zone_0*.full.json`。
 - 依存: 4、5。
 - 規模: 4
-- 状態: 未着手。
+- 状態: **完了（2026-09-19）**。ゲームモードが開始時に出す区間の流れ `AWasamiZone1Flow`・`AWasamiZone2Flow`（本家のレベル BP の代わり。トリガーの箱・チェックポイントの保存・目的の文・矢印の値）で、Zone 1 はエレベーターの到着のシーケンス（扉が約 11 s に開く）→ 扉の破壊（F の連打）と両開き扉 → 迷路で COLLECT ALL SHARDS → 全回収で障壁が壊れて駐車場へのフェード → トンネルの扉が閉ざされ 25 s 後に破られる → 救急車の屋根で保存 7 → 救急車が走り出し読み込み画面 → Zone 2、Zone 2 は独房（棘が下りる中で扉の鍵を外す）→ ミニボスの廊下（GET PAST THE NURSES）→ 迷路（COLLECT ALL SHARDS、乗ると上がる床 15 台、階ごとの地図）→ 全回収で COLLECT THE RING PIECE まで、PIE で通しで遊べる（実装記録 11・12・08・09・03・01）。**完了の条件の読み替え**（本家のコードに合わせた）: 「ガレージリフトで Zone 2 へ」は作業一覧を作ったときの読み違いで、本家で Zone 2 を開くのは救急車の屋根（`06_ReachAmbulance`）。ガレージリフトは駐車場の車のリフトで、上がった台から屋根へはテレポーテーションで移る（2026-09-19 に PIE で通した）。ガレージリフトの `NurseNear`・`Spawn Nurses*`・ミニボスは項目 7・11、場面は項目 25、Bierce の台詞とナースの放送は項目 20、曲は項目 19。読み込み画面の紋章と読み替えは下の「未回答の要確認」。
 
 ### 7. NavMesh と敵の AI（追跡型）
 
@@ -180,7 +180,7 @@
 ### 13. 脱出（ガレージの祭壇 → 欠片 → ポータル）と視線の手のマーク
 
 - 目標: Zone 2 の全回収後、ガレージの祭壇（本家 `BP_01_Statue` の見た目）を Use して欠片を取り、現れたポータルをくぐると脱出完了。流れは Deadly Decadence（旧版 `03_Manor_Zone2`）に倣う。ボス戦は作らない。
-- 完了の条件: 全回収で祭壇の球（`ring_statue_orb`）が消え、見て左クリック（視線の手のマーク `UMG_Interact`。実装記録の予定 05）で `Ring_Piece_Pickup` と `UMG_01_RingPieceCollect`、ポータル（本家 `BP_00_Teleport` の見た目と `21-Ballroom_portal_V2` の音）が現れ、くぐると敵を消して脱出。全回収前は祭壇を使えない。ガレージの位置は本家の `Postmaze_Trigger_Garage`。脱出の後のスコア画面（項目 14）ができるまでは、脱出で入力を止めて画面を暗くするだけでよい。Bierce の台詞は項目 20（大目標 2）。
+- 完了の条件: 全回収で祭壇の球（`ring_statue_orb`）が消え、見て左クリック（視線の手のマーク `UMG_Interact`。実装記録の予定 05）で `Ring_Piece_Pickup` と `UMG_01_RingPieceCollect`、ポータル（本家 `BP_00_Teleport` の見た目と `21-Ballroom_portal_V2` の音）が現れ、くぐると敵を消して脱出。全回収前は祭壇を使えない。ガレージの位置は本家の `Postmaze_Trigger_Garage`。脱出の後のスコア画面（項目 14）ができるまでは、脱出で入力を止めて画面を暗くするだけでよい。欠片の画面（`UMG_01_RingPieceCollect`）が閉じると（本家の `Ring Piece Collect `）、灯 2 つを消して Zone 2 の障壁 `BP_ZoneBarrier_2` を `DestroyBarrier` で壊し、矢印をガレージ（`Postmaze_Trigger_Garage`）へ向ける（本家 @21373〜。障壁は項目 6 で置いた）。視線の手のマークと一緒に、障壁を見て左クリックしたときの本家の `InteractWithObject`（`DD_RingBarrierDenied_louder` と `UMG_TextPrompt`「Collect all soul shards in this zone to break the barrier.」、5 s に 1 回。実装記録 08）も作る。Bierce の台詞は項目 20（大目標 2）。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/03_Manor_Zone2.txt`（@1385〜@4380 の祭壇と欠片、`Portal Extra Brightness`）、`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt`（@43〜 Postmaze、@1423〜@1773 の台詞・曲のフェード・ポータルの音・敵の除去）、`Blueprints/01_Hotel/BP_01_Statue.txt`、`Blueprints/00_Ballroom/BP_00_Teleport.txt`、`UI/Main/UMG_Interact`。
 - 依存: 6、7。
 - 規模: 2
@@ -189,7 +189,7 @@
 ### 27. 大目標 1 の通しプレイの確かめ
 
 - 目標: 大目標 1 の達成の姿を、PIE で通しで遊んで確かめ、止まる箇所を直す。
-- 完了の条件: PIE で Zone 1 のエレベーターの到着 → 敵に追われながら回収（シャードはデバッグの呼び出しで数個を残して回収してよい）→ 全回収 → ガレージリフト → Zone 2 → 全回収 → 祭壇 → ポータル → 脱出までを 1 回の収録で通し、途中で 1 回捕まって死亡画面 → チェックポイントで再開する。進めない・落ちる・壁を抜ける・敵が動かないなどの止まる箇所が無い（見つけたら直す。大きいものは記録のステップに足す）。ユーザーが自分で遊んで確かめる手順（開くレベル、PIE の始め方、デバッグの呼び出し）を `.claude/references/handover.md` の「現状と次の一歩」に書く。Discord に通しの連番のグリッドを出す。
+- 完了の条件: PIE で Zone 1 のエレベーターの到着 → 敵に追われながら回収（シャードはデバッグの呼び出しで数個を残して回収してよい）→ 全回収 → ガレージリフトとテレポーテーションで救急車の屋根 → Zone 2 → 全回収 → 祭壇 → ポータル → 脱出までを 1 回の収録で通し、途中で 1 回捕まって死亡画面 → チェックポイントで再開する。進めない・落ちる・壁を抜ける・敵が動かないなどの止まる箇所が無い（見つけたら直す。大きいものは記録のステップに足す）。ユーザーが自分で遊んで確かめる手順（開くレベル、PIE の始め方、デバッグの呼び出し）を `.claude/references/handover.md` の「現状と次の一歩」に書く。Discord に通しの連番のグリッドを出す。
 - 根拠: この節の項目 5・6・7・9・13 の完了の条件。
 - 依存: 5、6、7、9、13。
 - 規模: 1
@@ -343,6 +343,10 @@
 - 後回しの一覧（大目標 1・2 の作業が 1 件 1 行で足す: `- <日付>（項目 N）: <何を> — 今は <何にした>。本家での確かめ方: <実機の場面・原作のアセット>`）:
   - 2026-09-18（項目 5）: 死亡画面のアニメの区間の `RestoreState`（Fade In・Death の終わりで元の値に戻すか）— 今は戻さない（最後の値のまま。WebGL 版の収録ではゲームオーバーのボタンが見えている）。タブレットの Count Shake（03 記録）は終わりで戻しているので、どちらかが UE 4.24 の振る舞いと違う。本家での確かめ方: 最新版で 1 回死に、死亡画面が Fade In の後も見えているかと、シャードを拾った後の数の位置（12 px 下に残るか）を収録する。
   - 2026-09-18（項目 5）: 死亡画面のボタンとヒントの書体 — 今はボタンの `helvetica-normal_Font` の既定の書体を helvetica の面に、ヒントは UE5 の `RobotoTiny` の `Light`。本家の Font は既定がエンジンの Roboto で helvetica は en-US の副書体、ヒントは UE 4.24 の RobotoTiny。本家での確かめ方: 最新版のゲームオーバーの画面を撮り、RESTART の字形とヒントの太さを比べる。
+  - 2026-09-18（項目 6）: トンネルの扉が破られるときの破片 `Fracture_concrete_3` の煙と破片の見え方 — 今は材質 3 つ（`whispOne_Master_directional`・`_amb`・`DebrisMaster`）を推定し（実装記録 08）、GPU のエミッタ 2 つ（`Fragments`・`DustTrail`）は cook の焼き込みの表から分布を作り直して組んだ。cook の表はその 2 つで本家が使った値と合わず（`DustTrail` の色は表 1 → 0.36 に対し cook の GPU のデータ `ResourceData` は一定の 0.078、大きさは表の上限 1 に対し約 6 倍）、PIE では煙がほとんど見えない。本家での確かめ方: 最新版の Zone 1 で 06_DoorsLock から 25 s 待ち、扉が破られる所を収録する。cook の `ResourceData`（`Fracture_concrete_3.json` の型データ）から分布を組み直す手もある。
+  - 2026-09-18（項目 6）: Zone 2 の独房の粒子の材質 4 つ（`M_06_NurseSparks`・`M_Spark`・`M_Radial_Gradient`・`Squib_one`）と、棘の 58.8 s の黒い塵 `Fracture_dark_slow` の見え方 — 今は焼き込みのベースパスのシェーダーの式で推定し（実装記録 08）、黒い塵は PIE で 10 粒が描かれているが暗い廊下ではほとんど見えない（エミッタは本家でも床の 3 m 下）。本家での確かめ方: 最新版の Zone 2 で独房を出て廊下に立ち（棘の箱の外）、開いてから 58.8 s を待って独房を収録する。
+  - 2026-09-18（項目 6）: 救急車が走り出して 2〜3 s の間、トンネルの床の前方が黒い矩形で欠けて見える（救急車は本家どおり Static で、Sequencer が動かす間だけ Movable になる。その影か VSM の欠けと思われる）— 今はそのまま。本家での確かめ方: 本家の Zone 1 で救急車の屋根に乗り、走り出しのトンネルの床を見る。収録 `Intermediate/DesktopAgent/shots/ambulance_zone2.mkv`（git の外）の 4.5〜6 s
+  - 2026-09-18（項目 6）: Zone 2 のリフトの乗り方（実装記録 12 の「既知の制約」）— 今は本家のコードどおり: 角のリフト `BP_06_LiftBase_Corner` の上で立ち止まると、上の階に残る `LiftCollision1` のせいで床が約 70 cm 沈んでは戻るのを約 1.4 s ごとに繰り返し、上から下りられない。長い床 `BP_06_Lift_03` は歩き（300 cm/s）で近づくと縁に触れた時点で上がり始めて段差になり、走らないと乗れない。UE 4.24 の動く床の扱いで本家も同じになるかは未確認。本家での確かめ方: 最新版の Zone 2 の迷路で、長い床に歩いて近づく所と、角のリフトに下から乗って上で立ち止まる所を収録する。
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3
@@ -376,3 +380,8 @@
 - 2026-09-18: 全回収後の追跡の走り `Run_Nightmare` への切り替え — 仮に走りと同じ 0.25 s のブレンドにした。理由: 本家の ABP に無い分岐。場所: `WasamiEnemyAnimInstance.h` の `TODO(仮): the original has one run`。
 - 2026-09-18: 待機と見張りの待機のアニメ — 仮に `Idle_11`（直立）と `Idle_5`（足を開いた低い構え）にした。理由: Claude が v3 の中から選び、PIE で見て不自然さが無かった（`observations/ours/pie-enemy-idle-*.png`・`pie-enemy-alert-*.png`）。場所: `.claude/references/enemy-wasami-motions.md` の表、`dd_enemy.py` の `ROLES`。
 - 2026-09-18: `Chase_VaultLand`（`Vault_and_Land`）の扱い — 元は「高さ約 76 cm の台の上から片手をついて跳び降りる」動きで、平らな廊下では宙から始まった。仮に、取り込みで台の高さの分を離れるまで下げて床から跳び越える形（見えない低い障害物を越える形。足は最高約 78 cm、骨盤は 130 cm）にし、着地後に立っているだけの区間を切り（2.4 s）、この 1 本だけ 31° 斜めに進むのを真っすぐに回した（体の向きは −7° で始まり 21° で終わる）。ほかの案: 追跡の候補から外して場面（項目 6 の Zone 1 の出来事）でだけ使う / そのまま流す。理由: ユーザーが追跡中の例に挙げた動きなので、候補に残す。場所: `dd_enemy.py` の `VAULT_FRAMES`・`_vault`、一覧の追跡中の変化の表、映像 `observations/ours/pie-enemy-once-Chase_VaultLand.mkv`・`-sheet.png`。
+
+### 項目 6（ゾーンの進行、2026-09-19 に閉じた記録 `20260918-zone-progression`）
+
+- 2026-09-18: Zone 2 へ移るときの読み込み画面の紋章 `loader_reapernurse`（本家の `UI/Main/Loaders`。リーパーナースの印の絵で、キャラクターそのものは描かれていない）を使ってよいか — 仮に使わず、暗い赤の全面だけを出している。理由: 原作の素材の使用範囲で「判断に迷うもの（キャラクターが写った画像や UI 素材など）」に当たる。使ってよければ `dd_ui` で取り込み `UWasamiLoadingWidget::LevelEmblems` の 7 番に入れるだけ。ほかの案: 本作のワサミの絵に替える。場所: 実装記録 09 の「既知の制約」、`WasamiLoadingWidget.h` の `LevelEmblems`。
+- 2026-09-18: 作業一覧の項目 6 と大目標 1 の「ガレージリフトで Zone 2 へ」を、本家のコードどおり**救急車の上に乗って Zone 2 へ移る**形に読み替えた（2026-09-19 に項目 6・27 と大目標 1 の達成の姿を書き換えた）。理由: 本家の `06_Hospital_Zone_01` のレベル BP で Zone 2 を開くのは `06_ReachAmbulance`（`TriggerBox_06_AmbulanceTop`）で、ガレージリフトは駐車場の車のリフトの仕掛け。PIE ではガレージリフトで上がり、テレポーテーションで屋根へ移って通した。場所: 項目 6 の「状態」、実装記録 11 の「確かめたこと」の通し。

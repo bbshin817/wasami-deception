@@ -8,10 +8,14 @@ The cook keeps a module's distributions as their baked lookup tables (FRawDistri
 without the distribution objects, and that table is what the game reads. They are written as they are, with no
 distribution object, which UE 5.8 reads the same way (FRawDistributionFloat::GetValue uses the table; the editor only
 re-bakes a table from a distribution object). Distributions the cook could not bake (a particle parameter) and the ones
-it kept anyway are made as objects with their exported values.
+it kept anyway are made as objects with their exported values. A GPU emitter (ParticleModuleTypeDataGpu) is the
+exception: the editor builds its simulation from its modules' distribution objects (UParticleEmitter::Build →
+CompileModule, which reads ColorOverLife.Distribution and the like without checking), so each of its tables without one
+gets the object it was baked from, as near as the table tells (_table_distribution).
 
 Values are written in UE's text form by the properties' own names. What a package leaves out is at the class defaults
 (the export holds what differs from them), except where UE 5.8 reads the old package differently (DETAIL_EPIC)."""
+import decimal
 import json
 import struct
 
@@ -33,6 +37,9 @@ DERIVED = ("LODValidity",)
 # Editor-only data the cook kept a reference to (a Cascade editor's curve list) and UE 4's saved-dirty flag of a
 # distribution, which UE 5 does not save (a new distribution is dirty, which only asks the editor to bake it).
 NOT_WRITTEN = ("CurveEdSetup", "bIsDirty")
+# A GPU emitter's simulation data (ParticleModuleTypeDataGpu), which the cook saves and the editor builds from the
+# emitter's modules (UParticleEmitter::Build → UParticleModuleTypeDataGpu::Build, run by UpdateModuleLists).
+BUILT = ("EmitterInfo", "ResourceData")
 
 # EParticleDetailMode's bits. UE 5 added Epic (FParticleSystemCustomVersion::AddEpicDetailMode); an emitter saved before
 # that gets Epic where it has High when it loads (UParticleEmitter::PostLoad). The original's packages are older, and the
@@ -53,11 +60,18 @@ DYNAMIC_PARAMETER_MEMBERS = (("ParamName", "text"), ("bUseEmitterTime", "bool"),
 
 
 def _number(value):
+    """A number in UE's text form, never in exponent form: an array's text import loses the element after one written
+    so (a lookup table of 128 values that ends '-5.5e-05,0.0' came in with 127, and its last entry read past the end:
+    an assert in the particles' update)."""
     if isinstance(value, bool):
         raise TypeError("a bool where a number was expected: %r" % (value,))
     if isinstance(value, int):
         return str(value)
-    return repr(float(value))
+    text = repr(float(value))
+    if "e" in text or "E" in text:
+        text = format(decimal.Decimal(float(value)), "f")   # exact, however small
+        text = text if "." in text else text + ".0"
+    return text
 
 
 def _vector(values):
@@ -69,6 +83,77 @@ def _vector2(values):
     if len(values) != 2:
         raise ValueError("an FVector2D of %d numbers" % len(values))
     return "(X=%s,Y=%s)" % (_number(values[0]), _number(values[1]))
+
+
+def _rotator(values):
+    """An exported FRotator: [pitch, yaw, roll] in degrees."""
+    if len(values) != 3:
+        raise ValueError("an FRotator of %d numbers" % len(values))
+    return "(Pitch=%s,Yaw=%s,Roll=%s)" % tuple(_number(v) for v in values)
+
+
+def _curve(value, member):
+    """An exported FInterpCurve* ({Points: [{InVal, OutVal, ArriveTangent, LeaveTangent, InterpMode}]}); member makes the
+    text of one OutVal or tangent."""
+    unknown = set(value) - {"Points", "bIsLooped", "LoopKeyOffset"}
+    if unknown:
+        raise ValueError("a curve with %s" % sorted(unknown))
+    points = []
+    for point in value.get("Points", ()):
+        parts = ["InVal=" + _number(point["InVal"]), "OutVal=" + member(point["OutVal"])]
+        for key in ("ArriveTangent", "LeaveTangent"):
+            if key in point:
+                parts.append("%s=%s" % (key, member(point[key])))
+        parts.append("InterpMode=" + point.get("InterpMode", "CIM_Linear"))
+        points.append("(%s)" % ",".join(parts))
+    return "(Points=(%s),bIsLooped=%s,LoopKeyOffset=%s)" % (
+        ",".join(points), "True" if value.get("bIsLooped") else "False", _number(value.get("LoopKeyOffset", 0.0)))
+
+
+def _two_vectors(values):
+    """An FTwoVectors: [v1 x, y, z, v2 x, y, z]."""
+    if len(values) != 6:
+        raise ValueError("an FTwoVectors of %d numbers" % len(values))
+    return "(v1=%s,v2=%s)" % (_vector(values[:3]), _vector(values[3:]))
+
+
+# The FInterpCurve kinds the distribution objects hold, and the text of one of their values.
+CURVES = {"FInterpCurveFloat": _number, "FInterpCurveVector": _vector, "FInterpCurveVector2D": _vector2,
+          "FInterpCurveTwoVectors": _two_vectors}
+
+# ERawDistributionOperation (Distributions.h): a table's entries are single values (RDO_None) or low and high values
+# to pick between at random (RDO_Random).
+RDO_NONE = 1
+RDO_RANDOM = 2
+
+
+def _table_distribution(raw, vector):
+    """The distribution object (its class and values) a cook's baked table (an exported FRawDistribution) was made
+    from, as near as the table tells. A table's entries sit TimeBias + i / TimeScale apart and are lerped between
+    (FDistributionLookupTable::GetEntry), which a linear curve through them repeats; one entry is a constant, or a
+    uniform range when the entry holds a low and a high value."""
+    table = raw["Table"]
+    op, count = table.get("Op", 0), table.get("EntryCount", 0)
+    stride, sub = table.get("EntryStride", 0), table.get("SubEntryStride", 0)
+    values = table.get("Values", [])
+    width = 3 if vector else 1
+    wanted = {RDO_NONE: (width, 0), RDO_RANDOM: (2 * width, width)}.get(op)
+    if wanted is None or (stride, sub) != wanted or count < 1 or len(values) != count * stride or table.get("LockFlag"):
+        raise ValueError("a baked table no distribution is made for: %r" % (table,))
+    kind = "Vector" if vector else "Float"
+    one = list if vector else (lambda v: v[0])
+    entries = [values[i * stride:(i + 1) * stride] for i in range(count)]
+    times = [table.get("TimeBias", 0.0) + (i / table["TimeScale"] if i else 0.0) for i in range(count)]
+    if op == RDO_NONE:
+        if count == 1:
+            return "Distribution%sConstant" % kind, {"Constant": one(entries[0])}
+        points = [{"InVal": t, "OutVal": one(e)} for t, e in zip(times, entries)]
+        return "Distribution%sConstantCurve" % kind, {"ConstantCurve": {"Points": points}}
+    if count == 1:
+        return "Distribution%sUniform" % kind, {"Min": one(entries[0][:width]), "Max": one(entries[0][width:])}
+    # A uniform curve's value: (X low, Y high) for a float, (v1 low, v2 high) for a vector.
+    points = [{"InVal": t, "OutVal": list(e)} for t, e in zip(times, entries)]
+    return "Distribution%sUniformCurve" % kind, {"ConstantCurve": {"Points": points}}
 
 
 def _box(values):
@@ -108,8 +193,27 @@ class _Build:
             raise ValueError("%s is a %s, not a particle system" % (rel, self.system_export["class"]))
         if adjust is not None:
             adjust(self.exports)
+        self._gpu_distributions()
         self.made = {}
         self.target = target or dd_assets.asset_path(rel)
+
+    def _gpu_distributions(self):
+        """For each module of a GPU emitter, the distribution object of each baked table that has none, added to the
+        exports (named Baked<property>, after what the module's own default subobjects are not called)."""
+        for lod in [e for e in self.exports.values() if e["class"] == "ParticleLODLevel"]:
+            p = lod["props"]
+            type_data = self.exports.get(p.get("TypeDataModule") or "")
+            if type_data is None or type_data["class"] != "ParticleModuleTypeDataGpu":
+                continue
+            for key in [p["RequiredModule"], p["SpawnModule"]] + list(p.get("Modules", ())):
+                for prop, raw in self.exports[key]["props"].items():
+                    if not isinstance(raw, dict) or "Table" not in raw or raw.get("Distribution"):
+                        continue
+                    # A vector's entries are 3 values (6 with a low and a high), a float's 1 (or 2).
+                    cls, values = _table_distribution(raw, raw["Table"].get("EntryStride", 0) in (3, 6))
+                    name = "Baked" + prop
+                    self.exports["%s.%s" % (key, name)] = {"name": name, "outer": key, "class": cls, "props": values}
+                    raw["Distribution"] = "%s.%s" % (key, name)
 
     # ------------------------------------------------------------------------------------------ values
     def _object(self, value):
@@ -181,6 +285,10 @@ class _Build:
             return _vector(value)
         if cpp == "FVector2D":
             return _vector2(value)
+        if cpp == "FRotator":
+            return _rotator(value)
+        if cpp in CURVES and isinstance(value, dict):
+            return _curve(value, CURVES[cpp])
         # A bitfield bool's C++ type reads as its storage ('uint8').
         if isinstance(value, bool) and cpp in ("bool", "uint8", "uint16", "uint32", "uint64"):
             return "True" if value else "False"
@@ -207,7 +315,7 @@ class _Build:
 
     def _write(self, obj, props, skip=()):
         for key, value in props.items():
-            if key in skip or key in DERIVED or key in NOT_WRITTEN:
+            if key in skip or key in DERIVED or key in NOT_WRITTEN or key in BUILT:
                 continue
             text = self._text(obj, key, value)
             error = LIB.set_property_text(obj, key, text)
@@ -251,6 +359,20 @@ class _Build:
                 name, folder, unreal.ParticleSystem, unreal.ParticleSystemFactoryNew())
         LIB.reset_particle_system(self.system)
         self.made[self.name] = self.system
+        try:
+            self._build()
+        except Exception:
+            # Nothing half-built is left: an emitter without its LOD levels would fail UE's asset registry tags
+            # (UParticleSystem::GetAssetRegistryTags → HasGPUEmitter reads LODLevels[0]), which asserts the editor down the next time
+            # anything asks for them (EditorAssetLibrary.does_asset_exist, a save).
+            LIB.reset_particle_system(self.system)
+            raise
+        LIB.finish_particle_system(self.system)
+        self._check()
+        EAL.save_asset(self.target, only_if_is_dirty=False)
+        return self.target
+
+    def _build(self):
         props = self.system_export["props"]
         self._write(self.system, props, STRUCTURE["system"])
 
@@ -273,10 +395,6 @@ class _Build:
                 type_data = self._module(lod_props["TypeDataModule"]) if lod_props.get("TypeDataModule") else None
                 if not LIB.add_lod_level(emitter, lod, required, spawn, modules, type_data):
                     raise RuntimeError("%s: %s was not added" % (self.rel, lod_key))
-        LIB.finish_particle_system(self.system)
-        self._check()
-        EAL.save_asset(self.target, only_if_is_dirty=False)
-        return self.target
 
     def _check(self):
         """The rebuilt structure against the export: emitters, LOD levels and their modules in order, and each module's

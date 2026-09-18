@@ -35,7 +35,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 ## モジュールとビルド
 
-- `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）。非公開依存: `Slate`、`SlateCore`。
+- `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）、`LevelSequence`・`MovieScene`（ゾーンの流れがレベルのシーケンスを再生する。11 記録）。非公開依存: `Slate`、`SlateCore`。
 - ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V5`、`IncludeOrderVersion.Unreal5_6`（テンプレートのまま）。
 - `wasami_deception.cpp` / `.h` はモジュールの実装（`IMPLEMENT_PRIMARY_GAME_MODULE`）。
 - **パイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）の参照の決まり**（`WasamiAssets.h`）: C++ はそれらをソフト参照で持ち（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に、`WasamiAssets::Path("/Game/…/Name")`〈→ `/Game/…/Name.Name`〉や `WasamiAssets::ClassPath`〈→ `…/BP_Name.BP_Name_C`〉で既定のパスを入れる）、使うとき（`BeginPlay`・`RebuildWidget`）に `LoadSynchronous` で読む。`ConstructorHelpers` で読むとエディタの起動時の読み込みでルートに入り、パイプラインが作り直そうとするとエディタが落ちる（01 記録の注意点）。
@@ -165,3 +165,4 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - 2026-09-16: 当たりのチャンネル `Teleport`（旧版の既定 Overlap）を足した
 - 2026-09-16: 焼き込みを原作と同じ High 品質にし（Zone 1 は 105.7 秒、Zone 2 は 48.0 秒で初めて焼いた）、結果の表に High の列を足した。残りの差は品質によらないこと、焼き込みの警告が原作どおりであることを書いた
 - 2026-09-16: 原作の `r.UsePreExposure=False` の代わりに `r.EyeAdaptation.PreExposureOverride=1` を入れた（テレポートの閃光の後の黒いフレームの対処。ユーザーの決定）
+- 2026-09-18: 依存に `LevelSequence`・`MovieScene` を足した（ゾーンの流れがシーケンスを再生する。作業一覧の項目 6 のステップ 3a）

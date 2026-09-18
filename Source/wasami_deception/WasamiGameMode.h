@@ -4,11 +4,14 @@
 #include "GameFramework/GameModeBase.h"
 #include "WasamiGameMode.generated.h"
 
+class AWasamiZoneFlow;
 class UWasamiGameInstance;
 class UWasamiSaveGame;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiDeathSignature, AActor*, Cause);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiAllShardsAlreadyCollectedSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiCollectShardSignature);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiAllShardsCollectedSignature);
 
 /**
  * The game's mode, after Dark Deception's BP_DD_GameMode (pak_reference_2): spawns the player (AWasamiPlayerCharacter)
@@ -16,7 +19,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiAllShardsAlreadyCollectedSignature);
  * begins, counts the time played, takes the shards collected before a reopening out of the level, and passes a death on
  * to whoever listens (Death Dispatcher). The hospital's zones have no level Blueprints of their own here, so it also
  * does their part: the player starts at the saved checkpoint's player start (their Spawn), a death shows the death
- * screen and pauses the game (their DeathEvent), and a checkpoint's save shows SAVING PROGRESS.
+ * screen and pauses the game (their DeathEvent), and a checkpoint's save shows SAVING PROGRESS; the rest of a zone's
+ * level Blueprint is its AWasamiZoneFlow, which the mode spawns when play begins.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiGameMode : public AGameModeBase
@@ -30,8 +34,8 @@ public:
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	/**
-	 * Current Objective: the tablet's band shows it in upper case. The hospital's Zone 1 sets it to COLLECT ALL SHARDS
-	 * once the player is on their way (pak_reference_2's 06_Hospital_Zone_01, @2293).
+	 * Current Objective: the tablet's band shows it in upper case. Empty until a zone's flow sets one (the original's
+	 * default); Zone 1 sets COLLECT ALL SHARDS past the lift's door.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game")
 	FText CurrentObjective;
@@ -58,6 +62,25 @@ public:
 	/** All Shards Already Collected: the level reopened with every shard in it collected before. */
 	UPROPERTY(BlueprintAssignable, Category = "Game")
 	FWasamiAllShardsAlreadyCollectedSignature OnAllShardsAlreadyCollected;
+
+	/**
+	 * Check Shards: a shard was collected (the shard calls it; the zones call it once a second after the shards are
+	 * wanted). Broadcasts Collect Shard at once and, 0.05 s later, counts the level's shards: none left broadcasts All
+	 * Shards Collected. A check already waiting is not put back (the original's Delay).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void CheckShards();
+
+	/** Collect Shard. */
+	UPROPERTY(BlueprintAssignable, Category = "Game")
+	FWasamiCollectShardSignature OnCollectShard;
+
+	/** All Shards Collected: the zone's flow listens while its shards are wanted. */
+	UPROPERTY(BlueprintAssignable, Category = "Game")
+	FWasamiAllShardsCollectedSignature OnAllShardsCollected;
+
+	/** The zone's flow spawned when play began, or null outside the zones. */
+	AWasamiZoneFlow* GetZoneFlow() const { return ZoneFlow; }
 
 	/** Pause Time Counter and Unpause Time Counter: the gate the tick counts through. */
 	UFUNCTION(BlueprintCallable, Category = "Game")
@@ -129,6 +152,9 @@ public:
 	/** Zone 1's level, which Zone 2 opens without a checkpoint (the original opens the entrance). */
 	static const TCHAR* Zone1LevelName;
 
+	/** Zone 2's level, which Zone 1 opens from the ambulance's roof. */
+	static const TCHAR* Zone2LevelName;
+
 	/** The fade from black a level opens with (UMG_BlackFade_2 fading out at 10, Z 10). */
 	static constexpr float OpeningFadeSpeed = 10.f;
 	static constexpr int32 OpeningFadeZOrder = 10;
@@ -146,6 +172,9 @@ private:
 
 	/** 0.2 s after BeginPlay: Total Shards, and the collected shards taken out. */
 	void RemoveShardsToBeRemoved();
+
+	/** Check Shards' count, 0.05 s after the shard. */
+	void CountShardsLeft();
 
 	/** Reads the save and settles StartCheckpoint, once (the player is placed before BeginPlay). */
 	void PrepareStart();
@@ -166,4 +195,8 @@ private:
 	int32 StartCheckpoint = 0;
 	bool bStartPrepared = false;
 	FTimerHandle ShardRemovalTimer;
+	FTimerHandle CheckShardsTimer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AWasamiZoneFlow> ZoneFlow;
 };

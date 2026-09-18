@@ -3,6 +3,7 @@
 #include "../WasamiDeathScreenWidget.h"
 #include "../WasamiGameInstance.h"
 #include "../WasamiGameMode.h"
+#include "../WasamiLoadingWidget.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiSavingWidget.h"
 #include "../WasamiShard.h"
@@ -213,7 +214,7 @@ bool FWasamiGameFlowCheckpointsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("4: the lift"), M::PlayerStartTagFor(1, 4), FName(TEXT("04_Start")));
 	TestEqual(TEXT("5"), M::PlayerStartTagFor(1, 5), FName(TEXT("05_Start")));
 	TestEqual(TEXT("6"), M::PlayerStartTagFor(1, 6), FName(TEXT("06_Start")));
-	TestEqual(TEXT("7: the arrival"), M::PlayerStartTagFor(2, 7), FName(TEXT("PlayerStart_1")));
+	TestEqual(TEXT("7: the cell (its scene left out)"), M::PlayerStartTagFor(2, 7), FName(TEXT("PlayerStart_Cell")));
 	TestEqual(TEXT("8"), M::PlayerStartTagFor(2, 8), FName(TEXT("PlayerStart_MiniBoss")));
 	TestEqual(TEXT("9"), M::PlayerStartTagFor(2, 9), FName(TEXT("PlayerStart_Maze")));
 	TestEqual(TEXT("10"), M::PlayerStartTagFor(2, 10), FName(TEXT("PlayerStart_PostMaze")));
@@ -268,6 +269,32 @@ bool FWasamiGameFlowSavingTest::RunTest(const FString& Parameters)
 	Fade->Advance(0.1f);
 	TestTrue(TEXT("done by 0.55 s"), Fade->IsFinished());
 	TestEqual(TEXT("clear"), Fade->GetOpacity(), 0.f, 1e-4f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiGameFlowLoadingTest, "Wasami.GameFlow.Loading",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiGameFlowLoadingTest::RunTest(const FString& Parameters)
+{
+	using L = UWasamiLoadingWidget;
+	// FadeIn: 0 → 1 over 0.5 s, flat at both keys; played back from its end 2.5 s on.
+	TestEqual(TEXT("FadeIn starts clear"), L::EvaluateFadeIn(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("half way at 0.25 s"), L::EvaluateFadeIn(0.25f), 0.5f, 1e-3f);
+	TestEqual(TEXT("whole by 0.5 s"), L::EvaluateFadeIn(L::FadeInLength), 1.f, 1e-4f);
+	TestEqual(TEXT("held at 2 s"), L::EvaluateOpacity(2.f), 1.f, 1e-4f);
+	TestEqual(TEXT("still whole as the fade out starts"), L::EvaluateOpacity(L::FadeOutDelay), 1.f, 1e-3f);
+	TestEqual(TEXT("half way out"), L::EvaluateOpacity(L::FadeOutDelay + 0.25f), 0.5f, 1e-3f);
+	TestEqual(TEXT("gone by 3 s"), L::EvaluateOpacity(3.01f), 0.f, 1e-4f);
+
+	UWasamiLoadingWidget* Loading = NewObject<UWasamiLoadingWidget>();
+	for (int32 Frame = 0; Frame < 209; ++Frame)
+	{
+		Loading->Advance(1.f / 60.f);
+	}
+	TestFalse(TEXT("on the screen until 3.5 s"), Loading->IsFinished());
+	Loading->Advance(2.f / 60.f);
+	TestTrue(TEXT("off at 3.5 s"), Loading->IsFinished());
 	return true;
 }
 

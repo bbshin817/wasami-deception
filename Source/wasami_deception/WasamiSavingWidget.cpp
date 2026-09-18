@@ -25,7 +25,7 @@ namespace
 	const FAnimKey ThrobberKeys[] = {{0., 0.f, 0., 0.}, {30000., 0.5f, 4.1666667129902635e-06, 4.1666667129902635e-06},
 		{120000., 0.5f, -4.1666667129902635e-06, -4.1666667129902635e-06}, {150000., 0.f, 0., 0.}, {180000., 0.f, 0., 0.}};
 
-	void Place(UCanvasPanel* Panel, UWidget* Child, const FMargin& Offsets)
+	void PlaceInSaving(UCanvasPanel* Panel, UWidget* Child, const FMargin& Offsets)
 	{
 		// Both hang from the bottom right corner at their size (bAutoSize), aligned by their top left.
 		UCanvasPanelSlot* Slot = Panel->AddChildToCanvas(Child);
@@ -78,7 +78,7 @@ TSharedRef<SWidget> UWasamiSavingWidget::RebuildWidget()
 		Font.Size = 24.f;
 		Text->SetFont(Font);
 		Text->SetRenderOpacity(0.f);
-		Place(Root, Text, FMargin(-300.f, -60.f, 151.f, 40.f));
+		PlaceInSaving(Root, Text, FMargin(-300.f, -60.f, 151.f, 40.f));
 
 		// Throbber_207: one 25 × 25 piece that stays put (its opacity still pulses, as UMG's default), left of the words.
 		Throbber = WidgetTree->ConstructWidget<UThrobber>(UThrobber::StaticClass(), TEXT("Throbber_207"));
@@ -90,7 +90,7 @@ TSharedRef<SWidget> UWasamiSavingWidget::RebuildWidget()
 		Piece.ImageSize = FVector2D(25.f, 25.f);
 		Throbber->SetImage(Piece);
 		Throbber->SetRenderOpacity(0.f);
-		Place(Root, Throbber, FMargin(-332.f, -56.f, 22.63878059387207f, 40.f));
+		PlaceInSaving(Root, Throbber, FMargin(-332.f, -56.f, 22.63878059387207f, 40.f));
 	}
 	return Super::RebuildWidget();
 }

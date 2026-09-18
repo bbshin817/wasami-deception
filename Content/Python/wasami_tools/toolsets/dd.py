@@ -39,10 +39,12 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     @staticmethod
     def import_dd_tablet() -> dict[str, int]:
         """Imports (or re-imports) everything the player's tablet needs: its mesh, materials and textures, the screen's
-        UI textures and font, the woosh sounds, and the minimap's render target, map images and materials.
+        UI textures and font, the woosh sounds, the minimap's render target, map images and materials, and the map's
+        arrow's material (M_Arrow_Inst, WasamiArrowPointer's plane).
 
         Returns:
-            How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap').
+            How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap',
+            'arrow').
         """
         _module("dd_stage")
         _module("dd_assets")
@@ -53,14 +55,47 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     def import_dd_ui() -> dict[str, int]:
         """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
-        heading font and select sound come with import_dd_tablet.
+        heading font and select sound come with import_dd_tablet. Also the door breaks' lock (WasamiSwitchboxWidget,
+        WasamiDoorBreak): the ring and spark materials and their textures, the lockpicking SoundCue and the sounds of
+        the lock giving (its key's font comes with import_dd_tablet). And the loading screen's portal sound
+        (WasamiLoadingWidget, which Zone 1 shows as it opens Zone 2).
 
         Returns:
-            How many assets of each kind were made ('textures', 'fonts', 'sounds').
+            How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
+            '_sounds', '_sound_cues', '_attenuations', '_materials', and 'loading_sounds').
         """
         _module("dd_stage")
         _module("dd_assets")
         return _module("dd_ui").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_dd_gimmicks() -> dict[str, int]:
+        """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
+        sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
+        hum and shatter, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
+        after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
+        their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
+        the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
+        Fracture_dark_slow, Concrete_impact_large, their textures and estimated materials); Zone 2's lifts: the clunk,
+        the movement loop and the garage lifts' rising sound; the garage lifts' skinned mesh and its animation (after
+        import_dd_stage_assets, which makes its materials). The doors' and lifts' meshes and materials come with the
+        stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
+        systems on their emitters (place_dd_sequences those the sequences fire).
+
+        Returns:
+            How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues',
+            'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
+            'doors_busted_sounds', '_textures', '_materials', '_particle_systems', 'cell_sounds', '_textures',
+            '_materials', '_particle_systems', 'lift_attenuations', '_sounds', and 'garage_lift_skeletal_meshes',
+            '_animations').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        _module("gltf")
+        _module("dd_enemy")
+        _module("dd_skeletal")
+        return _module("dd_gimmicks").import_all()
 
     @toolset_registry.tool_call
     @staticmethod

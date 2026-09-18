@@ -115,7 +115,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 ### 取り込み
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
 2. `M_DD_WasamiGltf`（`dd_assets.material` + `_build_master`）: glTF の metallic-roughness の係数 1 の形。色 → Base Color、金属と粗さの B → Metallic、G → Roughness、法線 → Normal。片面、`used_with_skeletal_mesh`。`MI_WasamiEnemy` はそのインスタンスでテクスチャ 3 枚を入れる。
-3. `ensure_skeletal_pipeline`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を `PL_Wasami_Skeletal` に写し、種類ごとのフォルダなし、`use_source_name_for_asset` 偽・`asset_name` 空（こうするとメッシュは glTF のメッシュの名前、スケルトンと物理アセットはその `_Skeleton`・`_PhysicsAsset`、アニメは glTF のアニメの名前そのままになる。Interchange の `ImplementUseSourceNameForAssetOption`）、材質とテクスチャの取り込みなし、スタティックメッシュなし、Nanite なし、物理アセットあり、モーフなし、アニメあり・30 Hz で焼く。
+3. `ensure_skeletal_pipeline`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を `PL_Wasami_Skeletal` に写し、種類ごとのフォルダなし、`use_source_name_for_asset` 偽・`asset_name` 空（こうするとメッシュは glTF のメッシュの節の名前〈節が無名なら `<ファイル>_node_<番号>`。2026-09-18 に `dd_skeletal` で分かった〉、スケルトンと物理アセットはその `_Skeleton`・`_PhysicsAsset`、アニメは glTF のアニメの名前そのままになる。Interchange の `ImplementUseSourceNameForAssetOption`）、材質とテクスチャの取り込みなし、スタティックメッシュなし、Nanite なし、物理アセットあり、モーフなし、アニメあり・30 Hz で焼く（引数 `pipeline`・`sample_rate` で別の管を別の速さで作れる。本家の骨入りのメッシュの `dd_skeletal` が `PL_DD_Skeletal` を 24 Hz で作る。01・12 記録）。
 4. `_import_model`: 前処理した glb（メッシュと節の名前を `SK_WasamiEnemy` にしてある）を `/Game/Wasami/Enemy` に置き換えで取り込み（既にあるアセットは同じオブジェクトに書き戻す。**ファイル名はどのアセットとも違う `WasamiEnemy.glb`**: UE 5.8 の `InterchangeManager.cpp` は、置き換えの取り込みでファイル名と同じ名前のアセットが行き先にあると、そのアセットだけの再取り込みに変える。2026-09-18 まで `SK_WasamiEnemy.glb` だったので、2 回目からはメッシュだけが置き換わりアニメは最初の取り込みのままだった）、スロット 1（`BakedMaterial`）に `MI_WasamiEnemy` を入れ、`ROLES` のアニメが全部あるかを確かめる。取り込みは呼び出しの中で終わる。
 
 ## 作るアセット
@@ -142,7 +142,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - エンジン: `InterchangeManager`・`InterchangeGenericAssetsPipeline`、`SkeletalMesh`・`AnimSequence`。
 - アニメの再生: エンジンの `FAnimInstanceProxy`（`PreEvaluateAnimation`・`Evaluate`）、`FAnimationRuntime::BlendPosesTogether`、`FAlphaBlend::AlphaToBlendOption`、`WasamiAssets::Path`（00 記録）。追加のモジュールは要らない（`Engine` だけ）。
 - 敵のアクタ: `ACharacter`・`UCharacterMovementComponent`・`FTimerManager`、`IWasamiEnemyInterface`（04 記録）、`WasamiAssets::Path`。
-- 使う側: アニメの再生が取り込んだクリップを名前で読み、持ち主の敵のアクタから値を読む。パワー（04 記録）の Primal Fear（球の重なりの Pawn とインターフェース）・Vanish（タグ `Enemy` とインターフェース）・Telepathy（インターフェース）が敵のアクタに届く。
+- 使う側: アニメの再生が取り込んだクリップを名前で読み、持ち主の敵のアクタから値を読む。パワー（04 記録）の Primal Fear（球の重なりの Pawn とインターフェース）・Vanish（タグ `Enemy` とインターフェース）・Telepathy（インターフェース）が敵のアクタに届く。2 つの状態の混ぜ `FWasamiStateBlend` はガレージリフトのアニメ（12 記録）も使う。
 
 ## 既知の制約・注意点
 - glb に**ルートの骨が無い**ので、UE のルートモーションは使えない。前へ進むアニメは前処理でその場の形にした（捕獲の 3 本は捕獲の別室で使うので進んだまま）。
@@ -169,3 +169,4 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - 2026-09-18: 敵のアクタのメッシュを X・Y・Z とも `MeshScale`（1.3591。本家のナースと頭頂の骨の高さをそろえる）倍にし、再生の速さの分母（歩幅の速さ）も同じ倍率にした。テストの期待値を直し、`Defaults` に拡縮を足した（ユーザーの指摘「敵ワサミが極端に小さい」）
 - 2026-09-18: 気絶のアニメを「倒れる（`BeHit_FlyUp`・`Knock_Down` のどちらか）→ 寝返り → `push_up_to_idle` で起き上がる」に替えるため、取り込みの役を `Stun_FlyUp`・`Stun_KnockDown`・`Stun_GetUp_FlyUp`・`Stun_GetUp_KnockDown` にした（`stun_fall`・`stun_get_up`。ユーザーの指示と回答「ランダム」「Claude が寝返りを作る」）。`Stun_Loop`・`Stun_Recover` と役なしの 3 本はやめた。アニメの再生はまだ古いクリップを探す（作業ブランチ `feature/enemy-stun-knockdown` のステップ 2 で直す）
 - 2026-09-18: アニメの再生の気絶を「倒れる 2 本からランダム → 終わりで止まる → 起き上がり（気絶の終わりに終わる）」にし、起き上がりに入る更新で敵を移す（`MoveToGetUp`・`MeasureGetUpMove`）ようにした。明けてブレンドアウトする間は気絶の時刻を進めない。テスト `Anim.Stun`・`Anim.Clips`・`Actor.Stun` を直した（作業ブランチのステップ 2。PIE で確かめた）
+- 2026-09-18: `ensure_skeletal_pipeline` に管と焼く速さの引数を足した（本家のガレージリフトのアニメを 24 Hz で焼くため。既定は前のまま。作業一覧の項目 6 のステップ 8b1）

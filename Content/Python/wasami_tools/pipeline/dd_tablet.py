@@ -1,12 +1,13 @@
 """Dark Deception's tablet: the plate the player holds (mesh, materials, textures), the screen's UI textures and font,
 the two woosh sounds, and the minimap (the level's map plane, the render target the player's scene capture draws into,
-and the materials that show it).
+the materials that show it, and the arrow on the map).
 
 Everything lands under /Game/DD mirroring the original's own /Game tree, except the master materials we have to write
 ourselves (the originals' graphs are cooked away), which go next to the stage's under /Game/Pipeline/Materials:
   M_DD_MapPlane   MM_Map_Parent — the map image on a plane in the world, read by the capture's SCS_BaseColor
   M_DD_MapScreen  M_NewMap — the capture's render target on the tablet's screen (a User Interface material)
   M_DD_Powers     MM_Powers — a power's icon in colour over the grey one, clockwise from 12 o'clock by `Percent`
+  M_DD_Arrow      M_Arrow — the map's arrow (BP_ArrowPointer's plane), a pulse of its `Color` cut out by T_Arrow
 
 Sources: pak_reference (UE 4.21) for the tablet and its UI, pak_reference_2 (UE 4.24) for the hospital's map images
 and the icons of the four powers the older tablet does not show (Telepathy, Primal Fear, Telekinesis, Vanish).
@@ -23,6 +24,7 @@ MEL = unreal.MaterialEditingLibrary
 MAP_PLANE_MASTER = "/Game/Pipeline/Materials/M_DD_MapPlane"
 MAP_SCREEN_MASTER = "/Game/Pipeline/Materials/M_DD_MapScreen"
 POWERS_MASTER = "/Game/Pipeline/Materials/M_DD_Powers"
+ARROW_MASTER = "/Game/Pipeline/Materials/M_DD_Arrow"
 
 # The original's own paths, under /Game/DD.
 MESH = "Meshes/Player/Tablet/tablet_new_pCube2"
@@ -58,6 +60,9 @@ TEXTURES = (
     # The hospital's baked maps (the plane in the level carries them; chapter 6 is not in the older export).
     (2, "UI/Minimap/T_06_Zone01"),
     (2, "UI/Minimap/T_06_Zone2"),
+    (2, "UI/Minimap/T_06_Zone2_02"),       # Zone 2's upper floor (BP_MapTexture_MultiFloor's Map)
+    # The map's arrow (M_Arrow's texture).
+    (2, "Materials/Special/T_Arrow"),
 )
 
 # The tablet's two material slots: (the original's material, its albedo). Normal and packed are shared.
@@ -88,6 +93,11 @@ POWERS = (("Materials/MasterMaterials/MM_Powers_SpeedBoost", "ring_altar_power_s
           ("Materials/MasterMaterials/MM_Powers_Inst_Telekinesis", "ring_altar_power_telekinesis_icon"),
           ("Materials/MasterMaterials/MM_Powers_Vanish", "ring_altar_power_vanish_icon"))
 POWER_ICONS = "UI/RingAltar_UI/Textures/"
+# The map's arrow: the original's M_Arrow (its graph cooked away) as an instance of M_DD_Arrow with its default Color,
+# and M_Arrow_Inst, the one BP_ArrowPointer's plane has, as an instance of that with its own.
+ARROW = "Materials/Special/M_Arrow"
+ARROW_INSTANCE = "Materials/Special/M_Arrow_Inst"
+ARROW_TEXTURE = "Materials/Special/T_Arrow"
 
 
 def _tools():
@@ -245,6 +255,41 @@ def _build_powers(mat):
     g.out(alpha, "", unreal.MaterialProperty.MP_OPACITY)
 
 
+def _build_arrow(mat):
+    """M_Arrow, read from its compiled base pass (Tools/dd/cooked_shaders.py "Materials/Special/M_Arrow." --show 23):
+    the base and emissive colour are Lerp(Color + 0.6, Color, sin(2π Time)) — a pulse a second between the colour and a
+    whiter one — and T_Arrow's red is the opacity mask (a plain texture sample, not a parameter, as the original's).
+    The base colour is what the minimap's capture reads (SCS_BaseColor)."""
+    g = dd_stage._Graph(mat)
+    _, vectors = dd_assets.parameter_defaults(ARROW, 2)
+    colour = g.vector("Color", vectors["Color"], -900, -100)
+    whiter = g.node(unreal.MaterialExpressionAdd, -650, -250)
+    whiter.set_editor_property("const_b", 0.6)
+    dd_assets.connect(colour, "RGB", whiter, "A")
+    time = g.node(unreal.MaterialExpressionTime, -900, 150)
+    wave = dd_assets.single(g, unreal.MaterialExpressionSine, time, "", -650, 150)
+    pulse = g.lerp(whiter, "", colour, "RGB", wave, "", -400, -100)
+    g.out(pulse, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    g.out(pulse, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    tex = g.node(unreal.MaterialExpressionTextureSample, -650, 350)
+    tex.set_editor_property("texture", unreal.load_asset(asset(ARROW_TEXTURE)))
+    g.out(tex, "R", unreal.MaterialProperty.MP_OPACITY_MASK)
+
+
+def make_arrow_materials():
+    """M_DD_Arrow (masked, the default clip value 0.3333 as the original's), M_Arrow with its default Color and
+    M_Arrow_Inst with its own Color and base property overrides. Returns M_Arrow_Inst's path."""
+    master = dd_assets.material(ARROW_MASTER, _build_arrow, blend_mode=unreal.BlendMode.BLEND_MASKED)
+    _, vectors = dd_assets.parameter_defaults(ARROW, 2)
+    base = dd_assets.material_instance(asset(ARROW), master, vectors=vectors)
+    scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(ARROW_INSTANCE, 2)
+    if scalars or textures or masks or switches:
+        raise RuntimeError("%s sets more than Color: %s" % (ARROW_INSTANCE, (scalars, textures, masks, switches)))
+    mic = dd_assets.material_instance(asset(ARROW_INSTANCE), base, vectors=vectors)
+    dd_assets.base_property_overrides(mic, ARROW_INSTANCE, 2)
+    return asset(ARROW_INSTANCE)
+
+
 def make_minimap_materials():
     """The three masters and the instances the level and the screen use."""
     ensure_render_target()
@@ -279,6 +324,7 @@ def import_all():
     result["fonts"] = 1 if import_font() else 0
     result["sounds"] = len(import_sounds())
     result["minimap"] = len(make_minimap_materials())
+    result["arrow"] = 1 if make_arrow_materials() else 0
     for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT):
         EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

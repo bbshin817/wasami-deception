@@ -123,6 +123,14 @@
 - 確かめ方: `list_toolsets`。
 - 出典: `.claude/guides/unreal-workflow.md`、01 記録。
 
+### Wasami のツールセットが全部 MCP に出ない / `from wasami_tools.pipeline import …` が `ToolCallMissingAnnotation: Type <class 'dict'>: missing specification for contained type.` で失敗する
+
+- 症状: エディタを開き直すと `list_toolsets` に `WasamiDDTools`・`WasamiStageTools`・`WasamiDevTools` が無い。リモート実行で `wasami_tools` の下を読むと上の例外（`toolsets\stage.py` の `@toolset_registry.tool_call` から）。
+- 原因: ツールの戻り値（か引数）の型注釈が素の `dict`（中身の型が無い）。クラスの定義ごと失敗し、`wasami_tools/__init__.py` の読み込みが止まる。読み込み直しの間は前のクラスが残るので、開き直すまで気付かない（2026-09-18 の `place_dd_sequences`）。
+- 対処: `dict[str, int]` のように中身の型まで書く。値の型が混ざるなら JSON の文字列（`-> str`）を返す。
+- 確かめ方: リモート実行で `import wasami_tools` が通る。開き直した後の `list_toolsets`。
+- 出典: 01 記録の「登録」。
+
 ### Python のツールセット（`WasamiDDTools` など）が `unreal.` の下に無い
 
 - 症状: リモート実行で `unreal.WasamiDDTools` が `AttributeError`。
@@ -244,8 +252,17 @@
 - 症状: 変えていないファイルで再定義や曖昧な参照のエラー、または `warning C4458: declaration of 'Slot' hides class member`（警告がエラー扱い）。
 - 原因: ユニティビルドでファイルのまとまり方が変わり、無名名前空間の同じ名前（`WaveVolume`・`WavePitch`・`FadeKeys`・`EnemyTag`・`VignetteScale`）が 1 つの翻訳単位に入る。C4458 はローカル変数が `UWidget::Slot`・`UUserWidget::bInitialized` などを隠す。
 - 対処: 定数や補助の名前はファイルごとに固有にし、UE のメンバー名と同じローカル変数を避ける。ファイルを足さなくても、ヘッダーを 1 つ変えて再コンパイルの範囲が変わるだけで起きる（2026-09-18: `WasamiEnemyAnimInstance.h` の定数を変えたら `WasamiEnemy.cpp` と `Tests/WasamiTestEnemy.cpp` の `EnemyTag` がぶつかった。テスト側を `TestEnemyTag` にした）。
+- 2026-09-18: 新しいファイルを 7 つ足したら、既存のファイル同士（`WasamiPopUpWidget.cpp` と死亡画面の `ButtonGrey`・`Place`、パワーの `OpacityKeys`、`WasamiTelepathyTrackerWidget.cpp` の自前の `FAnimKey` と `using WasamiWidgetAnimation::FAnimKey`、`WasamiBlackFadeWidget.cpp` と死亡画面の `FadeInKeys`）がぶつかって 2 回落ちた。**先に重複を洗い出すと 1 回で済む**: 各 `.cpp` の `namespace { … }` の中の `const`/`constexpr` の名前・関数名・`struct` 名を集め、2 つ以上のファイルにあるもの（`using` の宣言は同じ実体なので除く）を片方で固有の名前に改める。
+- 2026-09-18: **エンジンのヘッダーの引数名ともぶつかる**（`error C4459: declaration of 'BoxExtent' hides global declaration`）。無名名前空間の名前はその翻訳単位では大域に見えるので、同じ塊に入った `Kismet/KismetMathLibrary.inl` の `BreakBoxSphereBounds(…, FVector& BoxExtent, …)` が `WasamiDoorBreak.cpp` の `BoxExtent` を隠すと言われた（`WasamiDoubleDoors.cpp` を足して塊が変わった）。`BoxExtent`・`ComponentScale` のような一般の名前は避け、ファイルの頭字を付ける（`DoorBreakBoxExtent`・`DoorsLeaveScale`）。
 - `Tools/editor_cycle.py` はビルドに失敗するとエディタを閉じたままにする。直したら `python Tools/editor_cycle.py --no-quit` でビルドして開く。
-- 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4。
+- 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4、11 記録（作業一覧の項目 6 のステップ 1・3c）。
+
+### Automation テストで、タイマー（`Delay`・`SetTimer`）が進まない
+
+- 症状: テストのワールドで `TickTestWorld(7.1)` のように長く進めても、7 s のタイマーが発火しない。0.05 s のタイマーは発火する。
+- 原因は 2 つ: (1) ティックとティックの間（テストの本文）で置いたタイマーは保留（`FTimerManager` の `PendingTimerSet`）になり、次のティックの**終わり**で有効になるだけで、そのティックの分は進まない。(2) ワールドのティックの経過は `AWorldSettings::FixupDeltaSeconds` が `MaxUndilatedFrameTime`（0.4 s）で切る。`FTestWorldWrapper::TickTestWorld` は 1 回ごとに `GFrameCounter` を進めるので、フレームの重なりは原因ではない。
+- 対処: 0 秒のティックを 1 回挟んでから、0.1 s 刻みでティックする（`Tests/WasamiZoneFlowTests.cpp` の `Advance`）。
+- 出典: 11 記録の「既知の制約」（作業一覧の項目 6 のステップ 1。ビルドし直し 2 回）。
 
 ### Automation テストで、一時的なワールドのアクタがイベントを捨てる
 
@@ -445,6 +462,26 @@
 - 対処: 撮る前に `python Tools/desktop.py shot --region 1826 205 2400 320` でビューポートの左上だけ撮って、文字が出ていないことを確かめる。
 - 出典: 同上。
 
+### 粒子（Cascade）を組み直すと `Assertion failed: (Index >= 0) & (Index < ArrayNum)` でエディタが落ちる（取り込みの失敗の後、次の `does_asset_exist` か保存で）
+
+- 症状: `dd_particles.particle_system` が途中の例外（値の書き方が無い等）で止まった後、同じシステムを作り直す・何かが資産を問い合わせると、エディタが Python → EditorScriptingUtilities → AssetRegistry → Engine の中で落ちる。
+- 原因: 作りかけのシステムに、LOD レベルをまだ持たないエミッタが残る。`UParticleSystem::GetAssetRegistryTags` → `HasGPUEmitter` が `LODLevels[0]` を範囲の確かめなしに読む。
+- 対処: `_Build.run` は失敗したらシステムを空に戻してから例外を上げる（2026-09-18）。すでに残っているときは、資産レジストリを通さずに `unreal.find_object(None, '<パス>.<名前>')` で取って `WasamiCascadeLibrary.reset_particle_system` で空にする。
+- 出典: 作業一覧の項目 6 のステップ 4b（`Fracture_concrete_3`。エディタの開き直し 2 回）。
+
+### GPU のエミッタを持つ粒子を組み直すと `FinishParticleSystem` の中で `EXCEPTION_ACCESS_VIOLATION reading address 0x10`
+
+- 原因: エディタは GPU のエミッタ（`ParticleModuleTypeDataGpu`）のシミュレーションを、モジュールの分布オブジェクトから作る（`UParticleEmitter::Build` → `CompileModule`。`UParticleModuleColorOverLife` は `ColorOverLife.Distribution->IsA` を確かめずに読む）。cook は分布を焼き込みの表だけにしていて、オブジェクトが無い。GPU のエミッタの `EmitterInfo`・`ResourceData` もこの組み立てが作るもの（書き出しの値は書かない）。
+- 対処: `dd_particles` が GPU のエミッタのモジュールに、表から分布オブジェクトを作る（`_table_distribution`: 1 つなら定数か一様、複数なら表の点を通る直線の曲線）。**ただし cook の表は GPU のエミッタでは作り直されていないことがあり**（`Fracture_concrete_3` の DustTrail は、表の色が 1 → 0.36 なのに cook の `ResourceData` は一定の 0.078、大きさも表の上限 1 に対して約 6 倍）、見え方は本家とずれる（作業一覧の後回しの一覧）。
+- 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
+
+### 粒子が出て 1 秒ほどで `Array index out of bounds: 127 into an array of size 127`（PIE・エディタが落ちる）
+
+- 症状: 流れが `Fracture_concrete_5` を起こした約 1 s 後、ワーカースレッドの粒子の更新の中で落ちる。
+- 原因: 書いた焼き込みの表の `Values` が `EntryCount` より 1 つ少ない。UE のテキストの取り込みは、配列の中で指数の形（`-5.506497109308839e-05`）で書いた数の**次の要素を失う**（単独の値の `TimeBias=-9.3e-10` は正しく読む）。表の終わりの読み出し（`FDistributionLookupTable::GetEntry` は `EntryCount - 1` で切るだけ）が範囲の外へ出る。
+- 対処: `dd_particles._number` は指数の形を使わず、`decimal` で正確な小数で書く（2026-09-18）。組んだ粒子の表の長さは、エディタで `Values` の数と `EntryCount × EntryStride` を比べて確かめる（2026-09-18 に /Game/DD・/Game/Pipeline の 6 つを確かめ、短かったのは `Fracture_concrete_3` だけ）。
+- 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている
@@ -550,6 +587,14 @@
 - 原因: Steam が動いていると manifest を書き戻す。app 332950 は登録を 1 つしか持てず、旧版を指したまま Steam が更新すると旧版のフォルダが上書きされる。
 - 対処: 触るときは Steam を完全に終了してから。登録は最新版（`installdir = Dark Deception`）のままにする。
 - 出典: コミット dca8e00（2026-09-16）、`.claude/guides/verification.md`。
+
+### 収録中に救急車の屋根からプレイヤーが落ちる（Zone 1 の救急車が走り出して約 1.5 s）
+
+- 症状: テレポーテーションで救急車の屋根へ渡り、GDI の 60 fps で PIE を収録していると、救急車が走り出して約 1.5 s（約 700 cm/s）でプレイヤーが屋根の後ろへ抜けて落ち、救急車だけがトンネルへ去る（読み込み画面と Zone 2 には進む）。収録しない・`place` で屋根の真ん中に置く・`slomo 0.2` では落ちない。
+- 原因: 屋根の後ろの壁 `BlockingVolume_Ambulance_3`（厚さ 20 cm、シーケンスが掃引なしで動かす）。テレポーテーションは後ろから狙うので屋根の後ろの端（壁から約 8 cm）に着き、収録の負荷でフレームレートが下がると 1 フレームの救急車の進みが隙間を超えて、壁がカプセルに食い込み後ろへ押し出される（推定。`t.MaxFPS 25` なら収録なしでも壁から 8 cm では落ち、真ん中では落ちない）。11 記録の既知の制約。
+- 対処: 収録は `desktop.py record --grab gdi --fps 30`、テレポーテーションの狙いを E の後にホイールで 2 目盛り前へ寄せてから左クリック（`desktop.py scroll --dx 120 --allow UnrealEditor.exe` を 2 回。屋根の y −20000 に着く）。本作の直しはしていない（本家も同じ作り）。
+- 確かめ方: PIE のプレイヤーの `character_movement.get_movement_base()`（UE 5.8 は非推奨の警告が出るが読める）と位置。土台が `BlockingVolume_Ambulance_5` で Z 402 のまま y が増えていれば乗っている。
+- 出典: 進捗記録 `20260918-zone-progression.md`（2026-09-19 ステップ 10a）。
 
 ## 直さなくてよい既知の見え方
 

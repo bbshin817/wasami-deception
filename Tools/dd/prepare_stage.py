@@ -83,6 +83,18 @@ RELATIVE = ("RelativeLocation", "RelativeRotation", "RelativeScale3D")
 # Zone 1's floor mesh keeps the class's Z scale of 0.05, and the ambulances' roof boxes keep its engine cube as well.
 TELEPORT_ZONE_CLASS = "BP_Power_Teleport_Zone_C"
 TELEPORT_ZONE_COMPONENT = "Cube"
+# Meshes the level build puts on Blueprint actors it places itself (the class leaves them unset, and the level export
+# leaves the component's mesh out, as the class's own): Zone 2's lifts' LiftMesh (BP_06_LiftBase_Corner's and
+# BP_06_Lift_03's / _04's). They come into `meshes` with their own materials.
+CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospital_zone_02_lifts_lift_01",
+                "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_03.hospital_zone_02_lifts_lift_03",
+                "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_04.hospital_zone_02_lifts_lift_04")
+# Materials of meshes that are not the stage's static meshes: the garage lifts' skinned mesh (hospital_garage_lift_anim,
+# its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name).
+CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06_Hospital_MetalPanel_04",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_Concrete_06_Painted1.M_06_Hospital_Concrete_06_Painted1",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MetalBrushed_02.M_06_Hospital_MetalBrushed_02",
+                   "/Game/Materials/07_FunPlace/M_07_TP_DiamondPlate.M_07_TP_DiamondPlate")
 # Component properties of a placement worth carrying over (the rest is either the transform or editor bookkeeping).
 # bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
 # seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's
@@ -493,6 +505,26 @@ def teleport_zones(ex, prefix, full, actor_class, meshes, materials, problems):
     return out
 
 
+def brush_volume(by_path, component_path, problems):
+    """A volume's brush (BlockingVolume, TriggerVolume): the box of its one convex element and the brush component's
+    collision and Mobility as the level writes them (left-out ones are the volume class's own)."""
+    comp = (by_path.get(component_path) or {}).get("props") or {}
+    body = ((by_path.get(comp.get("BrushBodySetup") or "") or {}).get("props") or {}).get("AggGeom") or {}
+    elems = body.get("ConvexElems") or []
+    if len(elems) != 1:
+        problems.append("%s: %d convex elements in the brush" % (component_path, len(elems)))
+    out = {"brushBox": elems[0]["ElemBox"][:6] if elems else None}
+    instance = comp.get("BodyInstance") or {}
+    collision = {k: instance[k] for k in ("CollisionProfileName", "CollisionEnabled", "ObjectType") if k in instance}
+    responses = (instance.get("CollisionResponses") or {}).get("ResponseArray")
+    if responses:
+        collision["responses"] = {r["Channel"]: r["Response"] for r in responses}
+    out["brushCollision"] = collision
+    if comp.get("Mobility"):
+        out["brushMobility"] = comp["Mobility"]
+    return out
+
+
 def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     scene = jload("_levels/%s.scene.json" % map_name)
     full = jload("_levels/%s.full.json" % map_name)
@@ -615,9 +647,19 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     for name, cls in sorted(actor_class.items()):
         if cls in SKIP_ACTOR_CLASSES or cls is None:
             continue
-        props = {k: v for k, v in ((by_path.get(prefix + name) or {}).get("props") or {}).items()
+        own = (by_path.get(prefix + name) or {}).get("props") or {}
+        props = {k: v for k, v in own.items()
                  if not isinstance(v, (list, dict)) and not str(v).startswith(map_name + ".")}
-        actors.append({"name": name, "class": cls, "world": actor_world.get(name), "props": props})
+        for k, v in own.items():                     # a map keyed by the level's actors, by their names
+            if isinstance(v, dict) and v and all(str(x).startswith(prefix) for x in v):
+                props[k] = {actor_of(x): y for x, y in v.items()}   # BP_MapTexture_MultiFloor's Map
+        entry = {"name": name, "class": cls, "world": actor_world.get(name), "props": props}
+        root = (by_path.get(own.get("RootComponent") or "") or {}).get("props") or {}
+        if root.get("AttachParent"):
+            entry["attachParent"] = actor_of(root["AttachParent"])   # moves with it (the ambulances, the spikes)
+        if own.get("BrushComponent"):
+            entry.update(brush_volume(by_path, own["BrushComponent"], problems))
+        actors.append(entry)
 
     return {
         "map": map_name, "level": level_path, "placements": placements, "lights": lights, "captures": captures,
@@ -643,6 +685,14 @@ def main():
     zones = {}
     for key, map_name, level in ZONES:
         zones[key] = read_zone(ex, map_name, level, meshes, textures, materials, problems)
+    for mesh_path in CLASS_MESHES:
+        info = ex.mesh(mesh_path)
+        if not info:
+            problems.append("class mesh not in _meshes.json: " + mesh_path)
+            continue
+        key = note_mesh(ex, mesh_path, info, meshes, problems)
+        slot_materials(ex, meshes[key]["slots"], [], materials, problems)
+    slot_materials(ex, list(CLASS_MATERIALS), [], materials, problems)
 
     for m in materials.values():
         for kind, png in m["kinds"].items():

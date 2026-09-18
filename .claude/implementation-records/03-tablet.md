@@ -1,16 +1,24 @@
 ---
-title: タブレット（画面のウィジェットと素材、ミニマップ）
+title: タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印）
 sources:
   - Source/wasami_deception/WasamiTabletWidget.h
   - Source/wasami_deception/WasamiTabletWidget.cpp
+  - Source/wasami_deception/WasamiArrowPointer.h
+  - Source/wasami_deception/WasamiArrowPointer.cpp
+  - Source/wasami_deception/Tests/WasamiArrowPointerTests.cpp
+  - Source/wasami_deception/WasamiMapArea.h
+  - Source/wasami_deception/WasamiMapArea.cpp
+  - Source/wasami_deception/WasamiMapTextureMultiFloor.h
+  - Source/wasami_deception/WasamiMapTextureMultiFloor.cpp
+  - Source/wasami_deception/Tests/WasamiMapMultiFloorTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
-# タブレット（画面のウィジェットと素材、ミニマップ）
+# タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印）
 
 ## 役割
-本家の手持ちタブレット（`pak_reference` の `UI/Tablet/UMG_Tablet`）の画面と、それが使う素材。パワーの枠だけは、6 種のパワーを持つ最新版の `UMG_TabletPowers`（`pak_reference_2`）に倣う（何を出すかを決めるのは 04 記録のコンポーネント）。板そのものの出し入れとコンポーネントの構成はプレイヤー側（02 記録）にあり、ここは **画面の中身**（`UWasamiTabletWidget`）と **素材を原作データから作る仕組み**（`dd_tablet.py`）、そして **ミニマップの仕掛け**を受け持つ。
+本家の手持ちタブレット（`pak_reference` の `UI/Tablet/UMG_Tablet`）の画面と、それが使う素材。パワーの枠だけは、6 種のパワーを持つ最新版の `UMG_TabletPowers`（`pak_reference_2`）に倣う（何を出すかを決めるのは 04 記録のコンポーネント）。板そのものの出し入れとコンポーネントの構成はプレイヤー側（02 記録）にあり、ここは **画面の中身**（`UWasamiTabletWidget`）と **素材を原作データから作る仕組み**（`dd_tablet.py`）、**ミニマップの仕掛け**（Zone 2 の階ごとの地図: 本家の `BP_MapTexture_MultiFloor`・`BP_MapArea`。`AWasamiMapTextureMultiFloor`・`AWasamiMapArea`）、地図に写る **矢印**（本家の `BP_ArrowPointer`。`AWasamiArrowPointer`）を受け持つ。
 
 ## 公開インターフェース
 
@@ -29,9 +37,26 @@ updated: 2026-09-18
 - 素材（ソフト参照の UPROPERTY。`RebuildWidget` で読む。00 記録の決まり）: `BackgroundTexture`・`PlayerMarkTexture`・`VignetteTexture`・`MapMaterial`・`PowerMaterials`（6 つ、`EWasamiPower` の順）・`ScreenFont`。
 - `RebuildWidget()` … 初回だけ `BuildScreen` でウィジェットの木を作る。ウィジェット BP を使わないのは、原作の px をそのまま定数で持つため。
 
+### `AWasamiArrowPointer : AActor`（本家の `BP_ArrowPointer`）
+- プレイヤーが子のアクタとして持つ（02 記録の `ArrowPointer`。本家の `BP_DD_PlayerCharacter` の `BP_ArrowPointer_GEN_VARIABLE`: `CharacterMesh0` の子、(0, 0, 2000)、拡縮 (5, 5, 1)。定数 `PlayerRelativeLocation`・`PlayerRelativeScale`）。
+- `ChangeColor(FLinearColor)` … 本家の `Change Color`: 板の材質の `Color`（`Conv_LinearColorToVector` なので RGB）を `SetVectorParameterValueOnMaterials` で入れる（動的インスタンスはその場で作られる）。
+- `FindObject()`・`SetRotation()`・`SmoothRotation()` … 本家の同名のタイマーの処理（下の「地図の矢印」）。テストが直接呼ぶ。
+- `FindClosestShard()` … プレイヤーが重なる最初のゾーンのシャードチェッカー（11 記録の `AWasamiZoneShardChecker`）の箱の中のシャードのうち、プレイヤーに最も近いもの（`GetDistanceTo`、99999 cm より近いもの）。無ければ null。
+- `bShards`（本家の `Shards?`、既定 真）、`GetTarget()` / `SetTarget()`（本家の `Target`）、`GetTargetRotation()`、`GetPlane()`。定数 `RotationRate` 0.005・`FindObjectRate` 0.1・`ShardsPointedBelow` 100。
+- `ArrowMaterial`（`TSoftObjectPtr`、`/Game/DD/Materials/Special/M_Arrow_Inst`。`BeginPlay` で入れる）。
+
+### `AWasamiMapArea : AActor`（本家の `BP_MapArea`）
+- 階の上に置く箱。根が `Box`（`UBoxComponent` の既定の 32 cm。レベルのアクタの拡縮が大きさ。独自の設定で WorldStatic・WorldDynamic・Pawn に重なり、ほかは無視）。
+- `GetShards(TArray<AActor*>&)` … 本家の `Get Shards`: 箱に重なるシャード（`AWasamiShard`）。`GetBox()`。
+
+### `AWasamiMapTextureMultiFloor : AStaticMeshActor`（本家の `BP_MapTexture_MultiFloor`。`BP_MapTexture` = `StaticMeshActor` の子）
+- 階ごとに地図がある区域の地図の板（Zone 2）。`Map`（`TMap<AWasamiMapArea, UTexture>`。本家の `Map`、レベルの組み立てが入れる）。
+- `CheckMap()` … 本家の `Check Map`（下の「階ごとの地図」）。テストが待って確かめる。`GetCurrentMapArea()`・`GetDynamicMat()`。定数 `CheckMapRate` 0.9・`TextureParameter` `Texture`。
+- 板は Movable（本家は `StaticMeshActor` の Static。材質を遊びながら替え、ベイクの光に入らず〈キャプチャはベースカラーだけを読む〉、組み立てが置き直しても光が未ビルドにならないように）。
+
 ### `dd_tablet.py`（`WasamiDDTools.import_dd_tablet` から呼ぶ）
 - `import_all()` … 下の「作るアセット」を全部作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は種類ごとの数。
-- 部分ごとに `import_textures()` / `import_mesh()` / `make_body_materials()` / `import_font()` / `import_sounds()` / `ensure_render_target()` / `make_minimap_materials()`。
+- 部分ごとに `import_textures()` / `import_mesh()` / `make_body_materials()` / `import_font()` / `import_sounds()` / `ensure_render_target()` / `make_minimap_materials()` / `make_arrow_materials()`。
 - `asset(rel)` … 原作の `/Game/<rel>` を `/Game/DD/<rel>` に読み替える。テクスチャは `dd_assets.texture`（原作の sRGB・圧縮・LOD グループを `_textures.json` から入れる）、自前のマスターは `dd_assets.material` で作る（01 記録）。
 
 ## 内部構造と処理の流れ
@@ -77,25 +102,42 @@ updated: 2026-09-18
 2. プレイヤーの `USceneCaptureComponent2D`（02 記録）が、`dd_minimap` のアクタとシャードだけを `ShowOnlyActors` に入れて `T_NewMap` に描く（正射影・`SCS_BaseColor`）。カプセルの子なので視点のヨーで一緒に回り、画面中央に固定したプレイヤーの印の下で地図が回る。
 3. 画面の `Map` が `M_DD_MapScreen` 越しにそのレンダーターゲットを映す。
 
+### 階ごとの地図（Zone 2。`AWasamiMapTextureMultiFloor`・`AWasamiMapArea`）
+本家の Zone 2 は 2 つの階があり、地図の板 `BP_MapTexture_MultiFloor_2` が、プレイヤーのいる階の地図の絵と、その階のシャードの印だけを出す。レベルの組み立て（`dd_level._map_plane`、01 記録）が、Zone 2 の板をこのクラスで置き（位置 (2068, 1, −1905)・ヨー 90・拡縮 393.66、`MM_Map_06_Zone2`）、箱 2 つを本家の位置と拡縮で置き（`BP_MapArea_2`: (942, −673, 0)、`BP_MapArea2`: (942, −673, 798)、どちらも拡縮 (600, 300, 12.229) = 半径 19200 × 9600 × 391 cm）、`Map` を `BP_MapArea_2` → `T_06_Zone2`・`BP_MapArea2` → `T_06_Zone2_02` で結ぶ。箱にはタグ `dd_map_area`。
+
+- `BeginPlay`: 板の 0 番の材質から動的インスタンスを作って `Dynamic Mat` にし、0.9 s ごとに繰り返す `Check Map` のタイマーを掛ける（最初は 0.9 s 後）。
+- `Check Map`: プレイヤー（`GetPlayerCharacter(0)`）が重なる `AWasamiMapArea` の 0 番目が有効なときだけ、それを `Current Map Area` にし、`Map` で引いた絵（無ければ無し）を `Texture` に入れ、全シャードの `Plane`（地図の印。06 記録の `GetPlane`）を `SetVisibility(false)` にしてから、その箱の `Get Shards` の印だけを `SetVisibility(true)` にする。どの箱にも重ならない間（階の間の 16 cm の隙間など）は何も変えない。
+- キャプチャの `ShowOnlyActors` にはシャードが全部入ったまま（02 記録）で、隠した印は描かれない。
+
+### 地図の矢印（`AWasamiArrowPointer`）
+本家の `BP_ArrowPointer` は、プレイヤーの 20 m 上に浮かぶ板（エンジンの `Plane`、ヨー 90.000237・拡縮 1.5・影なし、`M_Arrow_Inst`）で、地図のキャプチャの Show Only に入っている（本家の `Show Only` が `GetAllActorsOfClass(BP_ArrowPointer)` を足す。本作は `RefreshMinimapContents` が足す。02 記録）。`T_Arrow` はテクスチャの上端の弧だけの絵なので、地図ではプレイヤーの印の周りの、的の側に弧が出る。
+- `BeginPlay`: 材質を入れ、ループのタイマー 3 つ（`Set Rotation`・`Smooth Rotation` は 0.005 s、`Find Object` は 0.1 s。本家の `K2_SetTimer`。フレームが長いと UE のタイマーは 1 フレームに何度も呼び、どれもそのフレームの差分を使うので、本家と同じ速さになる）を始め、プレイヤーとそのカメラを持つ（本家は `GetPlayerCharacter(0)` のキャスト。本作は親のアクタを先に見る: テストのワールドの、コントローラーの無いプレイヤーでも働くように）。
+- `Find Object`（プレイヤーが本作のプレイヤーのときだけ）: まずゾーンの流れの値を取る（11 記録の `IsArrowOnShards`・`GetArrowTarget`・`GetArrowColor`。本家のレベル BP が矢印に入れる `Shards?`・`Target`・`Change Color` を、本作は流れが持つ。`Shards?` が偽なら的は流れの的、色はまだ入れていない色のときだけ `ChangeColor`。流れの無いワールドでは何もしない）。`Shards?` なら、プレイヤーの重なるシャードチェッカーが無い → 隠す、その箱のシャードが 100 以上 → 隠す、0 か最初のものが無効 → 見せる（的はそのまま）、ほか → `FindClosestShard` を的にして見せる（本家 @359〜@1469）。`Shards?` でなければ、的が有効なら見せ、無効なら隠す（@2637）。
+- `Set Rotation`: 的が有効なら、カメラの位置と的の位置の Z を 0 にした `FindLookAtRotation`（本家の `MoreporkFunctions` の `FindLookAtRotation (YawOnly)`）を `TargetRotation` に。
+- `Smooth Rotation`: `SetActorRotation(RInterpTo(今の向き, TargetRotation, ワールドの差分, 20))`。的が有効なら、拡縮 X = `FInterpTo(今の X, MapRangeClamped(的との水平距離, 0, 3000, 7, 4) + 地図を引いていれば 10, 差分, 5)` を (X, X, 1) で `SetActorScale3D`（ワールドの拡縮。子のアクタの (5, 5, 1) は最初のティックで置き換わる）。近いほど大きい。
+- 板の当たりは無し（本家は既定の BlockAllDynamic のままで、エンジンの `Plane` は箱の当たりを持つので、幅 6〜25 m の見えない板がプレイヤーの 20 m 上を動いていた。Zone 2 の上の階の敵や光線を遮らないよう、本作は地図の印として当たりもナビゲーションも持たせない）。本家の空のティックは写さない。
+
 ### マテリアル（原作のグラフは cook で消えているので作り直したもの）
 - `M_DD_MapPlane`: `Texture` パラメータをそのままベースカラーに出す。**Unlit にしない**（キャプチャの `SCS_BaseColor` は GBuffer のベースカラーを読むので、Unlit だと何も写らない）。
 - `M_DD_MapScreen`: マテリアルドメイン User Interface、`Texture`（Linear Color サンプラ）を Final Color に、Opacity は定数 1（キャプチャの α は当てにならない）。
+- `M_DD_Arrow`（本家の `M_Arrow`。焼き込みのベースパス〈`python Tools/dd/cooked_shaders.py "Materials/Special/M_Arrow." --show 23`〉を読んだ式）: Masked（クリップは既定の 0.3333。シェーダーの `-0.3333` と同じ）。ベースカラーとエミッシブ = `Lerp(Color + 0.6, Color, sin(2π Time))`（`Sine` の周期 1。1 s ごとに色と白っぽい色の間を脈打つ。ベースカラーは 0〜1 に丸まる）、オパシティマスク = `T_Arrow` の R（パラメータでない `TextureSample`。本家も同じ）。スペキュラは既定の 0.5。キャプチャはベースカラーを読むので、地図にはこの色が写る。
 - `M_DD_Powers`: マテリアルドメイン User Interface・Translucent。UV を中心基準にし、`atan2(u, −v)` を 2π で割って 1 を足し `Frac` で 0〜1 の「12 時からの時計回りの角度」にし、`ceil(saturate(Percent − 角度))` のマスクで `EnabledPower`（灰色のアイコン）と `DisabledPower`（色つきのアイコン）を混ぜる。`Percent` 1 で全面が色つき。
 
 ## 作るアセット
-`WasamiDDTools.import_dd_tablet` が `/Game/DD`（原作の `/Game` の木をそのまま）に 42 個。
+`WasamiDDTools.import_dd_tablet` が `/Game/DD`（原作の `/Game` の木をそのまま）に 46 個。
 
 | 種類 | パス | 数・設定 |
 | --- | --- | --- |
-| テクスチャ | `Textures/Characters/Player/Tablet/Tablet_{Front_D,Back_D,N,S}`、`UI/Tablet/tablet_screen_bg`・`tablet_map_{player,shard,ring,bonus_shard,arrow}`、`UI/Menu/Streaks/T_Vignette`、`UI/RingAltar_UI/Textures/ring_altar_power_{teleport,speed_boost}_icon{,_inactive}`（`pak_reference`）と `ring_altar_power_{telepathy,primal,telekinesis,vanish}_icon{,_inactive}`（`pak_reference_2`。両版で PNG も設定も同じ）、`UI/Minimap/T_06_Zone01`・`T_06_Zone2` | 25。sRGB・圧縮・LOD グループは原作の `_textures.json` のまま（アイコンは sRGB・既定の圧縮・`TEXTUREGROUP_UI`、105 × 104） |
+| テクスチャ | `Textures/Characters/Player/Tablet/Tablet_{Front_D,Back_D,N,S}`、`UI/Tablet/tablet_screen_bg`・`tablet_map_{player,shard,ring,bonus_shard,arrow}`、`UI/Menu/Streaks/T_Vignette`、`UI/RingAltar_UI/Textures/ring_altar_power_{teleport,speed_boost}_icon{,_inactive}`（`pak_reference`）と `ring_altar_power_{telepathy,primal,telekinesis,vanish}_icon{,_inactive}`（`pak_reference_2`。両版で PNG も設定も同じ）、`UI/Minimap/T_06_Zone01`・`T_06_Zone2`・`T_06_Zone2_02`（Zone 2 の上の階）、`Materials/Special/T_Arrow`（`pak_reference_2`。1024 × 1024、sRGB） | 27。sRGB・圧縮・LOD グループは原作の `_textures.json` のまま（アイコンは sRGB・既定の圧縮・`TEXTUREGROUP_UI`、105 × 104） |
 | メッシュ | `Meshes/Player/Tablet/tablet_new_pCube2` | 1（Nanite なし、スロット `phong2`・`phong3`、ライトマップは原作の 64・UV 2） |
 | マテリアル | `Materials/Player/Tablet/M_P_TabletBack`・`M_P_TabletFront` | 2（`M_DD_Substance` のインスタンス、Albedo / Normal / Packed） |
 | フォント | `UI/Fonts/helvetica-neue-bold`（FontFace）・`helvetica-neue-bold_Font`（Font、Runtime） | 2 |
 | 音 | `Audio/SharedGameplay/05_Tablet_Woosh_v1_1`・`_v2_1`、`Audio/UI/UI_Select_V3`（Volume 0.7。値は SoundWave の書き出しから `dd_assets.sound` が入れる） | 3 |
 | ミニマップ | `UI/Minimap/T_NewMap`（レンダーターゲット 512 × 512 RGBA8）、`UI/Minimap/MM_Map_06_Zone01`・`MM_Map_06_Zone2` | 3 |
+| 地図の矢印 | `Materials/Special/M_Arrow`（`M_DD_Arrow` のインスタンス、`Color` は本家の既定 (0.48146, 0, 1, 1)）・`M_Arrow_Inst`（`M_Arrow` のインスタンス、`Color` (0.361042, 0, 1, 1)。本家の `BasePropertyOverrides` は値だけで上書きの印が無いので、上書きしない） | 2 |
 | パワーのアイコン | `Materials/MasterMaterials/MM_Powers_SpeedBoost`・`MM_Powers_Inst_Teleport`・`MM_Powers_Inst_Telepathy`・`MM_Powers_PrimalFear`・`MM_Powers_Inst_Telekinesis`・`MM_Powers_Vanish`（`M_DD_Powers` のインスタンス。`DisabledPower` = 色つき、`EnabledPower` = `_inactive`、`Percent` 1.0。名前は最新版のインスタンスのまま） | 6 |
 
-自前のマスターは `/Game/Pipeline/Materials/M_DD_MapPlane`・`M_DD_MapScreen`・`M_DD_Powers`（3）。どれも呼び直すと作り直す（既にあるものは読み込んで親とパラメータを入れ直す）。
+自前のマスターは `/Game/Pipeline/Materials/M_DD_MapPlane`・`M_DD_MapScreen`・`M_DD_Powers`・`M_DD_Arrow`（4）。どれも呼び直すと作り直す（既にあるものは読み込んで親とパラメータを入れ直す）。
 
 ## 原作データの根拠
 - ウィジェットの配置・フォント・色: `pak_reference/_assets/DDeception/Content/UI/Tablet/UMG_Tablet.json`（`CanvasPanel_0`/`_1`/`_762`、`Overlay_102` のパディング 34、`Image_25`・`Image_41`・`Image_212`・`Button_0`・`TextBlock_0`・`TextBlock_107`・`ShardCount`）と `UMG_TabletPowers.json`（`CanvasPanel_2`/`_3`/`_4`、`Skill1`・`Skill2`）。
@@ -103,12 +145,16 @@ updated: 2026-09-18
 - パワー枠のマテリアル: `pak_reference/_materials.json` と `pak_reference_2/_materials.json` の `/Game/Materials/MasterMaterials/MM_Powers`（パラメータ `DisabledPower`・`EnabledPower`・`Percent`、Translucent・Unlit）とそのインスタンス。枠を 12 時から時計回りに塗る向きは、グラフが cook で消えているため WebGL 版 10 記録（原作の画面収録から決めた）に従う。
 - シャード数の書式: `UMG_Tablet` のバイトコード（`GetAllActorsOfClass(BP_Shard)` の数を `Conv_IntToText(…, 1, 324)` で入れる）。
 - ミニマップ: `BP_DD_PlayerCharacter` の `SceneCaptureComponent2D`（正射影・`OrthoWidth` 4000・`T_NewMap`・`SCS_BaseColor`・`PRM_UseShowOnlyList`）と `Show Only`（@27345）、`pak_reference_2/_levels/06_Hospital_Zone_01.full.json` の `BP_MapTexture_2`（`/Engine/BasicShapes/Plane`、位置 (30, −10775, −500)、スケール 365.014984、マテリアル `MM_Map_06_Zone01`）。
+- 階ごとの地図: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/MinimapMultifloor/BP_MapTexture_MultiFloor.txt`（`ReceiveBeginPlay` @929、`Check Map` @1088）・`BP_MapArea.txt`（`Get Shards`）、`_assets/…/MinimapMultifloor/BP_MapArea.json`（`Box_GEN_VARIABLE` の当たり、SCS の根が `Box`）・`BP_MapTexture_MultiFloor.json`（親 `BP_MapTexture`）、`_assets/…/Blueprints/Main/BP_MapTexture.json`（`StaticMeshActor` の子）、`_levels/06_Hospital_Zone_02.full.json` の `BP_MapTexture_MultiFloor_2`（`Map`・`StaticMeshComponent0`）と `BP_MapArea_2`・`BP_MapArea2` の `Box`、`_assets/…/UI/Minimap/MM_Map_Parent.json`（`Texture` の既定は `T_08_Map_01_1`）。
+- 地図の矢印: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_ArrowPointer.txt`（`ReceiveBeginPlay` @10、`Find Object` @2435、`Set Rotation` @1474、`Smooth Rotation` @1722、`Change Color` @2763、`FindClosestShard`）と `_assets/…/BP_ArrowPointer.json`（`Plane_GEN_VARIABLE`、`Shards?` 真）、`Blueprints/Macros/MoreporkFunctions.txt` の `FindLookAtRotation_(YawOnly)`、`BP_DD_PlayerCharacter.json` の `BP_ArrowPointer_GEN_VARIABLE`（`ChildActorComponent`）と `SCS_Node_8`（親 `CharacterMesh0`）、同 BP の `Show Only`（@32211）、`_materials.json` の `M_Arrow`・`M_Arrow_Inst`、`_assets/…/Materials/Special/M_Arrow.json`（`Color` の既定、`EmissiveColor` が `Lerp`）。
 - 目的の文字列: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt` の `Current Objective`（@2293 の `COLLECT ALL SHARDS` ほか）。
 
 ## 依存関係
 - `UMG`（`UUserWidget`・`UWidgetTree`・`UCanvasPanel`・`UImage`・`UBorder`・`UTextBlock`）、`Slate` / `SlateCore`（`FSlateFontInfo`）。`wasami_deception.Build.cs` に足してある。
 - `dd_tablet.py` は `dd_stage` の `import_mesh` / `ensure_masters` / `_Graph` と `paths` を使う。
 - `WasamiPowerTypes.h`（`EWasamiPower`・`WasamiPowerCount`。04 記録）、`WasamiAssets.h`（00 記録）。`dd_tablet.py` は `dd_assets`（01 記録。`sound`・`texture`・`material`・`export_json`）も使う。
+- 矢印は `AWasamiPlayerCharacter`（`IsMapZoomedOut`・`GetCamera`。02 記録）、`AWasamiZoneShardChecker`・`AWasamiZoneFlow`・`AWasamiGameMode::GetZoneFlow`（11 記録）、`AWasamiShard`（06 記録）、`Kismet/KismetMathLibrary`（`FindLookAtRotation`）。
+- 階ごとの地図は `AWasamiShard::GetPlane`（06 記録）と `UGameplayStatics::GetPlayerCharacter`。
 - 使う側: `AWasamiPlayerCharacter`（02 記録）が `UWidgetComponent` にこのクラスを載せ、毎フレーム枠・ゲージ・弾みと `SetObjective`、0.1 秒ごとに `SetShardCount` を呼ぶ。`UWasamiPowerComponent`（04 記録）が `BounceSocket` を呼ぶ。`dd_level.py`（01 記録）が地図の板を置く。
 
 ## 確かめたこと（2026-09-16、PIE の 1280 × 720 の撮影）
@@ -118,6 +164,8 @@ updated: 2026-09-18
 - パワー枠の扇形: `Percent` を 1.0 / 0.75 / 0.25 / 0.0 にしてマテリアルを 128 × 128 に描き、12 時から時計回りの象限ごとに色つきの画素を数えた。1.0 = 4 象限すべて、0.75 = 12・3・6 時が色つきで 9 時だけ灰色、0.25 = 12 時だけ、0.0 = なし。原作の向きどおり。
 - パワーの枠（2026-09-16、PIE の実画面）: 右の枠を 6 種すべてに切り替えて撮り、どのアイコンも出た。スピードブーストを使うと、その枠のアイコンが扇形に灰色へ変わった（撮った時点では左上が灰色で、12 時から時計回りの色つきの扇形が縮んでいく向きと合う。04 記録の「確かめたこと」）。弾みは短くて撮れていない（値はテストで確かめた）。
 - **枠のアイコンの位置**（2026-09-18、ユーザーの指摘「タブレットの特殊効果ロゴが円からやや下より」）: 灰色の輪の画素に円を当てはめ、両方の枠が Speed Boost のときのアイコンの赤の外接矩形の中心との縦のずれを輪の半径 r で割った。最新版の実機（`observations/original/ref-zone1-tablet-full.png`）+0.089 r、直す前（画面の角を中心 − (357, 432) と取っていた。枠が 2・12 px ずれていた。`observations/ours/note/02-tablet.jpg`）+0.291 r、直した後（PIE の (0, −2900)・ヨー 90、`observations/ours/pie-tablet-sockets-fixed.png`）+0.105 r。横のずれは 3 つとも +0.14 r 前後（アイコンの形による）。
+- **地図の矢印**（2026-09-18、テスト `Wasami.ArrowPointer.Actor` と PIE）: テストで、子のアクタの位置と拡縮・板の値・Show Only に入ること、チェッカーの箱の外で隠れ、箱の中の最も近いシャードを指して見せ（上の階のシャードは箱の外で数えない）、的の向き（−X の的でヨー ±180）と大きさ（300 cm で 6.7）に 1 s で落ち着き、次に近いものへ移り、100 個で隠れ 99 個で見え、0 個で見えたまま、`Shards?` でなければ的の有無で出し分け、`Change Color` で `Color` が入ることを確かめた。PIE（Zone 1 の (0, −2900)、シャード 30 を残す）で、地図のプレイヤーの印の周りに薄紫の弧が出て、向きを変えても最も近いシャードの側を指し続けた。全回収の後は黄色（`Color` (1, 0.8002, 0)）の小さな弧になり、矢印のヨー −76.3558° が駐車場の箱 `06_CutsceneStart` への向きと一致した（`Intermediate/Overnight/arrow_grid.png`）。
+- **階ごとの地図**（2026-09-19、テスト `Wasami.MapMultiFloor.Actor` と PIE）: テストで、箱の当たりと大きさ、`Get Shards` がその箱のシャードだけを返すこと、板が Movable で材質が板の材質から作り直されること、最初の `Check Map`（0.9 s）までは印がすべて見え、その後はいる箱の絵と印だけになり、上の階へ移ると次の `Check Map` で絵（`T_06_Zone2_02`）と印が替わり、どの箱の外でもそのまま残り、下りると戻ることを確かめた（56 本すべて通過）。PIE（Zone 2）で、下の階 (6304, −2740) では `T_06_Zone2` と下の階の印 204 だけ、上の階の渡り廊下 (5400, 3593, 640) では `T_06_Zone2_02` と上の階の印 138 だけが出て、タブレットの地図の通路と印が重なり、下りると戻った（`Intermediate/Overnight/zone2_map_grid.png`）。
 - ミニマップ: `T_NewMap` を書き出して確認。`OrthoWidth` 4000 と 10000 で写る範囲が変わる（地図の線は輝度 38 の灰、背景は黒、α は 0）。
 - 歩いても画面上で揺れないこと: 歩きのカメラシェイクを掛けた PIE で 4 回標本を取り、視点（`PlayerCameraManager` の POV）は Z 186.65 → 187.15 → 185.74 → 183.56・ピッチ 0.19 → 0.03 → −0.19 → 0.16 と揺れているのに、**板の視点空間での位置は 4 回とも (35.3989, −21.9944, −4.3216) で不動**だった。同じときカメラコンポーネントは視点空間で Z −1.50 → −2.00 → −0.59 → +1.59 と動いており、板をカメラの子にしたままだとこのぶん逆に揺れていた（02 記録の `PlaceTablet`）。
 - 画面が毎フレーム描き直されることは確かめていない（エディタが背面だとビューポートが描かれず、`UWidgetComponent` が描き直さない。`.claude/guides/verification.md`）。出し入れの手触りと音も同じ理由で未確認。
@@ -130,12 +178,14 @@ updated: 2026-09-18
 - **素材はコンストラクタで読まない**（ソフト参照）。2026-09-16 まではコンストラクタが `ConstructorHelpers` で `M_DD_MapScreen` と `MM_Powers_*` を読んでおり、エディタの起動時にルートに入ったそれらを `import_dd_tablet` が作り直そうとしてエディタが落ちた（01 記録の注意点）。
 - `MM_Powers` の中で `Percent` をどう描くかは、原作のグラフが無いので WebGL 版の見立て（12 時から時計回り）のまま。最新版の実機の枠の減り方とはまだ見比べていない（パワーの作業〈作業一覧の項目 1〉のステップ 11 では、パワーの演出だけを撮った）。
 - 本家の `UMG_Tablet` の `UI Cooldown`（スピードブーストが放送する）は、結び付け先のウィジェットが木に無く見た目の効果が無いと見られるので作っていない（04 記録）。
-- Zone 2 の地図は原作では `BP_MapTexture_MultiFloor` で階ごとに `T_06_Zone2` / `T_06_Zone2_02` を切り替える。本作は 1 階ぶん（`MM_Map_06_Zone2`）だけを置いている。
+- 階ごとの地図の板の材質は、本家は `MM_Map_Parent` から作り直す（その `Texture` の既定は別の章の地図 `T_08_Map_01_1` で、最初の `Check Map` までの 0.9 s はそれが写る）。本作は板の今の材質（`MM_Map_06_Zone2`。下の階の地図）から作る。
 - 地図の板は UE5 の `bVisibleInSceneCaptureOnly` を立てて本編の描画と Lumen から外している（原作は床下に置いてベイク済みライティングで済ませていた）。
 - シーンキャプチャは**タブレットを上げている間だけ**描く（`bCaptureEveryFrame`）。原作は常に描いているが、下ろしている間は画面が見えないので絵は変わらない（`.claude/guides/performance.md`）。
 - `UWidgetComponent` は `bTickWhenOffscreen` が false のままなので、画面がビューポートに映っていない間は描き直さない（下ろしている間は描画も止まる）。エディタを背面にして PIE を撮ると、この理由で地図が止まったままになる。
 
 ## 変更履歴
+- 2026-09-19: Zone 2 の階ごとの地図（`AWasamiMapArea`・`AWasamiMapTextureMultiFloor`。本家の `BP_MapArea`・`BP_MapTexture_MultiFloor`）と `T_06_Zone2_02` の取り込みを足した。テスト `Wasami.MapMultiFloor.Actor`
+- 2026-09-18: 地図の矢印（`AWasamiArrowPointer`。本家の `BP_ArrowPointer`）と、その材質（`T_Arrow`・推定の `M_DD_Arrow`・`M_Arrow`・`M_Arrow_Inst`、`make_arrow_materials`）を足した。テスト `Wasami.ArrowPointer.Actor`
 - 2026-09-18: パワーの枠と「Z」の位置を、背景のキャンバス `CanvasPanel_1`（ルートの中心から (−355, −420)）の角から数えるように直した（それまでは画面の角をルートの中心 − (357, 432) と取っていて、枠が右へ 2・下へ 12 px ずれ、アイコンが輪の下に寄っていた。ユーザーの指摘）
 - 2026-09-17: シャードの回収の `Count Shake`（`PlayCountShake`・`GetShardCount`・評価の静的関数）を足し、`TickSockets` を `TickAnimations` に改めた。テスト `Wasami.Tablet.CountShake`（`Tests/WasamiShardTests.cpp`。06 記録）
 - 2026-09-16: テクスチャの取り込み（`_texture_settings`）とマスターの作り直し（`_master`）を `dd_assets` の `texture` / `material` へ移した（パワーの取り込みと共通にするため。作るものは同じで、取り直しても種類ごとの数は変わらなかった）

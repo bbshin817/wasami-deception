@@ -4,6 +4,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/ChildActorComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
@@ -21,6 +22,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
+#include "WasamiArrowPointer.h"
 #include "WasamiAssets.h"
 #include "WasamiChameleonComponent.h"
 #include "WasamiGameMode.h"
@@ -137,6 +139,12 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	// (.claude/guides/performance.md — what draws every frame has to earn it). The picture is the same either way.
 	MinimapCapture->bCaptureEveryFrame = false;
 
+	ArrowPointer = CreateDefaultSubobject<UChildActorComponent>(TEXT("BP_ArrowPointer"));
+	ArrowPointer->SetupAttachment(GetMesh());
+	ArrowPointer->SetRelativeLocation(AWasamiArrowPointer::PlayerRelativeLocation);
+	ArrowPointer->SetRelativeScale3D(AWasamiArrowPointer::PlayerRelativeScale);
+	ArrowPointer->SetChildActorClass(AWasamiArrowPointer::StaticClass());
+
 	Powers = CreateDefaultSubobject<UWasamiPowerComponent>(TEXT("Powers"));
 
 	// FX: the original's child actor sits 20 m over the capsule, but its volume is unbound, so where it is changes nothing.
@@ -228,6 +236,7 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(CyclePowerRightAction, ETriggerEvent::Started, Powers.Get(), &UWasamiPowerComponent::CyclePowerRight);
 	Input->BindAction(TabletAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ToggleTablet);
 	Input->BindAction(ResizeMapAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ResizeMap);
+	Input->BindAction(InteractAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::InteractPressed);
 	Input->BindAction(LeftMouseAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::LeftMousePressed);
 	Input->BindAction(MouseWheelAction, ETriggerEvent::Triggered, this, &AWasamiPlayerCharacter::MouseWheel);
 }
@@ -255,6 +264,7 @@ void AWasamiPlayerCharacter::CreateInput()
 	CyclePowerRightAction = NewAction(TEXT("IA_CyclePowerRight"), EInputActionValueType::Boolean);
 	TabletAction = NewAction(TEXT("IA_ToggleTablet"), EInputActionValueType::Boolean);
 	ResizeMapAction = NewAction(TEXT("IA_ResizeMap"), EInputActionValueType::Boolean);
+	InteractAction = NewAction(TEXT("IA_Interact"), EInputActionValueType::Boolean);
 	LeftMouseAction = NewAction(TEXT("IA_LeftMouseButton"), EInputActionValueType::Boolean);
 	MouseWheelAction = NewAction(TEXT("IA_MouseWheelAxis"), EInputActionValueType::Axis1D);
 
@@ -302,10 +312,17 @@ void AWasamiPlayerCharacter::CreateInput()
 	Map(CyclePowerRightAction, EKeys::Two);
 	Map(TabletAction, EKeys::SpaceBar);
 	Map(ResizeMapAction, EKeys::Z);
+	// The original's Interact (F; like the other actions, its gamepad key is not mapped), pressed.
+	Map(InteractAction, EKeys::F);
 	// Pressed, and the wheel's value (±1 a notch; the original's MouseWheelAxis has sensitivity 1). An Axis1D only
 	// triggers on a frame the wheel moves, which is when the original's every-frame binding changes anything.
 	Map(LeftMouseAction, EKeys::LeftMouseButton);
 	Map(MouseWheelAction, EKeys::MouseWheelAxis);
+}
+
+void AWasamiPlayerCharacter::InteractPressed()
+{
+	OnInteract.Broadcast();
 }
 
 void AWasamiPlayerCharacter::LeftMousePressed()
@@ -489,11 +506,20 @@ void AWasamiPlayerCharacter::UpdateTabletScreen()
 	}
 }
 
+AWasamiArrowPointer* AWasamiPlayerCharacter::GetArrowPointer() const
+{
+	return Cast<AWasamiArrowPointer>(ArrowPointer->GetChildActor());
+}
+
 void AWasamiPlayerCharacter::RefreshMinimapContents()
 {
-	// Show Only: the capture draws the level's map plane and the shards, and nothing else of the world.
+	// Show Only: the capture draws the level's map plane, the shards and the arrow, and nothing else of the world.
 	TArray<AActor*> Shown;
 	UGameplayStatics::GetAllActorsWithTag(this, MinimapTag, Shown);
+	if (AWasamiArrowPointer* Arrow = GetArrowPointer())
+	{
+		Shown.Add(Arrow);
+	}
 	ShardsLeft = 0;
 	if (ShardActorClass)
 	{
