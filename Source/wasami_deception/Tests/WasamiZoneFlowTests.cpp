@@ -1,7 +1,10 @@
 #include "Misc/AutomationTest.h"
 #include "../WasamiDoorBreak.h"
 #include "../WasamiDoubleDoors.h"
+#include "../WasamiEnemy.h"
+#include "../WasamiEnemy06Chase.h"
 #include "../WasamiGameMode.h"
+#include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiShard.h"
@@ -13,6 +16,8 @@
 #include "Components/BrushComponent.h"
 #include "Engine/BlockingVolume.h"
 #include "Engine/StaticMeshActor.h"
+#include "Engine/TargetPoint.h"
+#include "Engine/TriggerVolume.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelSequence.h"
@@ -68,6 +73,40 @@ namespace
 		Actor->GetRootComponent()->SetMobility(EComponentMobility::Static);
 		Actor->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		return Actor;
+	}
+
+	/**
+	 * Zone 1's target points its flow spawns the nurses at (far below and apart, turned to 90 degrees) and its
+	 * TriggerVolume_1, which is returned.
+	 */
+	ATriggerVolume* SpawnZone1NursePlaces(UWorld* World)
+	{
+		double Y = 0.;
+		for (const TCHAR* Name : {TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2"), TEXT("NurseSpawn_3"), TEXT("06_NurseSpawn"),
+			TEXT("06_NurseSpawn2"), TEXT("DoorLocation")})
+		{
+			Y += 1000.;
+			ATargetPoint* Point = World->SpawnActor<ATargetPoint>(FVector(0., Y, -40000.), FRotator(0., 90., 0.));
+			Point->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
+		}
+		ATriggerVolume* Volume = World->SpawnActor<ATriggerVolume>(FVector(0., 0., -100000.), FRotator::ZeroRotator);
+		Volume->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("TriggerVolume_1")));
+		return Volume;
+	}
+
+	/** The enemies of class T in play (of T itself when bExact). */
+	template <typename T>
+	TArray<T*> Alive(UWorld* World, bool bExact)
+	{
+		TArray<T*> Found;
+		for (TActorIterator<T> It(World); It; ++It)
+		{
+			if (!It->IsActorBeingDestroyed() && (!bExact || It->GetClass() == T::StaticClass()))
+			{
+				Found.Add(*It);
+			}
+		}
+		return Found;
 	}
 
 	/** The player walking into the trigger box of that name. */
@@ -215,6 +254,10 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Burst->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("Fracture_concrete_5")));
 	Burst->GetParticleSystemComponent()->SetTemplate(NewObject<UParticleSystem>(GetTransientPackage()));
 	Burst->GetParticleSystemComponent()->DeactivateImmediate();
+	ATriggerVolume* NurseLiftVolume = SpawnZone1NursePlaces(World);
+	AWasamiGarageLiftZone1Special* GarageLift = World->SpawnActor<AWasamiGarageLiftZone1Special>(FVector(0., 0., -120000.),
+		FRotator::ZeroRotator);
+	GarageLift->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("hospital_garage_lift_anim_Anim_2")));
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -251,6 +294,24 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("05_Persistent"), Flow->GetSection(), FName(TEXT("05_Persistent")));
 	TestEqual(TEXT("checkpoint 5 saved"), SavedCheckpoint(), 5);
 	TestEqual(TEXT("the shards wanted"), Objective(Mode), FString(TEXT("COLLECT ALL SHARDS")));
+	// Spawn Nurses: a nurse at each of NurseSpawn_3, _1 and _2, turned as the point is.
+	const TArray<AWasamiEnemy*> MazeNurses = Alive<AWasamiEnemy>(World, true);
+	TestEqual(TEXT("three nurses in the maze"), MazeNurses.Num(), 3);
+	for (const AWasamiEnemy* Nurse : MazeNurses)
+	{
+		const AActor* Point = nullptr;
+		for (const TCHAR* Name : {TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2"), TEXT("NurseSpawn_3")})
+		{
+			const AActor* Candidate = AWasamiZoneFlow::FindSource(World, Name);
+			if (Candidate && Candidate->GetActorLocation().Equals(Nurse->GetActorLocation(), 0.01))
+			{
+				Point = Candidate;
+			}
+		}
+		TestNotNull(TEXT("each at a spawn point"), Point);
+		TestTrue(TEXT("with CanSpawn"), Nurse->bCanSpawn);
+		TestEqual(TEXT("turned as the point"), Nurse->GetActorRotation().Yaw, 90., 1e-3);
+	}
 
 	// A shard left: its check 1 s on finds it. Gone: two checks 0.03 s apart count once, 0.05 s after the first.
 	Advance(Wrapper, AWasamiZone1Flow::ShardCheckDelay + 0.1f);
@@ -262,6 +323,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Mode->CheckShards();
 	Advance(Wrapper, 0.03f);
 	TestEqual(TEXT("all collected"), Flow->GetSection(), FName(TEXT("05 All Shards Collected")));
+	TestEqual(TEXT("the maze's nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestEqual(TEXT("to the parking lot"), Objective(Mode), FString(TEXT("REACH THE PARKING LOT")));
 	TestTrue(TEXT("the barrier broken"), !BarrierRef.IsValid() || BarrierRef->IsActorBeingDestroyed());
 	TestFalse(TEXT("the arrow off the shards"), Flow->IsArrowOnShards());
@@ -276,6 +338,24 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the fade plays"), Fade && Fade->IsPlaying());
 	TestEqual(TEXT("at twice its rate"), Fade ? Fade->GetPlayRate() : 0.f, AWasamiZone1Flow::TransitionFadeRate);
 	TestEqual(TEXT("to the tunnel"), Objective(Mode), FString(TEXT("REACH THE TUNNEL")));
+	// Spawn Nurses_06: the parking lot's two, given the doors' place.
+	const TArray<AWasamiEnemy06Chase*> Nurses06 = Alive<AWasamiEnemy06Chase>(World, true);
+	TestEqual(TEXT("two nurses chase from 06"), Nurses06.Num(), 2);
+	TestEqual(TEXT("and no other"), Alive<AWasamiEnemy>(World, false).Num(), 2);
+	for (const AWasamiEnemy06Chase* Nurse : Nurses06)
+	{
+		TestTrue(TEXT("told where the doors are"),
+			Nurse->DoorLocation && Nurse->DoorLocation == AWasamiZoneFlow::FindSource(World, TEXT("DoorLocation")));
+		TestFalse(TEXT("not at the doors yet"), Nurse->bAttackDoor);
+	}
+	// A nurse in TriggerVolume_1 keeps the garage lift down for good; anything else does not.
+	NurseLiftVolume->OnActorBeginOverlap.Broadcast(NurseLiftVolume, Burst);
+	TestFalse(TEXT("no nurse near the lift"), GarageLift->bNurseNear);
+	if (Nurses06.Num() > 0)
+	{
+		NurseLiftVolume->OnActorBeginOverlap.Broadcast(NurseLiftVolume, Nurses06[0]);
+	}
+	TestTrue(TEXT("a nurse near the lift"), GarageLift->bNurseNear);
 	TestTrue(TEXT("the arrow at the tunnel"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("06_TunnelEnter")));
 	Walk(World, TEXT("06_TunnelEnter"));
 	TestEqual(TEXT("onto the ambulance"), Objective(Mode), FString(TEXT("GET ON TOP OF THE AMBULANCE")));
@@ -289,12 +369,24 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("locked"), TunnelDoors->bLocked);
 	TestTrue(TEXT("and swinging shut"), !TunnelDoors->AnySideOpen() && TunnelDoors->IsClosing());
 	TestTrue(TEXT("the doors block"), Collides(Doors));
+	for (const AWasamiEnemy06Chase* Nurse : Nurses06)
+	{
+		TestTrue(TEXT("the nurses stab at them"), Nurse->bAttackDoor);
+	}
 	Advance(Wrapper, AWasamiZone1Flow::DoorsBreakSeconds - 0.5f);
 	TestTrue(TEXT("still at 24.5 s"), Collides(Doors));
+	for (const AWasamiEnemy06Chase* Nurse : Nurses06)
+	{
+		TestTrue(FString::Printf(TEXT("stab after stab (%d)"), Nurse->GetDoorAttacks()), Nurse->GetDoorAttacks() >= 10);
+	}
 	TestFalse(TEXT("the burst asleep"), Burst->GetParticleSystemComponent()->IsActive());
 	Advance(Wrapper, 0.6f);
 	TestFalse(TEXT("broken in by 25 s"), Collides(Doors));
 	TestTrue(TEXT("the burst woken"), Burst->GetParticleSystemComponent()->IsActive());
+	for (const AWasamiEnemy06Chase* Nurse : Nurses06)
+	{
+		TestFalse(TEXT("the nurses stop stabbing"), Nurse->bAttackDoor);
+	}
 	Advance(Wrapper, 0.2f);
 	TestTrue(TEXT("the doors gone"), !TunnelDoorsRef.IsValid() || TunnelDoorsRef->IsActorBeingDestroyed());
 
@@ -305,6 +397,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("checkpoint 7 saved"), SavedCheckpoint(), 7);
 	TestEqual(TEXT("good luck"), Objective(Mode), FString(TEXT("GOOD LUCK")));
 	TestTrue(TEXT("the ambulance's sides block"), Collides(AmbulanceSide));
+	TestEqual(TEXT("the nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestFalse(TEXT("the ambulance still"), TakeOff->GetSequencePlayer() && TakeOff->GetSequencePlayer()->IsPlaying());
 	Advance(Wrapper, AWasamiZone1Flow::TakeOffDelay + 0.1f);
 	TestTrue(TEXT("and leaving 1 s on"), TakeOff->GetSequencePlayer() && TakeOff->GetSequencePlayer()->IsPlaying());
@@ -417,6 +510,7 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 	UWorld* World = Wrapper.GetTestWorld();
 	SpawnTriggers(World, {TEXT("06_DoorsLock"), TEXT("06_TunnelEnter"), TEXT("TriggerBox_06_AmbulanceTop"),
 		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
+	SpawnZone1NursePlaces(World);
 	TestNull(TEXT("no flow outside the zones"), AWasamiZoneFlow::SpawnFor(SpawnMode(World, 4), 0));
 	const FVector InTunnel(-22442.7148, -5025.0068, 800.);
 	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), InTunnel, FRotator::ZeroRotator);

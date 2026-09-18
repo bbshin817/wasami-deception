@@ -20,6 +20,7 @@
 #include "WasamiAssets.h"
 #include "WasamiDoorBreak.h"
 #include "WasamiDoubleDoors.h"
+#include "WasamiEnemy.h"
 #include "WasamiGameMode.h"
 #include "WasamiShard.h"
 #include "WasamiTriggerBox.h"
@@ -276,6 +277,31 @@ void AWasamiZoneFlow::ActivateEmitter(FName Source)
 		return;
 	}
 	UE_LOG(LogTemp, Warning, TEXT("%s: no emitter %s"), *GetClass()->GetName(), *Source.ToString());
+}
+
+AWasamiEnemy* AWasamiZoneFlow::SpawnEnemy(TSubclassOf<AWasamiEnemy> Class, FName SpawnPoint,
+	const TFunction<void(AWasamiEnemy&)>& Setup) const
+{
+	const AActor* Point = Source(SpawnPoint);
+	if (!Point)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no target point %s for %s"), *GetClass()->GetName(), *SpawnPoint.ToString(),
+			*GetNameSafe(Class));
+		return nullptr;
+	}
+	const FTransform Transform = Point->GetActorTransform();
+	AWasamiEnemy* Enemy = GetWorld()->SpawnActorDeferred<AWasamiEnemy>(Class, Transform, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (Enemy)
+	{
+		Enemy->bCanSpawn = true;
+		if (Setup)
+		{
+			Setup(*Enemy);
+		}
+		Enemy->FinishSpawning(Transform);
+	}
+	return Enemy;
 }
 
 void AWasamiZoneFlow::SetVolumeCollision(FName Source, ECollisionEnabled::Type Enabled)

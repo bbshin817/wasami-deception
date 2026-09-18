@@ -6,7 +6,10 @@
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiDoubleDoors.h"
+#include "WasamiEnemy.h"
+#include "WasamiEnemy06Chase.h"
 #include "WasamiGameMode.h"
+#include "WasamiGarageLift.h"
 #include "WasamiLoadingWidget.h"
 #include "WasamiZoneBarrier.h"
 
@@ -30,6 +33,15 @@ AWasamiZone1Flow::AWasamiZone1Flow()
 
 void AWasamiZone1Flow::StartAt(int32 Checkpoint)
 {
+	// The level's event bound to TriggerVolume_1, from its start.
+	if (AActor* Volume = Source(TEXT("TriggerVolume_1")))
+	{
+		Volume->OnActorBeginOverlap.AddDynamic(this, &AWasamiZone1Flow::OnNurseLiftTrigger);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no TriggerVolume_1 for the garage lift's NurseNear"), *GetClass()->GetName());
+	}
 	// Spawn (@13483): Load Progress By Level(7, 5). 0 opens the entrance (the game mode writes 4 instead); 7 and on are
 	// Zone 2's, for which Zone 1 does nothing.
 	switch (Checkpoint)
@@ -87,7 +99,7 @@ void AWasamiZone1Flow::On05Transition()
 void AWasamiZone1Flow::Persistent05()
 {
 	Enter(TEXT("05_Persistent"));
-	// Spawn Nurses (item 7).
+	SpawnNurses();
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveCollectAllShards", "COLLECT ALL SHARDS"));
 	BindAllShardsCollected(GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On05AllShardsCollected));
 	// BP_06_MusicPlayer_2's bFadeOut false (item 19).
@@ -137,7 +149,7 @@ void AWasamiZone1Flow::Transition06()
 void AWasamiZone1Flow::Start06()
 {
 	Enter(TEXT("06_Start"));
-	// Spawn Nurses_06 (item 7).
+	SpawnNurses06();
 	BindTrigger(TEXT("06_DoorsLock"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On06DoorsLock));
 	BindTrigger(TEXT("TriggerBox_06_AmbulanceTop"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On06ReachAmbulance));
 	SetArrowShards(false);
@@ -159,13 +171,13 @@ void AWasamiZone1Flow::On06TunnelEnter()
 void AWasamiZone1Flow::On06DoorsLock()
 {
 	Enter(TEXT("06_DoorsLock"));
-	// The nurses of 06 (item 7) get bAttackDoor.
 	if (AWasamiDoubleDoors* Doors = DoubleDoors(TEXT("BP_06_DoubleDoors33_36")))
 	{
 		Doors->Lock();
 		Doors->ForceClose();
 	}
 	SetVolumeCollision(TEXT("BlockingVolume_1"), ECollisionEnabled::QueryAndPhysics);
+	SetNursesAttackDoor(true);
 	After(DoorsBreakSeconds, [this]() { BreakDoorsIn(); });
 }
 
@@ -180,7 +192,7 @@ void AWasamiZone1Flow::BreakDoorsIn()
 	}
 	ActivateEmitter(TEXT("Fracture_concrete_5"));
 	SetVolumeCollision(TEXT("BlockingVolume_1"), ECollisionEnabled::NoCollision);
-	// The nurses of 06 lose bAttackDoor (item 7).
+	SetNursesAttackDoor(false);
 	After(DoorsGoneDelay, [Doors = TWeakObjectPtr<AWasamiDoubleDoors>(Doors)]()
 	{
 		if (Doors.IsValid())
@@ -188,6 +200,59 @@ void AWasamiZone1Flow::BreakDoorsIn()
 			Doors->Destroy();
 		}
 	});
+}
+
+void AWasamiZone1Flow::SpawnNurses()
+{
+	for (const TCHAR* Point : {TEXT("NurseSpawn_3"), TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2")})
+	{
+		SpawnEnemy(AWasamiEnemy::StaticClass(), Point);
+	}
+	// Setup Nurse Bierce Quips: Bierce's lines as a nurse first chases (its CloseBy): the item 20's voices.
+}
+
+void AWasamiZone1Flow::SpawnNurses06()
+{
+	AActor* Door = Source(TEXT("DoorLocation"));
+	for (const TCHAR* Point : {TEXT("06_NurseSpawn"), TEXT("06_NurseSpawn2")})
+	{
+		AWasamiEnemy* Enemy = SpawnEnemy(AWasamiEnemy06Chase::StaticClass(), Point, [Door](AWasamiEnemy& Spawned)
+		{
+			CastChecked<AWasamiEnemy06Chase>(&Spawned)->DoorLocation = Door;
+		});
+		if (AWasamiEnemy06Chase* Nurse = Cast<AWasamiEnemy06Chase>(Enemy))
+		{
+			Nurses06.Add(Nurse);
+		}
+	}
+}
+
+void AWasamiZone1Flow::SetNursesAttackDoor(bool bAttack)
+{
+	for (const TWeakObjectPtr<AWasamiEnemy06Chase>& Nurse : Nurses06)
+	{
+		if (Nurse.IsValid())
+		{
+			Nurse->bAttackDoor = bAttack;
+		}
+	}
+}
+
+void AWasamiZone1Flow::OnNurseLiftTrigger(AActor* OverlappedActor, AActor* OtherActor)
+{
+	// Cast to BP_06_ReaperNurse: any nurse. NurseNear is never cleared (Check Lift Nurses, which would, is never called).
+	if (!Cast<AWasamiEnemy>(OtherActor))
+	{
+		return;
+	}
+	if (AWasamiGarageLiftZone1Special* Lift = Cast<AWasamiGarageLiftZone1Special>(Source(TEXT("hospital_garage_lift_anim_Anim_2"))))
+	{
+		Lift->bNurseNear = true;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no garage lift hospital_garage_lift_anim_Anim_2 for NurseNear"), *GetClass()->GetName());
+	}
 }
 
 void AWasamiZone1Flow::On06ReachAmbulance()

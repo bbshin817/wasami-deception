@@ -91,7 +91,7 @@ protected:
 
 /**
  * Dark Deception's BP_06_GarageLift_Zone1_Special: the garage lift in Zone 1's car park, which does not rise while a
- * nurse is near (Zone 1's level Blueprint sets NurseNear when a nurse enters TriggerVolume_1: the work list's item 7).
+ * nurse is near (Zone 1's level Blueprint, AWasamiZone1Flow, sets NurseNear for good when a nurse enters TriggerVolume_1).
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiGarageLiftZone1Special : public AWasamiGarageLift

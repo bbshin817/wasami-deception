@@ -106,8 +106,12 @@ float AWasamiEnemy::GetStunTimeLeft() const
 	{
 		return GetWorldTimerManager().GetTimerRemaining(StunTimer);
 	}
-	const float ToDecision = GetWorldTimerManager().GetTimerRemaining(DecisionTimer);
-	return FMath::Max(ToDecision, 0.f) + StunSeconds;
+	return GetTimeToStunStart() + StunSeconds;
+}
+
+float AWasamiEnemy::GetTimeToStunStart() const
+{
+	return FMath::Max(GetWorldTimerManager().GetTimerRemaining(DecisionTimer), 0.f);
 }
 
 UWasamiEnemyAnimInstance* AWasamiEnemy::GetEnemyAnim() const
@@ -125,15 +129,7 @@ void AWasamiEnemy::MakeChoice()
 {
 	if (State == EWasamiEnemyState::Stun)
 	{
-		// A DoOnce, opened again when the stun ends. Stopping the movement also aborts the AI's path (the nav movement's
-		// StopActiveMovement), and no decision asks for another until the stun ends. Cloak(False) (the nurse's
-		// invisibility, not made) and its stunned line (Talk, the item 20's voices) are left out.
-		if (!bStunRunning)
-		{
-			bStunRunning = true;
-			GetCharacterMovement()->StopMovementImmediately();
-			GetWorldTimerManager().SetTimer(StunTimer, this, &AWasamiEnemy::EndStun, StunSeconds, false);
-		}
+		StartStun();
 		return;
 	}
 	// The pill throw (bThrowing) is not made. A sequence: first what it saw before, then what it sees now; its last
@@ -152,6 +148,19 @@ void AWasamiEnemy::MakeChoice()
 	if (CanSeePlayer())
 	{
 		bSeenPlayerRecently = true;
+	}
+}
+
+void AWasamiEnemy::StartStun()
+{
+	// A DoOnce, opened again when the stun ends. Stopping the movement also aborts the AI's path (the nav movement's
+	// StopActiveMovement), and no decision asks for another until the stun ends. Cloak(False) (the nurse's invisibility,
+	// not made) and its stunned line (Talk, the item 20's voices) are left out.
+	if (!bStunRunning)
+	{
+		bStunRunning = true;
+		GetCharacterMovement()->StopMovementImmediately();
+		GetWorldTimerManager().SetTimer(StunTimer, this, &AWasamiEnemy::EndStun, StunSeconds, false);
 	}
 }
 

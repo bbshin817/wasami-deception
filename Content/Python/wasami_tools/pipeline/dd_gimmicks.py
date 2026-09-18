@@ -15,7 +15,9 @@ four materials the cook took the graphs of, estimated off their compiled shaders
 AWasamiCornerLift, after Blueprints/06_Hospital/Lifts/Zone2): the clunk as they start and stop (DD_TT_GarageLift_Down,
 through MonkeyAttenuation), the loop while they move (DD_TT_Lift_Loop, through 01_Lobby_Attenuation), and the garage
 lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets. The garage lifts
-(AWasamiGarageLift, after Blueprints/06_Hospital/Lifts/Garage): their skinned mesh and its animation (dd_skeletal).
+(AWasamiGarageLift, after Blueprints/06_Hospital/Lifts/Garage): their skinned mesh and its animation (dd_skeletal). The
+parking lot's nurses stabbing at the tunnel's doors (AWasamiEnemy06Chase's Hit FX): the slam (20-Elevator_Slams) and the
+dust (P_06_NurseDoorHit, with Whisps_additive, an additive instance of the doors' estimated smoke).
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
@@ -98,6 +100,13 @@ CELL_TEXTURES = (DUST, FLARE_WHITE, SQUIB_BASE, SQUIB_NORMAL)
 CELL_PARTICLES = (NURSE + "P_06_NurseSparks", BVFX + "Destruction/Fractures/V2/Fracture_dark_slow",
                   BVFX + "Impacts/LegacyFX/Small-Medium-Large/Concrete/Concrete_impact_large")
 CELL_NEEDS = (SMOKE_DUST + "Whisps_trans", SMOKE_DUST + "Whisps_trans2", FRAGMENTS + "DebrisMaster")
+# The parking lot's nurses stabbing at the tunnel's doors (AWasamiEnemy06Chase's Hit FX): the slam (20-Elevator_Slams, a
+# SoundCue of three of its waves, through 01_Lobby_Attenuation) and the dust (P_06_NurseDoorHit, whose one material,
+# Whisps_additive, is an additive instance of Whisps_trans, which import_doors_busted makes).
+NURSE_DOOR_HIT_SOUNDS = tuple("Audio/01_Hotel/20-Elevator_Slams_V%d" % n for n in (1, 2, 3))
+NURSE_DOOR_HIT_CUES = ("Audio/01_Hotel/20-Elevator_Slams",)
+NURSE_DOOR_HIT_MATERIAL = SMOKE_DUST + "Whisps_additive"
+NURSE_DOOR_HIT = "Particles/06_Hospital/P_06_NurseDoorHit"
 LIFT_SOUNDS = (
     "Audio/06_Hospital/DD_TT_GarageLift_Down",
     "Audio/06_Hospital/DD_TT_GarageLift_Up",
@@ -449,6 +458,31 @@ def import_cell():
     return result
 
 
+def import_nurse_door_hit():
+    """The parking lot's nurses' Hit FX: the slam's waves and SoundCue, the dust's material and particle system. The doors
+    broken in (import_doors_busted) have to have been imported. Returns how many of each."""
+    parent_rel = SMOKE_DUST + "Whisps_trans"
+    if not EAL.does_asset_exist(dd_assets.asset_path(parent_rel)):
+        raise RuntimeError("missing %s: run import_doors_busted first" % parent_rel)
+    result = {"sounds": len([dd_assets.sound(rel, VERSION) for rel in NURSE_DOOR_HIT_SOUNDS])}
+    result["sound_cues"] = len([dd_assets.sound_cue(rel, VERSION) for rel in NURSE_DOOR_HIT_CUES])
+    parent = unreal.load_asset(dd_assets.asset_path(parent_rel))
+    known = {str(n) for n in unreal.MaterialEditingLibrary.get_scalar_parameter_names(parent)}
+    scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(NURSE_DOOR_HIT_MATERIAL, VERSION)
+    scalars = {k: v for k, v in scalars.items() if k not in SMOKE_LEFT_OUT}
+    unknown = set(scalars) - known
+    if unknown or vectors or textures or masks or switches:
+        raise RuntimeError("%s sets %s, which the estimate of Whisps_trans does not have"
+                           % (NURSE_DOOR_HIT_MATERIAL, sorted(unknown) or (vectors, textures, masks, switches)))
+    mic = dd_assets.material_instance(dd_assets.asset_path(NURSE_DOOR_HIT_MATERIAL), parent, scalars=scalars)
+    dd_assets.base_property_overrides(mic, NURSE_DOOR_HIT_MATERIAL, VERSION)
+    EAL.save_loaded_asset(mic, only_if_is_dirty=False)
+    result["materials"] = 1
+    dd_particles.particle_system(NURSE_DOOR_HIT, VERSION)
+    result["particle_systems"] = 1
+    return result
+
+
 def import_double_doors():
     """The double doors' sounds, SoundCue and attenuations. Returns how many of each."""
     result = {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in DOUBLE_DOOR_ATTENUATIONS]),
@@ -470,12 +504,13 @@ def import_garage_lift():
 
 
 def import_all():
-    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the lifts'
-    and the garage lifts'), then saves /Game/DD."""
+    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the
+    nurses' stabs at the doors, the lifts' and the garage lifts'), then saves /Game/DD."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
     result.update({"cell_" + key: count for key, count in import_cell().items()})
+    result.update({"nurse_door_hit_" + key: count for key, count in import_nurse_door_hit().items()})
     result.update({"lift_" + key: count for key, count in import_lifts().items()})
     result.update({"garage_lift_" + key: count for key, count in import_garage_lift().items()})
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)

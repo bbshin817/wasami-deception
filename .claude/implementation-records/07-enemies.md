@@ -4,6 +4,8 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_enemy.py
   - Source/wasami_deception/WasamiEnemy.h
   - Source/wasami_deception/WasamiEnemy.cpp
+  - Source/wasami_deception/WasamiEnemy06Chase.h
+  - Source/wasami_deception/WasamiEnemy06Chase.cpp
   - Source/wasami_deception/WasamiEnemyAnimInstance.h
   - Source/wasami_deception/WasamiEnemyAnimInstance.cpp
   - Source/wasami_deception/Tests/WasamiEnemyTests.cpp
@@ -16,7 +18,7 @@ updated: 2026-09-19
 # 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）
 
 ## 役割
-本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）（作業一覧の項目 4 のステップ 1〜3）と、**判断**（本家のナースの `Make Choice`: 巡回・発見・追跡・見失い。作業一覧の項目 7 のステップ 2）まで。出現・区間ごとの型・見張り・追跡中の変化・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
+本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）（作業一覧の項目 4 のステップ 1〜3）と、**判断**（本家のナースの `Make Choice`: 巡回・発見・追跡・見失い。作業一覧の項目 7 のステップ 2）、**06 の追跡型**（Zone 1 の駐車場の `BP_06_ReaperNurse_06_Chase`: 毎ティック追い、トンネルの扉を突く。ステップ 3）まで。出現はゾーンの流れ（11 記録）。Zone 2 の型・見張り・追跡中の変化・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
 
 ## 公開インターフェース
 - `WasamiDDTools.import_wasami_enemy()`（01 記録）→ `dd_enemy.import_all()`。戻り値 `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 18。
@@ -32,7 +34,9 @@ updated: 2026-09-19
   - `SetWalkState(bNormal)`（`MaxWalkSpeed` を `NormalSpeed` 350 / `SkateSpeed` 800 に）、`GetCurrentState()`（本当の State）、`IsStunned()`（State == Stun）、`IsStunRunning()`（判断が気絶を始め 17 s を待っている）、`GetStunTimeLeft()`（巡回に戻るまでの秒。下の「敵のアクタ」）、`GetEnemyAnim()`（メッシュの `UWasamiEnemyAnimInstance`）。
   - 設定: `bCanSpawn`（既定 偽。ExposeOnSpawn）、`bAggressiveIdle`（見張り。ExposeOnSpawn）、`bNightmare`（全回収後の追跡の走り）、`NormalSpeed`・`SkateSpeed`、`bNormalWalk`、`bSeenPlayerRecently`（本家の `Seen Player Recently`）、`PointOfInterest`（最後に追ったときのプレイヤーの位置。0 で無し）、`RandomPoint`（読み取りだけ）。
   - 判断（下の「判断」）: `IsChasing()`（= `bSeenPlayerRecently`。本家の `Chasing`）、`CanSeePlayer()`、`ChasePlayer()`・`NotSeeingPlayer()`・`GenerateRandomPoint()`（BlueprintCallable。Python から `can_see_player()` などで呼べる）、C++ の virtual `GetPlayerTarget()`（既定はプレイヤー）・`GetRandomPointDestination()`（既定は `RandomPoint`。Zone 2 の型が階の違うときにリフトへ替える）、イベント `OnCloseBy`（BlueprintAssignable。見失ってからの最初の追跡で 1 回。受け手は Zone 1 の `Setup Nurse Bierce Quips`〈項目 20〉）。
+  - 派生の口: virtual `IsChasing()`、virtual `GetTimeToStunStart()`（気絶を入れてから 17 s が始まるまで。既定は次の判断までの残り）、protected `StartStun()`（気絶の DoOnce。判断と 06 型の tick が呼ぶ）。
   - 定数: `CapsuleRadius` 34、`CapsuleHalfHeight` 118.058、`MaxSpeed` 800、`TurnRate` 300、`MeshX/Y/Z`・`MeshYaw`（メッシュの相対位置と向き）、`DecisionInterval` 0.5、`StunSeconds` 17、`ViewAngle` 100、`ForgetSeconds` 3、`RandomPointRadius` 3000、`ChaseAcceptance` 5・`PointOfInterestAcceptance` 5・`RandomPointAcceptance` 50。
+- `AWasamiEnemy06Chase : AWasamiEnemy`（`WasamiEnemy06Chase.h`。下の「06 の追跡型」）: `bAttackDoor`（BlueprintReadWrite。Zone 1 の流れが `06_DoorsLock` で真、扉が破れて偽）、`DoorLocation`（ExposeOnSpawn。流れがレベルの `DoorLocation` を入れる。本家も読まない）、`HitFX()`（BlueprintCallable）、`GetDoorAttacks()`（突いた回数。確かめ用）、`IsChasing()` は常に真、`GetTimeToStunStart()` は 0。定数 `DoorAttackLength` 0.9667・`DoorHitTime` 0.4132・`DoorAttackBlendOutTrigger` 0.5・`DoorAttackBlendOut` 0.25・`DoorAttackSeconds`（= 0.7167）・`DoorAttackMaxWait` 0.5・`HitFXChance` 0.5・`HitFXForward` 230・`HitFXScale` 0.5・`HitShakeRadius` 3000・`DoorAttackClip`（`Chase_Charge`）。
 - `WasamiEnemyClip`（クリップの番号。移動 5 本、気絶 4 本〈倒れる `StunFlyUp`・`StunKnockDown`、起き上がり `StunGetUpFlyUp`・`StunGetUpKnockDown`〉、捕獲 3 本、追跡中の変化 6 本の順で 18 本）、`WasamiEnemyAnim::ClipNames`・`FindClip(Name)`・`ClipPath(Clip)`（`/Game/Wasami/Enemy/A_WasamiEnemy_<名前>`。名前は取り込みの `ROLES` の 1 列目と同じ並び）、`NumStunFalls` 2・`GetUpAfter(Fall)`（倒れる 1 本の後の起き上がり）、`GetRootTransform(Sequence, Time)`（骨組みの根 = `pelvis` のメッシュの空間の変形）、`MeasureGetUpMove(Fall, GetUp)`（下の「移し替え」）。
 - 定数: `MESH` = `/Game/Wasami/Enemy/SK_WasamiEnemy`、`SKELETON` = `…_Skeleton`、`PHYSICS_ASSET` = `…_PhysicsAsset`、`ANIM_PREFIX` = `A_WasamiEnemy_`、`MATERIAL` = `/Game/Wasami/Enemy/MI_WasamiEnemy`、`MASTER` = `/Game/Pipeline/Materials/M_DD_WasamiGltf`、`ROLES`（下の表）。
 
@@ -124,9 +128,19 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - **`GenerateRandomPoint`**: プレイヤーがいればその位置、いなければ自分の位置の周り 3000 の `K2_GetRandomReachablePointInRadius`（起点から辿り着ける点）。ナビのデータが無ければ `RandomPoint` は前のまま。
 - **移動の依頼は判断ごとに前の依頼を止める**（`UPathFollowingComponent::RequestMove` が前の依頼を `Aborted` で終わらせ、その依頼の代理が失敗を知らせる。UE 4.24 も同じ）。そのため (a) 巡回の行き先は判断のたびに引き直される（行き先に向かう依頼は 1 つ前の判断で引いた点へ。`PointOfInterest` への移動も次の判断の依頼で消える）、(b) 巡回はプレイヤーの周り 3000 の点へ 0.5 s ごとに向きを変えながら、全体としてプレイヤーの方へ寄っていく。本家の BP をそのまま写した結果で、手を加えていない（2026-09-19 の PIE で、Zone 1 の迷路の 115 m 先から 30 s ほどでプレイヤーの前へ来た）。
 - 受け入れ半径の 5 はプレイヤーのカプセルに当たって届かないので、追跡は依頼が続いたまま触れて止まる（PIE で中心の間 89 cm）。接触から先は捕獲（項目 9）。
-- **派生が替える口**: `GetPlayerTarget()`・`GetRandomPointDestination()`（Zone 2 の型。ステップ 4）。06 の追跡型は `ChasePlayer` を毎ティック呼ぶ（ステップ 3）。
+- **派生が替える口**: `GetPlayerTarget()`・`GetRandomPointDestination()`（Zone 2 の型。ステップ 4）。06 の追跡型は下。
 - **アニメとの受け渡し**: アニメは毎フレーム `IsStunned()` を読む（本家の ABP の `bStunned = State == 2`。`SetState` の直後から気絶の姿勢になり、止まるのは次の判断）。立ち上がりで `GetStunTimeLeft()` を読み、起き上がりを巡回に戻る瞬間に終える。残りは、気絶でなければ 0、判断の前なら「次の判断までの残り（判断のタイマーの残り）+ 17 s」、判断の後なら 17 s のタイマーの残り。エンジンではタイマーが移動とメッシュの更新（TG_PrePhysics）の後に進むので、アニメが読む残りはその前のフレームの終わりの値で、そのフレームの経過と合わせて合う。
 - **エンジンのタイマーの刻み**（UE 5.8 の `FTimerManager`。UE4 も同じ作り）: タイマーは「期限を**過ぎた**最初の更新」で発火する（`InternalTime > ExpireTime`）。更新の外（BeginPlay・テストの本文）や発火の処理の中で入れたタイマーは保留になり、その更新の終わりの時刻から数え始める。そのため判断はフレームの粒で最大 1 フレーム遅れ、気絶の 17 s は判断のフレームの終わりから数える。アニメが判断の前に読んだ残りは実際の終わりより最大 2 フレーム短く、起き上がりの終わりの姿勢を最大 2 フレーム保ってから明ける（見た目には分からない）。
+
+### 06 の追跡型（`AWasamiEnemy06Chase`。本家の `BP_06_ReaperNurse_06_Chase`）
+
+Zone 1 の流れの `Spawn Nurses_06` が駐車場に 2 体出す（11 記録）。本家のナースの子で、`BeginPlay` は親のまま（0.5 s の判断も走る）、tick を自分のものに替える。
+
+- **tick**: State == Stun なら気絶の DoOnce（`StartStun`。止まり、17 s 後に Patrol）だけ。そうでなければ毎ティック `ChasePlayer`（見えていなくても追う。`bSeenPlayerRecently` が毎ティック真になり、判断の 3 s の遅延も明けないので、**見失わない**。Vanish で偽になっても次のティックで戻る）。`bAttackDoor` の間は、そのうえで扉を突く DoOnce。
+- **気絶**: 本家は判断と tick にそれぞれ DoOnce があり、どちらも 17 s 後に State = 0 にする。本作は 1 つ（`StartStun`）にまとめた。tick が先に始めるので終わりは tick の 17 s で、本家と同じ時刻になる（後から明ける判断側の DoOnce は State を 0 にし直すだけ）。`GetTimeToStunStart` は 0（次のティックで始まる）。
+- **扉を突く**（本家の `PlayMontage(ReaperNurse_Needle_Attack_NoSound_Montage)` の DoOnce）: 始めに `PlayOnce(Chase_Charge)`（本家のモンタージュはナースの骨なので、頭を下げて突っ込むワサミのクリップで代用。Zone 2 の捕まる場面の「殴る」と同じ代用。仮）。時刻は本家のモンタージュの値で数える: `DoorHitTime` 0.413 s に通知（`OnNotifyBegin`）→ `RandomBoolWithWeight(0.5)` で `HitFX`。`DoorAttackSeconds` 0.717 s（長さ 0.967 − `BlendOutTriggerTime` 0.5 で blend out が始まり、既定の 0.25 s で終わる所。`OnCompleted`）に終わり → `RandomFloatInRange(0, 0.5)` 待って DoOnce を開く（0 は次のティック）。中断（`OnInterrupted`）で開かないのは、代用が中断されないので写さない。1 回あたり平均約 1.2 s なので、扉が破れるまでの 25 s に 1 体あたり約 20 回突く（2026-09-19 の PIE で、2 体の `HitFX` の塵が 1 秒に約 1 つずつ出た）。
+- **`HitFX`**: カプセルの前 230 cm（本家の `ParticleSystem` 部品〈`Glass_fracture`、起こさない〉の相対位置）に `P_06_NurseDoorHit` を拡縮 0.5 で `SpawnEmitterAtLocation`（向き 0・自動で消える・使い回さない）、`Audio`（カプセルに付けた `UAudioComponent`、`20-Elevator_Slams`〈3 本のランダムの SoundCue、`01_Lobby_Attenuation`、ピッチ 1.8〉、自動で鳴らない）を `Play(0)`、自分の位置を中心に `01_Hotel_Lobby_ElevatorShakeStop` を `PlayWorldCameraShake`（内 0・外 3000・減衰 1・中心へ向ける）。素材は `WasamiDDTools.import_dd_gimmicks`（08 記録）。
+- **`Chasing`**: 常に真（本家の上書き）。薬投げ・透明化（`Pill Throw`・`Cloak`）は本家でも空。
 
 ### 取り込み
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
@@ -152,12 +166,14 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - 気絶の長さ 17.0 s は `BP_06_ReaperNurse` の Make Choice の `Delay 17.0`。起き上がりをその中に収めるのはユーザーの「明けに起き上がる」の読み（本家に起き上がりのアニメは無く、0.25 s のブレンドで戻る）。
 - 判断: `_bytecode/…/Nurse/BP_06_ReaperNurse.txt` の `Make Choice`（@7107〜@7523。`python Tools/dd/bp_flow.py <file> "Make Choice"` で順が読める）、`Chase Player`（@7524〜@7935、DoOnce @5624・@5639 の `broadcast CloseBy`、`Reset Detection` @10646）、`Not Seeing Player`（@7940〜@8473）、`Generate Random Point`（@8474〜@8794）、移動の代理の `OnSuccess_C62BD9…`・`OnFail_…`（@3910・@3952 → `Generate Random Point`）、`…_A0F68D…`（@5551・@10818 → `Point Of Interest` = 0）、`…_D93573…`（@5319・@9789。何もしない）、関数 `Can See Player`・`Player Target`・`Random Point Destination`・`Distance To Player`。エンジンの挙動は UE 5.8 のソース（`AIBlueprintHelperLibrary.cpp` の `CreateMoveToProxyObject` と代理の `OnMoveCompleted`・`OnNoPath`・`OnAtGoal`、`AIController.cpp` の `MoveTo`、`PathFollowingComponent.cpp` の `RequestMove`、`NavMovementComponent.h` の `StopMovementImmediately`、`NavigationSystem.cpp` の `K2_GetRandomReachablePointInRadius`）。本家のナースは AI のコントローラを替えない（`AIControllerClass` を上書きしない）ので、エンジンの既定の `AIController`。
 - 敵のアクタの値: `pak_reference_2/_assets/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.json`（CDO と `CollisionCylinder`・`CharMoveComp`・`CharacterMesh0`）、`BP_06_ReaperNurse_Sentry.json`（`bAggressiveIdle`）、`_bytecode/…/BP_06_ReaperNurse.txt`（BeginPlay の `K2_SetTimer('Make Choice', 0.5, 真)`、Make Choice の入口 @7107 の `State == 2` → DoOnce → `StopMovementImmediately` → `Cloak(False)` → `Talk` → `Delay 17.0` → @355 `State = 0` と DoOnce を開く、`Set State`・`Get State`〈ByteConst 0〉・`Player Vanish`〈@10871 `Seen Player Recently = False`〉・`No Telepathy`〈偽〉、`Set Walk State`）、`_bytecode/…/Shared/BP_DD_Character_Base.txt`（`CanSpawn` と `Ignore All Speed Barriers`）、`_bytecode/DDeception/Content/06_Hospital_Zone_01.json`（`Spawn Nurses` が `SetBoolPropertyByName(CanSpawn, True)`）。
+- 06 の追跡型: `_bytecode/…/Nurse/BP_06_ReaperNurse_06_Chase.txt`（`ReceiveTick` @1029〜@1150: `State == 2` → DoOnce @882〈`StopMovementImmediately`・`Delay 17`・@66 `State = 0`〉、`bAttackDoor` → `Chase Player` と DoOnce @435 の `CreateProxyObjectForPlayMontage`、そうでなければ `Chase Player`。`OnNotifyBegin_9B2D…` @109 の `RandomBoolWithWeight(0.5)` → `Hit FX` @1153、`OnCompleted_9B2D…` @246 の `Delay(RandomFloatInRange(0, 0.5))` → @43 DoOnce を開く、`OnBlendOut`・`OnInterrupted` は何もしない、関数 `Chasing` は真）、`_assets/…/Nurse/BP_06_ReaperNurse_06_Chase.json`（`Audio` の `20-Elevator_Slams`・自動で鳴らない、`ParticleSystem` の相対位置 (230, 0, 0)・`Glass_fracture`・自動で起きない）、`_assets/…/Animation/Enemies/Nurse/Reaper/ReaperNurse_Needle_Attack_NoSound_Montage.json`（長さ 0.9667、`PlayMontageNotify` 0.4132、`BlendOutTriggerTime` 0.5）。
 - 本家のナースのほかの部品（捕獲の判定 `Sphere`〈半径 54.928、Pawn だけ Overlap。捕獲は State ≠ Stun のときだけ〉は項目 9、上空の板 `StaticMesh`〈`M_Enemy`、(0, 21.9, 1117.8)、拡縮 (2.52, 2.52, 10)。地図の印と推測〉は項目 10、`Talk Audio` は項目 20。`Camera`〈本家の病院の捕獲用〉・`PillSpawn`・`Skate Audio`・`Cloak Timeline` は作らない）。
 
 ## 依存関係
 - `pipeline/gltf.py`（glb の読み書き・標本化・四元数）、`dd_stage`（`import_texture`・`_Graph`・`VERSION_TAG`）、`dd_assets`（`material`・`material_instance`）、`paths`（01 記録）。
 - エンジン: `InterchangeManager`・`InterchangeGenericAssetsPipeline`、`SkeletalMesh`・`AnimSequence`。
 - アニメの再生: エンジンの `FAnimInstanceProxy`（`PreEvaluateAnimation`・`Evaluate`）、`FAnimationRuntime::BlendPosesTogether`、`FAlphaBlend::AlphaToBlendOption`、`WasamiAssets::Path`（00 記録）。追加のモジュールは要らない（`Engine` だけ）。
+- 06 の追跡型: `UAudioComponent`・`UGameplayStatics::SpawnEmitterAtLocation`（Cascade）・`PlayWorldCameraShake`、`/Game/DD` の素材 3 つ（08 記録の `import_nurse_door_hit`。ソフト参照で、音は BeginPlay、粒子と揺れは最初の `HitFX` で読む）。出すのは Zone 1 の流れ（11 記録の `SpawnEnemy`）。
 - 敵のアクタ: `ACharacter`・`UCharacterMovementComponent`・`FTimerManager`、`IWasamiEnemyInterface`（04 記録）、`WasamiAssets::Path`。判断はモジュール `AIModule`（`UAIBlueprintHelperLibrary`・`UAIAsyncTaskBlueprintProxy`・既定の `AIController`）・`NavigationSystem`（`UNavigationSystemV1`）と、両ゾーンの NavMesh（01 記録の「ナビゲーション」、設定は 00 記録）。
 - 使う側: アニメの再生が取り込んだクリップを名前で読み、持ち主の敵のアクタから値を読む。パワー（04 記録）の Primal Fear（球の重なりの Pawn とインターフェース）・Vanish（タグ `Enemy` とインターフェース）・Telepathy（インターフェース）が敵のアクタに届く。2 つの状態の混ぜ `FWasamiStateBlend` はガレージリフトのアニメ（12 記録）も使う。
 
@@ -176,6 +192,8 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - `bCanSpawn` が既定で偽なので、エディタのレベルに置いた敵は PIE で消える（置くなら詳細で真にする）。エディタのレベルでは参照姿勢で見える。
 - 気絶の間は判断が止まり、`StopMovementImmediately` が経路の追従も止める（2026-09-19 の PIE で、プレイヤーが 12 m 離れても 17 s 動かなかった。起き上がりの移し替えだけ動く）。
 - 約 20 m より遠い 2 点の道は途中までになることがある（01 記録）。巡回の点はプレイヤーの周り 3000 なので、遠くからでも途中までの道を繰り返してプレイヤーへ寄る。
+- 06 の追跡型は毎ティック移動の依頼を出し直す（本家どおり。1 秒に数十回の経路探索）。2 体なので重さは見えない。
+- 06 の追跡型の扉を突く代用 `Chase_Charge`（0.53 s）は本家の針の突き（0.97 s）より短く、次の突きまで約 0.2〜0.7 s 立つ。見た目は大目標 3 で詰める（作業一覧の項目 28）。
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
 ## 変更履歴
@@ -189,3 +207,4 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - 2026-09-18: アニメの再生の気絶を「倒れる 2 本からランダム → 終わりで止まる → 起き上がり（気絶の終わりに終わる）」にし、起き上がりに入る更新で敵を移す（`MoveToGetUp`・`MeasureGetUpMove`）ようにした。明けてブレンドアウトする間は気絶の時刻を進めない。テスト `Anim.Stun`・`Anim.Clips`・`Actor.Stun` を直した（作業ブランチのステップ 2。PIE で確かめた）
 - 2026-09-18: `ensure_skeletal_pipeline` に管と焼く速さの引数を足した（本家のガレージリフトのアニメを 24 Hz で焼くため。既定は前のまま。作業一覧の項目 6 のステップ 8b1）
 - 2026-09-19: 判断（本家のナースの `Make Choice` の残り: `CanSeePlayer`・`ChasePlayer`・`NotSeeingPlayer`・`GenerateRandomPoint`・3 s の見失い・`PointOfInterest`・`OnCloseBy`）を AI MoveTo の代理で足し、テスト `Actor.Choice` と道具 `UWasamiTestListener` を足した。PIE（Zone 1 の迷路）で巡回・発見・追跡・Vanish・気絶を確かめた（作業一覧の項目 7 のステップ 2）
+- 2026-09-19: 06 の追跡型 `AWasamiEnemy06Chase`（毎ティックの追跡・扉を突く代用と `HitFX`・常に `Chasing`）を足し、気絶の DoOnce を `StartStun` に出し、`IsChasing` と `GetTimeToStunStart` を virtual にした。テスト `Actor.Chase06` を足した（作業一覧の項目 7 のステップ 3）

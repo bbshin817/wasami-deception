@@ -88,11 +88,14 @@ public:
 	bool IsStunRunning() const { return bStunRunning; }
 
 	/**
-	 * How long until the stun sets State back to Patrol: what is left of the 17 s, or, before the next decision starts
-	 * them, the time to that decision and the 17 s. 0 when not stunned.
+	 * How long until the stun sets State back to Patrol: what is left of the 17 s, or, before they start, the time until
+	 * they do (GetTimeToStunStart) and the 17 s. 0 when not stunned.
 	 */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	float GetStunTimeLeft() const;
+
+	/** How long a stun set now waits before its 17 s start: to the next decision (the 06 nurse's next tick: none). */
+	virtual float GetTimeToStunStart() const;
 
 	/** The mesh's animation (PlayOnce and the rest), or null before it starts. */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
@@ -141,7 +144,7 @@ public:
 
 	/** Chasing: Seen Player Recently. */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
-	bool IsChasing() const { return bSeenPlayerRecently; }
+	virtual bool IsChasing() const { return bSeenPlayerRecently; }
 
 	/** Can See Player: the player within ViewAngle of its front, and a Camera trace from it hits the player first. */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
@@ -176,6 +179,11 @@ protected:
 
 	/** Every DecisionInterval: the stun, or the chase and what it has seen. */
 	void MakeChoice();
+	/**
+	 * The stun's DoOnce: stops the movement and sets State back to Patrol StunSeconds on, unless it already runs. Make
+	 * Choice starts it, and the 06 nurse's tick (whose own DoOnce does the same; the first to start ends the stun).
+	 */
+	void StartStun();
 	void EndStun();
 	/** The retriggerable delay's end: Seen Player Recently false and Reset Detection. */
 	void ForgetPlayer();

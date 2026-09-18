@@ -4,11 +4,18 @@
 #include "WasamiZoneFlow.h"
 #include "WasamiZone1Flow.generated.h"
 
+class AWasamiEnemy06Chase;
+
 /**
  * Zone 1's level Blueprint (pak_reference_2's 06_Hospital_Zone_01): the lift arrives (checkpoint 4), the lift's door is
  * broken open, the maze past it saves 5 and wants all the shards; with the last one the barrier breaks and the parking
  * lot is next, then the tunnel, the doors the nurses break in 25 s, and the ambulance's roof, which saves 7 and opens
  * Zone 2. The events keep the original's names in their comments and in GetSection.
+ *
+ * The nurses: three that patrol the maze (Spawn Nurses at 05_Persistent), and the two of the parking lot that chase the
+ * player from 06_Start (Spawn Nurses_06: AWasamiEnemy06Chase), stab at the tunnel's doors while they hold
+ * (06_DoorsLock's bAttackDoor) and follow them in. A nurse in TriggerVolume_1 keeps the car park's garage lift down
+ * for good (its NurseNear).
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiZone1Flow : public AWasamiZoneFlow
@@ -73,8 +80,18 @@ private:
 	void Transition06();
 	/** 06_DoorsLock 25 s on: the nurses break the tunnel's doors in. */
 	void BreakDoorsIn();
-	/** Spawn at 6 and the end of 06 Transition: the parking lot's triggers, the tunnel as the goal. */
+	/** Spawn at 6 and the end of 06 Transition: the parking lot's nurses and triggers, the tunnel as the goal. */
 	void Start06();
+	/** Spawn Nurses: BP_06_ReaperNurse at NurseSpawn_3, _1 and _2. */
+	void SpawnNurses();
+	/** Spawn Nurses_06: BP_06_ReaperNurse_06_Chase at 06_NurseSpawn and 06_NurseSpawn2, kept as 06 Nurses. */
+	void SpawnNurses06();
+	/** bAttackDoor on each of 06 Nurses. */
+	void SetNursesAttackDoor(bool bAttack);
+
+	/** TriggerVolume_1's ActorBeginOverlap (bound from the level's start): a nurse sets the garage lift's NurseNear. */
+	UFUNCTION()
+	void OnNurseLiftTrigger(AActor* OverlappedActor, AActor* OtherActor);
 
 	UFUNCTION()
 	void On04Intercom();
@@ -99,4 +116,7 @@ private:
 
 	UFUNCTION()
 	void On06ReachAmbulance();
+
+	/** 06 Nurses: those Spawn Nurses_06 spawned (gone once destroyed). */
+	TArray<TWeakObjectPtr<AWasamiEnemy06Chase>> Nurses06;
 };

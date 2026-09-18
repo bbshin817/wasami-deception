@@ -1,5 +1,6 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/Skeleton.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -11,8 +12,13 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
+#include "UObject/UObjectIterator.h"
 #include "../WasamiEnemy.h"
+#include "../WasamiEnemy06Chase.h"
 #include "../WasamiEnemyAnimInstance.h"
 #include "../WasamiPowerTypes.h"
 #include "../WasamiPrimalPower.h"
@@ -809,6 +815,132 @@ bool FWasamiEnemyActorPowersTest::RunTest(const FString& Parameters)
 		OnEnemy += It->Actor.Get() == Enemy ? 1 : 0;
 	}
 	TestEqual(TEXT("the telepathy marks it"), OnEnemy, 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorChase06Test, "Wasami.Enemy.Actor.Chase06",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorChase06Test::RunTest(const FString& Parameters)
+{
+	// A game world without navigation, ticked by hand in steps a float adds up exactly (as Actor.Stun). The actors tick
+	// before the timers in a frame, so what a timer opens is taken up by the next tick.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	// The player behind it, where it cannot see them.
+	ACharacter* Player = World->SpawnActor<ACharacter>(FVector(-1000., 0., 500.), FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	const FTransform At(FRotator::ZeroRotator, FVector(0., 0., 500.));
+	AWasamiEnemy06Chase* Nurse = World->SpawnActorDeferred<AWasamiEnemy06Chase>(AWasamiEnemy06Chase::StaticClass(), At,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!TestNotNull(TEXT("a spawned nurse"), Nurse))
+	{
+		return false;
+	}
+	Nurse->bCanSpawn = true;
+	Nurse->FinishSpawning(At);
+	Nurse->GetCharacterMovement()->GravityScale = 0.f;
+	const UWasamiEnemyAnimInstance* Anim = Nurse->GetEnemyAnim();
+	if (!TestNotNull(TEXT("its animation"), Anim))
+	{
+		return false;
+	}
+	const UAudioComponent* Audio = Nurse->FindComponentByClass<UAudioComponent>();
+	TestTrue(TEXT("its slam"), Audio && Audio->Sound && Audio->Sound->GetName() == TEXT("20-Elevator_Slams"));
+	TestTrue(TEXT("Chasing always answers true"), Nurse->IsChasing());
+	TestFalse(TEXT("it does not see the player"), Nurse->CanSeePlayer());
+
+	// Its tick chases the player, seen or not.
+	TickTo(Step);
+	TestTrue(TEXT("chasing from its first tick"), Nurse->bSeenPlayerRecently);
+	TestTrue(TEXT("to where the player is"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	TestEqual(TEXT("at the chase's speed"), Nurse->GetCharacterMovement()->MaxWalkSpeed, AWasamiEnemy::MaxSpeed);
+	Player->SetActorLocation(FVector(-1000., 500., 500.));
+	TickTo(2 * Step);
+	TestTrue(TEXT("every tick"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+
+	// bAttackDoor: a stab from the next tick, Wasami's stand-in clip over the rest once it has blended in; the next
+	// after the montage's end (0.7167 s) and 0 to 0.5 s.
+	TestEqual(TEXT("no stab without bAttackDoor"), Nurse->GetDoorAttacks(), 0);
+	Nurse->bAttackDoor = true;
+	TickTo(3 * Step);
+	TestEqual(TEXT("the tick stabs"), Nurse->GetDoorAttacks(), 1);
+	TickTo(3 * Step + 0.25f);
+	float ClipTime = 0.f;
+	float ClipWeight = 0.f;
+	TestEqual(TEXT("with Chase_Charge"), Anim->GetMainClip(ClipTime, ClipWeight), AWasamiEnemy06Chase::DoorAttackClip);
+	const float Completed = 3 * Step + FMath::CeilToFloat(AWasamiEnemy06Chase::DoorAttackSeconds / Step) * Step;
+	TickTo(Completed + Step);
+	TestEqual(TEXT("one stab until the montage's end and the wait"), Nurse->GetDoorAttacks(), 1);
+	TickTo(Completed + AWasamiEnemy06Chase::DoorAttackMaxWait + 2 * Step);
+	TestEqual(TEXT("then the next"), Nurse->GetDoorAttacks(), 2);
+	// Each stab takes 0.75 s to its end on these ticks, a wait of up to 0.5 s and a tick to start the next.
+	const float From = Now;
+	const int32 Before = Nurse->GetDoorAttacks();
+	TickTo(From + 20.f);
+	const int32 In20 = Nurse->GetDoorAttacks() - Before;
+	TestTrue(FString::Printf(TEXT("%d stabs in 20 s"), In20), In20 >= 14 && In20 <= 26);
+	TestTrue(TEXT("still chasing"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	Nurse->bAttackDoor = false;
+	TickTo(Now + 1.5f);
+	const int32 Stopped = Nurse->GetDoorAttacks();
+	TickTo(Now + 3.f);
+	TestEqual(TEXT("no stab once bAttackDoor is cleared"), Nurse->GetDoorAttacks(), Stopped);
+
+	// Hit FX: the dust 230 cm in front of it at half size.
+	Nurse->HitFX();
+	const UParticleSystemComponent* Dust = nullptr;
+	for (TObjectIterator<UParticleSystemComponent> It; It; ++It)
+	{
+		if (It->GetWorld() == World && It->Template && It->Template->GetName() == TEXT("P_06_NurseDoorHit"))
+		{
+			Dust = *It;
+		}
+	}
+	if (TestNotNull(TEXT("the dust"), Dust))
+	{
+		const FVector Front = Nurse->GetActorLocation() + Nurse->GetActorForwardVector() * AWasamiEnemy06Chase::HitFXForward;
+		TestTrue(TEXT("in front of it"), Dust->GetComponentLocation().Equals(Front, 0.01));
+		TestTrue(TEXT("at half size"), Dust->GetComponentScale().Equals(FVector(AWasamiEnemy06Chase::HitFXScale), 1e-4));
+	}
+
+	// A stun starts on its next tick and holds it for 17 s: no chase until then.
+	IWasamiEnemyInterface::Execute_SetState(Nurse, EWasamiEnemyState::Stun, false);
+	TestEqual(TEXT("17 s from its next tick"), Nurse->GetStunTimeLeft(), AWasamiEnemy::StunSeconds);
+	TickTo(Now + Step);
+	TestTrue(TEXT("its tick starts the stun"), Nurse->IsStunRunning());
+	const float Stunned = Now;
+	const FVector Seen = Nurse->PointOfInterest;
+	Player->SetActorLocation(FVector(-1000., -500., 500.));
+	TickTo(Stunned + 1.f);
+	TestTrue(TEXT("no chase while stunned"), Nurse->PointOfInterest.Equals(Seen, 1e-3));
+	TickTo(Stunned + AWasamiEnemy::StunSeconds);
+	TestTrue(TEXT("stunned for 17 s"), Nurse->IsStunned());
+	TickTo(Stunned + AWasamiEnemy::StunSeconds + Step);
+	TestTrue(TEXT("then Patrol"), Nurse->GetCurrentState() == EWasamiEnemyState::Patrol);
+	TickTo(Now + Step);
+	TestTrue(TEXT("and chasing again"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
 	return true;
 }
 

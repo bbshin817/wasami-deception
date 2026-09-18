@@ -8,7 +8,7 @@ sources:
   - Source/wasami_deception/WasamiGarageLift.cpp
   - Source/wasami_deception/Tests/WasamiGarageLiftTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_skeletal.py
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # リフト（Zone 2 の乗ると上がる床・角のリフト・ガレージリフト）
@@ -25,7 +25,7 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 - `AWasamiCornerLift`: `bPlayerForceMovement`（`Player Force Movement`）・`bGoUp`（`GoUp?`）、`IsPlayerOnTopFloor()`（`What Floor is Player On?`）・`IsDoubleCheckPending()`・`DoubleCheck()`、`NotifyActorBeginOverlap` / `EndOverlap`（`AActor` のもの。本家の `ReceiveActorBeginOverlap` / `EndOverlap`）。定数 `TopFloorHeight` 610（ワールドの Z）・`DoubleCheckDelay` 1。
 
 - `AWasamiGarageLift`（`AActor`）: `IsPlayerOverlapping()`（本家の `Player Overlapping?`、BlueprintPure・仮想）、部品の取り出し `GetSkeletalMesh()`・`GetBox()`・`GetOverlapBox()`・`GetAudio()`・`GetAudio1()`、定数 `PlatformBone`（`joint4`）。ソフト参照 `MeshAsset`・`UpSound`・`DownSound`・`SoundAttenuation`。
-- `AWasamiGarageLiftZone1Special`: `bNurseNear`（本家の `NurseNear`。真なら `IsPlayerOverlapping` が偽。Zone 1 の流れが項目 7 で書く。11 記録）。
+- `AWasamiGarageLiftZone1Special`: `bNurseNear`（本家の `NurseNear`。真なら `IsPlayerOverlapping` が偽。Zone 1 の流れがナースが `TriggerVolume_1` に入ると真にし、戻さない。11 記録。2026-09-19 の PIE で、ナースが箱を通った後はプレイヤーが乗っても上がらなかった）。
 - `UWasamiGarageLiftAnimInstance`（ネイティブの AnimInstance。メッシュの `AnimClass`）: `bPlayerOn`（`PlayerOn?`）、`IsInPlayerOn()`（状態機械の今の状態）・`GetPlayerOnWeight()`（PlayerOn の重み）・`GetPlayerOnTime()`（PlayerOn のシーケンスプレーヤーの時刻）・`GetLength()`（アニメの長さ）、定数 `CrossfadeDuration` 0.2・`UpFadeOutSeconds` 0.25。
 
 ## 内部構造と処理の流れ
@@ -70,7 +70,7 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 - 自前: `AWasamiPlayerCharacter`（`Player Overlap` の相手のクラス。02 記録）、`WasamiAssets.h`。
 - 使う側: レベルの組み立て（`dd_level._flow`。01 記録）、Zone 2 の流れ（項目 20 で `OnPlayerOverlap` を結ぶ。11 記録）。
 - エンジン: `UBoxComponent`・`UStaticMeshComponent`・`UAudioComponent`（`FadeIn`・`FadeOut`）、`FMath::FInterpConstantTo`、`UGameplayStatics::GetPlayerCharacter`・`GetWorldDeltaSeconds`、`FTimerManager`、`ACharacter`。ガレージリフトは `USkeletalMeshComponent`（骨に付けた部品）、`UAnimInstance`・`FAnimInstanceProxy`、`UAnimSequence::GetAnimationPose`、`FAnimationRuntime::BlendTwoPosesTogether`、07 記録の `FWasamiStateBlend`（`WasamiEnemyAnimInstance.h`）。
-- ガレージリフトの使う側: レベルの組み立て（`GARAGE_LIFT_CLASSES`。01 記録）、Zone 1 の流れ（項目 7 で `bNurseNear` を書く。11 記録）。
+- ガレージリフトの使う側: レベルの組み立て（`GARAGE_LIFT_CLASSES`。01 記録）、Zone 1 の流れ（`OnNurseLiftTrigger` が `bNurseNear` を書く。11 記録）。
 
 ## 既知の制約・注意点
 - **角のリフトの上で立ち止まると、床が約 70 cm 沈んでは戻るのを約 1.4 s ごとに繰り返す**（本家のコードどおり）: 上の階では `LiftCollision1` が床と同じ所に残るので、1 s 後の `Double Check` で床が下りても、プレイヤーは `LiftCollision1` の上に残る → 重なりが切れて `Player Force Movement` 偽 → プレイヤーの階（上）へ戻る → また 1 s 後…。上の階から角のリフトで下りることはできない。下から上るときは、床に乗ったプレイヤーが `LiftCollision1` を抜けて上の階に着く（PIE で Z 90 → 626）。本家の実機で同じかは確かめていない（作業一覧の項目 28 の後回しの一覧）。
@@ -95,3 +95,4 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 - 2026-09-18: 初版。本家の `BP_06_LiftBase`・`BP_06_Lift`（`_03`・`_04`）・`BP_06_LiftBase_Corner` を `AWasamiLiftBase`・`AWasamiLift`・`AWasamiCornerLift` に写し、組み立てが Zone 2 に 15 台置くようにした（作業一覧の項目 6 のステップ 8a）
 - 2026-09-18: ガレージリフトの骨入りのメッシュとアニメを取り込んだ（`dd_skeletal`。作業一覧の項目 6 のステップ 8b1）
 - 2026-09-18: ガレージリフトのアクタ `AWasamiGarageLift`・`AWasamiGarageLiftZone1Special` と本家の ABP の写し `UWasamiGarageLiftAnimInstance`、テスト `Wasami.GarageLift.Actor` を足し、組み立てが両ゾーンに 3 台置くようにした（作業一覧の項目 6 のステップ 8b2）
+- 2026-09-19: `AWasamiGarageLiftZone1Special` の `bNurseNear` を Zone 1 の流れが書くようになった（コメントだけ直した。作業一覧の項目 7 のステップ 3）

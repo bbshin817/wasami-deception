@@ -100,6 +100,9 @@ LIFT_FOLDER = "Hospital/Gameplay/Lifts"
 # The level's emitters the flow wakes (their ParticleSystemComponent's Activate): Zone 1's burst of concrete as the
 # tunnel's doors break in. They keep the original's bAutoActivate (false) and template.
 FLOW_EMITTERS = ("Fracture_concrete_5",)
+# The level's target points: where the zones spawn their nurses (NurseSpawn_1, 06_NurseSpawn, ...), and the other
+# places the level Blueprints name (DoorLocation, the sounds' and cameras' places). Every one is placed.
+TARGET_POINT_CLASS = "TargetPoint"
 VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume,
                   "NavMeshBoundsVolume": unreal.NavMeshBoundsVolume, "NavModifierVolume": unreal.NavModifierVolume}
 # The navigation's volumes: the original's bounds where the navmesh is made, and (Zone 2) its modifiers, each with the
@@ -499,15 +502,16 @@ def set_emitter(actor, zone, name, level):
 
 
 def _flow(eas, stage, zone, counts, failures):
-    """The trigger boxes, brush volumes (the navigation's too), door breaks, the double doors and emitters the flow names, the zone barriers,
-    the zone shard checkers, the lifts and the garage lifts, each where the original has it, and fixed to what it moves
-    with (an ambulance, the spikes) when that is in the level."""
+    """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
+    the flow names, the zone barriers, the zone shard checkers, the lifts and the garage lifts, each where the original
+    has it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
     placed = []
     level = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
-        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS)
+        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
+                                                 TARGET_POINT_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and not doors and not emitter):
             continue
@@ -516,6 +520,9 @@ def _flow(eas, stage, zone, counts, failures):
             actor = eas.spawn_actor_from_class(unreal.WasamiTriggerBox, _vec(world["location"]), _rot(world["quat_xyzw"]))
             actor.set_editor_property("end_overlap", bool(a["props"].get("EndOverlap")))
             counts["triggers"] += 1
+        elif a["class"] == TARGET_POINT_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.TargetPoint, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            counts["targetPoints"] += 1
         elif a["class"] == DOOR_BREAK_CLASS:
             actor = eas.spawn_actor_from_class(unreal.WasamiDoorBreak, _vec(world["location"]), _rot(world["quat_xyzw"]))
             if "Progress Speed" in a["props"]:
@@ -595,7 +602,7 @@ def _flow(eas, stage, zone, counts, failures):
 
 
 def place_flow(zone="Zone1", map_path=""):
-    """Puts the zone's trigger boxes, brush volumes (the navigation's too), door breaks, double doors, emitters, zone barriers, zone shard
+    """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
     checkers, lifts and garage lifts in again (and takes out the barrier lights an earlier build placed on their own), leaving the
     rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts
     and the barriers' lights are movable), and saves the level."""
@@ -607,7 +614,8 @@ def place_flow(zone="Zone1", map_path=""):
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
     lights = [a for a in eas.get_all_level_actors()
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
-    counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0, "doorBreaks": 0,
+    counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
+              "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "attached": 0}
     old += lights
     if old:
@@ -630,7 +638,8 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "doorBreaks", "doubleDoors", "emitters", "zoneBarriers",
+                             "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
+                             "doubleDoors", "emitters", "zoneBarriers",
                              "shardCheckers", "lifts", "garageLifts", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
