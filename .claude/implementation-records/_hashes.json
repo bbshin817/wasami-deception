@@ -15,7 +15,7 @@
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "00f19c04a6075243347fd87f32131e48296940c1",
+    "Tools/dd/prepare_stage.py": "8492592be32f6a9eac9c091927f2f1f86721dd86",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "cee314799ff6c30003dbdb55bc0e1aea8d2e2584",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
@@ -197,14 +197,14 @@
     "Source/wasami_deception/WasamiHitFX.h": "e01a423fa56e25756c0ecfeda5c9b2c14f236280",
     "Source/wasami_deception/WasamiHitFX.cpp": "3f06d3926c2dac1d9209c7cdfd09f40796b61715",
     "Source/wasami_deception/Tests/WasamiHitFXTests.cpp": "89b8e130c17db44b1c197bb375307723a1e1c63c",
-    "Source/wasami_deception/WasamiRingStatue.h": "02870f4caf66e21e29402a89de7e7f10332fbf12",
+    "Source/wasami_deception/WasamiRingStatue.h": "b2018501b68e1ed342b8c8333ee61cb03796e7b2",
     "Source/wasami_deception/WasamiRingStatue.cpp": "4e7d02f8c332f2c85195c756ac1cae4a9c6c7051",
     "Source/wasami_deception/WasamiRingPiece.h": "b8cf3a01b95ea86a088ae1eb56de46d886dd6143",
-    "Source/wasami_deception/WasamiRingPiece.cpp": "189a5b61b1bbef4ffaf2c60d1c62ddc815d84585",
-    "Source/wasami_deception/Tests/WasamiRingStatueTests.cpp": "5adf773a016b94aa1b078bd63a907be8d2101305",
-    "Source/wasami_deception/WasamiPortal.h": "550f6910a36032ee4f65f76390bfbe594d9350c1",
+    "Source/wasami_deception/WasamiRingPiece.cpp": "5e86ff86b1478c23025998960a71f7eaba34848b",
+    "Source/wasami_deception/Tests/WasamiRingStatueTests.cpp": "2e1b4db4c1ddccb677b70b1aa31b682a562bf0fc",
+    "Source/wasami_deception/WasamiPortal.h": "1b8a630c3d47a6e579cd57ea1529ff4a629cd0aa",
     "Source/wasami_deception/WasamiPortal.cpp": "03467ea183e30d5fe3f9a85337dce014c593cb31",
-    "Source/wasami_deception/Tests/WasamiPortalTests.cpp": "eba201cf08444e181522896d30bfd61126bd145a",
+    "Source/wasami_deception/Tests/WasamiPortalTests.cpp": "dc2871f28c26a87593117e3aa7b1520f1f3de901",
     "Tools/dd/prepare_portal_logo.py": "d16430baa141e3c74d64630a36f8ac52472e7a06",
     "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "8145e6482b4f82bf0773c8c1b1486f0ae8c1c0d0"
   },
