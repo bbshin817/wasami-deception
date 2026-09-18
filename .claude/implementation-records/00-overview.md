@@ -26,7 +26,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 | 場所 | 中身 |
 | --- | --- |
-| `Source/wasami_deception/` | ゲームの C++ モジュール（`Runtime`、`LoadingPhase: Default`）。プレイヤーとゲームモードは 02 記録、タブレットの画面は 03 記録、パワーは 04 記録 |
+| `Source/wasami_deception/` | ゲームの C++ モジュール（`Runtime`、`LoadingPhase: Default`）。プレイヤーとゲームモードは 02 記録、タブレットの画面は 03 記録、パワーは 04 記録、ゲームの流れの画面（死亡画面）は 09 記録 |
 | `Content/Python/` | エディタの Python。`init_unreal.py` が `wasami_tools` のツールセットを ToolsetRegistry に登録し、MCP から呼べるようにする（01 記録） |
 | `Tools/` | エディタの外で動かすスクリプト（参照データの前処理、リモート実行、エディタの開き直し。01 記録） |
 | `Intermediate/Pipeline/` | 前処理の出力（git の対象外、作り直せる） |

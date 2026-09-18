@@ -28,7 +28,6 @@ POWERS_MASTER = "/Game/Pipeline/Materials/M_DD_Powers"
 MESH = "Meshes/Player/Tablet/tablet_new_pCube2"
 MINIMAP_TARGET = "UI/Minimap/T_NewMap"
 FONT_FACE = "UI/Fonts/helvetica-neue-bold"
-FONT = "UI/Fonts/helvetica-neue-bold_Font"
 
 # The textures the tablet needs: (pak_reference version, the original's path under /Game).
 TEXTURES = (
@@ -148,35 +147,7 @@ def make_body_materials():
 # ------------------------------------------------------------------------------------------------ font and sounds
 def import_font():
     """The original's helvetica-neue-bold as a font face and a runtime Font asset (its UMG texts use the Font)."""
-    ttf = os.path.join(paths.DD_PAK, "DDeception", "Content", "UI", "Fonts", "helvetica-neue-bold.ttf")
-    folder, name = paths.split(asset(FONT_FACE))
-    task = unreal.AssetImportTask()
-    task.filename = ttf
-    task.destination_path = folder
-    task.destination_name = name
-    task.replace_existing = True
-    task.automated = True
-    task.save = False
-    task.factory = unreal.FontFileImportFactory()
-    _tools().import_asset_tasks([task])
-    face = unreal.load_asset(asset(FONT_FACE))
-    if face is None:
-        raise RuntimeError("the font face did not import to %s" % asset(FONT_FACE))
-
-    folder, name = paths.split(asset(FONT))
-    if EAL.does_asset_exist(asset(FONT)):
-        font = unreal.load_asset(asset(FONT))
-    else:
-        font = _tools().create_asset(name, folder, unreal.Font, unreal.FontFactory())
-    font.set_editor_property("font_cache_type", unreal.FontCacheType.RUNTIME)
-    # FCompositeFont's members are not exposed to Python, so the typeface goes in as the struct's own text form.
-    composite = unreal.CompositeFont()
-    composite.import_text('(DefaultTypeface=(Fonts=((Name="Default",Font=(FontFaceAsset=FontFace\'"%s"\','
-                          'LoadingPolicy=LazyLoad,SubFaceIndex=0)))),FallbackTypeface=(Typeface=(Fonts=),'
-                          'ScalingFactor=1.000000),SubTypefaces=,bEnableAscentDescentOverride=True)'
-                          % paths.object_path(asset(FONT_FACE)))
-    font.set_editor_property("composite_font", composite)
-    return asset(FONT)
+    return dd_assets.font(FONT_FACE)
 
 
 def import_sounds():

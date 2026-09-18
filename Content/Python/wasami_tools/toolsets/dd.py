@@ -50,6 +50,20 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_ui() -> dict[str, int]:
+        """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
+        YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
+        heading font and select sound come with import_dd_tablet.
+
+        Returns:
+            How many assets of each kind were made ('textures', 'fonts', 'sounds').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_ui").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_dd_powers() -> dict[str, int]:
         """Imports (or re-imports) what the tablet's powers show and play: their sounds (with the original SoundWave
         settings and sound concurrency), camera shakes, camera anims (as WasamiCameraAnim), the speed boost's

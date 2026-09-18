@@ -237,6 +237,44 @@ def texture(rel, version=1):
     return target
 
 
+def font(face_rel, version=1):
+    """Imports the original's /Game/<face_rel>.ttf as a font face under /Game/DD and makes the runtime Font asset its UMG
+    texts use (<face_rel>_Font) with the face as its Default typeface. (The original's Font keeps the engine's Roboto as
+    the default and the face as an en-US sub-typeface; the face is what an English game shows.) Returns the Font's
+    package path."""
+    ttf = content_file(face_rel, version, ".ttf")
+    if not os.path.exists(ttf):
+        raise FileNotFoundError(ttf)
+    face_path = asset_path(face_rel)
+    folder, name = paths.split(face_path)
+    task = unreal.AssetImportTask()
+    task.filename = ttf
+    task.destination_path = folder
+    task.destination_name = name
+    task.replace_existing = True
+    task.automated = True
+    task.save = False
+    task.factory = unreal.FontFileImportFactory()
+    _tools().import_asset_tasks([task])
+    if unreal.load_asset(face_path) is None:
+        raise RuntimeError("the font face did not import to %s" % face_path)
+
+    font_path = face_path + "_Font"
+    if EAL.does_asset_exist(font_path):
+        font_asset = unreal.load_asset(font_path)
+    else:
+        font_asset = _tools().create_asset(name + "_Font", folder, unreal.Font, unreal.FontFactory())
+    font_asset.set_editor_property("font_cache_type", unreal.FontCacheType.RUNTIME)
+    # FCompositeFont's members are not exposed to Python, so the typeface goes in as the struct's own text form.
+    composite = unreal.CompositeFont()
+    composite.import_text('(DefaultTypeface=(Fonts=((Name="Default",Font=(FontFaceAsset=FontFace\'"%s"\','
+                          'LoadingPolicy=LazyLoad,SubFaceIndex=0)))),FallbackTypeface=(Typeface=(Fonts=),'
+                          'ScalingFactor=1.000000),SubTypefaces=,bEnableAscentDescentOverride=True)'
+                          % paths.object_path(face_path))
+    font_asset.set_editor_property("composite_font", composite)
+    return font_path
+
+
 def static_mesh(rel, version=1):
     """Imports the original's static mesh /Game/<rel> under /Game/DD from its glTF (_meshes.json), without Nanite (a
     particle's mesh, drawn with translucent materials), with the StaticMesh's lightmap settings (UStaticMesh's defaults,
