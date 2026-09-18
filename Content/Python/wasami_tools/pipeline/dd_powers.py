@@ -548,37 +548,37 @@ def _panner(g, coordinate, speed, x, y):
 
 
 def _build_wall02(mat, d):
-    """M_ky_wall02_4x4_two (the force field's sphere), estimated. The cook kept its settings (translucent, unlit,
-    two-sided, for sprites and mesh particles), the parameters opacity and baseColor, a SubUV sample of baseTex
-    (T_ky_wall02_4x4: grey wisps) and a LinearInterpolate as the emissive colour, of ten expressions. The estimate: the
-    emissive colour runs from baseColor in the gaps to the particle's colour on the wisps (a lerp by R), over an opacity
-    of saturate(R + opacity) × the particle's alpha: a faint dark-blue veil with bright wisps.
+    """M_ky_wall02_4x4_two (the force field's sphere), read off the original's compiled shaders
+    (Tools/dd/cooked_shaders.py: the translucent base pass pixel shaders of sprites and mesh particles, which agree).
+    The cook's expressions (translucent, unlit, two-sided, for sprites and mesh particles; the parameters opacity and
+    baseColor, a SubUV sample of baseTex - T_ky_wall02_4x4, grey wisps, the two frames blended - and a
+    LinearInterpolate as the emissive colour, of ten expressions) are the pieces; the code is how they are put together:
+      emissive  Lerp(baseColor, 1, tex.RGB x (1 + the particle's colour)) - a screen of baseColor and the lit wisps,
+                not clamped, so where the particle's colour is the burst's (B 20 - 44) the wisps are far brighter than
+                1 and the tone mapper takes them to white
+      opacity   (tex.R + opacity) x the particle's alpha, faded over the DepthFade's own 100 cm; the engine saturates
+    Both unconnected inputs are the expressions' own constants (the Lerp's B and the Add's B, 1), which is how the ten
+    come out: the three parameters, the particle colour, Add, Multiply, Lerp, Add, Multiply and DepthFade.
 
-    Compared with the original's burst (observations/README.md, "幕を本家と比べた", "幕の流れは合わせる対象から外した"
-    and "幕の広い模様は背景だった"; steps 5c, 5c2a and 5c2b of item 23). Nothing there tells this estimate from the
-    original, and nothing there can: what the veil covers at that moment is the corridor, blown out blue, and the
-    pattern those windows measure is mostly the room, not the veil. The one difference that looked like the veil's
-    (broad structure at half the original's) is the background - ours stands a moved lift door, polished metal, where
-    the original has matte red double doors, and only ours burns to white (89% of B at 255 against 28%) - and its
-    sign flips from window to window. TODO(仮): the graph is still an estimate. Telling it apart needs the original
-    recorded where the veil covers a dark, featureless background, and ours recorded the same way.
-
-    How fast the pattern crosses the screen while the sphere closes in is not this graph's to answer for. The camera
-    sits 85 cm under the sphere's centre and stays inside it all its life (the radius runs 2600 cm down to 132 cm),
-    so what moves the pattern is that geometry, the sphere's own spin (a uniform draw of +-0.05 turns a second about
-    Z, once per firing) and the 0.5 s camera shake - it lands anywhere from 58 to 259 of the original's pixels per
-    recorded second over eight firings of ours, around the original's single 41 - 126."""
+    The pattern crossing the screen while the sphere closes in is not this graph's to answer for: the camera sits
+    85 cm under the sphere's centre and stays inside it all its life (the radius runs 2600 cm down to 132 cm), so
+    what moves it is that geometry, the sphere's own spin (a uniform draw of +-0.05 turns a second about Z, once per
+    firing) and the 0.5 s camera shake (steps 5c2a and 5c2b of item 23; observations/README.md)."""
     dd_assets.particle_material(mat, two_sided=True)
     g = dd_stage._Graph(mat, checked=True)
     tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1000, 0)
     tex.set_editor_property("parameter_name", "baseTex")
     tex.set_editor_property("texture", _ky09_texture("T_ky_wall02_4x4"))
     particle = g.node(unreal.MaterialExpressionParticleColor, -1000, 300)
-    colour = g.lerp(g.vector("baseColor", d["baseColor"], -1000, -250), "RGB", particle, "RGB", tex, "R", -600, -100)
+    lifted = g.node(unreal.MaterialExpressionAdd, -800, 250)  # B: its constant, 1
+    g.link(particle, "RGB", lifted, "A")
+    lit = g.multiply(tex, "RGB", lifted, "", -650, 100)
+    colour = g.node(unreal.MaterialExpressionLinearInterpolate, -450, -100)  # B: its constant, 1
+    g.link(g.vector("baseColor", d["baseColor"], -700, -250), "RGB", colour, "A")
+    g.link(lit, "", colour, "Alpha")
     g.out(colour, "", MP.MP_EMISSIVE_COLOR)
-    veil = dd_assets.add(g, tex, "R", g.scalar("opacity", d["opacity"], -1000, 200), "", -750, 100)
-    clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, veil, "", -600, 100)
-    g.out(g.multiply(clamped, "", particle, "A", -400, 150), "", MP.MP_OPACITY)
+    veil = dd_assets.add(g, tex, "R", g.scalar("opacity", d["opacity"], -1000, 450), "", -750, 450)
+    dd_assets.depth_faded_opacity(g, g.multiply(veil, "", particle, "A", -550, 450), None, -350, 450)
 
 
 def _build_aura7(mat, d):

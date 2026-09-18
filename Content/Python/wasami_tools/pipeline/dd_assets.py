@@ -398,11 +398,12 @@ def particle_material(mat, beam_trails=False, responsive_aa=False, two_sided=Fal
 
 
 def depth_faded_opacity(g, opacity, distance, x, y):
-    """opacity × how far the scene lies behind it (DepthFade over distance; UE clamps a distance of 0 to a tiny one,
-    which fades nothing), as the material's opacity."""
+    """opacity × how far the scene lies behind it (DepthFade over distance, None: the expression's own 100; UE clamps
+    a distance of 0 to a tiny one, which fades nothing), as the material's opacity."""
     fade = g.node(unreal.MaterialExpressionDepthFade, x, y)
     connect(opacity, "", fade, "Opacity")
-    connect(distance, "", fade, "FadeDistance")
+    if distance is not None:
+        connect(distance, "", fade, "FadeDistance")
     g.out(fade, "", MP.MP_OPACITY)
 
 
