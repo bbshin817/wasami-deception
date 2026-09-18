@@ -10,11 +10,14 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiBlackFadeWidget.h"
 #include "WasamiDoubleDoors.h"
 #include "WasamiEnemySentry.h"
 #include "WasamiEnemyZone2.h"
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
+#include "WasamiPlayerCharacter.h"
+#include "WasamiPortal.h"
 #include "WasamiRingPieceWidget.h"
 #include "WasamiRingStatue.h"
 #include "WasamiZoneBarrier.h"
@@ -25,6 +28,8 @@ namespace
 	const FLinearColor MinibossArrow(0.f, 0.f, 0.f, 0.f);
 	const FLinearColor RingPieceArrow(1.f, 0.8941f, 0.f, 1.f);
 	const FLinearColor GarageArrow(1.f, 0.8941f, 0.f, 1.f);
+	// 01_Hotel's Change Color as it points the arrow at its exit portal.
+	const FLinearColor PortalArrow(1.f, 0.f, 0.016666f, 1.f);
 
 	/** Where a scene leaves an actor it moved (Sequencer makes the static ones movable to move them). */
 	void Leave(AActor* Actor, const FVector& Location, const FRotator& Rotation)
@@ -41,12 +46,15 @@ namespace
 const FVector AWasamiZone2Flow::AmbulanceArrived(-14157.71484375, -5025.021484375, 800.);
 const FVector AWasamiZone2Flow::FalseCeilingOpen(-0.037109375, 864.614990234375, 0.);
 const FRotator AWasamiZone2Flow::WallSwitchThrown(0., 0., 40.809776306152344);
+const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
+const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
 
 AWasamiZone2Flow::AWasamiZone2Flow()
 {
 	DoorPickedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/04_Sewer/Bossfight/BP_04_BossFight_CameraShake_Initial")));
 	SpikesSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3")));
 	RingPiecePickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/RingStatue/Ring_Piece_Pickup_v1")));
+	EscapeSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/21-Ballroom_portal_V2")));
 	ParameterCollection = TSoftObjectPtr<UMaterialParameterCollection>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Special/Mat_ParameterCol")));
 }
 
@@ -305,6 +313,47 @@ void AWasamiZone2Flow::OnRingPieceCollect()
 void AWasamiZone2Flow::OnPostmazeTriggerGarage()
 {
 	Enter(TEXT("Postmaze_Trigger_Garage"));
-	// The original points the arrow at the ambulance (GET ON TOP OF THE AMBULANCE) and has Bierce talk 1 s on; this
-	// game opens the garage's portal here instead (item 13's step 5).
+	// The original points the arrow at the ambulance (GET ON TOP OF THE AMBULANCE) and has Bierce talk 1 s on (item
+	// 20). This game opens the garage's portal here, as the hotel opens its exit once the ring piece is taken
+	// (01_Hotel @43247 to @43565: the arrow red at the portal, Lock/Unlock(False, False), without its sound and
+	// shake), and binds the trigger by it. The objective is the hotel's 'Get back to the portal.', in the hospital's
+	// capitals, the player not having been to it.
+	AWasamiPortal* Portal = Cast<AWasamiPortal>(Source(GaragePortal));
+	if (Portal)
+	{
+		Portal->LockUnlock(false, false);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no portal %s"), *GetClass()->GetName(), *GaragePortal.ToString());
+	}
+	SetArrowShards(false);
+	SetArrowColor(PortalArrow);
+	SetArrowTarget(Portal);
+	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGetToPortal", "GET TO THE PORTAL"));
+	BindTrigger(EscapeTrigger, GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnEndTrigger));
+}
+
+void AWasamiZone2Flow::OnEndTrigger()
+{
+	Enter(TEXT("EndTrigger"));
+	// BP_00_Teleport's way in (ReceiveActorBeginOverlap @2187): DisableInput on the player, Sprinting? false, the fade at
+	// Z 5 and the portal's Sound (which neither the class nor the hotel's exit sets). Its UMG_BlackFade flashes the
+	// screen over 0.5 s and moves the player at its peak, 0.25 s on; here the fade goes black in those 0.25 s and stays
+	// until the score screen (item 14) comes over it.
+	APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0);
+	if (AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
+	{
+		Player->DisableInput(Controller);
+		Player->StopSprinting();
+	}
+	if (UWasamiBlackFadeWidget* Fade = UWasamiBlackFadeWidget::Show(this, true, EscapeFadeSpeed, EscapeFadeZOrder))
+	{
+		Fade->bHold = true;
+	}
+	// Then as the original's ride to the boss fight ends (Postmaze_Trigger_Ambulance @1511, with the loading screen):
+	// 21-Ballroom_portal_V2 and Remove All Enemies. Nothing is saved; the hotel's EndTrigger adds the level's time to the
+	// save and puts up UMG_LevelClear (item 14).
+	UGameplayStatics::PlaySound2D(this, EscapeSound.LoadSynchronous());
+	RemoveAllEnemies(GetWorld());
 }

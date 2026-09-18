@@ -454,6 +454,13 @@ void AWasamiPlayerCharacter::SprintReleased()
 	}
 }
 
+void AWasamiPlayerCharacter::StopSprinting()
+{
+	bSprintHeld = false;
+	bSprintLatch = false;
+	ApplySpeed();
+}
+
 void AWasamiPlayerCharacter::TurnAround()
 {
 	// InpActEvt_180 Turn: the control rotation straight behind and level at once; the spring arm's rotation lag turns

@@ -112,16 +112,17 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         sizes; after import_dd_stage_assets), sentries (WasamiEnemySentry, BP_06_ReaperNurse_Sentry, with their
         CanSpawn, Offset and Jump Down Spot), altar (WasamiRingStatue, BP_01_Statue, with its mesh and material) and
         ring piece (WasamiRingPiece, BP_08_RingPiece_NoPickup, with its mesh, materials and glow; after
-        import_dd_gimmicks) in again where the original places them, each tagged
+        import_dd_gimmicks), and this game's garage portal (WasamiPortal) with the trigger by it that the zone leaves
+        by, in again where the original places them, each tagged
         'src:<the original's name>' for the zone's flow and fixed to the ambulance or the spikes it moves with, taking
         out what an earlier call placed, and saves the level. Nothing else changes, and the baked lighting stays valid
         (none of them is in it).
 
         Args:
             zone: 'Zone1' (6 trigger boxes, 9 volumes, 2 navigation volumes, 9 target points, 1 door break, 2 double
-                doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift) or 'Zone2' (8 trigger boxes, 10 volumes, 59
-                navigation volumes, 10 target points, 1 door break, 1 double door, 1 barrier, 1 shard checker, 15 lifts,
-                2 garage lifts, 6 sentries, 1 altar, 1 ring piece).
+                doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift) or 'Zone2' (9 trigger boxes with the portal's, 10
+                volumes, 59 navigation volumes, 10 target points, 1 door break, 1 double door, 1 barrier, 1 shard
+                checker, 15 lifts, 2 garage lifts, 6 sentries, 1 altar, 1 ring piece, 1 portal).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:

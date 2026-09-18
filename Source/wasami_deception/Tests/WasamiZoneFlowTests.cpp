@@ -8,6 +8,7 @@
 #include "../WasamiGameMode.h"
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
+#include "../WasamiPortal.h"
 #include "../WasamiRingPiece.h"
 #include "../WasamiRingPieceWidget.h"
 #include "../WasamiRingStatue.h"
@@ -646,6 +647,59 @@ bool FWasamiZoneFlowRingPieceTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("bound by 1 s"), Garage->OnTrigger.IsBound());
 	Walk(World, TEXT("Postmaze_Trigger_Garage"));
 	TestEqual(TEXT("the garage"), Flow->GetSection(), FName(TEXT("Postmaze_Trigger_Garage")));
+
+	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiZoneFlowEscapeTest, "Wasami.ZoneFlow.Escape",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	SpawnTriggers(World, {TEXT("Postmaze_Trigger_Garage"), *AWasamiZone2Flow::EscapeTrigger.ToString()});
+	SpawnRingStatue(World);
+	// The garage's portal, locked as the level places it (far below).
+	AWasamiPortal* Portal = World->SpawnActorDeferred<AWasamiPortal>(AWasamiPortal::StaticClass(), FTransform::Identity);
+	Portal->bLocked = true;
+	Portal->bMaskedPortalMaterial = true;
+	Portal->FinishSpawning(FTransform(FVector(0., 0., -40000.)));
+	Portal->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::GaragePortal));
+
+	AWasamiGameMode* Mode = SpawnMode(World, 10);
+	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
+	if (!TestNotNull(TEXT("Zone 2's flow"), Cast<AWasamiZone2Flow>(Flow)))
+	{
+		return false;
+	}
+	Advance(Wrapper, 0.02f);
+	const AWasamiTriggerBox* End = Cast<AWasamiTriggerBox>(AWasamiZoneFlow::FindSource(World, AWasamiZone2Flow::EscapeTrigger));
+	TestFalse(TEXT("the portal's trigger not bound before the garage"), End->OnTrigger.IsBound());
+
+	// The garage's trigger (Ring Piece Collect  binds it): the portal opens, the arrow and the objective go to it.
+	TestTrue(TEXT("Postmaze_Trigger_Garage"), Flow->CallEvent(TEXT("OnPostmazeTriggerGarage")));
+	TestEqual(TEXT("the garage"), Flow->GetSection(), FName(TEXT("Postmaze_Trigger_Garage")));
+	TestFalse(TEXT("the portal open"), Portal->bLocked);
+	TestFalse(TEXT("the arrow off the shards"), Flow->IsArrowOnShards());
+	TestTrue(TEXT("the hotel's red"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.f, 0.016666f, 1.f), 1e-4f));
+	TestTrue(TEXT("at the portal"), Flow->GetArrowTarget() == Portal);
+	TestEqual(TEXT("to the portal"), Objective(Mode), FString(TEXT("GET TO THE PORTAL")));
+	TestTrue(TEXT("the portal's trigger bound"), End->OnTrigger.IsBound());
+
+	// A nurse about (none is left by then in play), and the player walking into the portal's trigger.
+	AWasamiEnemySentry* Sentry = World->SpawnActor<AWasamiEnemySentry>(FVector(0., -5000., -40000.), FRotator::ZeroRotator);
+	const TWeakObjectPtr<AWasamiEnemySentry> WeakSentry(Sentry);
+	Walk(World, *AWasamiZone2Flow::EscapeTrigger.ToString());
+	TestEqual(TEXT("the escape"), Flow->GetSection(), FName(TEXT("EndTrigger")));
+	TestTrue(TEXT("the enemies removed"), !WeakSentry.IsValid() || WeakSentry->IsActorBeingDestroyed());
+	TestEqual(TEXT("nothing saved"), SavedCheckpoint(), 10);
 
 	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;

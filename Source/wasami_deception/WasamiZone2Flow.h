@@ -13,6 +13,10 @@ class UMaterialParameterCollection;
  * ambulance's arrival, the capture and the cell's scenes (item 25) are left out: checkpoint 7 starts where the cell's
  * scene ends (Cell Cutscene Finished), in the state those scenes leave. The events keep the original's names in their
  * comments and in GetSection.
+ *
+ * Where the original rides the ambulance from the garage to the boss fight, this game leaves by a portal in the garage,
+ * as the hotel's exit is left (01_Hotel): the garage's trigger opens it, and a trigger by it (the hotel's EndTrigger) is
+ * the escape.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiZone2Flow : public AWasamiZoneFlow
@@ -30,6 +34,17 @@ public:
 
 	/** ReceiveBeginPlay: Mat_ParameterCol's Portal Extra Brightness in this zone (the garage's portal glows by it). */
 	static constexpr float PortalExtraBrightness = 40.f;
+
+	/** This game's garage portal and the trigger by it, which the level build places (dd_level.PORTALS). */
+	static const FName GaragePortal;
+	static const FName EscapeTrigger;
+
+	/**
+	 * The escape's fade: UMG_BlackFade_2's FadeIn at this rate, black in 0.25 s (as the portal's own flash, UMG_BlackFade
+	 * at 2, peaks and moves the player), at BP_00_Teleport's Z order.
+	 */
+	static constexpr float EscapeFadeSpeed = 20.f;
+	static constexpr int32 EscapeFadeZOrder = 5;
 
 	/** Where the left-out scenes leave what they move (their sections that keep their state). */
 	static const FVector AmbulanceArrived;
@@ -57,6 +72,10 @@ protected:
 	/** The ring piece taken: Ring_Piece_Pickup_v1 (PlaySound2D) as its screen comes up. */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<USoundBase> RingPiecePickupSound;
+
+	/** The escape: 21-Ballroom_portal_V2 (PlaySound2D), as the ambulance's ride ends in the original. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<USoundBase> EscapeSound;
 
 private:
 	/** The state the left-out arrival, capture and cell's scenes leave (checkpoint 7 only, as in the original). */
@@ -104,6 +123,14 @@ private:
 	UFUNCTION()
 	void OnRingPieceCollect();
 
+	/** Postmaze_Trigger_Garage: in the garage, its portal opens (where the original sends the player to the ambulance). */
 	UFUNCTION()
 	void OnPostmazeTriggerGarage();
+
+	/**
+	 * The hotel's EndTrigger, by the portal: the escape (the player stopped, the screen black, the enemies gone). The
+	 * hotel then puts up its score screen, UMG_LevelClear (item 14).
+	 */
+	UFUNCTION()
+	void OnEndTrigger();
 };

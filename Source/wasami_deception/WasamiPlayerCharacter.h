@@ -49,6 +49,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Player")
 	bool IsSprintOn() const { return bToggleSprint ? bSprintLatch : bSprintHeld; }
 
+	/** Sprinting? set false (a portal's way in, BP_00_Teleport): the sprint off, held or latched, and the walk's speed. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
+	void StopSprinting();
+
 	/** Writes Walking Speed and Sprinting Speed (the speed boost sets both) and applies the one in use. */
 	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
 	void SetMoveSpeeds(float Walking, float Sprinting);

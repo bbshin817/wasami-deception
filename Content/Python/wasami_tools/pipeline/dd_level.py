@@ -5,6 +5,7 @@ zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, dou
 Zone 2's altar and ring piece), Zone 2's lifts and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
+import math
 import os
 
 import unreal
@@ -141,9 +142,15 @@ FLOW_FOLDER = "Hospital/Gameplay/Flow"
 # masked, at 2.5 times its size), turned so its front faces the way the player comes: its +X, the side the logo and the
 # lock lie on over the disc and the hotel's exit's end trigger is on (its strobing light is behind it). It stands in the
 # mouth of the tunnel the ambulance would drive into, 600 cm past the ambulance's lift, in the middle of the tunnel's
-# 2000 cm (x -11338 to -9356; the ceiling at 1000). The zone's flow finds it by its name.
+# 2000 cm (x -11338 to -9356; the ceiling at 1000). The zone's flow finds it by its name, and leaves by the trigger by
+# it (its "trigger"): the hotel's EndTrigger by its exit, a TriggerVolume (the default brush, ±100 cm, scaled
+# (1, 2.376, 1)) PORTAL_TRIGGER_OFFSET from the portal in the portal's frame (neither is turned), placed the same way from
+# this portal as an AWasamiTriggerBox (its box's half extent TRIGGER_BOX_EXTENT, scaled to the same size).
 PORTALS = {"06_Hospital_Zone_02": {"name": "Wasami_GaragePortal", "location": (-10347.0, -7700.0, 0.0), "yaw": 90.0,
-                                   "scale": 2.5}}
+                                   "scale": 2.5, "trigger": "Wasami_EscapeTrigger"}}
+PORTAL_TRIGGER_OFFSET = (40.643310546875, 10.24072265625, 165.11831665039062)
+PORTAL_TRIGGER_EXTENT = (100.0, 237.63628005981445, 100.0)
+TRIGGER_BOX_EXTENT = 32.0
 
 # The original's custom collision channels by slot, as Config/DefaultEngine.ini names them.
 CUSTOM_CHANNELS = {"ECC_GameTraceChannel1": "ECC_Teleport"}
@@ -554,7 +561,7 @@ def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar and
     the ring piece, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
-    is in the level; and this game's garage portal (PORTALS)."""
+    is in the level; and this game's garage portal and the trigger by it (PORTALS)."""
     placed = []
     level = {}
     for a in zone["actors"]:
@@ -675,6 +682,15 @@ def _flow(eas, stage, zone, counts, failures):
         actor.set_actor_scale3d(unreal.Vector(portal["scale"], portal["scale"], portal["scale"]))
         _tag(actor, portal["name"], FLOW_FOLDER, FLOW_TAG, "src:" + portal["name"])
         counts["portals"] += 1
+        yaw = math.radians(portal["yaw"])
+        (px, py, pz), (x, y, z) = portal["location"], PORTAL_TRIGGER_OFFSET
+        trigger = eas.spawn_actor_from_class(
+            unreal.WasamiTriggerBox,
+            _vec((px + x * math.cos(yaw) - y * math.sin(yaw), py + x * math.sin(yaw) + y * math.cos(yaw), pz + z)),
+            unreal.Rotator(roll=0.0, pitch=0.0, yaw=portal["yaw"]))
+        trigger.set_actor_scale3d(_vec([e / TRIGGER_BOX_EXTENT for e in PORTAL_TRIGGER_EXTENT]))
+        _tag(trigger, portal["trigger"], FLOW_FOLDER, FLOW_TAG, "src:" + portal["trigger"])
+        counts["triggers"] += 1
     by_source = {}
     for actor in eas.get_all_level_actors():
         for t in actor.tags:
