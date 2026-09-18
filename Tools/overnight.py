@@ -1,5 +1,6 @@
-"""Drives Claude Code through the night: starts `claude -p "/continue" --permission-mode auto` again and again, each
-run being one step of the unattended workflow (.claude/guides/autonomy.md). Claude finishing its reply (the process
+"""Drives Claude Code unattended (the default way the work list moves on since 2026-09-18, by night or by day):
+starts `claude -p "/continue" --permission-mode auto` again and again, each run being one step of the unattended
+workflow (.claude/guides/autonomy.md). Claude finishing its reply (the process
 exiting) is the signal to start the next run with a fresh context; a run has no timeout.
 
     python Tools/overnight.py --until 07:00 --usage-cmd "<command that prints the usage as JSON>"
@@ -25,10 +26,15 @@ after each run (with the run's footer line) followed by the HighResShot images t
 waits and the summary are posted to the webhook. Without a URL, or with --no-discord, nothing is posted; a dry run only
 says whether it would post. A post that fails is logged and the night goes on.
 
+While it runs the driver keeps Intermediate/Overnight/driver.json ({"pid", "started", "log"}): a second driver refuses
+to start, and the SessionStart hook tells an attended session not to change anything until the driver is stopped
+(autonomy.md「作業の流れ」). A file left by a driver that died is ignored (its process is gone).
+
 Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop); 2 budget or usage not readable;
-3 no progress or Claude could not be started; 4 bad arguments; 130 interrupted.
+3 no progress or Claude could not be started; 4 bad arguments; 5 another driver is running; 130 interrupted.
 """
 import argparse
+import atexit
 import datetime
 import json
 import os
@@ -51,6 +57,7 @@ for stream in (sys.stdout, sys.stderr):
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 OVERNIGHT_DIR = os.path.join(ROOT, "Intermediate", "Overnight")
 STATUS_FILE = os.path.join(OVERNIGHT_DIR, "status.json")
+DRIVER_FILE = os.path.join(OVERNIGHT_DIR, "driver.json")
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
 # What Claude Code prints in -p mode when the subscription window is used up (推定: the classic form is
 # "Claude AI usage limit reached|<unix epoch of the reset>"; the newer wording says "hit your limit").
@@ -147,6 +154,40 @@ def read_status():
         return data if isinstance(data, dict) else None
     except (OSError, ValueError):
         return None
+
+
+def running_driver():
+    """The claim file of another driver whose process is still alive, else None. tasklist, because os.kill(pid, 0)
+    terminates the process on Windows."""
+    try:
+        with open(DRIVER_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        pid = int(data.get("pid", 0))
+        out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/FO", "CSV", "/NH"], capture_output=True,
+                             text=True, errors="replace", timeout=20).stdout
+    except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError):
+        return None
+    if pid and pid != os.getpid() and '"%d"' % pid in out and "python" in out.lower():
+        return data
+    return None
+
+
+def claim_driver(log_path):
+    """Writes driver.json for this process and removes it again at exit (only if it is still ours)."""
+    os.makedirs(OVERNIGHT_DIR, exist_ok=True)
+    with open(DRIVER_FILE, "w", encoding="utf-8") as f:
+        json.dump({"pid": os.getpid(), "started": now().isoformat(timespec="seconds"),
+                   "log": os.path.relpath(log_path, ROOT)}, f, ensure_ascii=False)
+
+    def release():
+        try:
+            with open(DRIVER_FILE, encoding="utf-8") as f:
+                if json.load(f).get("pid") != os.getpid():
+                    return
+            os.remove(DRIVER_FILE)
+        except (OSError, ValueError, AttributeError):
+            pass
+    atexit.register(release)
 
 
 def pending_lines():
@@ -308,7 +349,7 @@ def summarize(log, discord, runs, reason, status, code):
         lines.append("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
             status.get("result", "?"), status.get("step", ""), status.get("commit", ""), status.get("reason", "")))
     else:
-        lines.append("最後の状態ファイル: （この夜は書かれていない）")
+        lines.append("最後の状態ファイル: （この運転では書かれていない）")
     lines.append("HEAD: %s (%s)" % (head(), branch()))
     lines.append("要確認（ユーザー）: %d 件" % len(pending))
     for name, line in pending:
@@ -322,7 +363,7 @@ def summarize(log, discord, runs, reason, status, code):
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Runs `claude -p "/continue"` again and again for the unattended night.')
+    ap = argparse.ArgumentParser(description='Runs `claude -p "/continue"` again and again for unattended work.')
     ap.add_argument("--until", metavar="HH:MM", help="stop before starting a run at or after this time of day")
     ap.add_argument("--max-iterations", type=int, metavar="N", help="stop after N runs")
     ap.add_argument("--usage-cmd", metavar="CMD", help="command that prints the usage as JSON (see the module doc)")
@@ -348,6 +389,11 @@ def main():
     except ValueError:
         print("--until は HH:MM の形", file=sys.stderr)
         return 4
+    other = running_driver()
+    if other:
+        print("別の駆動役が動いている（PID %s、%s から、ログ %s）。止めてから起動する。" % (
+            other.get("pid", "?"), other.get("started", "?"), other.get("log", "?")), file=sys.stderr)
+        return 5
     command = resolve_command(args.claude) + ["-p", args.prompt, "--permission-mode", "auto",
                                               "--permission-prompts", "none"]
 
@@ -385,11 +431,12 @@ def main():
             action, text, _ = budget_verdict(usage)
             log.say("使用量: %s → %s" % (text, action))
             if action == "stop":
-                log.say("予算の決まりでは今夜は走らない")
+                log.say("予算の決まりでは今は走らない")
                 return 2
         log.say("dry run なので走らせない")
         return 0 if probe.returncode == 0 else 3
 
+    claim_driver(log.path)
     discord.post("**無人運転を始めた**\nブランチ %s、HEAD %s、終了の時刻 %s、反復の上限 %s" % (
         branch(), head(), stamp(deadline) if deadline else "なし",
         args.max_iterations if args.max_iterations is not None else "なし"))

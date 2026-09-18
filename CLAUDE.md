@@ -5,11 +5,11 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 
 ## 必読（作業前）
 - 対話と報告の言語（**セッション内の対話・応答・実装報告はすべて日本語**）: `.claude/guides/communication.md`
-- 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。セッション開始・/clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する（`/continue`）。実装が 1 つ終わったら `.claude/` に記録を残し、ユーザーに `/clear` をお願いする。大規模な実装はステップに分け、ステップごとに同じことをする。記録は続きに要ることだけにし、ステップを閉じるときにその分を畳む〈目安 20 KB・上限 30 KB。今も効く決定は実装記録へ移してから消す〉**）: `.claude/guides/progress-tracking.md`
+- 実装進捗記録（**ファイルやアセットの変更を伴う作業は `.claude/progress/` に進捗を先に書いてから進める。無人運転の反復の始めと、作業の途中の /clear・圧縮の後は、まず未完了の記録と main 以外のローカルブランチを確認して再開する（`/continue`。有人セッションの始めには自分から使わない）。実装が 1 つ終わったら `.claude/` に記録を残し、ユーザーに `/clear` をお願いする。大規模な実装はステップに分け、ステップごとに同じことをする。記録は続きに要ることだけにし、ステップを閉じるときにその分を畳む〈目安 20 KB・上限 30 KB。今も効く決定は実装記録へ移してから消す〉**）: `.claude/guides/progress-tracking.md`
 - 作業一覧（**最終目標〈2026-09-17〉を 21 項目に分解した順序つきの一覧。1 項目 = 進捗記録 1 件。未完了の記録が無いときはここの「未着手」で依存が満たされた最初の項目から始める**）: `.claude/roadmap.md`
 - 中断した実装の再開（**未完了の記録と git・エディタの状態を照合してから、次のステップを 1 つ実行する**）: `/continue`（`.claude/skills/continue/SKILL.md`）
 - 実装記録（**ソースを変更したら対応する記録を直し、`python .claude/scripts/check_records.py --update` を通す**）: `.claude/guides/implementation-records.md`、索引は `.claude/implementation-records/_index.md`
-- 無人運転（**夜間は駆動役 `Tools/overnight.py` が `/continue` を繰り返す。無人モード〈`WASAMI_UNATTENDED=1`〉ではユーザーに質問せず、本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて「要確認（ユーザー）」にまとめ、ステップを終えたら `/clear` を頼まずに状態ファイルを書いて応答を終える。ゲームの規則の値が本家のコードに無いときと、変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わずに飛ばす**）: `.claude/guides/autonomy.md`
+- 作業の流れと無人運転（**作業一覧は基本、無人運転で進める〈2026-09-18〜。夜間に限らない〉。駆動役 `Tools/overnight.py` が `/continue` を繰り返す。有人セッションは無人運転の方向性・実装方針の修正と不具合の改善の場: 始めに無人運転の結果と要確認を短く報告して指示を待ち、作業一覧の続きは頼まれたときだけ進める。指摘は記録・作業一覧・ガイドへその場で書き、コミットしてから無人運転に戻す。駆動役が動いている間は変更しない。無人モード〈`WASAMI_UNATTENDED=1`〉ではユーザーに質問せず、本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて「要確認（ユーザー）」にまとめ、ステップを終えたら `/clear` を頼まずに状態ファイルを書いて応答を終える。ゲームの規則の値が本家のコードに無いときと、変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わずに飛ばす**）: `.claude/guides/autonomy.md`
 - 症状索引（**エラーやおかしな挙動に会ったら先に grep する。解決にエディタの開き直し 1 回以上か 30 分以上かかったら、次に進む前にその場で書く**）: `.claude/references/troubleshooting.md`
 - エディタの操作（**MCP のツールは 1 つずつ順に呼び、結果を必ず確かめる。一括の変更の前後で保存する。取り込みとステージの組み立ては `Content/Python/wasami_tools` のツールセットを MCP から呼ぶ。C++ のビルドの手順**）: `.claude/guides/unreal-workflow.md`
 - 検証（**作業の許可は求めずに進める（エディタの開き直し〈C++ のビルドのための `Tools/editor_cycle.py` も、C++ を書き終えたら尋ねずに走らせる〉・PIE・エディタへの入力・本家の起動。明示的な禁止があれば従う）。ただし変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは先に確認する（本家のセーブが遊んで書き換わる・控えから戻す・入れ替えるのは確認しない。起動の前に控えを取り、控えは消さない）。エディタはユーザーのアプリでもあるので、閉じる前に保存し、閉じたら開き直す。PIE は必ず止める。本家はエディタと同時に動かさず、終わったら閉じる。OS 全体の入力は操作しない。**画面の操作は `Tools/desktop.py` で Claude が行う**（入力は許可した窓だけ）。MOD は観察の足場までで、World Editor は使わない**）: `.claude/guides/verification.md`
@@ -50,4 +50,4 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 収録を測る（本家と PIE で同じ測り方）: `python Tools/video_probe.py frames` / `sheet` / `series` / `period`
 - 画面を撮る・入力を送る（対話デスクトップ）: `python Tools/desktop.py start` → `shot` / `click` / `key` / `hold` / `look` → `stop`
 - 実装記録の同期チェック / ハッシュ更新: `python .claude/scripts/check_records.py [--update]`
-- 夜間の無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N` / `--no-discord`。応答と本作の画面は送り主「Claude」で Discord の webhook へも送る〈`Tools/discord_notify.py`。URL は git の外の `Tools/overnight.local.json`〉。決まりは `.claude/guides/autonomy.md`）
+- 無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N` / `--no-discord`。応答と本作の画面は送り主「Claude」で Discord の webhook へも送る〈`Tools/discord_notify.py`。URL は git の外の `Tools/overnight.local.json`〉。決まりは `.claude/guides/autonomy.md`）
