@@ -148,7 +148,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_GameMode.txt`、`06_Hospital_Zone_01.txt`（`Respawn`、`Struct Save`、`Progress Saved`）、`pak_reference/_bytecode/DDeception/Content/Blueprints/UMG/UMG_DeathScreen.txt`、WebGL 版 04・10 記録。
 - 依存: 1。
 - 規模: 3
-- 状態: 未着手。
+- 状態: **完了（2026-09-18）**。ゲームインスタンス（ライフ 3・回収済みのシャードの記憶）とセーブ（`structSlot` の病院の欄と `Last Checkpoint Warning`）、ゲームモードの `DeathEvent`・`SaveCheckpoint`（右下の SAVING PROGRESS）・チェックポイントの PlayerStart から出す開始、死亡画面 `UWasamiDeathScreenWidget`（ライフ −1・アニメ 4 本・パワーのリセット・今のレベルの開き直し）、ゲームオーバーの RESTART / LAST CHECKPOINT / QUIT TO TITLE と YES / NO の問い（実装記録 06・09）。完了の条件の読み替え（進めてみて原作に合わせた）: 死亡でタブレットを下ろす・入力を止める処理は原作に無く、ゲームを止めて画面が覆うことで満たす。右下は原作の画面の `SAVING PROGRESS`（`Progress Saved` は開発用の PrintString）。回収済みのシャードはディスクではなくゲームインスタンスが覚え、死亡と LAST CHECKPOINT の開き直しで戻らない。死亡画面の声は項目 20、チェックポイントを通る場面と区間の準備は項目 6・13（ゲームモードの `GetStartCheckpoint()` を見る）。確かめるときは PIE のコンソールで `Wasami.Kill`・`Wasami.Checkpoint N`・`Wasami.Lives N`・`Wasami.ResetSave`。
 
 ### 6. ゾーンの進行（開始の流れ・障壁とシャードチェッカー・全回収・ガレージリフトで Zone 2 へ）
 

@@ -306,7 +306,7 @@ updated: 2026-09-18
 4. Vanish: ゲージを止めて 1 → `RefillVanish`（充填とウィジェットを外す。カプセルの応答と `Active Powers` は戻さない）。
 - **Primal と Vanish は、使っていなくても充填を通るので `power_refilled` が鳴る**（本家の `Reset Primal` = @37261: Push @6444 → @27788 の Gate の Close。`Reset Vanish` = @37737 も同じ形）。Telepathy と Telekinesis はリセットしない。
 - 本家のクールダウン明けの Gate（Telepathy・Primal・Telekinesis・Vanish）は「Open の直後に Enter」（@6301〜@6444 ほか）なので、閉じても次の Enter の前に必ず開く＝素通しと同じ。Gate の状態は持たない。
-- 呼ぶのは死亡画面（本家は `UMG_DeathScreen` の暗転の 2 秒後、生き返りの直前）。死亡はまだ無い（M5）。
+- 呼ぶのは死亡画面（`UWasamiDeathScreenWidget` の再開の段。本家の `UMG_DeathScreen` と同じく暗転の 2 秒後、今のレベルを開き直す直前。09 記録）。ゲームオーバーのボタンの道は呼ばない（開き直しでパワーも作り直される）。
 
 ## 強化段階の値（`FWasamiPowerTuning`。本家の `BP_DD_PlayerCharacter` の分岐）
 
@@ -565,6 +565,7 @@ updated: 2026-09-18
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-18: `ResetPowers` の呼び元を死亡画面に書き直した（作業一覧の項目 5。09 記録）
 - 2026-09-18: `M_DD_KyShockWave02`（力場の地面の輪）を原作のコンパイル済みシェーダーの式どおりに組み直した（`T_ky_maskRGB3` の R をパン (0.3, 1.0)・B をパン (−0.2, −0.2)、TexCoord × 4。Emissive = 粒子の色 × shape + `coreColor` × 火花、Opacity = shape^`baseDensity` × α。式は cook と同じ 31 個。仮の値 `SHOCKWAVE_PANS` を消した。`dd_powers`。C++ は変えていない。作業一覧の項目 23、ステップ 5g）
 - 2026-09-18: `M_DD_KyAura7`（力場のオーラ）を原作のコンパイル済みシェーダーの式どおりに組み直した（`T_ky_maskRGB5` の G の欠片 × 150 と R のもや、頂点カラーの R を不透明度に掛ける。仮の値 `AURA_LAYERS` を消した。`dd_powers`。`Tools/dd/cooked_shaders.py` は cb3 の並びを印字するようにした〈01 記録〉。C++ は変えていない。作業一覧の項目 23、ステップ 5f）
 - 2026-09-18: `M_DD_KyWall02`（力場の幕）を原作のコンパイル済みシェーダーの式どおりに組み直した（Emissive = `Lerp(baseColor, 1, tex.RGB × (1 + 粒子の色))`、Opacity = `DepthFade((tex.R + opacity) × α)`。式は cook と同じ 10 個。`dd_powers`、`dd_assets.depth_faded_opacity` は距離を省けるようにした〈01 記録〉。C++ は変えていない。作業一覧の項目 23、ステップ 5e）

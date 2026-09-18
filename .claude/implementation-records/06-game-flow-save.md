@@ -221,6 +221,9 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 
 - 回収の閃光（2026-09-17、同じ廊下。Python から 4 m 先のシャードの `collect`、続けて歩いて 2 つに触れる。60 fps の gdigrab の収録と毎フレームの記録）: 回収のフレームに `P_ky_flash3` の部品が `WorldSettings` に 1 つ出て、位置は結晶の位置（高さ 97.1 cm）、拡縮 0.2、約 1.0 秒で消えた（3 回とも）。4 m 先からは、虹色の星と半透明の円（最初の絵）、紫の衝撃波の円・明るい中心の星・横の帯・床を照らす灯が 3〜4 フレームで消え、床の明るさが少し残った。歩いて触れたときは、閃光がカメラの約 1 m 先・60 cm 下に出るので、画面の下に紫の衝撃波の弧と細い光の筋が 5 フレームほど見えた。最初の 1 回だけ描画が約 0.6 秒止まった（上の「既知の制約」）。
 
+## 確かめたこと（2026-09-18、PIE、Zone 1。死亡から LAST CHECKPOINT までの通し）
+- `Wasami.ResetSave` → `open L_Hospital_Zone1` で `04_Start`（エレベーターの前）から始め、`Wasami.Checkpoint 5` で右下に SAVING PROGRESS。`Wasami.Kill` を 3 回: 1 回目・2 回目は死亡画面（ドクロ 3 → 2、2 → 1、赤い揺れ）の後に `05_Start`（待合）で開き直し、3 回目で YOU ARE DEAD と 3 つのボタン。LAST CHECKPOINT → S ランクの警告 → YES で `05_Start` から再開し、ライフ 3・セーブのチェックポイント 5・死亡数 3・`Last Checkpoint Warning` 真。死亡から開き直しまで約 7 s、ゲームオーバーからボタンまで約 3 s。収録は `Intermediate/DesktopAgent/shots/step7-flow.mkv`（git の外）。
+
 ## テスト（`Tests/WasamiShardTests.cpp`）
 - `Wasami.Shard.PullCurve` … `Alpha` の値（0 / 0.375 / 0.75 / 1 秒）、ExpoIn の位置（Alpha 0 で元の位置、0.5 で 1/32、0.9 で 1/2、1 でプレイヤーの X・Y、高さは元のまま）、回る速さ（0.05 で 10.8、0.15 で 32.4 °/s）。
 - `Wasami.Shard.Actor` … 一時的なゲームのワールドに置いて、閃光の既定のパス（`CollectFlash`）、カプセル（半径と半高さ 49.57、高さ約 100 cm、`WorldStatic`・`Custom`・QueryOnly・Pawn とワールドへ Overlap・重なりのイベントあり）、灯（位置・強さ 175・単位なし・半径 200・色・影なし・Movable）、餅（0.825 m・97.085 cm・描画距離 3000・カスタム プリミティブ データなし）、印（20 m 上・拡縮・当たりなし）、再生速度の範囲。`Activate` でその場の位置の更新、再生速度の範囲、0.45 の時点でわずかにしか寄らないこと、終わりに原点へ着いて止まること、プレイヤーがいないので破棄されないこと。
@@ -228,6 +231,7 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 - `Tests/WasamiGameFlowTests.cpp`: `Wasami.GameFlow.Lives`（3 で始まり、0..6 に Clamp、`ResetLives` で 3。`ShardKey` の 0 の方への切り捨て、同じ整数の位置は 1 つ、`ForgetCollectedShards`）、`Wasami.GameFlow.Save`（スロット名 `structSlot`、全欄のメモリ上の往復）、`Wasami.GameFlow.RemoveShards`（3 つ置いて、切り捨てて一致する 2 つが消え、残り 1 を返す）、`Wasami.GameFlow.GameMode`（テスト用のスロットで BeginPlay がセーブを作って書く、1 秒の時間・止めている間は数えない、`SaveCheckpoint(5)` がスロットに書いて時間を足し 0 に戻す、`DeathEvent` の DoOnce と `ResetDeath`・連続回収の最高、作り直したゲームモードがスロットを読む、Zone でないワールドの `GetStartCheckpoint` はセーブの値のまま）、`Wasami.GameFlow.Checkpoints`（`ZoneOf`、`PlayerStartTagFor` の 7 つと表に無い値、`DeathScreenLevelFor` の 4 通り）、`Wasami.GameFlow.Saving`（09 記録の SAVING PROGRESS の `init` の値と 3 s で外れること、黒のフェードの両端と速さ 10 で 0.5 s）。
 
 ## 変更履歴
+- 2026-09-18: 作業一覧の項目 5（ゲームの流れの土台）を終えた。死亡から LAST CHECKPOINT までを PIE で通して確かめた（上の「確かめたこと」の 2026-09-18）
 - 2026-09-18: 病院の Zone のレベル BP の受け持ちをゲームモードに足した: `DeathEvent` が死亡画面を出してゲームを止める、セーブのチェックポイントの PlayerStart から出す（Zone 1 の 0 は 4 を書く、Zone 2 の 0 は Zone 1 を開く）、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド 4 つ（テスト 2 本。PIE で `Wasami.Checkpoint 5` → 別の場所で 2 つ回収 → `Wasami.Kill` → 死亡画面 → `05_Start` で再開〈ライフ 2・死亡数 1・シャード 335〉、`Wasami.Checkpoint 7` → Zone 2 の `PlayerStart_1`、`Wasami.ResetSave` → Zone 2 を開くと Zone 1 の `04_Start`。作業一覧の項目 5 のステップ 5）
 - 2026-09-18: ゲームインスタンス（`UWasamiGameInstance`: ライフ 3・0..6、回収済みのシャードの記憶）とセーブ（`UWasamiSaveGame`、`structSlot`）を足し、ゲームモードに死亡の受け口・時間・チェックポイントの保存・開き直したときの回収済みのシャードの除去を足した。シャードの回収がゲームインスタンスに位置を覚えさせる（テスト 4 本。PIE で 2 つ回収 → `open L_Hospital_Zone1` → 337 が 335 になり、回収した 2 つが無いのを確かめた。作業一覧の項目 5 のステップ 3）
 - 2026-09-18: 餅の回り方を本家の結晶と同じ撮り方で見比べ、**直さないと決めた**（速さは個体ごとの乱数のまま。上の「餅の回り方」。作業一覧の項目 22 のステップ 4。コードは変えていない）
