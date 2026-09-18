@@ -6,6 +6,7 @@ the blob, 4-byte aligned, each accessor in a bufferView of its own.
 """
 import json
 import math
+import os
 import struct
 
 COMPONENT_FORMATS = {5120: "b", 5121: "B", 5122: "h", 5123: "H", 5125: "I", 5126: "f"}
@@ -17,11 +18,16 @@ BIN_CHUNK = 0x004E4942
 
 
 def read(path):
-    """A .glb's JSON and binary buffer."""
+    """A .glb's JSON and binary buffer, or a .gltf's JSON and its one buffer (a file next to it)."""
     with open(path, "rb") as f:
         data = f.read()
     if data[:4] != GLB_MAGIC:
-        raise ValueError("%s is not a binary glTF" % path)
+        gltf = json.loads(data)
+        buffers = gltf.get("buffers") or []
+        if len(buffers) != 1 or not buffers[0].get("uri") or buffers[0]["uri"].startswith("data:"):
+            raise ValueError("%s is not a binary glTF nor a glTF of one buffer file" % path)
+        with open(os.path.join(os.path.dirname(path), buffers[0]["uri"]), "rb") as f:
+            return gltf, bytearray(f.read())
     json_length = struct.unpack_from("<I", data, 12)[0]
     gltf = json.loads(data[20:20 + json_length])
     offset = 20 + json_length

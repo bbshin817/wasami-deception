@@ -78,7 +78,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
         the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
         Fracture_dark_slow, Concrete_impact_large, their textures and estimated materials); Zone 2's lifts: the clunk,
-        the movement loop and the garage lifts' rising sound. The doors' and lifts' meshes and materials come with the
+        the movement loop and the garage lifts' rising sound; the garage lifts' skinned mesh and its animation (after
+        import_dd_stage_assets, which makes its materials). The doors' and lifts' meshes and materials come with the
         stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
         systems on their emitters (place_dd_sequences those the sequences fire).
 
@@ -86,10 +87,14 @@ class WasamiDDTools(unreal.ToolsetDefinition):
             How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues',
             'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
             'doors_busted_sounds', '_textures', '_materials', '_particle_systems', 'cell_sounds', '_textures',
-            '_materials', '_particle_systems', and 'lift_attenuations', '_sounds').
+            '_materials', '_particle_systems', 'lift_attenuations', '_sounds', and 'garage_lift_skeletal_meshes',
+            '_animations').
         """
         _module("dd_stage")
         _module("dd_assets")
+        _module("gltf")
+        _module("dd_enemy")
+        _module("dd_skeletal")
         return _module("dd_gimmicks").import_all()
 
     @toolset_registry.tool_call

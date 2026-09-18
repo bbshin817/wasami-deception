@@ -4,13 +4,14 @@ sources:
   - Source/wasami_deception/WasamiLift.h
   - Source/wasami_deception/WasamiLift.cpp
   - Source/wasami_deception/Tests/WasamiLiftTests.cpp
+  - Content/Python/wasami_tools/pipeline/dd_skeletal.py
 updated: 2026-09-18
 ---
 
 # リフト（Zone 2 の乗ると上がる床・角のリフト）
 
 ## 役割
-Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の `Blueprints/06_Hospital/Lifts/Zone2` を写した。`AWasamiLift`（本家の `BP_06_Lift` = `BP_06_LiftBase` の子。置かれているのはその子の `BP_06_Lift_03`〈長い床〉8 台と `BP_06_Lift_04`〈広い床〉2 台）は、キャラクターが乗っている間 535 cm 上がり、いなくなると下りる。`AWasamiCornerLift`（本家の `BP_06_LiftBase_Corner`、角に 5 台）は、プレイヤーのいる階で待ち、1 s 立つともう一方の階へ動く。作業一覧の項目 6（ゾーンの進行）のステップ 8a で作った。ガレージリフト（骨入りのメッシュの車のリフト）はステップ 8b。
+Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の `Blueprints/06_Hospital/Lifts/Zone2` を写した。`AWasamiLift`（本家の `BP_06_Lift` = `BP_06_LiftBase` の子。置かれているのはその子の `BP_06_Lift_03`〈長い床〉8 台と `BP_06_Lift_04`〈広い床〉2 台）は、キャラクターが乗っている間 535 cm 上がり、いなくなると下りる。`AWasamiCornerLift`（本家の `BP_06_LiftBase_Corner`、角に 5 台）は、プレイヤーのいる階で待ち、1 s 立つともう一方の階へ動く。作業一覧の項目 6（ゾーンの進行）のステップ 8a で作った。ガレージリフト（骨入りのメッシュの車のリフト）はステップ 8b: 8b1 でメッシュとアニメを取り込んだ（下の「作るアセット」）。アクタは 8b2。
 
 ## 公開インターフェース
 - `AWasamiLiftBase`（`AActor`、抽象）: 本家では `BP_06_LiftBase_Corner` は `BP_06_LiftBase` の子でなく写し（`Actor` の子）なので、2 つが共通に持つものをここに置いた。
@@ -31,11 +32,13 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 
 ## 作るアセット
 - メッシュ `/Game/DD/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01`・`_03`・`_04` とその材質 `/Game/DD/Materials/06_Hospital/M_06_Hospital_Lift`・`M_06_Hospital_Lift_02`（テクスチャ `hospital_lift_01_D/N/S`・`hospital_lift_02_D/N/S`）: ステージの素材（前処理の `CLASS_MESHES` → `WasamiStageTools.import_dd_stage_assets`。01 記録）。
+- ガレージリフトの骨入りのメッシュ `/Game/DD/Meshes/06_Hospital/hospital_garage_lift_anim`（骨 4 本 `joint1`〜`joint4`、`_Skeleton`・`_PhysicsAsset` は取り込みのもの）とアニメ `hospital_garage_lift_anim_Anim`（24 fps・59 コマ・2.4583 s）: `dd_skeletal.import_garage_lift`（`dd_gimmicks.import_all` → `WasamiDDTools.import_dd_gimmicks`。01 記録）。本家の psa を読んで glTF のアニメにして取り込む。動くのは `joint2`（X 11.617 → 15.498）と `joint3`（X 0.041 → 6.401）の平行移動だけで、`joint1` は Z −12.094 で X を上に向け、台の `joint4` は `joint3` の 0.745 先（部品の拡縮 30 で、台は約 9.5 cm → 316.7 cm に上がる）。材質はスロットの名前でステージの `M_06_Hospital_MetalPanel_04`・`M_06_Hospital_Concrete_06_Painted1`・`M_06_Hospital_MetalBrushed_02`・`/Game/DD/Materials/07_FunPlace/M_07_TP_DiamondPlate`（前処理の `CLASS_MATERIALS`）、その親の `M_DD_Substance` に `used_with_skeletal_mesh`。
 - 音 `/Game/DD/Audio/06_Hospital/DD_TT_GarageLift_Down`（0.883 s・0.55）・`DD_TT_GarageLift_Up`（5.665 s。ガレージリフト）・`DD_TT_Lift_Loop`（26.87 s・ループ）と減衰 `MonkeyAttenuation`・`01_Lobby_Attenuation`: `dd_gimmicks.import_lifts`（`WasamiDDTools.import_dd_gimmicks`。08 記録）。
 
 ## 原作データの根拠
 - 処理: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/Lifts/Zone2/BP_06_LiftBase.txt`（`Update Position`・`Character on Top?`・Tick の DoOnce 2 つ・重なりの `Player Overlap`・構築スクリプト）、`BP_06_Lift.txt`（`ReceiveBeginPlay` で `LiftCollision1` を消す、構築スクリプト）、`BP_06_LiftBase_Corner.txt`（`What Floor is Player On?` の 610、`Double Check` の 1 s、`ReceiveActorBeginOverlap` / `EndOverlap`）。
 - 部品と値: `_assets/…/Lifts/Zone2/BP_06_LiftBase.json`・`BP_06_LiftBase_Corner.json`（SCS の部品・音・減衰・箱の拡縮と位置、`Top Location` 535）、`BP_06_Lift.json`（`LiftCollision1`）、`BP_06_Lift_03.json`・`_04.json`（ICH のメッシュと箱の拡縮）。
+- ガレージリフトのメッシュとアニメ: `pak_reference_2/_meshes_gltf/Meshes/06_Hospital/hospital_garage_lift_anim.gltf`（参照の姿勢）・`_anims_psa/Meshes/06_Hospital/hospital_garage_lift_anim_Anim.psa`（キー）・`_assets/…/Meshes/06_Hospital/hospital_garage_lift_anim_Anim.json`（`NumFrames` 60・`SequenceLength` 2.4583）・`hospital_garage_lift_anim.json`（材質 4 の import）・`_PhysicsAsset.json`（`joint1` のカプセル 1 つ）。
 - 置き場所: `pak_reference_2/_levels/06_Hospital_Zone_02.full.json`（前処理の `stage_ue.json` の `actors`。15 台とも Top Location の上書きなし。`LiftCollision1` は構築スクリプトの (0, 0, 535)）。
 - Bierce の一言: `_bytecode/DDeception/Content/06_Hospital_Zone_02.txt` の `Setup Bierce Lift Quip`・`Bierce Lift Quip`（`python Tools/dd/bp_flow.py … 'Setup Bierce Lift Quip'`）。
 
@@ -59,3 +62,4 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 
 ## 変更履歴
 - 2026-09-18: 初版。本家の `BP_06_LiftBase`・`BP_06_Lift`（`_03`・`_04`）・`BP_06_LiftBase_Corner` を `AWasamiLiftBase`・`AWasamiLift`・`AWasamiCornerLift` に写し、組み立てが Zone 2 に 15 台置くようにした（作業一覧の項目 6 のステップ 8a）
+- 2026-09-18: ガレージリフトの骨入りのメッシュとアニメを取り込んだ（`dd_skeletal`。作業一覧の項目 6 のステップ 8b1）

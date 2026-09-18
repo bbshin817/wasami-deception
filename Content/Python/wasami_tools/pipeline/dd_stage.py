@@ -231,6 +231,7 @@ def _build_substance(mat):
 
     Not reproduced: `Normal Flatness` (the instances set 1.2 – 3.0 against a master default of 0, and the graph that
     used it is gone, so neither a 0–1 flatten nor an XY multiplier can be confirmed — the normal is used as it is)."""
+    mat.set_editor_property("used_with_skeletal_mesh", True)   # the garage lifts' skinned mesh (dd_skeletal)
     g = _Graph(mat)
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
     black = unreal.load_asset("/Engine/EngineResources/Black") or white

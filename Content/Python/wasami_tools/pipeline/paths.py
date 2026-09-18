@@ -20,6 +20,8 @@ DD_STAGE = os.path.join(PROJECT, "Intermediate", "Pipeline", "dd", "stage_ue.jso
 MESH_PIPELINE = "/Game/Pipeline/Interchange/PL_DD_StaticMesh"
 # ... and the one for this game's skinned models with their animations (dd_enemy).
 SKELETAL_PIPELINE = "/Game/Pipeline/Interchange/PL_Wasami_Skeletal"
+# ... and the one for the original's skinned meshes, their animations baked at the original's own frame rate (dd_skeletal).
+DD_SKELETAL_PIPELINE = "/Game/Pipeline/Interchange/PL_DD_Skeletal"
 MASTER_SUBSTANCE = "/Game/Pipeline/Materials/M_DD_Substance"
 MASTER_DECAL = "/Game/Pipeline/Materials/M_DD_Decal"
 MASTER_UNLIT = "/Game/Pipeline/Materials/M_DD_Unlit"

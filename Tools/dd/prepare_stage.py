@@ -89,6 +89,12 @@ TELEPORT_ZONE_COMPONENT = "Cube"
 CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospital_zone_02_lifts_lift_01",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_03.hospital_zone_02_lifts_lift_03",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_04.hospital_zone_02_lifts_lift_04")
+# Materials of meshes that are not the stage's static meshes: the garage lifts' skinned mesh (hospital_garage_lift_anim,
+# its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name).
+CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06_Hospital_MetalPanel_04",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_Concrete_06_Painted1.M_06_Hospital_Concrete_06_Painted1",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MetalBrushed_02.M_06_Hospital_MetalBrushed_02",
+                   "/Game/Materials/07_FunPlace/M_07_TP_DiamondPlate.M_07_TP_DiamondPlate")
 # Component properties of a placement worth carrying over (the rest is either the transform or editor bookkeeping).
 # bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
 # seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's
@@ -683,6 +689,7 @@ def main():
             continue
         key = note_mesh(ex, mesh_path, info, meshes, problems)
         slot_materials(ex, meshes[key]["slots"], [], materials, problems)
+    slot_materials(ex, list(CLASS_MATERIALS), [], materials, problems)
 
     for m in materials.values():
         for kind, png in m["kinds"].items():

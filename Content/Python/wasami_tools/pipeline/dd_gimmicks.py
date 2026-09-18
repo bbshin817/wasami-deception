@@ -14,13 +14,14 @@ Fracture_dark_slow; 06_Hospital_Zone2_Cell_DoorPicked: the burst at the cell doo
 four materials the cook took the graphs of, estimated off their compiled shaders. Zone 2's lifts (AWasamiLift and
 AWasamiCornerLift, after Blueprints/06_Hospital/Lifts/Zone2): the clunk as they start and stop (DD_TT_GarageLift_Down,
 through MonkeyAttenuation), the loop while they move (DD_TT_Lift_Loop, through 01_Lobby_Attenuation), and the garage
-lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets.
+lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets. The garage lifts
+(AWasamiGarageLift, after Blueprints/06_Hospital/Lifts/Garage): their skinned mesh and its animation (dd_skeletal).
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
 import unreal
 
-from wasami_tools.pipeline import dd_assets, dd_particles, dd_stage, paths
+from wasami_tools.pipeline import dd_assets, dd_particles, dd_skeletal, dd_stage, paths
 
 EAL = unreal.EditorAssetLibrary
 MP = unreal.MaterialProperty
@@ -462,13 +463,20 @@ def import_lifts():
             "sounds": len([dd_assets.sound(rel, VERSION) for rel in LIFT_SOUNDS])}
 
 
+def import_garage_lift():
+    """The garage lifts' skinned mesh and its animation (their sounds come with the lifts'). Returns how many of each."""
+    dd_skeletal.import_garage_lift()
+    return {"skeletal_meshes": 1, "animations": 1}
+
+
 def import_all():
-    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's and the
-    lifts'), then saves /Game/DD."""
+    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the lifts'
+    and the garage lifts'), then saves /Game/DD."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
     result.update({"cell_" + key: count for key, count in import_cell().items()})
     result.update({"lift_" + key: count for key, count in import_lifts().items()})
+    result.update({"garage_lift_" + key: count for key, count in import_garage_lift().items()})
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result
