@@ -17,7 +17,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 原作への忠実さ（**本家 Dark Deception の原作データ `pak_reference/` に忠実に倣う。ステージも本家の病院「Torment Therapy」の Zone 1・Zone 2（`pak_reference_2/` の `06_Hospital_Zone_01`・`06_Hospital_Zone_02`。入口 `06_Hospital` は作らず、Zone 1 のエレベーターの到着から始める〈2026-09-18〉。ボス戦は作らず、Zone 2 のガレージの祭壇とポータルで脱出）。本家に無いギミックは複雑にせず、壊せる物は本家のホテルの板張りのバリケードのように 1 クリックで崩れて消える。原作のロゴとキャラクターのモデルは使わない。UE に同じ仕組みがあれば値を写すだけにし、作り直さない。視覚的な比較が要るときは手元で遊べる本家（旧版は `pak_reference`、最新版は `pak_reference_2` と同一のビルド。病院は最新版だけ）で観察してよいが、根拠は原則コード。cook で消えた材質の式もコンパイル済みのシェーダーとして残るので、推定する前に `Tools/dd/cooked_shaders.py` で読む**）: `.claude/guides/original-fidelity.md`
 - コミットとブランチ（**実装ごとにコミット、大規模改修は作業ブランチ→main へマージ→ローカルブランチ削除、最終コミットから 10 分経過・未 push 2 件以上・大規模改修のマージ後のいずれかで main を push。参照データから作り直せる素材は git の外、手作りのアセットは Git LFS**）: `.claude/guides/git-workflow.md`
 - 性能とメモリ（**この PC は GTX 1660 SUPER の VRAM 6 GB・RAM 32 GB。開発中は VRAM と RAM の逼迫を避ける設定にし、そのための設定はエディタにだけ効く場所に置く。パッケージした本編の品質は落とさない**）: `.claude/guides/performance.md`
-- note の進捗記事（**実装が 1 つ終わるたびに、原稿 `docs/note/progress.md` を「いま何が出来るか」に合わせて簡潔に直し、`tmp/note-cli` で同じ記事〈id はガイドに〉を書き換える。新しい記事は作らず、削除はしない。セッションの値は git の外の `Tools/note.local.json` に置いて実行時に読み（ほかの場所には書かず、表示もしない）、会話で新しい値をもらったらその場で書き換える。ファイルが無ければ原稿だけ直して「note へは未反映」と報告する**）: `.claude/guides/note-progress.md`
+- note の進捗記事（**実装が 1 つ終わるたびに、原稿 `docs/note/progress.md` を「いま何が出来るか」に合わせて簡潔に直し（出来ることごとに画面収録の GIF を 1 本。まだ無いもの・進み具合・更新履歴は載せない）、`tmp/note-cli` で同じ記事〈id はガイドに〉を書き換える。新しい記事は作らず、削除はしない。セッションの値は git の外の `Tools/note.local.json` に置いて実行時に読み（ほかの場所には書かず、表示もしない）、会話で新しい値をもらったらその場で書き換える。ファイルが無ければ原稿だけ直して「note へは未反映」と報告する**）: `.claude/guides/note-progress.md`
 - 配布とパッケージ（**パッケージには原作の素材が入る。配布の話が出たら必ずユーザーに確認する**）: `.claude/guides/distribution.md`
 
 ## 参考資料
