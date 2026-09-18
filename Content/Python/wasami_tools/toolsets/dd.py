@@ -61,12 +61,13 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         the lock giving (its key's font comes with import_dd_tablet). And the loading screen's portal sound and the
         hospital's emblem (WasamiLoadingWidget, which Zone 1 shows as it opens Zone 2; the emblem is composed first by
         python Tools/dd/prepare_loader.py outside the editor). And the hand's icon (WasamiInteractWidget, shown while
-        the player looks at something it can use).
+        the player looks at something it can use), and the ring piece's picture and pickup sound (WasamiRingPieceWidget,
+        which Zone 2's altar puts up).
 
         Returns:
             How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
-            '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems' and
-            'interact_textures').
+            '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems',
+            'interact_textures', 'ring_piece_textures' and 'ring_piece_sounds').
         """
         _module("dd_stage")
         _module("dd_assets")

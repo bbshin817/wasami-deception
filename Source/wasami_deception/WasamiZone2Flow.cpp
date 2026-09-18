@@ -1,21 +1,28 @@
 #include "WasamiZone2Flow.h"
 
 #include "Camera/CameraShakeBase.h"
+#include "Components/LightComponent.h"
+#include "Engine/Light.h"
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiDoubleDoors.h"
 #include "WasamiEnemySentry.h"
 #include "WasamiEnemyZone2.h"
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
+#include "WasamiRingPieceWidget.h"
+#include "WasamiRingStatue.h"
+#include "WasamiZoneBarrier.h"
 
 namespace
 {
 	// BP_ArrowPointer's Change Color in the zone's sections.
 	const FLinearColor MinibossArrow(0.f, 0.f, 0.f, 0.f);
 	const FLinearColor RingPieceArrow(1.f, 0.8941f, 0.f, 1.f);
+	const FLinearColor GarageArrow(1.f, 0.8941f, 0.f, 1.f);
 
 	/** Where a scene leaves an actor it moved (Sequencer makes the static ones movable to move them). */
 	void Leave(AActor* Actor, const FVector& Location, const FRotator& Rotation)
@@ -37,6 +44,7 @@ AWasamiZone2Flow::AWasamiZone2Flow()
 {
 	DoorPickedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/04_Sewer/Bossfight/BP_04_BossFight_CameraShake_Initial")));
 	SpikesSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3")));
+	RingPiecePickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/RingStatue/Ring_Piece_Pickup_v1")));
 }
 
 void AWasamiZone2Flow::StartAt(int32 Checkpoint)
@@ -202,8 +210,15 @@ void AWasamiZone2Flow::PostmazeTransition()
 	Enter(TEXT("Postmaze Transition"));
 	RemoveAllEnemies(GetWorld());
 	DestroyAllShards(GetWorld());
-	// BP_Collectable ID 3 spawned at the target point collec (item 12). ring_statue_2's Interact All Shards bound to
-	// Collected Ring Piece (item 13).
+	// BP_Collectable ID 3 spawned at the target point collec (item 12).
+	if (AWasamiRingStatue* Statue = Cast<AWasamiRingStatue>(Source(TEXT("ring_statue_2"))))
+	{
+		Statue->OnInteractAllShards.AddUniqueDynamic(this, &AWasamiZone2Flow::OnCollectedRingPiece);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no ring altar ring_statue_2"), *GetClass()->GetName());
+	}
 	const FName Orb = SourceTag(TEXT("ring_statue_orb_5"));
 	TArray<AActor*> Orbs;
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
@@ -224,4 +239,59 @@ void AWasamiZone2Flow::PostmazeTransition()
 		SetArrowTarget(Source(TEXT("BP_08_RingPiece_NoPickup_5")));
 		SetObjective(NSLOCTEXT("Wasami", "ObjectiveCollectRingPiece", "COLLECT THE RING PIECE"));
 	});
+}
+
+void AWasamiZone2Flow::OnCollectedRingPiece()
+{
+	Enter(TEXT("Collected Ring Piece"));
+	// UMG_01_RingPieceCollect with ringpiece_texture T_RingPiece_1 (the screen's default), at Z 0, its Close bound to
+	// Ring Piece Collect ; then Ring_Piece_Pickup_v1 (PlaySound2D, a UI sound, so it plays over the paused game).
+	if (UWasamiRingPieceWidget* Screen = UWasamiRingPieceWidget::Show(this))
+	{
+		Screen->OnClose.AddDynamic(this, &AWasamiZone2Flow::OnRingPieceCollect);
+	}
+	UGameplayStatics::PlaySound2D(this, RingPiecePickupSound.LoadSynchronous());
+}
+
+void AWasamiZone2Flow::OnRingPieceCollect()
+{
+	Enter(TEXT("Ring Piece Collect "));
+	// The altar's two pink lights off.
+	for (const TCHAR* Name : {TEXT("PointLight202"), TEXT("PointLight201_6")})
+	{
+		if (const ALight* Light = Cast<ALight>(Source(Name)))
+		{
+			Light->GetLightComponent()->SetVisibility(false, false);
+		}
+	}
+	if (AWasamiZoneBarrier* Barrier = ZoneBarrier(TEXT("BP_ZoneBarrier_2")))
+	{
+		Barrier->DestroyBarrier();
+	}
+	SetArrowShards(false);
+	SetArrowColor(GarageArrow);
+	SetArrowTarget(Source(TEXT("Postmaze_Trigger_Garage")));
+	SetObjective(NSLOCTEXT("Wasami", "ObjectiveHeadTowardsGarage", "HEAD TOWARDS THE GARAGE"));
+	if (AActor* Piece = Source(TEXT("BP_08_RingPiece_NoPickup_5")))
+	{
+		Piece->Destroy();
+	}
+	// bLocked written directly: the doors to the garage open as the player comes up to them.
+	if (AWasamiDoubleDoors* Doors = DoubleDoors(TEXT("BP_06_DoubleDoors2")))
+	{
+		Doors->bLocked = false;
+	}
+	After(GarageBindDelay, [this]()
+	{
+		// Bierce_TormentTherapy_Event_21 (item 20). The original also binds Postmaze_Trigger_Ambulance, on the
+		// ambulance's roof, to the ride to the boss fight; this game leaves by the garage's portal instead.
+		BindTrigger(TEXT("Postmaze_Trigger_Garage"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnPostmazeTriggerGarage));
+	});
+}
+
+void AWasamiZone2Flow::OnPostmazeTriggerGarage()
+{
+	Enter(TEXT("Postmaze_Trigger_Garage"));
+	// The original points the arrow at the ambulance (GET ON TOP OF THE AMBULANCE) and has Bierce talk 1 s on; this
+	// game opens the garage's portal here instead (item 13's step 5).
 }

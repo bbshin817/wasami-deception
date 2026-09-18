@@ -19,6 +19,9 @@ settings.
 The hand in the middle of the screen (UWasamiInteractWidget, after Blueprints/UMG/UMG_Interact) while the player looks
 at something it can use: its icon.
 
+The ring piece's screen (UWasamiRingPieceWidget, after UI/01/UMG_01_RingPieceCollect) as Zone 2's altar gives the piece:
+its picture and the sound the level plays with it. CLOSE's font comes with the tablet.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -67,6 +70,9 @@ LOADING_EMBLEM_FILE = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "w
 LOADING_EMBLEM = paths.WASAMI_ROOT + "/UI/loader_wasami"
 # ------------------------------------------------------------------------------------------------ the interact hand
 INTERACT_TEXTURES = ("UI/Main/interact_icon_03",)
+# ------------------------------------------------------------------------------------------------ the ring piece's screen
+RING_PIECE_TEXTURES = ("Textures/Ring_Assets/T_RingPiece_1",)
+RING_PIECE_SOUNDS = ("Audio/RingStatue/Ring_Piece_Pickup_v1",)
 
 # The original emblems' settings (UI/Main/Loaders/loader_reapernurse in _textures.json: sRGB, default compression, UI).
 LOADING_EMBLEM_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
@@ -165,9 +171,15 @@ def import_interact():
     return {"textures": len([dd_assets.texture(rel, VERSION) for rel in INTERACT_TEXTURES])}
 
 
+def import_ring_piece():
+    """The ring piece's picture and its sound. Returns how many of each."""
+    return {"textures": len([dd_assets.texture(rel, VERSION) for rel in RING_PIECE_TEXTURES]),
+            "sounds": len([dd_assets.sound(rel, VERSION) for rel in RING_PIECE_SOUNDS])}
+
+
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
-    screen's and the hand's, then saves /Game/DD."""
+    screen's, the hand's and the ring piece screen's, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -177,5 +189,7 @@ def import_all():
         result["loading_" + key] = count
     for key, count in import_interact().items():
         result["interact_" + key] = count
+    for key, count in import_ring_piece().items():
+        result["ring_piece_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result
