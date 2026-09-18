@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "WasamiInteractable.h"
 #include "WasamiZoneBarrier.generated.h"
 
 class UAudioComponent;
@@ -10,6 +11,7 @@ class UPointLightComponent;
 class USoundAttenuation;
 class USoundBase;
 class UStaticMeshComponent;
+class UWasamiTextPromptWidget;
 
 /**
  * Dark Deception's BP_ZoneBarrier (pak_reference_2's Blueprints/Main), the glowing wall that closes a zone's way on until
@@ -18,12 +20,14 @@ class UStaticMeshComponent;
  * the shatter sound, and the actor is gone. The hospital places one in each zone (Zone 1's in the way to the parking
  * lot, Zone 2's in the way to the garage).
  *
+ * Looked at and clicked (InteractWithObject; its root and planes are tagged interact, so the hand shows over it), it
+ * turns the player away: the denied sound and a text prompt, at most once every 5 s.
+ *
  * The planes' materials are not set by the class (assets under /Game/DD are never loaded from a constructor,
- * WasamiAssets.h): the level build places the barriers with MM_ZoneBarrier_Inst1 and _Inst2 on them. The original's
- * look at (InteractWithObject: a denied sound and a text prompt) comes with the looking hand of the work list's item 13.
+ * WasamiAssets.h): the level build places the barriers with MM_ZoneBarrier_Inst1 and _Inst2 on them.
  */
 UCLASS()
-class WASAMI_DECEPTION_API AWasamiZoneBarrier : public AActor
+class WASAMI_DECEPTION_API AWasamiZoneBarrier : public AActor, public IWasamiInteractable
 {
 	GENERATED_BODY()
 
@@ -48,12 +52,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zone Barrier")
 	bool bSound = true;
 
+	/** Interaction Text: what the prompt says as the barrier turns the player away. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Zone Barrier")
+	FText InteractionText;
+
 	/**
 	 * Destroy (the original's custom event; AActor has its own Destroy): P_ky_impact3 at the back plane (twice its
 	 * size), the shatter at the actor, and the actor destroyed.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Zone Barrier")
 	void DestroyBarrier();
+
+	/** InteractWithObject's Delay: how long after turning the player away the barrier can do it again. */
+	static constexpr float DeniedInterval = 5.f;
+
+	/** The prompt the barrier last put up (null before the first, or once it has gone). */
+	UWasamiTextPromptWidget* GetLastPrompt() const { return LastPrompt.Get(); }
 
 	UStaticMeshComponent* GetStaticMesh() const { return StaticMesh; }
 	UStaticMeshComponent* GetStaticMesh1() const { return StaticMesh1; }
@@ -62,6 +76,13 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	/**
+	 * InteractWithObject (a DoOnce): DD_RingBarrierDenied_louder at the actor (0.75, pitch 1.1, through
+	 * DialogueAttenuation) and a text prompt of Interaction Text on the player's screen; the DoOnce opens again
+	 * DeniedInterval later. (The original first checks NoInteract, which the hospital's barriers leave false.)
+	 */
+	virtual void InteractWithObject_Implementation(AActor* Interactee) override;
 
 	/** DefaultSceneRoot: the level's actors scale it to the barrier's size. */
 	UPROPERTY(VisibleAnywhere, Category = "Zone Barrier")
@@ -96,6 +117,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Zone Barrier|Assets")
 	TSoftObjectPtr<UParticleSystem> BreakParticle;
 
+	/** DD_RingBarrierDenied_louder through DialogueAttenuation, as the barrier turns the player away. */
+	UPROPERTY(EditAnywhere, Category = "Zone Barrier|Assets")
+	TSoftObjectPtr<USoundBase> DeniedSound;
+
+	UPROPERTY(EditAnywhere, Category = "Zone Barrier|Assets")
+	TSoftObjectPtr<USoundAttenuation> DeniedAttenuation;
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<USoundBase> LoadedShatterSound;
@@ -105,4 +133,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UParticleSystem> LoadedBreakParticle;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> LoadedDeniedSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundAttenuation> LoadedDeniedAttenuation;
+
+	/** The DoOnce: closed from turning the player away until DeniedTimer opens it again. */
+	bool bDeniedClosed = false;
+	FTimerHandle DeniedTimer;
+	TWeakObjectPtr<UWasamiTextPromptWidget> LastPrompt;
 };

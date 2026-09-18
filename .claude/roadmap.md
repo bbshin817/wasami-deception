@@ -184,7 +184,7 @@
 - 根拠: `pak_reference/_bytecode/DDeception/Content/03_Manor_Zone2.txt`（@1385〜@4380 の祭壇と欠片、`Portal Extra Brightness`）、`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt`（@43〜 Postmaze、@1423〜@1773 の台詞・曲のフェード・ポータルの音・敵の除去）、`Blueprints/01_Hotel/BP_01_Statue.txt`、`Blueprints/00_Ballroom/BP_00_Teleport.txt`、`UI/Main/UMG_Interact`。
 - 依存: 6、7。
 - 規模: 2
-- 状態: 未着手。
+- 状態: **完了（2026-09-19）**。見て使う仕組み（カメラの前 200 cm のトレースとタグ `interact`、画面の中央の手のマーク、左クリック。実装記録 05）、障壁を使ったときの拒否（`DD_RingBarrierDenied_louder` と文の枠 `UMG_TextPrompt`、5 s に 1 回。08・09）、Zone 2 の祭壇 `BP_01_Statue` と欠片 `BP_08_RingPiece_NoPickup`（全回収の前は拒否の音と文、後は `Interact All Shards`。08）、欠片の画面 `UMG_01_RingPieceCollect`（ゲームを止め、閉じると `Ring Piece Collect `: 祭壇の灯 2 つ・障壁・欠片を消し、ガレージへの扉 `BP_06_DoubleDoors2` の鍵を外し、矢印と HEAD TOWARDS THE GARAGE。09・11）、ガレージのポータル `BP_00_Teleport`（本家の最新版。ロゴはワサミの印。08）がガレージの箱 `Postmaze_Trigger_Garage` で開き、矢印と GET TO THE PORTAL、ポータルの前の箱（ホテルの出口の `EndTrigger` の位置と大きさ）で入力と走りを止め、黒に暗転し、`21-Ballroom_portal_V2` を鳴らして敵を消す（11）。PIE で `Wasami.Checkpoint 10` から祭壇 → 欠片の画面 → 扉を抜けてガレージの箱 → ポータルが開く → 暗転を 1 本で通した（11 記録の「通しの脱出」）。テストは `Wasami.` の 75 本。**完了の条件の読み替え**（本家のコードに合わせた）: (1) 祭壇はガレージに新しく置かず、本家の病院 Zone 2 の迷路の後の部屋にある祭壇 `ring_statue_2` をそのまま使い、ガレージにはポータルだけを置いた（本家の病院に「祭壇 → 欠片 → 障壁 → ガレージ」の流れがコードにあり、祭壇が障壁の奥のガレージにあると障壁を壊す前に祭壇へ行けず、条件の「欠片の画面が閉じると障壁を壊し、矢印をガレージへ向ける」が成り立たない）。(2) 「全回収で祭壇の球が消え」は項目 6 の全回収（`Postmaze Transition`）が済ませている。(3) ポータルは祭壇の後に「現れる」のでなく、本家のホテルの出口に倣い、初めから鍵をかけて置き、ガレージの箱で開く。祭壇の場所・目的の文・ロゴは下の「未回答の要確認」。粒子と推定の材質（祭壇・欠片・ポータル）は項目 28 の後回しの一覧。Bierce の台詞は項目 20、曲のフェードは項目 19、スコア画面は項目 14（それまでは暗転したまま止まる）。
 
 ### 27. 大目標 1 の通しプレイの確かめ
 
@@ -354,6 +354,8 @@
   - 2026-09-19（項目 7）: Zone 2 の見張りの視界コーンの地図の印（扇 `map_enemy_search_Mat` と点 `0_DotCircle_Mat`）の見え方 — 今は本家の Unlit・半透明の式（焼き込みのシェーダー）を、地図のキャプチャ（`SCS_BaseColor`）に写る Default Lit・Masked にした推定（切り抜き 0.1。扇の縁が硬く、薄れはベースカラーの暗さだけ。実装記録 03 の「マテリアル」）。本家の地図でコーンがどう見えるかは実機と見比べていない
   - 2026-09-19（項目 7）: 見つける前に Primal Fear などで気絶した見張りの姿勢 — 今はアニメが 17 s で起き上がって立つ（State は本家どおり Stun のまま。見つけて跳び降りた後の 17 s も立ったまま止まる。実装記録 07 の「既知の制約」）。本家での確かめ方: 最新版の Zone 2 のミニボスの廊下で、見張りに見つかる前に Primal Fear を使い、棚の上と跳び降りた後の姿勢を見る（本家の ABP は State が 0 に戻るまで気絶の姿勢）
   - 2026-09-19（項目 9）: 捕獲の別室の見た目（寄り・灯・暗転・DOF）— 今は本家ホテルの 1 本目の Matinee の t=0 のカメラがサルの頭を写す写し方をワサミの全身に当てた寄り（前 222・上 123 cm、FOV 90、動かない）、サルの真上の天井灯 `ceilinglights_80` を縮めた位置の灯（1500・半径 500・水色）、組は長さの順（`Capture_1`↔`MonkeyJumpscare` ほか）で暗転を長さの比で写す（直線の `StartCameraFade`。本家は曲線）。`JumpscareCam` の旧 DOF（焦点 142.9・領域 571.4・遠いぼけ 16.2）は写していない。本家での確かめ方: 旧版の実機のホテルでサルに捕まる 3 本（`MonkeyJumpscare`・`2`・`3`）を撮り、寄り・明るさ・ぼけ・暗転の速さを見比べる（カメラの動きは項目 24）
+  - 2026-09-19（項目 13）: Zone 2 の祭壇と欠片の材質 — 今は祭壇の `MM_00_Ballroom_Ring_Altar_Metal`（親 `MM_Main_Metal`: 法線 `RingStatue_N`・`Roughness` 0.35・`Hover Color`）と欠片の `M_ring_metal2`（親 `MM_Main_Substance_Fresnel`）を前処理の `substance` のマスターの推定で作った（祭壇は色のテクスチャが無く、桃色の灯で青みの白の像に見える。実装記録 08）。欠片の光の粒子 `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。本家での確かめ方: 最新版の Zone 2 の迷路の後の部屋の祭壇と欠片を撮り、`python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Metal."` で式を読む。
+  - 2026-09-19（項目 13）: ガレージのポータル `AWasamiPortal` の見え方 — 今は `M_00_Portal_Vortex` を焼き込みのシェーダーの式で組み（本家は Lit・Base Color なしを Unlit にした）、ロゴの親 `M_00_Portal_Monkey` も同じく推定、開くときと鍵をかけるときの粒子 `PPP_PortalAppear`・`_Lock` は作っていない（PyroParticlePack の親 `PPP_Particles_lit`・`_fogged` の式が cook で消えている。部品はテンプレートなし）。本家での確かめ方: 旧版のホテルの出口のポータルが欠片の後に開く場面（`01_Hotel` の `Collect Ring Piece` の後の `Lock/Unlock(False, False)`）と舞踏会場のポータル、`cooked_shaders.py "PyroParticlePack/Materials/PPP_Particles_lit."` のベースパス
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3
@@ -380,6 +382,12 @@
 ## 未回答の要確認（ユーザー）
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
+
+### 項目 13（脱出、2026-09-19 に閉じた記録 `20260919-escape`）
+
+- 2026-09-19: ガレージでポータルが開いた後の目的の文 — 仮に `GET TO THE PORTAL` にした。理由: 本家のホテルが出口のポータルを開けたときの `Get back to the portal.` を、病院の目的の書き方（`HEAD TOWARDS THE GARAGE` などの大文字）に合わせ、まだポータルへ行っていないので back を落とした。本家の病院にはポータルへ向かう文が無い（救急車の `GET ON TOP OF THE AMBULANCE`）。場所: `WasamiZone2Flow.cpp` の `OnPostmazeTriggerGarage`、実装記録 11。
+- 2026-09-19: 祭壇の場所 — 仮に本家の病院 Zone 2 の祭壇 `ring_statue_2`（迷路の後の部屋）をそのまま使い、ガレージにはポータルだけを置いた。理由: 本家の病院に祭壇と「欠片 → 障壁 → ガレージ」の流れが既にあり、作業一覧の完了の条件（欠片の画面で障壁が壊れてガレージへ）とも合う。2026-09-17 の最終目標の「ガレージの祭壇とポータルで脱出」は、病院に祭壇があると知る前の言い方と読んだ。場所: 上の項目 13 の状態（完了の条件の読み替え）。
+- 2026-09-19: ポータルの `Logo`（本家は `M_00_Portal_Monkey` のサルの顔）— 仮にワサミのシンボル（読み込み画面の紋章と同じユーザーの印）に替えた（本家の印と同じ大きさ・位置・赤で描いた `/Game/Wasami/Portal/T_Portal_Wasami`）。理由: 原作のキャラクターは使わない（`.claude/guides/original-fidelity.md`）、読み込み画面の紋章の前例（2026-09-19 のユーザーの回答）。場所: 実装記録 08 の「ガレージのポータル」、前処理 `Tools/dd/prepare_portal_logo.py`。
 
 ### 項目 7（NavMesh と敵の AI、2026-09-19 に閉じた記録 `20260919-enemy-ai`）
 

@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "../WasamiTextPromptWidget.h"
 #include "../WasamiZoneBarrier.h"
 #include "Components/AudioComponent.h"
 #include "Components/PointLightComponent.h"
@@ -35,6 +36,7 @@ bool FWasamiZoneBarrierTest::RunTest(const FString& Parameters)
 	UStaticMeshComponent* Front = Barrier->GetStaticMesh1();
 	UStaticMeshComponent* Back = Barrier->GetStaticMesh();
 	TestTrue(TEXT("interact"), Barrier->ActorHasTag(TEXT("interact")));
+	TestTrue(TEXT("the hand shows over the planes"), Front->ComponentHasTag(TEXT("interact")) && Back->ComponentHasTag(TEXT("interact")));
 	TestTrue(TEXT("the root at 3.2"), Barrier->GetRootComponent()->GetRelativeScale3D().Equals(FVector(3.2)));
 	TestTrue(TEXT("both planes the engine's Plane"), Front->GetStaticMesh() && Back->GetStaticMesh() == Front->GetStaticMesh()
 		&& Front->GetStaticMesh()->GetPathName() == TEXT("/Engine/BasicShapes/Plane.Plane"));
@@ -73,6 +75,61 @@ bool FWasamiZoneBarrierTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestTrue(TEXT("P_ky_impact3 at the back plane, twice its size"), bBurst);
+	return true;
+}
+
+namespace
+{
+	/** Seconds of play in ticks of 0.1 s at most (a tick of nothing first starts the timers set since the last). */
+	void AdvanceBarrierWorld(FTestWorldWrapper& Wrapper, float Seconds)
+	{
+		Wrapper.TickTestWorld(0.f);
+		for (float Left = Seconds; Left > 0.f; Left -= 0.1f)
+		{
+			Wrapper.TickTestWorld(FMath::Min(Left, 0.1f));
+		}
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiZoneBarrierInteractTest, "Wasami.ZoneBarrier.Interact",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiZoneBarrierInteractTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	AWasamiZoneBarrier* Barrier = Wrapper.GetTestWorld()->SpawnActor<AWasamiZoneBarrier>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the barrier"), Barrier))
+	{
+		return false;
+	}
+	TestTrue(TEXT("something to use"), Barrier->Implements<UWasamiInteractable>());
+	TestNull(TEXT("no prompt before it is used"), Barrier->GetLastPrompt());
+
+	// InteractWithObject: the prompt of Interaction Text.
+	IWasamiInteractable::Execute_InteractWithObject(Barrier, nullptr);
+	UWasamiTextPromptWidget* First = Barrier->GetLastPrompt();
+	if (!TestNotNull(TEXT("a prompt"), First))
+	{
+		return false;
+	}
+	TestEqual(TEXT("saying to collect the zone's shards"), First->Text.ToString(),
+		FString(TEXT("Collect all soul shards in this zone to break the barrier.")));
+
+	// The DoOnce: nothing more for 5 s, then again.
+	IWasamiInteractable::Execute_InteractWithObject(Barrier, nullptr);
+	TestTrue(TEXT("clicked again at once: no second prompt"), Barrier->GetLastPrompt() == First);
+	AdvanceBarrierWorld(Wrapper, 4.8f);
+	IWasamiInteractable::Execute_InteractWithObject(Barrier, nullptr);
+	TestTrue(TEXT("nor at 4.8 s"), Barrier->GetLastPrompt() == First);
+	AdvanceBarrierWorld(Wrapper, 0.3f);
+	IWasamiInteractable::Execute_InteractWithObject(Barrier, nullptr);
+	UWasamiTextPromptWidget* Second = Barrier->GetLastPrompt();
+	TestTrue(TEXT("after 5 s, another"), Second && Second != First);
 	return true;
 }
 

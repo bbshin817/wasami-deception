@@ -8,8 +8,10 @@
 #include "Particles/ParticleSystem.h"
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
+#include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "WasamiAssets.h"
+#include "WasamiTextPromptWidget.h"
 
 namespace
 {
@@ -42,6 +44,11 @@ namespace
 	// Destroy: SpawnEmitterAtLocation(P_ky_impact3, StaticMesh's location, no rotation, 2, auto destroy, no pooling,
 	// active) and PlaySoundAtLocation(Barrier_Shatter, the actor's location, no rotation, 1, 1, 0, 01_Lobby_Attenuation).
 	constexpr double ZoneBarrierBreakScale = 2.;
+
+	// InteractWithObject: PlaySoundAtLocation(DD_RingBarrierDenied_louder, the actor's location, no rotation, 0.75, 1.1,
+	// 0, DialogueAttenuation).
+	constexpr float ZoneBarrierDeniedVolume = 0.75f;
+	constexpr float ZoneBarrierDeniedPitch = 1.1f;
 
 	/** A plane of the barrier: the engine's Plane standing up, custom collision (WorldStatic, blocking), no navigation. */
 	UStaticMeshComponent* MakeZoneBarrierPlane(AActor* Owner, USceneComponent* Root, UStaticMesh* Mesh, const TCHAR* Name)
@@ -115,6 +122,9 @@ AWasamiZoneBarrier::AWasamiZoneBarrier()
 	ShatterSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/02_School/Barrier_Shatter")));
 	ShatterAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/01_Hotel/01_Lobby_Attenuation")));
 	BreakParticle = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_impact3")));
+	DeniedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/RingStatue/DD_RingBarrierDenied_louder")));
+	DeniedAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Misc/DialogueAttenuation")));
+	InteractionText = NSLOCTEXT("Wasami", "ZoneBarrierInteractionText", "Collect all soul shards in this zone to break the barrier.");
 }
 
 void AWasamiZoneBarrier::BeginPlay()
@@ -123,6 +133,8 @@ void AWasamiZoneBarrier::BeginPlay()
 	LoadedShatterSound = ShatterSound.LoadSynchronous();
 	LoadedShatterAttenuation = ShatterAttenuation.LoadSynchronous();
 	LoadedBreakParticle = BreakParticle.LoadSynchronous();
+	LoadedDeniedSound = DeniedSound.LoadSynchronous();
+	LoadedDeniedAttenuation = DeniedAttenuation.LoadSynchronous();
 
 	// UserConstructionScript: each plane's pulse between its layer's brightnesses (dynamic instances of the materials
 	// the level gave them). Done here, so that no dynamic instance is saved with the level.
@@ -150,4 +162,18 @@ void AWasamiZoneBarrier::DestroyBarrier()
 	UGameplayStatics::PlaySoundAtLocation(this, LoadedShatterSound, GetActorLocation(), FRotator::ZeroRotator, 1.f, 1.f,
 		0.f, LoadedShatterAttenuation);
 	K2_DestroyActor();
+}
+
+void AWasamiZoneBarrier::InteractWithObject_Implementation(AActor* Interactee)
+{
+	if (bDeniedClosed)
+	{
+		return;
+	}
+	bDeniedClosed = true;
+	UGameplayStatics::PlaySoundAtLocation(this, LoadedDeniedSound, GetActorLocation(), FRotator::ZeroRotator,
+		ZoneBarrierDeniedVolume, ZoneBarrierDeniedPitch, 0.f, LoadedDeniedAttenuation);
+	LastPrompt = UWasamiTextPromptWidget::Show(this, InteractionText);
+	GetWorldTimerManager().SetTimer(DeniedTimer, FTimerDelegate::CreateWeakLambda(this, [this]() { bDeniedClosed = false; }),
+		DeniedInterval, false);
 }

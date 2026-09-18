@@ -15,7 +15,7 @@
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "b3b92a8f2c859d68cf4da8f38ff8ac30240823aa",
+    "Tools/dd/prepare_stage.py": "00f19c04a6075243347fd87f32131e48296940c1",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "cee314799ff6c30003dbdb55bc0e1aea8d2e2584",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
@@ -32,22 +32,22 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "2014db5f831e3152e6354c56b354cbfe64cabb97",
+    "Content/Python/wasami_tools/toolsets/dd.py": "bc6c596f8aebf181dc5ba31975a0a12867106f63",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
-    "Content/Python/wasami_tools/toolsets/stage.py": "033a8c527fa24714f1afe20ea3f35a24ee30555d",
+    "Content/Python/wasami_tools/toolsets/stage.py": "9e8d6ef478260b8085bd606a3f9adc6fb7dec7d4",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "6cbabb6fabec4072534453536fa8242a316627a4",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "c67e0df3e869b88b9a004ce8c9154e0a9079ad76",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "8902d5e6db7b442640b644e16b2d78583ef5a568",
-    "Content/Python/wasami_tools/pipeline/dd_level.py": "9765bd5913f75075c20530ad146153301f68ad8e",
+    "Content/Python/wasami_tools/pipeline/dd_level.py": "1334c793408e48eb5c74be9ac505d7753a77f3e7",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "99462326a6a643e80209090a3e5b4b9b59cc5c08",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "7cc22fba63f063b2d87e935abbec6527899ff631",
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "62cf5c53e0b249affdd0f409cefa86e2f1970367",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "0f9440a36537a6379efcc520495115cf9425076a",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
-    "Content/Python/wasami_tools/pipeline/dd_ui.py": "d682992cc842df49279e6f761948642d378c52c5",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "0a72d73f74647f2d266d6977f9b75c1d436f325a",
+    "Content/Python/wasami_tools/pipeline/dd_ui.py": "8df93189ac45ce011a939c6451c47c8330c774e3",
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "8145e6482b4f82bf0773c8c1b1486f0ae8c1c0d0",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "e8a7098d90714c4f2f6d4009b7b79e9e02d1c120",
@@ -62,8 +62,8 @@
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "352f6ab86e459f46eb2a4fc3896164c39aa41012",
     "Source/wasami_deception/WasamiGameMode.cpp": "6abe875423ddc005e80e88830f7e2b5fb164edd6",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "779ec49a58897b55415536cd8b944f03658af009",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "cb998e4d84a66ed082fb4f4ac41952e5cd12719a"
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "90877f29d8fab486886009613d39d47d7eaa784d",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "1bf377fb789782c4db87bcb2bc5d401aef57d20e"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
@@ -162,8 +162,14 @@
     "Source/wasami_deception/WasamiBlackFadeWidget.cpp": "395ccfb2342ecd87ebf686438deccb911b12a090",
     "Source/wasami_deception/WasamiLoadingWidget.h": "ee36bee48473a2c17659d7e20fbcd386720ffefc",
     "Source/wasami_deception/WasamiLoadingWidget.cpp": "74d3df430b853409a20851dc97482277281de009",
-    "Source/wasami_deception/WasamiWidgetAnimation.h": "83bb9caadeb91d0a38e08117f705356a3f5a3f34",
-    "Content/Python/wasami_tools/pipeline/dd_ui.py": "d682992cc842df49279e6f761948642d378c52c5"
+    "Source/wasami_deception/WasamiTextPromptWidget.h": "5a5fc60c805771e8d6b56e25d10880b6d1caf5e2",
+    "Source/wasami_deception/WasamiTextPromptWidget.cpp": "f7995b571cc551c6c37cfb9df549cb8fcf69fbb2",
+    "Source/wasami_deception/Tests/WasamiTextPromptTests.cpp": "d025749474a2df7ba309cd6a53cb653af06d759c",
+    "Source/wasami_deception/WasamiRingPieceWidget.h": "24ae9cac96b3e522b7d63fa9d229444b7e44f144",
+    "Source/wasami_deception/WasamiRingPieceWidget.cpp": "b503fbb035d775ec6ec594424e79c3ae71ac1e66",
+    "Source/wasami_deception/Tests/WasamiRingPieceTests.cpp": "aa3141ddade8f4646e2c4ce26e0b355601da1e02",
+    "Source/wasami_deception/WasamiWidgetAnimation.h": "bb7f4db7b7e9cd3c2497883c1b980a61270ad785",
+    "Content/Python/wasami_tools/pipeline/dd_ui.py": "8df93189ac45ce011a939c6451c47c8330c774e3"
   },
   "11-zone-flow.md": {
     "Source/wasami_deception/WasamiDoorBreak.h": "7bbf17f8a3c7d00b4ff104a3bbc09db88a2ff473",
@@ -175,9 +181,9 @@
     "Source/wasami_deception/WasamiZoneFlow.cpp": "477269f41a64dbaceba8277575762407a78d467f",
     "Source/wasami_deception/WasamiZone1Flow.h": "5a61dbb96692144bb2cc0c20353da2f50cd2ced5",
     "Source/wasami_deception/WasamiZone1Flow.cpp": "7d0e071593728d843ed7e2d588ff18ee109842a0",
-    "Source/wasami_deception/WasamiZone2Flow.h": "e1399aa155190537f7f24b3c05affa7e4926696f",
-    "Source/wasami_deception/WasamiZone2Flow.cpp": "34c3913341eda2831032c31a902eda1bec91db0f",
-    "Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp": "2cef814d06605144e4b1a3a0026c54714c97caa4",
+    "Source/wasami_deception/WasamiZone2Flow.h": "43f39eefc629df65a26e538369714b2ae2224cc1",
+    "Source/wasami_deception/WasamiZone2Flow.cpp": "a6d6296846a67145a3562f172fc6abde7d63fa42",
+    "Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp": "521dbf9b58211554e3c6762b00034d4bbcdbb66b",
     "Source/wasami_deception/WasamiZoneShardChecker.h": "88b7bfb92f7955ebe7a31b1c71c8bc7c090ea19d",
     "Source/wasami_deception/WasamiZoneShardChecker.cpp": "1bcad5fb0626231c4aa04482df0d0116e756f2c8"
   },
@@ -185,13 +191,22 @@
     "Source/wasami_deception/WasamiDoubleDoors.h": "69ddf1570a8f5addfc2a2fbffd9edda0f3d14bac",
     "Source/wasami_deception/WasamiDoubleDoors.cpp": "9e0b343f1fc41d7bf2b508146f4c31175357a9be",
     "Source/wasami_deception/Tests/WasamiDoubleDoorsTests.cpp": "05d8a97fdb6c71e829b04a040e00a98de3a51e1b",
-    "Source/wasami_deception/WasamiZoneBarrier.h": "9f08467569421d91694b07e76624517f3af3f4e7",
-    "Source/wasami_deception/WasamiZoneBarrier.cpp": "756455bd47c5382d157ca0a1a00553e33f880fd3",
-    "Source/wasami_deception/Tests/WasamiZoneBarrierTests.cpp": "b43224a46a32f539a4e22b51d513e1f2a26ad8c1",
+    "Source/wasami_deception/WasamiZoneBarrier.h": "cd89f53c477c88d32831a3e1bc16edaa56b0ebb0",
+    "Source/wasami_deception/WasamiZoneBarrier.cpp": "65ecfcb1d4eb5cf4de96464ce3bd22ba0eb9176c",
+    "Source/wasami_deception/Tests/WasamiZoneBarrierTests.cpp": "b40ef14bb037934365a74c372108dfb44f928a8a",
     "Source/wasami_deception/WasamiHitFX.h": "e01a423fa56e25756c0ecfeda5c9b2c14f236280",
     "Source/wasami_deception/WasamiHitFX.cpp": "3f06d3926c2dac1d9209c7cdfd09f40796b61715",
     "Source/wasami_deception/Tests/WasamiHitFXTests.cpp": "89b8e130c17db44b1c197bb375307723a1e1c63c",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "0a72d73f74647f2d266d6977f9b75c1d436f325a"
+    "Source/wasami_deception/WasamiRingStatue.h": "02870f4caf66e21e29402a89de7e7f10332fbf12",
+    "Source/wasami_deception/WasamiRingStatue.cpp": "4e7d02f8c332f2c85195c756ac1cae4a9c6c7051",
+    "Source/wasami_deception/WasamiRingPiece.h": "b8cf3a01b95ea86a088ae1eb56de46d886dd6143",
+    "Source/wasami_deception/WasamiRingPiece.cpp": "189a5b61b1bbef4ffaf2c60d1c62ddc815d84585",
+    "Source/wasami_deception/Tests/WasamiRingStatueTests.cpp": "5adf773a016b94aa1b078bd63a907be8d2101305",
+    "Source/wasami_deception/WasamiPortal.h": "550f6910a36032ee4f65f76390bfbe594d9350c1",
+    "Source/wasami_deception/WasamiPortal.cpp": "03467ea183e30d5fe3f9a85337dce014c593cb31",
+    "Source/wasami_deception/Tests/WasamiPortalTests.cpp": "eba201cf08444e181522896d30bfd61126bd145a",
+    "Tools/dd/prepare_portal_logo.py": "d16430baa141e3c74d64630a36f8ac52472e7a06",
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "8145e6482b4f82bf0773c8c1b1486f0ae8c1c0d0"
   },
   "12-lifts.md": {
     "Source/wasami_deception/WasamiLift.h": "070308d6fd060466c90f0ae322ec654e1dcf1102",
@@ -201,5 +216,13 @@
     "Source/wasami_deception/WasamiGarageLift.cpp": "4c0ce0d9448374f1480c47120123592e871af161",
     "Source/wasami_deception/Tests/WasamiGarageLiftTests.cpp": "76742c1a3a3572928e8a1cdfbc7791509773df40",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "e8a7098d90714c4f2f6d4009b7b79e9e02d1c120"
+  },
+  "05-interact.md": {
+    "Source/wasami_deception/WasamiInteractable.h": "afca27363ebb5ab3e042c9a1911ebf54662661e5",
+    "Source/wasami_deception/WasamiInteractWidget.h": "d7b14ba7a102e602124b3152294ffca9e2fbf4d1",
+    "Source/wasami_deception/WasamiInteractWidget.cpp": "ac5865e147bdd8677518a0c48aeef1e07d3f70b6",
+    "Source/wasami_deception/Tests/WasamiInteractTests.cpp": "e6dd93aac3a19e99a245fda13a28c148ef79f959",
+    "Source/wasami_deception/Tests/WasamiTestInteractable.h": "fb37adca3f72863f8e71a14cc98a5bc2adc9a1eb",
+    "Source/wasami_deception/Tests/WasamiTestInteractable.cpp": "328dd96989bb371ced9cba2b5940051cb8acd774"
   }
 }

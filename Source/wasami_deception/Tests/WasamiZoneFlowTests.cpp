@@ -8,6 +8,10 @@
 #include "../WasamiGameMode.h"
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
+#include "../WasamiPortal.h"
+#include "../WasamiRingPiece.h"
+#include "../WasamiRingPieceWidget.h"
+#include "../WasamiRingStatue.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiShard.h"
 #include "../WasamiTriggerBox.h"
@@ -16,7 +20,9 @@
 #include "../WasamiZoneBarrier.h"
 #include "Components/BoxComponent.h"
 #include "Components/BrushComponent.h"
+#include "Components/LightComponent.h"
 #include "Engine/BlockingVolume.h"
+#include "Engine/PointLight.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/TargetPoint.h"
 #include "Engine/TriggerVolume.h"
@@ -31,6 +37,7 @@
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Tests/AutomationCommon.h"
+#include "UObject/UObjectIterator.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -106,6 +113,14 @@ namespace
 			ATargetPoint* Point = World->SpawnActor<ATargetPoint>(FVector(0., Y, -40000.), FRotator(0., 90., 0.));
 			Point->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		}
+	}
+
+	/** Zone 2's altar ring_statue_2 (far below), whose Interact All Shards the ring piece's section binds. */
+	AWasamiRingStatue* SpawnRingStatue(UWorld* World)
+	{
+		AWasamiRingStatue* Statue = World->SpawnActor<AWasamiRingStatue>(FVector(0., 0., -40000.), FRotator::ZeroRotator);
+		Statue->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("ring_statue_2")));
+		return Statue;
 	}
 
 	/** The enemies of class T in play (of T itself when bExact). */
@@ -437,6 +452,7 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	SpawnZone2NursePlaces(World);
 	AActor* Orb = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity);
 	Orb->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("ring_statue_orb_5")));
+	SpawnRingStatue(World);
 	const ALevelSequenceActor* Spikes = SpawnSequence(World, TEXT("06_Hospital_Zone2_Spikes"), 70.);
 	const ALevelSequenceActor* DoorPicked = SpawnSequence(World, TEXT("06_Hospital_Zone2_Cell_DoorPicked"), 4.2667);
 	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
@@ -543,6 +559,152 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiZoneFlowRingPieceTest, "Wasami.ZoneFlow.RingPiece",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiZoneFlowRingPieceTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	SpawnTriggers(World, {TEXT("Postmaze_Trigger_Garage"), TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
+	// The room after the maze: the altar, the piece over it, its two pink lights, and the barrier and the locked doors
+	// on the way to the garage (far below and apart).
+	AWasamiRingStatue* Statue = SpawnRingStatue(World);
+	AWasamiRingPiece* Piece = World->SpawnActor<AWasamiRingPiece>(FVector(0., 0., -39000.), FRotator::ZeroRotator);
+	Piece->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_08_RingPiece_NoPickup_5")));
+	const TWeakObjectPtr<AWasamiRingPiece> PieceRef(Piece);
+	TArray<APointLight*> Lights;
+	for (const TCHAR* Name : {TEXT("PointLight202"), TEXT("PointLight201_6")})
+	{
+		APointLight* Light = World->SpawnActor<APointLight>(FVector(0., 1000., -39000.), FRotator::ZeroRotator);
+		Light->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
+		Lights.Add(Light);
+	}
+	AWasamiZoneBarrier* Barrier = World->SpawnActor<AWasamiZoneBarrier>(FVector(0., 3000., -40000.), FRotator::ZeroRotator);
+	Barrier->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_ZoneBarrier_2")));
+	const TWeakObjectPtr<AWasamiZoneBarrier> BarrierRef(Barrier);
+	AWasamiDoubleDoors* Doors = World->SpawnActor<AWasamiDoubleDoors>(FVector(0., 6000., -40000.), FRotator::ZeroRotator);
+	Doors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors2")));
+	Doors->bLocked = true;
+
+	AWasamiGameMode* Mode = SpawnMode(World, 10);
+	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
+	if (!TestNotNull(TEXT("Zone 2's flow"), Cast<AWasamiZone2Flow>(Flow)))
+	{
+		return false;
+	}
+	Advance(Wrapper, 0.02f);
+	TestEqual(TEXT("to the ring piece"), Objective(Mode), FString(TEXT("COLLECT THE RING PIECE")));
+	TestTrue(TEXT("the arrow at the piece"), Flow->GetArrowTarget() == Piece);
+
+	// The altar clicked with no shard left: Collected Ring Piece puts up the screen, whose Close is Ring Piece Collect .
+	IWasamiInteractable::Execute_InteractWithObject(Statue, nullptr);
+	TestEqual(TEXT("Collected Ring Piece"), Flow->GetSection(), FName(TEXT("Collected Ring Piece")));
+	UWasamiRingPieceWidget* Screen = nullptr;
+	for (TObjectIterator<UWasamiRingPieceWidget> It; It; ++It)
+	{
+		if (It->GetWorld() == World && It->OnClose.IsBound())
+		{
+			Screen = *It;
+		}
+	}
+	if (!TestNotNull(TEXT("the ring piece's screen, its Close bound"), Screen))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the barrier stands meanwhile"), BarrierRef.IsValid() && !BarrierRef->IsActorBeingDestroyed());
+	Screen->Begin();
+	Screen->Advance(1.f);
+	Screen->PressClose();
+	Screen->Advance(UWasamiRingPieceWidget::ReverseDelay + 0.01f);
+	Screen->Advance(UWasamiRingPieceWidget::LeaveDelay + 0.01f);
+	TestTrue(TEXT("closed"), Screen->HasClosed());
+
+	TestEqual(TEXT("Ring Piece Collect "), Flow->GetSection(), FName(TEXT("Ring Piece Collect ")));
+	for (const APointLight* Light : Lights)
+	{
+		TestFalse(TEXT("the altar's light off"), Light->GetLightComponent()->IsVisible());
+	}
+	TestTrue(TEXT("the barrier broken"), !BarrierRef.IsValid() || BarrierRef->IsActorBeingDestroyed());
+	TestFalse(TEXT("the arrow off the shards"), Flow->IsArrowOnShards());
+	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8941f, 0.f, 1.f), 1e-4f));
+	TestTrue(TEXT("at the garage"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("Postmaze_Trigger_Garage")));
+	TestEqual(TEXT("to the garage"), Objective(Mode), FString(TEXT("HEAD TOWARDS THE GARAGE")));
+	TestTrue(TEXT("the piece taken"), !PieceRef.IsValid() || PieceRef->IsActorBeingDestroyed());
+	TestFalse(TEXT("the doors to the garage unlocked"), Doors->bLocked);
+
+	// The garage's trigger is bound 1 s on (walking through it before would use it up).
+	const AWasamiTriggerBox* Garage = Cast<AWasamiTriggerBox>(AWasamiZoneFlow::FindSource(World, TEXT("Postmaze_Trigger_Garage")));
+	TestFalse(TEXT("the garage not bound at once"), Garage->OnTrigger.IsBound());
+	Advance(Wrapper, AWasamiZone2Flow::GarageBindDelay - 0.1f);
+	TestFalse(TEXT("nor before 1 s"), Garage->OnTrigger.IsBound());
+	Advance(Wrapper, 0.2f);
+	TestTrue(TEXT("bound by 1 s"), Garage->OnTrigger.IsBound());
+	Walk(World, TEXT("Postmaze_Trigger_Garage"));
+	TestEqual(TEXT("the garage"), Flow->GetSection(), FName(TEXT("Postmaze_Trigger_Garage")));
+
+	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiZoneFlowEscapeTest, "Wasami.ZoneFlow.Escape",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	SpawnTriggers(World, {TEXT("Postmaze_Trigger_Garage"), *AWasamiZone2Flow::EscapeTrigger.ToString()});
+	SpawnRingStatue(World);
+	// The garage's portal, locked as the level places it (far below).
+	AWasamiPortal* Portal = World->SpawnActorDeferred<AWasamiPortal>(AWasamiPortal::StaticClass(), FTransform::Identity);
+	Portal->bLocked = true;
+	Portal->bMaskedPortalMaterial = true;
+	Portal->FinishSpawning(FTransform(FVector(0., 0., -40000.)));
+	Portal->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::GaragePortal));
+
+	AWasamiGameMode* Mode = SpawnMode(World, 10);
+	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
+	if (!TestNotNull(TEXT("Zone 2's flow"), Cast<AWasamiZone2Flow>(Flow)))
+	{
+		return false;
+	}
+	Advance(Wrapper, 0.02f);
+	const AWasamiTriggerBox* End = Cast<AWasamiTriggerBox>(AWasamiZoneFlow::FindSource(World, AWasamiZone2Flow::EscapeTrigger));
+	TestFalse(TEXT("the portal's trigger not bound before the garage"), End->OnTrigger.IsBound());
+
+	// The garage's trigger (Ring Piece Collect  binds it): the portal opens, the arrow and the objective go to it.
+	TestTrue(TEXT("Postmaze_Trigger_Garage"), Flow->CallEvent(TEXT("OnPostmazeTriggerGarage")));
+	TestEqual(TEXT("the garage"), Flow->GetSection(), FName(TEXT("Postmaze_Trigger_Garage")));
+	TestFalse(TEXT("the portal open"), Portal->bLocked);
+	TestFalse(TEXT("the arrow off the shards"), Flow->IsArrowOnShards());
+	TestTrue(TEXT("the hotel's red"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.f, 0.016666f, 1.f), 1e-4f));
+	TestTrue(TEXT("at the portal"), Flow->GetArrowTarget() == Portal);
+	TestEqual(TEXT("to the portal"), Objective(Mode), FString(TEXT("GET TO THE PORTAL")));
+	TestTrue(TEXT("the portal's trigger bound"), End->OnTrigger.IsBound());
+
+	// A nurse about (none is left by then in play), and the player walking into the portal's trigger.
+	AWasamiEnemySentry* Sentry = World->SpawnActor<AWasamiEnemySentry>(FVector(0., -5000., -40000.), FRotator::ZeroRotator);
+	const TWeakObjectPtr<AWasamiEnemySentry> WeakSentry(Sentry);
+	Walk(World, *AWasamiZone2Flow::EscapeTrigger.ToString());
+	TestEqual(TEXT("the escape"), Flow->GetSection(), FName(TEXT("EndTrigger")));
+	TestTrue(TEXT("the enemies removed"), !WeakSentry.IsValid() || WeakSentry->IsActorBeingDestroyed());
+	TestEqual(TEXT("nothing saved"), SavedCheckpoint(), 10);
+
+	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiZoneFlowStartTest, "Wasami.ZoneFlow.Start",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
@@ -559,6 +721,7 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
 	SpawnZone1NursePlaces(World);
 	SpawnZone2NursePlaces(World);
+	SpawnRingStatue(World);
 	TestNull(TEXT("no flow outside the zones"), AWasamiZoneFlow::SpawnFor(SpawnMode(World, 4), 0));
 	const FVector InTunnel(-22442.7148, -5025.0068, 800.);
 	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), InTunnel, FRotator::ZeroRotator);

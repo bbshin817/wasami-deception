@@ -19,6 +19,7 @@ class UStaticMesh;
 class UStaticMeshComponent;
 class UTextureRenderTarget2D;
 class UWasamiChameleonComponent;
+class UWasamiInteractWidget;
 class UWasamiPowerComponent;
 class UWasamiTabletWidget;
 class UWidgetComponent;
@@ -30,7 +31,8 @@ struct FInputActionValue;
  * camera's horizontal FOV following the speed, the walk / run head bob shakes and the 180° turn. It also holds the
  * tablet: the plate in front of the camera, its screen (UWasamiTabletWidget), the scene capture that draws the
  * minimap and the arrow on the map (AWasamiArrowPointer), the tablet's powers (UWasamiPowerComponent), and the post-process effects the powers switch on
- * (UWasamiChameleonComponent, the original's Chameleon FX).
+ * (UWasamiChameleonComponent, the original's Chameleon FX). What it looks at within 200 cm it can use with the left
+ * click (IWasamiInteractable), and the hand on the screen (UWasamiInteractWidget) says when.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiPlayerCharacter : public ACharacter
@@ -46,6 +48,10 @@ public:
 	/** Whether the sprint is on: Shift held, or latched by a press with bToggleSprint. */
 	UFUNCTION(BlueprintPure, Category = "Player")
 	bool IsSprintOn() const { return bToggleSprint ? bSprintLatch : bSprintHeld; }
+
+	/** Sprinting? set false (a portal's way in, BP_00_Teleport): the sprint off, held or latched, and the walk's speed. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
+	void StopSprinting();
 
 	/** Writes Walking Speed and Sprinting Speed (the speed boost sets both) and applies the one in use. */
 	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
@@ -63,6 +69,32 @@ public:
 
 	/** Fires OnInteract (F calls it; the debug command and the tests call it directly). */
 	void InteractPressed();
+
+	/** How far ahead of the camera the player looks for something to use (the original's 200 cm traces). */
+	static constexpr float InteractDistance = 200.f;
+
+	/**
+	 * Interact (Secondary) pressed (the left click; the tests call it directly): with Can Interact?, traces
+	 * InteractDistance ahead of the camera on Visibility and calls InteractWithObject(this) on the actor it hits if that
+	 * is IWasamiInteractable. The hit is kept for the release.
+	 */
+	void InteractSecondaryPressed();
+
+	/** Interact (Secondary) released: StopInteractWithObject on the actor the last press hit, whatever Can Interact? is. */
+	void InteractSecondaryReleased();
+
+	/** The trace both of the above and the tick make: Visibility, simple collision, ignoring the player. */
+	bool TraceInteract(FHitResult& OutHit) const;
+
+	/**
+	 * The tick's look for the hand (Tick calls it; the tests call it directly): with Can Interact?, shows the hand
+	 * (SelfHitTestInvisible) while the trace hits a component tagged interact and collapses it otherwise. Without Can
+	 * Interact? the hand stays as it was.
+	 */
+	void UpdateInteractWidget();
+
+	/** UMG_Interact: the hand, made at BeginPlay (on the screen when the world has a game viewport). */
+	UWasamiInteractWidget* GetInteractWidget() const { return InteractWidget; }
 
 	/** Space raises and lowers the tablet (the original's Toggle Tablet). */
 	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
@@ -124,7 +156,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
 	bool bHasInput = true;
 
-	/** The original's Can Interact?: Q and E need it. */
+	/** The original's Can Interact?: Q and E, the left click's use and the hand need it. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player")
 	bool bCanInteract = true;
 
@@ -219,6 +251,7 @@ private:
 	void SprintReleased();
 	void TurnAround();
 	void LeftMousePressed();
+	void LeftMouseReleased();
 	void MouseWheel(const FInputActionValue& Value);
 	void ApplySpeed();
 	void ApplyTabletInterp(float Value);
@@ -291,6 +324,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiGameMode> WasamiGameMode;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiInteractWidget> InteractWidget;
+
+	/** The actor the last Interact (Secondary) press's trace hit (null if it hit nothing). */
+	TWeakObjectPtr<AActor> InteractHitActor;
 
 	/** TabletInterp (0.5 s, raising) and Timeline_1 (0.3 s, lowering), built from the original's curves. */
 	FRichCurve TabletRaiseCurve;

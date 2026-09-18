@@ -60,11 +60,14 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         WasamiDoorBreak): the ring and spark materials and their textures, the lockpicking SoundCue and the sounds of
         the lock giving (its key's font comes with import_dd_tablet). And the loading screen's portal sound and the
         hospital's emblem (WasamiLoadingWidget, which Zone 1 shows as it opens Zone 2; the emblem is composed first by
-        python Tools/dd/prepare_loader.py outside the editor).
+        python Tools/dd/prepare_loader.py outside the editor). And the hand's icon (WasamiInteractWidget, shown while
+        the player looks at something it can use), and the ring piece's picture and pickup sound (WasamiRingPieceWidget,
+        which Zone 2's altar puts up).
 
         Returns:
             How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
-            '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds' and 'loading_emblems').
+            '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems',
+            'interact_textures', 'ring_piece_textures' and 'ring_piece_sounds').
         """
         _module("dd_stage")
         _module("dd_assets")
@@ -75,7 +78,7 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     def import_dd_gimmicks() -> dict[str, int]:
         """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
         sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
-        hum and shatter, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
+        hum and shatter, the sound it turns the player away with and its attenuation, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
         after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
         their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
         the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
@@ -83,7 +86,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         stabbing at the tunnel's doors (WasamiEnemy06Chase's Hit FX): the slam's SoundCue and waves, and the dust
         (P_06_NurseDoorHit and its additive material); Zone 2's lifts: the clunk,
         the movement loop and the garage lifts' rising sound; the garage lifts' skinned mesh and its animation (after
-        import_dd_stage_assets, which makes its materials). The doors' and lifts' meshes and materials come with the
+        import_dd_stage_assets, which makes its materials); Zone 2's ring piece over the altar (WasamiRingPiece): its
+        glow (P_08_RingPiece and its material, after import_dd_shards). The doors' and lifts' meshes and materials come with the
         stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
         systems on their emitters (place_dd_sequences those the sequences fire).
 
@@ -92,8 +96,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
             'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
             'doors_busted_sounds', '_textures', '_materials', '_particle_systems', 'cell_sounds', '_textures',
             '_materials', '_particle_systems', 'nurse_door_hit_sounds', '_sound_cues', '_materials',
-            '_particle_systems', 'lift_attenuations', '_sounds', and 'garage_lift_skeletal_meshes',
-            '_animations').
+            '_particle_systems', 'lift_attenuations', '_sounds', 'garage_lift_skeletal_meshes',
+            '_animations', and 'ring_piece_materials', '_particle_systems').
         """
         _module("dd_stage")
         _module("dd_assets")
