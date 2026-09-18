@@ -85,7 +85,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         stabbing at the tunnel's doors (WasamiEnemy06Chase's Hit FX): the slam's SoundCue and waves, and the dust
         (P_06_NurseDoorHit and its additive material); Zone 2's lifts: the clunk,
         the movement loop and the garage lifts' rising sound; the garage lifts' skinned mesh and its animation (after
-        import_dd_stage_assets, which makes its materials). The doors' and lifts' meshes and materials come with the
+        import_dd_stage_assets, which makes its materials); Zone 2's ring piece over the altar (WasamiRingPiece): its
+        glow (P_08_RingPiece and its material, after import_dd_shards). The doors' and lifts' meshes and materials come with the
         stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
         systems on their emitters (place_dd_sequences those the sequences fire).
 
@@ -94,8 +95,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
             'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
             'doors_busted_sounds', '_textures', '_materials', '_particle_systems', 'cell_sounds', '_textures',
             '_materials', '_particle_systems', 'nurse_door_hit_sounds', '_sound_cues', '_materials',
-            '_particle_systems', 'lift_attenuations', '_sounds', and 'garage_lift_skeletal_meshes',
-            '_animations').
+            '_particle_systems', 'lift_attenuations', '_sounds', 'garage_lift_skeletal_meshes',
+            '_animations', and 'ring_piece_materials', '_particle_systems').
         """
         _module("dd_stage")
         _module("dd_assets")

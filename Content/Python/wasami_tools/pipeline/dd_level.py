@@ -1,8 +1,8 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
-zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers),
-Zone 2's lifts and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers,
+Zone 2's altar and ring piece), Zone 2's lifts and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
 import os
@@ -58,10 +58,11 @@ SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
 TRIGGER_CLASS = "BP_TriggerBox_Base_C"
 # The door breaks (BP_06_Hospital_DoorBreak → AWasamiDoorBreak), with their Progress Speed.
 DOOR_BREAK_CLASS = "BP_06_Hospital_DoorBreak_C"
-# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors) the flow names: Zone 1's lift doors and the tunnel's. The
-# zones' others (Zone 1's 60, Zone 2's one) come with the work list's items 8 and 13.
+# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors) the flow names: Zone 1's lift doors and the tunnel's, and
+# Zone 2's one, locked until the ring piece is taken (the way to the garage). Zone 1's other 60 come with the work
+# list's item 8.
 DOUBLE_DOORS_CLASS = "BP_06_DoubleDoors_C"
-FLOW_DOUBLE_DOORS = ("BP_06_DoubleDoors11", "BP_06_DoubleDoors33_36")
+FLOW_DOUBLE_DOORS = ("BP_06_DoubleDoors11", "BP_06_DoubleDoors33_36", "BP_06_DoubleDoors2")
 # The class's door components and their meshes (BP_06_DoubleDoors' SCS templates), which the C++ class leaves unset (it
 # loads nothing from /Game/DD in its constructor); each takes its mesh's own materials, as in the original.
 DOUBLE_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_entrance_walkway_doubledoor2",
@@ -76,6 +77,21 @@ BARRIER_CLASS = "BP_ZoneBarrier_C"
 BARRIER_MATERIALS = {"static_mesh1": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst1",
                      "static_mesh": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst2"}
 BARRIER_LIGHT_FOLDER = "Hospital/Lights/" + BARRIER_CLASS
+# Zone 2's altar (BP_01_Statue → AWasamiRingStatue) and the ring piece over it (BP_08_RingPiece_NoPickup →
+# AWasamiRingPiece), with what their classes leave unset: the altar's mesh with the materials the placed one puts on it
+# (its StaticMeshComponent0's OverrideMaterials in the level export, else the class's), and the piece's mesh with
+# BP_08_RingPiece's StaticMesh's OverrideMaterials and its glow (P_08_RingPiece, import_dd_gimmicks). The piece's light
+# is a component of it, so the light the preprocessing lists under the piece is not placed on its own (builds before
+# 2026-09-19 did, into RING_PIECE_LIGHT_FOLDER; place_flow takes it out). The orb on the altar is a mesh of the level.
+STATUE_CLASS = "BP_01_Statue_C"
+STATUE_MESH = "/Game/Meshes/00_Ballroom/ring_statue"
+STATUE_MATERIALS = ("/Game/Materials/00_Ballroom/MM_00_Ballroom_Ring_Altar_Metal",)
+STATUE_SKIPPED_PROPS = ("bCanBeInCluster",)
+RING_PIECE_CLASS = "BP_08_RingPiece_NoPickup_C"
+RING_PIECE_MESH = "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06"
+RING_PIECE_MATERIALS = ("/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal", "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal2")
+RING_PIECE_PARTICLE = "/Game/DD/Particles/08_BearHouse/P_08_RingPiece"
+RING_PIECE_LIGHT_FOLDER = "Hospital/Lights/" + RING_PIECE_CLASS
 # The zone shard checkers (BP_ZoneShardChecker → AWasamiZoneShardChecker): the box over each zone that the tablet's arrow
 # points at the shards of. Their root's scale is the box's size.
 SHARD_CHECKER_CLASS = "BP_ZoneShardChecker_C"
@@ -235,7 +251,7 @@ def _lights(eas, zone, counts, failures):
     with unreal.ScopedSlowTask(len(zone["lights"]), "Placing the hospital's lights") as task:
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
-            if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS):
+            if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS, RING_PIECE_CLASS):
                 continue
             cls = LIGHT_CLASS.get(lt["class"])
             if cls is None or not lt["world"]:
@@ -467,15 +483,15 @@ def _set_brush_collision(comp, collision):
                                                ue_props.enum_member(unreal.CollisionResponseType, response))
 
 
-def _set_mesh(comp, stage, source):
+def _set_mesh(comp, stage, source, materials=None):
     """The stage's mesh made from the original's (a Blueprint component's, which the placements leave out) on comp,
-    with the mesh's own materials."""
+    with the mesh's own materials, or these (the component's OverrideMaterials, slot by slot)."""
     info = stage["meshes"].get(source)
     mesh = unreal.load_asset(info["asset"]) if info else None
     if mesh is None:
         raise RuntimeError("missing mesh %s: run WasamiStageTools.import_dd_stage_assets until nothing remains" % source)
     comp.set_static_mesh(mesh)
-    for i, slot in enumerate(info["slots"]):
+    for i, slot in enumerate(materials or info["slots"]):
         m = stage["materials"].get(slot.rsplit(".", 1)[0]) if slot else None
         material = unreal.load_asset(m["asset"]) if m else None
         if material is None:
@@ -528,15 +544,16 @@ def set_emitter(actor, zone, name, level):
 
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
-    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts and the sentries, each where
-    the original has it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
+    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar and
+    the ring piece, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    is in the level."""
     placed = []
     level = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
-                                                 TARGET_POINT_CLASS, SENTRY_CLASS)
+                                                 TARGET_POINT_CLASS, SENTRY_CLASS, STATUE_CLASS, RING_PIECE_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and not doors and not emitter):
             continue
@@ -601,6 +618,25 @@ def _flow(eas, stage, zone, counts, failures):
             if unwritten:
                 failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
             counts["sentries"] += 1
+        elif a["class"] == STATUE_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiRingStatue, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            over = _level_props(zone, a["name"] + ".StaticMeshComponent0", level).get("OverrideMaterials")
+            _set_mesh(actor.static_mesh_component, stage, STATUE_MESH,
+                      [m.rsplit(".", 1)[0] for m in over] if over else STATUE_MATERIALS)
+            unwritten = sorted(set(a["props"]) - set(STATUE_SKIPPED_PROPS))
+            if unwritten:
+                failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
+            counts["ringStatues"] += 1
+        elif a["class"] == RING_PIECE_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiRingPiece, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            _set_mesh(actor.get_editor_property("static_mesh"), stage, RING_PIECE_MESH, RING_PIECE_MATERIALS)
+            glow = unreal.load_asset(RING_PIECE_PARTICLE)
+            if glow is None:
+                raise RuntimeError("missing %s: run WasamiDDTools.import_dd_gimmicks" % RING_PIECE_PARTICLE)
+            actor.get_editor_property("particle_system").set_editor_property("template", glow)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["ringPieces"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -636,9 +672,9 @@ def _flow(eas, stage, zone, counts, failures):
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers, lifts, garage lifts and sentries in again (and takes out the barrier lights an earlier build placed on their own), leaving the
-    rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts
-    and the barriers' lights are movable), and saves the level."""
+    checkers, lifts, garage lifts, sentries, altar and ring piece in again (and takes out the barrier and ring piece lights an earlier build
+    placed on their own), leaving the rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors,
+    the lifts, the altar and the barriers' and the piece's lights are movable), and saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
@@ -646,10 +682,11 @@ def place_flow(zone="Zone1", map_path=""):
     les, eas = _open_level(map_path or z["level"], clear=False)
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
     lights = [a for a in eas.get_all_level_actors()
-              if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
+              if a.actor_has_tag(TAG) and str(a.get_folder_path()) in (BARRIER_LIGHT_FOLDER, RING_PIECE_LIGHT_FOLDER)]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
-              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0, "attached": 0}
+              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
+              "ringStatues": 0, "ringPieces": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -673,7 +710,7 @@ def build(zone="Zone1", map_path=""):
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "lifts", "garageLifts", "sentries", "attached")}
+                             "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

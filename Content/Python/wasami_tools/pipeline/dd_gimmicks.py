@@ -18,7 +18,9 @@ through MonkeyAttenuation), the loop while they move (DD_TT_Lift_Loop, through 0
 lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets. The garage lifts
 (AWasamiGarageLift, after Blueprints/06_Hospital/Lifts/Garage): their skinned mesh and its animation (dd_skeletal). The
 parking lot's nurses stabbing at the tunnel's doors (AWasamiEnemy06Chase's Hit FX): the slam (20-Elevator_Slams) and the
-dust (P_06_NurseDoorHit, with Whisps_additive, an additive instance of the doors' estimated smoke).
+dust (P_06_NurseDoorHit, with Whisps_additive, an additive instance of the doors' estimated smoke). Zone 2's ring piece
+over the altar (AWasamiRingPiece): its glow (P_08_RingPiece, with MI_ky_primitive_dynB_nonD1, an instance of the
+shards' estimated M_ky_primitive).
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
@@ -118,6 +120,15 @@ LIFT_SOUNDS = (
     "Audio/06_Hospital/DD_TT_Lift_Loop",
 )
 LIFT_ATTENUATIONS = DOUBLE_DOOR_ATTENUATIONS   # MonkeyAttenuation and 01_Lobby_Attenuation
+# Zone 2's altar and the ring piece over it (AWasamiRingStatue and AWasamiRingPiece, after Blueprints/01_Hotel/BP_01_Statue
+# and Blueprints/08_BearHouse/BP_08_RingPiece_NoPickup): the piece's glow (P_08_RingPiece), whose emitter glowSub draws
+# MI_ky_primitive_dynB_nonD1, an instance of M_ky_primitive; that and the other emitter's M_ky_polarGlow02 come with the
+# shards (import_dd_shards). The altar's denied sound and its attenuation come with the zone barrier's, the meshes and
+# their materials with the stage's assets.
+RING_PIECE_MATERIAL = KY + "Materials/MI_ky_primitive_dynB_nonD1"
+RING_PIECE_PARENT = KY + "Materials/M_ky_primitive"
+RING_PIECE_NEEDS = (RING_PIECE_PARENT, KY + "Materials/M_ky_polarGlow02")
+RING_PIECE = "Particles/08_BearHouse/P_08_RingPiece"
 
 
 def _build_speed_barrier(mat):
@@ -488,6 +499,26 @@ def import_nurse_door_hit():
     return result
 
 
+def import_ring_statue():
+    """The ring piece's glow: its material (an instance of the shards' M_ky_primitive) and particle system. The shards
+    (WasamiDDTools.import_dd_shards) have to have been imported. Returns how many of each."""
+    missing = [rel for rel in RING_PIECE_NEEDS if not EAL.does_asset_exist(dd_assets.asset_path(rel))]
+    if missing:
+        raise RuntimeError("missing %s: run WasamiDDTools.import_dd_shards first" % ", ".join(missing))
+    parent = unreal.load_asset(dd_assets.asset_path(RING_PIECE_PARENT))
+    known = {str(n) for n in unreal.MaterialEditingLibrary.get_scalar_parameter_names(parent)}
+    scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(RING_PIECE_MATERIAL, VERSION)
+    unknown = set(scalars) - known
+    if unknown or vectors or textures or masks or switches:
+        raise RuntimeError("%s sets %s, which the estimate of M_ky_primitive does not have"
+                           % (RING_PIECE_MATERIAL, sorted(unknown) or (vectors, textures, masks, switches)))
+    mic = dd_assets.material_instance(dd_assets.asset_path(RING_PIECE_MATERIAL), parent, scalars=scalars)
+    dd_assets.base_property_overrides(mic, RING_PIECE_MATERIAL, VERSION)
+    EAL.save_loaded_asset(mic, only_if_is_dirty=False)
+    dd_particles.particle_system(RING_PIECE, VERSION)
+    return {"materials": 1, "particle_systems": 1}
+
+
 def import_double_doors():
     """The double doors' sounds, SoundCue and attenuations. Returns how many of each."""
     result = {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in DOUBLE_DOOR_ATTENUATIONS]),
@@ -510,7 +541,7 @@ def import_garage_lift():
 
 def import_all():
     """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the
-    nurses' stabs at the doors, the lifts' and the garage lifts'), then saves /Game/DD."""
+    nurses' stabs at the doors, the lifts', the garage lifts' and the ring piece's), then saves /Game/DD."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
@@ -518,5 +549,6 @@ def import_all():
     result.update({"nurse_door_hit_" + key: count for key, count in import_nurse_door_hit().items()})
     result.update({"lift_" + key: count for key, count in import_lifts().items()})
     result.update({"garage_lift_" + key: count for key, count in import_garage_lift().items()})
+    result.update({"ring_piece_" + key: count for key, count in import_ring_statue().items()})
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

@@ -354,6 +354,7 @@
   - 2026-09-19（項目 7）: Zone 2 の見張りの視界コーンの地図の印（扇 `map_enemy_search_Mat` と点 `0_DotCircle_Mat`）の見え方 — 今は本家の Unlit・半透明の式（焼き込みのシェーダー）を、地図のキャプチャ（`SCS_BaseColor`）に写る Default Lit・Masked にした推定（切り抜き 0.1。扇の縁が硬く、薄れはベースカラーの暗さだけ。実装記録 03 の「マテリアル」）。本家の地図でコーンがどう見えるかは実機と見比べていない
   - 2026-09-19（項目 7）: 見つける前に Primal Fear などで気絶した見張りの姿勢 — 今はアニメが 17 s で起き上がって立つ（State は本家どおり Stun のまま。見つけて跳び降りた後の 17 s も立ったまま止まる。実装記録 07 の「既知の制約」）。本家での確かめ方: 最新版の Zone 2 のミニボスの廊下で、見張りに見つかる前に Primal Fear を使い、棚の上と跳び降りた後の姿勢を見る（本家の ABP は State が 0 に戻るまで気絶の姿勢）
   - 2026-09-19（項目 9）: 捕獲の別室の見た目（寄り・灯・暗転・DOF）— 今は本家ホテルの 1 本目の Matinee の t=0 のカメラがサルの頭を写す写し方をワサミの全身に当てた寄り（前 222・上 123 cm、FOV 90、動かない）、サルの真上の天井灯 `ceilinglights_80` を縮めた位置の灯（1500・半径 500・水色）、組は長さの順（`Capture_1`↔`MonkeyJumpscare` ほか）で暗転を長さの比で写す（直線の `StartCameraFade`。本家は曲線）。`JumpscareCam` の旧 DOF（焦点 142.9・領域 571.4・遠いぼけ 16.2）は写していない。本家での確かめ方: 旧版の実機のホテルでサルに捕まる 3 本（`MonkeyJumpscare`・`2`・`3`）を撮り、寄り・明るさ・ぼけ・暗転の速さを見比べる（カメラの動きは項目 24）
+  - 2026-09-19（項目 13）: Zone 2 の祭壇と欠片の材質 — 今は祭壇の `MM_00_Ballroom_Ring_Altar_Metal`（親 `MM_Main_Metal`: 法線 `RingStatue_N`・`Roughness` 0.35・`Hover Color`）と欠片の `M_ring_metal2`（親 `MM_Main_Substance_Fresnel`）を前処理の `substance` のマスターの推定で作った（祭壇は色のテクスチャが無く、桃色の灯で青みの白の像に見える。実装記録 08）。欠片の光の粒子 `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。本家での確かめ方: 最新版の Zone 2 の迷路の後の部屋の祭壇と欠片を撮り、`python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Metal."` で式を読む。
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3

@@ -1,5 +1,5 @@
 ---
-title: ステージの仕掛け（両開き扉・ゾーンの障壁・打たれた閃き）
+title: ステージの仕掛け（両開き扉・ゾーンの障壁・打たれた閃き・祭壇と欠片）
 sources:
   - Source/wasami_deception/WasamiDoubleDoors.h
   - Source/wasami_deception/WasamiDoubleDoors.cpp
@@ -10,14 +10,19 @@ sources:
   - Source/wasami_deception/WasamiHitFX.h
   - Source/wasami_deception/WasamiHitFX.cpp
   - Source/wasami_deception/Tests/WasamiHitFXTests.cpp
+  - Source/wasami_deception/WasamiRingStatue.h
+  - Source/wasami_deception/WasamiRingStatue.cpp
+  - Source/wasami_deception/WasamiRingPiece.h
+  - Source/wasami_deception/WasamiRingPiece.cpp
+  - Source/wasami_deception/Tests/WasamiRingStatueTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_gimmicks.py
 updated: 2026-09-19
 ---
 
-# ステージの仕掛け（両開き扉・ゾーンの障壁・打たれた閃き）
+# ステージの仕掛け（両開き扉・ゾーンの障壁・打たれた閃き・祭壇と欠片）
 
 ## 役割
-病院のステージで動く仕掛け。いまは本家の両開き扉と、打たれたときの画面の閃き `BP_HitFX`（`Blueprints/Shared`）を写した `AWasamiHitFX`（画面全体が赤く滲んで 0.35 s で晴れ、カメラが揺れる。独房の棘が届いたときに流れが出す。作業一覧の項目 6 のステップ 7a。罠とナースも使う）と、ゾーンの障壁 `BP_ZoneBarrier`（`Blueprints/Main`）を写した `AWasamiZoneBarrier`（全回収まで道をふさぐ光る壁。流れが `Destroy` で壊す。見て左クリックすると拒否の音と文を出す。作業一覧の項目 6 のステップ 4a、拒否は項目 13 のステップ 2）。両開き扉は本家の `BP_06_DoubleDoors`（`pak_reference_2` の `Blueprints/06_Hospital`）を写した `AWasamiDoubleDoors`: 幅 400 cm の出入口の両端に蝶番のある扉 2 枚で、キャラクター（プレイヤーかナース）が前の箱に入ると奥へ、後ろの箱に入ると手前へ、音とともに 1 s で 90° 開き、両側を覆う `Leave` の箱からキャラクターが出て、プレイヤーが中に残っていなければ閉じる。閉ざされている（`bLocked`）と、入ってもガタつく音（2 s に 1 回まで）だけ。ゾーンの流れ（11 記録）が名指しする扉を `Lock`・`Unlock`・`Open Front`・`Force Close` で閉ざし・開ける。作業一覧の項目 6（ゾーンの進行）のステップ 3c で、流れが名指しする Zone 1 の 2 枚のために作った（残りの 60 枚を置くのは項目 8、Zone 2 の 1 枚は項目 13）。
+病院のステージで動く仕掛け。いまは本家の両開き扉と、打たれたときの画面の閃き `BP_HitFX`（`Blueprints/Shared`）を写した `AWasamiHitFX`（画面全体が赤く滲んで 0.35 s で晴れ、カメラが揺れる。独房の棘が届いたときに流れが出す。作業一覧の項目 6 のステップ 7a。罠とナースも使う）と、ゾーンの障壁 `BP_ZoneBarrier`（`Blueprints/Main`）を写した `AWasamiZoneBarrier`（全回収まで道をふさぐ光る壁。流れが `Destroy` で壊す。見て左クリックすると拒否の音と文を出す。作業一覧の項目 6 のステップ 4a、拒否は項目 13 のステップ 2）。両開き扉は本家の `BP_06_DoubleDoors`（`pak_reference_2` の `Blueprints/06_Hospital`）を写した `AWasamiDoubleDoors`: 幅 400 cm の出入口の両端に蝶番のある扉 2 枚で、キャラクター（プレイヤーかナース）が前の箱に入ると奥へ、後ろの箱に入ると手前へ、音とともに 1 s で 90° 開き、両側を覆う `Leave` の箱からキャラクターが出て、プレイヤーが中に残っていなければ閉じる。閉ざされている（`bLocked`）と、入ってもガタつく音（2 s に 1 回まで）だけ。ゾーンの流れ（11 記録）が名指しする扉を `Lock`・`Unlock`・`Open Front`・`Force Close` で閉ざし・開ける。作業一覧の項目 6（ゾーンの進行）のステップ 3c で、流れが名指しする Zone 1 の 2 枚のために作った（残りの 60 枚を置くのは項目 8。Zone 2 のガレージへの 1 枚は項目 13 のステップ 3 で置いた）。Zone 2 の迷路の後の部屋の祭壇 `BP_01_Statue`（`Blueprints/01_Hotel`）を写した `AWasamiRingStatue`（見て左クリックすると、全回収の前は拒否の音と文、全回収の後は `Interact All Shards` を流す）と、その上の欠片 `BP_08_RingPiece_NoPickup`（`Blueprints/08_BearHouse`）を写した `AWasamiRingPiece`（見せるだけ。光の粒子と桃色の灯）もここ（作業一覧の項目 13 のステップ 3。流れに結ぶのはステップ 4）。
 
 ## 公開インターフェース
 - `AWasamiDoubleDoors`（`AActor`）
@@ -32,6 +37,11 @@ updated: 2026-09-19
   - `DestroyBarrier()` … 本家の `Destroy`（`AActor::Destroy` と名前がぶつかるので改名）。
   - `IWasamiInteractable`（05 記録）の `InteractWithObject`（下の「見て左クリック」）。定数 `DeniedInterval` 5。
   - 読むだけ: `GetStaticMesh()`・`GetStaticMesh1()`・`GetPointLight()`・`GetAudio()`・`GetLastPrompt()`（最後に出した文の枠。テストが読む）。
+- `AWasamiRingStatue`（`AStaticMeshActor`。本家どおり）
+  - `OnInteractAllShards`（動的マルチキャスト。本家の `Interact All Shards`）、`DeniedText`（既定「Collect all soul shards to break the ring barrier.」）、定数 `DeniedInterval` 5。
+  - `IWasamiInteractable`（05 記録）の `InteractWithObject`（下の「祭壇と欠片」）。読むだけ: `GetLastPrompt()`（テストが読む）、`GetStaticMeshComponent()`（`AStaticMeshActor` の）。
+- `AWasamiRingPiece`（`AActor`、`IWasamiInteractable`。`InteractWithObject` は何もしない）
+  - 読むだけ: `GetStaticMesh()`・`GetParticleSystem()`・`GetPointLight()`。
 - `AWasamiHitFX`（`AActor`）
   - `ShakeScale` 2・`PlayRate` 1（本家の `Shake Scale`・`Play Rate`）、`ShakeClass`（`BP_04_BossFight_CameraShake_Initial`）、定数 `TimelineLength` 5。
   - `HitEffect()` … 本家の `Hit Effect`（揺れとタイムラインを頭から。`BeginPlay` がする）。`GetPostProcess()`。
@@ -56,6 +66,13 @@ updated: 2026-09-19
 - **見て左クリック**（`InteractWithObject`、本家 @787。プレイヤーの左クリックのトレースが呼ぶ。05 記録）: DoOnce が閉じていれば何もしない。閉じて、`DD_RingBarrierDenied_louder` をアクタの位置に（音量 0.75・ピッチ 1.1・`DialogueAttenuation`。距離で弱まらない）鳴らし、文の枠 `UWasamiTextPromptWidget::Show(this, InteractionText)`（09 記録。最初のプレイヤーの画面に 5 s）を出し、`DeniedInterval`（本家の `Delay 5`）のタイマーで DoOnce を開け直す。本家の最初の `NoInteract` の分岐は、病院の障壁が既定（偽）のままなので写さない。
 - 写さないもの: `Set Visibilty`（音量・見え方・板の当たりを切り替え、消すときは粒子と音）・`Spawn Particle`・`Off By Default`・`NoInteract` は、病院の 2 つの障壁が既定のままでレベル BP も呼ばないので写さない。
 
+### 祭壇と欠片（`AWasamiRingStatue`・`AWasamiRingPiece`）
+- 祭壇（本家 `BP_01_Statue`、親は `StaticMeshActor`）: ルートは `AStaticMeshActor` の `StaticMeshComponent`（BlockAll。**Visibility を止めるので視線のトレースが当たる**）で、クラスの拡縮 2.8（置いた `ring_statue_2` はアクタの拡縮 4）・部品のタグ `interact`・アクタのタグ `interact`（CDO の。置いたものは本家では [] だが読む所が無いので残す）。**本家は Static だが Movable にした**（`place_dd_flow` で置いても焼き込みをそのまま使えるように。影と間接光は焼き込みに入らない）。メッシュ `ring_statue` と材質（置いたものの `OverrideMaterials` = `MM_00_Ballroom_Ring_Altar_Metal`）はクラスが入れず、レベルの組み立て（`dd_level._flow`、01 記録）が入れる。
+- **見て左クリック**（`InteractWithObject`、本家 @375〜）: DoOnce が閉じていれば何もしない。閉じて、`AWasamiShard` が 1 つも無ければ（本家の `GetAllActorsOfClass(BP_Shard) < 1`。回収したシャードは自分を消す）`OnInteractAllShards` を流して部品のタグを空にする（手が出なくなる。DoOnce は閉じたまま）。残っていれば `DD_RingBarrierDenied_louder` をアクタの位置に（音量 0.4・ピッチ 1・`DialogueAttenuation`）鳴らし、文の枠 `UWasamiTextPromptWidget::Show(this, DeniedText)`（09 記録）を出して、5 s（本家の `Delay 5`）で DoOnce を開け直す。障壁の拒否（上）と同じ形で、音量と文だけが違う。
+- 写さないもの: `Dematerialize`（0.5 s のタイムラインで材質を溶かす。病院のレベル BP は呼ばない）と `Use`・`StopInteractWithObject`（空）。
+- 欠片（本家 `BP_08_RingPiece_NoPickup`、親 `BP_08_RingPiece` の SCS）: ルート `DefaultSceneRoot`（置いた `BP_08_RingPiece_NoPickup_5` は (−8576, −979, 365)・回転 (P 0, Y 75, R 30)）、`StaticMesh`（`ring_piece06`、相対回転 (P −40, Y 0, R 30)・拡縮 20・影なし・タグ `interact`。NoPickup の上書きで当たりは NoCollision〈Visibility・Camera も無視するので手は出ない〉、ナビゲーションに入らない）、`ParticleSystem`（`P_08_RingPiece`）、`PointLight`（Movable・Unitless 500・(232, 78, 169)・半径 500・`MaxDrawDistance` 3000・`MaxDistanceFadeRange` 2000・影なし）。メッシュと材質（`M_ring_metal`・`M_ring_metal2`）と粒子はクラスが入れず、組み立てが入れる。本家の NoPickup の `InteractWithObject` は何もしない（親の拾う処理〈`Picked Up`・音・閃光・消える〉は病院で使わないので写さない）。流れが欠片の画面の後に消す（ステップ 4）。
+- 欠片の上の灯 `PointLight201_6`（10 cd・ピンク・半径 500）と祭壇の横の `PointLight202`（1 cd）、祭壇の上の水晶の球 `ring_statue_orb_5` は本家でもレベルに別に置かれたもので、組み立てがそのまま置いている（流れが欠片の後に灯を隠し、迷路の全回収で球を消す。11 記録）。
+
 ### 打たれた閃き（`AWasamiHitFX`）
 - 部品（本家の SCS）: `DefaultSceneRoot`、`PostProcess`（`UPostProcessComponent` の既定 = 境界なし〈どこに出しても画面全体〉、`BlendWeight` 0、上書き `ColorGain` (1, 0.21828, 0.180477, 1)・`SceneFringeIntensity` 10・`ChromaticAberrationStartOffset`〈値は既定のまま上書きだけ真。本家どおり〉）、`Timeline_0`（`UTimelineComponent`）とその曲線 `CurveFloat_0`（0 s で 1〈Cubic・User の接線 −5.21370792388916 / −5.213721752166748〉→ 0.35 s で 0〈Linear〉。書き出しの値のまま入れて接線を計算し直させない）。
 - `BeginPlay`（本家 @184）: タイムラインの更新（`BlendWeight` = 値）と終わり（アクタを消す）を結び、長さを 5 s（**Blueprint のタイムラインの既定。C++ の `FTimeline` の既定は最後のキーまでなので `TL_TimelineLength` を入れる**）にして `HitEffect`: プレイヤーのコントローラーの `ClientStartCameraShake(ShakeClass, ShakeScale, CameraLocal, 回転 0)` → `SetPlayRate(PlayRate)` → `PlayFromStart`（位置 0 の更新で `BlendWeight` 1 から）。0.35 s で晴れ、5 s で消える。
@@ -67,6 +84,8 @@ updated: 2026-09-19
 障壁（`import_zone_barrier`。`import_dd_shards` の後）: `/Game/DD/Audio/02_School/Barrier_Loop`・`Barrier_Shatter`・`/Game/DD/Audio/RingStatue/DD_RingBarrierDenied_louder`（拒否。祭壇も使う）、減衰 `/Game/DD/Audio/Misc/DialogueAttenuation`（`bAttenuate` 偽・NaturalSound・`FalloffDistance` 5000）、テクスチャ `/Game/DD/Textures/02_ElementarySchool/school_decal_speedBarrier_01_A`（Mirror 貼り）・`/Game/DD/ThirdParty/AdvancedMagicFX13/Textures/T_ky_flare14_4x4`、材質 `/Game/DD/Materials/Shared/MM_SpeedBarrier`（cook で式が消えたので、焼き込みの半透明のベースパスのシェーダー〈`Tools/dd/cooked_shaders.py "Materials/Shared/MM_SpeedBarrier." --show 26`〉を読んだ式で組んだ: UV を中心から `Min Scale`〜`Max Scale`〈Time × `Size Pulse Speed` の正弦〉で拡縮し、背後の景色が `FadeDistance Secondary` 離れているところほど拡縮を効かせ〈DepthFade で Lerp〉、`Texture` の RGB × `Color Multiplier` を色として、その `Emissive Pulse Min`〜`Max` 倍〈Time × `Emissive Pulse Speed` の正弦〉を発光、2 倍をベースカラーに、A を `FadeDistance` の DepthFade × `Opacity Multiplier` を不透明度に。半透明・ライティングあり・被写界深度の前〈本家の `bEnableSeparateTranslucency` 偽〉。インスタンスが持つ `Color + Emissive Multiplier` はシェーダーに無い〈何も読まない〉ので作らない）とそのインスタンス `MM_ZoneBarrier_Inst1`・`_Inst2`（両面の上書き）、粒子 `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_impact3`（`dd_particles`。材質の `MI_ky_primitive2_trs` と推定の `M_ky_flare01_primitive` はシャードの閃光のもの〈06 記録〉、`MI_ky_flare14R` はその新しいインスタンス〈加算の上書き〉）。
 
 扉が破られるとき（`import_doors_busted`。流れの `BreakDoorsIn` が鳴らし・起こす。11 記録）: 音 `/Game/DD/Audio/06_Hospital/DD_TT_Door_BustedOpen_02`、粒子 `/Game/DD/ThirdParty/BallisticsVFX/Particles/Destruction/Fractures/V2/Fracture_concrete_3`（エミッタ 4: GPU の `Fragments`〈石の破片 100、衝突あり〉・`DustTrail`、CPU の `Smoke2`・`Dust`。レベルのエミッタ `Fracture_concrete_5` の粒子。組み立てが置く。01 記録）とテクスチャ 6（`Fragments/Textures/Stones2x2`・`Gravel2x2_normal`、`SmokeDust/Textures/whisp_One_512_8x8`・`_Normal`・`whisp_redux_2048_12x12`・`whisp_redux_2048_normal`）、材質（cook で式が消えたので推定。`dd_assets.estimated_materials`、推定のマスターは `/Game/Pipeline/Materials/M_DD_WhispDirectional`・`M_DD_WhispAmb`・`M_DD_Debris`）: `SmokeDust/whispOne_Master_directional`（焼き込みの影のパスで読める不透明度 = `Base` の A × `Opacity` × 粒子の A を `Fade Distance` で深さに溶かし × `Master Opacity`。色は `Base` の RGB × `Base Overlay` × 粒子の色、法線は `Normal` を `FlattenNormal` で平らに寄せる。カメラの数 cm 以内だけを薄める `Radius` とマクロ UV のノイズは作らない）とそのインスタンス `Whisps_trans`・`Whisps_trans2`、`whispOne_Master_amb`（同じ形で色は `ColourOverlay`。インスタンスが切る `CamFade` とその `Radius`・`Hardness` は作らない）とインスタンス `whispOne_Master_amb_Inst`、`Fragments/DebrisMaster`（`Base Map` の RGB を `Desat` で灰色に寄せ × 粒子の色、不透明度は `Base Map` の A × 粒子の A、法線 `Normal Map`）。どれもライティングありの半透明（ボリューム・方向あり）で、サブ UV の段階は粒子の SubUV のまま（`Linear_Blend` は段階の間を混ぜる）。
+
+祭壇と欠片（`import_ring_statue`。`import_dd_shards` の後）: 欠片の光の粒子 `/Game/DD/Particles/08_BearHouse/P_08_RingPiece`（スプライトのエミッタ 2: `glowSub`〈3 粒〉と、LOD 0〜2 とも Required が無効の `glow`）と、`glowSub` の材質 `/Game/DD/ThirdParty/AdvancedMagicFX13/Materials/MI_ky_primitive_dynB_nonD1`（シャードの推定の `M_ky_primitive` のインスタンス。`alphaValue` 1・`depthFade` 100・`radius` 0.4095・`radiusDensity` 1.2）。`glow` の `M_ky_polarGlow02` はシャードのもの。祭壇の拒否の音と減衰は障壁のもの。祭壇と欠片のメッシュと材質（`ring_statue`・`ring_piece06`、`MM_00_Ballroom_Ring_Altar_Metal`・`M_ring_metal`・`M_ring_metal2`）はステージの素材（前処理の `CLASS_MESHES`・`CLASS_MATERIALS`、01 記録）。
 
 Zone 2 のリフト（`import_lifts`）: 音 3 と減衰 2。中身は 12 記録。ガレージリフト（`import_garage_lift`）: 骨入りのメッシュとアニメ（`dd_skeletal`。01・12 記録）。
 
@@ -80,15 +99,17 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 - 障壁: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_ZoneBarrier.txt`（上の番地）と `_assets/…/BP_ZoneBarrier.json`（SCS の部品・クラスの既定 `Layer 1/2 | Min/Max Brightness`・`Interaction Text`・`bSound`・タグ）、`_assets/…/Materials/Shared/MM_SpeedBarrier.json`（残った式の値）・`MM_ZoneBarrier_Inst1.json`・`_Inst2.json`、`ThirdParty/AdvancedMagicFX13/Materials/MI_ky_flare14R.json`・`Particles/P_ky_impact3.json`。レベル BP が呼ぶのは `Destroy` だけ（Zone 1 は `05 All Shards Collected` @16409、Zone 2 は @21485。11 記録）。
 - 扉が破られるとき: `_assets/…/Audio/06_Hospital/DD_TT_Door_BustedOpen_02.json`、`ThirdParty/BallisticsVFX/Particles/Destruction/Fractures/V2/Fracture_concrete_3.json`、`…/FXMaterials/SmokeDust/whispOne_Master_directional.json`・`whispOne_Master_amb.json`・`Whisps_trans.json`・`Whisps_trans2.json`・`whispOne_Master_amb_Inst.json`、`…/Fragments/DebrisMaster.json`（残った式の設定と引数）、`python Tools/dd/cooked_shaders.py "SmokeDust/whispOne_Master_directional." --show 3`（影のパスの不透明度）。
 - 打たれた閃き: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Shared/BP_HitFX.txt`（上の番地）と `_assets/…/BP_HitFX.json`（クラスの既定 `Shake Scale` 2・`Play Rate` 1、`PostProcess_GEN_VARIABLE` の設定、`Timeline_0_Template`〈長さの指定なし = 既定の 5 s〉と `CurveFloat_0`）。独房の音は `_assets/…/Audio/06_Hospital/DD_Needle_Trap_R1_V3.json`。独房の粒子は `pak_reference_2/_sequences/06_Hospital_Zone2_Spikes.json`・`_Cell_DoorPicked.json`（粒子のトラックの鍵と火花の動き）、`_levels/06_Hospital_Zone_02.full.json` の 3 つのエミッタの `ParticleSystemComponent0`（テンプレート・`bAutoActivate`・位置と拡縮）、`_assets/…/P_06_NurseSparks.json`・`Fracture_dark_slow.json`・`Concrete_impact_large.json`、材質の残った式と設定 `M_06_NurseSparks.json`・`Flares/M_Spark.json`・`M_Radial_Gradient.json`・`SmokeDust/Squib_one.json`、式は `python Tools/dd/cooked_shaders.py "Nurse/M_06_NurseSparks." --show 28`・`"Flares/M_Spark." --show 5`・`"Flares/M_Radial_Gradient." --show 5`・`"SmokeDust/Squib_one." --show 28`（半透明のベースパス。`--show 3` の影のパスも同じ不透明度）。
+- 祭壇と欠片: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/01_Hotel/BP_01_Statue.txt`（`InteractWithObject` @951 → @375〜、`python Tools/dd/bp_flow.py … InteractWithObject`）と `_assets/…/BP_01_Statue.json`（親 `StaticMeshActor`、`StaticMeshComponent0` のメッシュ・材質・拡縮 2.8・タグ）、`Blueprints/08_BearHouse/BP_08_RingPiece.json`（SCS の 3 部品の `props`）・`BP_08_RingPiece_NoPickup.json`（`StaticMesh` の当たりの上書き）・`.txt`（NoPickup の `InteractWithObject` は `return` だけ）、`Particles/08_BearHouse/P_08_RingPiece.json`、`_materials.json` の `MI_ky_primitive_dynB_nonD1`。置いたものは `_levels/06_Hospital_Zone_02.full.json` の `ring_statue_2`（`StaticMeshComponent0` の変換と `OverrideMaterials`、アクタのタグ []）・`BP_08_RingPiece_NoPickup_5`（`DefaultSceneRoot` の変換）。
 - 置き場所と値: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`（前処理の `stage_ue.json` の `actors`。両開き扉は Zone 1 に 62 枚、Zone 2 に 1 枚〈`bLocked` 真〉。障壁は両ゾーンに `BP_ZoneBarrier_2` が 1 つずつ、アクタの値は既定のまま）。子の `BP_06_DoubleDoors_Child`（1 枚扉 `hospital_entrance_walkway_singledoor`・箱の位置違い）は病院に置かれていない。
 
 ## 依存関係
-- 自前: `AWasamiPlayerCharacter`（`Player Overlapping?` の相手のクラス。02 記録）、`WasamiAssets.h`。
+- 自前: `AWasamiPlayerCharacter`（`Player Overlapping?` の相手のクラス。02 記録）、`WasamiAssets.h`、`AWasamiShard`（祭壇が数える。06 記録）、`UWasamiTextPromptWidget`（09 記録）、`IWasamiInteractable`（05 記録）。
 - 使う側: ゾーンの流れ（`AWasamiZoneFlow::DoubleDoors`・`ZoneBarrier`、`AWasamiZone1Flow` の 04・05・06。11 記録）、レベルの組み立て（`dd_level._flow`。01 記録）。
 - エンジン: `UPostProcessComponent`・`UTimelineComponent`・`UCurveFloat`・`UBoxComponent`・`UStaticMeshComponent`・`FRichCurve`・`UGameplayStatics::PlaySoundAtLocation`・`SpawnEmitterAtLocation`・`FTimerManager`・`UPointLightComponent`・`UAudioComponent`、エンジンの素材 `/Engine/BasicShapes/Plane`（100 × 100 の板、厚さ 0 の箱の当たり）。
 
 ## 既知の制約・注意点
-- 置いてあるのは流れが名指しする Zone 1 の 2 枚だけ（`BP_06_DoubleDoors11`・`BP_06_DoubleDoors33_36`）。ほかの出入口は扉が無く、通り抜けられる（項目 8）。
+- 置いてあるのは流れが名指しする Zone 1 の 2 枚（`BP_06_DoubleDoors11`・`BP_06_DoubleDoors33_36`）と Zone 2 のガレージへの 1 枚（`BP_06_DoubleDoors2`、閉ざされている）だけ。Zone 1 のほかの出入口は扉が無く、通り抜けられる（項目 8）。
+- 祭壇の材質 `MM_00_Ballroom_Ring_Altar_Metal` の親 `MM_Main_Metal` と欠片の `M_ring_metal2` の親 `MM_Main_Substance_Fresnel` は前処理のマスターの一覧に無いので、`substance` のマスターの推定で作られる（祭壇は法線だけで色のテクスチャが無く、青みの白に見える。作業一覧の項目 28 の後回しの一覧）。欠片の `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。
 - 扉は当たりを持ったまま掃引せずに回る（本家どおり）。開くときにプレイヤーが扉の振れる範囲（蝶番から 200 cm）にいると、扉がカプセルに食い込むことがある。
 - `Unlock`・`Lock` は前のイベントの相手で本家の処理を繰り返す（上）。流れは `On04DoorBreak` で `Unlock` を使わず `bLocked` を直に書く（本家どおり）。
 - 両方のタイムラインが同時に走ったときの勝ち方（閉じる側が後）は、本家では部品のティックの順で決まり、コードからは確定できない。
@@ -97,7 +118,7 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 - 障壁の粒子 `P_ky_impact3` の `MI_ky_flare14R` は推定の `M_ky_flare01_primitive` のインスタンス（06 記録の閃光と同じ推定）。Zone 2 の障壁はまだ壊す所が無い（項目 13 の、欠片の画面が閉じたときの `Ring Piece Collect `）。
 
 ## テスト（`Tests/WasamiDoubleDoorsTests.cpp`）
-`Wasami.DoubleDoors.Actor`: 曲線のキー（0・0.951・1.040・1）、部品の値（`interact`・90°・扉の位置と当たり・箱の大きさと位置と Pawn の重なり）、キャラクターでないと開かない、前から開いて 0.5 s で曲線どおり・1 s で 90°（2 枚は逆向き）、開いている間は後ろから開かない、`Leave` を出ると閉じ始めて 1 s で 0、後ろから開くと −90° / +90°、`Force Close`、閉ざすとガタつくだけ・2 s で次が鳴らせる・`Unlock` で前にいた者のために開く、`Lock` で開いた扉が閉じる、閉ざしたまま `Open Front` は開かない・`bLocked` 偽なら開く、`Update Animation Speed(2)` で 0.5 s で閉じる。`Wasami.ZoneBarrier.Actor`（`Tests/WasamiZoneBarrierTests.cpp`）: 部品の値（`interact`・ルート 3.2・板 2 枚がエンジンの Plane で x を向き、後ろの板が 3.04 × 3.2 cm 後ろ・Block の当たり・ナビゲーションに入らない・灯・音の音量とピッチと減衰・`Barrier_Loop`）、`DestroyBarrier` でアクタが消え、`P_ky_impact3` が後ろの板の位置に 2 倍で出る。`Wasami.ZoneBarrier.Interact`: インターフェースを持ち、`InteractWithObject` で「Collect all soul shards in this zone to break the barrier.」の文の枠が出て、すぐと 4.8 s 後の 2 回目は何も出さず、5.1 s 後にまた出る。流れから壊すのは `Wasami.ZoneFlow.Zone1`（11 記録）。テストのワールドの 0 秒のティックは `MinUndilatedFrameTime`（0.5 ms）進むので、途中の角度は 0.5005 s の値と比べる。流れから閉ざし・開けるのは `Wasami.ZoneFlow.Zone1`（11 記録）。`Wasami.HitFX.Actor`（`Tests/WasamiHitFXTests.cpp`）: 境界なし・色・滲み・上書き・`Shake Scale` 2・`Play Rate` 1、出てすぐ `BlendWeight` 1、0.1 s で 0 と 1 の間、0.4 s で 0・まだ残る、5 s で消える。流れから出すのは `Wasami.ZoneFlow.Zone2`（11 記録）。
+`Wasami.DoubleDoors.Actor`: 曲線のキー（0・0.951・1.040・1）、部品の値（`interact`・90°・扉の位置と当たり・箱の大きさと位置と Pawn の重なり）、キャラクターでないと開かない、前から開いて 0.5 s で曲線どおり・1 s で 90°（2 枚は逆向き）、開いている間は後ろから開かない、`Leave` を出ると閉じ始めて 1 s で 0、後ろから開くと −90° / +90°、`Force Close`、閉ざすとガタつくだけ・2 s で次が鳴らせる・`Unlock` で前にいた者のために開く、`Lock` で開いた扉が閉じる、閉ざしたまま `Open Front` は開かない・`bLocked` 偽なら開く、`Update Animation Speed(2)` で 0.5 s で閉じる。`Wasami.ZoneBarrier.Actor`（`Tests/WasamiZoneBarrierTests.cpp`）: 部品の値（`interact`・ルート 3.2・板 2 枚がエンジンの Plane で x を向き、後ろの板が 3.04 × 3.2 cm 後ろ・Block の当たり・ナビゲーションに入らない・灯・音の音量とピッチと減衰・`Barrier_Loop`）、`DestroyBarrier` でアクタが消え、`P_ky_impact3` が後ろの板の位置に 2 倍で出る。`Wasami.ZoneBarrier.Interact`: インターフェースを持ち、`InteractWithObject` で「Collect all soul shards in this zone to break the barrier.」の文の枠が出て、すぐと 4.8 s 後の 2 回目は何も出さず、5.1 s 後にまた出る。流れから壊すのは `Wasami.ZoneFlow.Zone1`（11 記録）。テストのワールドの 0 秒のティックは `MinUndilatedFrameTime`（0.5 ms）進むので、途中の角度は 0.5005 s の値と比べる。流れから閉ざし・開けるのは `Wasami.ZoneFlow.Zone1`（11 記録）。`Wasami.HitFX.Actor`（`Tests/WasamiHitFXTests.cpp`）: 境界なし・色・滲み・上書き・`Shake Scale` 2・`Play Rate` 1、出てすぐ `BlendWeight` 1、0.1 s で 0 と 1 の間、0.4 s で 0・まだ残る、5 s で消える。流れから出すのは `Wasami.ZoneFlow.Zone2`（11 記録）。`Wasami.RingStatue.Actor`（`Tests/WasamiRingStatueTests.cpp`）: 祭壇はメッシュがルートで 2.8・`interact`・Movable・インターフェースを持ち、エンジンの Cube を入れると上からの Visibility の線が当たる。欠片はメッシュが (−40, 0, 30)・20 倍・影なし・NoCollision（Visibility・Camera を無視し、線が通り抜ける）、粒子がルートに付き、灯の値、クリックしても消えない。`Wasami.RingStatue.Interact`: シャードが残っていれば「Collect all soul shards to break the ring barrier.」の文の枠が出て `Interact All Shards` は流れず、すぐと 4.8 s 後の 2 回目は何も出さない。シャードを消して 5.1 s 後に押すと `Interact All Shards` が 1 回流れて部品のタグが空になり、さらに 5.5 s 後に押しても流れない（リスナーは `TStrongObjectPtr` で持つ。ティックの GC で消えると数が壊れる）。
 
 ## 確かめたこと（2026-09-18、PIE）
 Zone 1 の 04: エレベーターの前の `BP_06_DoubleDoors11` は赤い 2 枚扉で閉じている → 鍵が外れると手前へ 1 s で開き、少し行き過ぎて戻る → `Leave` の外へ出ると閉じる（11 記録の「確かめたこと」）。
@@ -106,11 +127,14 @@ Zone 1 の 04: エレベーターの前の `BP_06_DoubleDoors11` は赤い 2 枚
 
 障壁の拒否（項目 13 のステップ 2、2026-09-19）: Zone 1 で敵を消し `(2.7, −18740)` から −Y を向くと、障壁の網目の中央に手のマークが出る → ビューポートを左クリックすると、画面の下に白い文「Collect all soul shards in this zone to break the barrier.」が影つきで出て、約 5 s で消える。
 
+祭壇（項目 13 のステップ 3、2026-09-19）: Zone 2 で敵を消し `(−8400, −983)` から −X・下 15° を向くと、祭壇（天使の像）の布の所に手のマークが出る → 左クリックで画面の下に「Collect all soul shards to break the ring barrier.」が出る → `Wasami.CollectShards` の後 5 s 待って押すと、部品のタグが空になって手が消え、文も出ない。`(−7950, −983)` から見上げると、像の掲げる球の所に桃色の光（欠片の粒子と灯）がある。
+
 独房の粒子（項目 6 のステップ 7b）: Zone 2 の 7 を開いてすぐ `(−12500, 1100)` から −X を向くと、廊下の床を赤い火花が 0.6 s ごとに近づいてくる（`P_06_NurseSparks`）。独房の扉の前で鍵を破ると、扉が開くと同時に白い火花が弾け、黒い煙と破片が落ちる（`Concrete_impact_large`。収録 `Intermediate/DesktopAgent/shots/cell_sparks3.mkv`・`cell_door2.mkv`、git の外）。
 
 打たれた閃き（項目 6 のステップ 7a）: Zone 2 の 7 で独房に残ると、開いてから約 19 s で棘の箱が頭に届き、画面全体が赤く滲んで色がずれ、揺れでぶれる → 約 0.3 s で晴れる → 0.5 s 後に死亡画面（収録 `Intermediate/DesktopAgent/shots/spikes_death.mkv`、git の外。グリッド `Intermediate/Overnight/cell_grid.png` の下の段）。
 
 ## 変更履歴
+- 2026-09-19: 本家の `BP_01_Statue` を `AWasamiRingStatue` に、`BP_08_RingPiece_NoPickup` を `AWasamiRingPiece` に写し、`dd_gimmicks.import_ring_statue`（欠片の粒子と材質）を足した。組み立てが Zone 2 に祭壇・欠片・ガレージへの両開き扉を置く（01 記録）。テスト `Wasami.RingStatue.Actor`・`.Interact`（作業一覧の項目 13 のステップ 3）
 - 2026-09-19: 見て左クリックの拒否（`InteractWithObject`: `DD_RingBarrierDenied_louder` と文の枠、5 s に 1 回）を足し、取り込みに拒否の音と `DialogueAttenuation` を足した。テスト `Wasami.ZoneBarrier.Interact`（作業一覧の項目 13 のステップ 2）
 - 2026-09-18: 初版。本家の `BP_06_DoubleDoors` を `AWasamiDoubleDoors` に写し、音の取り込み `dd_gimmicks.py` を足した（作業一覧の項目 6 のステップ 3c）
 - 2026-09-18: 本家の `BP_ZoneBarrier` を `AWasamiZoneBarrier` に写し、`dd_gimmicks.import_zone_barrier`（音・テクスチャ・シェーダーから組んだ `MM_SpeedBarrier` とインスタンス・`P_ky_impact3`）を足した（作業一覧の項目 6 のステップ 4a）
