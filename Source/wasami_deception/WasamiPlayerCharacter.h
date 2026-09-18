@@ -68,6 +68,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
 	void ToggleTablet();
 
+	/** Put Down Tablet: lowers the tablet if it is up (the woosh and the lowering), whatever the player may do. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
+	void PutDownTablet();
+
 	/** Z switches the minimap between OrthoWidth 4000 and 10000 (the original's Resize Map). */
 	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
 	void ResizeMap();

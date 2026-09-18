@@ -419,6 +419,19 @@ void AWasamiPlayerCharacter::ToggleTablet()
 	UGameplayStatics::PlaySound2D(this, bTabletUp ? LoadedTabletUpSound : LoadedTabletDownSound, WooshVolume, WooshPitch);
 }
 
+void AWasamiPlayerCharacter::PutDownTablet()
+{
+	// Put Down Tablet (the capture calls it): Toggle Tablet's lowering without its checks.
+	if (!bTabletUp)
+	{
+		return;
+	}
+	bTabletUp = false;
+	bTabletMoving = true;
+	TabletTime = 0.f;
+	UGameplayStatics::PlaySound2D(this, LoadedTabletDownSound, WooshVolume, WooshPitch);
+}
+
 void AWasamiPlayerCharacter::ResizeMap()
 {
 	// Resize Map: only with the tablet up, and it flips between the two OrthoWidths.
@@ -450,10 +463,12 @@ void AWasamiPlayerCharacter::PlaceTablet()
 	// its 10 記録, 2026-09-12). UE puts a camera shake on the camera manager's point of view, not on the camera
 	// component, so a child of the camera would swing the other way on screen — instead the plate is placed on the
 	// view that is about to be rendered, every frame, in TG_PostUpdateWork.
+	// While the view is another's (the capture's room), the plate stays with this camera, as the original's child of
+	// the camera does.
 	FTransform View(Camera->GetComponentQuat(), Camera->GetComponentLocation());
 	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		if (const APlayerCameraManager* Manager = PC->PlayerCameraManager)
+		if (const APlayerCameraManager* Manager = PC->PlayerCameraManager; Manager && PC->GetViewTarget() == this)
 		{
 			View = FTransform(Manager->GetCameraRotation().Quaternion(), Manager->GetCameraLocation());
 		}

@@ -168,6 +168,14 @@
 - 対処: テストと PIE の確認は続けて行い、同時に走らせない。テストの後に出る Automation のログの小窓は PIE の前に閉じる。
 - 出典: `.claude/guides/verification.md`。
 
+### Zone 1 の PIE（や死亡の後の開き直し）で、始まる場所が毎回違う（`04_Start`・`05_Start`・`PlayerStart_1` など）
+
+- 症状: `python Tools/pie.py start` の後の `player:` や、死亡画面の後に開き直した場所が、回ごとに別の PlayerStart になる。`(4295, −23330)`（タグ `PlayerStart_1`）のような、チェックポイントでない所から始まることもある。
+- 原因: 本作のセーブ（`Saved/SaveGames/structSlot.sav`）のチェックポイントが、そのレベルに無い値（Zone 1 なのに Zone 2 の 7〜10）になっている。`AWasamiGameMode::ChoosePlayerStart` はタグの PlayerStart が無いと UE の既定に任せ、既定は空いている PlayerStart から無作為に選ぶ。Zone 2 を `Wasami.Checkpoint 8` などで確かめた後に、そのまま Zone 1 で PIE すると起きる。
+- 対処: 確かめたいチェックポイントを PIE で `python Tools/pie.py cmd "Wasami.Checkpoint 5"` のように保存してから開き直す（Zone 1 は 4〜6）。最初からにするなら `Wasami.ResetSave`。
+- 確かめ方: PIE で `unreal.GameplayStatics.get_game_mode(world).get_start_checkpoint()` を読む。
+- 出典: 2026-09-19 の作業一覧の項目 9 のステップ 1（進捗記録 `20260919-capture.md`。セーブは 9 のままだった）。
+
 ### `capture_pose`（SceneCapture2D）の絵が PIE より暗い
 
 - 症状: 同じ視点なのに `WasamiDevTools.capture_pose` は (13, 13, 0)、PIE は (41, 38, 25) と出る。
