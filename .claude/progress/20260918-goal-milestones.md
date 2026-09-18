@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/goal-milestones
 base: 3018836
 started: 2026-09-18 15:12
-updated: 2026-09-18 15:22
+updated: 2026-09-18 15:35
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -22,13 +22,13 @@ updated: 2026-09-18 15:22
 ## 計画
 
 - [x] 1. 作業一覧を大目標 1〜3 の節に組み直した … 2026-09-18。項目 6・7・9 から後に回す部分を 24〜26 に分け、27（大目標 1 の通しプレイの確かめ）と 28（後回しの一覧）を足した。項目 23 の記録は `status: 保留`。
-- [ ] 2. 決まりを直す ← 作業中。: `.claude/guides/autonomy.md`（何を作業するか・決め方・止まる条件）、`.claude/guides/original-fidelity.md`（大目標 1・2 の忠実さ）、`.claude/skills/continue/SKILL.md`（保留の記録と、進行中の大目標の外の項目を取らない）、`CLAUDE.md` の索引、`.claude/references/handover.md` の次の一歩
-- [ ] 3. 駆動役と hook: 作業一覧を読む `Tools/work_list.py`（新規）、`Tools/overnight.py`（進行中の大目標が無ければ起動を断り、大目標を達成したら止まる。Discord の進捗率に大目標の進み）、`.claude/scripts/session_start_hook.py`（大目標の状態を出す）、実装記録 01。`--dry-run` で確かめる
+- [x] 2. 決まりを直した … 2026-09-18。`autonomy.md`（大目標を超えない・取る項目・`stop` の理由・駆動役が止める条件と起動を断る終了コード 6・決め方の階段の 2 と見た目の仮の値・有人セッションで次の大目標を始める）、`original-fidelity.md` の「大目標による違い」、`observation.md`、`continue` のスキル、`_template.md` の `保留`、`CLAUDE.md` の索引、handover の次の一歩。
+- [ ] 3. ← 作業中。駆動役と hook: 作業一覧を読む `Tools/work_list.py`（新規）、`Tools/overnight.py`（進行中の大目標が無ければ起動を断り、大目標を達成したら止まる。Discord の進捗率に大目標の進み）、`.claude/scripts/session_start_hook.py`（大目標の状態を出す）、実装記録 01。`--dry-run` で確かめる
 - [ ] 4. main へマージして push、ローカルブランチを消し、この記録を消す
 
 ## 次にやること
 
-ステップ 2（決まりの文書）。
+ステップ 3（駆動役と hook）。`autonomy.md` に書いたとおり、進行中の大目標が無ければ起動を断る（終了コード 6）。
 
 ## 決定事項
 

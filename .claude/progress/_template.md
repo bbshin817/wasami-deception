@@ -1,6 +1,6 @@
 ---
 title: <作業名>
-status: 進行中          # 進行中 / ユーザー待ち
+status: 進行中          # 進行中 / ユーザー待ち / 保留（進行中でない大目標の項目。.claude/roadmap.md の「大目標」）
 branch: main           # 作業しているブランチ
 base: <開始時の HEAD の短縮ハッシュ>
 started: YYYY-MM-DD HH:MM
