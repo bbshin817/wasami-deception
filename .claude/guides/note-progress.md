@@ -18,6 +18,22 @@
 
 **新しい記事を作らない。** 上の id の記事を `edit` で書き換える。記事が消えていたときだけ作り直し、この表を直す。
 
+## 敵ワサミのモーション一覧の記事
+
+2026-09-18 のユーザーの依頼（「enemy_wasamiが持つ各アニメーションと名前と、本作で採用予定の対応表（例: walk = プレイヤーを追いかける際）などがわかるページを…設けてください。enemy_wasamiのモーションGIFも載せて」）で作った、進捗記事とは別の 1 本。実装が進むたびには更新しない。敵ワサミの動きか役の割り当て（`.claude/references/enemy-wasami-motions.md`）が変わったときに直す。
+
+| 項目 | 値 |
+| --- | --- |
+| タイトル | `WASAMI DECEPTION（UE5 版）敵ワサミのモーション一覧` |
+| id / key | `180890064` / `n0f128ab4399d`（秘密ではない） |
+| 編集画面 | https://editor.note.com/notes/n0f128ab4399d/edit |
+| 状態 | **公開中**（2026-09-18 に下書きで作り、ユーザーの回答「公開する（通知あり）」で同日に公開。以後の書き換えは `--no-notify`） |
+| 公開の URL | https://note.com/n/n0f128ab4399d |
+| 原稿 | `docs/note/enemy-wasami-motions.md` |
+| 画像 | `observations/ours/note/enemy/01〜18-*.gif`（git の外）。Blender で glb から描く: `blender -b --factory-startup --python observations/tools/motion_gifs_blender.py -- <glb> observations/ours/note/enemy/frames <動き,動き>` → `python observations/tools/motion_gifs_encode.py`（480²・20 fps・実際の速さ。v3 の動きは `SourceArt/Wasami/enemy_wasami_v3.glb`、捕獲の 3 本は前処理の出力 `Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb` の `A_WasamiEnemy_Capture_*`。`Vault_and_Land` には元の台と手すりを足して描く） |
+
+- 書き換え: `python tmp/note-cli/note_cli.py edit --session (Get-Content Tools/note.local.json -Raw | ConvertFrom-Json).note_session_v5 --id 180890064 --key n0f128ab4399d --title 'WASAMI DECEPTION（UE5 版）敵ワサミのモーション一覧' --body-file docs/note/enemy-wasami-motions.md --markdown --no-notify`
+
 ## 許可の範囲
 
 - ユーザーが許可したのは **新規記事の作成** と **記事の編集・更新** だけ。**削除はしない**（要るときはユーザーに確認する）。
