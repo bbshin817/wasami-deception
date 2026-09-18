@@ -26,6 +26,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 本家の原作データ（UE 4.21。**実装値の根拠として最優先**）: `pak_reference/README.md`
 - 手元で遊べる本家 2 つ（旧版 = `pak_reference` と同一、最新版 = `pak_reference_2` と同一。コードで確定できない見え方の観察に使う。起動の作法は verification.md、どちらで何を観察するかとステージの出し方は original-fidelity.md）: `C:\Users\User\AppData\Local\DDeception\Launch-Classic-Ch3.cmd`・`C:\Users\User\AppData\Local\DDeception\Launch-Latest.cmd`
 - 敵ワサミ・ボスワサミ・ワサミ餅のモデルとモーション（**`tmp/enemy_wasami_v3`・`boss_wasami`・`wasami_mochi_v3` の中身と、役 → アニメの対応・追跡中のランダムの動き・場面の代用。コードは役の名前でアニメを選ぶ**）: `.claude/references/enemy-wasami-motions.md`
+- 死亡・再開・セーブの流れの原作調査（**死亡 → 死亡画面 → 今のレベルを開き直してセーブのチェックポイントへ。ライフとシャードの回収はゲームインスタンス、チェックポイント・死亡数・時間はセーブ。チェックポイントの値と再開の PlayerStart、SAVING PROGRESS、ゲームオーバーの 3 つのボタン**）: `.claude/references/game-flow/README.md`
 - タブレットのパワー 6 種の原作調査（枠・入力・クールダウン・強化段階、各パワーの処理と演出。テレポーテーションは旧版、ほかは最新版）: `.claude/references/powers/README.md`
 - 本家の新しい版（UE 4.24。pak_reference に無いものの根拠。両方にあって違うものはユーザーに確認）: `pak_reference_2/README.md`
 - 旧方針のステージ（ファンゲーム CC2）の調査（2026-09-16 に不採用。経緯として残す）: `.claude/references/chaotic-customer-2/README.md`（書き出しの本体は `cc2_reference/`）
@@ -43,6 +44,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 ## よく使うコマンド
 - ステージの前処理: `python Tools/dd/prepare_stage.py`
 - 原作の材質の式を読む（cook のシェーダーの逆アセンブル）: `python Tools/dd/cooked_shaders.py "<pak のパスの一部>." [--show N]`
+- 原作のブループリントを入口から流れで読む: `python Tools/dd/bp_flow.py <pak_reference*/_bytecode/…/X.txt> <イベント名 | 番地 | --list>`
 - エディタで Python を実行: `python Tools/ue_remote.py <file.py>`
 - エディタを閉じて C++ をビルドし開き直す: `python Tools/editor_cycle.py`
 - 対話デスクトップ（コンソールのセッション）でプログラムを起動する: `python Tools/console_session.py <exe> [--wait <画像名>]`

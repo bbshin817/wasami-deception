@@ -3,6 +3,7 @@ title: 取り込みの仕組み（ツールセット・リモート実行・本�
 sources:
   - Tools/dd/prepare_stage.py
   - Tools/dd/cooked_shaders.py
+  - Tools/dd/bp_flow.py
   - Tools/ue_remote.py
   - Tools/editor_cycle.py
   - Tools/console_session.py
@@ -115,6 +116,11 @@ updated: 2026-09-18
 - **読むのは半透明のベースパスのピクセルシェーダー**: `texture3d`（半透明の灯／霧の体積）と、`sample_l` で読む `texture2d`（深度のぼかしのシーンの深度）を持つ `ps_5_0`。前半が材質の式、後半が霧と出力（`o0.w` がエンジンの saturate の後の不透明度）。頂点ファクトリ（スプライト・メッシュ・GPU スプライト）と霧の組ごとに 1 つずつある。スプライトのものは動的パラメータを補間子（TEXCOORD1）で読み、GPU スプライトのものは既定値が畳み込まれている。
 - **静的スイッチを上書きするインスタンス**（`bHasStaticPermutationResource`）は自分のシェーダーマップを持つ（`MI_ky_starDust_sq`）。持たないもの（`MI_ky_aura7c`・`MI_ky_shockWave02_4x4_nonD`）は親のものを使う。
 - 消えた定数も数値で残る（例: `M_ky_starDust` の `Rotator` の回転は cos 0.000796・sin 1 = 既定の速さ 0.25 × 時刻 6.28）。**推定の材質を作る・直す前に、まずここで式を読む**（`.claude/guides/original-fidelity.md`）。
+
+### ブループリントを流れで読む（`Tools/dd/bp_flow.py`）
+- 原作の逆アセンブル（`pak_reference*/_bytecode/**/*.txt`）は番地の順に並ぶので、ユーバーグラフの処理はあちこちへ飛ぶ。`python Tools/dd/bp_flow.py <file.txt> <イベント名 | 番地>` が入口から `Jump`・`JumpIfNot`・`PushExecutionFlow` と `Delay` などの再開先（`LatentActionInfo` の `SkipOffsetConst`）をたどり、届く基本ブロックだけを 1 文 1 行（`this.X`・`cast<C>(..)`・`switch(..){..}`・`resume@L..`）で印字する。`--list` は関数とユーバーグラフの入口の一覧。ユーバーグラフでない関数（`Get Lives` など）は本体を先頭から読む（2026-09-18、作業一覧の項目 5 のステップ 2。`.claude/references/game-flow/`）。
+- 呼び出しだけの文は逆アセンブルに `@` が付かないので、そこへの飛び先は直前の番地の次の文と推して `L~<直前の番地>` と印を付ける（`Delay` の再開先 15 は `@5 ComputedJump` の次の呼び出し、のように合う）。
+- 名前の後ろに空白がある入口（Zone 2 の `Miniboss Start `）は名前で引けないので、`--list` の番地で引く。`Temp_bool_IsClosed_Variable` と `Has_Been_Initd` の組は `DoOnce`、`push` を並べてから続くのは `Sequence`（最後に積んだものから戻る）。
 
 ### 取り込み（`pipeline/dd_stage.py`）
 - `ensure_mesh_pipeline()`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を複製した `/Game/Pipeline/Interchange/PL_DD_StaticMesh`。種類ごとのサブフォルダなし、マテリアルとテクスチャを取り込まない、当たりの自動生成なし。
@@ -275,6 +281,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-18: `Tools/dd/bp_flow.py` を足した（原作のブループリントのバイトコードを入口から制御の流れで読む。上の「ブループリントを流れで読む」。作業一覧の項目 5 のステップ 2）
 - 2026-09-18: Discord の反復の報告・終わりのまとめ・開始の投稿で、`###` の節の見出しの直後の空行をなくした（ユーザーの指示「Discordフォーマットの見出し4の後の改行は不要です」。見出し 4 はサンプルの `####`）。
 - 2026-09-18: 成果の無い反復（状態ファイルもコミットも無い）を Discord の反復の報告で `⚠️ 反復 #<n> 終了（成果なし）` と「結果」の行で出し、`claude -p` がバックグラウンドの作業を打ち切った文言があれば「原因」の行も出すようにした（`run_problems`・`BG_CUTOFF_PATTERN`）。終わりのまとめの「やったこと」にも入れる。反復が調査のサブエージェント 3 本を待つと書いて応答を終え、600 秒で打ち切られたのに、exit 0 のふつうの報告に見えたため（ユーザーの指摘。症状索引、`.claude/guides/autonomy.md` の「無人モード」）。
 - 2026-09-18: 作業一覧を 3 つの大目標に分けたのに合わせ（ユーザーの指示「無人運転はこの目標を超えない(1つの目標を達成したら一旦止まる)」）、`Tools/work_list.py` を足して作業一覧の読み方をまとめ、`Tools/overnight.py` が進行中の大目標の達成で止まり、進行中の大目標が無ければ起動を断る（終了コード 6）ようにした。報告の進捗率に大目標の進みを添える。`overall_progress`・`record_shares` は `work_list` へ移した
