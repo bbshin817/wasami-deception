@@ -50,4 +50,4 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - 収録を測る（本家と PIE で同じ測り方）: `python Tools/video_probe.py frames` / `sheet` / `series` / `period`
 - 画面を撮る・入力を送る（対話デスクトップ）: `python Tools/desktop.py start` → `shot` / `click` / `key` / `hold` / `look` → `stop`
 - 実装記録の同期チェック / ハッシュ更新: `python .claude/scripts/check_records.py [--update]`
-- 無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N` / `--no-discord`。応答と本作の画面は送り主「Claude」で Discord の webhook へも送る〈`Tools/discord_notify.py`。URL は git の外の `Tools/overnight.local.json`〉。決まりは `.claude/guides/autonomy.md`）
+- 無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N` / `--no-discord`。反復ごとの報告〈ステータス・作業概要・分かったこと・その反復の要検討事項・本作の画面。状態ファイルから組み、進捗率は作業一覧の規模から計算〉は送り主「Claude」で Discord の webhook へも送る〈`Tools/discord_notify.py`。URL は git の外の `Tools/overnight.local.json`〉。決まりは `.claude/guides/autonomy.md`）

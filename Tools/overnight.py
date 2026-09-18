@@ -15,16 +15,21 @@ driver stops at once ("使用量が読めない") unless --no-usage-check is giv
 of Claude itself is watched, and the driver waits for the reset it names (or 30 minutes) and goes on.
 
 After each run the driver reads Intermediate/Overnight/status.json (Claude writes {"result": "continue" | "stop",
-"reason": ..., "step": ..., "commit": ..., "written": ...}) and compares HEAD before and after. It stops on "stop",
+"reason": ..., "step": ..., "commit": ..., "written": ..., "summary": [...], "learned": [...], "pending": [...],
+"shots": {"caption": ..., "files": [...]}}) and compares HEAD before and after. It stops on "stop",
 when HEAD did not move in two runs in a row, at --until, after --max-iterations, or when the budget says so.
 Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log with a header and footer per run, and a
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
 printed at the end and appended to the log.
 
-Discord (Tools/discord_notify.py, which also says where the webhook URL comes from): the start, the reply of Claude
-after each run (with the run's footer line) followed by the HighResShot images the run left in Saved/Screenshots/, the
-waits and the summary are posted to the webhook. Without a URL, or with --no-discord, nothing is posted; a dry run only
-says whether it would post. A post that fails is logged and the night goes on.
+Discord (Tools/discord_notify.py, which also says where the webhook URL comes from): the start, a report per run, the
+waits and the summary are posted to the webhook. The report is the format the user gave on 2026-09-18 (run_report):
+exit code, working time and 進捗率 (overall_progress: the whole from the start of the project to the final goal, from
+the 規模 in .claude/roadmap.md), then 作業概要 / 分かったこと / 要検討事項 (only what came up in this run) from the
+status file, then the images Claude named in "shots" attached as one grid; when it named none, the shots of this game
+the run took (Tools/desktop.py queues them in Intermediate/Overnight/shots.jsonl) and the HighResShot images it left in
+Saved/Screenshots/. The reply of Claude itself goes to the log only. Without a URL, or with --no-discord, nothing is
+posted; a dry run prints the report of the last status file instead. A post that fails is logged and the run goes on.
 
 While it runs the driver keeps Intermediate/Overnight/driver.json ({"pid", "started", "log"}): a second driver refuses
 to start, and the SessionStart hook tells an attended session not to change anything until the driver is stopped
@@ -59,6 +64,9 @@ OVERNIGHT_DIR = os.path.join(ROOT, "Intermediate", "Overnight")
 STATUS_FILE = os.path.join(OVERNIGHT_DIR, "status.json")
 DRIVER_FILE = os.path.join(OVERNIGHT_DIR, "driver.json")
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
+ROADMAP = os.path.join(ROOT, ".claude", "roadmap.md")
+# Tools/desktop.py appends the shots of this game taken in unattended mode here; the driver empties it before a run.
+SHOT_QUEUE = os.path.join(OVERNIGHT_DIR, "shots.jsonl")
 # What Claude Code prints in -p mode when the subscription window is used up (推定: the classic form is
 # "Claude AI usage limit reached|<unix epoch of the reset>"; the newer wording says "hit your limit").
 LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.I)
@@ -67,7 +75,10 @@ LIMIT_BACKOFF = datetime.timedelta(minutes=30)
 STALL_LIMIT = 2
 # PIE's HighResShot writes here (Saved/Screenshots/WindowsEditor/); only this game ever lands in it.
 SCREENSHOT_DIR = os.path.join(ROOT, "Saved", "Screenshots")
-SCREENSHOTS_PER_RUN = 20
+# The images of a report go in one message, which Discord shows as one grid (at most 10 attachments).
+REPORT_IMAGES = discord_notify.FILES_LIMIT
+# The user's sample has #### headings, but Discord renders headings only down to ### (#### shows as text).
+SECTION = "###"
 
 
 def now():
@@ -124,6 +135,43 @@ def new_screenshots(since):
             if written >= since:
                 found.append((written, path))
     return [path for _, path in sorted(found)]
+
+
+def queued_shots(since):
+    """[(epoch seconds, path)] of the shots of this game Tools/desktop.py queued at or after `since`."""
+    found = []
+    try:
+        with open(SHOT_QUEUE, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return found
+    for line in lines:
+        try:
+            entry = json.loads(line)
+            written, path = float(entry["time"]), str(entry["path"])
+        except (ValueError, KeyError, TypeError):
+            continue
+        if written >= since and os.path.isfile(path):
+            found.append((written, path))
+    return found
+
+
+def run_images(since):
+    """The images of this game a run left behind, oldest first: the queued desktop shots and the HighResShot files."""
+    found = queued_shots(since)
+    for path in new_screenshots(since):
+        found.append((os.path.getmtime(path), path))
+    return [path for _, path in sorted(found)]
+
+
+def spread(items, count):
+    """At most `count` of the items, evenly spaced from the first to the last."""
+    if len(items) <= count:
+        return list(items)
+    if count <= 1:
+        return items[-1:]
+    step = (len(items) - 1) / float(count - 1)
+    return [items[int(round(i * step))] for i in range(count)]
 
 
 def git(*args):
@@ -190,19 +238,26 @@ def claim_driver(log_path):
     atexit.register(release)
 
 
-def pending_lines():
-    """The 要確認（ユーザー） lines of the unfinished progress records: [(record name, line)]."""
-    found = []
+def progress_records():
+    """[(file name, text)] of the unfinished progress records (.claude/progress/, without _template.md)."""
+    records = []
     if not os.path.isdir(PROGRESS_DIR):
-        return found
+        return records
     for name in sorted(os.listdir(PROGRESS_DIR)):
         if not name.endswith(".md") or name.startswith("_"):
             continue
         try:
             with open(os.path.join(PROGRESS_DIR, name), encoding="utf-8") as f:
-                text = f.read()
+                records.append((name, f.read()))
         except OSError:
             continue
+    return records
+
+
+def pending_lines():
+    """The 要確認（ユーザー） lines of the unfinished progress records: [(record name, line)]."""
+    found = []
+    for name, text in progress_records():
         m = re.search(r"^## 要確認（ユーザー）\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
         if not m:
             continue
@@ -211,6 +266,148 @@ def pending_lines():
             if line.startswith("- ") and "（なし）" not in line:
                 found.append((name, line))
     return found
+
+
+def record_shares():
+    """{work list item number: share of the checked top-level steps in the 計画 of its unfinished progress record}. A
+    record belongs to item N when its "# " title names 「項目 N」 (autonomy.md「何を作業するか」)."""
+    shares = {}
+    for _, text in progress_records():
+        title = re.search(r"^# .*$", text, re.M)
+        item = re.search(r"項目\s*(\d+)", title.group(0)) if title else None
+        plan = re.search(r"^## 計画\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+        if not item or not plan:
+            continue
+        marks = re.findall(r"^- \[([ xX])\]", plan.group(1), re.M)
+        if marks:
+            shares[int(item.group(1))] = sum(1 for mark in marks if mark != " ") / float(len(marks))
+    return shares
+
+
+def overall_progress():
+    """進捗率 in percent of the whole work, from the start of the project to the final goal (.claude/roadmap.md
+    「進捗率」): the 規模 of the groundwork done before the work list, of the finished items, and of each unfinished item
+    times the share of the checked steps of its progress record, over the groundwork plus every item not called off
+    (取りやめ). None when the work list gives no 規模."""
+    try:
+        with open(ROADMAP, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return None
+    number = r"(\d+(?:\.\d+)?)"
+    base = re.search(r"^- 作業一覧の前に済んだ土台の規模[:：]\s*" + number, text, re.M)
+    base = float(base.group(1)) if base else 0.0
+    shares = record_shares()
+    total = done = base
+    for item, body in re.findall(r"^### (\d+)\. [^\n]*$(.*?)(?=^##|\Z)", text, re.M | re.S):
+        size = re.search(r"^- 規模[:：]\s*" + number, body, re.M)
+        state = re.search(r"^- 状態[:：]\s*\**(\S*)", body, re.M)
+        state = state.group(1) if state else ""
+        if not size or state.startswith("取りやめ"):
+            continue
+        size = float(size.group(1))
+        total += size
+        done += size if state.startswith("完了") else size * shares.get(int(item), 0.0)
+    if total <= base:
+        return None
+    return 100.0 * done / total
+
+
+def progress_text(percent):
+    return "%d%%" % int(round(percent)) if percent is not None else "不明（作業一覧に規模が無い）"
+
+
+def duration_text(seconds):
+    """1時間15分 / 24分 / 1分未満."""
+    minutes = int(round(seconds / 60.0))
+    if minutes < 1:
+        return "1分未満"
+    hours, minutes = divmod(minutes, 60)
+    if not hours:
+        return "%d分" % minutes
+    return "%d時間%d分" % (hours, minutes) if minutes else "%d時間" % hours
+
+
+def status_list(status, key):
+    """A list field of the status file as a list of strings (a lone string is one item); None when it is missing."""
+    if not status or key not in status:
+        return None
+    value = status[key]
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def bullets(items):
+    return "\n".join("- " + item for item in items) if items else "なし"
+
+
+def report_images(status, since):
+    """(caption, image paths) for the 📷 section: the files Claude named in "shots" of the status file, else the
+    images of this game the run left behind (evenly picked when there are more than one grid holds)."""
+    shots = status.get("shots") if status else None
+    if isinstance(shots, dict):
+        named = status_list(shots, "files") or []
+        paths = [os.path.normpath(p if os.path.isabs(p) else os.path.join(ROOT, p)) for p in named]
+        found = [p for p in paths if os.path.isfile(p)]
+        if found:
+            caption = str(shots.get("caption") or "").strip()
+            missing = len(paths) - len(found)
+            if missing:
+                caption += "（見つからない画像が %d 枚）" % missing
+            if len(found) > REPORT_IMAGES:
+                caption += "（%d 枚のうち先頭の %d 枚）" % (len(found), REPORT_IMAGES)
+            return caption.strip(), found[:REPORT_IMAGES]
+    found = run_images(since)
+    if not found:
+        return None, []
+    caption = "この反復で撮った本作の画面を添付します（%d 枚%s）。" % (
+        len(found), "から %d 枚を選びました" % REPORT_IMAGES if len(found) > REPORT_IMAGES else "")
+    return caption, spread(found, REPORT_IMAGES)
+
+
+def run_report(number, exit_code, seconds, status, output, new_pending, progress, since):
+    """The Discord post of a finished run in the format the user gave on 2026-09-18, and the images to attach.
+    作業概要 / 分かったこと / 要検討事項 come from the status file Claude wrote in this run (None when it wrote none):
+    without "summary" the reply of Claude stands in, without "pending" the 要確認 lines that appeared in the progress
+    records during the run (`new_pending`) do."""
+    summary = status_list(status, "summary")
+    if summary is None:
+        summary_text = "（状態ファイルに作業概要が無いので、Claude の最後の応答を載せます）\n\n" + (output.strip() or "（出力なし）")
+    else:
+        summary_text = bullets(summary)
+    pending = status_list(status, "pending")
+    if pending is None:
+        pending = [re.sub(r"^- ", "", line) for line in new_pending]
+    caption, images = report_images(status, since)
+    lines = [
+        "## 📌 反復 #%d 終了" % number,
+        "",
+        "%s ステータス" % SECTION,
+        "",
+        "- exit: %s" % (exit_code if exit_code is not None else "起動できない"),
+        "- 作業時間: %s" % duration_text(seconds),
+        "- 進捗率: %s" % progress_text(progress),
+        "",
+        "%s 🔧 作業概要" % SECTION,
+        "",
+        summary_text,
+        "",
+        "%s 💡 分かったこと" % SECTION,
+        "",
+        bullets(status_list(status, "learned") or []),
+        "",
+        "%s 🚨 要検討事項" % SECTION,
+        "",
+        bullets(pending),
+        "",
+        "%s 📷 スクショ" % SECTION,
+        "",
+        (caption or "画像を添付します。") if images else "なし",
+    ]
+    return "\n".join(lines), images
 
 
 def parse_when(text):
@@ -297,9 +494,8 @@ def limit_reset(output, exit_code):
 def sleep_until(when, deadline, log, discord, why):
     """Sleeps until `when` (but never past the deadline). Returns False when the deadline came first."""
     target = when if deadline is None or when <= deadline else deadline
-    text = "待機: %s まで（%s）" % (stamp(target), why)
-    log.say(text)
-    discord.post(text)
+    log.say("待機: %s まで（%s）" % (stamp(target), why))
+    discord.post("## ⏸️ 待機\n\n- 再開: %s\n- 理由: %s" % (stamp(target), why))
     while True:
         rest = (target - now()).total_seconds()
         if rest <= 0:
@@ -342,8 +538,9 @@ def run_claude(command, log):
     return proc.returncode, "".join(chunks), time.time() - started
 
 
-def summarize(log, discord, runs, reason, status, code):
+def summarize(log, discord, runs, reason, status, code, started, progress_at_start):
     pending = pending_lines()
+    progress = overall_progress()
     lines = ["反復: %d 回、終了の理由: %s" % (runs, reason)]
     if status:
         lines.append("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
@@ -358,7 +555,23 @@ def summarize(log, discord, runs, reason, status, code):
     log.say("--- まとめ ---")
     for line in lines:
         log.say(line)
-    discord.post("**無人運転を終えた**（終了コード %d）\n%s" % (code, "\n".join(lines)))
+    discord.post("\n".join([
+        "## 🏁 無人運転 終了",
+        "",
+        "%s ステータス" % SECTION,
+        "",
+        "- 終了コード: %d" % code,
+        "- 反復: %d 回" % runs,
+        "- 終了の理由: %s" % reason,
+        "- 稼働時間: %s" % duration_text(time.time() - started),
+        "- 進捗率: %s（開始時 %s）" % (progress_text(progress), progress_text(progress_at_start)),
+        "- HEAD: %s（%s）" % (head(), branch()),
+        "",
+        "%s 🚨 要確認（ユーザー）" % SECTION,
+        "",
+        ("進捗記録に未回答が %d 件あります（一覧は有人セッションの始めに出します）。" % len(pending))
+        if pending else "なし",
+    ]))
     return code
 
 
@@ -433,13 +646,25 @@ def main():
             if action == "stop":
                 log.say("予算の決まりでは今は走らない")
                 return 2
+        if previous:
+            report, images = run_report(0, 0, 0, previous, "", [], overall_progress(), time.time())
+            log.say("前回の状態ファイルから組んだ反復の報告の見本（添付 %d 枚）:\n%s" % (len(images), report))
         log.say("dry run なので走らせない")
         return 0 if probe.returncode == 0 else 3
 
     claim_driver(log.path)
-    discord.post("**無人運転を始めた**\nブランチ %s、HEAD %s、終了の時刻 %s、反復の上限 %s" % (
-        branch(), head(), stamp(deadline) if deadline else "なし",
-        args.max_iterations if args.max_iterations is not None else "なし"))
+    driver_started = time.time()
+    progress_at_start = overall_progress()
+    discord.post("\n".join([
+        "## 🚀 無人運転 開始",
+        "",
+        "%s ステータス" % SECTION,
+        "",
+        "- ブランチ: %s（HEAD %s）" % (branch(), head()),
+        "- 終了の時刻: %s" % (stamp(deadline) if deadline else "なし"),
+        "- 反復の上限: %s" % (args.max_iterations if args.max_iterations is not None else "なし"),
+        "- 進捗率: %s" % progress_text(progress_at_start),
+    ]))
     runs = 0
     stalled = 0
     last_status = None
@@ -471,6 +696,11 @@ def main():
             runs += 1
             before = head()
             stamp_before = status_stamp()
+            pending_before = set(line for _, line in pending_lines())
+            try:
+                os.remove(SHOT_QUEUE)
+            except OSError:
+                pass
             run_started = time.time()
             log.say("=== 反復 %d 開始: HEAD %s (%s)" % (runs, before, branch()))
             exit_code, output, seconds = run_claude(command, log)
@@ -483,12 +713,13 @@ def main():
                 ("result=%s step=%s reason=%s" % (status.get("result", "?"), status.get("step", ""),
                                                   status.get("reason", ""))) if status else "書かれていない")
             log.say("=== " + footer)
-            discord.post("**%s**\n%s" % (footer, output.strip() or "（出力なし）"))
-            shots = new_screenshots(run_started)
-            if shots:
-                discord.post_images(shots[:SCREENSHOTS_PER_RUN], "反復 %d の HighResShot（%d 枚%s）" % (
-                    runs, len(shots),
-                    "、先頭の %d 枚を送る" % SCREENSHOTS_PER_RUN if len(shots) > SCREENSHOTS_PER_RUN else ""))
+            new_pending = [line for _, line in pending_lines() if line not in pending_before]
+            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, overall_progress(),
+                                        run_started)
+            if images:
+                discord.post_images(images, report)
+            else:
+                discord.post(report)
             if exit_code is None:
                 reason, code = "Claude を起動できない", 3
                 break
@@ -513,7 +744,7 @@ def main():
                 time.sleep(args.pause)
     except KeyboardInterrupt:
         reason, code = "中断（Ctrl+C）", 130
-    result = summarize(log, discord, runs, reason, last_status, code)
+    result = summarize(log, discord, runs, reason, last_status, code, driver_started, progress_at_start)
     log.close()
     return result
 

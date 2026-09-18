@@ -2,7 +2,7 @@
 
 2026-09-17 にユーザーが示した最終目標を、Claude が段階（項目）に分解したもの。**1 項目 = 進捗記録 1 件**（`.claude/progress/`）。順序は依存と「早く通しで遊べる形にする」ことで決めた。運用は `.claude/guides/autonomy.md` の「何を作業するか」: 進捗記録が無いときは「未着手」で依存が満たされた最初の項目を取り、最初の反復は計画（進捗記録を作りステップに分けてコミット）だけで終える。項目が終わったら状態を「完了（日付）」にし、次の項目は次の反復で始める。大規模な項目は進捗記録の中でステップに分ける（`.claude/guides/git-workflow.md` の大規模改修 = 作業ブランチ）。
 
-各項目は「目標 / 完了の条件（何を測って何に合えば終わりか）/ 根拠の置き場 / 依存 / 状態」。根拠は原則コード（`pak_reference_2/`。テレポーテーションは `pak_reference/`。`.claude/guides/original-fidelity.md`）。数は本家のレベルの書き出し（`_levels/06_Hospital*.scene.json`）から数えた。
+各項目は「目標 / 完了の条件（何を測って何に合えば終わりか）/ 根拠の置き場 / 依存 / 規模（下の「進捗率」）/ 状態」。根拠は原則コード（`pak_reference_2/`。テレポーテーションは `pak_reference/`。`.claude/guides/original-fidelity.md`）。数は本家のレベルの書き出し（`_levels/06_Hospital*.scene.json`）から数えた。
 
 番号は項目を指すための名前で、**作業の順は並び順**（「最初の項目」は上から数える）。22・23 は 2026-09-17 の要確認の回答から足した項目で、項目 4 の次に置いた。15・16（入口）は 2026-09-18 に取りやめた（経緯として残す）。
 
@@ -51,6 +51,17 @@
 - **2026-09-17 の要確認の回答（ほか）**: Vanish の煙は今の形（粒子は原作の値、材質のフェードだけ仮の `SMOKE_FADE_*`）でよい。シャードをまとめて回収したときの音の重なりはこのままでよい。テレキネシスの球の灯は本家の見え方に合わせて弱め、テレキネシスの力場の材質と Telepathy の印は本家の観察を続けて詰める（項目 23）。駆動役の使用量の読み方は当面決めない（今の `--usage-cmd` / `--no-usage-check` のまま）、上限の返事の文言も指定なし（今の仮のまま）。
 - 既に決まっていたこと（そのまま）: パワー 6 種は Lv5 固定で最初から使える（祭壇での購入は無い。祭壇は脱出にだけ使う）、ライフ 3、制限時間なし、シャードはワサミ餅、原作のロゴとキャラクターのモデルは使わない。
 
+## 進捗率（Discord の反復の報告）
+
+2026-09-18 のユーザーの指示「進捗率は、全体の発足〜最終目標を母数として概算を出します」から。駆動役 `Tools/overnight.py`（`overall_progress`）が、反復ごとにここから計算して Discord の報告に出す。
+
+- **進捗率 = 済んだ規模 ÷ 全体の規模**。
+  - 全体 = 作業一覧の前に済んだ土台 + 取りやめ以外の各項目の「規模」。
+  - 済んだ = 土台 + 状態が「完了」の項目 + 進行中の項目の規模 × その進捗記録の「計画」のうちチェック済みのステップ（字下げの無い `- [x]`）の割合。記録の `# ` の題に「項目 N」があれば、項目 N の記録とみなす。
+- **規模**は作業量の目安の相対値（1 = 小さな直し・見た目の詰め、3 = 仕組み 1 つ、5 = ゾーン全体に効く大きな仕組み）。2026-09-18 に Claude が各項目の中身から見積もった。**項目を足すときは規模も書く**（規模の無い項目は数えない）。
+- 作業一覧の前に済んだ土台の規模: 8
+  - 2026-09-16〜17 の、プロジェクトの雛形、ステージの前処理と Zone 1・2 の組み立てと焼き込み、プレイヤー、タブレット、パワー 5 種、シャード。git の 48 コミット分で、作業一覧の完了した 5 項目（規模 9）と見比べて決めた。
+
 ## 項目
 
 ### 1. タブレットのパワーの残り（テレキネシス・実機との見比べ・仕上げ）
@@ -59,6 +70,7 @@
 - 完了の条件: 進捗記録 `20260916-tablet-powers.md` のステップ 10a〜12 が完了し、記録が消えて `feature/tablet-powers` が main にマージされている。
 - 根拠: `.claude/references/powers/`、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/Powers/BP_TelekinesisPower.txt`。
 - 依存: なし。
+- 規模: 3
 - 状態: **完了（2026-09-17）**。結果は実装記録 04・06、残った差と仮の値は 04 記録の「既知の制約・注意点」。2026-09-17 の回答で、テレキネシスの灯と材質、Telepathy の印は項目 23 で詰める。
 
 ### 2. 既存の修正 2 件（マウスの視点移動が遅い・スピードブーストの集中線がノイズに見える）
@@ -67,6 +79,7 @@
 - 完了の条件: (1) 同じマウスの移動量に対する回転角が最新版の実機と一致する（`Tools/desktop.py` の `look` で同じ量を送って収録し、画面の回転を測る）。(2) ブースト中の画面（`observations/ours/`）で集中線が本家の実機の収録と同じ形（放射状の線のコマ送り）に見える。
 - 根拠: 実装記録 02・04、`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini`、`pak_reference_2/_bytecode/DDeception/Content/UI/Main/Powers/UMG_SpeedBoost.txt`、最新版の実機。
 - 依存: 1（同じ C++ とマスターを触るので、マージの後）。
+- 規模: 1
 - 状態: **完了（2026-09-17）**。視点は Enhanced Input が `AxisConfig` の感度 0.07 を自動で重ねていたための 0.07² の二重掛けで、C++ の Scalar を外して実機と同じ 0.175°/カウントにした（02 記録・症状索引）。集中線は `M_Speedlines` の FlipBook を実機に合わせて 2 × 5・30 コマ/s にした（04・01 記録。測り方と値は `observations/README.md` の「視点の速さと集中線」）。2026-09-18 に、ユーザーの指摘（走査線が見える）で `M_Speedlines` の Opacity にテクスチャの A をつないだ（未接続で、A が 0 の画面いっぱいの横線が出ていた。原作のコンパイル済みシェーダーのとおり。04 記録）。
 
 ### 3. ワサミシャードの光（紫の明滅と、紫でやや弱い回収の閃光）
@@ -75,6 +88,7 @@
 - 完了の条件: PIE の収録で、餅の発光が周期的に強弱し（周期・強さは仮でよい。要確認に書く）、回収の閃光の色相が紫で、画面の最大輝度が今の `P_ky_flash3` より低い。本家の紫の灯（175、半径 200、(194, 0, 255)）は変えない。
 - 根拠: 実装記録 06（`AWasamiShard`、`M_DD_WasamiMochi`、`P_ky_flash3` の推定の材質）。本家に無い本作独自の見た目なので、色と強さは仮の値（`.claude/guides/autonomy.md` の線引き）。
 - 依存: 1。
+- 規模: 1
 - 状態: **完了（2026-09-17）**。餅は `M_DD_WasamiMochi` の自己発光に紫の波（強さ 1.0・周期 2 s、位相は個体ごとの乱数）を足して明滅し、回収の閃光は本作の版 `/Game/Wasami/Shard/P_WasamiShardFlash`（`P_ky_flash3` の色を紫 × 各色の最大 ^ 0.5 × 0.8）にした。本家の紫の灯は変えていない。PIE の 4.4 m 先で、閃光の中心の最大輝度 247 → 170・色相 299°（実装記録 06、測り方と値は `observations/README.md` の「シャードの光の基準」「餅の紫の明滅」「紫の回収の閃光」）。2026-09-17 の回答で、閃光の値は確定、餅の明滅は項目 22 で外す。
 
 ### 4. 敵ワサミの素体（モデル・アニメ・敵の受け口）
@@ -83,6 +97,7 @@
 - 完了の条件: 原本を `SourceArt/Wasami/`（Git LFS）に写し、取り込み（`wasami_tools` のツールセット）が `/Game/Wasami/Enemy` にメッシュ・スケルトン・v3 のアニメ 16 本と捕獲の 3 本を作り、一覧（`.claude/references/enemy-wasami-motions.md`）の役で引ける。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で `Stun_Loop` をループして明けに `Stun_Recover` で起き上がる（無名のモーションの前半と後半）。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。
 - 根拠: `tmp/enemy_wasami_v3.glb`（Blender 4.5 の glTF、骨 28、UE のマネキン系の名前）、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.txt`（部品と気絶）、実装記録 04（インターフェース）。
 - 依存: 1。
+- 規模: 3
 - 状態: **完了（2026-09-18）**。`WasamiDDTools.import_wasami_enemy` が `/Game/Wasami/Enemy` に `SK_WasamiEnemy` と役の名前のアニメ 19 本（`A_WasamiEnemy_<役>`）を作り、`AWasamiEnemy`（本家のナースの値、0.5 s ごとの判断で気絶して 17 s 後に Patrol）と `UWasamiEnemyAnimInstance`（本家のナースの ABP の木、全身の 1 回再生 `PlayOnce`）が動く（実装記録 07）。PIE で立ち姿・巡回・追跡・Nightmare・気絶と明け・Telepathy・Vanish・1 回再生 9 本を確かめた（`observations/README.md` の「敵ワサミ」）。`Chase_VaultLand` は取り込みで床から跳ぶ形に直した。敵はまだレベルに置かれず（`SpawnEnemy` を呼ぶのは項目 6・7）、仮の的 `AWasamiTestEnemy` とそのテストは残してある。再生の速さ・Nightmare の切り替え・待機の選択・`Chase_VaultLand` の形は下の「未回答の要確認」。
 
 ### 22. ワサミシャードの見た目の変更（明滅をやめる・1.5 倍・本家のシャードのように回す）
@@ -91,6 +106,7 @@
 - 完了の条件: (1) `M_DD_WasamiMochi` の紫の明滅（`Pulse*` と、`AWasamiShard` が入れる位相の乱数）を外し、自己発光を WebGL 版の `Glow` 0.3 だけに戻す。本家の紫の灯と回収の閃光 `P_WasamiShardFlash`（色は `dd_shards` の紫の定数から作る）は変えない。(2) 餅のモデルを `tmp/wasami_mochi_v3.glb`（10 万三角形、テクスチャ 2048²・2048²・4096²。一覧の「ワサミ餅」）に替え、`SourceArt/Wasami/` の原本を置き換える。679 個を置くので Nanite とテクスチャの大きさの上限を決める。(3) 餅の大きさを今の 1.5 倍にする（`Mochi` の拡縮 0.055 → 0.0825。10 倍の下で 0.55 m → 0.825 m）。当たりのカプセル（原作の値）と灯は変えない。(4) 回り方を本家の結晶と同じに見えるようにする。今も本家の結晶のアニメ `soul_shard_skeletal_anim_loop` と同じ Z 軸まわりの速さ（個体ごとに 10.8〜32.4 °/s）でヨーが回っているが、顔が真上を向いた丸い餅なので回って見えにくい。計画で、最新版の実機の結晶と PIE の餅を同じ撮り方で並べ、回る軸・餅の向き・速さの見え方の違いを確かめてから、合わせ方を決める（餅の向きを変えるなら理由を決定事項に書く）。PIE の収録で、明滅が無いこと、大きさが 1.5 倍であること、本家のように回って見えることを確かめる。
 - 根拠: 実装記録 06（`AWasamiShard`、`M_DD_WasamiMochi`、「餅の回転」）、`observations/README.md`（本家の結晶は 21.0 秒で 1 周）、`pak_reference_2/_assets/**/soul_shard_skeletal_anim_loop*`。
 - 依存: 3。
+- 規模: 1
 - 状態: **完了（2026-09-18）**。(1) `M_DD_WasamiMochi` の `Pulse*` と `AWasamiShard` の位相の乱数を消し、自己発光を `Glow` 0.3 だけに戻した。(2) 餅を `wasami_mochi_v3`（101,368 三角形、PNG の 2048²・2048²・4096²、Nanite）に替え、Zone 1 の待合（餅 337 個）でフレーム時間が変わらず VRAM が +0.20 GB だったので**テクスチャの上限は設けない**と決めた。(3) `MochiSize` 0.55 → 0.825 m（画面の横幅 1.52 倍）。(4) 回り方は本家の既存の収録と同じ撮り方で 45 秒撮って見比べ（本作 13.3 s / 1 周 = 27.1 °/s、本家の実機の 1 個は 21.0 s = 17.1 °/s）、**速さは個体ごとの乱数（10.8〜32.4 °/s）のまま直さない**と決めた（本家の `BP_Shard` が同じ乱数を引くので乱数そのものが原作の値。軸と向きもコードのとおり）。実装記録 06 の「餅のモデル」「餅の回り方」、測り方と値は `observations/README.md`。要確認は残っていない。
 
 ### 23. パワーの見た目の詰め（テレキネシスの力場と球の灯、Telepathy の印）
@@ -99,6 +115,7 @@
 - 完了の条件: (1) 本家と同じ条件（Lv4・画質「高」・速さ 0.25）で、力場の間の画面の平均が本家 (95〜99, 141〜147, 186〜192) に近づく（今の本作は (123〜127, 174〜176, 216〜218)。線形の明るさで、本家の灯の寄与は本作の約 0.5〜0.7 倍。灯を切ると本家よりずっと暗い）。灯は `P_ky_forceField_Telekinesis` の `sphere` の `ParticleModuleLight`（原作の `BrightnessOverLife` 5）。弱める値は、原作から離れる本作の調整としてコードと実装記録 04 に書く。(2) 最新版の実機で、テレキネシスの力場（オーラの 4 層と地面の輪の流れ、球の幕の筋〈本作は少ない〉、終わりの破片）と、近くのナースの Telepathy の印（雲の流れる速さと向き、縁のこぶ〈本作は丸に近い〉。前回の収録では、雲の変わる速さは今の仮の値の 1〜1.5 倍）を長めに撮り、`dd_powers.py` の推定のグラフ（`_build_wall02`・`_build_aura7`・`_build_shockwave02`、Telepathy の `M_DD_Telepathy`）と仮の値（`AURA_LAYERS`・`SHOCKWAVE_PANS`・`TELEPATHY_PAN_*`、どれも `TODO(仮)`）を見比べて詰める。撮るものの一覧を先に作り、本家は 1 回・30 分を目安にする（`.claude/guides/observation.md`）。
 - 根拠: 実装記録 04 の「既知の制約・注意点」、`observations/README.md`（パワーの作業のステップ 11b1・11b4・11b5）、`.claude/references/powers/03-telekinesis-vanish.md`・`04-primal-telepathy.md`。
 - 依存: 1。
+- 規模: 2
 - 状態: 未着手。
 
 ### 5. ゲームの流れの土台（死亡・ライフ・チェックポイントとセーブ・死亡画面）
@@ -107,6 +124,7 @@
 - 完了の条件: ゲームモードの `DeathEvent` で入力が止まりタブレットが下り、`UMG_DeathScreen`（WebGL 版 10 記録の死亡画面の時間・アニメ・音）が出て、ライフが残っていれば最後のチェックポイントで再開し（シャードの回収状態はセーブどおり）、0 なら RESTART / LAST CHECKPOINT / QUIT TO TITLE。チェックポイントの通過で右下に `Progress Saved`。セーブは `SaveGame`（本家の `BP_DD_levelStructSave` の項目）。パワーの死亡のリセット（実装記録 04）がここから呼ばれる。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_GameMode.txt`、`06_Hospital_Zone_01.txt`（`Respawn`、`Struct Save`、`Progress Saved`）、`pak_reference/_bytecode/DDeception/Content/Blueprints/UMG/UMG_DeathScreen.txt`、WebGL 版 04・10 記録。
 - 依存: 1。
+- 規模: 3
 - 状態: 未着手。
 
 ### 6. ゾーンの進行（開始の流れ・障壁とシャードチェッカー・全回収・ガレージリフトで Zone 2 へ）
@@ -115,6 +133,7 @@
 - 完了の条件: Zone 1 の開始（エレベーターの上昇と到着 `06_Hospital_Zone01_ElevatorArrive`〈扉 2 枚の動き、14.1 s〉、`Spawn`、Bierce の台詞、目的の帯 `COLLECT ALL SHARDS`、タブレットの矢印 `BP_ArrowPointer`）→ シャード 337 の全回収で `All Shards Collected`（ゾーンの障壁 `BP_ZoneBarrier` とシャードチェッカー `BP_ZoneShardChecker`）→ ガレージリフト `BP_06_GarageLift_Zone1_Special` で Zone 2 へ移り（レベルの切り替えとセーブ）、Zone 2 の開始（`BP_06_GarageLift` ×2、`BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5、地図 `BP_MapTexture_MultiFloor`・`BP_MapArea` ×2、到着の後の捕まる場面 `06_Hospital_Zone2_Capture` と独房の場面 `06_Hospital_Zone2_Cell`〈レベル BP の `Arrive_CaptureCutscene`・`Cell Cutscene Start` ほか〉）まで PIE で通しで遊べる。Zone 1 の途中の出来事 `06_Hospital_Zone1_06Event` も作る。場面のナースの演技は v3 の動きで代用する（`.claude/references/enemy-wasami-motions.md` の「場面の代用」）。数と値はレベル BP とアクタのプロパティどおり。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`、`_sequences/06_Hospital_Zone01_ElevatorArrive.json`・`06_Hospital_Zone1_06Event.json`・`06_Hospital_Zone2_Capture.json`・`06_Hospital_Zone2_Cell.json`、`Blueprints/06_Hospital/Lifts/**`、`Blueprints/Main/BP_ZoneBarrier.txt`、`_levels/06_Hospital_Zone_0*.full.json`。
 - 依存: 4、5。
+- 規模: 5
 - 状態: 未着手。
 
 ### 7. NavMesh と敵の AI（追跡型）
@@ -123,6 +142,7 @@
 - 完了の条件: 両ゾーンに NavMesh（本家の `NavMeshBoundsVolume` はブラシの形が書き出しに無いので、ステージ全体を覆う箱と `NavModifierVolume` 相当を本作で置く）。行動ツリーの値（速さ・視界の距離と角度・Camera チャンネルの視線・見失うまでの時間・巡回の行き先）と出現（Zone 1 の `Spawn Nurses_06`、Zone 2 の `BP_06_ReaperNurse_Sentry` ×6 の位置）がコードどおり。Nightmare（全回収後）で `run_fast_2`。追跡中は約 8 秒に 1 回、v3 の追いかける動き 6 本からランダムに流す（前方が空いているときだけ、速さは 800 cm/s のまま。`.claude/references/enemy-wasami-motions.md` の「追跡中のランダムの動き」。頻度と早回しの上限はテストにする）。パワーの作用（Primal・オーブの気絶 17 s〈ナースの BP の `Delay 17.0`。15 s はホテルの猿の行動ツリーの値。項目 4 の調査〉、Vanish で見失う、Telepathy の印）が効く。PIE で巡回 → 発見 → 追跡（ランダムの動きを含む）→ 接触までを収録で確かめる（接触の先は項目 9）。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse*.txt`、`Animation/Enemies/Nurse/Reaper/*AnimBlueprint*.txt`、行動ツリー（`_assets/DDeception/Content/AI/**`。無ければ `_bytecode` の BTT）、WebGL 版 15 記録（頭脳の作り）。
 - 依存: 4、6。
+- 規模: 5
 - 状態: 未着手。
 
 ### 8. 動く部品と罠（両開き扉・除細動器・スピードバリア・のこぎりの罠・扉の破壊）
@@ -131,6 +151,7 @@
 - 完了の条件: Zone 1 の両開き扉 62 + Zone 2 の 1、除細動器 23 + 13、スピードバリア 4（`BP_SpeedBarrier`。Speed Boost の突進でだけ壊れる。ダッシュでは拒否）、Zone 2 ののこぎりの罠 74（`BP_06_sawTrap_short01` 27・`short02` 16・`medium` 21・`long01` 10）、`BP_06_Hospital_DoorBreak` ×2 が、位置・タイミング・音・死亡の判定までコードどおりに動く。PIE で各種 1 つずつ収録。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_Defib.txt`・`BP_06_DoubleDoors.txt`・`BP_06_Hospital_DoorBreak.txt`・`Traps/BP_06_sawTrap_medium.txt`・`Traps/BP_06_TrapBase.txt`、`Blueprints/Main/Traps/BP_SpeedBarrier.txt`、`_levels/06_Hospital_Zone_0*.full.json`。
 - 依存: 5（死亡）。
+- 規模: 4
 - 状態: 未着手。
 
 ### 9. 捕獲の演出（黒背景 + 敵ワサミ + 本家ホテルのカメラ、3 種のシャッフル）
@@ -139,6 +160,7 @@
 - 完了の条件: 敵に触れた瞬間に敵を全部消し、入力を止め、タブレットを下ろし、`JumpscareCam` と等価の別室のカメラに切り替え、`Backflip`・`sliding_rool`・`Stylish_Walk`（旧 glb の 3 本を v3 の体で。2026-09-18 の回答）を重複なしのランダム（直前と同じものを避ける）で再生し、本家のシーケンスのカメラのトラック（位置・回転・FOV）をワサミのモーションの長さに伸縮して当て、3.5 s 後に `UMG_DeathScreen`。収録で本家旧版の実機（ホテル）の捕獲と並べ、黒背景・寄り・揺れの体が同じに見える。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/01_Hotel.txt`（`JumpscareMonkey`、`Monkey_Killshot_03a*` の参照、`JumpscareShake` 0.3、Delay 3.5）、`pak_reference/_levels/01_Hotel.full.json`（`JumpscareCam` と `Monkey_Killshot_01`・`02`・`03a`・`03a2`〜`03a5` の LevelSequence。`_sequences/` には書き出されていない）、`pak_reference/_camera/_camera_shakes.json`、WebGL 版 15 記録（`jumpscare.ts`。3 本と読んだが、レベルの参照は 7 本あるので本数と選び方はこの項目で確かめる）。
 - 依存: 4、5、7。
+- 規模: 3
 - 状態: 未着手。
 
 ### 10. 特殊シャード 2 種（スタンオーブ・敵の位置が地図に出るボーナスシャード）
@@ -147,6 +169,7 @@
 - 完了の条件: 出現点（Zone 1: オーブ 11・ボーナス 10、Zone 2: 10・10）と周期・最初の出現の時刻がレベル BP とアクタのコードどおり。メッシュと材質は原作のアセット（`power_orb`、赤いシャードの材質）。取得で `UMG_VignetteSides`（`ENEMIES STUNNED` / `ENEMIES REVEALED`。WebGL 版 10 記録）が出て、全敵に `SetState(Stun, byOrb)`、地図に敵の印。テレキネシスでは引き寄せられない。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_PowerOrb.txt`・`BP_BonusShard.txt`、`_assets/**/BP_PowerOrbSpawnPoint*`・`BP_BonusShardSpawnPoint*`、`.claude/references/dark-deception/04-mechanics-items.md`（原作データの値）、WebGL 版 08 記録。
 - 依存: 7、9（気絶のモーションと敵の印）。
+- 規模: 2
 - 状態: 未着手。
 
 ### 11. Zone 2 の Matron（大きい敵ワサミ。視界コーンの中ボス）
@@ -155,6 +178,7 @@
 - 完了の条件: 巡回路と視界コーンの形・速さ・見つかった後の行動がコードどおり。モデルは `tmp/boss_wasami.glb`（2026-09-18。アニメの役は `.claude/references/enemy-wasami-motions.md` の「ボスワサミ」）で、大きさは本家の Matron から決める。PIE で見つからずに通れることと、見つかると追われることを収録。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Animation/Enemies/Nurse/Matron/MiniBoss/BP_06_Matron_MiniBoss.txt`、`Blueprints/06_Hospital/Miniboss/*.txt`、`_levels/06_Hospital_Zone_02.full.json`。
 - 依存: 7。
+- 規模: 2
 - 状態: 未着手。
 
 ### 12. 秘密と収集物（シークレット）
@@ -163,6 +187,7 @@
 - 完了の条件: `BP_SecretRoomZone` ×1・`BP_07_Zone1_SecretWall` ×1（Zone 2）、`BP_MysteryCollectable` ×3（Zone 2）、`BP_Collectable` ×2（Zone 1）+ ×1（Zone 2）が（入口の `BP_MysteryCollectable_LoreNote` ×1 は入口ごと作らない。2026-09-18）、見つけ方・取り方・表示（`UMG_Collectables_Secret`）までコードどおり。取ると進行にセーブされる。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Shared/BP_SecretRoomZone.txt`、`Blueprints/Main/BP_MysteryCollectable*.txt`・`BP_Collectable.txt`、`UI/Main/UMG_Collectables_Secret.txt`、`_levels/06_Hospital*.full.json`。
 - 依存: 5、6。
+- 規模: 2
 - 状態: 未着手。
 
 ### 13. 脱出（ガレージの祭壇 → 欠片 → ポータル）と視線の手のマーク
@@ -171,6 +196,7 @@
 - 完了の条件: 全回収で祭壇の球（`ring_statue_orb`）が消え、見て左クリック（視線の手のマーク `UMG_Interact`。実装記録の予定 05）で `Ring_Piece_Pickup` と `UMG_01_RingPieceCollect`、Bierce の台詞、ポータル（本家 `BP_00_Teleport` の見た目と `21-Ballroom_portal_V2` の音）が現れ、くぐると敵を消して脱出（項目 14 の画面へ）。全回収前は祭壇を使えない。ガレージの位置は本家の `Postmaze_Trigger_Garage`。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/03_Manor_Zone2.txt`（@1385〜@4380 の祭壇と欠片、`Portal Extra Brightness`）、`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt`（@43〜 Postmaze、@1423〜@1773 の台詞・曲のフェード・ポータルの音・敵の除去）、`Blueprints/01_Hotel/BP_01_Statue.txt`、`Blueprints/00_Ballroom/BP_00_Teleport.txt`、`UI/Main/UMG_Interact`。
 - 依存: 6、7。
+- 規模: 2
 - 状態: 未着手。
 
 ### 14. 脱出後のスコア表示画面（`UMG_LevelClear`。WebGL 版と同じ）
@@ -179,6 +205,7 @@
 - 完了の条件: WebGL 版 10 記録（`level-clear.ts`）と 04 記録（`results.ts`）の値どおりに動き、NEXT でタイトルへ戻る（セーブは消す）。ランクの規則は本家のレベル BP が `UMG_LevelClear` に入れる値。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt`、`01_Hotel.txt`（値の計算）、WebGL 版 04・10 記録。
 - 依存: 13。
+- 規模: 1
 - 状態: 未着手。
 
 ### 15. 入口レベル `06_Hospital`（レベルの取り込みと組み立て）
@@ -203,6 +230,7 @@
 - 完了の条件: WebGL 版 10 記録（`title.ts`）の曲線・時間・音量どおりに動き、NEW GAME で Zone 1（エレベーターの到着から。項目 6）へ、RESUME でセーブの地点へ。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`・`UMG_PopUp.txt`、`_assets/**/UMG_TitleScreen.json`、WebGL 版 10 記録、`<WEBGL>/public/title/`。
 - 依存: 5（セーブ）。
+- 規模: 2
 - 状態: 未着手。
 
 ### 18. オプション画面とポーズ画面（WebGL 版と同じ）
@@ -211,6 +239,7 @@
 - 完了の条件: WebGL 版 04 記録（`settings.ts`）の既定値と適用先、10 記録（`options.ts`・`pause.ts`）の配置・アニメ・音どおり。マウス感度は `AWasamiPlayerCharacter::MouseSensitivity`（`Look` の値に掛ける。本家の `Character.MouseSensitivity` と同じ）に入れ、`DefaultInput.ini` の `AxisConfig` の 0.07 と視点の修飾子には触らない（項目 2 の結果。02 記録）。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Main/UMG_Options.txt`、`UI/Menu/Pause/UMG_Pause.txt`、`Blueprints/Save/BP_DD_Settings_SaveGame`、WebGL 版 04・10 記録。
 - 依存: 17。
+- 規模: 2
 - 状態: 未着手。
 
 ### 19. 曲と環境音・効果音の残り
@@ -219,6 +248,7 @@
 - 完了の条件: `BP_06_MusicPlayer`（Zone 1）・`BP_06_MusicPlayer_Zone2` の切り替えとフェードがコードどおり。レベルの `AudioComponent`（Zone 1 43・Zone 2 146）と `AmbientSound`・`AudioVolume` を配置どおりに置く。減衰は SoundCue と減衰設定の値どおり。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_MusicPlayer*.txt`（`BP_08_MusicPlayer` の派生）、`_soundcues.json`、`_levels/06_Hospital*.full.json`、実装記録 01（`UWasamiSoundCueLibrary`）。
 - 依存: 6。
+- 規模: 2
 - 状態: 未着手。
 
 ### 20. 台詞と字幕（Bierce の台詞、WebGL 版のワサミの声）
@@ -227,6 +257,7 @@
 - 完了の条件: 各レベル BP の `Talk` の呼び出しがそろい、字幕は本家の `_localization.json` / `_strings.json` の文言。ワサミの声は WebGL 版 06・15 記録の鳴らし方（バス・音量・字幕の秒数・場面）どおり。原本は `<WEBGL>/voices/`（wav 55）と `<WEBGL>/public/voices/`（mp3 16 + manifest）。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/**/BierceTalk_Blueprint.txt`、`_audio.json`（`Audio/Dialogue/Bierce/Ch06/TT/*`）、WebGL 版 06・15 記録。
 - 依存: 7、17。
+- 規模: 2
 - 状態: 未着手。
 
 ### 21. 仕上げ（通しプレイ・性能・パッケージ）
@@ -235,6 +266,7 @@
 - 完了の条件: 通しプレイの収録（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）で止まる箇所が無い。両ゾーンの性能の計測が `.claude/guides/performance.md` の目安に収まる。パッケージは**配布の話なので先にユーザーに確認する**（`.claude/guides/distribution.md`。無人モードでは飛ばして要確認に書く）。
 - 根拠: `.claude/guides/performance.md`・`distribution.md`、実装記録 00。
 - 依存: 1〜20（取りやめた 15・16 を除く）、22、23。
+- 規模: 3
 - 状態: 未着手。
 
 ## 未回答の要確認（ユーザー）
