@@ -10,6 +10,10 @@
 #include "Engine/BlockingVolume.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelSequence.h"
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
+#include "MovieScene.h"
 #include "Tests/AutomationCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -33,6 +37,19 @@ namespace
 		Volume->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		Volume->GetBrushComponent()->SetCollisionEnabled(Enabled);
 		return Volume;
+	}
+
+	/** A level sequence actor placed from the original's of that name, with an empty sequence of Seconds. */
+	ALevelSequenceActor* SpawnSequence(UWorld* World, const TCHAR* Name, double Seconds)
+	{
+		ULevelSequence* Sequence = NewObject<ULevelSequence>(GetTransientPackage());
+		Sequence->Initialize();
+		UMovieScene* Scene = Sequence->GetMovieScene();
+		Scene->SetPlaybackRange(FFrameNumber(0), Scene->GetTickResolution().AsFrameNumber(Seconds).Value);
+		ALevelSequenceActor* Actor = World->SpawnActor<ALevelSequenceActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+		Actor->SetSequence(Sequence);
+		Actor->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
+		return Actor;
 	}
 
 	/** The player walking into the trigger box of that name. */
@@ -146,6 +163,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	ABlockingVolume* Doors = SpawnBlocker(World, TEXT("BlockingVolume_1"), ECollisionEnabled::NoCollision);
 	ABlockingVolume* AmbulanceSide = SpawnBlocker(World, TEXT("BlockingVolume_Ambulance_2"), ECollisionEnabled::NoCollision);
 	AWasamiShard* Shard = World->SpawnActor<AWasamiShard>(FVector(0., 0., -90000.), FRotator::ZeroRotator);
+	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone01_ElevatorArrive"), 14.1);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -154,6 +172,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("4: the lift arrives"), Flow->GetSection(), FName(TEXT("04_Start")));
+	TestTrue(TEXT("its sequence plays"), Arrival->GetSequencePlayer() && Arrival->GetSequencePlayer()->IsPlaying());
 	TestTrue(TEXT("no objective yet"), Objective(Mode).IsEmpty());
 	// A trigger box walked through before the zone listens is spent (its DoOnce), as in the original; these are walked
 	// through only once they are bound.

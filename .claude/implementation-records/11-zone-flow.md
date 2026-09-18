@@ -18,7 +18,7 @@ updated: 2026-09-18
 ## 役割
 本家の病院の 2 つのレベル BP（`pak_reference_2` の `06_Hospital_Zone_01`・`06_Hospital_Zone_02`）が受け持つ「区間の流れ」。本作のレベルにはレベル BP が無いので、ゲームモードが開始時にゾーンの流れのアクタ（`AWasamiZone1Flow`・`AWasamiZone2Flow`）を出し、それが開いたチェックポイントの区間を始め（本家の `Spawn`）、トリガーの箱・全回収・チェックポイントの保存・目的の文・タブレットの矢印の値で区間から区間へ進める。トリガーの箱は本家の `BP_TriggerBox_Base`（`AWasamiTriggerBox`）。作業一覧の項目 6（ゾーンの進行）のステップ 1 で骨組みを作った。
 
-**流れだけを進める**。場面・シーケンス・扉・障壁・読み込み画面・声（Bierce・ナースの放送）・曲・ナースは、それを作る項目・ステップが埋める。各イベントの中の、本家でそれをする位置にコメントで印を付けてある（`Not yet:` は項目 6 の残りのステップ、`(item N)` は作業一覧の別の項目）。
+**流れを進め、レベル BP が自分で流すもの（レベルのシーケンスと揺れ）を流す**。場面・扉・障壁・読み込み画面・声（Bierce・ナースの放送）・曲・ナースは、それを作る項目・ステップが埋める。各イベントの中の、本家でそれをする位置にコメントで印を付けてある（`Not yet:` は項目 6 の残りのステップ、`(item N)` は作業一覧の別の項目）。
 
 ## 公開インターフェース
 - `AWasamiTriggerBox`（`AActor`）… 本家の `BP_TriggerBox_Base`。
@@ -30,8 +30,8 @@ updated: 2026-09-18
   - `GetSection()` … 最後に来たイベントの本家の名前（`04_Start`・`05_Persistent`・`05 All Shards Collected`・`Miniboss Transition `〈後ろに空白〉など）。
   - 矢印の値: `IsArrowOnShards()`（本家の `Shards?`。既定は真 = `BP_ArrowPointer` の CDO）、`GetArrowColor()`（`Change Color` の色。`TOptional`、与えられるまで未設定）、`GetArrowTarget()`（`Target`）。矢印のアクタ（ステップ 6）がこれを読む。
   - `GetMode()`。
-  - 派生が使う保護の関数: `StartAt(Checkpoint)`（仮想。本家の `Spawn`）、`Enter(Name)`、`BindTrigger(Source, Function)`（本家の `BindDelegate` + `AddMulticastDelegate`: `FScriptDelegate::BindUFunction` を箱の `OnTrigger` に `AddUnique`。箱が無ければ警告）、`BindAllShardsCollected(Function)`（ゲームモードの `OnAllShardsCollected` に同じく）、`SetObjective`、`SaveCheckpoint`（ゲームモードの `SaveCheckpoint`）、`SetArrowShards`・`SetArrowColor`・`SetArrowTarget`、`SetVolumeCollision(Source, Enabled)`（名前のボリュームのブラシの `SetCollisionEnabled`）、`TeleportPlayerTo(PlayerStartTag)`（本家の `K2_TeleportTo(PlayerStart の位置, 回転 0)` と `SetControlRotation(PlayerStart の回転)`）、`After(Seconds, Then)`（本家の `Delay`。弱い参照のラムダをタイマーで。0 秒は次のティック）、`Source(Name)`。
-- `AWasamiZone1Flow` … 定数 `ArrivalShakeSeconds` 7、`ShardCheckDelay` 1、`DoorsBreakSeconds` 25、`TakeOffDelay` 1、`LoadingDelay` 7、`OpenZone2Delay` 2.5。イベント（UFUNCTION）: `On04Intercom`・`On04DoorBreak`・`On05Transition`・`On05AllShardsCollected`・`On05ParkingLotCutscene`・`On06TunnelEnter`・`On06DoorsLock`・`On06ReachAmbulance`。
+  - 派生が使う保護の関数: `StartAt(Checkpoint)`（仮想。本家の `Spawn`）、`Enter(Name)`、`BindTrigger(Source, Function)`（本家の `BindDelegate` + `AddMulticastDelegate`: `FScriptDelegate::BindUFunction` を箱の `OnTrigger` に `AddUnique`。箱が無ければ警告）、`BindAllShardsCollected(Function)`（ゲームモードの `OnAllShardsCollected` に同じく）、`SetObjective`、`SaveCheckpoint`（ゲームモードの `SaveCheckpoint`）、`SetArrowShards`・`SetArrowColor`・`SetArrowTarget`、`PlaySequence(Source)`（本家の `GetSequencePlayer` → `Play`: `src:<名前>` の `ALevelSequenceActor` のプレイヤーを `Play`。無ければ警告）、`PlayCameraShake(Shake, Scale = 1)`（本家の `ClientPlayCameraShake(揺れ, Scale, 0 = CameraLocal, 回転 0)`: プレイヤーのコントローラーの `ClientStartCameraShake`。揺れは `TSoftClassPtr` で、ここで読み込む）、`SetVolumeCollision(Source, Enabled)`（名前のボリュームのブラシの `SetCollisionEnabled`）、`TeleportPlayerTo(PlayerStartTag)`（本家の `K2_TeleportTo(PlayerStart の位置, 回転 0)` と `SetControlRotation(PlayerStart の回転)`）、`After(Seconds, Then)`（本家の `Delay`。弱い参照のラムダをタイマーで。0 秒は次のティック）、`Source(Name)`。
+- `AWasamiZone1Flow` … 揺れ（`EditDefaultsOnly`、`/Game/DD` の本家の揺れの BP。01 記録の「シーケンス」）: `ElevatorShakeClass`（`01_Hotel_Lobby_ElevatorShake`）・`ElevatorShakeStopClass`（`01_Hotel_Lobby_ElevatorShakeStop`）。定数 `ArrivalShakeSeconds` 7、`ShardCheckDelay` 1、`DoorsBreakSeconds` 25、`TakeOffDelay` 1、`LoadingDelay` 7、`OpenZone2Delay` 2.5。イベント（UFUNCTION）: `On04Intercom`・`On04DoorBreak`・`On05Transition`・`On05AllShardsCollected`・`On05ParkingLotCutscene`・`On06TunnelEnter`・`On06DoorsLock`・`On06ReachAmbulance`。
 - `AWasamiZone2Flow` … 定数 `SpikesDeathDelay` 0.5。イベント: `OnCellCutsceneFinished`・`OnSpikesDeath`・`OnMinibossBierceTalk`・`OnMinibossTriggerTransition`・`OnMinibossBehindMatron`・`OnMazeTriggerStart`・`OnMazeAllShards`。
 - デバッグのコンソールコマンド（PIE では `python Tools/pie.py cmd "…"`）: `Wasami.Flow <関数名>`（`WasamiZoneFlow.cpp`。ゾーンの流れのイベントを呼ぶ。例 `Wasami.Flow On04DoorBreak`）。`Wasami.Trigger <本家の名前>`・`Wasami.CollectShards [N]` はゲームモード（06 記録）。
 
@@ -47,7 +47,7 @@ updated: 2026-09-18
 
 ### Zone 1（`AWasamiZone1Flow`、本家 `06_Hospital_Zone_01`）
 - `StartAt`（本家 `Spawn` @13483、`Load Progress By Level(7, 5)`）: 4 → `Start04`、5 → `Persistent05`、6 → `Start06`、ほかは何もしない（7 以上は Zone 2 のもの。0 はゲームモードが 4 にする）。チェックポイントの PlayerStart へ移すのはゲームモード（06 記録）。
-- `Start04`（`04_Start`）: 7 s 後に `04_Intercom` → `On04Intercom`。まだ: `BP_06_DoubleDoors11` の Lock、`06_Hospital_Zone01_ElevatorArrive`、揺れ `01_Hotel_Lobby_ElevatorShake`、7 s 後の揺れの止め・`BP_06_Hospital_DoorBreak_2` の `Enable Switch` と `Finished Event` → `On04DoorBreak`（ステップ 3）。
+- `Start04`（`04_Start`）: シーケンス `06_Hospital_Zone01_ElevatorArrive`（扉 2 枚が 11.3〜13.5 s に開く・音。14.1 s）と揺れ `01_Hotel_Lobby_ElevatorShake`（7.3 s、入り 2 s）→ 7 s 後に揺れ `01_Hotel_Lobby_ElevatorShakeStop`（0.5 s の強い揺れで終わる。本家は前の揺れを止めず重ねるだけ）と `04_Intercom` → `On04Intercom`。まだ: `BP_06_DoubleDoors11` の Lock（ステップ 3c）、7 s 後の `BP_06_Hospital_DoorBreak_2` の `Enable Switch` と `Finished Event` → `On04DoorBreak`（ステップ 3b）。
 - `On04Intercom`: 声だけ（`Nurse_Hospital_Zone01_Event_37_Intercom` 0.6 → 13 s → Bierce。項目 20）。
 - `On04DoorBreak`（`04_DoorBreak`）: `BP_04_Trigger_Maze` → `On05Transition`。まだ: `DoubleDoors11` の `bLocked` 偽・`Open Front`（ステップ 3）、1 s 後の Bierce（項目 20）。
 - `On05Transition`（`05_Transition`）: `SaveCheckpoint(5)` → `Persistent05`。
@@ -80,9 +80,9 @@ updated: 2026-09-18
 
 ## 依存関係
 - 自前: `AWasamiGameMode`（`GetStartCheckpoint`・`SaveCheckpoint`・`CheckShards`・`OnAllShardsCollected`・`CurrentObjective`・`DeathEvent`・`Zone2LevelName`。06・02 記録）、`UWasamiGameInstance::ForgetCollectedShards`、`AWasamiShard`、レベルの組み立て（`dd_level._flow`。01 記録）。
-- レベルシーケンス（2026-09-18、項目 6 のステップ 2）: 流れが再生するシーケンスは、本家どおりレベルに置いた `LevelSequenceActor`（タグ `src:06_Hospital_Zone01_ElevatorArrive`・`src:06_Hospital_Zone1_AmbulanceTakeOff`・`src:06_Hospital_Zone2_Spikes`・`src:06_Hospital_Zone2_Cell_DoorPicked`）にある（`dd_sequence`。01 記録）。フェードの `/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade` はアクタを置かない（`Basic DD Fade Out` が実行時にプレイヤーを作る）。`Not yet:` のシーケンスの所から、ステップ 3〜7 でこれを再生する。
+- レベルシーケンス（2026-09-18、項目 6 のステップ 2）: 流れが再生するシーケンスは、本家どおりレベルに置いた `LevelSequenceActor`（タグ `src:06_Hospital_Zone01_ElevatorArrive`・`src:06_Hospital_Zone1_AmbulanceTakeOff`・`src:06_Hospital_Zone2_Spikes`・`src:06_Hospital_Zone2_Cell_DoorPicked`）にある（`dd_sequence`。01 記録）。フェードの `/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade` はアクタを置かない（`Basic DD Fade Out` が実行時にプレイヤーを作る）。流れは `PlaySequence` でこれを再生する（Zone 1 の 04 から。残りの `Not yet:` のシーケンスはステップ 5・7）。流れの揺れも同じ組み立てが作る（`dd_sequence.CAMERA_SHAKES`）。
 - 使う側: ゲームモード（生成）、プレイヤーのタブレットの帯（`CurrentObjective`。02・03 記録）、これからの矢印（ステップ 6）。
-- エンジン: `UBoxComponent`、`UBrushComponent`（`AVolume`）、`FScriptDelegate::BindUFunction`、`FTimerManager`、`UGameplayStatics::OpenLevel`。
+- エンジン: `UBoxComponent`、`UBrushComponent`（`AVolume`）、`FScriptDelegate::BindUFunction`、`FTimerManager`、`UGameplayStatics::OpenLevel`、`ALevelSequenceActor`・`ULevelSequencePlayer`（モジュール `LevelSequence`・`MovieScene`）、`APlayerController::ClientStartCameraShake`。
 
 ## 既知の制約・注意点
 - **結ぶ前に通ったトリガーの箱は使い切られる**（上）。いまは扉（ステップ 3・4）が無いので、PIE で先に歩くと 04 の `BP_04_Trigger_Maze` などを使い切ってしまう。確かめるときは結ばれてから通すか、`Wasami.Flow`・`Wasami.Trigger` で進める。
@@ -92,10 +92,11 @@ updated: 2026-09-18
 - 本家のレベル BP の開発用の PrintString（`Progress Saved`・`ALL SHARDS COLLECTED!`）と実績は写さない。
 
 ## テスト（`Tests/WasamiZoneFlowTests.cpp`）
-`Wasami.ZoneFlow.TriggerBox`（箱の大きさ・当たり・入る / 出るの発火）、`Wasami.ZoneFlow.Zone1`（4 → 7 s 後の放送 → 扉の破壊 → 保存 5 → シャードの確かめ〈0.03 s 間隔の 2 回は最初の 0.05 s 後に 1 回〉→ 駐車場 → 06 → トンネル → 扉が 25 s → 救急車で保存 7 と塞ぎ）、`Wasami.ZoneFlow.Zone2`（7 → 1 s 後の Bierce の箱 → 保存 8 → 9 → 全回収で 10・球が消える・次のティックで COLLECT THE RING PIECE → 棘で 0.5 s 後に死亡）、`Wasami.ZoneFlow.Start`（5・6・8・9・10 で開いたときの区間と目的、ゾーンの外では流れを出さない）。テストのセーブはスロット `WasamiTest_ZoneFlow`。
+`Wasami.ZoneFlow.TriggerBox`（箱の大きさ・当たり・入る / 出るの発火）、`Wasami.ZoneFlow.Zone1`（4 で到着のシーケンスが流れる〈空の 14.1 s のシーケンスを持つ `ALevelSequenceActor` を置く〉→ 7 s 後の放送 → 扉の破壊 → 保存 5 → シャードの確かめ〈0.03 s 間隔の 2 回は最初の 0.05 s 後に 1 回〉→ 駐車場 → 06 → トンネル → 扉が 25 s → 救急車で保存 7 と塞ぎ）、`Wasami.ZoneFlow.Zone2`（7 → 1 s 後の Bierce の箱 → 保存 8 → 9 → 全回収で 10・球が消える・次のティックで COLLECT THE RING PIECE → 棘で 0.5 s 後に死亡）、`Wasami.ZoneFlow.Start`（5・6・8・9・10 で開いたときの区間と目的、ゾーンの外では流れを出さない）。テストのセーブはスロット `WasamiTest_ZoneFlow`。
 
 ## 確かめたこと（2026-09-18、PIE）
 `Wasami.ResetSave` → Zone 1 を開く（04_Start、目的は空）→ `Wasami.Flow On04DoorBreak` → `BP_04_Trigger_Maze` に立つ（保存 5・COLLECT ALL SHARDS）→ `Wasami.CollectShards 3`（残り 3、目的はそのまま）→ `Wasami.CollectShards`（REACH THE PARKING LOT）→ `06_CutsceneStart` に立つ（06_Start へ移り REACH THE TUNNEL）→ `06_DoorsLock`（`BlockingVolume_1` が QueryAndPhysics）→ `06_TunnelEnter`（GET ON TOP OF THE AMBULANCE）→ 救急車の屋根（保存 7・GOOD LUCK・塞ぎ）→ 約 10.5 s 後に Zone 2 が開く（7、`PlayerStart_1`）→ `Wasami.Trigger BP_MiniBoss_Trigger`（保存 8・`Get past the nurses `）→ `Wasami.Trigger Trigger_MazeStart`（保存 9・COLLECT ALL SHARDS）→ `Wasami.CollectShards`（保存 10・COLLECT THE RING PIECE・球が消える）→ Zone 2 を開き直す（10、`PlayerStart_PostMaze`、シャード 0・COLLECT THE RING PIECE）。
 
 ## 変更履歴
 - 2026-09-18: 初版。トリガーの箱と、2 つのゾーンの区間の流れの骨組み（作業一覧の項目 6 のステップ 1）
+- 2026-09-18: `PlaySequence`・`PlayCameraShake` を足し、Zone 1 の 04 でエレベーターの到着のシーケンスと揺れ・7 s 後の揺れの終わりを流すようにした（項目 6 のステップ 3a）

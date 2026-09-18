@@ -1,5 +1,6 @@
 #include "WasamiZoneFlow.h"
 
+#include "Camera/CameraShakeBase.h"
 #include "Components/BrushComponent.h"
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
@@ -8,6 +9,8 @@
 #include "GameFramework/Volume.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
 #include "TimerManager.h"
 #include "WasamiGameMode.h"
 #include "WasamiShard.h"
@@ -161,6 +164,27 @@ void AWasamiZoneFlow::SaveCheckpoint(int32 Checkpoint)
 	if (Mode)
 	{
 		Mode->SaveCheckpoint(Checkpoint);
+	}
+}
+
+void AWasamiZoneFlow::PlaySequence(FName Source)
+{
+	ALevelSequenceActor* Actor = Cast<ALevelSequenceActor>(FindSource(GetWorld(), Source));
+	ULevelSequencePlayer* Player = Actor ? Actor->GetSequencePlayer() : nullptr;
+	if (!Player)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no level sequence actor %s"), *GetClass()->GetName(), *Source.ToString());
+		return;
+	}
+	Player->Play();
+}
+
+void AWasamiZoneFlow::PlayCameraShake(const TSoftClassPtr<UCameraShakeBase>& Shake, float Scale)
+{
+	APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0);
+	if (const TSubclassOf<UCameraShakeBase> ShakeClass = Shake.LoadSynchronous(); ShakeClass && Controller)
+	{
+		Controller->ClientStartCameraShake(ShakeClass, Scale, ECameraShakePlaySpace::CameraLocal, FRotator::ZeroRotator);
 	}
 }
 

@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 19:00
+updated: 2026-09-18 19:10
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -33,7 +33,9 @@ updated: 2026-09-18 19:00
 
 - [x] 1. 区間の流れの土台（2026-09-18 完了）: `AWasamiTriggerBox`、ゲームモードの `CheckShards`、`AWasamiZoneFlow`・`AWasamiZone1Flow`・`AWasamiZone2Flow`（両ゾーンの区間・トリガー・保存・目的・矢印の値・救急車で Zone 2 を開く所まで）、デバッグ `Wasami.Flow`・`Wasami.Trigger`・`Wasami.CollectShards`、組み立ての `place_dd_flow`（両ゾーンに置いた）。テスト 4 本と PIE の通し（実装記録 11）。
 - [x] 2. シーケンスの取り込み（2026-09-18 完了）: `dd_sequence.py`（本家の生の書き出しから LevelSequence を作り、レベルのアクタに結び、`LevelSequenceActor` を `src:<本家の名前>` で置く）、`WasamiStageTools.place_dd_sequences`、組み立ての最後に呼ぶ。両ゾーンに置いた（Zone 1: ElevatorArrive・AmbulanceTakeOff、Zone 2: Spikes・Cell_DoorPicked、ほかに `Ballroom_Event_Fade`）。曲線は本家の CSV と一致、PIE で 4 本とも動くことを確かめた（実装記録 01 の「シーケンス」）。
-- [ ] 3. Zone 1 の 04 と 05: 到着（ElevatorArrive を再生・揺れ 7 s・`DoubleDoors11` の Lock）、扉の破壊 `BP_06_Hospital_DoorBreak`（`UMG_07_Boss_Switchbox` の画面・`Interact` = F の入力・音）、`Open Front`、`BP_04_Trigger_Maze` → 保存 5 → `05_Persistent`（目的・全回収を結ぶ・1 s 後の Check Shards）。両開き扉は流れが名指しする 2 枚（`DoubleDoors11`・`DoubleDoors33_36`）だけを、本家のメッシュと `Lock`・`Open Front`・`Force Close` の最小限で置く（押して開く・残りの 60 枚は項目 8）。
+- [x] 3a. 到着（2026-09-18 完了）: `AWasamiZoneFlow::PlaySequence`・`PlayCameraShake`、流れの揺れ 5 本（`dd_sequence.CAMERA_SHAKES`、両ゾーンで作った）、`Start04` で ElevatorArrive と揺れ → 7 s 後に `ElevatorShakeStop`（実装記録 11・01）。
+- [ ] 3b. 扉の破壊 `BP_06_Hospital_DoorBreak`（`UMG_07_Boss_Switchbox` の画面・`Interact` = F の入力・音・`Enable Switch`・`Finished Event`）を Zone 1 の `BP_06_Hospital_DoorBreak_2` に置き、7 s 後に `Enable Switch` と `Finished Event` → `On04DoorBreak` を結ぶ。
+- [ ] 3c. 両開き扉 `BP_06_DoubleDoors` の最小限（本家のメッシュ・`Lock`・`Unlock`・`Open Front`・`Force Close`・開閉のタイムラインと音。箱に入って開く・残りの 60 枚は項目 8）を流れが名指しする 2 枚（`DoubleDoors11`・`DoubleDoors33_36`）に置き、`Start04` の `DoubleDoors11` の `Lock`、`On04DoorBreak` の `bLocked` 偽・`Open Front`。`DoubleDoors33_36` はステップ 4 で使う。
 - [ ] 4. Zone 1 の全回収から 06 まで: `BP_ZoneBarrier`（本家のメッシュ 2 枚と材質・灯・`Destroy` の粒子と音）と `BP_ZoneShardChecker` の箱を置き、`05 All Shards Collected`（障壁が崩れる・目的 REACH THE PARKING LOT）、`06_CutsceneStart` で場面（項目 25）を飛ばして `06 Transition`（フェード・残りのシャードを消す・06_Start へ）、`06_TunnelEnter`、`06_DoorsLock`（25 s で扉が破られる）。06 で開いたときの準備も。
 - [ ] 5. Zone 1 から Zone 2 へ: `06_ReachAmbulance`（保存 7・救急車の塞ぎ・AmbulanceTakeOff と揺れ・7 s → `UMG_Loading` の最小限〈回収の記憶を空にする本家の Construct を含む〉・音 → 2.5 s → Zone 2 を開く）。
 - [ ] 6. タブレットの矢印 `BP_ArrowPointer`（プレイヤーの子のアクタ。的を指す・`Shards?` のときシャードチェッカーの箱の中の最も近いシャードを指す・`Change Color`）。両ゾーンの区間の値を結ぶ。
@@ -44,9 +46,11 @@ updated: 2026-09-18 19:00
 
 ## 次にやること
 
-ステップ 3（Zone 1 の 04 と 05）を始める。記録のステップ 3 を「作業中」にし、変えるファイルを書く。まず流れがシーケンスを再生する口を C++ に作る: `AWasamiZoneFlow` に `PlaySequence(Name)`（`src:<Name>` の `ALevelSequenceActor` の `GetSequencePlayer()->Play()`。本家のレベル BP と同じ）を足す（`wasami_deception.Build.cs` に `LevelSequence`・`MovieScene` のモジュール）。`Start04` の `Not yet:`（`WasamiZone1Flow.cpp`。実装記録 11）から `06_Hospital_Zone01_ElevatorArrive` と揺れ `01_Hotel_Lobby_ElevatorShake` を始め、7 s 後に揺れを止める。続けて `BP_06_Hospital_DoorBreak`（本家の BP を `bp_flow.py` で読む）と両開き扉 2 枚の最小限。
+ステップ 3b（扉の破壊）を始める。記録のステップ 3b を「作業中」にし、変えるファイルを書く。本家の `BP_06_Hospital_DoorBreak`（`pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_Hospital_DoorBreak.txt`、イベント `Enable Switch`・`Disable`・`Finished`・`ReceiveBeginPlay`・`Box1` の重なり・`InpActEvt_Interact`。`python Tools/dd/bp_flow.py <file> --list`）と、画面 `UMG_07_Boss_Switchbox`（`UI/…` を探す）を読んで C++ に写す（C++ のアクタ + 画面のウィジェット。`Interact` の入力は本作のプレイヤーの入力の置き場所〈02 記録〉を見て決める）。Zone 1 の `BP_06_Hospital_DoorBreak_2` の位置に組み立てで置き（`place_dd_flow` と同じ要領、`src:` タグ）、`Start04` の 7 s 後に `Enable Switch` と `Finished Event` → `On04DoorBreak` を結ぶ（`WasamiZone1Flow.cpp` の `Not yet:`）。
 
 ## 決定事項
+
+- 2026-09-18: ステップ 3 を 3a（到着）・3b（扉の破壊）・3c（両開き扉）に分けた（1 コミットに収まらない。扉の破壊と両開き扉はそれぞれ本家の BP 1 つずつを写す）。
 
 - 2026-09-18: **Zone 1 から Zone 2 へは、救急車の上に乗る（`06_ReachAmbulance`）で移る**。作業一覧の項目 6 と大目標 1 の「ガレージリフトで Zone 2 へ」は、作業一覧を作ったときの読み違い — 本家のレベル BP では、ガレージリフト（`BP_06_GarageLift_Zone1_Special`）は駐車場の車のリフト（乗ると上がる。ナースが近づくと上がらない）で、Zone 2 を開くのは `06_ReachAmbulance`（保存 7 → 救急車が出る → 読み込み画面 → `OpenLevel('06_Hospital_Zone_02')`）。流れは本家のコードから写す決まりなので、救急車で作り、ガレージリフトはステップ 8 で仕掛けとして作る。項目を閉じるときに作業一覧の完了の条件を読み替える。
 - 2026-09-18: 本家の場面は飛ばす（項目 25）: Zone 1 の `06_CutsceneStart` では `06_Hospital_Zone1_06Event` を流さず、すぐ `06 Transition` へ。Zone 2 の 7 は `Arrive Event`・捕まる場面・独房の場面を流さず、`PlayerStart_Cell` で `Cell Cutscene Finished` の状態から始める。
@@ -63,10 +67,12 @@ updated: 2026-09-18 19:00
 ## 再開時の注意
 
 - 結ぶ前に通ったトリガーの箱は使い切られる（本家も同じ）。扉が無いうちに PIE で確かめるときは、`Wasami.Flow On04DoorBreak` などで進めてから箱に立つ。
-- ゲームのセーブ（本作の `structSlot`）は PIE の後に `Wasami.ResetSave` で空にしてある（次に開くと Zone 1 の 04_Start）。
+- ゲームのセーブ（本作の `structSlot`）は空（次に開くと Zone 1 の 04_Start）。
 - `WasamiStageTools.place_dd_sequences` は MCP にはエディタを開き直すまで出ない。それまでは `python Tools/ue_remote.py -c "...dd_sequence.place('Zone2')..."`（`importlib.reload` してから）で呼ぶ。
+- 無人運転のときエディタは背面（駆動役のターミナルが前面）なので、テストの前にエディタのタイトルバーの空き（2026-09-18 は (2800, 78)。撮って確かめる）を `desktop.py click … --allow WindowsTerminal.exe --allow UnrealEditor.exe` で 1 回押して前面にする。
 
 ## 検証
 
 - ステップ 1: check_records OK、C++ ビルド OK、テスト `Wasami.*` 44 本すべて通過、PIE で Zone 1 の 04 → 保存 5 → 全回収 → 06 → 扉の塞ぎ → 救急車で保存 7 → Zone 2 → 保存 8・9・10 → COLLECT THE RING PIECE、10 で開き直し（実装記録 11 の「確かめたこと」）。
+- ステップ 3a: C++ ビルド OK、テスト `Wasami.*` 44 本すべて通過（`Wasami.ZoneFlow.Zone1` に到着のシーケンスの再生を足した）、check_records OK。PIE で 04 から: シーケンスが 0 s から再生され 14.1 s で止まる、カメラの揺れが 2〜7.3 s に振幅どおり（横 0.5・縦 1 cm）、7 s の終わりの揺れの後 7.5 s から 0。
 - ステップ 2: 作った曲線を本家の `_sequences/*.csv` と比べて一致（扉の X は小数 3 桁、独房の扉の最後のヨー −151.426）。PIE で ElevatorArrive（扉が 11.3〜13.5 s に開いて残る）・AmbulanceTakeOff（10 s で Y −19993 → −3093、付いたボリュームも動く、スポットライト 0 → 1、13.9 s で元に戻る）・Cell_DoorPicked・Spikes（10 倍速で棘が Z −150 → −733.7、`Trigger_Cell_Spikes` も動く）。check_records OK。

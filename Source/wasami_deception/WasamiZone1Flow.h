@@ -16,6 +16,8 @@ class WASAMI_DECEPTION_API AWasamiZone1Flow : public AWasamiZoneFlow
 	GENERATED_BODY()
 
 public:
+	AWasamiZone1Flow();
+
 	/** How long the lift shakes before the intercom and the door's lock can be used (Spawn at 4, @14643). */
 	static constexpr float ArrivalShakeSeconds = 7.f;
 	/** 05_Persistent's wait before it checks the shards (so a zone reopened with none left moves on). */
@@ -29,6 +31,13 @@ public:
 
 protected:
 	virtual void StartAt(int32 Checkpoint) override;
+
+	/** The lift's arrival: 01_Hotel_Lobby_ElevatorShake, and 01_Hotel_Lobby_ElevatorShakeStop as it ends. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftClassPtr<UCameraShakeBase> ElevatorShakeClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftClassPtr<UCameraShakeBase> ElevatorShakeStopClass;
 
 private:
 	/** Spawn at 4: the lift's arrival. */

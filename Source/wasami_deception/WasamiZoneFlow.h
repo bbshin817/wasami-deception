@@ -7,6 +7,7 @@
 
 class AWasamiGameMode;
 class AWasamiTriggerBox;
+class UCameraShakeBase;
 
 /**
  * A hospital zone's level Blueprint (pak_reference_2's 06_Hospital_Zone_01 and _02), which this game's levels do not
@@ -15,9 +16,10 @@ class AWasamiTriggerBox;
  * walked through, all the shards collected, checkpoints saved, the objective and the tablet's arrow set. It finds what
  * the original names by the tag 'src:<name>' the level build gives each placed actor.
  *
- * The flow only moves the story on. What the events show or voice (sequences, doors, the barrier, the loading screen,
- * Bierce and the nurses' lines, the music, the nurses themselves) is left to the items that make those; each has its
- * place in the event, marked by a comment.
+ * The flow moves the story on and plays what the level Blueprints play themselves: the level sequences placed in the
+ * level and the camera shakes. What the events show or voice through other actors (doors, the barrier, the loading
+ * screen, Bierce and the nurses' lines, the music, the nurses themselves) is left to the items that make those; each
+ * has its place in the event, marked by a comment.
  */
 UCLASS(Abstract)
 class WASAMI_DECEPTION_API AWasamiZoneFlow : public AActor
@@ -88,6 +90,18 @@ protected:
 	void SetArrowShards(bool bShards) { bArrowShards = bShards; }
 	void SetArrowColor(const FLinearColor& Color) { ArrowColor = Color; }
 	void SetArrowTarget(AActor* Target) { ArrowTarget = Target; }
+
+	/**
+	 * GetSequencePlayer → Play on the LevelSequenceActor placed from the original's actor of that name
+	 * ('06_Hospital_Zone01_ElevatorArrive'); the level build places them with their sequences (dd_sequence).
+	 */
+	void PlaySequence(FName Source);
+
+	/**
+	 * ClientPlayCameraShake(Shake, Scale, CameraLocal, no rotation) on the player's controller, the original's shake
+	 * Blueprints (UE4's CameraShake as LegacyCameraShake under /Game/DD, made by the level build with the sequences).
+	 */
+	void PlayCameraShake(const TSoftClassPtr<UCameraShakeBase>& Shake, float Scale = 1.f);
 
 	/** SetCollisionEnabled on the brush of the blocking volume of that name. */
 	void SetVolumeCollision(FName Source, ECollisionEnabled::Type Enabled);

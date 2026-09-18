@@ -24,6 +24,14 @@ SEQUENCE_ACTORS = {
 # Sequences without bindings, which the game plays through a player it makes (BP_DD_Functions' Basic DD Fade Out plays
 # Ballroom_Event_Fade at twice the speed).
 FREE_SEQUENCES = ("Animation/00_Ballroom/Ballroom_Event_Fade",)
+# The camera shakes the zones' flow plays with them (the level Blueprints' ClientPlayCameraShake, PlayWorldCameraShake
+# and PlayCameraShake): the lift's arrival and its end, the ambulance's take-off, the doors broken in, the cell door.
+CAMERA_SHAKES = {
+    "Zone1": ("Animation/01_Hotel/01_Hotel_Lobby_ElevatorShake", "Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop",
+              "Animation/06_Hospital/06_CameraShake_Zone1_AmbulanceTakeOff",
+              "Blueprints/07_FunPlace/Boss/BP_07_CameraShake_Jump"),
+    "Zone2": ("Blueprints/04_Sewer/Bossfight/BP_04_BossFight_CameraShake_Initial",),
+}
 
 TAG = "dd"   # dd_level.TAG: a level rebuild removes it
 SEQUENCE_TAG = "dd_sequence"
@@ -325,7 +333,8 @@ class _Builder:
 
 def _new_result():
     return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "sounds": 0, "attenuations": 0,
-            "sequence_actors": 0, "helpers": 0, "missing": [], "skipped_tracks": [], "missing_particles": []}
+            "camera_shakes": 0, "sequence_actors": 0, "helpers": 0, "missing": [], "skipped_tracks": [],
+            "missing_particles": []}
 
 
 def _level_file(zone):
@@ -386,8 +395,8 @@ def _helpers(eas, zone, names, existing, result):
 
 def place_all(eas, zone_name, zone, result=None):
     """In the open level: the zone's bound helper actors, its sequences bound to the level's actors, and the
-    LevelSequenceActors that play them; also the free sequences. The caller has taken out what an earlier call placed
-    and saves the level."""
+    LevelSequenceActors that play them; also the free sequences and the zone's camera shakes. The caller has taken out
+    what an earlier call placed and saves the level."""
     from wasami_tools.pipeline import dd_level
     result = result if result is not None else _new_result()
     builder = _Builder(result)
@@ -435,6 +444,9 @@ def place_all(eas, zone_name, zone, result=None):
         result["sequence_actors"] += 1
     for rel in FREE_SEQUENCES:
         builder.build(rel)
+    for rel in CAMERA_SHAKES.get(zone_name, ()):
+        dd_assets.camera_shake(rel, VERSION)
+        result["camera_shakes"] += 1
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)   # the sounds' concurrency assets
     return result
 

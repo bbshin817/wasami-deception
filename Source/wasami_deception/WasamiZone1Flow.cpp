@@ -1,6 +1,8 @@
 #include "WasamiZone1Flow.h"
 
+#include "Camera/CameraShakeBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 
@@ -9,6 +11,12 @@ namespace
 	// BP_ArrowPointer's Change Color in the zone's sections.
 	const FLinearColor ParkingLotArrow(1.f, 0.8002f, 0.f, 1.f);
 	const FLinearColor TunnelArrow(1.f, 0.8317f, 0.f, 1.f);
+}
+
+AWasamiZone1Flow::AWasamiZone1Flow()
+{
+	ElevatorShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShake")));
+	ElevatorShakeStopClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop")));
 }
 
 void AWasamiZone1Flow::StartAt(int32 Checkpoint)
@@ -27,13 +35,14 @@ void AWasamiZone1Flow::StartAt(int32 Checkpoint)
 void AWasamiZone1Flow::Start04()
 {
 	Enter(TEXT("04_Start"));
-	// Not yet (the doors and the lift): BP_06_DoubleDoors11 locked, the sequence 06_Hospital_Zone01_ElevatorArrive and the
-	// camera shake 01_Hotel_Lobby_ElevatorShake.
+	// Not yet: BP_06_DoubleDoors11 locked (the doors).
+	PlaySequence(TEXT("06_Hospital_Zone01_ElevatorArrive"));
+	PlayCameraShake(ElevatorShakeClass);
 	After(ArrivalShakeSeconds, [this]()
 	{
-		// Not yet: the shake stopped (01_Hotel_Lobby_ElevatorShakeStop), BP_06_Hospital_DoorBreak_2's Enable Switch and
-		// its Finished Event bound to On04DoorBreak.
+		PlayCameraShake(ElevatorShakeStopClass);
 		BindTrigger(TEXT("04_Intercom"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On04Intercom));
+		// Not yet: BP_06_Hospital_DoorBreak_2's Enable Switch and its Finished Event bound to On04DoorBreak.
 	});
 }
 
