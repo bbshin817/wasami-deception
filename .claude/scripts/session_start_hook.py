@@ -11,7 +11,8 @@
 （Intermediate/Overnight/driver.json）を出す（autonomy.md の「有人セッション」）。
 
 どちらのモードでも、作業一覧の大目標の状態（Tools/work_list.py。進行中の大目標の項目だけを取り、達成したら止まる。
-2026-09-18 から）を出し、`status: 保留` の記録（進行中でない大目標の項目）に印を付ける。
+2026-09-18 から。次の大目標の始め方が「自動」ならそのまま移る。2026-09-19 から）を出し、`status: 保留` の記録
+（進行中でない大目標の項目）に印を付ける。
 """
 import json
 import os
@@ -44,12 +45,22 @@ def goals_lines(unattended):
             return []
         lines = ["作業一覧の大目標: " + work_list.goals_line(work, work_list.record_shares())]
         goal = work.current_goal()
-        if goal is None:
+        target, _ = work.goal_to_work()
+        if target is not None and target is not goal:
+            # The goal in progress is reached (or none is in progress) and the next one starts by itself.
+            lines.append("  %sは始め方が「自動」: " % target.label
+                         + ("前の大目標をまだ「達成（日付）」にしていなければそうし、%sを「進行中（日付から）」にしてコミットし、"
+                            "その節の最初の項目から始める（`.claude/guides/autonomy.md` の「何を作業するか」）。" % target.label
+                            if unattended else "無人運転がそのまま「進行中」にして続ける（2026-09-19 のユーザーの指示）。"))
+        elif goal is None:
             lines.append("  進行中の大目標がありません（駆動役は起動を断る）。次の大目標を進行中にするのはユーザーの指示のときだけ"
                          "（`.claude/guides/autonomy.md` の「有人セッション」の表）。" + ("何も始めず `stop` を書いて終える。" if unattended else ""))
         elif unattended:
-            lines.append("  進行中の%sの節の項目だけを取る。ほかの大目標の項目は始めない。その節の項目がすべて完了したら、大目標を「達成」にして "
-                         "`stop` を書く（`.claude/guides/autonomy.md` の「何を作業するか」）。" % goal.label)
+            successor = work.auto_successor(goal)
+            lines.append("  進行中の%sの節の項目だけを取る。ほかの大目標の項目は始めない。その節の項目がすべて完了したら、大目標を「達成」にして"
+                         % goal.label
+                         + ("、%sを「進行中」にし、`continue` を書く（始め方が自動）" % successor.label if successor else " `stop` を書く")
+                         + "（`.claude/guides/autonomy.md` の「何を作業するか」）。")
         return lines
     except Exception:
         return []

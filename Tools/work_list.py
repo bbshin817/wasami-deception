@@ -2,10 +2,12 @@
 (.claude/scripts/session_start_hook.py): the big goals, the items and the 進捗率.
 
 The work list (roadmap.md「大目標」「進捗率」, since 2026-09-18) is split into big goals, `## 大目標 N: <name>` sections
-whose head has a `- 状態:` line (未着手 / 進行中 / 達成（日付）); the items are `### N. <title>` blocks with `- 規模:` and
-`- 状態:` lines, under a goal section or under another section (the items finished before the goals, the items called
-off). Only one goal is 進行中 at a time and only the user makes a goal 進行中; the unattended work takes items of that
-goal only and stops when all of them are 完了 (.claude/guides/autonomy.md「何を作業するか」).
+whose head has a `- 状態:` line (未着手 / 進行中 / 達成（日付）) and may have a `- 始め方:` line (自動 / ユーザーの指示;
+without one, ユーザーの指示); the items are `### N. <title>` blocks with `- 規模:` and `- 状態:` lines, under a goal
+section or under another section (the items finished before the goals, the items called off). Only one goal is 進行中 at
+a time; the unattended work takes items of that goal only. When all of them are 完了 it goes on to the next goal if that
+goal's 始め方 is 自動 (the user's instruction of 2026-09-19 for goal 2) and stops otherwise: only the user makes such a
+goal 進行中 (.claude/guides/autonomy.md「何を作業するか」).
 
 A progress record (.claude/progress/, not _template.md) belongs to item N when its "# " title names 「項目 N」; its
 share is the checked top-level steps (`- [x]`) of its 計画 over all of them.
@@ -40,10 +42,11 @@ class Item(object):
 
 
 class Goal(object):
-    def __init__(self, number, name, state):
+    def __init__(self, number, name, state, auto_start=False):
         self.number = number
         self.name = name
         self.state = state  # 未着手 / 進行中 / 達成
+        self.auto_start = auto_start  # 始め方: 自動 — the unattended work starts it when the goal before is reached
         self.items = []
 
     @property
@@ -75,6 +78,34 @@ class WorkList(object):
             if goal.number == number:
                 return goal
         return None
+
+    def reached(self, goal):
+        """Whether `goal` is reached: every counted item of it is 完了, or its 状態 says 達成."""
+        return goal.complete or goal.state == "達成"
+
+    def auto_successor(self, goal):
+        """The goal the unattended work goes on to once `goal` is reached: the next one when its 始め方 is 自動 and it is
+        not reached itself, else None."""
+        following = [g for g in self.goals if g.number > goal.number]
+        successor = min(following, key=lambda g: g.number) if following else None
+        if successor and successor.auto_start and not self.reached(successor):
+            return successor
+        return None
+
+    def goal_to_work(self):
+        """(the goal the unattended work takes items from, None) or (None, the goal it stopped at): the goal in progress
+        while it is not reached; once it is (or with none in progress, the last one reached), its successor when that
+        starts by itself (自動). The goal it stopped at is None when no goal is in progress or reached."""
+        goal = self.current_goal()
+        if goal is not None and not self.reached(goal):
+            return goal, None
+        if goal is None:
+            done = [g for g in self.goals if g.state == "達成"]
+            goal = max(done, key=lambda g: g.number) if done else None
+        if goal is None:
+            return None, None
+        successor = self.auto_successor(goal)
+        return (successor, None) if successor else (None, goal)
 
     def progress(self, shares, goal=None):
         """進捗率 in percent: the whole (the groundwork plus every counted item) or, with `goal`, that goal's items only
@@ -111,7 +142,9 @@ def parse(text):
         if heading:
             head = re.split(r"(?m)^### ", section, 1)[0]
             state = re.search(r"^- 状態[:：]\s*\**(\S*)", head, re.M)
-            goal = Goal(int(heading.group(1)), heading.group(2), _goal_state(state.group(1) if state else ""))
+            start = re.search(r"^- 始め方[:：]\s*\**(\S*)", head, re.M)
+            goal = Goal(int(heading.group(1)), heading.group(2), _goal_state(state.group(1) if state else ""),
+                        bool(start and start.group(1).startswith("自動")))
             goals.append(goal)
         for number, title, body in ITEM.findall(section):
             size = re.search(r"^- 規模[:：]\s*" + NUMBER, body, re.M)
@@ -165,7 +198,7 @@ def percent_text(percent):
 
 def goals_line(work, shares):
     """One line on the big goals for the SessionStart hook and the driver's log: each goal with its 状態, and the
-    items done and the progress of the goal in progress."""
+    items done and the progress of the goal in progress; a goal not started that starts by itself says so."""
     parts = []
     for goal in work.goals:
         counted = [item for item in goal.items if item.counted]
@@ -174,6 +207,10 @@ def goals_line(work, shares):
             text += "（項目 %d/%d 完了、%s）" % (sum(1 for item in counted if item.done), len(counted),
                                             percent_text(work.progress(shares, goal)))
             if goal.complete:
-                text += " — 項目はすべて完了（達成として止まる）"
+                successor = work.auto_successor(goal)
+                text += (" — 項目はすべて完了（達成として%sへ移る）" % successor.label if successor
+                         else " — 項目はすべて完了（達成として止まる）")
+        elif goal.state == "未着手" and goal.auto_start:
+            text += "（前の大目標の達成で無人運転が始める）"
         parts.append(text)
     return " / ".join(parts) if parts else "（作業一覧に大目標の節が無い）"

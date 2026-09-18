@@ -18,9 +18,11 @@ After each run the driver reads Intermediate/Overnight/status.json (Claude write
 "reason": ..., "step": ..., "commit": ..., "written": ..., "done": ..., "summary": [...], "learned": [...],
 "pending": [...], "shots": {"caption": ..., "files": [...]}}) and compares HEAD before and after. It stops on "stop",
 when the big goal in progress has been reached (every item of it 完了 in .claude/roadmap.md, read by
-Tools/work_list.py; the unattended work never goes past a goal, the user's instruction of 2026-09-18), when HEAD did
-not move in two runs in a row, at --until, after --max-iterations, or when the budget says so. It does not start when
-no goal is 進行中 or the goal in progress is already reached (only the user makes the next goal 進行中).
+Tools/work_list.py; the unattended work never goes past a goal, the user's instruction of 2026-09-18) unless the next
+goal's 始め方 is 自動 (then it goes on to that goal and posts so: goal 2, the user's instruction of 2026-09-19), when
+HEAD did not move in two runs in a row, at --until, after --max-iterations, or when the budget says so. It does not
+start when no goal is 進行中 or the goal in progress is already reached, unless the goal after the one reached starts
+by itself (自動); otherwise only the user makes the next goal 進行中.
 Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log with a header and footer per run, and a
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
 printed at the end and appended to the log.
@@ -42,7 +44,7 @@ to start, and the SessionStart hook tells an attended session not to change anyt
 
 Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop, the goal was reached); 2 budget or usage
 not readable; 3 no progress or Claude could not be started; 4 bad arguments; 5 another driver is running; 6 no big goal
-in progress (or it is already reached); 130 interrupted.
+to work on (none in progress, or it is already reached and the next one does not start by itself); 130 interrupted.
 """
 import argparse
 import atexit
@@ -241,28 +243,50 @@ def progress_line():
 
 
 def goal_in_progress():
-    """(the goal in progress, None) when the driver may start, else (None, why not): the unattended work never goes
-    past the big goal in progress, and only the user makes the next goal 進行中 (autonomy.md「何を作業するか」)."""
+    """(the goal to work on, None) when the driver may start, else (None, why not): the unattended work never goes
+    past the big goal in progress, except on to a next goal whose 始め方 is 自動 (Claude makes it 進行中 in its first
+    run); only the user makes any other goal 進行中 (autonomy.md「何を作業するか」)."""
     work = work_list.load()
     if work is None:
         return None, "作業一覧 .claude/roadmap.md が読めない。"
-    goal = work.current_goal()
-    if goal is None:
+    goal, stopped = work.goal_to_work()
+    if goal is not None:
+        return goal, None
+    if work.current_goal() is None:
         reached = [g.label for g in work.goals if g.state == "達成"]
         return None, ("進行中の大目標が無い（%s）。次の大目標を進行中にするのはユーザーの指示のときだけ"
                       "（有人セッションで .claude/roadmap.md の大目標の「状態」を変える）。" % (
                           "達成: " + "、".join(reached) if reached else "作業一覧に大目標の節が無い"))
-    if goal.complete:
-        return None, ("%s の項目はすべて完了している（達成として止まる）。有人セッションで達成を確かめ、"
-                      "ユーザーの指示で次の大目標を進行中にする。" % goal.label)
-    return goal, None
+    return None, ("%s の項目はすべて完了している（達成として止まる）。有人セッションで達成を確かめ、"
+                  "ユーザーの指示で次の大目標を進行中にする。" % stopped.label)
 
 
 def goal_reached(number):
     """True when the big goal `number` has been reached: every item of it is 完了, or its 状態 says 達成."""
     work = work_list.load()
     goal = work.goal(number) if work else None
-    return bool(goal and (goal.complete or goal.state == "達成"))
+    return bool(goal and work.reached(goal))
+
+
+def next_goal(number):
+    """The goal the unattended work goes on to once the goal `number` is reached (its 始め方 is 自動), else None."""
+    work = work_list.load()
+    goal = work.goal(number) if work else None
+    return work.auto_successor(goal) if goal else None
+
+
+def goal_plan(goal):
+    """Where the driver stops, for the start post: the goal, and the goals after it that start by themselves."""
+    chain = [goal]
+    while True:
+        successor = next_goal(chain[-1].number)
+        if successor is None or successor in chain:
+            break
+        chain.append(successor)
+    if len(chain) == 1:
+        return "%s（この大目標を達成したら止まる）" % goal.label
+    return "%s（達成したら%sへ続け、%sの達成で止まる）" % (
+        goal.label, "・".join(g.label for g in chain[1:]), chain[-1].label)
 
 
 def progress_text(percent):
@@ -650,7 +674,7 @@ def main():
         "- ブランチ: %s（HEAD %s）" % (branch(), head()),
         "- 終了の時刻: %s" % (stamp(deadline) if deadline else "なし"),
         "- 反復の上限: %s" % (args.max_iterations if args.max_iterations is not None else "なし"),
-        "- 大目標: %s（この大目標を達成したら止まる）" % goal.label,
+        "- 大目標: %s" % goal_plan(goal),
         "- 進捗率: %s" % progress_line(),
     ]))
     runs = 0
@@ -731,9 +755,21 @@ def main():
                     break
                 continue
             if goal_reached(goal.number):
-                reason = "%s を達成（項目がすべて完了）" % goal.label
-                ending = "%sを達成したため" % goal.label
-                break
+                successor = next_goal(goal.number)
+                if successor is None:
+                    reason = "%s を達成（項目がすべて完了）" % goal.label
+                    ending = "%sを達成したため" % goal.label
+                    break
+                # The next goal starts by itself (始め方: 自動): go on; Claude makes it 進行中 if it has not yet.
+                log.say("%s を達成。%s は始め方が自動なので続ける" % (goal.label, successor.label))
+                discord.post("\n".join([
+                    "## 🎯 %s を達成" % goal.label,
+                    "",
+                    "%s ステータス" % SECTION,
+                    "- 次: %s（始め方が自動なので、無人運転がそのまま続ける）" % successor.label,
+                    "- 進捗率: %s" % progress_line(),
+                ]))
+                goal = successor
             if status and status.get("result") == "stop":
                 reason = "Claude が stop: %s" % status.get("reason", "（理由なし）")
                 ending = "Claude が作業を止めたため（%s）" % (status.get("reason") or "理由なし")
