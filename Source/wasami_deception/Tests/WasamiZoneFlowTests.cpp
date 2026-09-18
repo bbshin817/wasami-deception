@@ -3,6 +3,7 @@
 #include "../WasamiDoubleDoors.h"
 #include "../WasamiEnemy.h"
 #include "../WasamiEnemy06Chase.h"
+#include "../WasamiEnemyZone2.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
@@ -92,6 +93,18 @@ namespace
 		ATriggerVolume* Volume = World->SpawnActor<ATriggerVolume>(FVector(0., 0., -100000.), FRotator::ZeroRotator);
 		Volume->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("TriggerVolume_1")));
 		return Volume;
+	}
+
+	/** Zone 2's target points its flow spawns the maze's nurses at (far below and apart, turned to 90 degrees). */
+	void SpawnZone2NursePlaces(UWorld* World)
+	{
+		double Y = 0.;
+		for (const TCHAR* Name : {TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2"), TEXT("NurseSpawn_4")})
+		{
+			Y -= 1000.;
+			ATargetPoint* Point = World->SpawnActor<ATargetPoint>(FVector(0., Y, -40000.), FRotator(0., 90., 0.));
+			Point->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
+		}
 	}
 
 	/** The enemies of class T in play (of T itself when bExact). */
@@ -420,6 +433,7 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	UWorld* World = Wrapper.GetTestWorld();
 	SpawnTriggers(World, {TEXT("Trigger_Cell_Spikes"), TEXT("BP_MiniBoss_Trigger"), TEXT("Miniboss_BierceTalk"),
 		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
+	SpawnZone2NursePlaces(World);
 	AActor* Orb = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity);
 	Orb->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("ring_statue_orb_5")));
 	const ALevelSequenceActor* Spikes = SpawnSequence(World, TEXT("06_Hospital_Zone2_Spikes"), 70.);
@@ -476,10 +490,30 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("checkpoint 9 saved"), SavedCheckpoint(), 9);
 	TestEqual(TEXT("the maze's shards"), Objective(Mode), FString(TEXT("COLLECT ALL SHARDS")));
 	TestTrue(TEXT("the arrow on the shards"), Flow->IsArrowOnShards());
+	// Spawn Nurses: a Zone 2 nurse at each of NurseSpawn_4, _1 and _2, turned as the point is.
+	const TArray<AWasamiEnemy*> MazeNurses = Alive<AWasamiEnemy>(World, false);
+	TestEqual(TEXT("three nurses in the maze"), MazeNurses.Num(), 3);
+	for (const AWasamiEnemy* Nurse : MazeNurses)
+	{
+		const AActor* Point = nullptr;
+		for (const TCHAR* Name : {TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2"), TEXT("NurseSpawn_4")})
+		{
+			const AActor* Candidate = AWasamiZoneFlow::FindSource(World, Name);
+			if (Candidate && Candidate->GetActorLocation().Equals(Nurse->GetActorLocation(), 0.01))
+			{
+				Point = Candidate;
+			}
+		}
+		TestNotNull(TEXT("each at a spawn point"), Point);
+		TestTrue(TEXT("of the Zone 2 kind"), Nurse->GetClass() == AWasamiEnemyZone2::StaticClass());
+		TestTrue(TEXT("with CanSpawn"), Nurse->bCanSpawn);
+		TestEqual(TEXT("turned as the point"), Nurse->GetActorRotation().Yaw, 90., 1e-3);
+	}
 
 	Mode->CheckShards();
 	Advance(Wrapper, 0.1f);
 	TestEqual(TEXT("checkpoint 10 saved"), SavedCheckpoint(), 10);
+	TestEqual(TEXT("the maze's nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestFalse(TEXT("the statue's orb gone"), IsValid(Orb));
 	Advance(Wrapper, 0.02f);
 	TestEqual(TEXT("to the ring piece"), Objective(Mode), FString(TEXT("COLLECT THE RING PIECE")));
@@ -511,6 +545,7 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 	SpawnTriggers(World, {TEXT("06_DoorsLock"), TEXT("06_TunnelEnter"), TEXT("TriggerBox_06_AmbulanceTop"),
 		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
 	SpawnZone1NursePlaces(World);
+	SpawnZone2NursePlaces(World);
 	TestNull(TEXT("no flow outside the zones"), AWasamiZoneFlow::SpawnFor(SpawnMode(World, 4), 0));
 	const FVector InTunnel(-22442.7148, -5025.0068, 800.);
 	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), InTunnel, FRotator::ZeroRotator);

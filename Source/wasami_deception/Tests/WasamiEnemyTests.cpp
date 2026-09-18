@@ -20,6 +20,8 @@
 #include "../WasamiEnemy.h"
 #include "../WasamiEnemy06Chase.h"
 #include "../WasamiEnemyAnimInstance.h"
+#include "../WasamiEnemyZone2.h"
+#include "../WasamiLift.h"
 #include "../WasamiPowerTypes.h"
 #include "../WasamiPrimalPower.h"
 #include "../WasamiTelepathyPower.h"
@@ -941,6 +943,96 @@ bool FWasamiEnemyActorChase06Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("then Patrol"), Nurse->GetCurrentState() == EWasamiEnemyState::Patrol);
 	TickTo(Now + Step);
 	TestTrue(TEXT("and chasing again"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorZone2Test, "Wasami.Enemy.Actor.Zone2",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorZone2Test::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	const FTransform At(FRotator::ZeroRotator, FVector(13000., -1300., 100.));
+	AWasamiEnemyZone2* Nurse = World->SpawnActorDeferred<AWasamiEnemyZone2>(AWasamiEnemyZone2::StaticClass(), At,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!TestNotNull(TEXT("a spawned nurse"), Nurse))
+	{
+		return false;
+	}
+	Nurse->bCanSpawn = true;
+	Nurse->FinishSpawning(At);
+	Nurse->GetCharacterMovement()->GravityScale = 0.f;
+
+	// Without a player, the player reads as on the lower floor.
+	TestFalse(TEXT("no player: not up"), Nurse->IsPlayerUp());
+	TestTrue(TEXT("so on its floor"), Nurse->IsSameLevelAsPlayer());
+
+	ACharacter* Player = World->SpawnActor<ACharacter>(FVector(13000., 0., 100.), FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	Player->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	auto PlayerAt = [Player](double Z) { Player->SetActorLocation(FVector(13000., 0., Z), false, nullptr, ETeleportType::TeleportPhysics); };
+	auto NurseAt = [Nurse](double Z) { Nurse->SetActorLocation(FVector(13000., -1300., Z), false, nullptr, ETeleportType::TeleportPhysics); };
+
+	// is Up? over 640, is Player Up? over 610.
+	NurseAt(640.);
+	TestFalse(TEXT("640: not up"), Nurse->IsUp());
+	NurseAt(640.1);
+	TestTrue(TEXT("over 640: up"), Nurse->IsUp());
+	PlayerAt(610.);
+	TestFalse(TEXT("the player at 610: not up"), Nurse->IsPlayerUp());
+	PlayerAt(610.1);
+	TestTrue(TEXT("over 610: up"), Nurse->IsPlayerUp());
+	TestTrue(TEXT("both up: the same floor"), Nurse->IsSameLevelAsPlayer());
+
+	// The same floor: the player and the random point, as the nurse's.
+	TestTrue(TEXT("the same floor: the player"), Nurse->GetPlayerTarget() == Player);
+	TestTrue(TEXT("and the random point"), Nurse->GetRandomPointDestination().Equals(Nurse->RandomPoint));
+
+	// Zone 2's lifts, where the level has two of them: the lift nearest the world's origin, however far from the nurse;
+	// the corner lift (not a BP_06_LiftBase) is not one of them.
+	AWasamiLift* Near = World->SpawnActor<AWasamiLift>(FVector(6303.2421875, -438.52606201171875, -30.01825714111328), FRotator::ZeroRotator);
+	AWasamiLift* ByTheNurse = World->SpawnActor<AWasamiLift>(FVector(13499.5546875, -1325.2242431640625, -29.621246337890625), FRotator::ZeroRotator);
+	World->SpawnActor<AWasamiCornerLift>(FVector(100., 0., -30.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("a lift"), Near) || !TestNotNull(TEXT("another"), ByTheNurse))
+	{
+		return false;
+	}
+	NurseAt(100.);
+	TestFalse(TEXT("the nurse down, the player up: not the same floor"), Nurse->IsSameLevelAsPlayer());
+	FVector MoveLocation;
+	TestTrue(TEXT("the closest lift is the one nearest the origin"), Nurse->GetClosestLift(MoveLocation) == Near);
+	TestTrue(TEXT("Player Target: that lift"), Nurse->GetPlayerTarget() == Near);
+	const FVector NearMove = Near->GetMoveLocation()->GetComponentLocation();
+	TestTrue(TEXT("its Move Location"), MoveLocation.Equals(NearMove));
+	TestTrue(TEXT("149.5 cm over the floor"), NearMove.Equals(Near->GetActorLocation() + FVector(0., 0., 149.53536987304688), 0.01));
+	TestTrue(TEXT("Random Point Destination: its Move Location"), Nurse->GetRandomPointDestination().Equals(NearMove));
+	NurseAt(700.);
+	PlayerAt(100.);
+	TestTrue(TEXT("the nurse up, the player down: the same lift"), Nurse->GetPlayerTarget() == Near);
+
+	// Of lifts as far from the origin, the last.
+	AWasamiLift* Twin = World->SpawnActor<AWasamiLift>(-Near->GetActorLocation(), FRotator::ZeroRotator);
+	TestTrue(TEXT("the last of equals"), Nurse->GetClosestLift(MoveLocation) == Twin);
+
+	// None within the first best (1e9, squared): no lift and no location.
+	Near->Destroy();
+	ByTheNurse->Destroy();
+	Twin->Destroy();
+	World->SpawnActor<AWasamiLift>(FVector(31623., 0., 0.), FRotator::ZeroRotator);
+	TestNull(TEXT("a lift past 31622.8 cm is never taken"), Nurse->GetClosestLift(MoveLocation));
+	TestTrue(TEXT("and there is no location"), MoveLocation.IsZero());
+	TestNull(TEXT("nothing to chase to"), Nurse->GetPlayerTarget());
 	return true;
 }
 

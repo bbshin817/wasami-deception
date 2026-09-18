@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiEnemyZone2.h"
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
 
@@ -166,7 +167,15 @@ void AWasamiZone2Flow::MazeTransition()
 	SetArrowShards(true);
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveCollectAllShards", "COLLECT ALL SHARDS"));
 	BindAllShardsCollected(GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnMazeAllShards));
-	// Spawn Nurses (item 7).
+	SpawnNurses();
+}
+
+void AWasamiZone2Flow::SpawnNurses()
+{
+	for (const TCHAR* Point : {TEXT("NurseSpawn_4"), TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2")})
+	{
+		SpawnEnemy(AWasamiEnemyZone2::StaticClass(), Point);
+	}
 }
 
 void AWasamiZone2Flow::OnMazeAllShards()

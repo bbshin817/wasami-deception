@@ -96,7 +96,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Lift")
 	TObjectPtr<UBoxComponent> BottomCollision;
 
-	/** Move Location: a point 149.5 cm over the floor (nothing in the hospital reads it). */
+	/** Move Location: a point 149.5 cm over the floor, where Zone 2's nurses walk to take the lift (AWasamiEnemyZone2). */
 	UPROPERTY(VisibleAnywhere, Category = "Lift")
 	TObjectPtr<USceneComponent> MoveLocation;
 
