@@ -37,7 +37,7 @@
 
 ## 最終目標について決めたこと（2026-09-17、ユーザーの回答）
 
-- **敵のモーションの割り当て**（`enemy_wasami.glb` の 11 本）: 巡回 = `Walking`、追跡 = `Running`、全回収後（Nightmare）の追跡 = `run_fast_2`、**気絶 = 無名のモーション `01a0a88f-…`（10.0 s）**（ユーザーの指摘を数値で確かめた: 最初の約 5 s は両足がほぼ固定〈ずれ 20 cm 以内〉で頭が腰より約 30 cm 前に出た前屈、6〜8 s で起き上がり直立で終わる。気絶中は前屈の区間をループし、明けに起き上がりを再生する）、捕獲 3 種 = `Backflip`・`sliding_rool`・`Stylish_Walk`、`restpose` は基準姿勢。`BeHit_FlyUp`・`Shot_and_Fall_Forward`・`Stand_Up6` は使わない（気絶の復帰は無名のモーションの後半で足りる）。気絶以外の割り当ては Claude の提案で、2026-09-17 にユーザーが承認した。**2026-09-18: モデルは `tmp/enemy_wasami_v3.glb`（通常の敵）・`tmp/boss_wasami.glb`（Matron）・`tmp/wasami_mochi_v3.glb`（シャード）を使う**（ユーザーの指示）。v3 にも上の巡回・追跡・Nightmare・気絶のアニメがあり、捕獲の 3 本は v3 に無いので旧 glb の 3 本を流用する（同日の回答）。役とアニメの対応・中身は `.claude/references/enemy-wasami-motions.md`。
+- **敵のモーションの割り当て**（`enemy_wasami.glb` の 11 本）: 巡回 = `Walking`、追跡 = `Running`、全回収後（Nightmare）の追跡 = `run_fast_2`、気絶 = 無名のモーション `01a0a88f-…`（10.0 s。前屈の区間をループし、明けに起き上がりを再生する）→ **2026-09-18 のユーザーの指示で、気絶は v3 の `BeHit_FlyUp`・`Knock_Down` のどちらかをランダムに流して倒れ、明けに寝返り（Claude が作る。0.8 s）+ `push_up_to_idle` で起き上がる**（Primal Fear でもスタンオーブでも同じ。無名のモーションは使わなくなった）、捕獲 3 種 = `Backflip`・`sliding_rool`・`Stylish_Walk`、`restpose` は基準姿勢。旧 glb の `Shot_and_Fall_Forward`・`Stand_Up6` は使わない。気絶以外の割り当ては Claude の提案で、2026-09-17 にユーザーが承認した。**2026-09-18: モデルは `tmp/enemy_wasami_v3.glb`（通常の敵）・`tmp/boss_wasami.glb`（Matron）・`tmp/wasami_mochi_v3.glb`（シャード）を使う**（ユーザーの指示）。v3 にも上の巡回・追跡・Nightmare・気絶のアニメがあり、捕獲の 3 本は v3 に無いので旧 glb の 3 本を流用する（同日の回答）。役とアニメの対応・中身は `.claude/references/enemy-wasami-motions.md`。
 - **追跡中のランダムの動き**（2026-09-18 のユーザーの指示）: `enemy_wasami_v3` の追いかける動き（片手をついて飛び越える・突進・スライディングなど 6 本）を、Zone 1・2 の追跡中にたまにランダムで流す。頻度は約 8 秒に 1 回、流す間も本家の追跡の速さ（800 cm/s）を保つ（同日の回答）。前方が空いているときだけ流す。詳細は同じ一覧。
 - **場面の演技**（2026-09-18 の回答）: Zone 1 の途中の出来事と Zone 2 の始まり（捕まる → 独房）は残し、本家の専用の演技は v3 の動きで代用する（対応は同じ一覧）。
 - **敵の赤い縁取り**: 作らない（2026-09-17 のユーザーの回答「不要」。最新版ではナースの `Custom Depth(Duration)` を呼ぶ者がいない）。
@@ -94,11 +94,11 @@
 ### 4. 敵ワサミの素体（モデル・アニメ・敵の受け口）
 
 - 目標: `enemy_wasami_v3.glb`（と、捕獲の 3 本だけ旧 `enemy_wasami.glb`）をスケルタルメッシュとアニメとして取り込み、敵のアクタ `AWasamiEnemy` の土台（モーションの再生、パワーからの受け口）を作る。AI はまだ入れない。赤い縁取りは作らない（上の「決めたこと」）。
-- 完了の条件: 原本を `SourceArt/Wasami/`（Git LFS）に写し、取り込み（`wasami_tools` のツールセット）が `/Game/Wasami/Enemy` にメッシュ・スケルトン・v3 のアニメ 16 本と捕獲の 3 本を作り、一覧（`.claude/references/enemy-wasami-motions.md`）の役で引ける。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で `Stun_Loop` をループして明けに `Stun_Recover` で起き上がる（無名のモーションの前半と後半）。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。
+- 完了の条件: 原本を `SourceArt/Wasami/`（Git LFS）に写し、取り込み（`wasami_tools` のツールセット）が `/Game/Wasami/Enemy` にメッシュ・スケルトン・v3 のアニメ 16 本と捕獲の 3 本を作り、一覧（`.claude/references/enemy-wasami-motions.md`）の役で引ける。`AWasamiEnemy` が `IWasamiEnemyInterface`（`SetState(Stun)`・`PlayerVanish`・`NoTelepathy`）を実装し、気絶で倒れて、明けに起き上がる（2026-09-18 に `Stun_Loop`〈ループ〉・`Stun_Recover` から、倒れる 2 本〈ランダム〉+ 寝返りからの起き上がり 2 本に替えた。上の「決めたこと」）。Primal Fear・Telepathy・Vanish の仮の的 `AWasamiTestEnemy` の代わりに PIE で使える。
 - 根拠: `tmp/enemy_wasami_v3.glb`（Blender 4.5 の glTF、骨 28、UE のマネキン系の名前）、`pak_reference_2/_bytecode/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.txt`（部品と気絶）、実装記録 04（インターフェース）。
 - 依存: 1。
 - 規模: 3
-- 状態: **完了（2026-09-18）**。`WasamiDDTools.import_wasami_enemy` が `/Game/Wasami/Enemy` に `SK_WasamiEnemy` と役の名前のアニメ 19 本（`A_WasamiEnemy_<役>`）を作り、`AWasamiEnemy`（本家のナースの値、0.5 s ごとの判断で気絶して 17 s 後に Patrol）と `UWasamiEnemyAnimInstance`（本家のナースの ABP の木、全身の 1 回再生 `PlayOnce`）が動く（実装記録 07）。PIE で立ち姿・巡回・追跡・Nightmare・気絶と明け・Telepathy・Vanish・1 回再生 9 本を確かめた（`observations/README.md` の「敵ワサミ」）。`Chase_VaultLand` は取り込みで床から跳ぶ形に直した。敵はまだレベルに置かれず（`SpawnEnemy` を呼ぶのは項目 6・7）、仮の的 `AWasamiTestEnemy` とそのテストは残してある。再生の速さ・Nightmare の切り替え・待機の選択・`Chase_VaultLand` の形は下の「未回答の要確認」。
+- 状態: **完了（2026-09-18）**。`WasamiDDTools.import_wasami_enemy` が `/Game/Wasami/Enemy` に `SK_WasamiEnemy` と役の名前のアニメ 18 本（`A_WasamiEnemy_<役>`。2026-09-18 に気絶を替えて 19 → 18 本）を作り、`AWasamiEnemy`（本家のナースの値、0.5 s ごとの判断で気絶して 17 s 後に Patrol）と `UWasamiEnemyAnimInstance`（本家のナースの ABP の木、全身の 1 回再生 `PlayOnce`）が動く（実装記録 07）。PIE で立ち姿・巡回・追跡・Nightmare・気絶と明け・Telepathy・Vanish・1 回再生 9 本を確かめた（`observations/README.md` の「敵ワサミ」）。`Chase_VaultLand` は取り込みで床から跳ぶ形に直した。敵はまだレベルに置かれず（`SpawnEnemy` を呼ぶのは項目 6・7）、仮の的 `AWasamiTestEnemy` とそのテストは残してある。再生の速さ・Nightmare の切り替え・待機の選択・`Chase_VaultLand` の形は下の「未回答の要確認」。
 
 ### 22. ワサミシャードの見た目の変更（明滅をやめる・1.5 倍・本家のシャードのように回す）
 
@@ -165,7 +165,7 @@
 
 ### 10. 特殊シャード 2 種（スタンオーブ・敵の位置が地図に出るボーナスシャード）
 
-- 目標: 本家と同一の見た目の `BP_PowerOrb`（オーブ）と `BP_BonusShard`（赤いシャード）を、本家の出現点と周期で出し、取ると敵が 17 s 気絶（気絶モーション。秒数は敵の側。項目 4）／敵が 60 s タブレットの地図に出る。
+- 目標: 本家と同一の見た目の `BP_PowerOrb`（オーブ）と `BP_BonusShard`（赤いシャード）を、本家の出現点と周期で出し、取ると敵が 17 s 気絶（倒れる 2 本からランダム → 明けに起き上がる。秒数とアニメは敵の側。項目 4）／敵が 60 s タブレットの地図に出る。
 - 完了の条件: 出現点（Zone 1: オーブ 11・ボーナス 10、Zone 2: 10・10）と周期・最初の出現の時刻がレベル BP とアクタのコードどおり。メッシュと材質は原作のアセット（`power_orb`、赤いシャードの材質）。取得で `UMG_VignetteSides`（`ENEMIES STUNNED` / `ENEMIES REVEALED`。WebGL 版 10 記録）が出て、全敵に `SetState(Stun, byOrb)`、地図に敵の印。テレキネシスでは引き寄せられない。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_PowerOrb.txt`・`BP_BonusShard.txt`、`_assets/**/BP_PowerOrbSpawnPoint*`・`BP_BonusShardSpawnPoint*`、`.claude/references/dark-deception/04-mechanics-items.md`（原作データの値）、WebGL 版 08 記録。
 - 依存: 7、9（気絶のモーションと敵の印）。

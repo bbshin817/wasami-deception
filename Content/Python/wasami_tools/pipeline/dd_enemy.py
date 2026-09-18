@@ -52,7 +52,9 @@ CONTENT_START_FRAME = 2
 # some 0.7 m behind), so the whole get-up is turned and moved to end where Idle stands, as Idle is turned; the enemy is
 # moved by as much, while it lies still, as the get-up starts (UWasamiEnemyAnimInstance).
 GET_UP = "push_up_to_idle"
-ROLL_FRAMES = 24  # TODO(仮): 0.8 s, Claude's (the user's answer: a roll Claude makes, looked at in PIE)
+# 0.8 s, Claude's (the user's answer: a roll Claude makes, looked at in PIE); in PIE neither it nor the limbs' shares
+# went into the floor or jumped (2026-09-18), so they stay.
+ROLL_FRAMES = 24
 # The share of the roll in which the limbs reach GET_UP's first pose (the candidates), and how far (m) a joint may go
 # below the floor before the body is lifted (the joints are the bones' heads; the fingertips' reach the skin's end).
 ROLL_LIMB_SHARES = (1.0, 0.75, 0.5, 0.35)

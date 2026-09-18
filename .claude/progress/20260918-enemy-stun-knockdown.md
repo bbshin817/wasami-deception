@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/enemy-stun-knockdown
 base: 6915229
 started: 2026-09-18 12:30
-updated: 2026-09-18 14:10
+updated: 2026-09-18 14:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -25,17 +25,16 @@ updated: 2026-09-18 14:10
 
 - [x] 1. 取り込み … 2026-09-18 完了。`dd_enemy.py` の `ROLES` が `Stun_FlyUp`・`Stun_KnockDown`（倒れる、始めの骨盤を `Idle_11` の位置へ）と `Stun_GetUp_FlyUp`・`Stun_GetUp_KnockDown`（`_stun_get_up`: 寝返り `_roll` + `push_up_to_idle`、終わりが待機の位置と向き）を作り、`/Game/Wasami/Enemy` はアニメ 18 本（古い 5 本は消した）。通しの見た目は `observations/tools/stun_sequence_blender.py`（連番 `observations/ours/enemy-stun/frames/`）。
 - [x] 2. C++ … 2026-09-18 完了。`WasamiEnemyClip` を取り込みの 18 本の並びにし（`StunFlyUp`・`StunKnockDown`・`StunGetUpFlyUp`・`StunGetUpKnockDown`。`WasamiEnemyAnim::GetUpAfter`）、`FWasamiStunPlayback` を「倒れる（1 回・終わりで止まる）→ 起き上がり（`GetUpStart = max(倒れる長さ, 気絶の長さ − 起き上がりの長さ)`）」に、倒れる 2 本は `FWasamiEnemyAnimState::StunRandom`（`Init` の種。インスタンスは `FMath::Rand()`）で抽選。起き上がりに入った更新が `StunGetUpStarted` を立て、`UWasamiEnemyAnimInstance::MoveToGetUp` がアクタとコントローラーの向きを移す（差は `WasamiEnemyAnim::MeasureGetUpMove`、`NativeInitializeAnimation` で倒れる 2 本ぶん）。テスト 29 件すべて通過、PIE で確かめた（下の「検証」）。
-- [ ] 3. 記録と note: 実装記録 07、`.claude/references/enemy-wasami-motions.md`、作業一覧の「決めたこと」と項目 10 の気絶の書き方、note のモーション一覧の記事（気絶の節）と進捗記事の Primal Fear の文と GIF 06 の撮り直し。main へマージ。
+- [x] 3a. 記録 … 2026-09-18 完了。`dd_enemy.py` の寝返りの `TODO(仮)` を外し（0.8 s と手足の寄せ方は PIE で潜りも跳びも無く確定）、実装記録 07・索引、`.claude/references/enemy-wasami-motions.md`、作業一覧（「決めたこと」・項目 4・10）、`observations/README.md`（ステップ 2 の PIE の値）を新しい気絶に合わせた。
+- [ ] 3b. note: モーション一覧の記事（気絶の節）と進捗記事（Primal Fear の文と GIF 06 の撮り直し）。main へマージ。
 
 ## 次にやること
 
-ステップ 3: 寝返りの `TODO(仮)` を `dd_enemy.py` から外して実装記録 07 の `stun_get_up` の行（と 01 の該当があれば）を直し、`python .claude/scripts/check_records.py --update` を通し、`.claude/references/enemy-wasami-motions.md`・作業一覧（「決めたこと」と項目 10 の気絶）・note のモーション一覧の記事（気絶の節）と進捗記事（Primal Fear の文と GIF 06 の撮り直し）を直して、main へマージする。
+ステップ 3b: `.claude/guides/note-progress.md`（「敵ワサミのモーション一覧の記事」と進捗記事の節）に従い、(1) `docs/note/enemy-wasami-motions.md` の早見と「気絶」の節を `BeHit_FlyUp`・`Knock_Down`（倒れる。ランダム）と `push_up_to_idle`（起き上がり。前に寝返り）に替え、「使いどころが未定の動き」からその 3 本を移し、`01a0a88f-…` の節と GIF `06-stun.gif` の扱いを決める（使わなくなった動きとして残すか消す）。(2) `docs/note/progress.md` の Primal Fear の文（「ふらついて動けなくなります」）を「倒れて、17 秒の終わりに起き上がる」に直し、GIF `observations/ours/note/gif/06-primal-fear.gif` を撮り直す（撮り方はガイド。収録 `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv` が使えるかも先に見る）。(3) `tmp/note-cli` で 2 つの記事を書き換える（`Tools/note.local.json` が無ければ原稿だけ）。(4) 記録を消して main へマージし、`handover.md` の「現状と次の一歩」を確かめ、作業ブランチを消して push。
 
 ## 決定事項
 
-- 2026-09-18: 測った向き（Blender、v3 の glb）— `BeHit_FlyUp`・`Knock_Down` の終わりはどちらもあおむけ（胸の正面の上向き成分 +1.00・+0.99）で頭は元の後ろ側、`push_up_to_idle` の始めはうつぶせ（−0.99）で頭は前側、終わりは前を向いて立つ（17° ずれ）。起き上がると敵は倒れる前と逆を向き、`Knock_Down` では約 0.67 m（メッシュの大きさで約 0.9 m）後ろに立つので、アクタを移す必要がある。
-- 2026-09-18: 寝返りは、手足が 35 % で腕立ての構えに寄る形が最も床に潜らず（関節の最低 −0.08 m）、両端を除いて約 5 cm 浮かせた（`ROLL_FLOOR_SLACK` 3 cm を超えた分）。寝返りの長さ 0.8 s と手足の寄せ方は仮だったが、ステップ 2 の PIE（4 fps のコマの一覧）で床への潜りも跳びも見えなかったので、このままにする（ステップ 3 で `dd_enemy.py` の `TODO(仮)` を外し、理由を実装記録 01 へ）。
-- 2026-09-18（ステップ 2）: 移し替え（いつ・どう移すか・測った差・壁際の `TODO(仮)`）と、明けてブレンドアウトする間は気絶を進めないことは、実装記録 07 の「気絶」「移し替え」「既知の制約」へ移した（stop hook の求めで、07 のアニメの再生の分はステップ 2 で直した）。
+（残りのステップに効くものなし。気絶の作りと理由は実装記録 07、PIE の値は `observations/README.md` の「敵ワサミ」）
 
 ## 要確認（ユーザー）
 
@@ -45,11 +44,10 @@ updated: 2026-09-18 14:10
 
 - 作業ブランチ `feature/enemy-stun-knockdown`（main の 6915229 から）。
 - エディタは開いたまま（セッション 1）。C++ はステップ 2 でビルド済み。PIE は止めた。
-- PIE の収録（git の外）: `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv`（21 s。敵 (60, −1150)・ヨー 0、プレイヤー (−60, −550)・ヨー −90・ピッチ −6。撮り始めの約 1 s 後に `WasamiPrimalPower.stun_enemies`）、コマの一覧 `pie-stun-seq-1fps.png`、人に見せる時刻入りのグリッド `sheet-1-fall.png`・`sheet-2-getup.png`（`video_probe.py sheet`）。毎フレームの記録 `Saved/enemy_probe/stun-seq.json` を読む道具 `observations/tools/enemy_stun_check.py`。GIF 06 の撮り直しはステップ 3。
+- PIE の収録（git の外）: `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv`（21 s。敵 (60, −1150)・ヨー 0、プレイヤー (−60, −550)・ヨー −90・ピッチ −6。撮り始めの約 1 s 後に `WasamiPrimalPower.stun_enemies`）、コマの一覧 `pie-stun-seq-1fps.png`、人に見せる時刻入りのグリッド `sheet-1-fall.png`・`sheet-2-getup.png`（`video_probe.py sheet`）。毎フレームの記録 `Saved/enemy_probe/stun-seq.json` を読む道具 `observations/tools/enemy_stun_check.py`。GIF 06 の撮り直しはステップ 3b。
 - 未完了の記録がもう 1 件ある（`20260918-power-look-tuning.md`、main 上の作業。こちらを終えてから戻る）。
 
 ## 検証
 
-- ステップ 1: `import_wasami_enemy` → アニメ 18 本（ログの値はエディタの外の前処理と一致）。Blender の通しの描画で、切り替えの骨盤のずれ 0.0000 m、寝返りの最も低い骨 −0.03 m（`lowerarm_l`）。コマの一覧で「倒れる → 寝る → 横向き → うつぶせ → 腕立て → 立つ」と読めた。
-- ステップ 2: `editor_cycle.py` でビルド成功。Automation `Wasami.` 29 件すべて通過（`Anim.Stun`・`Anim.Clips`〈測った差: FlyUp −174.241°・(1.44, 12.80)、KnockDown 168.796°・(10.08, −51.85)、許容 0.1〉・`Actor.Stun`〈起き上がりに入るコマで骨盤の世界の位置と向きが変わらない〉）。PIE（Primal Fear の `stun_enemies`、`Stun_KnockDown` が出た）: 倒れる 54.06 s → 起き上がり 67.52 s（17.36 − 3.9 s 後）→ 待機 71.59 s。起き上がりに入るコマでアクタはヨー +168.80°・71.79 cm 動き、骨盤の 1 コマの動きは 0.00 cm（倒れる間の最大 10.12 cm、起き上がりの始めの 1 秒の最大 1.58 cm）。コマの一覧で「吹き飛ぶ → あおむけ → 寝返り → うつぶせ → 腕立て → 立つ」と読めた。
-- check_records: ステップ 2 で 07 を直して `--update` 済み（7 件すべて同期）。
+- ステップ 1・2: 取り込み 18 本、テスト `Wasami.` 29 件すべて通過、PIE の値は `observations/README.md` の「敵ワサミ」の気絶の行（替えた後）。
+- ステップ 3a: `check_records.py --update`（01・07 のハッシュを更新、7 件すべて同期）。ソースの変更はコメントだけで、取り込み直しは要らない。
