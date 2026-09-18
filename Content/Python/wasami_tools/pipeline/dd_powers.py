@@ -5,7 +5,8 @@ Vanish (AWasamiVanishPower, UWasamiVanishWidget), the telekinesis (AWasamiTeleki
 tablet's sockets are the tablet's own (dd_tablet). The telepathy's markers (UWasamiTelepathyTrackerWidget) show
 MM_Telepathy_Inst.
 
-  M_Speedlines                  the original's graph (FlipBook over T_Speedlines' 2 × 5 frames, 30 a second)
+  M_Speedlines                  the original's graph (FlipBook over T_Speedlines' 2 × 5 frames, 30 a second, the
+                                sheet's alpha as the opacity)
   M_DD_ChameleonCameraShake     the Chameleon pack's M_CameraShake, estimated (its graph is cooked away)
   M_DD_KySlash, M_DD_PPPRadialGradient, M_DD_DecalTeleport
                                 estimated masters of the teleport aim's materials (their graphs are cooked away); the
@@ -220,7 +221,9 @@ FORCE_FIELD_LIGHT_BRIGHTNESS = 5.0  # what the export holds, which the copy is c
 def _build_speedlines(mat):
     """M_Speedlines (pak_reference_2's export keeps its two named expressions): a FlipBook call of 2 × 5 frames with
     Time × 3 as its phase and TexCoord 0 as its UVs, its output 2 as a TextureSample of T_Speedlines' UVs, and that
-    sample's RGB as the emissive colour. The opacity is not connected (1)."""
+    sample's RGB as the emissive colour and its alpha as the opacity. The original's compiled Slate pixel shader
+    (Tools/dd/cooked_shaders.py "UI/Main/Powers/M_Speedlines." --show 4) takes saturate(alpha) as the opacity; the
+    sheet's full-width lines are white with an alpha of 0, and the original's screen shows none of them."""
     g = dd_stage._Graph(mat, checked=True)
     call = dd_assets.function_call(g, FLIPBOOK, -700, 0, dd_assets.FUNCTIONS_02)
     outputs = MEL.get_material_expression_output_names(call)
@@ -237,6 +240,7 @@ def _build_speedlines(mat):
     sample.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path("UI/Main/Powers/T_Speedlines")))
     dd_assets.connect(call, str(outputs[FLIPBOOK_UV_OUTPUT]), sample, "UVs")
     MEL.connect_material_property(sample, "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.connect_material_property(sample, "A", unreal.MaterialProperty.MP_OPACITY)
     unreal.log("M_Speedlines: FlipBook output %d is %s" % (FLIPBOOK_UV_OUTPUT, outputs[FLIPBOOK_UV_OUTPUT]))
 
 
