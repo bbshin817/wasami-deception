@@ -87,19 +87,20 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         """Puts one zone's trigger boxes (WasamiTriggerBox, the original's BP_TriggerBox_Base), blocking and trigger
         volumes, door breaks (WasamiDoorBreak, BP_06_Hospital_DoorBreak, with their Progress Speed), the double doors
         and emitters the flow names (WasamiDoubleDoors, BP_06_DoubleDoors, with the original's meshes and materials;
-        the emitters asleep, with their particle systems) and the zone barriers (WasamiZoneBarrier, with their planes'
-        materials) in again where the original places them, each tagged 'src:<the original's name>' for the zone's
+        the emitters asleep, with their particle systems), the zone barriers (WasamiZoneBarrier, with their planes'
+        materials) and the zone shard checkers (WasamiZoneShardChecker, the tablet's arrow's box over the zone) in
+        again where the original places them, each tagged 'src:<the original's name>' for the zone's
         flow and fixed to the ambulance or the spikes it moves with, taking out what an earlier call placed, and saves
         the level. Nothing else changes, and the baked lighting stays valid (none of them is in it).
 
         Args:
-            zone: 'Zone1' (6 trigger boxes, 9 volumes, 1 door break, 2 double doors, 1 emitter, 1 barrier) or 'Zone2'
-                (8 trigger boxes, 10 volumes, 1 door break, 1 barrier).
+            zone: 'Zone1' (6 trigger boxes, 9 volumes, 1 door break, 2 double doors, 1 emitter, 1 barrier, 1 shard
+                checker) or 'Zone2' (8 trigger boxes, 10 volumes, 1 door break, 1 barrier, 1 shard checker).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
             'removed', 'removed_lights', 'triggers', 'volumes', 'doorBreaks', 'doubleDoors', 'emitters',
-            'zoneBarriers', 'attached' and 'failed_settings' (listed in the output log).
+            'zoneBarriers', 'shardCheckers', 'attached' and 'failed_settings' (listed in the output log).
         """
         return _module("dd_level").place_flow(zone, map_path)
 

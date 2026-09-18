@@ -39,10 +39,12 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     @staticmethod
     def import_dd_tablet() -> dict[str, int]:
         """Imports (or re-imports) everything the player's tablet needs: its mesh, materials and textures, the screen's
-        UI textures and font, the woosh sounds, and the minimap's render target, map images and materials.
+        UI textures and font, the woosh sounds, the minimap's render target, map images and materials, and the map's
+        arrow's material (M_Arrow_Inst, WasamiArrowPointer's plane).
 
         Returns:
-            How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap').
+            How many assets of each kind were made ('textures', 'materials', 'meshes', 'fonts', 'sounds', 'minimap',
+            'arrow').
         """
         _module("dd_stage")
         _module("dd_assets")

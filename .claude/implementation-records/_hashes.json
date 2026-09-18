@@ -31,17 +31,17 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "dfe8c7a34af38ccf3b2cc5ac2fb6cda259f8c2f3",
+    "Content/Python/wasami_tools/toolsets/dd.py": "ad80c175a08a526ac8206e1a129d85ba352a80a5",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
-    "Content/Python/wasami_tools/toolsets/stage.py": "581fc2e2b82b2e6ec75974d454fcf9671e3562cb",
+    "Content/Python/wasami_tools/toolsets/stage.py": "97194ed6828ae01cf4989b40fb81ac7cf7f08f22",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "1feac0650e56ec6f16f2f5406aa13e09adf4a1d4",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "ed88d5f097bc2bc1097307b7aa53ca8ae889a59a",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "179170e9e72f63c15b2f245ddff5b4c93e99a245",
-    "Content/Python/wasami_tools/pipeline/dd_level.py": "4914b201b024e40018b7214fbb11038005abe24a",
+    "Content/Python/wasami_tools/pipeline/dd_level.py": "dfc11b4462875eed089e8fe09b502f4a3d4360e6",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "99462326a6a643e80209090a3e5b4b9b59cc5c08",
-    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "8f5a810ab6d52c33ac15c0ac7ffd21898e958a8f",
+    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "64845f868ae112937d07b8e8c57c0bd33a866c83",
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "62cf5c53e0b249affdd0f409cefa86e2f1970367",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "0f9440a36537a6379efcc520495115cf9425076a",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
@@ -60,13 +60,16 @@
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "b9f6ad9904ce1a58fba878c18331324f3e464eb4",
     "Source/wasami_deception/WasamiGameMode.cpp": "334c184e2614a321eb4323f76db222ae66abca59",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "6899ab0d549b640c307e1de1045778c85ce8c1ef",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "45671149a86884af375e5a7faadb135b5d702f19"
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "a9881bed1a10710952a531d9d654b0723cf42b91",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "f6b50d288289158ff103f1438f78cd7065522985"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
     "Source/wasami_deception/WasamiTabletWidget.cpp": "ca8d8db09cad9a2fe783ef9ccf0e28e58fdc60f8",
-    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "8f5a810ab6d52c33ac15c0ac7ffd21898e958a8f"
+    "Source/wasami_deception/WasamiArrowPointer.h": "5204e3f8d0cf4d1d1592874cf1e018ce3d5b95b0",
+    "Source/wasami_deception/WasamiArrowPointer.cpp": "8a61d7097878bf98e79a198de54e754e5be42719",
+    "Source/wasami_deception/Tests/WasamiArrowPointerTests.cpp": "e93e75c117e9cf5909e6a3c105224092e849c038",
+    "Content/Python/wasami_tools/pipeline/dd_tablet.py": "64845f868ae112937d07b8e8c57c0bd33a866c83"
   },
   "04-powers.md": {
     "Source/wasami_deception/WasamiPowerTypes.h": "25ea2a2f5e2a89f7b72d1428cdc557777fbba069",
@@ -155,7 +158,9 @@
     "Source/wasami_deception/WasamiZone1Flow.cpp": "794fd300abd6d5dc4dac1c42cf156c5e0714127a",
     "Source/wasami_deception/WasamiZone2Flow.h": "3f2ab77c9a55e3c536ab2f5a1aa3004ca080cb84",
     "Source/wasami_deception/WasamiZone2Flow.cpp": "6afb22890e19d85b08e95aac48a119dfbfce68d4",
-    "Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp": "a9dedc8addec1cd6eee0a7e1a08c28c21577e15f"
+    "Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp": "a9dedc8addec1cd6eee0a7e1a08c28c21577e15f",
+    "Source/wasami_deception/WasamiZoneShardChecker.h": "88b7bfb92f7955ebe7a31b1c71c8bc7c090ea19d",
+    "Source/wasami_deception/WasamiZoneShardChecker.cpp": "1bcad5fb0626231c4aa04482df0d0116e756f2c8"
   },
   "08-stage-gimmicks.md": {
     "Source/wasami_deception/WasamiDoubleDoors.h": "69ddf1570a8f5addfc2a2fbffd9edda0f3d14bac",

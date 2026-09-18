@@ -4,6 +4,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/ChildActorComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
@@ -21,6 +22,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
+#include "WasamiArrowPointer.h"
 #include "WasamiAssets.h"
 #include "WasamiChameleonComponent.h"
 #include "WasamiGameMode.h"
@@ -136,6 +138,12 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	// The original captures every frame; here it only runs while the tablet is up, where the map can be seen
 	// (.claude/guides/performance.md — what draws every frame has to earn it). The picture is the same either way.
 	MinimapCapture->bCaptureEveryFrame = false;
+
+	ArrowPointer = CreateDefaultSubobject<UChildActorComponent>(TEXT("BP_ArrowPointer"));
+	ArrowPointer->SetupAttachment(GetMesh());
+	ArrowPointer->SetRelativeLocation(AWasamiArrowPointer::PlayerRelativeLocation);
+	ArrowPointer->SetRelativeScale3D(AWasamiArrowPointer::PlayerRelativeScale);
+	ArrowPointer->SetChildActorClass(AWasamiArrowPointer::StaticClass());
 
 	Powers = CreateDefaultSubobject<UWasamiPowerComponent>(TEXT("Powers"));
 
@@ -498,11 +506,20 @@ void AWasamiPlayerCharacter::UpdateTabletScreen()
 	}
 }
 
+AWasamiArrowPointer* AWasamiPlayerCharacter::GetArrowPointer() const
+{
+	return Cast<AWasamiArrowPointer>(ArrowPointer->GetChildActor());
+}
+
 void AWasamiPlayerCharacter::RefreshMinimapContents()
 {
-	// Show Only: the capture draws the level's map plane and the shards, and nothing else of the world.
+	// Show Only: the capture draws the level's map plane, the shards and the arrow, and nothing else of the world.
 	TArray<AActor*> Shown;
 	UGameplayStatics::GetAllActorsWithTag(this, MinimapTag, Shown);
+	if (AWasamiArrowPointer* Arrow = GetArrowPointer())
+	{
+		Shown.Add(Arrow);
+	}
 	ShardsLeft = 0;
 	if (ShardActorClass)
 	{

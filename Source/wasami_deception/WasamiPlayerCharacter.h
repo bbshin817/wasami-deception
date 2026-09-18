@@ -5,8 +5,10 @@
 #include "GameFramework/Character.h"
 #include "WasamiPlayerCharacter.generated.h"
 
+class AWasamiArrowPointer;
 class AWasamiGameMode;
 class UCameraComponent;
+class UChildActorComponent;
 class UCameraShakeBase;
 class UInputAction;
 class UInputMappingContext;
@@ -26,8 +28,8 @@ struct FInputActionValue;
  * The player, after Dark Deception's BP_DD_PlayerCharacter (pak_reference): a capsule of radius 50 whose camera sits on
  * a zero-length spring arm 95 cm over its centre with rotation lag, walking at 300 and sprinting at 600 cm/s, the
  * camera's horizontal FOV following the speed, the walk / run head bob shakes and the 180° turn. It also holds the
- * tablet: the plate in front of the camera, its screen (UWasamiTabletWidget) and the scene capture that draws the
- * minimap, the tablet's powers (UWasamiPowerComponent), and the post-process effects the powers switch on
+ * tablet: the plate in front of the camera, its screen (UWasamiTabletWidget), the scene capture that draws the
+ * minimap and the arrow on the map (AWasamiArrowPointer), the tablet's powers (UWasamiPowerComponent), and the post-process effects the powers switch on
  * (UWasamiChameleonComponent, the original's Chameleon FX).
  */
 UCLASS()
@@ -70,8 +72,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
 	void ResizeMap();
 
+	/** Whether Z has the map zoomed out (the original's mapZoomedOut?). */
+	bool IsMapZoomedOut() const { return bMapZoomedOut; }
+
 	/** The screen on the tablet, once the widget component has made it. */
 	UWasamiTabletWidget* GetTabletScreen() const;
+
+	/** The map's arrow, once the child actor component has made it. */
+	AWasamiArrowPointer* GetArrowPointer() const;
+
+	UCameraComponent* GetCamera() const { return Camera; }
 
 	UWasamiPowerComponent* GetPowers() const { return Powers; }
 
@@ -181,9 +191,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TObjectPtr<UWidgetComponent> TabletScreen;
 
-	/** Draws the level's map plane and the shards into T_NewMap from straight above the player. */
+	/** Draws the level's map plane, the shards and the arrow into T_NewMap from straight above the player. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TObjectPtr<USceneCaptureComponent2D> MinimapCapture;
+
+	/** BP_ArrowPointer: the map's arrow, a child actor 2000 cm over the mesh, (5, 5, 1) (AWasamiArrowPointer). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
+	TObjectPtr<UChildActorComponent> ArrowPointer;
 
 	/** The tablet's powers: its sockets, Q / E / 1 / 2, the gauges and the speed boost. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Powers")
