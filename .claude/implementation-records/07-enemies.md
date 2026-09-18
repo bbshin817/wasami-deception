@@ -7,15 +7,16 @@ sources:
   - Source/wasami_deception/WasamiEnemyAnimInstance.h
   - Source/wasami_deception/WasamiEnemyAnimInstance.cpp
   - Source/wasami_deception/Tests/WasamiEnemyTests.cpp
+  - Source/wasami_deception/Tests/WasamiTestListener.h
   - SourceArt/Wasami/enemy_wasami_v3.glb
   - SourceArt/Wasami/enemy_wasami_capture.glb
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）
 
 ## 役割
-本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）まで（作業一覧の項目 4 のステップ 1〜3）。AI（巡回・追跡・追跡中の変化）と捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
+本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）（作業一覧の項目 4 のステップ 1〜3）と、**判断**（本家のナースの `Make Choice`: 巡回・発見・追跡・見失い。作業一覧の項目 7 のステップ 2）まで。出現・区間ごとの型・見張り・追跡中の変化・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
 
 ## 公開インターフェース
 - `WasamiDDTools.import_wasami_enemy()`（01 記録）→ `dd_enemy.import_all()`。戻り値 `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 18。
@@ -29,8 +30,9 @@ updated: 2026-09-18
   - static `SpawnEnemy(WorldContext, Location, Yaw=0, bSentry=false)`（BlueprintCallable。カプセルの中心を Location に置き、`bCanSpawn` を真にして出す。重なりは可能ならずらして必ず出す。PIE の Python から `unreal.WasamiEnemy.spawn_enemy(world, loc, yaw)`）。
   - インターフェース: `SetState`（State を入れるだけ。`bByOrb` は使わない）、`GetState`（**常に Patrol**。本家のナースと同じ）、`PlayerVanish`（`bSeenPlayerRecently` を偽に）、`NoTelepathy`（偽）。
   - `SetWalkState(bNormal)`（`MaxWalkSpeed` を `NormalSpeed` 350 / `SkateSpeed` 800 に）、`GetCurrentState()`（本当の State）、`IsStunned()`（State == Stun）、`IsStunRunning()`（判断が気絶を始め 17 s を待っている）、`GetStunTimeLeft()`（巡回に戻るまでの秒。下の「敵のアクタ」）、`GetEnemyAnim()`（メッシュの `UWasamiEnemyAnimInstance`）。
-  - 設定: `bCanSpawn`（既定 偽。ExposeOnSpawn）、`bAggressiveIdle`（見張り。ExposeOnSpawn）、`bNightmare`（全回収後の追跡の走り）、`NormalSpeed`・`SkateSpeed`、`bNormalWalk`、`bSeenPlayerRecently`（項目 7 の AI が使う）。
-  - 定数: `CapsuleRadius` 34、`CapsuleHalfHeight` 118.058、`MaxSpeed` 800、`TurnRate` 300、`MeshX/Y/Z`・`MeshYaw`（メッシュの相対位置と向き）、`DecisionInterval` 0.5、`StunSeconds` 17。
+  - 設定: `bCanSpawn`（既定 偽。ExposeOnSpawn）、`bAggressiveIdle`（見張り。ExposeOnSpawn）、`bNightmare`（全回収後の追跡の走り）、`NormalSpeed`・`SkateSpeed`、`bNormalWalk`、`bSeenPlayerRecently`（本家の `Seen Player Recently`）、`PointOfInterest`（最後に追ったときのプレイヤーの位置。0 で無し）、`RandomPoint`（読み取りだけ）。
+  - 判断（下の「判断」）: `IsChasing()`（= `bSeenPlayerRecently`。本家の `Chasing`）、`CanSeePlayer()`、`ChasePlayer()`・`NotSeeingPlayer()`・`GenerateRandomPoint()`（BlueprintCallable。Python から `can_see_player()` などで呼べる）、C++ の virtual `GetPlayerTarget()`（既定はプレイヤー）・`GetRandomPointDestination()`（既定は `RandomPoint`。Zone 2 の型が階の違うときにリフトへ替える）、イベント `OnCloseBy`（BlueprintAssignable。見失ってからの最初の追跡で 1 回。受け手は Zone 1 の `Setup Nurse Bierce Quips`〈項目 20〉）。
+  - 定数: `CapsuleRadius` 34、`CapsuleHalfHeight` 118.058、`MaxSpeed` 800、`TurnRate` 300、`MeshX/Y/Z`・`MeshYaw`（メッシュの相対位置と向き）、`DecisionInterval` 0.5、`StunSeconds` 17、`ViewAngle` 100、`ForgetSeconds` 3、`RandomPointRadius` 3000、`ChaseAcceptance` 5・`PointOfInterestAcceptance` 5・`RandomPointAcceptance` 50。
 - `WasamiEnemyClip`（クリップの番号。移動 5 本、気絶 4 本〈倒れる `StunFlyUp`・`StunKnockDown`、起き上がり `StunGetUpFlyUp`・`StunGetUpKnockDown`〉、捕獲 3 本、追跡中の変化 6 本の順で 18 本）、`WasamiEnemyAnim::ClipNames`・`FindClip(Name)`・`ClipPath(Clip)`（`/Game/Wasami/Enemy/A_WasamiEnemy_<名前>`。名前は取り込みの `ROLES` の 1 列目と同じ並び）、`NumStunFalls` 2・`GetUpAfter(Fall)`（倒れる 1 本の後の起き上がり）、`GetRootTransform(Sequence, Time)`（骨組みの根 = `pelvis` のメッシュの空間の変形）、`MeasureGetUpMove(Fall, GetUp)`（下の「移し替え」）。
 - 定数: `MESH` = `/Game/Wasami/Enemy/SK_WasamiEnemy`、`SKELETON` = `…_Skeleton`、`PHYSICS_ASSET` = `…_PhysicsAsset`、`ANIM_PREFIX` = `A_WasamiEnemy_`、`MATERIAL` = `/Game/Wasami/Enemy/MI_WasamiEnemy`、`MASTER` = `/Game/Pipeline/Materials/M_DD_WasamiGltf`、`ROLES`（下の表）。
 
@@ -97,7 +99,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - **移し替え**（`UWasamiEnemyAnimInstance::MoveToGetUp`）: 起き上がりの最初のキーは、倒れる終わりの姿勢を上下の軸まわりに回して床の上で動かしたもの（前処理の `stun_get_up`。起き上がりの終わりを `Idle` の位置と向きにそろえたため。敵は倒れる前と逆を向いて立つ）。そのまま流すと体が跳ぶので、再生の状態が起き上がりに入った更新で `StunGetUpStarted` を立て、`NativeUpdateAnimation`（ゲームスレッド。同じコマの姿勢の評価の前）がアクタを `Rel⁻¹ · Move · Rel · Actor` へ移す（`Rel` はメッシュの相対変形〈拡縮 1.3591 込み〉、`Move` = `MeasureGetUpMove` = 起き上がりの 0 s の根⁻¹ · 倒れる終わりの根 を上下の軸の回転と水平の移動だけにしたもの。`NativeInitializeAnimation` で倒れる 2 本ぶん求める）。`SetActorLocationAndRotation`（`TeleportPhysics`、スイープしない）の後、コントローラーの `SetControlRotation` も新しい向きにする（`bUseControllerDesiredRotation` で戻されないように）。気絶の終わり（`EndStun`）で移さないのは、タイマーがアニメの更新の後に進み 1 コマずれるため。UE で測った `Move`: FlyUp はヨー −174.241°・(1.44, 12.80, 0) cm、KnockDown は 168.796°・(10.08, −51.85, 0) cm（部品の空間。傾きは 0）。PIE（2026-09-18、KnockDown）ではアクタがヨー +168.80°・71.79 cm 動き、そのコマの骨盤の世界の動きは 0.00 cm。`GetRootTransform` は、`UAnimSequence::GetBoneTransform` がトラックの無い骨を書かないので、骨組みの基準姿勢で初期化してから読む。
 - **1 回再生**（`FWasamiOncePlayback`。UE のモンタージュの更新の順に倣う）: 重みを先に動かし（ブレンドインは 1 / BlendIn、ブレンドアウトは 1 / BlendOut の速さ）、次に時刻を進め（速さを掛け、長さで止める）、残りの実時間（(長さ − 時刻) / 速さ）が BlendOut 以下になったらブレンドアウトを始める。重み 0 で消える。新しい `PlayOnce` は前のものを新しい BlendIn でブレンドアウトさせ、既にブレンドアウト中のものは短い方の時間にする（BlendIn 0 なら前のものはすぐ消える）。`StopOnce` も同じ規則。
 
-テスト（`Tests/WasamiEnemyTests.cpp`）— 敵のアクタ `Wasami.Enemy.Actor.*`: `Defaults`（CDO と部品の値。メッシュの拡縮 `MeshScale` を含む）、`Stun`（手で進めるゲームのワールドで 0.0625 s 刻み。上のタイマーの刻みで、判断は 0.625・1.125 … s の更新に来る: `CanSpawn` なしは消える、AI が付く、メッシュとアニメ（起き上がりの長さと移し替えの差が読めている）、`Set Walk State`、`SetState` の直後は気絶だが動いたまま → 判断で止まる、アニメの残り、2 回目と Patrol への往復で延びない（Patrol の間の残りは 0）、6.0625 s に始め直した気絶が 13.75 s の更新で起き上がりに入り、敵が `Move` のヨーだけ回って高さを保ち、骨盤の世界の位置と向きが変わらず〈0.5 cm・0.5°〉、コントローラーも回り、次の更新では動かない、17.625 s の更新で起き上がりが終わり次の更新で Patrol、明けの次の判断から 2 回目）、`Powers`（Primal Fear・Vanish・Telepathy が届く）。アニメの再生 `Wasami.Enemy.Anim.*`: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s〈再生の速さは `MeshScale` 倍の歩幅で割る〉、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s の倒れる → 止まる → 起き上がりと、入ったことの知らせが 1 回、3 s の短い気絶、倒れる 2 本の抽選〈40 回で両方〉と欠けた 1 本、走り → 気絶 → 起き上がり → 明け、2 回目、寝ている間に明けると姿勢を保って起き上がらない）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 18 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。倒れる 2 本の `MeasureGetUpMove` が上の測った値と 0.1 以内。取り込みが変わったらここが落ちる）。
+テスト（`Tests/WasamiEnemyTests.cpp`）— 敵のアクタ `Wasami.Enemy.Actor.*`: `Defaults`（CDO と部品の値。メッシュの拡縮 `MeshScale` を含む）、`Stun`（手で進めるゲームのワールドで 0.0625 s 刻み。上のタイマーの刻みで、判断は 0.625・1.125 … s の更新に来る: `CanSpawn` なしは消える、AI が付く、メッシュとアニメ（起き上がりの長さと移し替えの差が読めている）、`Set Walk State`、`SetState` の直後は気絶だが動いたまま → 判断で止まる、アニメの残り、2 回目と Patrol への往復で延びない（Patrol の間の残りは 0）、6.0625 s に始め直した気絶が 13.75 s の更新で起き上がりに入り、敵が `Move` のヨーだけ回って高さを保ち、骨盤の世界の位置と向きが変わらず〈0.5 cm・0.5°〉、コントローラーも回り、次の更新では動かない、17.625 s の更新で起き上がりが終わり次の更新で Patrol、明けの次の判断から 2 回目）、`Powers`（Primal Fear・Vanish・Telepathy が届く）、`Choice`（ナビのデータの無いワールドで、プレイヤーは所有しないキャラクター: `CanSeePlayer` の角度〈99° は見え、101°・真後ろは見えず、500 m 先も見える〉・間のキャラクター・Vanish のカプセル、最初の判断は巡回の歩き〈350〉で見えたら次から追跡〈800〉・`PointOfInterest`・`OnCloseBy` は 1 回、隠れても追い続けて位置を知る、Vanish の次の判断で `PointOfInterest` へ歩き、その移動の失敗〈0.1 s 後〉で 0 に、最後の追跡から 3 s で `CloseBy` が開き直す、気絶で判断が止まると最後の追跡から 3 s で見失う。道具 `UWasamiTestListener`〈引数なしの動的デリゲートを数える〉）。アニメの再生 `Wasami.Enemy.Anim.*`: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s〈再生の速さは `MeshScale` 倍の歩幅で割る〉、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s の倒れる → 止まる → 起き上がりと、入ったことの知らせが 1 回、3 s の短い気絶、倒れる 2 本の抽選〈40 回で両方〉と欠けた 1 本、走り → 気絶 → 起き上がり → 明け、2 回目、寝ている間に明けると姿勢を保って起き上がらない）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 18 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。倒れる 2 本の `MeasureGetUpMove` が上の測った値と 0.1 以内。取り込みが変わったらここが落ちる）。
 
 ### 敵のアクタ（`AWasamiEnemy`）
 
@@ -107,8 +109,22 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - **カプセル**: 半分の高さ 118.05822（本家の上書き）、半径 34（本家は上書きしない。UE 5.8 の `ACharacter` の既定。UE4 から同じ値で、4.24 のソースは手元に無い）。当たりはエンジンの既定の `Pawn`。本家の基底の `AreaClass = NavArea_Obstacle` は 4.24 の `ShapeComponent` の既定と同じなので書かない（UE5 は `bUseSystemDefaultObstacleAreaClass`）。
 - **移動**: `MaxWalkSpeed` 800、`RotationRate` (0, 300, 0)、`bUseControllerDesiredRotation`・`bOrientRotationToMovement` 真。`Set Walk State` は `bNormalWalk` で 350 / 800 を選ぶ。
 - **メッシュ**（`CharacterMesh0`）: 相対位置 (−0.00006, −0.0002, −117.84394)・Yaw −90.00012（本家のまま。`SK_WasamiEnemy` も正面が +Y なので、アクタの前を向く。足はカプセルの底から 0.2 cm 上）、拡縮は X・Y・Z とも `MeshScale` = 229.05135 / 168.52719 = 1.3591（本作の値。2026-09-18 のユーザーの指示「Z軸スケールは本家の敵と同じ身長になるよう、敵ワサミモデルはX・Y・Zスケールを拡大する」。頭頂の骨どうしで合わせる: 本家のナース `nurse_idle1` の基準姿勢の `Nurse_TopOfHead_AuxSHJnt` が 229.05 cm〈その上の帽子を含むメッシュの頂は 246.35 cm〉、`SK_WasamiEnemy` の `head_end` が 168.53 cm〈髪を含むメッシュの頂は 170.0 cm〉。身長なので帽子は含めない。足はメッシュの原点にあるので拡縮しても床に立つ）、`AnimClass = UWasamiEnemyAnimInstance`。メッシュ `/Game/Wasami/Enemy/SK_WasamiEnemy` はソフト参照で、`OnConstruction` で読む（`WasamiAssets.h` の起動時の読み込みを避ける。シャードと同じ）。
-- **BeginPlay**: 基底どおり `bCanSpawn` が偽なら自分を消す（本家は既定が偽で、Zone 1 のレベルのスクリプト `Spawn Nurses` が `CanSpawn` を真にして出す。`SpawnEnemy` が同じことをする）。真なら、基底の `Ignore All Speed Barriers`（項目 8）の後、ナースの `Generate Random Point`（項目 7）と、`Make Choice` の 0.5 s ごとのループのタイマー（最初は 0.5 s 後）。
-- **気絶**（ナースの Make Choice の DoOnce）: `SetState` は State を入れるだけ。判断（`MakeChoice`）が State == Stun を見たら、1 回だけ（`bStunRunning`）`StopMovementImmediately` → 17 s のタイマー → `EndStun` で State = Patrol・`bStunRunning` 偽。待っている間は判断は何もしない。待っている間の 2 回目の気絶は時間を延ばさず、State を Patrol にしてまた Stun にしても始め直さない（最初の 17 s で終わる）。ナースの `Cloak(False)`（透明化）と気絶の台詞（`Nurse_Hospital_Zone01_Stunned`。項目 20 でワサミの声）は作らない。判断のほかの枝（薬投げ・`Chase Player` / `Not Seeing Player`）は項目 7。
+- **BeginPlay**: 基底どおり `bCanSpawn` が偽なら自分を消す（本家は既定が偽で、Zone 1 のレベルのスクリプト `Spawn Nurses` が `CanSpawn` を真にして出す。`SpawnEnemy` が同じことをする）。真なら、基底の `Ignore All Speed Barriers`（項目 8）の後、ナースの `Generate Random Point` と、`Make Choice` の 0.5 s ごとのループのタイマー（最初は 0.5 s 後）。
+- **気絶**（ナースの Make Choice の DoOnce）: `SetState` は State を入れるだけ。判断（`MakeChoice`）が State == Stun を見たら、1 回だけ（`bStunRunning`）`StopMovementImmediately` → 17 s のタイマー → `EndStun` で State = Patrol・`bStunRunning` 偽。待っている間は判断は何もしない。待っている間の 2 回目の気絶は時間を延ばさず、State を Patrol にしてまた Stun にしても始め直さない（最初の 17 s で終わる）。`StopMovementImmediately` はナビの移動の `StopActiveMovement` も呼ぶので、**AI の経路の追従も止まる**（UE 4.24 も同じ。止められた移動の依頼は失敗として知らせる）。ナースの `Cloak(False)`（透明化）と気絶の台詞（`Nurse_Hospital_Zone01_Stunned`。項目 20 でワサミの声）は作らない。
+
+### 判断（`MakeChoice`。本家のナースの `Make Choice` の残り）
+
+行動ツリーは無く、0.5 s ごとの判断とエンジンの AI MoveTo（`UAIBlueprintHelperLibrary::CreateMoveToProxyObject`。BP の「AI MoveTo」の中身）だけで動く。
+
+- **判断の順**（本家の Sequence）: 気絶でなく、薬投げ（`bThrowing`。作らない）でもなければ、(1) `bSeenPlayerRecently` が真なら `ChasePlayer` と 3 s の `RetriggerableDelay`（タイマーを毎回掛け直す。明けたら `bSeenPlayerRecently` 偽・`Reset Detection`）、偽なら `NotSeeingPlayer`。(2) その後で `CanSeePlayer` が真なら `bSeenPlayerRecently` = 真（追うのは次の判断から）。(3) プレイヤーから 1500 cm より遠いと透明化（`Cloak`。作らない）。
+- **見失い方**: 追っている間は判断のたびに 3 s の遅延が掛け直されるので、**見えなくなっただけでは見失わない**（追跡はプレイヤーの今の位置へ向かう）。見失うのは Vanish（`PlayerVanish` で `bSeenPlayerRecently` 偽）と、判断が止まる気絶（最後の追跡から 3 s で遅延が明ける）だけ。
+- **`CanSeePlayer`**: 前（`GetActorForwardVector`）とプレイヤーへの向き（`Normal`、許容 0.0001）の角度（`DegAcos`）が 100° 未満（距離の上限なし）かつ、自分の位置 → プレイヤーの位置の `LineTraceSingle`（`Camera` チャンネル、複雑、自分を除く）の当たりのアクタがプレイヤーのキャラクター。ほかのキャラクター（別の敵）に当たると見えない。Vanish 中はプレイヤーのカプセルが `Camera` を無視する（04 記録）ので、線が素通りして見えない。
+- **`ChasePlayer`**: `bSeenPlayerRecently` 真、`PointOfInterest` = プレイヤーの位置、`SetWalkState(false)`（800）、`GetPlayerTarget()` へ受け入れ半径 5・`bStopOnOverlap` 偽で移動（成功も失敗も何もしない）。DoOnce（`Reset Detection` で開く）で発見の台詞（項目 20）と `OnCloseBy`。最初の追跡の 5 s 後の薬投げは作らない。
+- **`NotSeeingPlayer`**: `PointOfInterest` が 0（許容 0.0001）なら `GetRandomPointDestination()` へ半径 50、終われば（成功でも失敗でも）`GenerateRandomPoint`。0 でなければ `PointOfInterest` へ半径 5、終われば `PointOfInterest` = 0。どちらも `SetWalkState(true)`（350）。
+- **`GenerateRandomPoint`**: プレイヤーがいればその位置、いなければ自分の位置の周り 3000 の `K2_GetRandomReachablePointInRadius`（起点から辿り着ける点）。ナビのデータが無ければ `RandomPoint` は前のまま。
+- **移動の依頼は判断ごとに前の依頼を止める**（`UPathFollowingComponent::RequestMove` が前の依頼を `Aborted` で終わらせ、その依頼の代理が失敗を知らせる。UE 4.24 も同じ）。そのため (a) 巡回の行き先は判断のたびに引き直される（行き先に向かう依頼は 1 つ前の判断で引いた点へ。`PointOfInterest` への移動も次の判断の依頼で消える）、(b) 巡回はプレイヤーの周り 3000 の点へ 0.5 s ごとに向きを変えながら、全体としてプレイヤーの方へ寄っていく。本家の BP をそのまま写した結果で、手を加えていない（2026-09-19 の PIE で、Zone 1 の迷路の 115 m 先から 30 s ほどでプレイヤーの前へ来た）。
+- 受け入れ半径の 5 はプレイヤーのカプセルに当たって届かないので、追跡は依頼が続いたまま触れて止まる（PIE で中心の間 89 cm）。接触から先は捕獲（項目 9）。
+- **派生が替える口**: `GetPlayerTarget()`・`GetRandomPointDestination()`（Zone 2 の型。ステップ 4）。06 の追跡型は `ChasePlayer` を毎ティック呼ぶ（ステップ 3）。
 - **アニメとの受け渡し**: アニメは毎フレーム `IsStunned()` を読む（本家の ABP の `bStunned = State == 2`。`SetState` の直後から気絶の姿勢になり、止まるのは次の判断）。立ち上がりで `GetStunTimeLeft()` を読み、起き上がりを巡回に戻る瞬間に終える。残りは、気絶でなければ 0、判断の前なら「次の判断までの残り（判断のタイマーの残り）+ 17 s」、判断の後なら 17 s のタイマーの残り。エンジンではタイマーが移動とメッシュの更新（TG_PrePhysics）の後に進むので、アニメが読む残りはその前のフレームの終わりの値で、そのフレームの経過と合わせて合う。
 - **エンジンのタイマーの刻み**（UE 5.8 の `FTimerManager`。UE4 も同じ作り）: タイマーは「期限を**過ぎた**最初の更新」で発火する（`InternalTime > ExpireTime`）。更新の外（BeginPlay・テストの本文）や発火の処理の中で入れたタイマーは保留になり、その更新の終わりの時刻から数え始める。そのため判断はフレームの粒で最大 1 フレーム遅れ、気絶の 17 s は判断のフレームの終わりから数える。アニメが判断の前に読んだ残りは実際の終わりより最大 2 フレーム短く、起き上がりの終わりの姿勢を最大 2 フレーム保ってから明ける（見た目には分からない）。
 
@@ -134,6 +150,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - モデルとモーションはユーザーの作ったもの（2026-09-18 の指示「`enemy_wasami_v3`・`wasami_mochi_v3`・`boss_wasami` をそれぞれ使用」、捕獲は「旧 glb の 3 本を流用」）。役の対応は一覧（`.claude/references/enemy-wasami-motions.md`）。
 - アニメの再生の木と値: `pak_reference_2/_assets/DDeception/Content/Animation/Enemies/Nurse/Reaper/nurse_idle1_Skeleton_AnimBlueprint.json`（`BakedStateMachines` の遷移 3 本の `CrossfadeDuration`・`BlendMode`、`AnimGraphNode_BlendListByBool` 4 つの `BlendTime`・`BlendType`〈0.25 = 根の気絶と走り、1.0 = Alert、0.1 = Alert の 2 本〉、シーケンスプレーヤーの `PlayRate` 1）と、同じ場所の `_bytecode` の `.txt`（`bStunned = (BP_06_ReaperNurse.State == 2)`、`Speed = VSize(TryGetPawnOwner().GetVelocity())`、`bAgressiveIdle = bAggressiveIdle`、Skating → Stop は Speed < 5）。
 - 気絶の長さ 17.0 s は `BP_06_ReaperNurse` の Make Choice の `Delay 17.0`。起き上がりをその中に収めるのはユーザーの「明けに起き上がる」の読み（本家に起き上がりのアニメは無く、0.25 s のブレンドで戻る）。
+- 判断: `_bytecode/…/Nurse/BP_06_ReaperNurse.txt` の `Make Choice`（@7107〜@7523。`python Tools/dd/bp_flow.py <file> "Make Choice"` で順が読める）、`Chase Player`（@7524〜@7935、DoOnce @5624・@5639 の `broadcast CloseBy`、`Reset Detection` @10646）、`Not Seeing Player`（@7940〜@8473）、`Generate Random Point`（@8474〜@8794）、移動の代理の `OnSuccess_C62BD9…`・`OnFail_…`（@3910・@3952 → `Generate Random Point`）、`…_A0F68D…`（@5551・@10818 → `Point Of Interest` = 0）、`…_D93573…`（@5319・@9789。何もしない）、関数 `Can See Player`・`Player Target`・`Random Point Destination`・`Distance To Player`。エンジンの挙動は UE 5.8 のソース（`AIBlueprintHelperLibrary.cpp` の `CreateMoveToProxyObject` と代理の `OnMoveCompleted`・`OnNoPath`・`OnAtGoal`、`AIController.cpp` の `MoveTo`、`PathFollowingComponent.cpp` の `RequestMove`、`NavMovementComponent.h` の `StopMovementImmediately`、`NavigationSystem.cpp` の `K2_GetRandomReachablePointInRadius`）。本家のナースは AI のコントローラを替えない（`AIControllerClass` を上書きしない）ので、エンジンの既定の `AIController`。
 - 敵のアクタの値: `pak_reference_2/_assets/DDeception/Content/Blueprints/Characters/Nurse/BP_06_ReaperNurse.json`（CDO と `CollisionCylinder`・`CharMoveComp`・`CharacterMesh0`）、`BP_06_ReaperNurse_Sentry.json`（`bAggressiveIdle`）、`_bytecode/…/BP_06_ReaperNurse.txt`（BeginPlay の `K2_SetTimer('Make Choice', 0.5, 真)`、Make Choice の入口 @7107 の `State == 2` → DoOnce → `StopMovementImmediately` → `Cloak(False)` → `Talk` → `Delay 17.0` → @355 `State = 0` と DoOnce を開く、`Set State`・`Get State`〈ByteConst 0〉・`Player Vanish`〈@10871 `Seen Player Recently = False`〉・`No Telepathy`〈偽〉、`Set Walk State`）、`_bytecode/…/Shared/BP_DD_Character_Base.txt`（`CanSpawn` と `Ignore All Speed Barriers`）、`_bytecode/DDeception/Content/06_Hospital_Zone_01.json`（`Spawn Nurses` が `SetBoolPropertyByName(CanSpawn, True)`）。
 - 本家のナースのほかの部品（捕獲の判定 `Sphere`〈半径 54.928、Pawn だけ Overlap。捕獲は State ≠ Stun のときだけ〉は項目 9、上空の板 `StaticMesh`〈`M_Enemy`、(0, 21.9, 1117.8)、拡縮 (2.52, 2.52, 10)。地図の印と推測〉は項目 10、`Talk Audio` は項目 20。`Camera`〈本家の病院の捕獲用〉・`PillSpawn`・`Skate Audio`・`Cloak Timeline` は作らない）。
 
@@ -141,7 +158,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - `pipeline/gltf.py`（glb の読み書き・標本化・四元数）、`dd_stage`（`import_texture`・`_Graph`・`VERSION_TAG`）、`dd_assets`（`material`・`material_instance`）、`paths`（01 記録）。
 - エンジン: `InterchangeManager`・`InterchangeGenericAssetsPipeline`、`SkeletalMesh`・`AnimSequence`。
 - アニメの再生: エンジンの `FAnimInstanceProxy`（`PreEvaluateAnimation`・`Evaluate`）、`FAnimationRuntime::BlendPosesTogether`、`FAlphaBlend::AlphaToBlendOption`、`WasamiAssets::Path`（00 記録）。追加のモジュールは要らない（`Engine` だけ）。
-- 敵のアクタ: `ACharacter`・`UCharacterMovementComponent`・`FTimerManager`、`IWasamiEnemyInterface`（04 記録）、`WasamiAssets::Path`。
+- 敵のアクタ: `ACharacter`・`UCharacterMovementComponent`・`FTimerManager`、`IWasamiEnemyInterface`（04 記録）、`WasamiAssets::Path`。判断はモジュール `AIModule`（`UAIBlueprintHelperLibrary`・`UAIAsyncTaskBlueprintProxy`・既定の `AIController`）・`NavigationSystem`（`UNavigationSystemV1`）と、両ゾーンの NavMesh（01 記録の「ナビゲーション」、設定は 00 記録）。
 - 使う側: アニメの再生が取り込んだクリップを名前で読み、持ち主の敵のアクタから値を読む。パワー（04 記録）の Primal Fear（球の重なりの Pawn とインターフェース）・Vanish（タグ `Enemy` とインターフェース）・Telepathy（インターフェース）が敵のアクタに届く。2 つの状態の混ぜ `FWasamiStateBlend` はガレージリフトのアニメ（12 記録）も使う。
 
 ## 既知の制約・注意点
@@ -157,7 +174,8 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - 敵のアクタのカプセルは本家のナースの高さ（約 236 cm）。ワサミは 2026-09-18 に `MeshScale` 倍にして、メッシュの頂 231 cm（PIE の待機で `head_end` 228.9 cm）になった（それまでは 170 cm で、カプセルより 66 cm 低かった）。Telepathy の印はアクタの位置（カプセルの中心、床から 120 cm）に付くので、今は腰の高さに重なる（本家のナースも同じ位置。大きくする前は胸に重なって見えた）。
 - 捕獲の 3 本は前へ進んだ形のままなので、1 回再生が終わると体が元の位置へ跳んで戻る（`Capture_2` は 5.7 m）。捕獲の別室での使い方は項目 9。
 - `bCanSpawn` が既定で偽なので、エディタのレベルに置いた敵は PIE で消える（置くなら詳細で真にする）。エディタのレベルでは参照姿勢で見える。
-- 気絶の間も AI の移動の要求は止めていない（本家も `StopMovementImmediately` だけ）。項目 7 で AI の移動を入れるときに、気絶の間に動き出さないかを確かめる。
+- 気絶の間は判断が止まり、`StopMovementImmediately` が経路の追従も止める（2026-09-19 の PIE で、プレイヤーが 12 m 離れても 17 s 動かなかった。起き上がりの移し替えだけ動く）。
+- 約 20 m より遠い 2 点の道は途中までになることがある（01 記録）。巡回の点はプレイヤーの周り 3000 なので、遠くからでも途中までの道を繰り返してプレイヤーへ寄る。
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
 ## 変更履歴
@@ -170,3 +188,4 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - 2026-09-18: 気絶のアニメを「倒れる（`BeHit_FlyUp`・`Knock_Down` のどちらか）→ 寝返り → `push_up_to_idle` で起き上がる」に替えるため、取り込みの役を `Stun_FlyUp`・`Stun_KnockDown`・`Stun_GetUp_FlyUp`・`Stun_GetUp_KnockDown` にした（`stun_fall`・`stun_get_up`。ユーザーの指示と回答「ランダム」「Claude が寝返りを作る」）。`Stun_Loop`・`Stun_Recover` と役なしの 3 本はやめた。アニメの再生はまだ古いクリップを探す（作業ブランチ `feature/enemy-stun-knockdown` のステップ 2 で直す）
 - 2026-09-18: アニメの再生の気絶を「倒れる 2 本からランダム → 終わりで止まる → 起き上がり（気絶の終わりに終わる）」にし、起き上がりに入る更新で敵を移す（`MoveToGetUp`・`MeasureGetUpMove`）ようにした。明けてブレンドアウトする間は気絶の時刻を進めない。テスト `Anim.Stun`・`Anim.Clips`・`Actor.Stun` を直した（作業ブランチのステップ 2。PIE で確かめた）
 - 2026-09-18: `ensure_skeletal_pipeline` に管と焼く速さの引数を足した（本家のガレージリフトのアニメを 24 Hz で焼くため。既定は前のまま。作業一覧の項目 6 のステップ 8b1）
+- 2026-09-19: 判断（本家のナースの `Make Choice` の残り: `CanSeePlayer`・`ChasePlayer`・`NotSeeingPlayer`・`GenerateRandomPoint`・3 s の見失い・`PointOfInterest`・`OnCloseBy`）を AI MoveTo の代理で足し、テスト `Actor.Choice` と道具 `UWasamiTestListener` を足した。PIE（Zone 1 の迷路）で巡回・発見・追跡・Vanish・気絶を確かめた（作業一覧の項目 7 のステップ 2）

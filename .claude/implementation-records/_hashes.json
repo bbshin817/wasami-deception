@@ -9,7 +9,7 @@
     "Config/DefaultEditorPerProjectUserSettings.ini": "d8862707d73e7faf99ca9c07d761499418a11371",
     "Source/wasami_deception.Target.cs": "afe6f0d5169b2cb6491d7de438ab465dadbe6d35",
     "Source/wasami_deceptionEditor.Target.cs": "096e1e8454e881aebc9d2cfe365add216de13167",
-    "Source/wasami_deception/wasami_deception.Build.cs": "ba4ebc0ff939258d82e3bcd126c9ca5c5b95a6eb",
+    "Source/wasami_deception/wasami_deception.Build.cs": "5476dcd6486c546f07e7b7512b83834b0b7926c4",
     "Source/wasami_deception/wasami_deception.cpp": "2107f18ca549210efe63277f953523bbc45df68f",
     "Source/wasami_deception/wasami_deception.h": "677c8e25baf2999c23674260b43a50272cad2594",
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
@@ -127,11 +127,12 @@
   },
   "07-enemies.md": {
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
-    "Source/wasami_deception/WasamiEnemy.h": "ddda3b075458653505c84d4439b3f36eed98a074",
-    "Source/wasami_deception/WasamiEnemy.cpp": "fcfd43f141928d1da44e0a68048367c42fe06759",
+    "Source/wasami_deception/WasamiEnemy.h": "60371a3c89f597786613ab09c6ee3765a72aff41",
+    "Source/wasami_deception/WasamiEnemy.cpp": "19476637c56e1c8208c3b04a8b6df059c9499a39",
     "Source/wasami_deception/WasamiEnemyAnimInstance.h": "be342f1ea1620e329df718a40029be4fb343a0a4",
     "Source/wasami_deception/WasamiEnemyAnimInstance.cpp": "8562cc4b40d0d2c740eb647f0e373decdacaf32a",
-    "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "e3470886ca510a5b9d4f28976ae897d2eafc38a0",
+    "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "3f315143378d3f90ee1471a84c9e7b9191464d1a",
+    "Source/wasami_deception/Tests/WasamiTestListener.h": "1d0a05da143bdeda21999960ec9ccb1001db2708",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112"
   },

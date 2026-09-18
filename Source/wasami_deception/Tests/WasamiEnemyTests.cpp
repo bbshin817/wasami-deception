@@ -5,8 +5,11 @@
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "../WasamiEnemy.h"
@@ -16,6 +19,7 @@
 #include "../WasamiTelepathyPower.h"
 #include "../WasamiTelepathyTracker.h"
 #include "../WasamiVanishPower.h"
+#include "WasamiTestListener.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -479,6 +483,146 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the mesh plays the enemy's animation"), Body->AnimClass.Get() == UWasamiEnemyAnimInstance::StaticClass());
 	TestEqual(TEXT("the decisions' interval"), AWasamiEnemy::DecisionInterval, 0.5f);
 	TestEqual(TEXT("the stun's wait"), AWasamiEnemy::StunSeconds, 17.f);
+	TestEqual(TEXT("Can See Player's angle"), AWasamiEnemy::ViewAngle, 100.f);
+	TestEqual(TEXT("the delay that forgets the player"), AWasamiEnemy::ForgetSeconds, 3.f);
+	TestEqual(TEXT("the random point's radius"), AWasamiEnemy::RandomPointRadius, 3000.f);
+	TestEqual(TEXT("the chase's acceptance"), AWasamiEnemy::ChaseAcceptance, 5.f);
+	TestEqual(TEXT("the Point Of Interest's"), AWasamiEnemy::PointOfInterestAcceptance, 5.f);
+	TestEqual(TEXT("the random point's"), AWasamiEnemy::RandomPointAcceptance, 50.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorChoiceTest, "Wasami.Enemy.Actor.Choice",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorChoiceTest::RunTest(const FString& Parameters)
+{
+	// A game world without navigation, ticked by hand as in Actor.Stun: every move fails 0.1 s after it is asked for.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	// The player: the first player controller's character, not possessed so that it stays where it is put.
+	const FVector InFront(1000., 0., 500.);
+	ACharacter* Player = World->SpawnActor<ACharacter>(InFront, FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	if (!TestTrue(TEXT("the player is the player"), UGameplayStatics::GetPlayerCharacter(World, 0) == Player))
+	{
+		return false;
+	}
+	AWasamiEnemy* Enemy = AWasamiEnemy::SpawnEnemy(World, FVector(0., 0., 500.), 0.f);
+	if (!TestNotNull(TEXT("a spawned enemy"), Enemy))
+	{
+		return false;
+	}
+	Enemy->GetCharacterMovement()->GravityScale = 0.f;
+	UWasamiTestListener* Listener = NewObject<UWasamiTestListener>();
+	FScriptDelegate Heard;
+	Heard.BindUFunction(Listener, GET_FUNCTION_NAME_CHECKED(UWasamiTestListener, Hear));
+	Enemy->OnCloseBy.Add(Heard);
+	auto HeardCount = [Listener]() { return Listener->Count; };
+
+	// Generate Random Point at BeginPlay leaves the point as it was without navigation data.
+	TestTrue(TEXT("no random point without navigation"), Enemy->RandomPoint.IsZero());
+
+	// Can See Player: within 100 degrees of its front at any distance, when a Camera trace hits the player first.
+	TestTrue(TEXT("it sees the player in front"), Enemy->CanSeePlayer());
+	auto PutAt = [Player](double Degrees, double Distance)
+	{
+		const double Radians = FMath::DegreesToRadians(Degrees);
+		Player->SetActorLocation(FVector(Distance * FMath::Cos(Radians), Distance * FMath::Sin(Radians), 500.));
+	};
+	PutAt(99., 1000.);
+	TestTrue(TEXT("99 degrees aside"), Enemy->CanSeePlayer());
+	PutAt(-101., 1000.);
+	TestFalse(TEXT("not 101"), Enemy->CanSeePlayer());
+	PutAt(180., 1000.);
+	TestFalse(TEXT("not behind"), Enemy->CanSeePlayer());
+	PutAt(0., 50000.);
+	TestTrue(TEXT("however far"), Enemy->CanSeePlayer());
+	Player->SetActorLocation(InFront);
+	ACharacter* Between = World->SpawnActor<ACharacter>(FVector(500., 0., 500.), FRotator::ZeroRotator);
+	TestFalse(TEXT("not past another character"), Enemy->CanSeePlayer());
+	Between->Destroy();
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	TestFalse(TEXT("not while the player vanishes (its capsule ignores Camera)"), Enemy->CanSeePlayer());
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+	TestTrue(TEXT("and again after"), Enemy->CanSeePlayer());
+
+	// The decisions come on the ticks at 0.625, 1.125, … s. The first has not seen the player: Not Seeing Player walks
+	// to the random point, then Can See Player sets Seen Player Recently.
+	TickTo(0.625f);
+	TestTrue(TEXT("it saw the player"), Enemy->IsChasing());
+	TestEqual(TEXT("walking to the random point"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestEqual(TEXT("not chased yet"), HeardCount(), 0);
+	TestTrue(TEXT("no Point Of Interest"), Enemy->PointOfInterest.IsZero());
+
+	// The next chases: runs to the player, keeps where it is, CloseBy once.
+	TickTo(1.125f);
+	TestEqual(TEXT("the chase runs"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestTrue(TEXT("the Point Of Interest is the player"), Enemy->PointOfInterest.Equals(InFront));
+	TestEqual(TEXT("CloseBy"), HeardCount(), 1);
+	TickTo(1.625f);
+	TestEqual(TEXT("once"), HeardCount(), 1);
+
+	// Out of sight it keeps chasing: each chase starts the 3 s delay over, and it knows where the player is.
+	const FVector Behind(-1000., 0., 500.);
+	Player->SetActorLocation(Behind);
+	TestFalse(TEXT("the player is out of sight"), Enemy->CanSeePlayer());
+	TickTo(6.125f);
+	TestTrue(TEXT("still chasing"), Enemy->IsChasing());
+	TestTrue(TEXT("to where the player is"), Enemy->PointOfInterest.Equals(Behind));
+	TestEqual(TEXT("running"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+
+	// Player Vanish: the next decision walks to the Point Of Interest, whose failed move clears it 0.1 s later.
+	IWasamiEnemyInterface::Execute_PlayerVanish(Enemy);
+	TestFalse(TEXT("Vanish: not chasing"), Enemy->IsChasing());
+	TickTo(6.625f);
+	TestEqual(TEXT("walking"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestTrue(TEXT("to the Point Of Interest"), Enemy->PointOfInterest.Equals(Behind));
+	TickTo(6.75f);
+	TestTrue(TEXT("which the failed move clears"), Enemy->PointOfInterest.IsZero());
+
+	// The delay from the last chase (at 6.125 s, due 9.125 s) opens CloseBy again.
+	Player->SetActorLocation(InFront);
+	Enemy->SetActorRotation(FRotator(0., 180., 0.));
+	TickTo(9.125f);
+	TestFalse(TEXT("turned away, it does not see the player"), Enemy->IsChasing());
+	Enemy->SetActorRotation(FRotator::ZeroRotator);
+	TickTo(9.625f);
+	TestTrue(TEXT("it sees the player again"), Enemy->IsChasing());
+	TickTo(10.125f);
+	TestEqual(TEXT("CloseBy again"), HeardCount(), 2);
+
+	// A stun stops the decisions, so the delay after the last chase (10.125 s) forgets the player.
+	Player->SetActorLocation(Behind);
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, false);
+	TickTo(10.625f);
+	TestTrue(TEXT("stunned"), Enemy->IsStunRunning());
+	TestTrue(TEXT("chasing yet"), Enemy->IsChasing());
+	TickTo(13.125f);
+	TestTrue(TEXT("until the delay is past"), Enemy->IsChasing());
+	TickTo(13.1875f);
+	TestFalse(TEXT("then it has forgotten the player"), Enemy->IsChasing());
 	return true;
 }
 
