@@ -250,3 +250,4 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 2026-09-19: 06 の追跡型 `AWasamiEnemy06Chase`（毎ティックの追跡・扉を突く代用と `HitFX`・常に `Chasing`）を足し、気絶の DoOnce を `StartStun` に出し、`IsChasing` と `GetTimeToStunStart` を virtual にした。テスト `Actor.Chase06` を足した（作業一覧の項目 7 のステップ 3）
 - 2026-09-19: Zone 2 の迷路の型 `AWasamiEnemyZone2`（階の判定と、階が違うときの原点に最も近いリフトとその `Move Location`）とテスト `Actor.Zone2` を足した（作業一覧の項目 7 のステップ 4）
 - 2026-09-19: 見張り `AWasamiEnemySentry` と視界コーン `IWasamiViewconeInterface`・`AWasamiViewcone`・`AWasamiViewconeNurse` を足し、`AWasamiEnemy` の `BeginPlay` の中身を `BeginNurse` に出した。テスト `Actor.Sentry` を足し、`Actor.Choice` のリスナーを `TStrongObjectPtr` で持つようにした（全体の実行で 1 回、最初の `CloseBy` を取りこぼした。参照の無い `NewObject` が回収された疑い）（作業一覧の項目 7 のステップ 5a）
+- 2026-09-19: `WasamiViewcone.cpp` の無名名前空間の `MinimapTag`・`OpacityName` を `ViewconeMinimapTag`・`ViewconeOpacityName` に改めた（ユニティビルドで `WasamiPlayerCharacter.cpp`・`WasamiPrimalPower.cpp` の同じ名前とぶつかった。ステップ 5a では未コミットのファイルが塊の外でコンパイルされて表に出ず、コミットの後の最初のビルドで落ちた。症状索引）

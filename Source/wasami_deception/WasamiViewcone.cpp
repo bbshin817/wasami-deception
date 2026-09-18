@@ -17,8 +17,8 @@
 namespace
 {
 	// The player's map capture draws the actors with this tag (AWasamiPlayerCharacter).
-	const FName MinimapTag(TEXT("dd_minimap"));
-	const FName OpacityName(TEXT("Opacity"));
+	const FName ViewconeMinimapTag(TEXT("dd_minimap"));
+	const FName ViewconeOpacityName(TEXT("Opacity"));
 
 	/** Fade In's Visibility track: CurveFloat_0, two cubic keys whose auto tangents are flat. */
 	FRichCurve MakeFadeInCurve()
@@ -60,7 +60,7 @@ AWasamiViewcone::AWasamiViewcone()
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	// Hidden until play begins (the class's bHidden).
 	SetHidden(true);
-	Tags.Add(MinimapTag);
+	Tags.Add(ViewconeMinimapTag);
 
 	DefaultSceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DefaultSceneRoot"));
 	RootComponent = DefaultSceneRoot;
@@ -96,7 +96,7 @@ void AWasamiViewcone::BeginPlay()
 
 void AWasamiViewcone::BeginPlayNextTick()
 {
-	Plane->SetScalarParameterValueOnMaterials(OpacityName, 0.f);
+	Plane->SetScalarParameterValueOnMaterials(ViewconeOpacityName, 0.f);
 	Plane->AddLocalOffset(PlaneLift);
 }
 
@@ -257,7 +257,7 @@ void AWasamiViewcone::Tick(float DeltaSeconds)
 
 void AWasamiViewcone::UpdateFade()
 {
-	Plane->SetScalarParameterValueOnMaterials(OpacityName, GetFade());
+	Plane->SetScalarParameterValueOnMaterials(ViewconeOpacityName, GetFade());
 }
 
 // BP_06_Miniboss_viewcone_Nurse's Plane_GEN_VARIABLE.
