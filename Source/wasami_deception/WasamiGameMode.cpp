@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "WasamiBlackFadeWidget.h"
+#include "WasamiCapture.h"
 #include "WasamiDeathScreenWidget.h"
 #include "WasamiGameInstance.h"
 #include "WasamiPlayerCharacter.h"
@@ -52,6 +53,13 @@ namespace
 			{
 				Mode->DeathEvent(UGameplayStatics::GetPlayerCharacter(World, 0));
 			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CaptureCommand(TEXT("Wasami.Capture"),
+		TEXT("Wasami.Capture [N]: the player is caught (the black room, the clip, the death screen 3.5 s on); N 0 to 2 picks Capture_1 to Capture_3, none takes the next from the bag."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AWasamiCapture::StartCapture(World, nullptr, Args.Num() > 0 ? FCString::Atoi(*Args[0]) : INDEX_NONE);
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CheckpointCommand(TEXT("Wasami.Checkpoint"),

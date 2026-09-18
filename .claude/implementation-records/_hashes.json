@@ -61,9 +61,9 @@
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "352f6ab86e459f46eb2a4fc3896164c39aa41012",
-    "Source/wasami_deception/WasamiGameMode.cpp": "d0b29b831fec72233c3254dab1c544de961bbd15",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "a9881bed1a10710952a531d9d654b0723cf42b91",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "f6b50d288289158ff103f1438f78cd7065522985"
+    "Source/wasami_deception/WasamiGameMode.cpp": "579fb75a0930412cdca485d1c271f89f36b355e8",
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "4fa7c116c0cc57c5a0a767de237291df1fb24ced",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "e6099a94f7457eced96ce1d84ecbcc38a96a5f2a"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
@@ -115,8 +115,8 @@
     "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "956a79e018c51e07c01b0937d1cf1788c9d22f86"
   },
   "06-game-flow-save.md": {
-    "Source/wasami_deception/WasamiGameInstance.h": "98100dca10bac34326f3ec2079ca3ee85a94a8e3",
-    "Source/wasami_deception/WasamiGameInstance.cpp": "84938d03d72fee232ed5d0142a65b78922b62849",
+    "Source/wasami_deception/WasamiGameInstance.h": "05e0294e517e0aec2a634a4faa02807869dd2445",
+    "Source/wasami_deception/WasamiGameInstance.cpp": "978a7d9d8218a5b20ddd64c34299f663b9e1972a",
     "Source/wasami_deception/WasamiSaveGame.h": "0e6806937279e417e24073ed7229080379bc5dcb",
     "Source/wasami_deception/WasamiSaveGame.cpp": "a5b2be3db8c60ff95639a8c79c1c25693dc9e98c",
     "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "55ee3968afb4b81cdd6d0830778ed86a6fc352db",
@@ -128,8 +128,8 @@
   },
   "07-enemies.md": {
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
-    "Source/wasami_deception/WasamiEnemy.h": "906e94b1dbc43a6b7a054c522015e1899bebb2bf",
-    "Source/wasami_deception/WasamiEnemy.cpp": "e2a4e23801a8778efce4f7540cdcd207f5466a2c",
+    "Source/wasami_deception/WasamiEnemy.h": "de82a64e4cd4e28f69cfbc29d81373572a255e0c",
+    "Source/wasami_deception/WasamiEnemy.cpp": "8d0a5b91ac84a40ec87f5e1f9b4734b0f09012c1",
     "Source/wasami_deception/WasamiEnemy06Chase.h": "f142ae1f8117bed6220567ace4a8fbbc2a2465ba",
     "Source/wasami_deception/WasamiEnemy06Chase.cpp": "a72bc5dfcb639b782064538a6022035f69739c49",
     "Source/wasami_deception/WasamiEnemyZone2.h": "23a5dfc24e420ce355699dc0c97e60218c733975",
@@ -140,8 +140,11 @@
     "Source/wasami_deception/WasamiViewcone.cpp": "9a8fd478a859b30d442c1efb24ec09b89a97cd2b",
     "Source/wasami_deception/WasamiEnemyAnimInstance.h": "be342f1ea1620e329df718a40029be4fb343a0a4",
     "Source/wasami_deception/WasamiEnemyAnimInstance.cpp": "8562cc4b40d0d2c740eb647f0e373decdacaf32a",
-    "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "4c02879405a512499c7714ad1538d3683fb5782e",
+    "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "fc8dc7e69900f993a9d8225e092bc8eeb126f0f7",
     "Source/wasami_deception/Tests/WasamiTestListener.h": "1d0a05da143bdeda21999960ec9ccb1001db2708",
+    "Source/wasami_deception/WasamiCapture.h": "61bd46e1a4c6beb7a9d549c7f90adafd3e422dc1",
+    "Source/wasami_deception/WasamiCapture.cpp": "ae769705e3be157c1c47bbc7fde514181682112d",
+    "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "f7d6295f001d7f5a9ce17f152b684ef94015f737",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112"
   },

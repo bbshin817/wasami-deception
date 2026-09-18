@@ -175,7 +175,7 @@
 - 根拠: `pak_reference/_bytecode/DDeception/Content/01_Hotel.txt`（`JumpscareMonkey`、`Monkey_Killshot_03a*` の参照、`JumpscareShake` 0.3、Delay 3.5）、`pak_reference/_levels/01_Hotel.full.json`（`JumpscareCam` と `Monkey_Killshot_01`・`02`・`03a`・`03a2`〜`03a5` の LevelSequence。`_sequences/` には書き出されていない）、`pak_reference/_camera/_camera_shakes.json`、WebGL 版 15 記録（`jumpscare.ts`。3 本と読んだが、レベルの参照は 7 本あるので本数と選び方はこの項目で確かめる）。
 - 依存: 4、5、7。
 - 規模: 2
-- 状態: 未着手。
+- 状態: **完了（2026-09-19）**。気絶していない敵ワサミ（迷路のナース・駐車場の 06 型・Zone 2 の見張り・迷路の型）に触れると、本家のナースの `Sphere`（半径 54.928、Pawn だけ Overlap）の重なりで敵を全部消し、`AWasamiCapture` がレベルの上の遠い所に黒い別室（本家の `jumpscareblock` の板）を出して、入力を止め、タブレットを下ろし、別室のカメラへ切り替え、敵ワサミが捕獲の 3 本（`A_WasamiEnemy_Capture_1`〜`3`）の 1 本を再生し、`JumpscareShake`（0.3。本家のデータから取り込み）を掛け、暗転して 3.5 s 後に死亡画面（ライフ −1）→ チェックポイントで開き直す（実装記録 07 の「捕獲の演出」「捕獲の判定」、06・02）。PIE で 3 本とも写り、3 種の敵とも接触から再開までつながることを収録した。**完了の条件の読み替え**（本家のコードに合わせた）: (1) 「重複なしのランダム（直前と同じものを避ける）」は、本家ホテルの `Death Event` が使うマクロ `Random Integer In Range (No Repeat)` どおり 3 回で 1 巡する袋にした（巡の中では重ならないが、巡の変わり目では同じものが続くことがある）。袋は死亡でレベルを開き直してもよいようゲームインスタンスに置いた。(2) 「寄りと向きは `JumpscareCam` の置き方から」は、本家の 1 本目の Matinee の t=0 のカメラがサルの頭を写す写し方（高さ 0.534・距離 0.96 倍）を、全身を使う 3 本のためにワサミの全身へ当てた（前 222・上 123 cm。サルの足からの差を体の比で縮めた寄りと顔の高さの寄りは、PIE で後転と滑りが画面から外れた）。(3) 本家は捕まえた敵が自分以外を消すが、本作は別室のワサミが引き継ぐので自分も消す。捕獲の音（本家ホテルの Matinee のサルの叫びとナイフ。WebGL 版は叫びだけ）はまだ鳴らさず、項目 19 に書いた。別室の見た目（寄り・灯・暗転・DOF）は項目 28 の後回しの一覧、カメラの動きは項目 24。
 
 ### 13. 脱出（ガレージの祭壇 → 欠片 → ポータル）と視線の手のマーク
 
@@ -297,7 +297,7 @@
 ### 19. 曲と環境音・効果音の残り
 
 - 目標: 病院の曲（通常・追跡・Nightmare）と環境音、まだ無い効果音を本家どおりに鳴らす。
-- 完了の条件: `BP_06_MusicPlayer`（Zone 1）・`BP_06_MusicPlayer_Zone2` の切り替えとフェードがコードどおり。レベルの `AudioComponent`（Zone 1 43・Zone 2 146）と `AmbientSound`・`AudioVolume` を配置どおりに置く。減衰は SoundCue と減衰設定の値どおり。
+- 完了の条件: `BP_06_MusicPlayer`（Zone 1）・`BP_06_MusicPlayer_Zone2` の切り替えとフェードがコードどおり。レベルの `AudioComponent`（Zone 1 43・Zone 2 146）と `AmbientSound`・`AudioVolume` を配置どおりに置く。減衰は SoundCue と減衰設定の値どおり。捕獲の別室（項目 9 の `AWasamiCapture`。いまは無音）の音: 本家ホテルの捕獲の Matinee の `InterpTrackSound`（`Evil_Monkey_Scream`・`EN01_Toy_Monkey_Attck_Knife_v1`/`v4`。`pak_reference/_levels/01_Hotel.full.json` の `MonkeyJumpscare*` の `InterpData`）を時刻どおりに鳴らす。サルの声なので、WebGL 版（04 記録の `caught`: `enemy_scream` = `Evil_Monkey_Scream` を 1.0 で 1 回、13 記録）のように叫びだけにするかは、この項目で WebGL 版に倣って決める。捕獲の間は音を聞く位置が別室のカメラへ移るので、2D か別室の中で鳴らす（実装記録 07 の「既知の制約」）。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_MusicPlayer*.txt`（`BP_08_MusicPlayer` の派生）、`_soundcues.json`、`_levels/06_Hospital*.full.json`、実装記録 01（`UWasamiSoundCueLibrary`）。
 - 依存: 6。
 - 規模: 2
@@ -353,6 +353,7 @@
   - 2026-09-19（項目 7）: Zone 1 の駐車場のナースがトンネルの扉を突く動きと、その `Hit FX` の塵 `P_06_NurseDoorHit` の見え方 — 今は本家の針のモンタージュ（`ReaperNurse_Needle_Attack_NoSound_Montage`、ナースの骨）の代わりにワサミの `Chase_Charge`（頭を下げて突っ込む 0.53 s）を本家の時刻で流し、塵は推定の `Whisps_trans` に加算を上書きした材質（暗いトンネルではほとんど見えない。実装記録 07・08）。本家での確かめ方: 最新版の Torment Therapy の Zone 1 で、駐車場からトンネルの扉を閉ざされる所（`06_DoorsLock`）の後ろから 25 s を撮る
   - 2026-09-19（項目 7）: Zone 2 の見張りの視界コーンの地図の印（扇 `map_enemy_search_Mat` と点 `0_DotCircle_Mat`）の見え方 — 今は本家の Unlit・半透明の式（焼き込みのシェーダー）を、地図のキャプチャ（`SCS_BaseColor`）に写る Default Lit・Masked にした推定（切り抜き 0.1。扇の縁が硬く、薄れはベースカラーの暗さだけ。実装記録 03 の「マテリアル」）。本家の地図でコーンがどう見えるかは実機と見比べていない
   - 2026-09-19（項目 7）: 見つける前に Primal Fear などで気絶した見張りの姿勢 — 今はアニメが 17 s で起き上がって立つ（State は本家どおり Stun のまま。見つけて跳び降りた後の 17 s も立ったまま止まる。実装記録 07 の「既知の制約」）。本家での確かめ方: 最新版の Zone 2 のミニボスの廊下で、見張りに見つかる前に Primal Fear を使い、棚の上と跳び降りた後の姿勢を見る（本家の ABP は State が 0 に戻るまで気絶の姿勢）
+  - 2026-09-19（項目 9）: 捕獲の別室の見た目（寄り・灯・暗転・DOF）— 今は本家ホテルの 1 本目の Matinee の t=0 のカメラがサルの頭を写す写し方をワサミの全身に当てた寄り（前 222・上 123 cm、FOV 90、動かない）、サルの真上の天井灯 `ceilinglights_80` を縮めた位置の灯（1500・半径 500・水色）、組は長さの順（`Capture_1`↔`MonkeyJumpscare` ほか）で暗転を長さの比で写す（直線の `StartCameraFade`。本家は曲線）。`JumpscareCam` の旧 DOF（焦点 142.9・領域 571.4・遠いぼけ 16.2）は写していない。本家での確かめ方: 旧版の実機のホテルでサルに捕まる 3 本（`MonkeyJumpscare`・`2`・`3`）を撮り、寄り・明るさ・ぼけ・暗転の速さを見比べる（カメラの動きは項目 24）
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3
