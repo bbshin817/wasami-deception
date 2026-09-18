@@ -5,6 +5,10 @@
 無人モード（環境変数 WASAMI_UNATTENDED=1。駆動役 Tools/overnight.py が付ける）ならそれを先頭で知らせ、
 未完了の記録の「要確認（ユーザー）」と前回の無人運転の状態ファイル（Intermediate/Overnight/status.json）も出す
 （`.claude/guides/autonomy.md`）。
+
+有人セッション（合図が無い）では、作業一覧を進めるのは無人運転なので（2026-09-18 から）`/continue` を勧めず、
+無人運転の結果を報告して指示を待つよう知らせ、最新の駆動役のログのまとめと、駆動役が今も動いているか
+（Intermediate/Overnight/driver.json）を出す（autonomy.md の「有人セッション」）。
 """
 import json
 import os
@@ -21,7 +25,10 @@ for _stream in (sys.stdout, sys.stderr):
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
 PROGRESS_LIMIT = 30 * 1024  # bytes; above this a record is folded before the next step (progress-tracking.md)
-STATUS_FILE = os.path.join(ROOT, "Intermediate", "Overnight", "status.json")
+OVERNIGHT_DIR = os.path.join(ROOT, "Intermediate", "Overnight")
+STATUS_FILE = os.path.join(OVERNIGHT_DIR, "status.json")
+DRIVER_FILE = os.path.join(OVERNIGHT_DIR, "driver.json")  # written by Tools/overnight.py while it runs
+SUMMARY_MARK = "--- まとめ ---"  # Tools/overnight.py's summarize()
 
 
 def git(*args):
@@ -46,6 +53,41 @@ def read_status():
         return None
 
 
+def running_driver():
+    """The driver's claim file when its process is still alive, else None. tasklist, because os.kill(pid, 0)
+    terminates the process on Windows."""
+    try:
+        with open(DRIVER_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        pid = int(data.get("pid", 0))
+        out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/FO", "CSV", "/NH"], capture_output=True,
+                             text=True, errors="replace", timeout=20).stdout
+    except Exception:
+        return None
+    return data if pid and '"%d"' % pid in out and "python" in out.lower() else None
+
+
+def latest_log_summary():
+    """(path relative to ROOT, the head lines of its summary without timestamps) of the newest driver log, or None.
+    The summary is empty while the driver runs or when it died before writing one."""
+    try:
+        logs = [os.path.join(OVERNIGHT_DIR, f) for f in os.listdir(OVERNIGHT_DIR) if f.endswith(".log")]
+        path = max(logs, key=os.path.getmtime)
+        with open(path, "rb") as f:
+            f.seek(max(0, os.path.getsize(path) - 16384))
+            tail = f.read().decode("utf-8", errors="replace")
+    except Exception:
+        return None
+    summary = []
+    if SUMMARY_MARK in tail:
+        for line in tail.split(SUMMARY_MARK, 1)[1].splitlines()[1:]:
+            text = re.sub(r"^\[[^\]]*\] ", "", line)
+            if not text.strip() or text.startswith((" ", "ログ:", "最後の状態ファイル:")):
+                continue  # the status file and the indented 要確認 lines are printed below anyway
+            summary.append(text.strip())
+    return os.path.relpath(path, ROOT), summary
+
+
 def main():
     lines = []
     unattended = os.environ.get("WASAMI_UNATTENDED") == "1"
@@ -55,6 +97,21 @@ def main():
                      "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
                      "Intermediate/Overnight/status.json を書いて応答を終える。変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わない"
                      "（本家のセーブが遊んで書き換わる・控えから戻す・入れ替えるのはしてよい）。")
+    else:
+        lines.append("**有人セッション**（`.claude/guides/autonomy.md` の「有人セッション」）: 作業一覧は基本、無人運転が進める"
+                     "（2026-09-18 から）。ここは無人運転の方向性・実装方針の修正と不具合の改善の場。まず無人運転で何が進んだか"
+                     "（下のまとめと、その間のコミット）と要確認の一覧を短く報告し、ユーザーの指示を待つ。"
+                     "作業一覧の続き（`/continue`）は頼まれたときだけ。指摘は記録・作業一覧・ガイドへその場で書く。")
+        driver = running_driver()
+        if driver:
+            lines.append("**駆動役が動いています**（PID %s、%s から、ログ %s）。同じ作業ツリーとエディタを取り合うので、"
+                         "ファイル・エディタ・git を変える前にユーザーに止めてもらう（端末で Ctrl+C）。読むだけならよい。" % (
+                             driver.get("pid", "?"), driver.get("started", "?"), driver.get("log", "?")))
+        latest = latest_log_summary()
+        if latest:
+            path, summary = latest
+            lines.append("最新の駆動役のログ: %s — %s" % (
+                path, " / ".join(summary) if summary else "（まとめなし: 駆動役が動いているか、途中で止まった）"))
     status = read_status()
     if status:
         lines.append("前回の無人運転: %s %s — %s（ステップ: %s、コミット: %s）" % (
@@ -64,7 +121,9 @@ def main():
     if os.path.isdir(PROGRESS_DIR):
         records = sorted(f for f in os.listdir(PROGRESS_DIR) if f.endswith(".md") and f != "_template.md")
     if records:
-        lines.append("未完了の進捗記録があります。**`/continue` スキルで再開してください**（照合の手順は `.claude/skills/continue/SKILL.md`）:")
+        lines.append("未完了の進捗記録があります。**`/continue` スキルで再開してください**（照合の手順は `.claude/skills/continue/SKILL.md`）:"
+                     if unattended else
+                     "未完了の進捗記録（続きは無人運転が進める。有人セッションで `/continue` を使うのは頼まれたときだけ）:")
         for name in records:
             with open(os.path.join(PROGRESS_DIR, name), encoding="utf-8") as f:
                 text = f.read()
