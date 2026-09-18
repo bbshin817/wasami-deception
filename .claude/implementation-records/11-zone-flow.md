@@ -167,7 +167,10 @@ updated: 2026-09-19
 欠片の区間（2026-09-19、項目 13 のステップ 4）: `Wasami.Checkpoint 10` で保存してから Zone 2 を PIE → COLLECT THE RING PIECE、敵なし → `pie.py place -8385 -983 --yaw 180 --pitch -10`（祭壇の前、手のマークが出る）→ ビューポートの真ん中を左クリックで欠片の画面（ゲームが止まりカーソルが出る）→ CLOSE をクリック → 止めが解け、祭壇のピンクの灯 2 つが消え、障壁と欠片が消え、`BP_06_DoubleDoors2` の鍵が外れ、目的が HEAD TOWARDS THE GARAGE → `place -6300 -2400 --yaw -90` から W を 3.5 s で扉を抜けてガレージの箱（y −3439）まで歩けた。
 
 脱出（2026-09-19、項目 13 のステップ 5b）: `Wasami.Checkpoint 10` のセーブで Zone 2 を PIE → `pie.py place -10347 -7150 --yaw -90 --pitch 5`（ガレージの南のトンネルの口、鍵のかかったポータルの正面）→ `Wasami.Flow OnPostmazeTriggerGarage` でポータルが赤い輪とワサミの印の開いた姿になり（音と揺れなし）、目的が GET TO THE PORTAL → W で前へ歩くとポータルの手前（プレイヤー y −7520）で止まり、約 0.3 s で画面が黒になってそのまま、敵 0。収録 `Intermediate/DesktopAgent/shots/escape.mkv`（git の外）、グリッド `Intermediate/Overnight/escape_grid.png`・`escape_sheet.png`。
+
+通しの脱出（2026-09-19、項目 13 のステップ 6）: `Wasami.Checkpoint 10` のセーブで Zone 2 を PIE（`PlayerStart_PostMaze`）→ `place -8385 -983 --yaw 180 --pitch -10` で祭壇に手のマーク → 左クリックで欠片の画面 → CLOSE で戻る → `place -6300 -2250 --yaw -90` から W を 6 s（障壁は消え、鍵の外れた `BP_06_DoubleDoors2` が開いて抜け、ガレージの箱 `Postmaze_Trigger_Garage` に入る。4.2 s では扉で足が鈍って箱に届かなかった）で目的が GET TO THE PORTAL・ポータルが開く → `place -10347 -7150 --yaw -90 --pitch 5` から W でポータルの手前（y −7515）で止まり黒。1 回の PIE で止まる所は無かった。鍵のかかったポータルは本家どおり何も止めない（08 記録の `Collision`）ので、開く前に歩くとトンネルの奥へ抜ける（ふつうに遊べば、障壁の奥のガレージの箱がポータルより手前で開けるので起きない）。収録 `Intermediate/DesktopAgent/shots/escape_through2.mkv`（git の外）、グリッド `Intermediate/Overnight/escape_through_grid.png`。
 ## 変更履歴
+- 2026-09-19: 祭壇から脱出までを通しで確かめた（検証の「通しの脱出」。ソースの変更なし。作業一覧の項目 13 のステップ 6）
 - 2026-09-19: Zone 2 の `OnPostmazeTriggerGarage` がガレージのポータルを開けて矢印と目的をポータルへ向け、ポータルの前の脱出の箱の `OnEndTrigger` で入力と走りを止め、黒に暗転し、`21-Ballroom_portal_V2` を鳴らして敵を消すようにした。テスト `Wasami.ZoneFlow.Escape`（作業一覧の項目 13 のステップ 5b）
 - 2026-09-19: `AWasamiZone2Flow::BeginPlay` が本家どおり `Mat_ParameterCol` の `Portal Extra Brightness` を 40 にするようにした（ガレージのポータル。作業一覧の項目 13 のステップ 5a。08 記録）
 - 2026-09-18: 初版。トリガーの箱と、2 つのゾーンの区間の流れの骨組み（作業一覧の項目 6 のステップ 1）

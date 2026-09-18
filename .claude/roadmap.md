@@ -184,7 +184,7 @@
 - 根拠: `pak_reference/_bytecode/DDeception/Content/03_Manor_Zone2.txt`（@1385〜@4380 の祭壇と欠片、`Portal Extra Brightness`）、`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt`（@43〜 Postmaze、@1423〜@1773 の台詞・曲のフェード・ポータルの音・敵の除去）、`Blueprints/01_Hotel/BP_01_Statue.txt`、`Blueprints/00_Ballroom/BP_00_Teleport.txt`、`UI/Main/UMG_Interact`。
 - 依存: 6、7。
 - 規模: 2
-- 状態: 未着手。
+- 状態: **完了（2026-09-19）**。見て使う仕組み（カメラの前 200 cm のトレースとタグ `interact`、画面の中央の手のマーク、左クリック。実装記録 05）、障壁を使ったときの拒否（`DD_RingBarrierDenied_louder` と文の枠 `UMG_TextPrompt`、5 s に 1 回。08・09）、Zone 2 の祭壇 `BP_01_Statue` と欠片 `BP_08_RingPiece_NoPickup`（全回収の前は拒否の音と文、後は `Interact All Shards`。08）、欠片の画面 `UMG_01_RingPieceCollect`（ゲームを止め、閉じると `Ring Piece Collect `: 祭壇の灯 2 つ・障壁・欠片を消し、ガレージへの扉 `BP_06_DoubleDoors2` の鍵を外し、矢印と HEAD TOWARDS THE GARAGE。09・11）、ガレージのポータル `BP_00_Teleport`（本家の最新版。ロゴはワサミの印。08）がガレージの箱 `Postmaze_Trigger_Garage` で開き、矢印と GET TO THE PORTAL、ポータルの前の箱（ホテルの出口の `EndTrigger` の位置と大きさ）で入力と走りを止め、黒に暗転し、`21-Ballroom_portal_V2` を鳴らして敵を消す（11）。PIE で `Wasami.Checkpoint 10` から祭壇 → 欠片の画面 → 扉を抜けてガレージの箱 → ポータルが開く → 暗転を 1 本で通した（11 記録の「通しの脱出」）。テストは `Wasami.` の 75 本。**完了の条件の読み替え**（本家のコードに合わせた）: (1) 祭壇はガレージに新しく置かず、本家の病院 Zone 2 の迷路の後の部屋にある祭壇 `ring_statue_2` をそのまま使い、ガレージにはポータルだけを置いた（本家の病院に「祭壇 → 欠片 → 障壁 → ガレージ」の流れがコードにあり、祭壇が障壁の奥のガレージにあると障壁を壊す前に祭壇へ行けず、条件の「欠片の画面が閉じると障壁を壊し、矢印をガレージへ向ける」が成り立たない）。(2) 「全回収で祭壇の球が消え」は項目 6 の全回収（`Postmaze Transition`）が済ませている。(3) ポータルは祭壇の後に「現れる」のでなく、本家のホテルの出口に倣い、初めから鍵をかけて置き、ガレージの箱で開く。祭壇の場所・目的の文・ロゴは下の「未回答の要確認」。粒子と推定の材質（祭壇・欠片・ポータル）は項目 28 の後回しの一覧。Bierce の台詞は項目 20、曲のフェードは項目 19、スコア画面は項目 14（それまでは暗転したまま止まる）。
 
 ### 27. 大目標 1 の通しプレイの確かめ
 
@@ -382,6 +382,12 @@
 ## 未回答の要確認（ユーザー）
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
+
+### 項目 13（脱出、2026-09-19 に閉じた記録 `20260919-escape`）
+
+- 2026-09-19: ガレージでポータルが開いた後の目的の文 — 仮に `GET TO THE PORTAL` にした。理由: 本家のホテルが出口のポータルを開けたときの `Get back to the portal.` を、病院の目的の書き方（`HEAD TOWARDS THE GARAGE` などの大文字）に合わせ、まだポータルへ行っていないので back を落とした。本家の病院にはポータルへ向かう文が無い（救急車の `GET ON TOP OF THE AMBULANCE`）。場所: `WasamiZone2Flow.cpp` の `OnPostmazeTriggerGarage`、実装記録 11。
+- 2026-09-19: 祭壇の場所 — 仮に本家の病院 Zone 2 の祭壇 `ring_statue_2`（迷路の後の部屋）をそのまま使い、ガレージにはポータルだけを置いた。理由: 本家の病院に祭壇と「欠片 → 障壁 → ガレージ」の流れが既にあり、作業一覧の完了の条件（欠片の画面で障壁が壊れてガレージへ）とも合う。2026-09-17 の最終目標の「ガレージの祭壇とポータルで脱出」は、病院に祭壇があると知る前の言い方と読んだ。場所: 上の項目 13 の状態（完了の条件の読み替え）。
+- 2026-09-19: ポータルの `Logo`（本家は `M_00_Portal_Monkey` のサルの顔）— 仮にワサミのシンボル（読み込み画面の紋章と同じユーザーの印）に替えた（本家の印と同じ大きさ・位置・赤で描いた `/Game/Wasami/Portal/T_Portal_Wasami`）。理由: 原作のキャラクターは使わない（`.claude/guides/original-fidelity.md`）、読み込み画面の紋章の前例（2026-09-19 のユーザーの回答）。場所: 実装記録 08 の「ガレージのポータル」、前処理 `Tools/dd/prepare_portal_logo.py`。
 
 ### 項目 7（NavMesh と敵の AI、2026-09-19 に閉じた記録 `20260919-enemy-ai`）
 
