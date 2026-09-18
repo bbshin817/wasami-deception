@@ -48,7 +48,7 @@ updated: 2026-09-18 14:10
 
 - 作業ブランチ `feature/enemy-stun-knockdown`（main の 6915229 から）。
 - エディタは開いたまま（セッション 1）。C++ はステップ 2 でビルド済み。PIE は止めた。
-- PIE の収録（git の外）: `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv`（21 s。敵 (60, −1150)・ヨー 0、プレイヤー (−60, −550)・ヨー −90・ピッチ −6。撮り始めの約 1 s 後に `WasamiPrimalPower.stun_enemies`）、コマの一覧 `pie-stun-seq-1fps.png`、人に見せるグリッド `pie-stun-grid.png`。毎フレームの記録 `Saved/enemy_probe/stun-seq.json` を読む道具 `observations/tools/enemy_stun_check.py`。GIF 06 の撮り直しはステップ 3。
+- PIE の収録（git の外）: `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv`（21 s。敵 (60, −1150)・ヨー 0、プレイヤー (−60, −550)・ヨー −90・ピッチ −6。撮り始めの約 1 s 後に `WasamiPrimalPower.stun_enemies`）、コマの一覧 `pie-stun-seq-1fps.png`、人に見せる時刻入りのグリッド `sheet-1-fall.png`・`sheet-2-getup.png`（`video_probe.py sheet`）。毎フレームの記録 `Saved/enemy_probe/stun-seq.json` を読む道具 `observations/tools/enemy_stun_check.py`。GIF 06 の撮り直しはステップ 3。
 - 未完了の記録がもう 1 件ある（`20260918-power-look-tuning.md`、main 上の作業。こちらを終えてから戻る）。
 
 ## 検証
