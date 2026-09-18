@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Controller.h"
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationCommon.h"
 #include "../WasamiEnemy.h"
@@ -26,7 +27,7 @@ namespace
 	/** The imported clips' lengths (30 fps frames, implementation record 07). */
 	TArray<float> ImportedLengths()
 	{
-		const int32 Frames[WasamiEnemyClip::Num] = {58, 57, 31, 20, 18, 45, 227, 64, 83, 106, 37, 16, 63, 72, 55, 53, 46, 75, 93};
+		const int32 Frames[WasamiEnemyClip::Num] = {58, 57, 31, 20, 18, 46, 75, 117, 117, 64, 83, 106, 37, 16, 63, 72, 55, 53};
 		TArray<float> Lengths;
 		for (int32 Count : Frames)
 		{
@@ -179,37 +180,66 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyAnimStunTest, "Wasami.Enemy.Anim.St
 bool FWasamiEnemyAnimStunTest::RunTest(const FString& Parameters)
 {
 	const TArray<float> Lengths = ImportedLengths();
-	const float Loop = Lengths[WasamiEnemyClip::StunLoop];
-	const float Recover = Lengths[WasamiEnemyClip::StunRecover];
+	const float Fall = Lengths[WasamiEnemyClip::StunKnockDown];
+	const float GetUp = Lengths[WasamiEnemyClip::StunGetUpKnockDown];
+	TestEqual(TEXT("a fall's get-up"), WasamiEnemyAnim::GetUpAfter(WasamiEnemyClip::StunFlyUp), static_cast<int32>(WasamiEnemyClip::StunGetUpFlyUp));
 
-	// The 17 s stun: the loop's end comes round when the recovery starts, 17 − 7.567 s in.
+	// The 17 s stun: the fall once, held on its back, and the get-up so that it ends with the stun.
 	FWasamiStunPlayback Playback;
-	Playback.Start(17.f, Loop, Recover);
-	TestEqual(TEXT("the recovery starts so that it ends with the stun"), Playback.RecoverStart, 17.f - Recover, 1e-4f);
-	TestEqual(TEXT("the loop starts at the phase that ends it then"), Playback.LoopStart, 1.5f - FMath::Fmod(17.f - Recover, 1.5f), 1e-4f);
-	const float Phase = FMath::Fmod(Playback.LoopStart + Playback.RecoverStart, Loop);
-	TestTrue(TEXT("which is a whole number of loops before"), Phase < 1e-4f || Loop - Phase < 1e-4f);
-	TestFalse(TEXT("it starts in the loop"), Playback.IsRecovering());
-	TestEqual(TEXT("at that phase"), Playback.GetClipTime(), Playback.LoopStart, 1e-5f);
-	Playback.Advance(Playback.RecoverStart - 0.01f);
-	TestFalse(TEXT("still looping just before"), Playback.IsRecovering());
-	TestEqual(TEXT("near the loop's end"), Playback.GetClipTime(), Loop - 0.01f, 1e-3f);
-	Playback.Advance(0.02f);
-	TestTrue(TEXT("recovering just after"), Playback.IsRecovering());
-	TestEqual(TEXT("from the recovery's start"), Playback.GetClipTime(), 0.01f, 1e-3f);
+	Playback.Start(17.f, Fall, GetUp);
+	TestEqual(TEXT("the get-up starts so that it ends with the stun"), Playback.GetUpStart, 17.f - GetUp, 1e-4f);
+	TestFalse(TEXT("it starts falling"), Playback.IsGettingUp());
+	TestEqual(TEXT("from the fall's start"), Playback.GetClipTime(), 0.f);
+	TestFalse(TEXT("falling is not getting up"), Playback.Advance(1.f));
+	TestEqual(TEXT("the fall plays"), Playback.GetClipTime(), 1.f);
+	Playback.Advance(Fall);
+	TestEqual(TEXT("and holds its end"), Playback.GetClipTime(), Fall);
+	Playback.Advance(Playback.GetUpStart - 0.01f - Playback.Elapsed);
+	TestFalse(TEXT("still lying just before"), Playback.IsGettingUp());
+	TestTrue(TEXT("crossing into the get-up is told"), Playback.Advance(0.02f));
+	TestEqual(TEXT("from the get-up's start"), Playback.GetClipTime(), 0.01f, 1e-3f);
+	TestFalse(TEXT("once"), Playback.Advance(0.01f));
 	Playback.Advance(17.f);
-	TestEqual(TEXT("the recovery holds its end"), Playback.GetClipTime(), Recover);
+	TestEqual(TEXT("the get-up holds its end"), Playback.GetClipTime(), GetUp);
 
 	FWasamiStunPlayback Short;
-	Short.Start(5.f, Loop, Recover);
-	TestTrue(TEXT("a stun shorter than the recovery recovers at once"), Short.IsRecovering());
-	TestEqual(TEXT("from part way through"), Short.GetClipTime(), Recover - 5.f, 1e-5f);
-	Short.Advance(5.f);
-	TestEqual(TEXT("and ends with the stun"), Short.GetClipTime(), Recover, 1e-5f);
+	Short.Start(3.f, Fall, GetUp);
+	TestEqual(TEXT("a stun too short for both gets up as the fall ends"), Short.GetUpStart, Fall);
+	Short.Advance(3.f);
+	TestEqual(TEXT("and has not got up when it ends"), Short.GetClipTime(), 3.f - Fall, 1e-5f);
+
+	// The fall is drawn at random from the two (the user's choice, 2026-09-18); a missing one gives way to the other.
+	FWasamiEnemyAnimInputs Stunned;
+	Stunned.bStunned = true;
+	Stunned.StunDuration = 17.f;
+	FWasamiEnemyAnimInputs Standing;
+	auto CountFalls = [this, &Stunned, &Standing](TArrayView<const float> InLengths, int32 Seed, int32 (&OutCounts)[2])
+	{
+		FWasamiEnemyAnimState Draws;
+		Draws.Init(InLengths, Seed);
+		for (int32 Stun = 0; Stun < 40; ++Stun)
+		{
+			Draws.Update(Stunned, 0.1f);
+			const int32 Index = Draws.StunFall - WasamiEnemyClip::StunFlyUp;
+			if (TestTrue(TEXT("each stun falls"), Index == 0 || Index == 1))
+			{
+				++OutCounts[Index];
+			}
+			Draws.Update(Standing, 0.1f);
+		}
+	};
+	int32 Both[2] = {};
+	CountFalls(Lengths, 1234, Both);
+	TestTrue(TEXT("both falls come"), Both[0] >= 10 && Both[1] >= 10);
+	TArray<float> WithoutFlyUp = Lengths;
+	WithoutFlyUp[WasamiEnemyClip::StunFlyUp] = 0.f;
+	int32 KnockDownOnly[2] = {};
+	CountFalls(WithoutFlyUp, 1234, KnockDownOnly);
+	TestEqual(TEXT("without Stun_FlyUp, always Stun_KnockDown"), KnockDownOnly[1], 40);
 
 	// In the state: running, then Primal Fear.
 	FWasamiEnemyAnimState State;
-	State.Init(Lengths);
+	State.Init(Lengths, 1);
 	FWasamiEnemyAnimInputs Inputs;
 	Inputs.Speed = 800.f;
 	Inputs.StunDuration = 17.f;
@@ -222,41 +252,70 @@ bool FWasamiEnemyAnimStunTest::RunTest(const FString& Parameters)
 	Inputs.bStunned = true;
 	Inputs.Speed = 0.f;
 	State.Update(Inputs, 0.125f);
+	const int32 FallClip = State.StunFall;
+	const int32 GetUpClip = WasamiEnemyAnim::GetUpAfter(FallClip);
+	if (!TestTrue(TEXT("a fall"), FallClip == WasamiEnemyClip::StunFlyUp || FallClip == WasamiEnemyClip::StunKnockDown))
+	{
+		return false;
+	}
 	TestFalse(TEXT("the stun stops what plays once"), State.IsPlayingOnce());
 	TestEqual(TEXT("the stun blends in over 0.25 s"), State.Stun.Weight, 0.5f);
-	TestEqual(TEXT("the loop moved on from its phase"), State.StunPlayback.GetClipTime(), State.StunPlayback.LoopStart + 0.125f, 1e-5f);
+	TestEqual(TEXT("the fall starts from 0"), State.GetClipTime(FallClip), 0.125f);
 	State.Update(Inputs, 0.125f);
 	TestEqual(TEXT("the variation blends out over 0.25 s"), State.GetClipWeight(WasamiEnemyClip::ChaseSlide), 0.5f);
-	TestEqual(TEXT("under it, the stun's loop"), State.GetClipWeight(WasamiEnemyClip::StunLoop), 0.5f);
+	TestEqual(TEXT("under it, the fall"), State.GetClipWeight(FallClip), 0.5f);
 	State.Update(Inputs, 0.125f);
-	TestEqual(TEXT("stunned"), State.GetClipWeight(WasamiEnemyClip::StunLoop), 1.f);
+	TestEqual(TEXT("stunned"), State.GetClipWeight(FallClip), 1.f);
 	TestEqual(TEXT("the locomotion, under the stun, went to idle"), State.Moving.WeightB, 0.f);
 
-	for (int32 Step = 0; Step < 36; ++Step)
+	int32 Crossings = 0;
+	for (int32 Step = 0; Step < 50; ++Step)
 	{
 		State.Update(Inputs, 0.25f);
+		Crossings += State.StunGetUpStarted != INDEX_NONE ? 1 : 0;
 	}
-	TestEqual(TEXT("9.375 s in, still the loop"), State.GetClipWeight(WasamiEnemyClip::StunLoop), 1.f);
+	TestEqual(TEXT("12.875 s in, still lying"), State.GetClipWeight(FallClip), 1.f);
+	TestEqual(TEXT("at the fall's end"), State.GetClipTime(FallClip), Lengths[FallClip]);
+	TestEqual(TEXT("without getting up"), Crossings, 0);
 	State.Update(Inputs, 0.25f);
-	TestEqual(TEXT("9.625 s in, the recovery"), State.GetClipWeight(WasamiEnemyClip::StunRecover), 1.f);
-	TestEqual(TEXT("from its start"), State.GetClipTime(WasamiEnemyClip::StunRecover), 9.625f - (17.f - Recover), 1e-4f);
-	for (int32 Step = 0; Step < 30; ++Step)
+	TestEqual(TEXT("13.125 s in, it gets up"), State.GetClipWeight(GetUpClip), 1.f);
+	TestEqual(TEXT("from the get-up's start"), State.GetClipTime(GetUpClip), 13.125f - (17.f - Lengths[GetUpClip]), 1e-4f);
+	TestEqual(TEXT("the update says so, for the owner's move"), State.StunGetUpStarted, FallClip);
+	State.Update(Inputs, 0.25f);
+	TestEqual(TEXT("the next does not"), State.StunGetUpStarted, static_cast<int32>(INDEX_NONE));
+	for (int32 Step = 0; Step < 15; ++Step)
 	{
 		State.Update(Inputs, 0.25f);
 	}
-	TestEqual(TEXT("17.125 s in, the recovery holds its end"), State.GetClipTime(WasamiEnemyClip::StunRecover), Recover);
+	TestEqual(TEXT("17.125 s in, the get-up holds its end"), State.GetClipTime(GetUpClip), Lengths[GetUpClip]);
 
 	Inputs.bStunned = false;
 	State.Update(Inputs, 0.125f);
-	TestEqual(TEXT("the stun blends out over 0.25 s"), State.GetClipWeight(WasamiEnemyClip::StunRecover), 0.5f);
+	TestEqual(TEXT("the stun blends out over 0.25 s"), State.GetClipWeight(GetUpClip), 0.5f);
 	TestEqual(TEXT("to the idle"), State.GetClipWeight(WasamiEnemyClip::Idle), 0.5f);
 	TestEqual(TEXT("the weights add up to 1"), SampleWeightSum(State), 1.f, 1e-5f);
 
 	// A second stun while the first blends out starts over.
 	Inputs.bStunned = true;
 	State.Update(Inputs, 0.0625f);
-	TestFalse(TEXT("a new stun loops again"), State.StunPlayback.IsRecovering());
+	TestFalse(TEXT("a new stun falls again"), State.StunPlayback.IsGettingUp());
+	TestEqual(TEXT("from its start"), State.StunPlayback.Elapsed, 0.0625f);
 	TestEqual(TEXT("its weight goes back up from where it was"), State.Stun.Weight, 0.75f);
+
+	// Cut short while lying, it holds its pose as it blends out: it does not get up then.
+	FWasamiEnemyAnimState Cut;
+	Cut.Init(Lengths, 2);
+	Stunned.StunDuration = 3.f;
+	Cut.Update(Stunned, 0.1f);
+	const float CutFall = Lengths[Cut.StunFall];
+	TestEqual(TEXT("a 3 s stun gets up as the fall ends"), Cut.StunPlayback.GetUpStart, CutFall);
+	Cut.Update(Stunned, CutFall - 0.2f);
+	Cut.Update(Standing, 0.2f);
+	TestEqual(TEXT("cut short, it blends out"), Cut.Stun.Weight, 0.2f, 1e-5f);
+	TestFalse(TEXT("without getting up"), Cut.StunPlayback.IsGettingUp());
+	TestEqual(TEXT("the fall holds where it was"), Cut.GetClipTime(Cut.StunFall), CutFall - 0.1f, 1e-5f);
+	TestEqual(TEXT("still"), Cut.GetClipRate(Cut.StunFall), 0.f);
+	TestEqual(TEXT("under the idle"), Cut.GetClipWeight(WasamiEnemyClip::Idle), 0.8f, 1e-5f);
 	return true;
 }
 
@@ -357,6 +416,31 @@ bool FWasamiEnemyAnimClipsTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("%s's length"), WasamiEnemyAnim::ClipNames[Clip]), Sequence->GetPlayLength(), Lengths[Clip], 1e-3f);
 		TestTrue(FString::Printf(TEXT("%s is on the skeleton"), WasamiEnemyAnim::ClipNames[Clip]), Sequence->GetSkeleton() == Skeleton);
 	}
+
+	// Each get-up starts from its fall's last pose turned and moved along the floor, as UE measured the imported clips
+	// (the pelvis, 2026-09-18).
+	struct FMoveCase
+	{
+		int32 Fall;
+		double Yaw;
+		FVector Along;
+	};
+	const FMoveCase Cases[] = {
+		{WasamiEnemyClip::StunFlyUp, -174.241, FVector(1.44, 12.80, 0.)},
+		{WasamiEnemyClip::StunKnockDown, 168.796, FVector(10.08, -51.85, 0.)},
+	};
+	for (const FMoveCase& Case : Cases)
+	{
+		const UAnimSequence* Fall = Cast<UAnimSequence>(WasamiEnemyAnim::ClipPath(Case.Fall).TryLoad());
+		const UAnimSequence* GetUp = Cast<UAnimSequence>(WasamiEnemyAnim::ClipPath(WasamiEnemyAnim::GetUpAfter(Case.Fall)).TryLoad());
+		if (!Fall || !GetUp)
+		{
+			continue;
+		}
+		const FTransform Move = WasamiEnemyAnim::MeasureGetUpMove(*Fall, *GetUp);
+		TestEqual(FString::Printf(TEXT("%s's get-up turns"), WasamiEnemyAnim::ClipNames[Case.Fall]), Move.Rotator().Yaw, Case.Yaw, 0.1);
+		TestTrue(FString::Printf(TEXT("%s's get-up moves"), WasamiEnemyAnim::ClipNames[Case.Fall]), Move.GetTranslation().Equals(Case.Along, 0.1));
+	}
 	return true;
 }
 
@@ -439,8 +523,12 @@ bool FWasamiEnemyActorStunTest::RunTest(const FString& Parameters)
 		Wrapper.ForwardErrorMessages(this);
 		return false;
 	}
-	const float Recover = Anim->GetAnimState().GetLength(WasamiEnemyClip::StunRecover);
-	TestEqual(TEXT("the recovery is loaded"), Recover, 227 / 30.f, 1e-3f);
+	const FWasamiEnemyAnimState& AnimState = Anim->GetAnimState();
+	const float GetUp = AnimState.GetLength(WasamiEnemyClip::StunGetUpFlyUp);
+	TestEqual(TEXT("the get-ups are loaded"), GetUp, 117 / 30.f, 1e-3f);
+	TestEqual(TEXT("both as long"), AnimState.GetLength(WasamiEnemyClip::StunGetUpKnockDown), GetUp, 1e-3f);
+	TestTrue(TEXT("with the moves to where they start"),
+		Anim->GetGetUpMove(WasamiEnemyClip::StunFlyUp).IsSet() && Anim->GetGetUpMove(WasamiEnemyClip::StunKnockDown).IsSet());
 	TestTrue(TEXT("Get State reads Patrol"), IWasamiEnemyInterface::Execute_GetState(Enemy) == EWasamiEnemyState::Patrol);
 	TestFalse(TEXT("it shows in the telepathy"), IWasamiEnemyInterface::Execute_NoTelepathy(Enemy));
 	Enemy->SetWalkState(true);
@@ -464,7 +552,7 @@ bool FWasamiEnemyActorStunTest::RunTest(const FString& Parameters)
 
 	TickTo(0.3125f);
 	TestTrue(TEXT("the animation is stunned"), Anim->bStunned);
-	TestEqual(TEXT("for what is left of the stun"), Anim->GetAnimState().StunPlayback.RecoverStart, 17.3125f - Recover, 1e-4f);
+	TestEqual(TEXT("for what is left of the stun"), AnimState.StunPlayback.GetUpStart, 17.3125f - GetUp, 1e-4f);
 	TestTrue(TEXT("before the decision it still moves"), Movement->Velocity.X > 250.);
 	TickTo(0.5625f);
 	TestFalse(TEXT("not yet decided"), Enemy->IsStunRunning());
@@ -488,13 +576,40 @@ bool FWasamiEnemyActorStunTest::RunTest(const FString& Parameters)
 	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, false);
 	TestEqual(TEXT("stunned again, it ends with the first wait"), Enemy->GetStunTimeLeft(), 11.625f, 1e-4f);
 
+	// Stunned again at 6.0625 s for 11.625 s, it gets up 11.625 − 3.9 s in (on the tick at 13.75 s), and the enemy moves
+	// so that the get-up starts where the fall lies: its pelvis stays where it was.
+	TickTo(13.6875f);
+	TestFalse(TEXT("lying"), AnimState.StunPlayback.IsGettingUp());
+	const int32 FallClip = AnimState.StunFall;
+	const FTransform MeshBefore = Enemy->GetMesh()->GetComponentTransform();
+	const FTransform ActorBefore = Enemy->GetActorTransform();
+	TickTo(13.75f);
+	TestTrue(TEXT("getting up"), AnimState.StunPlayback.IsGettingUp());
+	const UAnimSequence* FallSequence = Cast<UAnimSequence>(WasamiEnemyAnim::ClipPath(FallClip).TryLoad());
+	const UAnimSequence* GetUpSequence = Cast<UAnimSequence>(WasamiEnemyAnim::ClipPath(WasamiEnemyAnim::GetUpAfter(FallClip)).TryLoad());
+	if (TestNotNull(TEXT("the fall"), FallSequence) && TestNotNull(TEXT("its get-up"), GetUpSequence))
+	{
+		const FTransform Lying = WasamiEnemyAnim::GetRootTransform(*FallSequence, FallSequence->GetPlayLength()) * MeshBefore;
+		const FTransform Starting = WasamiEnemyAnim::GetRootTransform(*GetUpSequence, 0.) * Enemy->GetMesh()->GetComponentTransform();
+		TestTrue(TEXT("the pelvis stays where it lay"), Starting.GetLocation().Equals(Lying.GetLocation(), 0.5));
+		TestTrue(TEXT("turned as it lay"), Starting.GetRotation().AngularDistance(Lying.GetRotation()) < FMath::DegreesToRadians(0.5));
+	}
+	const FTransform ActorAfter = Enemy->GetActorTransform();
+	TestEqual(TEXT("the enemy turned with the get-up"), FRotator::NormalizeAxis(ActorAfter.Rotator().Yaw - ActorBefore.Rotator().Yaw),
+		Anim->GetGetUpMove(FallClip).GetValue().Rotator().Yaw, 0.01);
+	TestEqual(TEXT("upright"), ActorAfter.Rotator().Pitch, 0., 1e-3);
+	TestEqual(TEXT("at its height"), ActorAfter.GetLocation().Z, ActorBefore.GetLocation().Z, 1e-3);
+	TestEqual(TEXT("the controller turned with it"), FRotator::NormalizeAxis(Enemy->GetController()->GetControlRotation().Yaw - ActorAfter.Rotator().Yaw), 0., 0.01);
+	TickTo(13.8125f);
+	TestTrue(TEXT("it moves once"), Enemy->GetActorTransform().Equals(ActorAfter, 1e-3));
+
 	TickTo(17.5625f);
 	TestTrue(TEXT("still stunned"), Enemy->IsStunned());
-	TestTrue(TEXT("recovering"), Anim->GetAnimState().StunPlayback.IsRecovering());
-	TestEqual(TEXT("one step before the recovery's end"), Anim->GetAnimState().StunPlayback.GetClipTime(), Recover - Step, 1e-3f);
+	TestTrue(TEXT("getting up"), AnimState.StunPlayback.IsGettingUp());
+	TestEqual(TEXT("one step before the get-up's end"), AnimState.StunPlayback.GetClipTime(), GetUp - Step, 1e-3f);
 	TickTo(17.625f);
 	TestTrue(TEXT("stunned while the wait is due"), Enemy->IsStunRunning());
-	TestEqual(TEXT("the recovery ends with the wait"), Anim->GetAnimState().StunPlayback.GetClipTime(), Recover, 1e-3f);
+	TestEqual(TEXT("the get-up ends with the wait"), AnimState.StunPlayback.GetClipTime(), GetUp, 1e-3f);
 	TickTo(17.6875f);
 	TestTrue(TEXT("past it, Patrol"), Enemy->GetCurrentState() == EWasamiEnemyState::Patrol);
 	TestFalse(TEXT("the stun has ended"), Enemy->IsStunRunning());
