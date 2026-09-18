@@ -2,6 +2,7 @@
 title: 取り込みの仕組み（ツールセット・リモート実行・本家のアセット）
 sources:
   - Tools/dd/prepare_stage.py
+  - Tools/dd/cooked_shaders.py
   - Tools/ue_remote.py
   - Tools/editor_cycle.py
   - Tools/console_session.py
@@ -106,6 +107,12 @@ updated: 2026-09-18
 - **テレポートのゾーン（`teleport_zones`）**: 本家の `BP_Power_Teleport_Zone` の `Cube`（テレポートの照準がトレースで探す、見えない床。04 記録）を、クラスの `Cube_GEN_VARIABLE`（`Export.component_template`）を土台にしてレベルの差分（メッシュ・`bVisible`・材質）を重ね、配置として出す。`scene.json` の `static_meshes` はレベルがメッシュを書き換えた部品しか持たないので、救急車の屋根の箱（メッシュはクラス既定のエンジンの `Cube`）は `full.json` の部品から拾う。レベルに相対変換が無ければクラスの `RelativeScale3D` (1, 1, 0.05) を合成する（Zone 1 の床のメッシュと両ゾーンの屋根の箱。Zone 2 の床のメッシュはレベルが (1, 1, 1) を書いている）。当たりはクラスの `BodyInstance` を `collision`（`objectType` `ECC_GameTraceChannel1`・`enabled` `QueryOnly`・`responses` はエンジンの 8 チャンネルすべて Overlap）として付け、`bHiddenInGame` 真・`CastShadow` 偽も写す。ゾーンの部品は通常の配置の一覧からは外す（2026-09-16 までは床のメッシュを見えない普通のメッシュ〈当たりはメッシュの既定〉として置き、屋根の箱は置いていなかった）。Zone 1・Zone 2 とも 2 個。メッシュの登録（`note_mesh`）とスロットの材質（`slot_materials`）は通常の配置と共通。
 - **環境**: 反射キャプチャ（球 10・箱 1）、霧、スカイライト、ポストプロセスボリューム（Zone 2 に 1 つ、`bUnbound`）。キューブマップは `_textures.json` から実ファイルを引く。
 - **ゲームの部品**: メッシュと灯以外のアクタ（`SKIP_ACTOR_CLASSES` を除く）を `actors` に、クラス・名前・ルートのワールド変換・単純なプロパティで出す（Zone 1 で 873、Zone 2 で 836）。
+
+### cook のシェーダーを読む（`Tools/dd/cooked_shaders.py`）
+- **cook で式が消えた材質も、コンパイル済みのシェーダーは残っている**（2026-09-18 に見つけた。作業一覧の項目 23 のステップ 5d3）。最新版（UE 4.24）は材質ごとにシェーダーマップを `.uexp` に埋め込み、シェーダー 1 つが zlib のストリーム 1 つ、中身が DXBC。`python Tools/dd/cooked_shaders.py "<pak のパスの一部>."` が Steam の最新版の pak（読むだけ。`--pak` で変えられる）から `.uasset`/`.uexp` を取り出し、ストリームを戻して、システムの `d3dcompiler_47.dll` の `D3DDisassemble` で逆アセンブルし、`Intermediate/Pipeline/dd/shaders/<名前>/NN_<モデル>.txt` に書く。表（モデル・読む補間子・リソース・サンプル数）と、一様パラメータの名前（1 度ずつ、最初に出た順。**定数バッファ cb3 の位置はコードの使い方から読む**。`SelectionColor` はエディタの選択の色で、Emissive の最後の lerp。実行時は黒）を印字する。`--show N` で N 番のコードを出す。pak の読み方は `pak_reference_2/_tools/scripts/unpak.py` を借りる。
+- **読むのは半透明のベースパスのピクセルシェーダー**: `texture3d`（半透明の灯／霧の体積）と、`sample_l` で読む `texture2d`（深度のぼかしのシーンの深度）を持つ `ps_5_0`。前半が材質の式、後半が霧と出力（`o0.w` がエンジンの saturate の後の不透明度）。頂点ファクトリ（スプライト・メッシュ・GPU スプライト）と霧の組ごとに 1 つずつある。スプライトのものは動的パラメータを補間子（TEXCOORD1）で読み、GPU スプライトのものは既定値が畳み込まれている。
+- **静的スイッチを上書きするインスタンス**（`bHasStaticPermutationResource`）は自分のシェーダーマップを持つ（`MI_ky_starDust_sq`）。持たないもの（`MI_ky_aura7c`・`MI_ky_shockWave02_4x4_nonD`）は親のものを使う。
+- 消えた定数も数値で残る（例: `M_ky_starDust` の `Rotator` の回転は cos 0.000796・sin 1 = 既定の速さ 0.25 × 時刻 6.28）。**推定の材質を作る・直す前に、まずここで式を読む**（`.claude/guides/original-fidelity.md`）。
 
 ### 取り込み（`pipeline/dd_stage.py`）
 - `ensure_mesh_pipeline()`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を複製した `/Game/Pipeline/Interchange/PL_DD_StaticMesh`。種類ごとのサブフォルダなし、マテリアルとテクスチャを取り込まない、当たりの自動生成なし。
@@ -266,6 +273,8 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-18: `Tools/dd/cooked_shaders.py` を足した（cook のシェーダーの逆アセンブル。上の「cook のシェーダーを読む」。作業一覧の項目 23 のステップ 5d3。04 記録）
+- 2026-09-18: `dd_powers._build_star_dust` を原作のコンパイル済みシェーダーの式どおりに組み直した（04 記録）
 - 2026-09-18: `dd_powers` に本作だけの力場 `make_force_field()`（`/Game/Wasami/Powers/P_WasamiForceField`。`FORCE_FIELD_LIGHT_SCALE` 0.35）を足し、`import_all()` が `/Game/Wasami` も保存するようにした（作業一覧の項目 23。04 記録）
 - 2026-09-18: `gltf.py` に骨の世界位置（`world_transforms`・`rotate`・`yaw`）を足した（`dd_enemy` の `Chase_VaultLand` の形を足の高さから決めるため。07 記録）
 - 2026-09-18: 敵ワサミの素材の取り込み（`pipeline/dd_enemy.py`、`WasamiDDTools.import_wasami_enemy`）と glb の小道具（`pipeline/gltf.py`）、`paths.SKELETAL_PIPELINE` を足した（作業一覧の項目 4。07 記録）
