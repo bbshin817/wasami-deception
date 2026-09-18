@@ -80,6 +80,7 @@ updated: 2026-09-18
 
 ## 依存関係
 - 自前: `AWasamiGameMode`（`GetStartCheckpoint`・`SaveCheckpoint`・`CheckShards`・`OnAllShardsCollected`・`CurrentObjective`・`DeathEvent`・`Zone2LevelName`。06・02 記録）、`UWasamiGameInstance::ForgetCollectedShards`、`AWasamiShard`、レベルの組み立て（`dd_level._flow`。01 記録）。
+- レベルシーケンス（2026-09-18、項目 6 のステップ 2）: 流れが再生するシーケンスは、本家どおりレベルに置いた `LevelSequenceActor`（タグ `src:06_Hospital_Zone01_ElevatorArrive`・`src:06_Hospital_Zone1_AmbulanceTakeOff`・`src:06_Hospital_Zone2_Spikes`・`src:06_Hospital_Zone2_Cell_DoorPicked`）にある（`dd_sequence`。01 記録）。フェードの `/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade` はアクタを置かない（`Basic DD Fade Out` が実行時にプレイヤーを作る）。`Not yet:` のシーケンスの所から、ステップ 3〜7 でこれを再生する。
 - 使う側: ゲームモード（生成）、プレイヤーのタブレットの帯（`CurrentObjective`。02・03 記録）、これからの矢印（ステップ 6）。
 - エンジン: `UBoxComponent`、`UBrushComponent`（`AVolume`）、`FScriptDelegate::BindUFunction`、`FTimerManager`、`UGameplayStatics::OpenLevel`。
 

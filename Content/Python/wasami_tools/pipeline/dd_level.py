@@ -1,8 +1,8 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
-fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards and what the
-zones' flow names (trigger boxes, blocking and trigger volumes). Every actor it places carries the tag 'dd', which a
-rebuild removes first."""
+fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
+zones' flow names (trigger boxes, blocking and trigger volumes) and the level sequences the flow plays (dd_sequence).
+Every actor it places carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -425,6 +425,12 @@ def build(zone="Zone1", map_path=""):
     _map_plane(eas, z, zone, counts, failures)
     _shards(eas, z, counts)
     _flow(eas, z, counts, failures)
+    # Last: a sequence binds the level's actors by their paths, which this build has just made anew.
+    from wasami_tools.pipeline import dd_sequence
+    sequences = dd_sequence.place_all(eas, zone, z)
+    counts["sequences"] = sequences["sequences"]
+    counts["sequenceActors"] = sequences["sequence_actors"]
+    failures += ["sequence binding without its actor: " + m for m in sequences["missing"]]
     for f in failures[:50]:
         unreal.log_warning("build_dd_stage_level: " + f)
     counts["failed_settings"] = len(failures)

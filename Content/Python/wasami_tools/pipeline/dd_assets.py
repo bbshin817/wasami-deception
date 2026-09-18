@@ -129,6 +129,23 @@ def sound_concurrency(rel, version=1):
     return asset
 
 
+def sound_attenuation(rel, version=1):
+    """A SoundAttenuation asset with the original's settings ('Audio/01_Hotel/01_Lobby_Attenuation'); UE 5.8's defaults
+    for what the export leaves out are UE 4.24's (FSoundAttenuationSettings, FBaseAttenuationSettings). Returns the
+    asset."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        asset = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        asset = _tools().create_asset(name, folder, unreal.SoundAttenuation, unreal.SoundAttenuationFactory())
+    failures = ue_props.apply(asset, main_export(export_json(rel, version), rel)["props"])
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    EAL.save_asset(target, only_if_is_dirty=False)
+    return asset
+
+
 def sound(rel, version=1):
     """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
     export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names). Returns the

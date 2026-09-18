@@ -95,3 +95,24 @@ class WasamiStageTools(unreal.ToolsetDefinition):
             'removed', 'triggers', 'volumes', 'attached' and 'failed_settings' (listed in the output log).
         """
         return _module("dd_level").place_flow(zone, map_path)
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def place_dd_sequences(zone: str = "Zone1", map_path: str = "") -> dict:
+        """Rebuilds one zone's level sequences from the original's (the ones its flow plays, under
+        /Game/DD/Animation/06_Hospital, and the fade /Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade) bound to the
+        level's actors, importing the sounds and attenuations they use, and puts their LevelSequenceActors and the bound
+        TargetPoints and emitters in again where the original places them (tag 'src:<the original's name>'), taking out
+        what an earlier call placed, and saves the level. build_dd_stage_level does this last; call this after changing
+        the sequences' pipeline.
+
+        Args:
+            zone: 'Zone1' (the elevator's arrival, the ambulance's take-off) or 'Zone2' (the spikes, the cell door).
+            map_path: Package path of the level; the zone's own is used when this is empty.
+
+        Returns:
+            Counts ('sequences', 'bindings', 'tracks', 'sections', 'keys', 'sounds', 'attenuations',
+            'sequence_actors', 'helpers', 'removed'), 'missing' (bindings whose actor is not in the level),
+            'skipped_tracks' and 'missing_particles' (emitters placed without their particle system).
+        """
+        return _module("dd_sequence").place(zone, map_path)
