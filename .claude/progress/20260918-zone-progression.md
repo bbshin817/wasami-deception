@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-19 00:12
+updated: 2026-09-19 00:36
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -44,11 +44,24 @@ updated: 2026-09-19 00:12
 - [x] 8b1. ガレージリフトの取り込み（2026-09-18 完了）: `dd_skeletal.py`（psa → glTF のアニメ、24 Hz で焼く `PL_DD_Skeletal`）で `/Game/DD/Meshes/06_Hospital/hospital_garage_lift_anim`（骨 4・`_Skeleton`・`_PhysicsAsset`）と `_Anim`（2.4583 s・59 コマ）、材質 4 は前処理の `CLASS_MATERIALS`、`M_DD_Substance` に `used_with_skeletal_mesh`、`dd_gimmicks.import_garage_lift`（実装記録 12・01・07・08）。
 - [x] 8b2. ガレージリフトのアクタ（2026-09-18 完了）: `AWasamiGarageLift`・`AWasamiGarageLiftZone1Special`（`bNurseNear`。項目 7 で結ぶ）・本家の ABP を写した `UWasamiGarageLiftAnimInstance`（07 の `FWasamiStateBlend` で 0.2 s の混ぜ、入り / 出の通知で Up / Down）、`dd_level._flow` の `GARAGE_LIFT_CLASSES` が両ゾーンに 3 台。テスト `Wasami.GarageLift.Actor`（55 本すべて通過）、PIE で Zone 1 の台に乗ると 316 cm 上がる（実装記録 12・01・11・07）。
 - [x] 9. Zone 2 の地図（2026-09-19 完了）: `AWasamiMapArea`・`AWasamiMapTextureMultiFloor`（本家の `BP_MapArea`・`BP_MapTexture_MultiFloor`。0.9 s ごとにいる階の地図の絵とその階のシャードの印だけを出す）、`AWasamiShard::GetPlane`、前処理がアクタを鍵にした `Map` を名前で残す、`dd_tablet` の `T_06_Zone2_02`、`dd_level._map_plane`・`place_minimap`（`WasamiStageTools.place_dd_minimap`）で Zone 2 に置いた。テスト 56 本すべて通過、PIE で階ごとに絵と印が替わる（実装記録 03・01・06）。
-- [ ] 10. 仕上げ: PIE で Zone 1 の到着 → 扉の破壊 → 全回収（デバッグで数個を残す）→ 障壁 → 駐車場 → トンネル → 扉が破られる → ガレージリフトで上がりテレポーテーションで救急車の屋根へ（パワーが使えなければ `place` で乗せ、そのことを書く）→ Zone 2 の独房 → 扉の破壊 → 迷路 → 全回収 → COLLECT THE RING PIECE までを通しで収録し、Discord のグリッドにする。実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
+- [x] 10a. 仕上げ 1 — Zone 1 の通しの収録（2026-09-19 完了。仕上げを 10a〜10c に分けた）: 到着 → 扉の破壊 → 迷路と回収 → 駐車場 → 扉が破られる → トンネル → ガレージリフト → テレポーテーションで救急車の屋根 → 救急車に乗ってトンネル → 読み込み画面 → Zone 2 の独房まで PIE で通った。グリッド `Intermediate/Overnight/through_z1_1.png`〜`_5.png`。屋根の後ろの端では低いフレームレートで落ちると分かった（実装記録 11 の既知の制約・確かめたこと、症状索引）。
+- [ ] 10b. 仕上げ 2 — Zone 2 の通しの収録: 下の「台本」の Z2-1〜Z2-4 を区間ごとに収録し、グリッドにする（`Intermediate/Overnight/through_z2_*.png`）。変えるもの: 記録だけ（収録は git の外）。
+- [ ] 10c. 仕上げ 3 — 閉じる: 実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
+
+### 台本（ステップ 10b）
+
+収録は `desktop.py record --grab gdi --fps 30 --region 1826 202 2982 860 --seconds N --name through_z2_<区間>.mkv`（先に `pie.py cmd "t.MaxFPS 60" "DisableAllScreenMessages" "stat none"`）、グリッドは `video_probe.py sheet … --every N --cols 5 --width 320`。キーは `desktop.py key … --allow UnrealEditor.exe`（**`--allow WindowsTerminal.exe` を付けない**。前面が駆動役の端末だとキーが端末に入る）で、PIE を始めたら先にビューポート (2400, 530) を 1 回クリックする。
+
+- 始め方: Zone 1 を開いたエディタで PIE → `Wasami.Checkpoint 7` → 止める → エディタで Zone 2（`/Game/Stage/Maps/L_Hospital_Zone2`）を開いて PIE（独房から始まる）。または Zone 1 の 06 から救急車で移る（10a の手順）。
+- Z2-1 独房: 棘が下りる → `place -14145 1330 --yaw -90 --pitch -15` → `Wasami.Interact 34` → 扉が開く（19 s 以内に。過ぎると棘で死ぬ）。
+- Z2-2 ミニボス: 独房の外へ歩き `BP_MiniBoss_Trigger`（`Wasami.Trigger BP_MiniBoss_Trigger` でもよい）→ Get past the nurses → `Trigger_MazeStart` → 迷路（COLLECT ALL SHARDS）。
+- Z2-3 迷路のリフト・地図: 長い床 `lift_4` に走って乗り上の階へ（下の「再開時の注意」）、タブレットの地図が上の階に替わる所。
+- Z2-4 全回収: `Wasami.CollectShards 1` → 残り 1 個を歩いて取る → COLLECT THE RING PIECE。
+- 終わったら `Wasami.ResetSave`、PIE を止める。
 
 ## 次にやること
 
-ステップ 10（仕上げ: 通しの収録と項目 6 を閉じる）を始める。記録のステップ 10 を「作業中」にする。長いので、まず通しの手順（下の「再開時の注意」の置き場所とデバッグのコマンド）を並べた台本を記録に書き、収録を区間ごとに分けてよい（1 反復で終わらなければ 10a 収録・10b 記録と閉じる、に分ける）。ガレージリフトから救急車の屋根へテレポーテーションで渡れるかを最初に確かめる。
+ステップ 10b（Zone 2 の通しの収録）。上の「台本」の Z2-1 から。ゲームのセーブは空（`Wasami.ResetSave` 済み）なので、始め方の手順で 7 にしてから Zone 2 を開く。
 
 ## 決定事項
 
@@ -74,6 +87,7 @@ updated: 2026-09-19 00:12
 - 独房の棘の箱 `Trigger_Cell_Spikes`（本家どおり棘に付いて下りる。x −14781〜−13559・y 1117〜2103）は廊下の端に少しかかる。廊下で長く待つときは箱の外（`place -13300 1000` など）に立つ。`slomo 5` 以上で待つときは `pie.py state` の間隔が長く、狙った時刻を越えやすい。Spikes の火花は Zone 2 を開いて 0〜4.3 s だけ（`--warmup 0` で始めてすぐ `place -12500 1100 --yaw 180` と `slomo 0.3`）。
 - 2026-09-18 のステップ 7a の後、ゲームのセーブは 7（Zone 2 を開くと独房から）。独房では開いて約 19 s で棘に殺される（本家どおり）ので、PIE の確かめは素早く: `python Tools/pie.py place -14145 1330 --yaw -90 --pitch -15`（独房の扉の前）→ `pie.py cmd "Wasami.Interact 34"` で扉が開く。ライフ 3 つを使い切ると YOU ARE DEAD で止まる（PIE を始め直せば戻る）。
 - 救急車に乗せるには `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` の後に `python Tools/pie.py place 11245 -20055 470 --yaw 90 --pitch -10`。10.5 s 後に Zone 2 へ移り、セーブが 7 になる（確かめたら `Wasami.ResetSave`）。
+- 06 から始めるには、PIE で `Wasami.Checkpoint 6` → 止めて始め直す（シャードは残るので、見せる収録では `Wasami.CollectShards` で 0 にする）。ガレージリフトからテレポーテーションで屋根へ: 台で上がった後 Space → 2 → E → ホイール 2 目盛り（`desktop.py scroll --dx 120` を 2 回）→ 左クリック。寄せないと屋根の後ろの端に着き、フレームレートが低いと走り出してすぐ落ちる（実装記録 11）。
 - 06 の扉の所で PIE を確かめるときは `python Tools/pie.py place 7210 -21800 --yaw -90`（扉の 700 cm 手前。`-21300` は床が無く落ちる）。06 の箱は流れが結んでからでないと効かない（05 → `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` → `Wasami.Trigger 06_DoorsLock`）。
 - 取り込みの後、エディタにメッセージログの窓が浮いて出る（閉じるボタン (2198, 407)）。PIE の収録の範囲はビューポート `--region 1826 202 2982 860`（2026-09-18 の窓の配置）。
 - テストの結果はエディタのメッセージログの窓に出て、ビューポートの左に浮いて残る（収録の前に閉じる。2026-09-18 は閉じるボタンが (2198, 407)）。
@@ -84,6 +98,7 @@ updated: 2026-09-19 00:12
 
 ## 検証
 
+- ステップ 10a: PIE で Zone 1 の 04 から Zone 2 の独房まで通った（実装記録 11 の「確かめたこと」の通し）。グリッド `Intermediate/Overnight/through_z1_1.png`〜`_5.png`。
 - ステップ 9: テスト `Wasami.*` 56 本すべて通過、check_records OK。`place_minimap Zone2` = 板 1・箱 2・`failed_settings` 0。PIE で下の階 `T_06_Zone2`・印 204、上の階 `T_06_Zone2_02`・印 138。グリッド `Intermediate/Overnight/zone2_map_grid.png`。
 - ステップ 8b2: テスト `Wasami.*` 55 本すべて通過（`Wasami.GarageLift.Actor` の警告なし）、check_records OK。`place_flow` Zone1 = `garageLifts` 1、Zone2 = 2、`failed_settings` 0。PIE のグリッド `Intermediate/Overnight/garage_lift_grid.png`。
 - ステップ 8b1: `import_dd_gimmicks` の通しでメッシュ 1・アニメ 1、アニメの平行移動が psa と一致（12 記録）。
