@@ -182,9 +182,9 @@ TELEPATHY_UV_TILING = 0.6
 TELEPATHY_INST_SCALARS = ("Speed",)
 
 # The telekinesis's force field (AdvancedMagicFX09, pak_reference_2): its four materials' graphs are cooked away, so
-# masters holding our estimates sit under /Game/Pipeline (dd_assets.estimated_materials).
+# masters holding them, read back off the original's compiled shaders, sit under /Game/Pipeline
+# (dd_assets.estimated_materials).
 KY09 = "ThirdParty/AdvancedMagicFX09/"
-SHOCKWAVE_PANS = ((0.05, 0.1), (-0.08, 0.06))  # the ground ring's two T_ky_maskRGB3 samples (Panner_2, Panner_3)
 
 # The force field this game spawns, its own (the user's request, 2026-09-18): P_ky_forceField_Telekinesis with the
 # light of its 'sphere' emitter weakened. The original's module (ParticleModuleLight_0, shared by the emitter's three
@@ -642,18 +642,22 @@ def _build_aura7(mat, d):
 
 
 def _build_shockwave02(mat, d):
-    """M_ky_shockWave02_4x4 (the force field's ground ring: MI_ky_shockWave02_4x4_nonD), estimated (see
-    SHOCKWAVE_PANS). The cook kept its settings (translucent, unlit, two-sided, for sprites and mesh particles), an Add
-    as the emissive colour, the parameters baseDensity, depthFade, coreDensity, coreHardness, hilightDetailPower,
-    coreHilightPower and coreColor, a SubUV sample of baseTex (T_ky_shockWave02_4x4, linear; the instance swaps in
-    T_ky_circle01_4x4, whose R is a ring with spiky edges) whose RGB goes through the static mask selectCh (R), and two
-    samples of T_ky_maskRGB3 (sRGB) at Panners, of 32 expressions. The estimate, with shape the selected channel and
-    noise the two samples' R (sparse bright scratches) summed:
-      emissive  the particle's colour × base + coreColor × (core + detail), where base = shape × baseDensity, core =
-                saturate(shape^coreHilightPower × coreDensity) (the ring's hottest line) and detail =
-                saturate((shape × noise)^hilightDetailPower × coreHardness) (sparks along it)
-      opacity   saturate(base + core + detail) × the particle's alpha, faded over depthFade (the instance's 0 fades
-                nothing)"""
+    """M_ky_shockWave02_4x4 (the force field's ground ring: MI_ky_shockWave02_4x4_nonD), read off the original's
+    compiled shaders (Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/M_ky_shockWave02_4x4." --show 5: the
+    translucent base pass pixel shader of sprites; those of mesh particles agree, and MI_ky_shockWave02_4x4_nonD has no
+    shader map of its own). The cook's expressions (translucent, unlit, two-sided, for sprites and mesh particles; an
+    Add as the emissive colour; the parameters baseDensity, depthFade, coreDensity, coreHardness, hilightDetailPower,
+    coreHilightPower and coreColor; a SubUV sample of baseTex - T_ky_shockWave02_4x4, linear; the instance swaps in
+    T_ky_circle01_4x4, whose R is a ring with spiky edges - through the static mask selectCh, R; two samples of
+    T_ky_maskRGB3 - sRGB; R sparse scratches, B bubbles - at Panners, of 31 expressions) are the pieces; the code is how
+    they are put together, with shape the ring's R and, at TexCoord 0 x 4, scratch the R at pan (0.3, 1) and bubble the
+    B at pan (-0.2, -0.2):
+      sparks    (scratch x bubble x hilightDetailPower) x ((scratch + bubble) x hilightDetailPower) x coreHilightPower
+                x saturate(shape^coreDensity x coreHardness): where scratches cross bubbles on the ring's hottest line
+      emissive  the particle's colour x shape + coreColor x sparks, not clamped: the ring in the burst's blue
+                (0, 0.28, 5) and sparks of up to 2000 x MI_ky_shockWave02_4x4_nonD's (1.22, 1.2, 2), white-hot
+      opacity   shape^baseDensity x the particle's alpha, faded over depthFade (the instance's 0 fades nothing: UE
+                raises it to a tiny distance, as the original's Max(depthFade, 1e-5) does); the engine saturates it"""
     dd_assets.particle_material(mat, two_sided=True)
     g = dd_stage._Graph(mat, checked=True)
     tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1700, -200)
@@ -664,29 +668,31 @@ def _build_shockwave02(mat, d):
     shape.set_editor_property("parameter_name", "selectCh")
     shape.set_editor_property("default_r", True)
     dd_assets.connect(tex, "RGB", shape, "")
+
     scratches = _ky09_texture("T_ky_maskRGB3")
     colour = unreal.MaterialSamplerType.SAMPLERTYPE_COLOR
-    noises = [_sample(g, scratches, colour, _panner(g, None, speed, -1700, 200 + i * 250), -1500, 200 + i * 250)
-              for i, speed in enumerate(SHOCKWAVE_PANS)]
-    noise = dd_assets.add(g, noises[0], "R", noises[1], "R", -1250, 300)
-    particle = g.node(unreal.MaterialExpressionParticleColor, -700, 500)
+    uvs = g.node(unreal.MaterialExpressionTextureCoordinate, -1900, 350)
+    uvs.set_editor_property("u_tiling", 4.0)
+    uvs.set_editor_property("v_tiling", 4.0)
+    scratch = _sample(g, scratches, colour, _panner(g, uvs, (0.3, 1.0), -1700, 250), -1500, 250)
+    bubble = _sample(g, scratches, colour, _panner(g, uvs, (-0.2, -0.2), -1700, 500), -1500, 500)
+    power = g.scalar("hilightDetailPower", d["hilightDetailPower"], -1250, 650)
+    both = g.multiply(g.multiply(scratch, "R", bubble, "B", -1250, 250), "", power, "", -1050, 250)
+    either = g.multiply(dd_assets.add(g, scratch, "R", bubble, "B", -1250, 450), "", power, "", -1050, 450)
+    detail = g.multiply(g.multiply(both, "", either, "", -900, 350), "",
+                        g.scalar("coreHilightPower", d["coreHilightPower"], -900, 500), "", -750, 350)
 
-    base = g.multiply(shape, "", g.scalar("baseDensity", d["baseDensity"], -1250, -350), "", -1050, -350)
-    hottest = g.power(shape, "", g.scalar("coreHilightPower", d["coreHilightPower"], -1250, -100), "", -1050, -150)
-    dense = g.multiply(hottest, "", g.scalar("coreDensity", d["coreDensity"], -1050, -50), "", -850, -150)
-    core = dd_assets.single(g, unreal.MaterialExpressionSaturate, dense, "", -700, -150)
-    sparks = g.power(g.multiply(shape, "", noise, "", -1050, 150), "",
-                     g.scalar("hilightDetailPower", d["hilightDetailPower"], -1050, 250), "", -850, 150)
-    hard = g.multiply(sparks, "", g.scalar("coreHardness", d["coreHardness"], -850, 250), "", -700, 150)
-    detail = dd_assets.single(g, unreal.MaterialExpressionSaturate, hard, "", -550, 150)
-    hot = dd_assets.add(g, core, "", detail, "", -450, 0)
-    tinted = g.multiply(g.vector("coreColor", d["coreColor"], -600, -300), "RGB", hot, "", -300, -100)
-    coloured = g.multiply(particle, "RGB", base, "", -450, -350)
-    g.out(dd_assets.add(g, coloured, "", tinted, "", -150, -250), "", MP.MP_EMISSIVE_COLOR)
-    cover = dd_assets.single(g, unreal.MaterialExpressionSaturate, dd_assets.add(g, base, "", hot, "", -300, 150),
-                             "", -150, 150)
-    faded = g.multiply(cover, "", particle, "A", 0, 300)
-    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], 0, 450), 200, 350)
+    hottest = g.power(shape, "", g.scalar("coreDensity", d["coreDensity"], -1250, -50), "", -1050, -100)
+    hard = g.multiply(hottest, "", g.scalar("coreHardness", d["coreHardness"], -1050, 0), "", -900, -100)
+    core = dd_assets.single(g, unreal.MaterialExpressionSaturate, hard, "", -750, -100)
+    sparks = g.multiply(detail, "", core, "", -600, 100)
+    tinted = g.multiply(g.vector("coreColor", d["coreColor"], -600, -250), "RGB", sparks, "", -400, 0)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -700, 700)
+    ring = g.multiply(particle, "RGB", shape, "", -400, -300)
+    g.out(dd_assets.add(g, ring, "", tinted, "", -200, -150), "", MP.MP_EMISSIVE_COLOR)
+    thick = g.power(shape, "", g.scalar("baseDensity", d["baseDensity"], -700, 900), "", -450, 850)
+    faded = g.multiply(thick, "", particle, "A", -250, 800)
+    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -250, 950), -50, 850)
 
 
 def _build_star_dust(mat, d):
