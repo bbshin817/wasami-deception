@@ -14,9 +14,12 @@ lighting / fog volume) and a texture2d it reads with sample_l (scene depth, for 
 material's own textures; its first half is the material, its end the fog and the output (o0.w = the opacity after
 the engine's saturate). One is compiled per vertex factory (sprite, mesh, GPU sprite) and fog variant; the sprite
 one reads the DynamicParameter as an interpolator (TEXCOORD1) where the GPU sprite one has the defaults folded in.
-Uniform parameters sit in the last constant buffer (cb3), vectors first; the names are printed once each, in the
-order they first appear, so they say which parameters there are but not where each sits - read that off how the code
-uses them (SelectionColor, the editor's highlight, is the lerp at the end of the emissive, black at run time). A
+Uniform parameters sit in the last constant buffer (cb3): one float4 per vector expression, then the scalar
+expressions packed four to a float4. The table ends with the slots - `cb3[4].y = hilightPower (10)` - read off the
+shader map's uniform expression set (each expression the index of its class in the shader map's name table, then its
+own fields; `uniforms:` is that name table, each name once). If the set holds a class this does not know, only the
+names are printed; read the slots off how the code uses them then (SelectionColor, the editor's highlight, is the
+lerp at the end of the emissive, black at run time). A
 material instance with a static switch of its own (bHasStaticPermutationResource) carries its own shader map; one
 without (MI_ky_aura7c) has none and uses its parent's.
 
@@ -98,6 +101,108 @@ def uniform_names(data):
     return names
 
 
+def name_table(data):
+    """The shader map's name table ([name, ...], the offset after it): an int32 count, then each name as an int32
+    length, its characters with a NUL and a 4-byte hash. It is the one holding the uniform expressions' classes."""
+    first = data.find(b"FMaterialUniformExpression")
+    if first < 8:
+        return [], None
+    at = first - 8
+    count = struct.unpack_from("<i", data, at)[0]
+    at += 4
+    names = []
+    for _ in range(count):
+        size = struct.unpack_from("<i", data, at)[0]
+        if not 0 < size < 256:
+            return [], None
+        names.append(data[at + 4:at + 3 + size].decode("ascii", "replace"))
+        at += 4 + size + 4
+    return names, at
+
+
+# The fields each uniform expression class serializes after its class name (UE 4.24's MaterialUniformExpressions.h),
+# as a format: e expression, n FName, i int32, b int8, f float, c FLinearColor, a an association (int8).
+FIELDS = {
+    "Constant": "cb", "VectorParameter": "nai" + "c", "ScalarParameter": "naif", "ComponentSwizzle": "ebbbbb",
+    "AppendVector": "eei", "Max": "ee", "Min": "ee", "Clamp": "eee", "Saturate": "e", "Abs": "e", "Floor": "e",
+    "Ceil": "e", "Frac": "e", "Periodic": "e", "SquareRoot": "e", "Logarithm2": "e", "Logarithm10": "e",
+    "Fmod": "ee", "Sine": "ei", "Length": "ei", "FoldedMath": "eeib", "Time": "", "RealTime": "",
+}
+FOLDED = {0: "+", 1: "-", 2: "*", 3: "/", 4: "dot", 5: "cross"}
+
+
+def uniform_slots(data):
+    """["cb3[N].c = expression", ...] for the shader map's vector and scalar uniform expressions, or [] where the
+    set is not found or holds a class FIELDS does not know."""
+    names, start = name_table(data)
+    if start is None:
+        return []
+
+    def expression(at):
+        index = struct.unpack_from("<i", data, at)[0]
+        if not 0 <= index < len(names) or not names[index].startswith("FMaterialUniformExpression"):
+            raise ValueError
+        kind = names[index][len("FMaterialUniformExpression"):]
+        if kind not in FIELDS:
+            raise ValueError
+        at += 8
+        parts = []
+        for field in FIELDS[kind]:
+            if field == "e":
+                text, at = expression(at)
+                parts.append(text)
+            elif field == "n":
+                index = struct.unpack_from("<i", data, at)[0]
+                parts.append(names[index] if 0 <= index < len(names) else "?")
+                at += 8
+            elif field in "ab":
+                parts.append(struct.unpack_from("<b", data, at)[0])
+                at += 1
+            elif field == "i":
+                parts.append(struct.unpack_from("<i", data, at)[0])
+                at += 4
+            elif field == "f":
+                parts.append(round(struct.unpack_from("<f", data, at)[0], 6))
+                at += 4
+            elif field == "c":
+                parts.append(tuple(round(v, 6) for v in struct.unpack_from("<4f", data, at)))
+                at += 16
+        if kind in ("ScalarParameter", "VectorParameter"):
+            return "%s (%s)" % (parts[0], ", ".join(map(str, parts[3])) if kind == "VectorParameter" else parts[3]), at
+        if kind == "Constant":
+            value = parts[0]
+            return (str(value[0]) if value[1:] == (value[0],) * 3 else str(value)), at
+        if kind == "ComponentSwizzle":
+            return "%s.%s" % (parts[0], "".join("rgba"[k] for k in parts[1:1 + parts[5]])), at
+        if kind == "FoldedMath":
+            return "(%s %s %s)" % (parts[0], FOLDED.get(parts[3], "?"), parts[1]), at
+        return "%s(%s)" % (kind, ", ".join(str(p) for p in parts if isinstance(p, str))), at
+
+    def listing(at):
+        count = struct.unpack_from("<i", data, at)[0]
+        if not 0 <= count < 256:
+            raise ValueError
+        at += 4
+        items = []
+        for _ in range(count):
+            text, at = expression(at)
+            items.append(text)
+        return items, at
+
+    for at in range(start, min(len(data) - 12, start + 8192)):
+        try:
+            vectors, after = listing(at)
+            if not vectors:
+                continue
+            scalars, _ = listing(after)
+        except (ValueError, struct.error, IndexError):
+            continue
+        slots = ["cb3[%d] = %s" % (k, v) for k, v in enumerate(vectors)]
+        slots += ["cb3[%d].%s = %s" % (len(vectors) + k // 4, "xyzw"[k % 4], v) for k, v in enumerate(scalars)]
+        return slots
+    return []
+
+
 def summary(text):
     lines = text.splitlines()
     body = [l for l in lines if l and not l.startswith("//")]
@@ -134,6 +239,8 @@ def main():
     data = open(uexp[0], "rb").read()
     print(os.path.relpath(uexp[0], ROOT), len(data), "bytes")
     print("uniforms:", " ".join(uniform_names(data)) or "(none: no shader map of its own)")
+    for slot in uniform_slots(data):
+        print("  " + slot)
     texts = []
     for code in shaders(data):
         text = disassemble(code)

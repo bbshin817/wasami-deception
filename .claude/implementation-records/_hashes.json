@@ -16,7 +16,7 @@
   },
   "01-stage-pipeline.md": {
     "Tools/dd/prepare_stage.py": "a8bde6deededc2bc03f332a149a1206a7f027b58",
-    "Tools/dd/cooked_shaders.py": "97345401492910d22a24aef708505b686ba9b0ee",
+    "Tools/dd/cooked_shaders.py": "cee314799ff6c30003dbdb55bc0e1aea8d2e2584",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "0252f069d3c45d94f410928fe292e577c8c2b3c5",
     "Tools/console_session.py": "79504ece5845d94fa038c18ab4f20d73945363fa",
@@ -39,7 +39,7 @@
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "179170e9e72f63c15b2f245ddff5b4c93e99a245",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "eb1af1ae7cef723142514cf233ca1004c6496bef",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "c4ad6486b3e11293c30a85c427184e2535763b62",
-    "Content/Python/wasami_tools/pipeline/dd_powers.py": "134c052d3324b2e2ec21e1cfa24238659911993e",
+    "Content/Python/wasami_tools/pipeline/dd_powers.py": "d2e3ae4b000d01717fee53b8d5f11e58ccd33bef",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "738b7b4a830bddbef8db8606e9b428978f40aaf8",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "ff419611ebb6625264e3f45e7c719740ff095fcb",

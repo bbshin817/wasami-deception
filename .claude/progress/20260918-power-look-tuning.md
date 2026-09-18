@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 559d87e
 started: 2026-09-18 03:55
-updated: 2026-09-18 15:00
+updated: 2026-09-18 16:00
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -32,21 +32,22 @@ updated: 2026-09-18 15:00
   - [x] 5d1・5d2. 終わりの破片を星屑と読んで四芒星にした（**5d3 で両方とも誤りと分かり取り消した**）。道具 `burst_blobs.py`・`forcefield_solo.py`・`material_probe.py` は使える。
   - [x] 5d3. **星屑を原作のシェーダーの式どおりにした** … 2026-09-18。道具 `Tools/dd/cooked_shaders.py`（cook のシェーダーの逆アセンブル。01 記録の「cook のシェーダーを読む」）。偽の側 = `DiamondGradient` × (twinkle + `starPower`) の小さなひし形で**白飛びしない**。本家の白飛びした四芒星は星屑ではない（5e で幕でもないと分かった）。収録 `pie-dust-cook025`。`observations/README.md`「星屑は原作のシェーダーどおりのひし形だった」。
   - [x] 5e. **幕を原作のシェーダーの式どおりにした** … 2026-09-18。`Lerp(baseColor, 1, tex.RGB × (1 + 粒子の色))`・`DepthFade((tex.R + opacity) × α)`、式 10 個。収録 `pie-wall-cook025` で、**白飛びした横長の破片は幕からも出ない**と分かった（候補はオーラの `T_ky_maskRGB5` の G）。`observations/README.md`「幕を原作のシェーダーどおりにしたが…」。
-  - [ ] 5f. **オーラ（`_build_aura7`、`AURA_LAYERS`）を式どおりにし、白飛びした横長の破片がオーラかを確かめる**（パンの向きと曲げは仮の値だった）。
+  - [x] 5f. **オーラを原作のシェーダーの式どおりにした** … 2026-09-18。`T_ky_maskRGB5` の G の欠片 × 150 と R のもや、頂点カラーの R（`AURA_LAYERS` は消した）。**本家の終わりの白飛びした横長の破片はオーラの欠片**（形の比・数が揃う。白飛びは本作の 1152 px の収録では測れず、3440×1440 で止めて撮ると芯は飛ぶ）。`cooked_shaders.py` が cb3 の並びを印字するようにした。収録 `pie-aura-cook025`・`pie-all-cook025`。`observations/README.md`「オーラを原作のシェーダーどおりにし…」。
   - [ ] 5g. **地面の輪（`_build_shockwave02`、`SHOCKWAVE_PANS`）を式どおりにする**（パンの速さは仮の値だった）。
 - [ ] 6. Telepathy の印を詰める（`TELEPATHY_PAN_*`、縁のこぶ）。**先に `MM_Telepathy` の親の式を `cooked_shaders.py` で読む**（UI の材質もシェーダーマップを持つはず）
 - [ ] 7. 仕上げ（実装記録 04 の「既知の制約・注意点」と変更履歴、`observations/README.md`、`.claude/roadmap.md` の項目 23、`handover.md`、note の原稿）
 
 ## 次にやること
 
-ステップ **5f**（**オーラを式どおりにする**）。
+ステップ **5g**（**地面の輪を式どおりにする**）。
 
-- 読む: `python Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/MI_ky_aura7c." --show <番号>`（出力は `Intermediate/Pipeline/dd/shaders/MI_ky_aura7c/` に 5d3 のものがある。親 `M_ky_aura7` のほうも読んで、インスタンスが自分のシェーダーマップを持つかを確かめる）。**オーラはメッシュのエミッタ**（`SM_ky_windLine27midPoly`）なので、半透明のベースパスのピクセルシェーダーのうち、頂点シェーダーの入力に A8〜A12 と SV_InstanceID がある組（`M_ky_wall02_4x4_two` では 10〜19 の組の 15）を読む。ビームの組もある（`bUsedWithBeamTrails`）。
-- 確かめたいこと: 8 つの `T_ky_maskRGB5` のサンプルがどのチャンネルをどう使うか。特に **G（ぎざぎざの欠片）を hilight に使っていて、`hilightPower` 10・`hilightDensity` 2 と粒子の色 (0, 0.437, 2.44) で白飛びする**か。パンの速さ・TexCoord の倍率・曲げの量は定数としてシェーダーに残るはず（`AURA_LAYERS` の仮の値を置き換える）。`maskOffsetY` の動的パラメータとマスクの `RadialGradientExponential` も今の推定と照らす。
-- 組む: `dd_powers._build_aura7` を式どおりに（`AURA_LAYERS` は消すか、読んだ定数に）。`make_telekinesis_materials()` → **PIE を止めてから**。
-- 確かめる: `forcefield_solo.py` で `aura` だけ → `sh observations/tools/telekinesis_burst.sh observations/ours/pie-aura-cook025 200` → `main('all')`。`tmp/tk5e/cmp.py`・`blobs.py` の SIDES / `bb.OURS` を差し替え、本家 `orig-tk-a025` の τ0.6〜1.0 の破片（`burst_blobs.py` full で 87〜567 個・形の比 0.28〜0.36・白飛び 2〜4 %）が出るかを見る。**オーラの寿命は 0.8**（τ0.2〜1.0）。
+- 読む: `python Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/M_ky_shockWave02_4x4."`（`MI_ky_shockWave02_4x4_nonD` は自分のシェーダーマップを持たない。念のため `MI_…_nonD.` も 1 度回して `uniforms:` が空かを見る）。表の後に **cb3 の並び**が出る。地面の輪は**メッシュでなくスプライト**のエミッタのはず（`P_ky_forceField_Telekinesis` の `ground` の型データを確かめる）なので、入力に A8〜 と SV_InstanceID の無い組の半透明のベースパス（`texture3d` と `sample_l` の `texture2d` を持つ `ps_5_0`）を読む。スプライトの組は動的パラメータを TEXCOORD1 で読む。
+- 確かめたいこと: `T_ky_maskRGB3` の 2 つのサンプル（`Panner_2`・`Panner_3`）のパンの速さと TexCoord の倍率（`SHOCKWAVE_PANS` の仮の値を置き換える）、どのチャンネルを使うか、`selectCh`（静的マスク）の扱い、`coreColor`・`coreDensity`・`coreHardness`・`hilightDetailPower`・`coreHilightPower`・`baseDensity` の使い方（今の推定 `_build_shockwave02` の docstring と照らす）。
+- 組む: `dd_powers._build_shockwave02` を式どおりに（`SHOCKWAVE_PANS` は消す）。`make_telekinesis_materials()` → **PIE を止めてから**。書き戻すファイルは `newline='
+'`。
+- 確かめる: 地面の輪は本家の連写に写っていない（5a）ので、`forcefield_solo.py` で `ground` だけにして `telekinesis_burst.sh observations/ours/pie-ground-cook025 200` → `main('all')`。前の `pie-solo-ground025`（閃光 f026 t=1.476）と並べ、形が壊れていないか・画面全体の平均（閃光の後 1.6〜2.2 秒）が変わらないかだけ見る。
 
-そのあとは 5g（地面の輪）→ 6（Telepathy）→ 7（仕上げ）。
+そのあとは 6（Telepathy）→ 7（仕上げ。`.claude/roadmap.md` の項目 23 の `AURA_LAYERS` の記述も直す）。
 
 ## 決定事項
 
@@ -79,13 +80,14 @@ updated: 2026-09-18 15:00
 
 - 連写は `observations/original/`・`observations/ours/`、道具は `observations/tools/`（どれも git の外）。使い方は `observations/README.md` の tools の表（5c2b で `burst_bands.py` を足した）。`times.json` は `perf_counter` 秒で**等間隔ではない**。
 - **PIE を動かしたままアセットを作り直すと `unreal.load_asset` が None を返す**（`'NoneType' object has no attribute 'set_editor_property'` で止まる）。`telekinesis_burst.sh` は PIE を動かしたまま終わるので、作り直す前に `python Tools/pie.py stop`。
-- 本作の収録は `pie-wall-cook025`（5e。式どおりの幕だけ。閃光 f025 t=1.419）・`pie-dust-cook025`（5d3。原作の式の星屑だけ。閃光 f027 t=1.511）・`pie-dust-star2-025`（5d2 の四芒星。閃光 f026 t=1.470）・`pie-dust-star025`（5d2 の失敗。粒が写らない）・`pie-solo-{aura,ground,sphere,dust}025`（5d1。閃光は f025 t=1.397 / f026 t=1.476 / f025 t=1.415 / f025 t=1.399）・`pie-wall-{a..e}025`（5c・5c2a）・`pie-wall-noshake{,-b,-c}025`（5c2a）・`pie-tk-{a..e}025`（5b）。5c2b の絵は `ours/veil-5c2b-scene.png`・`veil-5c2b-broad.png`。走り書きは `tmp/tk5e/`（5e の見比べ `cmp.py`・`blobs.py` と絵）・`tmp/tk5d3/`（5d3 の絵と、最初に書いた取り出しの小道具）・`tmp/tk5d/`（5d1・5d2 の絵と `M_Probe_*.png`）・`tmp/tk5b/`・`tmp/tk5c/`・`tmp/tk5c2/`・`tmp/tk5c2b/`（git の外）。
+- 本作の収録は `pie-all-cook025`（5f。全部入り、式どおりの星屑・幕・オーラ。閃光 f025 t=1.397）・`pie-aura-cook025`（5f。オーラだけ。閃光 f025 t=1.402）・`pie-wall-cook025`（5e。式どおりの幕だけ。閃光 f025 t=1.419）・`pie-dust-cook025`（5d3。原作の式の星屑だけ。閃光 f027 t=1.511）・`pie-dust-star2-025`（5d2 の四芒星。閃光 f026 t=1.470）・`pie-dust-star025`（5d2 の失敗。粒が写らない）・`pie-solo-{aura,ground,sphere,dust}025`（5d1。閃光は f025 t=1.397 / f026 t=1.476 / f025 t=1.415 / f025 t=1.399）・`pie-wall-{a..e}025`（5c・5c2a）・`pie-wall-noshake{,-b,-c}025`（5c2a）・`pie-tk-{a..e}025`（5b）。5c2b の絵は `ours/veil-5c2b-scene.png`・`veil-5c2b-broad.png`。走り書きは `tmp/tk5f/`（5f の見比べ `cmp.py`・`cmp_all.py`・`blobs.py`・`blobs_all.py` と絵。前の全部入り `pie-tk-a025` の閃光は f023 t=1.490）・`tmp/tk5e/`（5e の見比べ `cmp.py`・`blobs.py` と絵）・`tmp/tk5d3/`（5d3 の絵と、最初に書いた取り出しの小道具）・`tmp/tk5d/`（5d1・5d2 の絵と `M_Probe_*.png`）・`tmp/tk5b/`・`tmp/tk5c/`・`tmp/tk5c2/`・`tmp/tk5c2b/`（git の外）。
 - カメラの揺れを切って撮るには、PIE を始める前に `Tools/ue_remote.py` で `unreal.get_default_object(unreal.WasamiTelekinesisPower).set_editor_property('shake_class', None)`。戻すのは `unreal.load_class(None, '/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.01_Hotel_Lobby_ElevatorShakeStop_C')`（CDO なので保存は要らない）。
 - cook のシェーダーの出力は `Intermediate/Pipeline/dd/shaders/<名前>/`（git の外、作り直せる）。**`uniforms:` の名前は 1 度ずつ最初に出た順**で、cb3 の位置ではない（使い方から読む）。
 - 背景で走らせた測りの出力を読むときは、パスを**スラッシュ**で書く（`"...\tasks\$f.output"` は `\$` が展開を止めて空になる）。
 - 本家のセーブは観察の途中で捕まって書き換わったが、**このまま使う**（2026-09-18 のユーザーの回答。遊んで書き換わるのは気にしなくてよい。`.claude/guides/verification.md`）。控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-20260918-044132`。本家をもう一度起動するときはエディタを先に閉じる（VRAM 6 GB）。手順は `.claude/guides/observation.md`。
+- **本家と同じ解像度で 1 枚撮るには**、PIE で `pause` してから `HighResShot 3440x1440`（`Saved/Screenshots/WindowsEditor/`）。`pie.py cmd` の遅れで狙った τ より遅れる（5f では Q から 3.2 秒待って τ≈1.0）。
 - PIE のビューポートの上に Automation のログやメッセージログの小窓が出ていることがある。`shot --region 1826 205 2978 859` で見て、出ていたら ×（約 (2199, 407)）を押す。**ビューポートの中を中心 (2400, 530) 以外で押すと視点が回る**ので、押した後は `pie.py place` で置き直す。
 
 ## 検証
 
-- ステップ 5e は `dd_powers._build_wall02` を組み直し（`dd_assets.depth_faded_opacity` は距離を省けるように）、`make_telekinesis_materials()` で 4 つの材質を作り直した（`M_DD_KyWall02` の式 10 個。ログにコンパイルのエラーなし。C++ は変えていない）。`sphere` だけの収録 `pie-wall-cook025` を撮り、`forcefield_solo.py` は `main('all')` で 15 に戻して保存済み。PIE は止めた。`check_records.py --update` は OK。本家は起動していない。エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。
+- ステップ 5f は `dd_powers._build_aura7` を組み直し（`AURA_LAYERS` を消した）、`make_telekinesis_materials()` で 4 つの材質を作り直した（`M_DD_KyAura7` の式 65 個。ログにコンパイルのエラーなし。C++ は変えていない）。`aura` だけの `pie-aura-cook025` と全部入りの `pie-all-cook025` を撮り、`forcefield_solo.py` は `main('all')` で 15 に戻して保存済み。PIE は止めた。`check_records.py --update` は OK。本家は起動していない。エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。

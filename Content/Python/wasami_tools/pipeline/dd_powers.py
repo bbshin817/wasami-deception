@@ -184,23 +184,6 @@ TELEPATHY_INST_SCALARS = ("Speed",)
 # The telekinesis's force field (AdvancedMagicFX09, pak_reference_2): its four materials' graphs are cooked away, so
 # masters holding our estimates sit under /Game/Pipeline (dd_assets.estimated_materials).
 KY09 = "ThirdParty/AdvancedMagicFX09/"
-# The exports keep no Panner's speed, no TextureCoordinate's tiling and nothing of how the aura's samples bend each
-# other's coordinates: placeholders. Each of the aura's four layers is (its TexCoord tiling (U across a wind line, V
-# along it), its pan speed, the pan speed of the sample that bends its coordinates, how far that sample's B bends
-# them).
-# The tilings were checked against the original's burst and kept (observations/README.md, "オーラの大きさを本家と
-# 比べた"; step 5b of item 23). Over the floor at the same tau, the mean autocorrelation of these wisps follows the
-# original's within what one recording differs from the next: of the three tilings tried, U x 0.4 with V x 0.7 and
-# with V x 0.85 were no closer, and V x 0.7 with U left at 1 was clearly worse. So the scale is not a placeholder any
-# more, although the numbers themselves are not the original's.
-# TODO(仮): the pan directions and the bends are still placeholders (the exports keep neither), and the aura's
-# broad structure is a little weaker than the original's (item 23 in .claude/roadmap.md).
-AURA_LAYERS = (
-    ((1.0, 1.0), (0.0, -1.5), (0.1, -0.5), 0.1),
-    ((1.0, 2.0), (0.0, -2.2), (-0.1, -0.7), 0.1),
-    ((1.0, 1.0), (0.0, -1.2), (0.15, -0.4), 0.15),
-    ((1.0, 3.0), (0.0, -2.8), (-0.15, -0.9), 0.15),
-)
 SHOCKWAVE_PANS = ((0.05, 0.1), (-0.08, 0.06))  # the ground ring's two T_ky_maskRGB3 samples (Panner_2, Panner_3)
 
 # The force field this game spawns, its own (the user's request, 2026-09-18): P_ky_forceField_Telekinesis with the
@@ -582,63 +565,80 @@ def _build_wall02(mat, d):
 
 
 def _build_aura7(mat, d):
-    """M_ky_aura7 (the force field's swirling aura: MI_ky_aura7c on SM_ky_windLine27midPoly), estimated (see
-    AURA_LAYERS). The cook kept its settings (translucent, unlit, two-sided, for sprites, beam trails and mesh
-    particles), a Multiply as the emissive colour, the parameters baseDensity, baseOpacity, hilightPower,
-    hilightDensity, depthFade, maskU, maskV and maskRadiusControl, a DynamicParameter (maskOffsetY at 0, Param2 – 4 at
-    1), a RadialGradientExponential call and eight samples of T_ky_maskRGB5 (linear; R wisps, G specks, B streaks),
-    four at Adds and four at Panners, of 61 expressions. The mesh's lines are strips with U across them (0, 0.5, 1) and
-    V along them. The estimate reads the samples as four layers, each a sample at a panned TexCoord bent by the B of a
-    sample at another Panner:
-      emissive  the particle's colour × (base × baseDensity + hilight), where base is the mean of layers 1 and 2's R
-                and hilight = (the mean of layers 3 and 4's R)^hilightPower × hilightDensity (where both are bright)
-      opacity   saturate(base × baseOpacity + hilight) × the mask × the particle's alpha, faded over depthFade. The mask
-                is RadialGradientExponential at TexCoord × (maskU, maskV), centred on maskRadiusControl's RG with
-                maskOffsetY added to G, of radius B and density A: a strip's middle line, in a window along it that the
-                particle system moves (maskOffsetY 0.1 → 0.2 wipes the lines from their V = 0 ends)
-    Param2 – 4 are not used (the particle system leaves them at 1)."""
+    """M_ky_aura7 (the force field's swirling aura: MI_ky_aura7c on SM_ky_windLine27midPoly), read off the original's
+    compiled shaders (Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/M_ky_aura7." --show 25: the translucent
+    base pass pixel shader of mesh particles; MI_ky_aura7c has no shader map of its own). The cook's expressions
+    (translucent, unlit, two-sided, for sprites, beam trails and mesh particles; a Multiply as the emissive colour; the
+    parameters baseDensity, baseOpacity, hilightPower, hilightDensity, depthFade, maskU, maskV and maskRadiusControl; a
+    DynamicParameter maskOffsetY, Param2 - 4; RadialGradientExponential; eight samples of T_ky_maskRGB5 - linear; R
+    wisps, G specks, B streaks - four at Panners and four at Adds, of 61 expressions) are the pieces; the code is how
+    they are put together. Each sample at an Add is at a panned (or rotated) TexCoord 0 - u across the mesh's strips,
+    v along them - bent by the B of a sample at another Panner:
+      specks    G at pan (-0.1, 0.2) + 5 B(pan (-0.2, -0.3))^2, and G at TexCoord rotated about the middle at 0.1 rad a
+                second + 5 B(pan (0.2, 0.5))^2
+      wisps     R at TexCoord x 0.5 panned (0.6, 0.5) + 0.6 B(pan (-0.1, -0.2)), and R at pan (-0.5, -0.3)
+                + 0.2 B(pan (0.04, 0.1))
+      glow      speck x speck^hilightDensity x hilightPower x 150 + (wisp x wisp)^baseDensity x 2 + baseOpacity
+      emissive  glow x the particle's colour, not clamped: where the specks meet the glow reaches 750 (MI_ky_aura7c's
+                1.5 and 5), and with the burst's colour (0, 0.44, 2.44) the tone mapper takes it to white
+      opacity   glow x the particle's alpha x the mesh's vertex colour R (1 on a strip's middle line, 0 at its edges)
+                x the mask, faded over depthFade; the engine saturates. The mask is RadialGradientExponential at
+                TexCoord x (maskU, maskV), centred on (maskRadiusControl's R, maskOffsetY), of radius B and density A:
+                the strips' middle, in a window along them the particle system moves (maskOffsetY 0.1 -> 0.2)
+    The code takes max(B, 0) of the two samples bending the wisps, which a texture's B never needs; Param2 - 4 are not
+    used."""
     dd_assets.particle_material(mat, beam_trails=True, two_sided=True)
     g = dd_stage._Graph(mat, checked=True)
-    particle = g.node(unreal.MaterialExpressionParticleColor, -400, 700)
-    wisps = _ky09_texture("T_ky_maskRGB5")
+    masks = _ky09_texture("T_ky_maskRGB5")
     linear = unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
-    layers = []
-    for i, (tiling, speed, bend_speed, bend) in enumerate(AURA_LAYERS):
-        y = -700 + i * 350
-        coords = g.node(unreal.MaterialExpressionTextureCoordinate, -2700, y)
-        coords.set_editor_property("u_tiling", tiling[0])
-        coords.set_editor_property("v_tiling", tiling[1])
-        bender = _sample(g, wisps, linear, _panner(g, coords, bend_speed, -2500, y + 150), -2300, y + 150)
-        bent = g.multiply(bender, "B", dd_assets.constant(g, bend, -2100, y + 250), "", -1950, y + 150)
-        uvs = dd_assets.add(g, _panner(g, coords, speed, -2500, y), "", bent, "", -1800, y)
-        layers.append(_sample(g, wisps, linear, uvs, -1600, y))
-    half = dd_assets.constant(g, 0.5, -1400, -200)
-    base = g.multiply(dd_assets.add(g, layers[0], "R", layers[1], "R", -1400, -600), "", half, "", -1200, -550)
-    glint = g.multiply(dd_assets.add(g, layers[2], "R", layers[3], "R", -1400, 100), "", half, "", -1200, 150)
-    sharp = g.power(glint, "", g.scalar("hilightPower", d["hilightPower"], -1200, 250), "", -1000, 150)
-    hilight = g.multiply(sharp, "", g.scalar("hilightDensity", d["hilightDensity"], -1000, 250), "", -800, 200)
-    dim = g.multiply(base, "", g.scalar("baseDensity", d["baseDensity"], -1200, -450), "", -1000, -550)
-    glow = dd_assets.add(g, dim, "", hilight, "", -650, -300)
-    g.out(g.multiply(glow, "", particle, "RGB", -400, -250), "", MP.MP_EMISSIVE_COLOR)
 
-    # The mask along the lines.
+    def bent(coords, bend_speed, square, scale, x, y):
+        """A sample of masks at coords + scale x (B at TexCoord panned bend_speed, squared if square)."""
+        streak = _sample(g, masks, linear, _panner(g, None, bend_speed, x - 400, y + 150), x - 200, y + 150)
+        amount, pin = (g.power(streak, "B", dd_assets.constant(g, 2.0, x - 200, y + 300), "", x - 50, y + 150), "")             if square else (streak, "B")
+        offset = g.multiply(amount, pin, dd_assets.constant(g, scale, x - 50, y + 300), "", x + 100, y + 150)
+        return _sample(g, masks, linear, dd_assets.add(g, coords, "", offset, "", x + 250, y), x + 400, y)
+
+    rotator = g.node(unreal.MaterialExpressionRotator, -2300, -400)
+    rotator.set_editor_property("center_x", 0.5)
+    rotator.set_editor_property("center_y", 0.5)
+    rotator.set_editor_property("speed", 0.1)
+    speck = bent(_panner(g, None, (-0.1, 0.2), -2300, -800), (-0.2, -0.3), True, 5.0, -2300, -800)
+    speck_rotated = bent(rotator, (0.2, 0.5), True, 5.0, -2300, -400)
+    half = g.node(unreal.MaterialExpressionTextureCoordinate, -2500, 0)
+    half.set_editor_property("u_tiling", 0.5)
+    half.set_editor_property("v_tiling", 0.5)
+    wisp = bent(_panner(g, half, (0.6, 0.5), -2300, 0), (-0.1, -0.2), False, 0.6, -2300, 0)
+    wisp_other = bent(_panner(g, None, (-0.5, -0.3), -2300, 400), (0.04, 0.1), False, 0.2, -2300, 400)
+
+    sharp = g.power(speck_rotated, "G", g.scalar("hilightDensity", d["hilightDensity"], -1700, -300), "",
+                    -1500, -400)
+    hilight = g.multiply(g.multiply(speck, "G", sharp, "", -1300, -600), "",
+                         g.scalar("hilightPower", d["hilightPower"], -1300, -450), "", -1100, -600)
+    hilight = g.multiply(hilight, "", dd_assets.constant(g, 150.0, -1100, -450), "", -900, -600)
+    thick = g.power(g.multiply(wisp, "R", wisp_other, "R", -1500, 100), "",
+                    g.scalar("baseDensity", d["baseDensity"], -1500, 250), "", -1300, 100)
+    base = dd_assets.add(g, g.multiply(thick, "", dd_assets.constant(g, 2.0, -1300, 250), "", -1100, 100), "",
+                         g.scalar("baseOpacity", d["baseOpacity"], -1100, 250), "", -900, 100)
+    glow = dd_assets.add(g, hilight, "", base, "", -700, -250)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -700, 300)
+    g.out(g.multiply(glow, "", particle, "RGB", -450, -250), "", MP.MP_EMISSIVE_COLOR)
+
+    # The mask along the strips.
     control = g.vector("maskRadiusControl", d["maskRadiusControl"], -1400, 1000)
     dynamic = dd_assets.dynamic_parameter(g, ("maskOffsetY", "Param2", "Param3", "Param4"), -1400, 1250,
                                           defaults=(0.0, 1.0, 1.0, 1.0))
     scale = g.binary(unreal.MaterialExpressionAppendVector, g.scalar("maskU", d["maskU"], -1400, 700), "",
                      g.scalar("maskV", d["maskV"], -1400, 800), "", -1200, 750)
     mask_uvs = g.multiply(g.node(unreal.MaterialExpressionTextureCoordinate, -1200, 600), "", scale, "", -1000, 650)
-    centre_v = dd_assets.add(g, control, "G", dynamic, "maskOffsetY", -1150, 1150)
-    centre = g.binary(unreal.MaterialExpressionAppendVector, control, "R", centre_v, "", -1000, 1000)
+    centre = g.binary(unreal.MaterialExpressionAppendVector, control, "R", dynamic, "maskOffsetY", -1000, 1000)
     mask = dd_assets.radial_gradient(g, None, None, -800, 850, uvs=mask_uvs, centre=centre)
     dd_assets.connect(control, "B", mask, "Radius")
     dd_assets.connect(control, "A", mask, "Density")
-    veil = g.multiply(base, "", g.scalar("baseOpacity", d["baseOpacity"], -1000, -150), "", -800, -150)
-    cover = dd_assets.single(g, unreal.MaterialExpressionSaturate,
-                             dd_assets.add(g, veil, "", hilight, "", -650, 0), "", -500, 0)
-    masked = g.multiply(cover, "", mask, "RadialGradientExponential", -350, 300)
-    faded = g.multiply(masked, "", particle, "A", -200, 450)
-    dd_assets.depth_faded_opacity(g, faded, g.scalar("depthFade", d["depthFade"], -200, 600), 0, 500)
+    lit = g.multiply(glow, "", particle, "A", -450, 300)
+    middle = g.multiply(lit, "", g.node(unreal.MaterialExpressionVertexColor, -450, 500), "R", -250, 400)
+    masked = g.multiply(middle, "", mask, "RadialGradientExponential", -100, 500)
+    dd_assets.depth_faded_opacity(g, masked, g.scalar("depthFade", d["depthFade"], -100, 650), 100, 550)
 
 
 def _build_shockwave02(mat, d):
