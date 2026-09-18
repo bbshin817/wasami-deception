@@ -11,8 +11,12 @@
 #include "Camera/CameraComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Tests/AutomationCommon.h"
 
@@ -207,6 +211,86 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 	}
 
 	UGameplayStatics::DeleteGameInSlot(CaptureTestSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiCaptureCatchTest, "Wasami.Capture.Catch",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiCaptureCatchTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	if (!TestNotNull(TEXT("the project's game mode"), World->GetAuthGameMode<AWasamiGameMode>()))
+	{
+		return false;
+	}
+
+	// The player: possessed by the first player controller (the capture disables its input), and moved by teleports,
+	// which update the overlaps without sweeping. The world is not ticked.
+	const FVector Away(0., 5000., 500.);
+	ACharacter* Player = World->SpawnActor<ACharacter>(Away, FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->Possess(Player);
+	if (!TestTrue(TEXT("the player is the player"), UGameplayStatics::GetPlayerCharacter(World, 0) == Player))
+	{
+		return false;
+	}
+	ACharacter* Walker = World->SpawnActor<ACharacter>(FVector(0., -5000., 500.), FRotator::ZeroRotator);
+
+	// Two enemies far apart, floating.
+	AWasamiEnemy* Stunned = AWasamiEnemy::SpawnEnemy(World, FVector(0., 0., 500.), 0.f);
+	AWasamiEnemy* Awake = AWasamiEnemy::SpawnEnemy(World, FVector(2000., 0., 500.), 0.f);
+	if (!TestNotNull(TEXT("an enemy"), Stunned) || !TestNotNull(TEXT("another"), Awake) || !TestNotNull(TEXT("a walker"), Walker))
+	{
+		return false;
+	}
+	Stunned->GetCharacterMovement()->GravityScale = 0.f;
+	Awake->GetCharacterMovement()->GravityScale = 0.f;
+	auto CaptureCount = [World]()
+	{
+		int32 Count = 0;
+		for (TActorIterator<AWasamiCapture> It(World); It; ++It)
+		{
+			++Count;
+		}
+		return Count;
+	};
+	// Inside a Sphere (54.9 cm) with the player's capsule (34 cm), clear of the enemy's (34 cm).
+	const FVector Beside(80., 0., 0.);
+
+	// Not an enemy's own capsule, not another pawn, not a stunned enemy.
+	TestEqual(TEXT("nothing caught at the start"), CaptureCount(), 0);
+	Walker->SetActorLocation(Awake->GetActorLocation() + Beside, false, nullptr, ETeleportType::TeleportPhysics);
+	TestEqual(TEXT("another pawn is not caught"), CaptureCount(), 0);
+	Walker->SetActorLocation(FVector(0., -5000., 500.), false, nullptr, ETeleportType::TeleportPhysics);
+	IWasamiEnemyInterface::Execute_SetState(Stunned, EWasamiEnemyState::Stun, false);
+	Player->SetActorLocation(Stunned->GetActorLocation() + Beside, false, nullptr, ETeleportType::TeleportPhysics);
+	TestTrue(TEXT("the player is in the stunned one's Sphere"), Stunned->GetSphere()->IsOverlappingActor(Player));
+	TestEqual(TEXT("a stunned enemy does not catch"), CaptureCount(), 0);
+	TestTrue(TEXT("and stays"), IsValid(Stunned) && IsValid(Awake));
+	Player->SetActorLocation(Away, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// The other catches: the capture, every enemy removed, itself too.
+	Player->SetActorLocation(Awake->GetActorLocation() + Beside, false, nullptr, ETeleportType::TeleportPhysics);
+	TestEqual(TEXT("an enemy that is not stunned catches the player"), CaptureCount(), 1);
+	TestFalse(TEXT("the enemy that caught is removed"), IsValid(Awake));
+	TestFalse(TEXT("and the other"), IsValid(Stunned));
+	TestTrue(TEXT("the pawns stay"), IsValid(Player) && IsValid(Walker));
+	for (TActorIterator<AWasamiCapture> It(World); It; ++It)
+	{
+		TestTrue(TEXT("the view in the room"), Controller->GetViewTarget() == *It);
+		It->Destroy();
+	}
 	return true;
 }
 

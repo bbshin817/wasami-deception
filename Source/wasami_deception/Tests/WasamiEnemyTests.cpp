@@ -3,6 +3,8 @@
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
+#include "Engine/CollisionProfile.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -479,6 +481,30 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the capsule's radius"), Capsule->GetUnscaledCapsuleRadius(), 34.f);
 	TestEqual(TEXT("the capsule's half height"), Capsule->GetUnscaledCapsuleHalfHeight(), 118.05822f, 1e-4f);
 	TestTrue(TEXT("a pawn's collision"), Capsule->GetCollisionObjectType() == ECC_Pawn);
+
+	// Sphere: on the capsule's centre, overlapping pawns only.
+	const USphereComponent* Sphere = Enemy->GetSphere();
+	if (TestNotNull(TEXT("the Sphere"), Sphere))
+	{
+		TestTrue(TEXT("on the capsule"), Sphere->GetAttachParent() == Capsule);
+		TestTrue(TEXT("at its centre"), Sphere->GetRelativeLocation().IsZero());
+		TestEqual(TEXT("the Sphere's radius"), Sphere->GetUnscaledSphereRadius(), 54.928059f, 1e-4f);
+		TestTrue(TEXT("a custom profile"), Sphere->GetCollisionProfileName() == UCollisionProfile::CustomCollisionProfileName);
+		TestTrue(TEXT("overlapping pawns"), Sphere->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Overlap);
+		bool bRestIgnored = true;
+		for (const ECollisionChannel Channel : {ECC_WorldStatic, ECC_WorldDynamic, ECC_Visibility, ECC_Camera, ECC_PhysicsBody, ECC_Vehicle, ECC_Destructible})
+		{
+			bRestIgnored &= Sphere->GetCollisionResponseToChannel(Channel) == ECR_Ignore;
+		}
+		TestTrue(TEXT("ignoring the rest"), bRestIgnored);
+		TestTrue(TEXT("with overlap events"), Sphere->GetGenerateOverlapEvents());
+	}
+	for (const UClass* Nurse : {AWasamiEnemy06Chase::StaticClass(), AWasamiEnemySentry::StaticClass(), AWasamiEnemyZone2::StaticClass()})
+	{
+		const AWasamiEnemy* Default = CastChecked<AWasamiEnemy>(Nurse->GetDefaultObject());
+		TestTrue(FString::Printf(TEXT("%s has the Sphere too"), *Nurse->GetName()),
+			Default->GetSphere() && Default->GetSphere()->GetUnscaledSphereRadius() == Sphere->GetUnscaledSphereRadius());
+	}
 
 	const UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
 	TestEqual(TEXT("the top speed"), Movement->MaxWalkSpeed, 800.f);

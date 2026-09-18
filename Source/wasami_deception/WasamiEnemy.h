@@ -7,6 +7,7 @@
 #include "WasamiEnemy.generated.h"
 
 class USkeletalMesh;
+class USphereComponent;
 class UWasamiEnemyAnimInstance;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiEnemyCloseBy);
@@ -23,6 +24,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiEnemyCloseBy);
  * first acts on Seen Player Recently (Chase Player and a retriggerable 3 s delay that forgets the player, or Not Seeing
  * Player), then sets it when Can See Player. Every decision asks for a new move, which aborts the one before and fails
  * its proxy: the next decision's move clears the Point Of Interest, and each one draws the random point again.
+ *
+ * Its Sphere catches the player: the nurse's BeginOverlap (@9818) removes every enemy and runs Jumpscare Handle; here
+ * the capture (AWasamiCapture, the hotel's Death Event) plays it with a Wasami of its own.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiEnemy : public ACharacter, public IWasamiEnemyInterface
@@ -61,6 +65,8 @@ public:
 	static constexpr float ChaseAcceptance = 5.f;
 	static constexpr float PointOfInterestAcceptance = 5.f;
 	static constexpr float RandomPointAcceptance = 50.f;
+	// Sphere's radius (on CollisionCylinder, at its centre).
+	static constexpr float SphereRadius = 54.92805862426758f;
 
 	/**
 	 * Spawns one whose capsule centre is at Location, turned to Yaw, with CanSpawn set as the hospital's level script
@@ -100,6 +106,9 @@ public:
 	/** The mesh's animation (PlayOnce and the rest), or null before it starts. */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	UWasamiEnemyAnimInstance* GetEnemyAnim() const;
+
+	/** The Sphere that catches the player. */
+	USphereComponent* GetSphere() const { return Sphere; }
 
 	/** The base's CanSpawn: false destroys the enemy as it begins play. The level's script sets it on its spawns. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (ExposeOnSpawn = true))
@@ -202,8 +211,20 @@ protected:
 	UFUNCTION()
 	void OnPointOfInterestMoveEnded(EPathFollowingResult::Type MovementResult);
 
+	/**
+	 * The Sphere's BeginOverlap: the player, while State is not Stun, is caught, once (a DoOnce): the capture starts and
+	 * every enemy is removed, this one too.
+	 */
+	UFUNCTION()
+	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy")
 	EWasamiEnemyState State = EWasamiEnemyState::Patrol;
+
+	/** Sphere: overlaps pawns only (Custom: the rest ignored), and catches the player. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	TObjectPtr<USphereComponent> Sphere;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<USkeletalMesh> MeshAsset;
@@ -215,4 +236,6 @@ private:
 	bool bStunRunning = false;
 	// Chase Player's DoOnce around CloseBy.
 	bool bDetectionClosed = false;
+	// The Sphere's DoOnce around the capture.
+	bool bCatchClosed = false;
 };

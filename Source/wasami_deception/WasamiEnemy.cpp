@@ -4,6 +4,8 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
+#include "Engine/CollisionProfile.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,7 +15,9 @@
 #include "NavigationSystem.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiCapture.h"
 #include "WasamiEnemyAnimInstance.h"
+#include "WasamiZoneFlow.h"
 
 namespace
 {
@@ -41,6 +45,16 @@ AWasamiEnemy::AWasamiEnemy()
 	Body->SetRelativeLocationAndRotation(FVector(MeshX, MeshY, MeshZ), FRotator(0., MeshYaw, 0.));
 	Body->SetRelativeScale3D(FVector(MeshScale));
 	Body->AnimClass = UWasamiEnemyAnimInstance::StaticClass();
+
+	// Sphere: at the capsule's centre, Custom, overlapping Pawn and ignoring the rest (its AreaClass, NavArea_Obstacle,
+	// is the shape's default).
+	Sphere = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
+	Sphere->SetupAttachment(GetCapsuleComponent());
+	Sphere->InitSphereRadius(SphereRadius);
+	Sphere->SetCollisionProfileName(UCollisionProfile::CustomCollisionProfileName);
+	Sphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	Sphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AWasamiEnemy::OnSphereBeginOverlap);
 
 	MeshAsset = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
 }
@@ -260,4 +274,22 @@ void AWasamiEnemy::OnRandomPointMoveEnded(EPathFollowingResult::Type MovementRes
 void AWasamiEnemy::OnPointOfInterestMoveEnded(EPathFollowingResult::Type MovementResult)
 {
 	PointOfInterest = FVector::ZeroVector;
+}
+
+void AWasamiEnemy::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	// BndEvt__Sphere (@9818): the player, and State not Stun (Vanish does not matter), then a DoOnce.
+	if (bCatchClosed || !OtherActor || OtherActor != UGameplayStatics::GetPlayerCharacter(this, 0)
+		|| State == EWasamiEnemyState::Stun)
+	{
+		return;
+	}
+	bCatchClosed = true;
+	// The nurse removes every other enemy, Force Removes the stun hits (BP_04_StunHit: the gas's, which is not made)
+	// and runs its Jumpscare Handle. The capture's room has a Wasami of its own, so this one is removed with the rest;
+	// the capture is started first, while this one is still there to find the world by (the game mode's death being
+	// closed stops it, not the removal).
+	AWasamiCapture::StartCapture(this, this);
+	AWasamiZoneFlow::RemoveAllEnemies(GetWorld());
 }

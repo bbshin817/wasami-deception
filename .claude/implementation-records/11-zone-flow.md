@@ -35,7 +35,7 @@ updated: 2026-09-19
   - `NotifyPlayerOverlap(bool bBegin)` … プレイヤーが箱に入った / 出た。箱の重なりはプレイヤーのときだけこれを呼ぶ。テストは直接呼ぶ。
   - `RemoveWidgetDelay` 1（鍵が外れてから画面を消すまで）、`IsInRange()`・`GetBox()`・`GetWidget()`・`GetUIWidget()`。
 - `AWasamiZoneFlow`（`AActor`、Abstract）… 2 つのゾーンの共通の土台。
-  - 静的関数: `SpawnFor(Mode, Zone)`（1 → `AWasamiZone1Flow`、2 → `AWasamiZone2Flow`、ほかは null。`SpawnActorDeferred` で `Mode` を入れてから `FinishSpawning`）、`SourceTag(Name)`（`src:<Name>`）、`FindSource(World, Name)`（そのタグを持つ最初のアクタ）、`RemoveAllEnemies(World)`（本家の `BP_DD_Functions` の同名の関数: タグ `Enemy` のアクタをすべて破棄）、`DestroyAllShards(World)`（残りの `AWasamiShard` を回収せずに破棄）。
+  - 静的関数: `SpawnFor(Mode, Zone)`（1 → `AWasamiZone1Flow`、2 → `AWasamiZone2Flow`、ほかは null。`SpawnActorDeferred` で `Mode` を入れてから `FinishSpawning`）、`SourceTag(Name)`（`src:<Name>`）、`FindSource(World, Name)`（そのタグを持つ最初のアクタ）、`RemoveAllEnemies(World)`（本家の `BP_DD_Functions` の同名の関数: タグ `Enemy` のアクタをすべて破棄。敵の捕獲の判定〈07 記録〉も使う）、`DestroyAllShards(World)`（残りの `AWasamiShard` を回収せずに破棄）。
   - `CallEvent(FunctionName)` … 引数の無い UFUNCTION のイベントを名前で呼ぶ（デバッグの `Wasami.Flow`・テスト）。無ければ偽。
   - `GetSection()` … 最後に来たイベントの本家の名前（`04_Start`・`05_Persistent`・`05 All Shards Collected`・`Miniboss Transition `〈後ろに空白〉など）。
   - 矢印の値: `IsArrowOnShards()`（本家の `Shards?`。既定は真 = `BP_ArrowPointer` の CDO）、`GetArrowColor()`（`Change Color` の色。`TOptional`、与えられるまで未設定）、`GetArrowTarget()`（`Target`）。地図の矢印 `AWasamiArrowPointer`（03 記録）が `Find Object` のたびにこれを取る（本家はレベル BP が矢印に入れる）。
