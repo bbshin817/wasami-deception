@@ -5,9 +5,6 @@ placed (tag 'src:<the original's name>'), and the LevelSequenceActors that play 
 The original's level Blueprints play those actors (GetSequencePlayer → Play); AWasamiZoneFlow finds them by the same
 tag. A binding points at the level's actor by its path in the map, so rebuilding the level (new actor names) has to
 rebuild the sequences too, which dd_level.build does last."""
-import json
-import os
-
 import unreal
 
 from wasami_tools.pipeline import dd_assets, paths, ue_props
@@ -337,10 +334,6 @@ def _new_result():
             "missing_particles": []}
 
 
-def _level_file(zone):
-    return os.path.join(paths.DD_PAK2, "_levels", zone["map"] + ".full.json")
-
-
 def _source_actors(eas):
     found = {}
     for actor in eas.get_all_level_actors():
@@ -364,7 +357,7 @@ def _helpers(eas, zone, names, existing, result):
     """Places the bound TargetPoints and emitters the level assembly leaves out, as the original has them."""
     from wasami_tools.pipeline import dd_level
     by_name = {a["name"]: a for a in zone["actors"]}
-    level = None
+    level = {}
     for name in names:
         a = by_name.get(name)
         if name in existing or a is None or a["class"] not in HELPER_CLASSES or not a["world"]:
@@ -374,20 +367,9 @@ def _helpers(eas, zone, names, existing, result):
                                            dd_level._rot(world["quat_xyzw"]))
         actor.set_actor_scale3d(dd_level._vec(world["scale"]))
         if a["class"] == "Emitter":
-            if level is None:
-                with open(_level_file(zone), encoding="utf-8") as f:
-                    level = {e["path"]: e for e in json.load(f)}
-            comp_props = level.get("%s.PersistentLevel.%s.ParticleSystemComponent0" % (zone["map"], name), {}).get(
-                "props", {})
-            psc = actor.get_editor_property("particle_system_component")
-            psc.set_editor_property("auto_activate", bool(comp_props.get("bAutoActivate", True)))
-            template = comp_props.get("Template")
-            if template:
-                target = dd_assets.asset_path(dd_assets.game_rel(template))
-                if EAL.does_asset_exist(target):
-                    psc.set_editor_property("template", unreal.load_asset(target))
-                else:
-                    result["missing_particles"].append("%s: %s" % (name, target))
+            missing = dd_level.set_emitter(actor, zone, name, level)
+            if missing:
+                result["missing_particles"].append("%s: %s" % (name, missing))
         dd_level._tag(actor, name, SEQUENCE_FOLDER, SEQUENCE_TAG, "src:" + name)
         existing[name] = actor
         result["helpers"] += 1

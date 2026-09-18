@@ -10,6 +10,9 @@ class AWasamiGameMode;
 class AWasamiTriggerBox;
 class AWasamiZoneBarrier;
 class UCameraShakeBase;
+class ULevelSequence;
+class USoundAttenuation;
+class USoundBase;
 
 /**
  * A hospital zone's level Blueprint (pak_reference_2's 06_Hospital_Zone_01 and _02), which this game's levels do not
@@ -19,8 +22,8 @@ class UCameraShakeBase;
  * the original names by the tag 'src:<name>' the level build gives each placed actor.
  *
  * The flow moves the story on and plays what the level Blueprints play themselves: the level sequences placed in the
- * level and the camera shakes; it wakes the door breaks and listens to them, and locks and opens the double doors it
- * names. What the events show or voice through other actors (the barrier, the loading screen, Bierce and the nurses'
+ * level, the fade, the camera shakes, sounds and the level's emitters; it wakes the door breaks and listens to them,
+ * and locks, opens and destroys the double doors it names. What the events show or voice through other actors (the barrier, the loading screen, Bierce and the nurses'
  * lines, the music, the nurses themselves) is left to the items that make those; each has its place in the event, marked
  * by a comment.
  */
@@ -118,6 +121,26 @@ protected:
 	 */
 	void PlayCameraShake(const TSoftClassPtr<UCameraShakeBase>& Shake, float Scale = 1.f);
 
+	/**
+	 * PlayWorldCameraShake: the shake for every player within OuterRadius of Epicenter, full within InnerRadius and
+	 * falling off by Falloff between them.
+	 */
+	void PlayWorldCameraShake(const TSoftClassPtr<UCameraShakeBase>& Shake, const FVector& Epicenter, float InnerRadius,
+		float OuterRadius, float Falloff, bool bOrientTowardsEpicenter);
+
+	/**
+	 * Basic DD Fade Out (BP_DD_Functions): a sequence player made for FadeSequence (Ballroom_Event_Fade: black for 2 s,
+	 * clear again 3 s later) and played at PlayRate.
+	 */
+	void PlayFadeOut(float PlayRate);
+
+	/** PlaySoundAtLocation(Sound, Location, no rotation, volume and pitch 1, from the start, Attenuation). */
+	void PlaySoundAt(const TSoftObjectPtr<USoundBase>& Sound, const FVector& Location,
+		const TSoftObjectPtr<USoundAttenuation>& Attenuation);
+
+	/** The ParticleSystemComponent's Activate(true) of the emitter placed from the original's actor of that name. */
+	void ActivateEmitter(FName Source);
+
 	/** SetCollisionEnabled on the brush of the blocking volume of that name. */
 	void SetVolumeCollision(FName Source, ECollisionEnabled::Type Enabled);
 
@@ -132,6 +155,10 @@ protected:
 
 	/** The first actor placed from the original's actor of that name in this flow's world. */
 	AActor* Source(FName Name) const { return FindSource(GetWorld(), Name); }
+
+	/** Basic DD Fade Out's sequence (/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade, made by the level build). */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<ULevelSequence> FadeSequence;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiGameMode> Mode;

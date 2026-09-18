@@ -17,6 +17,10 @@
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
+#include "EngineUtils.h"
+#include "Particles/Emitter.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Tests/AutomationCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -80,6 +84,20 @@ namespace
 	{
 		const UWasamiSaveGame* Save = Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex));
 		return Save ? Save->Hospital.LevelCheckpoint : -1;
+	}
+
+	/** The sequence player a fade (Basic DD Fade Out) made for a sequence of that name, or null. */
+	ULevelSequencePlayer* MadePlayer(UWorld* World, const TCHAR* SequenceName)
+	{
+		for (TActorIterator<ALevelSequenceActor> It(World); It; ++It)
+		{
+			const ULevelSequence* Sequence = It->GetSequence();
+			if (Sequence && Sequence->GetName() == SequenceName)
+			{
+				return It->GetSequencePlayer();
+			}
+		}
+		return nullptr;
 	}
 
 	FString Objective(const AWasamiGameMode* Mode)
@@ -178,6 +196,13 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	AWasamiZoneBarrier* Barrier = World->SpawnActor<AWasamiZoneBarrier>(FVector(0., 0., -60000.), FRotator::ZeroRotator);
 	Barrier->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_ZoneBarrier_2")));
 	const TWeakObjectPtr<AWasamiZoneBarrier> BarrierRef(Barrier);
+	// The tunnel's burst of concrete, asleep as the level has it (an empty system: only its being woken is tested).
+	// Its component is registered as it spawns, so it cannot be kept from waking there (SetAutoActivate is refused and
+	// the template wakes it): it is put to sleep after.
+	AEmitter* Burst = World->SpawnActor<AEmitter>(FVector(0., 0., -50000.), FRotator::ZeroRotator);
+	Burst->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("Fracture_concrete_5")));
+	Burst->GetParticleSystemComponent()->SetTemplate(NewObject<UParticleSystem>(GetTransientPackage()));
+	Burst->GetParticleSystemComponent()->DeactivateImmediate();
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -231,16 +256,21 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8002f, 0.f, 1.f), 1e-4f));
 	TestTrue(TEXT("at the parking lot's trigger"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("06_CutsceneStart")));
 
-	// The parking lot's scene is left out: straight to 06.
+	// The parking lot's scene is left out: straight to 06, under the fade (Ballroom_Event_Fade at twice its rate).
+	TestNull(TEXT("no fade yet"), MadePlayer(World, TEXT("Ballroom_Event_Fade")));
 	Walk(World, TEXT("06_CutsceneStart"));
 	TestEqual(TEXT("06"), Flow->GetSection(), FName(TEXT("06_Start")));
+	const ULevelSequencePlayer* Fade = MadePlayer(World, TEXT("Ballroom_Event_Fade"));
+	TestTrue(TEXT("the fade plays"), Fade && Fade->IsPlaying());
+	TestEqual(TEXT("at twice its rate"), Fade ? Fade->GetPlayRate() : 0.f, AWasamiZone1Flow::TransitionFadeRate);
 	TestEqual(TEXT("to the tunnel"), Objective(Mode), FString(TEXT("REACH THE TUNNEL")));
 	TestTrue(TEXT("the arrow at the tunnel"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("06_TunnelEnter")));
 	Walk(World, TEXT("06_TunnelEnter"));
 	TestEqual(TEXT("onto the ambulance"), Objective(Mode), FString(TEXT("GET ON TOP OF THE AMBULANCE")));
 	TestTrue(TEXT("the arrow at its roof"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("TriggerBox_06_AmbulanceTop")));
 
-	// The doors swing shut, locked, and hold for 25 s.
+	// The doors swing shut, locked, and hold for 25 s; then they are broken in, with the burst, and gone 0.1 s on.
+	const TWeakObjectPtr<AWasamiDoubleDoors> TunnelDoorsRef(TunnelDoors);
 	TunnelDoors->OpenFront();
 	TestTrue(TEXT("the tunnel's doors open"), TunnelDoors->IsOpenFront());
 	Walk(World, TEXT("06_DoorsLock"));
@@ -249,8 +279,12 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the doors block"), Collides(Doors));
 	Advance(Wrapper, AWasamiZone1Flow::DoorsBreakSeconds - 0.5f);
 	TestTrue(TEXT("still at 24.5 s"), Collides(Doors));
+	TestFalse(TEXT("the burst asleep"), Burst->GetParticleSystemComponent()->IsActive());
 	Advance(Wrapper, 0.6f);
 	TestFalse(TEXT("broken in by 25 s"), Collides(Doors));
+	TestTrue(TEXT("the burst woken"), Burst->GetParticleSystemComponent()->IsActive());
+	Advance(Wrapper, 0.2f);
+	TestTrue(TEXT("the doors gone"), !TunnelDoorsRef.IsValid() || TunnelDoorsRef->IsActorBeingDestroyed());
 
 	// The ambulance's roof saves 7 (Zone 2 opens 10.5 s on, which a test world does not go on to).
 	Walk(World, TEXT("TriggerBox_06_AmbulanceTop"));

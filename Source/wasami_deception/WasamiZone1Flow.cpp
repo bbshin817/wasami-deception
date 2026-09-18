@@ -2,6 +2,8 @@
 
 #include "Camera/CameraShakeBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiDoubleDoors.h"
 #include "WasamiGameInstance.h"
@@ -19,6 +21,9 @@ AWasamiZone1Flow::AWasamiZone1Flow()
 {
 	ElevatorShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShake")));
 	ElevatorShakeStopClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop")));
+	DoorsBustedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_TT_Door_BustedOpen_02")));
+	DoorsBustedAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/01_Hotel/01_Lobby_Attenuation")));
+	DoorsBustedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/07_FunPlace/Boss/BP_07_CameraShake_Jump")));
 }
 
 void AWasamiZone1Flow::StartAt(int32 Checkpoint)
@@ -121,7 +126,8 @@ void AWasamiZone1Flow::Transition06()
 {
 	Enter(TEXT("06 Transition"));
 	DestroyAllShards(GetWorld());
-	// Not yet: Basic DD Fade Out(2) (the sequence Ballroom_Event_Fade at twice its rate).
+	// The view back on the player (SetViewTargetWithBlend), which it has not left with the scene left out.
+	PlayFadeOut(TransitionFadeRate);
 	TeleportPlayerTo(TEXT("06_Start"));
 	Start06();
 }
@@ -158,11 +164,27 @@ void AWasamiZone1Flow::On06DoorsLock()
 		Doors->ForceClose();
 	}
 	SetVolumeCollision(TEXT("BlockingVolume_1"), ECollisionEnabled::QueryAndPhysics);
-	After(DoorsBreakSeconds, [this]()
+	After(DoorsBreakSeconds, [this]() { BreakDoorsIn(); });
+}
+
+void AWasamiZone1Flow::BreakDoorsIn()
+{
+	AWasamiDoubleDoors* Doors = DoubleDoors(TEXT("BP_06_DoubleDoors33_36"));
+	if (Doors)
 	{
-		// Not yet: DD_TT_Door_BustedOpen_02 at the doors, BP_07_CameraShake_Jump, Fracture_concrete_5's burst, and the
-		// doors destroyed 0.1 s on. The nurses' bAttackDoor false (item 7).
-		SetVolumeCollision(TEXT("BlockingVolume_1"), ECollisionEnabled::NoCollision);
+		const FVector At = Doors->GetActorLocation();
+		PlaySoundAt(DoorsBustedSound, At, DoorsBustedAttenuation);
+		PlayWorldCameraShake(DoorsBustedShakeClass, At, 0.f, DoorsBustedShakeRadius, 1.f, true);
+	}
+	ActivateEmitter(TEXT("Fracture_concrete_5"));
+	SetVolumeCollision(TEXT("BlockingVolume_1"), ECollisionEnabled::NoCollision);
+	// The nurses of 06 lose bAttackDoor (item 7).
+	After(DoorsGoneDelay, [Doors = TWeakObjectPtr<AWasamiDoubleDoors>(Doors)]()
+	{
+		if (Doors.IsValid())
+		{
+			Doors->Destroy();
+		}
 	});
 }
 

@@ -550,13 +550,14 @@ def dynamic_parameter(g, names, x, y, defaults=(0.0, 0.0, 0.0, 1.0)):
     return e
 
 
-def estimated_materials(folder, entries, version):
+def estimated_materials(folder, entries, version, left_out=()):
     """Particle materials whose graphs the cook took away. entries: (the original's material under folder, the master
     holding our estimate under /Game/Pipeline/Materials, its builder(mat, the original's scalar and vector defaults by
     name), the original's instances of that material). Makes each master (translucent), an instance of it at the
     original material's path with the original's defaults of the parameters the estimate has (those of the sides not
     made left out), and the original's instances as instances of that one with their own values (a value the estimate
-    has no parameter for raises). Returns the assets, saved."""
+    has no parameter for raises, unless its parameter is named in left_out: one the estimate knowingly does without,
+    whose values are dropped). Returns the assets, saved."""
     made = []
     for name, master_name, build, children in entries:
         rel = folder + name
@@ -576,6 +577,8 @@ def estimated_materials(folder, entries, version):
             c_scalars, c_vectors, c_textures, c_masks, c_switches = instance_parameters(child_rel, version)
             for kind, values in (("scalars", c_scalars), ("vectors", c_vectors), ("textures", c_textures),
                                  ("switches", c_switches)):
+                for name in set(values) & set(left_out):
+                    del values[name]
                 unknown = set(values) - known[kind]
                 if unknown:
                     raise RuntimeError("%s sets %s, which the estimate of %s does not have"

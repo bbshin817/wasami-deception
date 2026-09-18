@@ -71,12 +71,15 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
         sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
         hum and shatter, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
-        after import_dd_shards, which makes the burst's other materials). The doors' meshes and materials come with the
-        stage's assets; the level build puts them and the barriers' materials on the placed actors.
+        after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
+        their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials). The doors'
+        meshes and materials come with the stage's assets; the level build puts them and the barriers' materials on the
+        placed actors, and the burst's system on its emitter.
 
         Returns:
-            How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues', and
-            'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems').
+            How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues',
+            'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems', and
+            'doors_busted_sounds', '_textures', '_materials', '_particle_systems').
         """
         _module("dd_stage")
         _module("dd_assets")

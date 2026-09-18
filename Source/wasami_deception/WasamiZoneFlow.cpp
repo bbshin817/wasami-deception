@@ -9,9 +9,15 @@
 #include "GameFramework/Volume.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelSequence.h"
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
+#include "Particles/Emitter.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
 #include "TimerManager.h"
+#include "WasamiAssets.h"
 #include "WasamiDoorBreak.h"
 #include "WasamiDoubleDoors.h"
 #include "WasamiGameMode.h"
@@ -42,6 +48,7 @@ namespace
 AWasamiZoneFlow::AWasamiZoneFlow()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	FadeSequence = TSoftObjectPtr<ULevelSequence>(WasamiAssets::Path(TEXT("/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade")));
 }
 
 AWasamiZoneFlow* AWasamiZoneFlow::SpawnFor(AWasamiGameMode* Mode, int32 Zone)
@@ -223,6 +230,52 @@ void AWasamiZoneFlow::PlayCameraShake(const TSoftClassPtr<UCameraShakeBase>& Sha
 	{
 		Controller->ClientStartCameraShake(ShakeClass, Scale, ECameraShakePlaySpace::CameraLocal, FRotator::ZeroRotator);
 	}
+}
+
+void AWasamiZoneFlow::PlayWorldCameraShake(const TSoftClassPtr<UCameraShakeBase>& Shake, const FVector& Epicenter,
+	float InnerRadius, float OuterRadius, float Falloff, bool bOrientTowardsEpicenter)
+{
+	if (const TSubclassOf<UCameraShakeBase> ShakeClass = Shake.LoadSynchronous())
+	{
+		UGameplayStatics::PlayWorldCameraShake(this, ShakeClass, Epicenter, InnerRadius, OuterRadius, Falloff, bOrientTowardsEpicenter);
+	}
+}
+
+void AWasamiZoneFlow::PlayFadeOut(float PlayRate)
+{
+	ULevelSequence* Sequence = FadeSequence.LoadSynchronous();
+	if (!Sequence)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no fade sequence %s"), *GetClass()->GetName(), *FadeSequence.ToString());
+		return;
+	}
+	// The original's playback settings are the defaults (no auto play, no restoring of state).
+	ALevelSequenceActor* Actor = nullptr;
+	if (ULevelSequencePlayer* Player = ULevelSequencePlayer::CreateLevelSequencePlayer(this, Sequence, FMovieSceneSequencePlaybackSettings(), Actor))
+	{
+		Player->SetPlayRate(PlayRate);
+		Player->Play();
+	}
+}
+
+void AWasamiZoneFlow::PlaySoundAt(const TSoftObjectPtr<USoundBase>& Sound, const FVector& Location,
+	const TSoftObjectPtr<USoundAttenuation>& Attenuation)
+{
+	if (USoundBase* Loaded = Sound.LoadSynchronous())
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, Loaded, Location, FRotator::ZeroRotator, 1.f, 1.f, 0.f, Attenuation.LoadSynchronous());
+	}
+}
+
+void AWasamiZoneFlow::ActivateEmitter(FName Source)
+{
+	AEmitter* Emitter = Cast<AEmitter>(FindSource(GetWorld(), Source));
+	if (UParticleSystemComponent* Particles = Emitter ? Emitter->GetParticleSystemComponent() : nullptr)
+	{
+		Particles->Activate(true);
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("%s: no emitter %s"), *GetClass()->GetName(), *Source.ToString());
 }
 
 void AWasamiZoneFlow::SetVolumeCollision(FName Source, ECollisionEnabled::Type Enabled)

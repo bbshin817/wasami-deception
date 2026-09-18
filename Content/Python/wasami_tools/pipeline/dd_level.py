@@ -1,11 +1,15 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
-zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, zone barriers) and the level
-sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes first."""
+zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers) and
+the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes
+first."""
+import json
+import os
+
 import unreal
 
-from wasami_tools.pipeline import paths, ue_props
+from wasami_tools.pipeline import dd_assets, paths, ue_props
 
 EAL = unreal.EditorAssetLibrary
 TAG = "dd"
@@ -67,6 +71,9 @@ BARRIER_CLASS = "BP_ZoneBarrier_C"
 BARRIER_MATERIALS = {"static_mesh1": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst1",
                      "static_mesh": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst2"}
 BARRIER_LIGHT_FOLDER = "Hospital/Lights/" + BARRIER_CLASS
+# The level's emitters the flow wakes (their ParticleSystemComponent's Activate): Zone 1's burst of concrete as the
+# tunnel's doors break in. They keep the original's bAutoActivate (false) and template.
+FLOW_EMITTERS = ("Fracture_concrete_5",)
 VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume}
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
@@ -386,14 +393,42 @@ def _set_mesh(comp, stage, source):
         comp.set_material(i, material)
 
 
+def level_file(zone):
+    """The zone's whole level export (pak_reference_2/_levels/<map>.full.json: every object's path and values)."""
+    return os.path.join(paths.DD_PAK2, "_levels", zone["map"] + ".full.json")
+
+
+def set_emitter(actor, zone, name, level):
+    """An Emitter placed from the original's of that name, set up as its ParticleSystemComponent is: bAutoActivate and
+    the template (imported under /Game/DD). level: the zone's level export by path (level_file), or {} to have it read.
+    Returns the template's asset path when it is not imported yet, else None."""
+    if not level:
+        with open(level_file(zone), encoding="utf-8") as f:
+            level.update({e["path"]: e for e in json.load(f)})
+    props = level.get("%s.PersistentLevel.%s.ParticleSystemComponent0" % (zone["map"], name), {}).get("props", {})
+    psc = actor.get_editor_property("particle_system_component")
+    psc.set_editor_property("auto_activate", bool(props.get("bAutoActivate", True)))
+    template = props.get("Template")
+    if not template:
+        return None
+    target = dd_assets.asset_path(dd_assets.game_rel(template))
+    if not EAL.does_asset_exist(target):
+        return target
+    psc.set_editor_property("template", unreal.load_asset(target))
+    return None
+
+
 def _flow(eas, stage, zone, counts, failures):
-    """The trigger boxes, brush volumes, door breaks, the double doors the flow names and the zone barriers, each where
-    the original has it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
+    """The trigger boxes, brush volumes, door breaks, the double doors and emitters the flow names and the zone
+    barriers, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that is
+    in the level."""
     placed = []
+    level = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
+        emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS)
-                              and a["class"] not in VOLUME_CLASSES and not doors):
+                              and a["class"] not in VOLUME_CLASSES and not doors and not emitter):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -423,6 +458,12 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["zoneBarriers"] += 1
+        elif emitter:
+            actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            missing = set_emitter(actor, zone, a["name"], level)
+            if missing:
+                failures.append("%s: no particle system %s (run WasamiDDTools.import_dd_gimmicks)" % (a["name"], missing))
+            counts["emitters"] += 1
         else:
             actor = eas.spawn_actor_from_class(VOLUME_CLASSES[a["class"]], _vec(world["location"]), _rot(world["quat_xyzw"]))
             if a.get("brushBox") != DEFAULT_BRUSH_BOX:
@@ -448,10 +489,10 @@ def _flow(eas, stage, zone, counts, failures):
 
 
 def place_flow(zone="Zone1", map_path=""):
-    """Puts the zone's trigger boxes, brush volumes, door breaks, double doors and zone barriers in again (and takes
-    out the barrier lights an earlier build placed on their own), leaving the rest of the level and its baked lighting
-    as they are (none of them is in the baked lighting: the doors and the barriers' lights are movable), and saves the
-    level."""
+    """Puts the zone's trigger boxes, brush volumes, door breaks, double doors, emitters and zone barriers in again (and
+    takes out the barrier lights an earlier build placed on their own), leaving the rest of the level and its baked
+    lighting as they are (none of them is in the baked lighting: the doors and the barriers' lights are movable), and
+    saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
@@ -461,7 +502,7 @@ def place_flow(zone="Zone1", map_path=""):
     lights = [a for a in eas.get_all_level_actors()
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "doorBreaks": 0,
-              "doubleDoors": 0, "zoneBarriers": 0, "attached": 0}
+              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -483,7 +524,7 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "zoneBarriers",
+                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "emitters", "zoneBarriers",
                              "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)

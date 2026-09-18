@@ -462,6 +462,26 @@
 - 対処: 撮る前に `python Tools/desktop.py shot --region 1826 205 2400 320` でビューポートの左上だけ撮って、文字が出ていないことを確かめる。
 - 出典: 同上。
 
+### 粒子（Cascade）を組み直すと `Assertion failed: (Index >= 0) & (Index < ArrayNum)` でエディタが落ちる（取り込みの失敗の後、次の `does_asset_exist` か保存で）
+
+- 症状: `dd_particles.particle_system` が途中の例外（値の書き方が無い等）で止まった後、同じシステムを作り直す・何かが資産を問い合わせると、エディタが Python → EditorScriptingUtilities → AssetRegistry → Engine の中で落ちる。
+- 原因: 作りかけのシステムに、LOD レベルをまだ持たないエミッタが残る。`UParticleSystem::GetAssetRegistryTags` → `HasGPUEmitter` が `LODLevels[0]` を範囲の確かめなしに読む。
+- 対処: `_Build.run` は失敗したらシステムを空に戻してから例外を上げる（2026-09-18）。すでに残っているときは、資産レジストリを通さずに `unreal.find_object(None, '<パス>.<名前>')` で取って `WasamiCascadeLibrary.reset_particle_system` で空にする。
+- 出典: 作業一覧の項目 6 のステップ 4b（`Fracture_concrete_3`。エディタの開き直し 2 回）。
+
+### GPU のエミッタを持つ粒子を組み直すと `FinishParticleSystem` の中で `EXCEPTION_ACCESS_VIOLATION reading address 0x10`
+
+- 原因: エディタは GPU のエミッタ（`ParticleModuleTypeDataGpu`）のシミュレーションを、モジュールの分布オブジェクトから作る（`UParticleEmitter::Build` → `CompileModule`。`UParticleModuleColorOverLife` は `ColorOverLife.Distribution->IsA` を確かめずに読む）。cook は分布を焼き込みの表だけにしていて、オブジェクトが無い。GPU のエミッタの `EmitterInfo`・`ResourceData` もこの組み立てが作るもの（書き出しの値は書かない）。
+- 対処: `dd_particles` が GPU のエミッタのモジュールに、表から分布オブジェクトを作る（`_table_distribution`: 1 つなら定数か一様、複数なら表の点を通る直線の曲線）。**ただし cook の表は GPU のエミッタでは作り直されていないことがあり**（`Fracture_concrete_3` の DustTrail は、表の色が 1 → 0.36 なのに cook の `ResourceData` は一定の 0.078、大きさも表の上限 1 に対して約 6 倍）、見え方は本家とずれる（作業一覧の後回しの一覧）。
+- 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
+
+### 粒子が出て 1 秒ほどで `Array index out of bounds: 127 into an array of size 127`（PIE・エディタが落ちる）
+
+- 症状: 流れが `Fracture_concrete_5` を起こした約 1 s 後、ワーカースレッドの粒子の更新の中で落ちる。
+- 原因: 書いた焼き込みの表の `Values` が `EntryCount` より 1 つ少ない。UE のテキストの取り込みは、配列の中で指数の形（`-5.506497109308839e-05`）で書いた数の**次の要素を失う**（単独の値の `TimeBias=-9.3e-10` は正しく読む）。表の終わりの読み出し（`FDistributionLookupTable::GetEntry` は `EntryCount - 1` で切るだけ）が範囲の外へ出る。
+- 対処: `dd_particles._number` は指数の形を使わず、`decimal` で正確な小数で書く（2026-09-18）。組んだ粒子の表の長さは、エディタで `Values` の数と `EntryCount × EntryStride` を比べて確かめる（2026-09-18 に /Game/DD・/Game/Pipeline の 6 つを確かめ、短かったのは `Fracture_concrete_3` だけ）。
+- 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている

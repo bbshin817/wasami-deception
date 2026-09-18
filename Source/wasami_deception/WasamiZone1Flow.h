@@ -22,8 +22,13 @@ public:
 	static constexpr float ArrivalShakeSeconds = 7.f;
 	/** 05_Persistent's wait before it checks the shards (so a zone reopened with none left moves on). */
 	static constexpr float ShardCheckDelay = 1.f;
+	/** 06 Transition's Basic DD Fade Out: Ballroom_Event_Fade at twice its rate (black for 1 s, clear 1.5 s later). */
+	static constexpr float TransitionFadeRate = 2.f;
 	/** 06_DoorsLock: how long the nurses take to break the doors in. */
 	static constexpr float DoorsBreakSeconds = 25.f;
+	/** As they break in: the shake's reach about the doors (full at them), and the doors gone 0.1 s on. */
+	static constexpr float DoorsBustedShakeRadius = 3000.f;
+	static constexpr float DoorsGoneDelay = 0.1f;
 	/** 06_ReachAmbulance: the ambulance leaves 1 s on, the loading screen comes 7 s after, Zone 2 opens 2.5 s after that. */
 	static constexpr float TakeOffDelay = 1.f;
 	static constexpr float LoadingDelay = 7.f;
@@ -39,6 +44,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftClassPtr<UCameraShakeBase> ElevatorShakeStopClass;
 
+	/** The tunnel's doors broken in: DD_TT_Door_BustedOpen_02 through 01_Lobby_Attenuation, and BP_07_CameraShake_Jump. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<USoundBase> DoorsBustedSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<USoundAttenuation> DoorsBustedAttenuation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftClassPtr<UCameraShakeBase> DoorsBustedShakeClass;
+
 private:
 	/** Spawn at 4: the lift's arrival. */
 	void Start04();
@@ -46,6 +61,8 @@ private:
 	void Persistent05();
 	/** 06 Transition: the leftover shards gone, the fade and the player at 06_Start. */
 	void Transition06();
+	/** 06_DoorsLock 25 s on: the nurses break the tunnel's doors in. */
+	void BreakDoorsIn();
 	/** Spawn at 6 and the end of 06 Transition: the parking lot's triggers, the tunnel as the goal. */
 	void Start06();
 

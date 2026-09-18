@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 22:30
+updated: 2026-09-18 21:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -26,7 +26,7 @@ updated: 2026-09-18 22:30
 - 扉の破壊（ステップ 3b で作った。実装記録 11）: Zone 2 は `OnCellCutsceneFinished` で `EnableDoorBreak("BP_06_Hospital_DoorBreak_2", Cell_DoorBreak)`（`Cell_DoorBreak` はシーケンス `Cell_DoorPicked`・`PlayCameraShake(BP_04_BossFight_CameraShake_Initial, 1)`。ステップ 7）。
 - `BP_ZoneShardChecker`: `Collect Shard` のたびに 1 s 後、箱の中の `BP_Shard` が 0 なら開発用の PrintText と誰も結ばない `Collected` を放って消える。**意味を持つのは矢印**: `BP_ArrowPointer` は `Shards?` が真のとき、プレイヤーが重なるシャードチェッカーの箱の中のシャードが 100 未満なら最も近いシャードを指す。矢印の値は流れの `IsArrowOnShards`・`GetArrowColor`・`GetArrowTarget`（`Shards?` の既定は真）。
 - Zone 2 のリフト（`BP_06_LiftBase`・`_Corner`）: 上にキャラクターが乗ると `Top Location` へ `FInterpTo_Constant` で上がり、降りると戻る（音の FadeIn/FadeOut 0.5）。ガレージリフト（`BP_06_GarageLift`）は `Overlap Box` にプレイヤーがいる間 ABP の `PlayerOn?` が真（上がる）で、`AnimNotify_Player On/Off Event` で音。Zone 1 の `TriggerVolume_1`（置いた）にナースが入ると `hospital_garage_lift_anim_Anim_2`（`BP_06_GarageLift_Zone1_Special`）の `NurseNear` = 真（以後プレイヤーを乗せても上がらない）。
-- シーケンス（ステップ 2 で置いた）: 両ゾーンのレベルの `LevelSequenceActor`（`src:06_Hospital_Zone01_ElevatorArrive` など 4 つ）を `GetSequencePlayer` → `Play` で流す。ElevatorArrive = 扉 2 枚と音（14.1 s）、AmbulanceTakeOff = 救急車（付いたボリュームごと）と音・スポットライト 2 灯（13.9 s）、Zone2_Spikes = 棘・音の点・火花（70 s）、Cell_DoorPicked = 独房の扉・粒子・音と Bierce の一言（4.3 s）。`Basic DD Fade Out(2)` は `/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade` を実行時のプレイヤーで 2 倍速に流す（ステップ 4 の 06 Transition）。
+- シーケンス（ステップ 2 で置いた）: 両ゾーンのレベルの `LevelSequenceActor`（`src:06_Hospital_Zone01_ElevatorArrive` など 4 つ）を `GetSequencePlayer` → `Play` で流す。ElevatorArrive = 扉 2 枚と音（14.1 s）、AmbulanceTakeOff = 救急車（付いたボリュームごと）と音・スポットライト 2 灯（13.9 s）、Zone2_Spikes = 棘・音の点・火花（70 s）、Cell_DoorPicked = 独房の扉・粒子・音と Bierce の一言（4.3 s）。
 - ゲームモードの `Event All Shards` は `BP_Monkey` だけを Frenzy にする（2026-09-18 に読み直した。ナースには効かない）。
 
 ## 計画
@@ -37,8 +37,8 @@ updated: 2026-09-18 22:30
 - [x] 3b. 扉の破壊（2026-09-18 完了）: `AWasamiDoorBreak`・画面 `UWasamiSwitchboxWidget`（`M_UI_Radial` は焼き込みのシェーダーから組んだ）・プレイヤーの F（`OnInteract`・`Wasami.Interact`）・流れの `EnableDoorBreak`、両ゾーンに置いた（`place_dd_flow`）。Zone 1 の 04 の 7 s 後に起き、外れると `04_DoorBreak`（実装記録 11・09・02・01）。
 - [x] 3c. 両開き扉（2026-09-18 完了）: `AWasamiDoubleDoors`（本家の `BP_06_DoubleDoors` 全部）・音の取り込み `dd_gimmicks.py`・`_flow` が Zone 1 の 2 枚をメッシュと材質ごと置く。流れは 04 で `DoubleDoors11` を `Lock`、鍵が外れたら `bLocked` 偽 → `Open Front`、`06_DoorsLock` で `DoubleDoors33_36` を `Lock` → `Force Close`（実装記録 08・11・01）。
 - [x] 4a. 障壁（2026-09-18 完了）: `AWasamiZoneBarrier`（本家の `BP_ZoneBarrier`）・素材 `dd_gimmicks.import_zone_barrier`（`MM_SpeedBarrier` は焼き込みのシェーダーの式、`P_ky_impact3`）・`dd_assets.base_property_overrides`・テクスチャの貼り方、`_flow` が両ゾーンの `BP_ZoneBarrier_2` を置く（障壁の灯は単独で置かない）、流れの `ZoneBarrier`・全回収で `DestroyBarrier`（実装記録 08・11・01）。
-- [ ] 4b. フェードと扉が破られる: `Transition06` の `Basic DD Fade Out(2)`（`Ballroom_Event_Fade` を実行時のプレイヤーで 2 倍速）、`On06DoorsLock` の 25 s 後（`DD_TT_Door_BustedOpen_02`〈扉の位置・`01_Lobby_Attenuation`〉・`PlayWorldCameraShake(BP_07_CameraShake_Jump, 扉の位置, 0, 3000, 1, 真)`・レベルのエミッタ `Fracture_concrete_5`〈テンプレートは BallisticsVFX の `Fracture_concrete_3`・拡縮 4・自動で起きない〉の `Activate`・`BlockingVolume_1` を NoCollision・0.1 s 後に `DoubleDoors33_36` を消す）。06 で開いたときの準備も。エミッタは `dd_sequence` の置き方を使い、粒子は `dd_particles`（材質は推定）。
-- [ ] 5. Zone 1 から Zone 2 へ: `06_ReachAmbulance`（保存 7・救急車の塞ぎ・AmbulanceTakeOff と揺れ・7 s → `UMG_Loading` の最小限〈回収の記憶を空にする本家の Construct を含む〉・音 → 2.5 s → Zone 2 を開く）。
+- [x] 4b. フェードと扉が破られる（2026-09-18 完了）: 流れの `PlayFadeOut`・`PlayWorldCameraShake`・`PlaySoundAt`・`ActivateEmitter`、`Transition06` のフェード（2 倍速）、`On06DoorsLock` の 25 s 後の `BreakDoorsIn`。素材 `dd_gimmicks.import_doors_busted`（音・`Fracture_concrete_3`・推定の材質）、`_flow` が `Fracture_concrete_5` を置く。`dd_particles` が GPU のエミッタを組めるようにし、数の指数の形で配列の要素を失う不具合を直した（実装記録 11・08・01、症状索引 3 件）。
+- [ ] 5. Zone 1 から Zone 2 へ: `06_ReachAmbulance`（保存 7・救急車の塞ぎ・1 s → `PlaySequence("06_Hospital_Zone1_AmbulanceTakeOff")` と `PlayCameraShake(06_CameraShake_Zone1_AmbulanceTakeOff, 4)`〈本家 @796〜@896。揺れは `dd_sequence.CAMERA_SHAKES` で作ってある〉・7 s → `UMG_Loading` の最小限〈`Level` = 7、Z 5 で `AddToViewport`。回収の記憶を空にする本家の Construct を含む〉・`PlaySound2D(21-Ballroom_portal_V2)` → 2.5 s → Zone 2 を開く）。
 - [ ] 6. タブレットの矢印 `BP_ArrowPointer`（プレイヤーの子のアクタ。的を指す・`Shards?` のときシャードチェッカーの箱の中の最も近いシャードを指す・`Change Color`）と、その区域 `BP_ZoneShardChecker` の箱（両ゾーンに 1 つ。`_flow` で置く）。両ゾーンの区間の値を結ぶ。
 - [ ] 7. Zone 2 の区間: 7 で `PlayerStart_Cell` から独房の場面の後の状態で始める（Spikes・独房の扉の破壊・`Spikes_Death`）、`Miniboss_Trigger_Transition`（保存 8。Matron は項目 11）、`Maze Trigger Start`（保存 9・全回収を結ぶ）、`Maze All Shards`（保存 10・`Postmaze Transition` のうち項目 13 に属さない分）、8〜10 で開いたときの準備（Zone 2 の障壁はステップ 4a で置いた。壊すのは項目 13）。ゲームモードの 7 の PlayerStart を `PlayerStart_Cell` にする。Spikes・Cell_DoorPicked が発火する粒子のシステム 3 つ（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`。`dd_particles`、材質は推定）を取り込み、`place_dd_sequences Zone2` を走らせ直してエミッタにテンプレートを入れる（いまはテンプレートなし）。
 - [ ] 8. リフト: Zone 2 の `BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5（乗ると上がる床）と、ガレージリフト `BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると上がらない）。
@@ -47,18 +47,18 @@ updated: 2026-09-18 22:30
 
 ## 次にやること
 
-ステップ 4b（フェードと扉が破られる）を始める。記録のステップ 4b を「作業中」にし、変えるファイルを書く。`python Tools/dd/bp_flow.py pak_reference_2/_bytecode/DDeception/Content/Blueprints/Macros/BP_DD_Functions.txt "Basic DD Fade Out"` で本家のフェード（`Ballroom_Event_Fade` を実行時のプレイヤーで流す作り）を読み、`Transition06` に入れる。`On06DoorsLock` の 25 s 後（本家 @1053〜@1016。上の計画のとおり）を埋める。`Fracture_concrete_5` はレベルの `Emitter`（テンプレート `/Game/ThirdParty/BallisticsVFX/Particles/Destruction/Fractures/V2/Fracture_concrete_3`・(7210, −22280, 150)・拡縮 4・`bAutoActivate` 偽）なので、`dd_sequence._helpers` の置き方にならって組み立てで置き（`_flow` か、流れが名指しするエミッタの一覧）、粒子と材質は `dd_particles`（材質の式が消えていれば `cooked_shaders.py` で読むか推定）。`BP_07_CameraShake_Jump` は `/Game/DD/Blueprints/07_FunPlace/Boss/` にある（`PlayWorldCameraShake` は流れに足す）。
+ステップ 5（Zone 1 から Zone 2 へ）を始める。記録のステップ 5 を「作業中」にし、変えるファイルを書く。`python Tools/dd/bp_flow.py pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt 06_ReachAmbulance` で流れを読み直し（上の計画の番地）、`python Tools/dd/bp_flow.py pak_reference_2/_bytecode/DDeception/Content/UI/Main/UMG_Loading.txt --list` で読み込み画面の `Construct` と見た目（`Level` で出す絵・文）を読む。読み込み画面は最小限（本家の木とアニメのうち、Zone 2 へ移る 2.5 s に見えるもの）で、画面の素材は `dd_ui` にならって取り込む。`21-Ballroom_portal_V2` は `dd_assets.sound`。On06ReachAmbulance の `Not yet:` 2 つを埋め、テスト `Wasami.ZoneFlow.Zone1` の救急車の所に足す。
 
 ## 決定事項
 
 - 2026-09-18: **Zone 1 から Zone 2 へは、救急車の上に乗る（`06_ReachAmbulance`）で移る**。作業一覧の項目 6 と大目標 1 の「ガレージリフトで Zone 2 へ」は、作業一覧を作ったときの読み違い — 本家のレベル BP では、ガレージリフト（`BP_06_GarageLift_Zone1_Special`）は駐車場の車のリフト（乗ると上がる。ナースが近づくと上がらない）で、Zone 2 を開くのは `06_ReachAmbulance`（保存 7 → 救急車が出る → 読み込み画面 → `OpenLevel('06_Hospital_Zone_02')`）。流れは本家のコードから写す決まりなので、救急車で作り、ガレージリフトはステップ 8 で仕掛けとして作る。項目を閉じるときに作業一覧の完了の条件を読み替える。
 - 2026-09-18: 本家の場面は飛ばす（項目 25）: Zone 1 の `06_CutsceneStart` では `06_Hospital_Zone1_06Event` を流さず、すぐ `06 Transition` へ。Zone 2 の 7 は `Arrive Event`・捕まる場面・独房の場面を流さず、`PlayerStart_Cell` で `Cell Cutscene Finished` の状態から始める。
 - 2026-09-18: 声・曲・ナースは別の項目: Bierce の台詞と `04_Intercom` のナースの放送（項目 20）、`BP_06_MusicPlayer` の `bFadeOut`（項目 19）、`Spawn Nurses`・`Spawn Nurses_06`・`bAttackDoor`・`Activate MiniBoss Enemies`（項目 7・11）。この項目では呼び出しの口（区間の準備の場所）だけ作り、中身はそれぞれの項目が埋める。
-- 2026-09-18: 両開き扉は流れが名指しする 2 枚だけを置く（ステップ 3c）。`DoubleDoors33_36` の `Lock` → `Force Close` も 3c で結んだ（同じ扉の呼び出しなので）。25 s 後に破られるのはステップ 4b。
+- 2026-09-18: 両開き扉は流れが名指しする 2 枚だけを置く（ステップ 3c）。`DoubleDoors33_36` の `Lock` → `Force Close` も 3c で結んだ（同じ扉の呼び出しなので）。
 - 2026-09-18: `BP_ZoneShardChecker` は矢印の区域として、使う矢印と一緒にステップ 6 で置く（ステップ 4 から移した）。開発用の PrintText と誰も結ばない `Collected` は写さない。
 - 2026-09-18: 区間の流れは `AWasamiZoneFlow` の派生 2 つ（ゲームモードが開始時に出す。レベル BP の代わり）。本家の名前で置かれたアクタは `src:<名前>` タグで探す。残りのステップは各イベントの `Not yet:` の所を埋める（実装記録 11）。
 - 2026-09-18: 作業ブランチ `feature/zone-progression` で進める（`.claude/guides/git-workflow.md` の大規模改修: 複数の仕組みにまたがり、複数回のコミットに分ける）。計画のコミットだけ main に置く。
-- 2026-09-18: シーケンスは本家どおりレベルの `LevelSequenceActor`（タグ `src:<本家の名前>`）から再生する（本家のレベル BP は置かれたアクタの `GetSequencePlayer` → `Play`）。本家で Static の救急車と独房の扉は Static のまま（UE の Sequencer が動かす間だけ Movable にする。PIE で動くことを確かめた）。フェードの `Ballroom_Event_Fade` はアクタを置かず、`Basic DD Fade Out` と同じく実行時にプレイヤーを作って 2 倍速で流す（ステップ 4b）。
+- 2026-09-18: シーケンスは本家どおりレベルの `LevelSequenceActor`（タグ `src:<本家の名前>`）から再生する（本家のレベル BP は置かれたアクタの `GetSequencePlayer` → `Play`）。本家で Static の救急車と独房の扉は Static のまま（UE の Sequencer が動かす間だけ Movable にする。PIE で動くことを確かめた）。
 
 ## 要確認（ユーザー）
 
@@ -68,12 +68,15 @@ updated: 2026-09-18 22:30
 
 - 結ぶ前に通ったトリガーの箱は使い切られる（本家も同じ）。04 はエレベーターの前の扉が鍵を破るまで、05 は駐車場への障壁が全回収まで道をふさぐ。PIE で 05 より先を確かめるときは、`Wasami.Flow On04DoorBreak` などで進めてから箱に立つ。扉の破壊は `python Tools/pie.py place 0 1010 --yaw -90 --pitch -20`（04 から 7 s 後）→ `pie.py cmd "Wasami.Interact 67"` で外れる。
 - 収録は `desktop.py record` の既定（ddagrab）が止まるので `--grab gdi` と `t.MaxFPS 60`（症状索引）。
-- ゲームのセーブ（本作の `structSlot`）はチェックポイント 5（4a の PIE で迷路の箱を通った。次に開くと Zone 1 の 05_Persistent。04 から確かめるときは PIE で `Wasami.ResetSave` してから開き直す）。
+- ゲームのセーブ（本作の `structSlot`）はチェックポイント 5（4b の PIE の `Wasami.Flow On05Transition`。次に開くと Zone 1 の 05_Persistent になるはずだが、4b では 04 から始まった〈未確認。04 から始まったら `Wasami.Flow On05Transition` で進める〉。04 から確かめるときは PIE で `Wasami.ResetSave` してから開き直す）。
+- 06 の扉の所で PIE を確かめるときは `python Tools/pie.py place 7210 -21800 --yaw -90`（扉の 700 cm 手前。`-21300` は床が無く落ちる）。06 の箱は流れが結んでからでないと効かない（05 → `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` → `Wasami.Trigger 06_DoorsLock`）。
+- 取り込みの後、エディタにメッセージログの窓が浮いて出る（閉じるボタン (2198, 407)）。PIE の収録の範囲はビューポート `--region 1826 202 2982 860`（2026-09-18 の窓の配置）。
 - テストの結果はエディタのメッセージログの窓に出て、ビューポートの左に浮いて残る（収録の前に閉じる。2026-09-18 は閉じるボタンが (2198, 407)）。
 - 無人運転のときエディタは背面（駆動役のターミナルが前面）なので、テストの前にエディタのタイトルバーの空き（2026-09-18 は (2800, 78)。撮って確かめる）を `desktop.py click … --allow WindowsTerminal.exe --allow UnrealEditor.exe` で 1 回押して前面にする。
 
 ## 検証
 
+- ステップ 4b: C++ ビルド OK、テスト `Wasami.*` 48 本すべて通過（`Wasami.ZoneFlow.Zone1` にフェードのプレイヤーと 2 倍速、25 s でエミッタが起き 0.2 s 後に扉が消えるのを足した）、check_records OK。素材: 音 1・テクスチャ 6・材質 9・粒子 1（GPU の型データは cook の値のうち寿命・数・大きさの逆数・SubUV・摩擦・弾み・抵抗・回転が一致、色と大きさの曲線は表どおりでずれる）。表の長さを /Game/DD・/Game/Pipeline の 6 つで確かめた。`place_dd_flow Zone1`（`emitters` 1）、`dd_sequence.place Zone2` で共有した `set_emitter` を確かめた（helpers 4、未取り込みの粒子 3 は前と同じ）。PIE: 06 へのフェード（0 → 1.85 s に黒 → 2.8 s から晴れ 4.2 s で一定）、25 s で扉が消えて破片が飛ぶ（グリッド `Intermediate/Overnight/doors_busted_grid.png`）。
 - ステップ 4a: C++ ビルド OK、テスト `Wasami.*` 48 本すべて通過（`Wasami.ZoneBarrier.Actor` を足し、`Wasami.ZoneFlow.Zone1` に障壁が全回収で壊れるのを足した）、check_records OK。素材: `MM_SpeedBarrier` のパラメータ 9 + `Color Multiplier`、インスタンス 2 つの値と両面、`MI_ky_flare14R` の加算、テクスチャの Mirror。`place_dd_flow` 両ゾーン（`zoneBarriers` 1・`removed_lights` 1）、シーケンスは流れのアクタを結ばない。PIE: 05 で (0, −18450) から −Y に紫の網目の障壁 → `Wasami.CollectShards` で閃光と放射する線が出て消え、廊下が開く（グリッド `Intermediate/Overnight/barrier_grid.png`）。
 - ステップ 1: check_records OK、C++ ビルド OK、テスト `Wasami.*` 44 本すべて通過、PIE で Zone 1 の 04 → 保存 5 → 全回収 → 06 → 扉の塞ぎ → 救急車で保存 7 → Zone 2 → 保存 8・9・10 → COLLECT THE RING PIECE、10 で開き直し（実装記録 11 の「確かめたこと」）。
 - ステップ 3c: C++ ビルド OK、テスト `Wasami.*` 47 本すべて通過（`Wasami.DoubleDoors.Actor` を足し、`Wasami.ZoneFlow.Zone1` に扉の閉ざし・開け・閉じを足した）、check_records OK。PIE: 04 で `DoubleDoors11` が閉ざされて閉じている → 鍵が外れると手前へ 1 s で開く → `Leave` の外へ出ると閉じる。音: 開 0.622 s・閉 1.007 s・`Locked_Door` 1.343 s（本家の長さ）。
