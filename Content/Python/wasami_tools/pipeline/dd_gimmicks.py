@@ -7,7 +7,8 @@ hum and shatter, its planes' materials (MM_SpeedBarrier, whose graph the cook to
 shader, and the barrier's two instances of it) and the burst it breaks with (P_ky_impact3); the level build puts the
 materials on the placed barriers. The tunnel's doors broken in (the zone flow, AWasamiZone1Flow): their crash
 (DD_TT_Door_BustedOpen_02) and the burst of concrete the level's emitter Fracture_concrete_5 plays (BallisticsVFX's
-Fracture_concrete_3, whose materials' graphs the cook took away: estimated, as the particle packs' others are).
+Fracture_concrete_3, whose materials' graphs the cook took away: estimated, as the particle packs' others are). Zone 2's
+cell: the needles' stab as its spikes reach the player (DD_Needle_Trap_R1_V3, AWasamiZone2Flow).
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
@@ -64,6 +65,9 @@ IMPACT = KY + "Particles/P_ky_impact3"
 BVFX = "ThirdParty/BallisticsVFX/Particles/"
 DOORS_BUSTED_SOUNDS = (
     "Audio/06_Hospital/DD_TT_Door_BustedOpen_02",
+)
+CELL_SOUNDS = (
+    "Audio/06_Hospital/DD_Needle_Trap_R1_V3",
 )
 FRAGMENTS = BVFX + "FXMaterials/Fragments/"
 SMOKE_DUST = BVFX + "FXMaterials/SmokeDust/"
@@ -283,6 +287,11 @@ def import_doors_busted():
     return result
 
 
+def import_cell():
+    """Zone 2's cell: the needles' stab. Returns how many of each."""
+    return {"sounds": len([dd_assets.sound(rel, VERSION) for rel in CELL_SOUNDS])}
+
+
 def import_double_doors():
     """The double doors' sounds, SoundCue and attenuations. Returns how many of each."""
     result = {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in DOUBLE_DOOR_ATTENUATIONS]),
@@ -292,10 +301,11 @@ def import_double_doors():
 
 
 def import_all():
-    """Imports the gimmicks' assets (the double doors', the zone barrier's and the doors broken in), then saves
-    /Game/DD."""
+    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in and the cell's), then
+    saves /Game/DD."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
+    result.update({"cell_" + key: count for key, count in import_cell().items()})
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

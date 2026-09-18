@@ -214,7 +214,7 @@ bool FWasamiGameFlowCheckpointsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("4: the lift"), M::PlayerStartTagFor(1, 4), FName(TEXT("04_Start")));
 	TestEqual(TEXT("5"), M::PlayerStartTagFor(1, 5), FName(TEXT("05_Start")));
 	TestEqual(TEXT("6"), M::PlayerStartTagFor(1, 6), FName(TEXT("06_Start")));
-	TestEqual(TEXT("7: the arrival"), M::PlayerStartTagFor(2, 7), FName(TEXT("PlayerStart_1")));
+	TestEqual(TEXT("7: the cell (its scene left out)"), M::PlayerStartTagFor(2, 7), FName(TEXT("PlayerStart_Cell")));
 	TestEqual(TEXT("8"), M::PlayerStartTagFor(2, 8), FName(TEXT("PlayerStart_MiniBoss")));
 	TestEqual(TEXT("9"), M::PlayerStartTagFor(2, 9), FName(TEXT("PlayerStart_Maze")));
 	TestEqual(TEXT("10"), M::PlayerStartTagFor(2, 10), FName(TEXT("PlayerStart_PostMaze")));

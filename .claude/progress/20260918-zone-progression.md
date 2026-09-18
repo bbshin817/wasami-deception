@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 22:05
+updated: 2026-09-18 22:45
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -23,7 +23,6 @@ updated: 2026-09-18 22:05
 
 流れの全体と、各イベントのうちまだ埋めていない所（コメントの `Not yet:`）は実装記録 11（`.claude/implementation-records/11-zone-flow.md`）。根拠は `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`_02.txt`、読み方は `python Tools/dd/bp_flow.py <file> <イベント名>`。
 
-- 扉の破壊（ステップ 3b で作った。実装記録 11）: Zone 2 は `OnCellCutsceneFinished` で `EnableDoorBreak("BP_06_Hospital_DoorBreak_2", Cell_DoorBreak)`（`Cell_DoorBreak` はシーケンス `Cell_DoorPicked`・`PlayCameraShake(BP_04_BossFight_CameraShake_Initial, 1)`。ステップ 7）。
 - Zone 2 のリフト（`BP_06_LiftBase`・`_Corner`）: 上にキャラクターが乗ると `Top Location` へ `FInterpTo_Constant` で上がり、降りると戻る（音の FadeIn/FadeOut 0.5）。ガレージリフト（`BP_06_GarageLift`）は `Overlap Box` にプレイヤーがいる間 ABP の `PlayerOn?` が真（上がる）で、`AnimNotify_Player On/Off Event` で音。Zone 1 の `TriggerVolume_1`（置いた）にナースが入ると `hospital_garage_lift_anim_Anim_2`（`BP_06_GarageLift_Zone1_Special`）の `NurseNear` = 真（以後プレイヤーを乗せても上がらない）。
 - シーケンス（ステップ 2 で置いた）: 両ゾーンのレベルの `LevelSequenceActor`（`src:06_Hospital_Zone01_ElevatorArrive` など 4 つ）を `GetSequencePlayer` → `Play` で流す。ElevatorArrive = 扉 2 枚と音（14.1 s）、AmbulanceTakeOff = 救急車（付いたボリュームごと）と音・スポットライト 2 灯（13.9 s）、Zone2_Spikes = 棘・音の点・火花（70 s）、Cell_DoorPicked = 独房の扉・粒子・音と Bierce の一言（4.3 s）。
 - ゲームモードの `Event All Shards` は `BP_Monkey` だけを Frenzy にする（2026-09-18 に読み直した。ナースには効かない）。
@@ -39,14 +38,15 @@ updated: 2026-09-18 22:05
 - [x] 4b. フェードと扉が破られる（2026-09-18 完了）: 流れの `PlayFadeOut`・`PlayWorldCameraShake`・`PlaySoundAt`・`ActivateEmitter`、`Transition06` のフェード（2 倍速）、`On06DoorsLock` の 25 s 後の `BreakDoorsIn`。素材 `dd_gimmicks.import_doors_busted`（音・`Fracture_concrete_3`・推定の材質）、`_flow` が `Fracture_concrete_5` を置く。`dd_particles` が GPU のエミッタを組めるようにし、数の指数の形で配列の要素を失う不具合を直した（実装記録 11・08・01、症状索引 3 件）。
 - [x] 5. Zone 1 から Zone 2 へ（2026-09-18 完了）: `06_ReachAmbulance` の 1 s 後に救急車のシーケンスと揺れ（拡縮 4）、7 s 後に読み込み画面 `UWasamiLoadingWidget`（本家の `UMG_Loading`。Construct が回収の記憶を空にする。紋章は要確認で出さない）とポータルの音（`dd_ui.import_loading`）→ 2.5 s 後に Zone 2（実装記録 09・11・01・06）。
 - [x] 6. 地図の矢印（2026-09-18 完了）: `AWasamiArrowPointer`（本家の `BP_ArrowPointer`。プレイヤーの子のアクタ、流れの矢印の値を `Find Object` で取る）・`AWasamiZoneShardChecker`（`BP_ZoneShardChecker`。`_flow` が両ゾーンに置いた）・推定の `M_DD_Arrow`（`dd_tablet`）。テスト 2 本、PIE で最も近いシャードと駐車場を指すことを確かめた（実装記録 03・11・02・01）。
-- [ ] 7. Zone 2 の区間: 7 で `PlayerStart_Cell` から独房の場面の後の状態で始める（Spikes・独房の扉の破壊・`Spikes_Death`）、`Miniboss_Trigger_Transition`（保存 8。Matron は項目 11）、`Maze Trigger Start`（保存 9・全回収を結ぶ）、`Maze All Shards`（保存 10・`Postmaze Transition` のうち項目 13 に属さない分）、8〜10 で開いたときの準備（Zone 2 の障壁はステップ 4a で置いた。壊すのは項目 13）。ゲームモードの 7 の PlayerStart を `PlayerStart_Cell` にする。Spikes・Cell_DoorPicked が発火する粒子のシステム 3 つ（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`。`dd_particles`、材質は推定）を取り込み、`place_dd_sequences Zone2` を走らせ直してエミッタにテンプレートを入れる（いまはテンプレートなし）。
+- [x] 7a. 独房から始める（2026-09-18 完了）: 8〜10 はステップ 1 で出来ていたので、7 の始まりだけ。ゲームモードの 7 → `PlayerStart_Cell`、7 だけ飛ばした場面が残す状態（救急車・`Ambulance_Arrive_Blockers4`・偽の天井・壁のスイッチ）、棘のシーケンス・独房の扉の鍵 → `OnCellDoorBreak`（扉のシーケンスと揺れ）、棘の死に `AWasamiHitFX`（本家の `BP_HitFX`）と `DD_Needle_Trap_R1_V3`（`dd_gimmicks.import_cell`）。テスト 52 本すべて通過、PIE で確かめた（実装記録 11・08・06・01）。
+- [ ] 7b. 棘と独房の扉の粒子: Spikes・Cell_DoorPicked が発火する粒子のシステム 3 つ（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`。`dd_particles`、材質は推定）を取り込み、`place_dd_sequences Zone2` を走らせ直してエミッタにテンプレートを入れる（いまはテンプレートなし）。
 - [ ] 8. リフト: Zone 2 の `BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5（乗ると上がる床）と、ガレージリフト `BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると上がらない）。
 - [ ] 9. Zone 2 の地図 `BP_MapTexture_MultiFloor` と `BP_MapArea` ×2（いる階の箱で地図の絵を `T_06_Zone2` ↔ `T_06_Zone2_02` に替える）。
 - [ ] 10. 仕上げ: PIE で Zone 1 の到着 → 扉の破壊 → 全回収（デバッグで数個を残す）→ 障壁 → 駐車場 → トンネル → 扉が破られる → 救急車 → Zone 2 の独房 → 扉の破壊 → 迷路 → 全回収 → COLLECT THE RING PIECE までを通しで収録し、Discord のグリッドにする。実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
 
 ## 次にやること
 
-ステップ 7（Zone 2 の区間）を始める。記録のステップ 7 を「作業中」にし、変えるファイルを書く。大きいので、まず本家の `06_Hospital_Zone_02` のレベル BP（`python Tools/dd/bp_flow.py pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt --list`）で `Cell Cutscene Finished`・`Spikes`・`Cell_DoorBreak`・`Miniboss_Trigger_Transition`・`Maze Trigger Start`・`Maze All Shards`・`Postmaze Transition` を読み、実装記録 11 の Zone 2 の `Not yet:` と照らして 7a・7b… に分け直す（目安: 7a 独房から始める〈`PlayerStart_Cell`・棘・扉の破壊・`Cell_DoorPicked`〉、7b 粒子 3 つの取り込みと `place_dd_sequences Zone2`、7c 8〜10 の区間）。
+ステップ 7b（棘と独房の扉の粒子）を始める。記録のステップ 7b を「作業中」にし、変えるファイルを書く。まず `pak_reference_2/_sequences/06_Hospital_Zone2_Spikes.json`・`_Cell_DoorPicked.json` の粒子のトラックが結ぶエミッタ（レベルの `P_06_NurseSparks_24` ほか 3 つ。`place_dd_sequences Zone2` の戻り値の `missing_particles`）と、そのテンプレートの粒子のシステム（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`）の材質を調べ、`dd_gimmicks.import_cell` に足して取り込む（`import_doors_busted` と同じ要領。cook で式が消えた材質は `dd_assets.estimated_materials`）。
 
 ## 決定事項
 
@@ -69,6 +69,7 @@ updated: 2026-09-18 22:05
 - 結ぶ前に通ったトリガーの箱は使い切られる（本家も同じ）。04 はエレベーターの前の扉が鍵を破るまで、05 は駐車場への障壁が全回収まで道をふさぐ。PIE で 05 より先を確かめるときは、`Wasami.Flow On04DoorBreak` などで進めてから箱に立つ。扉の破壊は `python Tools/pie.py place 0 1010 --yaw -90 --pitch -20`（04 から 7 s 後）→ `pie.py cmd "Wasami.Interact 67"` で外れる。
 - 収録は `desktop.py record` の既定（ddagrab）が止まるので `--grab gdi` と `t.MaxFPS 60`（症状索引）。
 - ゲームのセーブ（本作の `structSlot`）はステップ 5 の後に `Wasami.ResetSave` した（次に Zone 1 を開くと 04 から）。05 から確かめるときは `Wasami.Flow On05Transition`。すでに 05 で始まっているときに `On05Transition` を重ねると全回収が 2 回結ばれ、2 回目が「no zone barrier」を出す（害は無い）。
+- 2026-09-18 のステップ 7a の後、ゲームのセーブは 7（Zone 2 を開くと独房から）。独房では開いて約 19 s で棘に殺される（本家どおり）ので、PIE の確かめは素早く: `python Tools/pie.py place -14145 1330 --yaw -90 --pitch -15`（独房の扉の前）→ `pie.py cmd "Wasami.Interact 34"` で扉が開く。ライフ 3 つを使い切ると YOU ARE DEAD で止まる（PIE を始め直せば戻る）。
 - 救急車に乗せるには `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` の後に `python Tools/pie.py place 11245 -20055 470 --yaw 90 --pitch -10`。10.5 s 後に Zone 2 へ移り、セーブが 7 になる（確かめたら `Wasami.ResetSave`）。
 - 06 の扉の所で PIE を確かめるときは `python Tools/pie.py place 7210 -21800 --yaw -90`（扉の 700 cm 手前。`-21300` は床が無く落ちる）。06 の箱は流れが結んでからでないと効かない（05 → `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` → `Wasami.Trigger 06_DoorsLock`）。
 - 取り込みの後、エディタにメッセージログの窓が浮いて出る（閉じるボタン (2198, 407)）。PIE の収録の範囲はビューポート `--region 1826 202 2982 860`（2026-09-18 の窓の配置）。
@@ -77,6 +78,7 @@ updated: 2026-09-18 22:05
 
 ## 検証
 
+- ステップ 7a: C++ ビルド OK、テスト `Wasami.*` 52 本すべて通過（`Wasami.HitFX.Actor` を足し、`Wasami.ZoneFlow.Zone2`・`.Start`・`Wasami.GameFlow` の PlayerStart を直した）、check_records OK。PIE のグリッド `Intermediate/Overnight/cell_grid.png`（上: 独房の扉の鍵 → 開く、下: 棘の打たれた閃き）。
 - ステップ 6: C++ ビルド OK、テスト `Wasami.*` 51 本すべて通過（`Wasami.ArrowPointer.Actor`・`.ZoneShardChecker` を足した）、check_records OK。`place_dd_flow` で両ゾーンに `shardCheckers` 1。PIE の地図の矢印のグリッド `Intermediate/Overnight/arrow_grid.png`。
 - ステップ 5: C++ ビルド OK、テスト `Wasami.*` 49 本すべて通過（`Wasami.GameFlow.Loading` を足し、`Wasami.ZoneFlow.Zone1` に救急車のシーケンスが 1 s 後に流れるのを足した）、check_records OK。音 `21-Ballroom_portal_V2`（2.48 s）。PIE: 救急車の屋根で SAVING PROGRESS → 約 1 s 後に走り出す → 乗って 8 s で暗い赤の全面 → PIE の読み込みを含め約 4.7 s 後に Zone 2（グリッド `Intermediate/Overnight/ambulance_grid.png`）。
 - ステップ 1〜4b: 各ステップのテスト・PIE の結果は実装記録 11 の「確かめたこと」と 08・09・01（最後はテスト 48 本すべて通過）。

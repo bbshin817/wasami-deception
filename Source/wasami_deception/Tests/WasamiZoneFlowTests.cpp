@@ -2,6 +2,7 @@
 #include "../WasamiDoorBreak.h"
 #include "../WasamiDoubleDoors.h"
 #include "../WasamiGameMode.h"
+#include "../WasamiHitFX.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiShard.h"
 #include "../WasamiTriggerBox.h"
@@ -11,6 +12,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/BrushComponent.h"
 #include "Engine/BlockingVolume.h"
+#include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelSequence.h"
@@ -55,6 +57,15 @@ namespace
 		Scene->SetPlaybackRange(FFrameNumber(0), Scene->GetTickResolution().AsFrameNumber(Seconds).Value);
 		ALevelSequenceActor* Actor = World->SpawnActor<ALevelSequenceActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 		Actor->SetSequence(Sequence);
+		Actor->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
+		return Actor;
+	}
+
+	/** A static actor placed from the original's of that name (Static, as the level has the ambulance and the switch). */
+	AStaticMeshActor* SpawnStatic(UWorld* World, const TCHAR* Name, const FVector& Location, const FRotator& Rotation)
+	{
+		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>(Location, Rotation);
+		Actor->GetRootComponent()->SetMobility(EComponentMobility::Static);
 		Actor->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		return Actor;
 	}
@@ -318,6 +329,20 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
 	AActor* Orb = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity);
 	Orb->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("ring_statue_orb_5")));
+	const ALevelSequenceActor* Spikes = SpawnSequence(World, TEXT("06_Hospital_Zone2_Spikes"), 70.);
+	const ALevelSequenceActor* DoorPicked = SpawnSequence(World, TEXT("06_Hospital_Zone2_Cell_DoorPicked"), 4.2667);
+	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
+	DoorBreak->ProgressSpeed = 3.f;
+	DoorBreak->FinishSpawning(FTransform::Identity);
+	DoorBreak->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_Hospital_DoorBreak_2")));
+	// What the left-out scenes move, where the level has it.
+	const FRotator AmbulanceFacing(0., -90.000684, 0.);
+	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), FVector(-22442.7148, -5025.0068, 800.), AmbulanceFacing);
+	const TWeakObjectPtr<ABlockingVolume> Blocker(SpawnBlocker(World, TEXT("Ambulance_Arrive_Blockers4"), ECollisionEnabled::QueryAndPhysics));
+	AStaticMeshActor* Ceiling = SpawnStatic(World, TEXT("hospital_zone_02_holdingCell_01_false_ceiling_11"), FVector(-0.0371, 0., 0.), FRotator::ZeroRotator);
+	Ceiling->GetRootComponent()->SetMobility(EComponentMobility::Movable);
+	const FVector SwitchAt(-14199.4062, 712.5936, 199.5126);
+	const AStaticMeshActor* Switch = SpawnStatic(World, TEXT("hospital_zone_02_holdingCell_01_wall_switch_14"), SwitchAt, FRotator(0., 0., -43.689768));
 
 	AWasamiGameMode* Mode = SpawnMode(World, 7);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -326,6 +351,23 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("7: out of the cell's scene"), Flow->GetSection(), FName(TEXT("Cell Cutscene Finished")));
+	TestTrue(TEXT("the ambulance arrived"), Ambulance->GetActorLocation().Equals(AWasamiZone2Flow::AmbulanceArrived, 0.01)
+		&& Ambulance->GetActorRotation().Equals(AmbulanceFacing, 1e-3));
+	TestTrue(TEXT("its front blocker gone"), !Blocker.IsValid() || Blocker->IsActorBeingDestroyed());
+	TestTrue(TEXT("the false ceiling open"), Ceiling->GetActorLocation().Equals(AWasamiZone2Flow::FalseCeilingOpen, 0.01));
+	TestTrue(TEXT("the switch thrown"), Switch->GetActorLocation().Equals(SwitchAt, 0.01)
+		&& Switch->GetActorRotation().Equals(AWasamiZone2Flow::WallSwitchThrown, 1e-3));
+	TestTrue(TEXT("the spikes coming down"), Spikes->GetSequencePlayer() && Spikes->GetSequencePlayer()->IsPlaying());
+
+	// The cell's door lock (34 presses at 3.0) opens the door with its sequence.
+	TestTrue(TEXT("the cell door's lock awake"), DoorBreak->GetBox()->GetGenerateOverlapEvents());
+	DoorBreak->NotifyPlayerOverlap(true);
+	for (int32 Press = 0; Press < 34; ++Press)
+	{
+		DoorBreak->Interact();
+	}
+	TestEqual(TEXT("picked: Cell_DoorBreak"), Flow->GetSection(), FName(TEXT("Cell_DoorBreak")));
+	TestTrue(TEXT("the door swings open"), DoorPicked->GetSequencePlayer() && DoorPicked->GetSequencePlayer()->IsPlaying());
 	Advance(Wrapper, 1.1f);
 	Walk(World, TEXT("Miniboss_BierceTalk"));
 	TestEqual(TEXT("Bierce's trigger, bound 1 s on"), Flow->GetSection(), FName(TEXT("Miniboss_BierceTalk")));
@@ -350,9 +392,10 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("to the ring piece"), Objective(Mode), FString(TEXT("COLLECT THE RING PIECE")));
 	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8941f, 0.f, 1.f), 1e-4f));
 
-	// The cell's spikes kill 0.5 s after they reach the player.
+	// The cell's spikes kill 0.5 s after they reach the player, who is hit at once.
 	Walk(World, TEXT("Trigger_Cell_Spikes"));
 	TestTrue(TEXT("not at once"), Mode->IsDeathOpen());
+	TestTrue(TEXT("the hit's flash"), TActorIterator<AWasamiHitFX>(World) ? true : false);
 	Advance(Wrapper, AWasamiZone2Flow::SpikesDeathDelay + 0.1f);
 	TestFalse(TEXT("dead 0.5 s on"), Mode->IsDeathOpen());
 
@@ -375,6 +418,8 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 	SpawnTriggers(World, {TEXT("06_DoorsLock"), TEXT("06_TunnelEnter"), TEXT("TriggerBox_06_AmbulanceTop"),
 		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
 	TestNull(TEXT("no flow outside the zones"), AWasamiZoneFlow::SpawnFor(SpawnMode(World, 4), 0));
+	const FVector InTunnel(-22442.7148, -5025.0068, 800.);
+	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), InTunnel, FRotator::ZeroRotator);
 
 	// Each checkpoint's section, as a zone reopened there starts it.
 	struct FCase
@@ -398,6 +443,8 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 		TestEqual(*What, Flow ? Flow->GetSection() : NAME_None, FName(Case.Section));
 		TestEqual(*(What + TEXT(": the objective")), Objective(Mode), FString(Case.Objective));
 	}
+	TestTrue(TEXT("past 7, the ambulance never arrived (the original plays its scene only at 7)"),
+		Ambulance->GetActorLocation().Equals(InTunnel, 0.01));
 	AWasamiGameMode* Mode = SpawnMode(World, 10);
 	const AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
 	TestEqual(TEXT("zone 2 at 10"), Flow ? Flow->GetSection() : NAME_None, FName(TEXT("Postmaze Transition")));
