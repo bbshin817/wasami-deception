@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 21:05
+updated: 2026-09-18 21:50
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -38,7 +38,7 @@ updated: 2026-09-18 21:05
 - [x] 3c. 両開き扉（2026-09-18 完了）: `AWasamiDoubleDoors`（本家の `BP_06_DoubleDoors` 全部）・音の取り込み `dd_gimmicks.py`・`_flow` が Zone 1 の 2 枚をメッシュと材質ごと置く。流れは 04 で `DoubleDoors11` を `Lock`、鍵が外れたら `bLocked` 偽 → `Open Front`、`06_DoorsLock` で `DoubleDoors33_36` を `Lock` → `Force Close`（実装記録 08・11・01）。
 - [x] 4a. 障壁（2026-09-18 完了）: `AWasamiZoneBarrier`（本家の `BP_ZoneBarrier`）・素材 `dd_gimmicks.import_zone_barrier`（`MM_SpeedBarrier` は焼き込みのシェーダーの式、`P_ky_impact3`）・`dd_assets.base_property_overrides`・テクスチャの貼り方、`_flow` が両ゾーンの `BP_ZoneBarrier_2` を置く（障壁の灯は単独で置かない）、流れの `ZoneBarrier`・全回収で `DestroyBarrier`（実装記録 08・11・01）。
 - [x] 4b. フェードと扉が破られる（2026-09-18 完了）: 流れの `PlayFadeOut`・`PlayWorldCameraShake`・`PlaySoundAt`・`ActivateEmitter`、`Transition06` のフェード（2 倍速）、`On06DoorsLock` の 25 s 後の `BreakDoorsIn`。素材 `dd_gimmicks.import_doors_busted`（音・`Fracture_concrete_3`・推定の材質）、`_flow` が `Fracture_concrete_5` を置く。`dd_particles` が GPU のエミッタを組めるようにし、数の指数の形で配列の要素を失う不具合を直した（実装記録 11・08・01、症状索引 3 件）。
-- [ ] 5. Zone 1 から Zone 2 へ: `06_ReachAmbulance`（保存 7・救急車の塞ぎ・1 s → `PlaySequence("06_Hospital_Zone1_AmbulanceTakeOff")` と `PlayCameraShake(06_CameraShake_Zone1_AmbulanceTakeOff, 4)`〈本家 @796〜@896。揺れは `dd_sequence.CAMERA_SHAKES` で作ってある〉・7 s → `UMG_Loading` の最小限〈`Level` = 7、Z 5 で `AddToViewport`。回収の記憶を空にする本家の Construct を含む〉・`PlaySound2D(21-Ballroom_portal_V2)` → 2.5 s → Zone 2 を開く）。
+- [x] 5. Zone 1 から Zone 2 へ（2026-09-18 完了）: `06_ReachAmbulance` の 1 s 後に救急車のシーケンスと揺れ（拡縮 4）、7 s 後に読み込み画面 `UWasamiLoadingWidget`（本家の `UMG_Loading`。Construct が回収の記憶を空にする。紋章は要確認で出さない）とポータルの音（`dd_ui.import_loading`）→ 2.5 s 後に Zone 2（実装記録 09・11・01・06）。
 - [ ] 6. タブレットの矢印 `BP_ArrowPointer`（プレイヤーの子のアクタ。的を指す・`Shards?` のときシャードチェッカーの箱の中の最も近いシャードを指す・`Change Color`）と、その区域 `BP_ZoneShardChecker` の箱（両ゾーンに 1 つ。`_flow` で置く）。両ゾーンの区間の値を結ぶ。
 - [ ] 7. Zone 2 の区間: 7 で `PlayerStart_Cell` から独房の場面の後の状態で始める（Spikes・独房の扉の破壊・`Spikes_Death`）、`Miniboss_Trigger_Transition`（保存 8。Matron は項目 11）、`Maze Trigger Start`（保存 9・全回収を結ぶ）、`Maze All Shards`（保存 10・`Postmaze Transition` のうち項目 13 に属さない分）、8〜10 で開いたときの準備（Zone 2 の障壁はステップ 4a で置いた。壊すのは項目 13）。ゲームモードの 7 の PlayerStart を `PlayerStart_Cell` にする。Spikes・Cell_DoorPicked が発火する粒子のシステム 3 つ（`Blueprints/Characters/Nurse/P_06_NurseSparks`、BallisticsVFX の `Fracture_dark_slow`・`Concrete_impact_large`。`dd_particles`、材質は推定）を取り込み、`place_dd_sequences Zone2` を走らせ直してエミッタにテンプレートを入れる（いまはテンプレートなし）。
 - [ ] 8. リフト: Zone 2 の `BP_06_Lift_03` ×8・`BP_06_Lift_04` ×2・`BP_06_LiftBase_Corner` ×5（乗ると上がる床）と、ガレージリフト `BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると上がらない）。
@@ -47,7 +47,7 @@ updated: 2026-09-18 21:05
 
 ## 次にやること
 
-ステップ 5（Zone 1 から Zone 2 へ）を始める。記録のステップ 5 を「作業中」にし、変えるファイルを書く。`python Tools/dd/bp_flow.py pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt 06_ReachAmbulance` で流れを読み直し（上の計画の番地）、`python Tools/dd/bp_flow.py pak_reference_2/_bytecode/DDeception/Content/UI/Main/UMG_Loading.txt --list` で読み込み画面の `Construct` と見た目（`Level` で出す絵・文）を読む。読み込み画面は最小限（本家の木とアニメのうち、Zone 2 へ移る 2.5 s に見えるもの）で、画面の素材は `dd_ui` にならって取り込む。`21-Ballroom_portal_V2` は `dd_assets.sound`。On06ReachAmbulance の `Not yet:` 2 つを埋め、テスト `Wasami.ZoneFlow.Zone1` の救急車の所に足す。
+ステップ 6（タブレットの矢印と `BP_ZoneShardChecker` の箱）を始める。記録のステップ 6 を「作業中」にし、変えるファイルを書く。本家の `pak_reference_2/_bytecode/DDeception/Content/Blueprints/…/BP_ArrowPointer.txt` と `BP_ZoneShardChecker.txt`（`find pak_reference_2/_bytecode -name "BP_ArrowPointer*"`）を `python Tools/dd/bp_flow.py <file> --list` で読み、プレイヤーの子のアクタ（`BP_DD_PlayerCharacter` の `BP_ArrowPointer` の部品の位置）・矢印のメッシュと材質・`Change Color`・的を指す回し方・`Shards?` のときの最も近いシャード（重なるシャードチェッカーの箱の中が 100 未満のとき）を写す。流れの値（`IsArrowOnShards`・`GetArrowColor`・`GetArrowTarget`）はステップ 1 で持たせてある。箱は `_flow` で両ゾーンに 1 つずつ置く。
 
 ## 決定事項
 
@@ -62,13 +62,16 @@ updated: 2026-09-18 21:05
 
 ## 要確認（ユーザー）
 
+- 2026-09-18: Zone 2 へ移るときの読み込み画面の紋章 `loader_reapernurse`（本家の `UI/Main/Loaders`。リーパーナースの印の絵で、キャラクターそのものは描かれていない）を使ってよいか — 仮に使わず、暗い赤の全面だけを出している。理由: 原作の素材の使用範囲で「判断に迷うもの（キャラクターが写った画像や UI 素材など）」に当たる。使ってよければ `dd_ui` で取り込み `UWasamiLoadingWidget::LevelEmblems` の 7 番に入れるだけ。ほかの案: 本作のワサミの絵に替える。場所: 実装記録 09 の「既知の制約」、`WasamiLoadingWidget.h` の `LevelEmblems`。
+
 - 2026-09-18: 作業一覧の項目 6 と大目標 1 の「ガレージリフトで Zone 2 へ」— 本家のコードどおり**救急車の上に乗って Zone 2 へ移る**形に読み替える。理由: 本家の `06_Hospital_Zone_01` のレベル BP で Zone 2 を開くのは `06_ReachAmbulance`（`TriggerBox_06_AmbulanceTop`）で、ガレージリフトは駐車場の車のリフトの仕掛け。場所: この記録の「決定事項」、項目を閉じるときに `.claude/roadmap.md` の項目 6 の完了の条件。
 
 ## 再開時の注意
 
 - 結ぶ前に通ったトリガーの箱は使い切られる（本家も同じ）。04 はエレベーターの前の扉が鍵を破るまで、05 は駐車場への障壁が全回収まで道をふさぐ。PIE で 05 より先を確かめるときは、`Wasami.Flow On04DoorBreak` などで進めてから箱に立つ。扉の破壊は `python Tools/pie.py place 0 1010 --yaw -90 --pitch -20`（04 から 7 s 後）→ `pie.py cmd "Wasami.Interact 67"` で外れる。
 - 収録は `desktop.py record` の既定（ddagrab）が止まるので `--grab gdi` と `t.MaxFPS 60`（症状索引）。
-- ゲームのセーブ（本作の `structSlot`）はチェックポイント 5（4b の PIE の `Wasami.Flow On05Transition`。次に開くと Zone 1 の 05_Persistent になるはずだが、4b では 04 から始まった〈未確認。04 から始まったら `Wasami.Flow On05Transition` で進める〉。04 から確かめるときは PIE で `Wasami.ResetSave` してから開き直す）。
+- ゲームのセーブ（本作の `structSlot`）はステップ 5 の後に `Wasami.ResetSave` した（次に Zone 1 を開くと 04 から）。05 から確かめるときは `Wasami.Flow On05Transition`。すでに 05 で始まっているときに `On05Transition` を重ねると全回収が 2 回結ばれ、2 回目が「no zone barrier」を出す（害は無い）。
+- 救急車に乗せるには `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` の後に `python Tools/pie.py place 11245 -20055 470 --yaw 90 --pitch -10`。10.5 s 後に Zone 2 へ移り、セーブが 7 になる（確かめたら `Wasami.ResetSave`）。
 - 06 の扉の所で PIE を確かめるときは `python Tools/pie.py place 7210 -21800 --yaw -90`（扉の 700 cm 手前。`-21300` は床が無く落ちる）。06 の箱は流れが結んでからでないと効かない（05 → `Wasami.CollectShards` → `Wasami.Trigger 06_CutsceneStart` → `Wasami.Trigger 06_DoorsLock`）。
 - 取り込みの後、エディタにメッセージログの窓が浮いて出る（閉じるボタン (2198, 407)）。PIE の収録の範囲はビューポート `--region 1826 202 2982 860`（2026-09-18 の窓の配置）。
 - テストの結果はエディタのメッセージログの窓に出て、ビューポートの左に浮いて残る（収録の前に閉じる。2026-09-18 は閉じるボタンが (2198, 407)）。
@@ -76,10 +79,5 @@ updated: 2026-09-18 21:05
 
 ## 検証
 
-- ステップ 4b: C++ ビルド OK、テスト `Wasami.*` 48 本すべて通過（`Wasami.ZoneFlow.Zone1` にフェードのプレイヤーと 2 倍速、25 s でエミッタが起き 0.2 s 後に扉が消えるのを足した）、check_records OK。素材: 音 1・テクスチャ 6・材質 9・粒子 1（GPU の型データは cook の値のうち寿命・数・大きさの逆数・SubUV・摩擦・弾み・抵抗・回転が一致、色と大きさの曲線は表どおりでずれる）。表の長さを /Game/DD・/Game/Pipeline の 6 つで確かめた。`place_dd_flow Zone1`（`emitters` 1）、`dd_sequence.place Zone2` で共有した `set_emitter` を確かめた（helpers 4、未取り込みの粒子 3 は前と同じ）。PIE: 06 へのフェード（0 → 1.85 s に黒 → 2.8 s から晴れ 4.2 s で一定）、25 s で扉が消えて破片が飛ぶ（グリッド `Intermediate/Overnight/doors_busted_grid.png`）。
-- ステップ 4a: C++ ビルド OK、テスト `Wasami.*` 48 本すべて通過（`Wasami.ZoneBarrier.Actor` を足し、`Wasami.ZoneFlow.Zone1` に障壁が全回収で壊れるのを足した）、check_records OK。素材: `MM_SpeedBarrier` のパラメータ 9 + `Color Multiplier`、インスタンス 2 つの値と両面、`MI_ky_flare14R` の加算、テクスチャの Mirror。`place_dd_flow` 両ゾーン（`zoneBarriers` 1・`removed_lights` 1）、シーケンスは流れのアクタを結ばない。PIE: 05 で (0, −18450) から −Y に紫の網目の障壁 → `Wasami.CollectShards` で閃光と放射する線が出て消え、廊下が開く（グリッド `Intermediate/Overnight/barrier_grid.png`）。
-- ステップ 1: check_records OK、C++ ビルド OK、テスト `Wasami.*` 44 本すべて通過、PIE で Zone 1 の 04 → 保存 5 → 全回収 → 06 → 扉の塞ぎ → 救急車で保存 7 → Zone 2 → 保存 8・9・10 → COLLECT THE RING PIECE、10 で開き直し（実装記録 11 の「確かめたこと」）。
-- ステップ 3c: C++ ビルド OK、テスト `Wasami.*` 47 本すべて通過（`Wasami.DoubleDoors.Actor` を足し、`Wasami.ZoneFlow.Zone1` に扉の閉ざし・開け・閉じを足した）、check_records OK。PIE: 04 で `DoubleDoors11` が閉ざされて閉じている → 鍵が外れると手前へ 1 s で開く → `Leave` の外へ出ると閉じる。音: 開 0.622 s・閉 1.007 s・`Locked_Door` 1.343 s（本家の長さ）。
-- ステップ 3b: C++ ビルド OK、テスト `Wasami.*` 46 本すべて通過（`Wasami.DoorBreak.Lock`・`Actor` を足し、`Wasami.ZoneFlow.Zone1` は扉の破壊を 67 回押して進む）、check_records OK。PIE: 04 の 7 s 後に鍵が出る → 30 回で輪が 45 % → 67 回で外れて火花 → 1 s 後に鍵の部品が消える → 迷路の箱で COLLECT ALL SHARDS。素材: SoundCue は Random 5 入力（5 つ目が空）・重み 1 × 5・音量 1.5。
-- ステップ 3a: テスト 44 本通過、PIE でシーケンスが 14.1 s・揺れが 7.3 s まで。
-- ステップ 2: 曲線が本家の CSV と一致、PIE で 4 本とも動く。
+- ステップ 5: C++ ビルド OK、テスト `Wasami.*` 49 本すべて通過（`Wasami.GameFlow.Loading` を足し、`Wasami.ZoneFlow.Zone1` に救急車のシーケンスが 1 s 後に流れるのを足した）、check_records OK。音 `21-Ballroom_portal_V2`（2.48 s）。PIE: 救急車の屋根で SAVING PROGRESS → 約 1 s 後に走り出す → 乗って 8 s で暗い赤の全面 → PIE の読み込みを含め約 4.7 s 後に Zone 2（グリッド `Intermediate/Overnight/ambulance_grid.png`）。
+- ステップ 1〜4b: 各ステップのテスト・PIE の結果は実装記録 11 の「確かめたこと」と 08・09・01（最後はテスト 48 本すべて通過）。

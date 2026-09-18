@@ -10,6 +10,9 @@ rings', the two sparks', their textures, the lockpicking clicks (a SoundCue) and
 key's font comes with the tablet; the clicks' attenuation comes with the level sequences (dd_sequence) and is made
 again here.
 
+The loading screen (UWasamiLoadingWidget, after UI/Main/UMG_Loading) as Zone 1 goes on to Zone 2: the portal sound the
+level plays with it. Its level emblems (UI/Main/Loaders) are not imported until the user says whether they may be used.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -49,6 +52,9 @@ DOOR_BREAK_SOUNDS = tuple("Audio/06_Hospital/Lockpicking/SFX_06_Lockpicking_%d" 
 )
 DOOR_BREAK_CUES = ("Audio/06_Hospital/Lockpicking/SFX_06_Lockpicking",)
 DOOR_BREAK_ATTENUATIONS = ("Audio/01_Hotel/01_Lobby_Attenuation",)
+
+# ------------------------------------------------------------------------------------------------ the loading screen
+LOADING_SOUNDS = ("Audio/00_Ballroom/21-Ballroom_portal_V2",)
 
 # M_UI_Radial: a UI material whose graph the cook took away; its compiled Slate pixel shader
 # (Tools/dd/cooked_shaders.py "Materials/04_Sewer/M_UI_Radial." --show 4) is what the graph below follows. With v the
@@ -130,13 +136,20 @@ def import_door_break():
     return result
 
 
+def import_loading():
+    """The loading screen's sound. Returns how many."""
+    return {"sounds": len([dd_assets.sound(rel, VERSION) for rel in LOADING_SOUNDS])}
+
+
 def import_all():
-    """Imports the death screen's and the pop-up's textures, font and sounds and the door break's assets, then saves
-    /Game/DD."""
+    """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets and the loading
+    screen's, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
     for key, count in import_door_break().items():
         result["door_break_" + key] = count
+    for key, count in import_loading().items():
+        result["loading_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

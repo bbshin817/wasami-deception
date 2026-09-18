@@ -55,11 +55,12 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
         heading font and select sound come with import_dd_tablet. Also the door breaks' lock (WasamiSwitchboxWidget,
         WasamiDoorBreak): the ring and spark materials and their textures, the lockpicking SoundCue and the sounds of
-        the lock giving (its key's font comes with import_dd_tablet).
+        the lock giving (its key's font comes with import_dd_tablet). And the loading screen's portal sound
+        (WasamiLoadingWidget, which Zone 1 shows as it opens Zone 2).
 
         Returns:
-            How many assets of each kind were made ('textures', 'fonts', 'sounds', and 'door_break_textures',
-            '_sounds', '_sound_cues', '_attenuations', '_materials').
+            How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
+            '_sounds', '_sound_cues', '_attenuations', '_materials', and 'loading_sounds').
         """
         _module("dd_stage")
         _module("dd_assets")

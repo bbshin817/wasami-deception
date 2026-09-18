@@ -6,8 +6,8 @@
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiDoubleDoors.h"
-#include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
+#include "WasamiLoadingWidget.h"
 #include "WasamiZoneBarrier.h"
 
 namespace
@@ -24,6 +24,8 @@ AWasamiZone1Flow::AWasamiZone1Flow()
 	DoorsBustedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_TT_Door_BustedOpen_02")));
 	DoorsBustedAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/01_Hotel/01_Lobby_Attenuation")));
 	DoorsBustedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/07_FunPlace/Boss/BP_07_CameraShake_Jump")));
+	TakeOffShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/06_Hospital/06_CameraShake_Zone1_AmbulanceTakeOff")));
+	PortalSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/21-Ballroom_portal_V2")));
 }
 
 void AWasamiZone1Flow::StartAt(int32 Checkpoint)
@@ -205,15 +207,15 @@ void AWasamiZone1Flow::On06ReachAmbulance()
 	}
 	After(TakeOffDelay, [this]()
 	{
-		// Not yet: the sequence 06_Hospital_Zone1_AmbulanceTakeOff and the camera shake 06_CameraShake_Zone1_AmbulanceTakeOff
-		// at scale 4.
+		PlaySequence(TEXT("06_Hospital_Zone1_AmbulanceTakeOff"));
+		PlayCameraShake(TakeOffShakeClass, TakeOffShakeScale);
 		After(LoadingDelay, [this]()
 		{
-			// Not yet: UMG_Loading (Level 7, Z 5) and 21-Ballroom_portal_V2. The loading screen's Construct forgets the
-			// shards collected, which is done here meanwhile.
-			if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+			// The loading screen's Construct forgets the shards collected.
+			UWasamiLoadingWidget::Show(this, UWasamiLoadingWidget::AsylumLevel);
+			if (USoundBase* Sound = PortalSound.LoadSynchronous())
 			{
-				Instance->ForgetCollectedShards();
+				UGameplayStatics::PlaySound2D(this, Sound);
 			}
 			RemoveAllEnemies(GetWorld());
 			After(OpenZone2Delay, [this]()

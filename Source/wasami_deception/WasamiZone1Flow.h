@@ -33,6 +33,8 @@ public:
 	static constexpr float TakeOffDelay = 1.f;
 	static constexpr float LoadingDelay = 7.f;
 	static constexpr float OpenZone2Delay = 2.5f;
+	/** The ambulance's shake as it leaves (ClientPlayCameraShake's scale). */
+	static constexpr float TakeOffShakeScale = 4.f;
 
 protected:
 	virtual void StartAt(int32 Checkpoint) override;
@@ -53,6 +55,14 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftClassPtr<UCameraShakeBase> DoorsBustedShakeClass;
+
+	/** The ambulance leaving: 06_CameraShake_Zone1_AmbulanceTakeOff. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftClassPtr<UCameraShakeBase> TakeOffShakeClass;
+
+	/** With the loading screen: 21-Ballroom_portal_V2 (PlaySound2D). */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<USoundBase> PortalSound;
 
 private:
 	/** Spawn at 4: the lift's arrival. */

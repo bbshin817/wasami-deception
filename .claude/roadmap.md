@@ -344,6 +344,7 @@
   - 2026-09-18（項目 5）: 死亡画面のアニメの区間の `RestoreState`（Fade In・Death の終わりで元の値に戻すか）— 今は戻さない（最後の値のまま。WebGL 版の収録ではゲームオーバーのボタンが見えている）。タブレットの Count Shake（03 記録）は終わりで戻しているので、どちらかが UE 4.24 の振る舞いと違う。本家での確かめ方: 最新版で 1 回死に、死亡画面が Fade In の後も見えているかと、シャードを拾った後の数の位置（12 px 下に残るか）を収録する。
   - 2026-09-18（項目 5）: 死亡画面のボタンとヒントの書体 — 今はボタンの `helvetica-normal_Font` の既定の書体を helvetica の面に、ヒントは UE5 の `RobotoTiny` の `Light`。本家の Font は既定がエンジンの Roboto で helvetica は en-US の副書体、ヒントは UE 4.24 の RobotoTiny。本家での確かめ方: 最新版のゲームオーバーの画面を撮り、RESTART の字形とヒントの太さを比べる。
   - 2026-09-18（項目 6）: トンネルの扉が破られるときの破片 `Fracture_concrete_3` の煙と破片の見え方 — 今は材質 3 つ（`whispOne_Master_directional`・`_amb`・`DebrisMaster`）を推定し（実装記録 08）、GPU のエミッタ 2 つ（`Fragments`・`DustTrail`）は cook の焼き込みの表から分布を作り直して組んだ。cook の表はその 2 つで本家が使った値と合わず（`DustTrail` の色は表 1 → 0.36 に対し cook の GPU のデータ `ResourceData` は一定の 0.078、大きさは表の上限 1 に対し約 6 倍）、PIE では煙がほとんど見えない。本家での確かめ方: 最新版の Zone 1 で 06_DoorsLock から 25 s 待ち、扉が破られる所を収録する。cook の `ResourceData`（`Fracture_concrete_3.json` の型データ）から分布を組み直す手もある。
+  - 2026-09-18（項目 6）: 救急車が走り出して 2〜3 s の間、トンネルの床の前方が黒い矩形で欠けて見える（救急車は本家どおり Static で、Sequencer が動かす間だけ Movable になる。その影か VSM の欠けと思われる）— 今はそのまま。本家での確かめ方: 本家の Zone 1 で救急車の屋根に乗り、走り出しのトンネルの床を見る。収録 `Intermediate/DesktopAgent/shots/ambulance_zone2.mkv`（git の外）の 4.5〜6 s
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3

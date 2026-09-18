@@ -185,6 +185,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	ABlockingVolume* AmbulanceSide = SpawnBlocker(World, TEXT("BlockingVolume_Ambulance_2"), ECollisionEnabled::NoCollision);
 	AWasamiShard* Shard = World->SpawnActor<AWasamiShard>(FVector(0., 0., -90000.), FRotator::ZeroRotator);
 	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone01_ElevatorArrive"), 14.1);
+	const ALevelSequenceActor* TakeOff = SpawnSequence(World, TEXT("06_Hospital_Zone1_AmbulanceTakeOff"), 13.9);
 	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
 	DoorBreak->ProgressSpeed = 1.5f;
 	DoorBreak->FinishSpawning(FTransform::Identity);
@@ -286,12 +287,16 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Advance(Wrapper, 0.2f);
 	TestTrue(TEXT("the doors gone"), !TunnelDoorsRef.IsValid() || TunnelDoorsRef->IsActorBeingDestroyed());
 
-	// The ambulance's roof saves 7 (Zone 2 opens 10.5 s on, which a test world does not go on to).
+	// The ambulance's roof saves 7 and the ambulance leaves 1 s on (Zone 2 opens 10.5 s on, which a test world does not
+	// go on to).
 	Walk(World, TEXT("TriggerBox_06_AmbulanceTop"));
 	TestEqual(TEXT("06_ReachAmbulance"), Flow->GetSection(), FName(TEXT("06_ReachAmbulance")));
 	TestEqual(TEXT("checkpoint 7 saved"), SavedCheckpoint(), 7);
 	TestEqual(TEXT("good luck"), Objective(Mode), FString(TEXT("GOOD LUCK")));
 	TestTrue(TEXT("the ambulance's sides block"), Collides(AmbulanceSide));
+	TestFalse(TEXT("the ambulance still"), TakeOff->GetSequencePlayer() && TakeOff->GetSequencePlayer()->IsPlaying());
+	Advance(Wrapper, AWasamiZone1Flow::TakeOffDelay + 0.1f);
+	TestTrue(TEXT("and leaving 1 s on"), TakeOff->GetSequencePlayer() && TakeOff->GetSequencePlayer()->IsPlaying());
 
 	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;
