@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 23:10
+updated: 2026-09-18 23:40
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -42,13 +42,14 @@ updated: 2026-09-18 23:10
 - [x] 7a. 独房から始める（2026-09-18 完了）: 8〜10 はステップ 1 で出来ていたので、7 の始まりだけ。ゲームモードの 7 → `PlayerStart_Cell`、7 だけ飛ばした場面が残す状態（救急車・`Ambulance_Arrive_Blockers4`・偽の天井・壁のスイッチ）、棘のシーケンス・独房の扉の鍵 → `OnCellDoorBreak`（扉のシーケンスと揺れ）、棘の死に `AWasamiHitFX`（本家の `BP_HitFX`）と `DD_Needle_Trap_R1_V3`（`dd_gimmicks.import_cell`）。テスト 52 本すべて通過、PIE で確かめた（実装記録 11・08・06・01）。
 - [x] 7b. 独房の粒子（2026-09-18 完了）: `dd_gimmicks.import_cell` に `P_06_NurseSparks`・`Fracture_dark_slow`・`Concrete_impact_large` とテクスチャ 4・推定の材質 4（焼き込みのベースパスの式）を足し、`place_dd_sequences Zone2` でエミッタにテンプレートを入れた（`missing_particles` なし）。`dd_assets.main_export` の名前違いの書き出し。PIE で火花と扉の破片を確かめ、黒い塵は薄くて見えないので後回しの一覧へ（実装記録 08・01・11）。
 - [x] 8a. 乗ると上がる床（2026-09-18 完了）: `AWasamiLiftBase`・`AWasamiLift`（`BP_06_Lift_03`・`_04`）・`AWasamiCornerLift`（`BP_06_LiftBase_Corner`）、前処理の `CLASS_MESHES`、`_flow` が Zone 2 に 15 台、`dd_gimmicks.import_lifts`（音 3）。テスト 2 本（54 本すべて通過）、PIE で走って乗ると上の階へ運ばれる（実装記録 12・01・08・11）。
-- [ ] 8b. ガレージリフト: 変えるもの（予定）: `Source/wasami_deception/WasamiGarageLift.h/.cpp`（新規。12 記録に足す）、骨入りのメッシュとアニメの取り込み（`dd_gimmicks` か新しい `dd_*.py`。glTF の骨 4 本 + psa を glTF のアニメにして Interchange で。`dd_enemy.ensure_skeletal_pipeline` が手本）、`dd_level._flow`（両ゾーンに置く）。`BP_06_GarageLift` ×2（Zone 2）・`BP_06_GarageLift_Zone1_Special`（Zone 1。`TriggerVolume_1` にナースが入ると `NurseNear` = 真で上がらない）。骨入りのメッシュ `hospital_garage_lift_anim`（glTF、骨 4 本）とアニメ `hospital_garage_lift_anim_Anim`（psa、60 コマ・2.458 s）を取り込み、ABP の状態機械（Default = 0 コマで止める、PlayerOn = 1 倍で 1 回、行き来は 0.2 s の HermiteCubic の混ぜ、PlayerOn の入りで Up の音・出で Up を 0.25 s で消して Down の音）を写す。当たりの箱 `Box`・`Overlap Box` は骨 `joint4` に付く。
+- [ ] 8b1. ガレージリフトの取り込み（**作業中**）: 本家の psa（ActorX。24 fps・60 キー・2.4583 s。回転は 4 本とも一定で骨の参照と同じ、動くのは `joint2`〈X 11.62 → 15.5〉と `joint3`〈X 0.04 → 6.40〉の平行移動だけ = 台が約 307 cm 上がる）を読んで glTF のアニメにし（平行移動は BONENAMES → glTF と同じ (x, z, y)/100、回転は glTF の骨の値のまま）、Interchange で `SkeletalMesh`・`AnimSequence` にする（24 Hz のまま焼く別の管 `PL_DD_Skeletal`）。材質 4 つ（`M_06_Hospital_MetalPanel_04`・`Concrete_06_Painted1`・`MetalBrushed_02`・`M_07_TP_DiamondPlate`）は前処理の `CLASS_MATERIALS` でステージの材質として作り、枠の名前で貼る。親の master に `used_with_skeletal_mesh`。変えるもの: `Content/Python/wasami_tools/pipeline/dd_skeletal.py`（新規。psa の読みと取り込み）・`dd_gimmicks.py`（`import_garage_lift`）・`dd_enemy.py`（`ensure_skeletal_pipeline` に管と焼く速さの引数）・`paths.py`・`Tools/dd/prepare_stage.py`（`CLASS_MATERIALS`）。アセット `/Game/DD/Meshes/06_Hospital/hospital_garage_lift_anim`（+ `_Anim`・`_Skeleton`・`_PhysicsAsset`）・`/Game/DD/Materials/06_Hospital/M_06_Hospital_MetalPanel_04`・`/Game/DD/Materials/07_FunPlace/M_07_TP_DiamondPlate`・`/Game/Pipeline/Interchange/PL_DD_Skeletal`。
+- [ ] 8b2. ガレージリフトのアクタ: `Source/wasami_deception/WasamiGarageLift.h/.cpp`（新規。12 記録に足す）と ABP の状態機械の写し（Default = 0 コマで止める〈再生速度 0・ループ〉、PlayerOn = 1 倍で 1 回、行き来は 0.2 s の HermiteCubic の混ぜ〈降りると 0.2 s で下りる〉、PlayerOn の入りの通知で `Audio`〈Up〉を鳴らす・出で `Audio` を 0.25 s で消して `Audio1`〈Down〉を鳴らす。`PlayerOn?` は毎更新 `Player Overlapping?`）、`dd_level._flow`（`BP_06_GarageLift` ×2〈Zone 2〉・`BP_06_GarageLift_Zone1_Special`〈Zone 1。`NurseNear` なら偽〉）。部品: `SkeletalMesh`（拡縮 30。コリジョンはエンジンの既定 NoCollision）→ 骨 `joint4` に `Box`（Custom・QueryAndPhysics・Pawn だけ Block、(0, 0, 0)・ロール −90・拡縮 (0.2031, 0.2734, 0.00953)）と `Overlap Box`（Pawn だけ Overlap、(0, −2.333, 0)・ロール −90・拡縮 (0.2031, 0.2734, 0.07127)）、`Audio`（Up）・`Audio1`（Down）は `01_Lobby_Attenuation`・自動で鳴らない。
 - [ ] 9. Zone 2 の地図 `BP_MapTexture_MultiFloor` と `BP_MapArea` ×2（いる階の箱で地図の絵を `T_06_Zone2` ↔ `T_06_Zone2_02` に替える）。
 - [ ] 10. 仕上げ: PIE で Zone 1 の到着 → 扉の破壊 → 全回収（デバッグで数個を残す）→ 障壁 → 駐車場 → トンネル → 扉が破られる → 救急車 → Zone 2 の独房 → 扉の破壊 → 迷路 → 全回収 → COLLECT THE RING PIECE までを通しで収録し、Discord のグリッドにする。実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
 
 ## 次にやること
 
-ステップ 8b（ガレージリフト）を始める。記録のステップ 8b を「作業中」にする。まず取り込み方を決める: `pak_reference_2/_meshes_gltf/Meshes/06_Hospital/hospital_garage_lift_anim.gltf`（骨 `joint1`〜`joint4`、スキン 1、アニメなし）と `_anims_psa/Meshes/06_Hospital/hospital_garage_lift_anim_Anim.psa`（ActorX。60 コマ・2.4583 s）。psa を読んで glTF にアニメとして足し、`dd_enemy` と同じ Interchange の骨入りの取り込み（`ensure_skeletal_pipeline`）で `SkeletalMesh`・`AnimSequence` にするのが第一案。ABP の状態機械は C++ の `UAnimInstance` で持つ（07 記録の `UWasamiEnemyAnimInstance` が C++ の状態と Proxy で本家の木を持つ手本）か、`UPoseableMeshComponent` で `AnimSequence` を自分で標本化して混ぜる。1 コミットに収まらなければ 8b1（取り込み）・8b2（アクタ）に分ける。
+ステップ 8b1（ガレージリフトの取り込み）を進める（上の計画に書いた手順）。終わったら 8b2（アクタ）。
 
 ## 決定事項
 
