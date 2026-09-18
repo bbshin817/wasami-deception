@@ -177,6 +177,14 @@
 
 ## Python（UE 5.8 の API の罠）
 
+### ログが毎フレームの `LogPython: Error: … in tick` で埋まる（`module 'unreal' has no attribute 'unregister_slate_post_tick_handle'`）
+
+- 症状: リモート実行の `-c` で登録した tick の関数が、自分を外すところで落ち続け、毎フレーム同じトレースバックを出す（2026-09-19 は 03:43 から 1 時間余りで 7 万行。外した後の処理も走らない）。
+- 原因: 外す関数の名前の誤り。正しくは `unreal.unregister_slate_post_tick_callback(handle)`（登録は `register_slate_post_tick_callback`）。
+- 対処: 残った関数をリモート実行で探して外す: `gc.get_objects()` から `__name__ == 'tick'`・`__code__.co_filename == '<string>'` の関数を拾い、閉包（`__closure__`）の中のハンドル（`_DelegateHandle`）を `unregister_slate_post_tick_callback` に渡す。
+- 確かめ方: `Saved/Logs/wasami_deception.log` の行数が数秒で増えなくなる。
+- 出典: 項目 7 のステップ 5b（2026-09-19。読み込み画面の紋章の確かめで残ったもの）。
+
 ### `MaterialEditingLibrary.delete_all_material_expressions` が式を半分しか消さない
 
 - 症状: 式を消して組み直したマスターに、出力につながらない式の残骸が残ってコンパイルされる（2026-09-17 に 8 つのマスターで見つけた。絵は変わっていなかった）。

@@ -1,6 +1,6 @@
 """Dark Deception's tablet: the plate the player holds (mesh, materials, textures), the screen's UI textures and font,
 the two woosh sounds, and the minimap (the level's map plane, the render target the player's scene capture draws into,
-the materials that show it, and the arrow on the map).
+the materials that show it, the arrow on the map and the sentries' view cones on it).
 
 Everything lands under /Game/DD mirroring the original's own /Game tree, except the master materials we have to write
 ourselves (the originals' graphs are cooked away), which go next to the stage's under /Game/Pipeline/Materials:
@@ -8,6 +8,8 @@ ourselves (the originals' graphs are cooked away), which go next to the stage's 
   M_DD_MapScreen  M_NewMap — the capture's render target on the tablet's screen (a User Interface material)
   M_DD_Powers     MM_Powers — a power's icon in colour over the grey one, clockwise from 12 o'clock by `Percent`
   M_DD_Arrow      M_Arrow — the map's arrow (BP_ArrowPointer's plane), a pulse of its `Color` cut out by T_Arrow
+  M_DD_MapSearch  map_enemy_search_Mat — a view cone's fan on the map (BP_06_Miniboss_viewcone's Plane)
+  M_DD_DotCircle  0_DotCircle_Mat — the dot at a view cone's tip on the map (its Plane1)
 
 Sources: pak_reference (UE 4.21) for the tablet and its UI, pak_reference_2 (UE 4.24) for the hospital's map images
 and the icons of the four powers the older tablet does not show (Telepathy, Primal Fear, Telekinesis, Vanish).
@@ -25,6 +27,8 @@ MAP_PLANE_MASTER = "/Game/Pipeline/Materials/M_DD_MapPlane"
 MAP_SCREEN_MASTER = "/Game/Pipeline/Materials/M_DD_MapScreen"
 POWERS_MASTER = "/Game/Pipeline/Materials/M_DD_Powers"
 ARROW_MASTER = "/Game/Pipeline/Materials/M_DD_Arrow"
+SEARCH_MASTER = "/Game/Pipeline/Materials/M_DD_MapSearch"
+DOT_MASTER = "/Game/Pipeline/Materials/M_DD_DotCircle"
 
 # The original's own paths, under /Game/DD.
 MESH = "Meshes/Player/Tablet/tablet_new_pCube2"
@@ -63,6 +67,8 @@ TEXTURES = (
     (2, "UI/Minimap/T_06_Zone2_02"),       # Zone 2's upper floor (BP_MapTexture_MultiFloor's Map)
     # The map's arrow (M_Arrow's texture).
     (2, "Materials/Special/T_Arrow"),
+    # A view cone's fan on the map (map_enemy_search_Mat's texture: white, the fan in its alpha).
+    (2, "Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search"),
 )
 
 # The tablet's two material slots: (the original's material, its albedo). Normal and packed are shared.
@@ -98,6 +104,13 @@ POWER_ICONS = "UI/RingAltar_UI/Textures/"
 ARROW = "Materials/Special/M_Arrow"
 ARROW_INSTANCE = "Materials/Special/M_Arrow_Inst"
 ARROW_TEXTURE = "Materials/Special/T_Arrow"
+# The sentries' view cones on the map: the fan and the dot, both unlit translucent Materials in the original (their graphs
+# cooked away), as instances of our estimates.
+SEARCH = "Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat"
+SEARCH_TEXTURE = "Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search"
+DOT = "ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat"
+# Where the view cone marks' masks are cut (theirs are the originals' opacities, which fade out to the edges).
+VIEWCONE_CLIP = 0.1
 
 
 def _tools():
@@ -290,6 +303,50 @@ def make_arrow_materials():
     return asset(ARROW_INSTANCE)
 
 
+def _build_search(mat):
+    """map_enemy_search_Mat, read from its compiled base pass (Tools/dd/cooked_shaders.py
+    "Miniboss/Tex/map_enemy_search_Mat." --show 5): unlit and translucent, its emissive grey and its opacity are both
+    0.5 × sqrt(map_enemy_search's alpha) × `Opacity` (the texture's RGB is white; its alpha is the fan, 0.85 from the tip
+    to the middle, fading out to the far edge). The minimap's capture reads SCS_BaseColor, which an unlit or translucent
+    material does not write, so ours is lit and masked: that value as the base colour, and as the mask cut at
+    VIEWCONE_CLIP (the fan's alpha under 0.04; the fade shows as the base colour darkening)."""
+    mat.set_editor_property("opacity_mask_clip_value", VIEWCONE_CLIP)
+    g = dd_stage._Graph(mat, checked=True)
+    tex = g.node(unreal.MaterialExpressionTextureSample, -900, 0)
+    tex.set_editor_property("texture", unreal.load_asset(asset(SEARCH_TEXTURE)))
+    root = g.power(tex, "A", dd_assets.constant(g, 0.5, -900, 250), "", -650, 50)
+    scalars, _ = dd_assets.parameter_defaults(SEARCH, 2)
+    opacity = g.multiply(root, "", g.scalar("Opacity", scalars["Opacity"], -650, 250), "", -450, 100)
+    value = g.multiply(opacity, "", dd_assets.constant(g, 0.5, -450, 250), "", -250, 100)
+    g.out(value, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    g.out(value, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+
+
+def _build_dot(mat):
+    """0_DotCircle_Mat (M5VFXVOL2), read from its compiled base pass (Tools/dd/cooked_shaders.py
+    "Master/0_DotCircle_Mat." --show 13): unlit and translucent, its emissive grey and its opacity are both
+    RadialGradientExponential with the function's defaults (radius 0.5, density 2.333), a dot fading out to the plane's
+    edge. Lit and masked for the capture as the fan: the gradient as the base colour and the mask cut at VIEWCONE_CLIP."""
+    mat.set_editor_property("opacity_mask_clip_value", VIEWCONE_CLIP)
+    g = dd_stage._Graph(mat, checked=True)
+    dot = dd_assets.radial_gradient(g, None, None, -600, 0)
+    g.out(dot, "RadialGradientExponential", unreal.MaterialProperty.MP_BASE_COLOR)
+    g.out(dot, "RadialGradientExponential", unreal.MaterialProperty.MP_OPACITY_MASK)
+
+
+def make_viewcone_materials():
+    """M_DD_MapSearch and M_DD_DotCircle (masked, lit), and map_enemy_search_Mat (with the original's Opacity default)
+    and 0_DotCircle_Mat as instances of them at the originals' paths, which AWasamiViewcone loads. Returns the two
+    instances' paths."""
+    masked = {"blend_mode": unreal.BlendMode.BLEND_MASKED}
+    search = dd_assets.material(SEARCH_MASTER, _build_search, **masked)
+    dot = dd_assets.material(DOT_MASTER, _build_dot, **masked)
+    scalars, _ = dd_assets.parameter_defaults(SEARCH, 2)
+    dd_assets.material_instance(asset(SEARCH), search, scalars=scalars)
+    dd_assets.material_instance(asset(DOT), dot)
+    return [asset(SEARCH), asset(DOT)]
+
+
 def make_minimap_materials():
     """The three masters and the instances the level and the screen use."""
     ensure_render_target()
@@ -325,6 +382,7 @@ def import_all():
     result["sounds"] = len(import_sounds())
     result["minimap"] = len(make_minimap_materials())
     result["arrow"] = 1 if make_arrow_materials() else 0
+    result["viewcone"] = len(make_viewcone_materials())
     for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT):
         EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

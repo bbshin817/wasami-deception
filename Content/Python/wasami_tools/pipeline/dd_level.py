@@ -110,6 +110,13 @@ VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unre
 # (Config/DefaultEngine.ini's RecastNavMesh and NavigationSystemV1, as the original's).
 NAV_VOLUME_CLASSES = ("NavMeshBoundsVolume", "NavModifierVolume")
 NAV_FOLDER = "Hospital/Navigation"
+# Zone 2's sentries (BP_06_ReaperNurse_Sentry → AWasamiEnemySentry): the nurses up high in the miniboss's corridor, each
+# with its own CanSpawn and Offset (when its view cone first looks) and the place it jumps down to (its Jump Down Spot's,
+# relative to the capsule, from the level export). Initial Yaw is the construction script's, which nothing reads.
+SENTRY_CLASS = "BP_06_ReaperNurse_Sentry_C"
+SENTRY_PROPS = {"CanSpawn": "can_spawn", "Offset": "offset"}
+SENTRY_SKIPPED_PROPS = ("Initial Yaw", "SpawnCollisionHandlingMethod")
+ENEMY_FOLDER = "Hospital/Gameplay/Enemies"
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
 FLOW_FOLDER = "Hospital/Gameplay/Flow"
@@ -481,14 +488,32 @@ def level_file(zone):
     return os.path.join(paths.DD_PAK2, "_levels", zone["map"] + ".full.json")
 
 
+def _level_props(zone, path, level):
+    """The props of the zone's level export object <map>.PersistentLevel.<path> ({} when it has none). level: the export
+    by path, or {} to have it read (level_file)."""
+    if not level:
+        with open(level_file(zone), encoding="utf-8") as f:
+            level.update({e["path"]: e for e in json.load(f)})
+    return level.get("%s.PersistentLevel.%s" % (zone["map"], path), {}).get("props", {})
+
+
+def set_sentry(actor, zone, a, level):
+    """A sentry placed from the original's (a: its stage entry): its own values (SENTRY_PROPS) and its Jump Down Spot's
+    relative location. Returns the names of its own values that are not written."""
+    for key, name in SENTRY_PROPS.items():
+        if key in a["props"]:
+            actor.set_editor_property(name, a["props"][key])
+    spot = _level_props(zone, a["name"] + ".Jump Down Spot", level).get("RelativeLocation")
+    if spot is not None:
+        actor.get_editor_property("jump_down_spot").set_editor_property("relative_location", _vec(spot))
+    return sorted(set(a["props"]) - set(SENTRY_PROPS) - set(SENTRY_SKIPPED_PROPS))
+
+
 def set_emitter(actor, zone, name, level):
     """An Emitter placed from the original's of that name, set up as its ParticleSystemComponent is: bAutoActivate and
     the template (imported under /Game/DD). level: the zone's level export by path (level_file), or {} to have it read.
     Returns the template's asset path when it is not imported yet, else None."""
-    if not level:
-        with open(level_file(zone), encoding="utf-8") as f:
-            level.update({e["path"]: e for e in json.load(f)})
-    props = level.get("%s.PersistentLevel.%s.ParticleSystemComponent0" % (zone["map"], name), {}).get("props", {})
+    props = _level_props(zone, name + ".ParticleSystemComponent0", level)
     psc = actor.get_editor_property("particle_system_component")
     psc.set_editor_property("auto_activate", bool(props.get("bAutoActivate", True)))
     template = props.get("Template")
@@ -503,15 +528,15 @@ def set_emitter(actor, zone, name, level):
 
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
-    the flow names, the zone barriers, the zone shard checkers, the lifts and the garage lifts, each where the original
-    has it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
+    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts and the sentries, each where
+    the original has it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
     placed = []
     level = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
-                                                 TARGET_POINT_CLASS)
+                                                 TARGET_POINT_CLASS, SENTRY_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and not doors and not emitter):
             continue
@@ -569,6 +594,13 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["garageLifts"] += 1
+        elif a["class"] == SENTRY_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiEnemySentry, _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            unwritten = set_sentry(actor, zone, a, level)
+            if unwritten:
+                failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
+            counts["sentries"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -585,7 +617,8 @@ def _flow(eas, stage, zone, counts, failures):
             counts["navVolumes" if a["class"] in NAV_VOLUME_CLASSES else "volumes"] += 1
         actor.set_actor_scale3d(_vec(world["scale"]))
         lift = a["class"] in LIFT_CLASSES or a["class"] in GARAGE_LIFT_CLASSES
-        folder = LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES else FLOW_FOLDER
+        folder = (LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES
+                  else ENEMY_FOLDER if a["class"] == SENTRY_CLASS else FLOW_FOLDER)
         _tag(actor, a["name"], folder, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
     by_source = {}
@@ -603,7 +636,7 @@ def _flow(eas, stage, zone, counts, failures):
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers, lifts and garage lifts in again (and takes out the barrier lights an earlier build placed on their own), leaving the
+    checkers, lifts, garage lifts and sentries in again (and takes out the barrier lights an earlier build placed on their own), leaving the
     rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts
     and the barriers' lights are movable), and saves the level."""
     stage = paths.load_dd_stage()
@@ -616,7 +649,7 @@ def place_flow(zone="Zone1", map_path=""):
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
-              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "attached": 0}
+              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -640,7 +673,7 @@ def build(zone="Zone1", map_path=""):
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "lifts", "garageLifts", "attached")}
+                             "shardCheckers", "lifts", "garageLifts", "sentries", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

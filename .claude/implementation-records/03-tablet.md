@@ -1,5 +1,5 @@
 ---
-title: タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印）
+title: タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印と視界コーンの印）
 sources:
   - Source/wasami_deception/WasamiTabletWidget.h
   - Source/wasami_deception/WasamiTabletWidget.cpp
@@ -15,10 +15,10 @@ sources:
 updated: 2026-09-19
 ---
 
-# タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印）
+# タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印と視界コーンの印）
 
 ## 役割
-本家の手持ちタブレット（`pak_reference` の `UI/Tablet/UMG_Tablet`）の画面と、それが使う素材。パワーの枠だけは、6 種のパワーを持つ最新版の `UMG_TabletPowers`（`pak_reference_2`）に倣う（何を出すかを決めるのは 04 記録のコンポーネント）。板そのものの出し入れとコンポーネントの構成はプレイヤー側（02 記録）にあり、ここは **画面の中身**（`UWasamiTabletWidget`）と **素材を原作データから作る仕組み**（`dd_tablet.py`）、**ミニマップの仕掛け**（Zone 2 の階ごとの地図: 本家の `BP_MapTexture_MultiFloor`・`BP_MapArea`。`AWasamiMapTextureMultiFloor`・`AWasamiMapArea`）、地図に写る **矢印**（本家の `BP_ArrowPointer`。`AWasamiArrowPointer`）を受け持つ。
+本家の手持ちタブレット（`pak_reference` の `UI/Tablet/UMG_Tablet`）の画面と、それが使う素材。パワーの枠だけは、6 種のパワーを持つ最新版の `UMG_TabletPowers`（`pak_reference_2`）に倣う（何を出すかを決めるのは 04 記録のコンポーネント）。板そのものの出し入れとコンポーネントの構成はプレイヤー側（02 記録）にあり、ここは **画面の中身**（`UWasamiTabletWidget`）と **素材を原作データから作る仕組み**（`dd_tablet.py`）、**ミニマップの仕掛け**（Zone 2 の階ごとの地図: 本家の `BP_MapTexture_MultiFloor`・`BP_MapArea`。`AWasamiMapTextureMultiFloor`・`AWasamiMapArea`）、地図に写る **矢印**（本家の `BP_ArrowPointer`。`AWasamiArrowPointer`）を受け持つ。地図に写る見張りの視界コーンの扇と点は、アクタが 07 記録（`AWasamiViewcone`）、材質がここ（`make_viewcone_materials`）。
 
 ## 公開インターフェース
 
@@ -56,7 +56,7 @@ updated: 2026-09-19
 
 ### `dd_tablet.py`（`WasamiDDTools.import_dd_tablet` から呼ぶ）
 - `import_all()` … 下の「作るアセット」を全部作り、`/Game/DD` と `/Game/Pipeline` を保存する。戻り値は種類ごとの数。
-- 部分ごとに `import_textures()` / `import_mesh()` / `make_body_materials()` / `import_font()` / `import_sounds()` / `ensure_render_target()` / `make_minimap_materials()` / `make_arrow_materials()`。
+- 部分ごとに `import_textures()` / `import_mesh()` / `make_body_materials()` / `import_font()` / `import_sounds()` / `ensure_render_target()` / `make_minimap_materials()` / `make_arrow_materials()` / `make_viewcone_materials()`。
 - `asset(rel)` … 原作の `/Game/<rel>` を `/Game/DD/<rel>` に読み替える。テクスチャは `dd_assets.texture`（原作の sRGB・圧縮・LOD グループを `_textures.json` から入れる）、自前のマスターは `dd_assets.material` で作る（01 記録）。
 
 ## 内部構造と処理の流れ
@@ -121,23 +121,26 @@ updated: 2026-09-19
 - `M_DD_MapPlane`: `Texture` パラメータをそのままベースカラーに出す。**Unlit にしない**（キャプチャの `SCS_BaseColor` は GBuffer のベースカラーを読むので、Unlit だと何も写らない）。
 - `M_DD_MapScreen`: マテリアルドメイン User Interface、`Texture`（Linear Color サンプラ）を Final Color に、Opacity は定数 1（キャプチャの α は当てにならない）。
 - `M_DD_Arrow`（本家の `M_Arrow`。焼き込みのベースパス〈`python Tools/dd/cooked_shaders.py "Materials/Special/M_Arrow." --show 23`〉を読んだ式）: Masked（クリップは既定の 0.3333。シェーダーの `-0.3333` と同じ）。ベースカラーとエミッシブ = `Lerp(Color + 0.6, Color, sin(2π Time))`（`Sine` の周期 1。1 s ごとに色と白っぽい色の間を脈打つ。ベースカラーは 0〜1 に丸まる）、オパシティマスク = `T_Arrow` の R（パラメータでない `TextureSample`。本家も同じ）。スペキュラは既定の 0.5。キャプチャはベースカラーを読むので、地図にはこの色が写る。
+- `M_DD_MapSearch`（本家の `map_enemy_search_Mat`。焼き込みのベースパス〈`python Tools/dd/cooked_shaders.py "Miniboss/Tex/map_enemy_search_Mat." --show 5`〉を読んだ式）: 本家は Unlit・Translucent で、エミッシブの灰とオパシティがどちらも `0.5 × sqrt(map_enemy_search の α) × Opacity`（テクスチャの RGB は白、α が扇〈頂点から中ほどまで 0.85、遠い端へ薄れる〉）。**キャプチャの `SCS_BaseColor` は Unlit も Translucent も写さないので、本作は Default Lit・Masked**: その値をベースカラーとオパシティマスクに出し、クリップは 0.1（`VIEWCONE_CLIP`。α が 0.04 を切る遠い端で切れる。薄れはベースカラーが暗くなることで出る）。`Opacity`（既定 1）はコーンが点く・消えるときに 0〜1 で動く（07 記録）。
+- `M_DD_DotCircle`（本家の `0_DotCircle_Mat`。M5VFXVOL2 の材質。`--show 13`）: 本家は Unlit・Translucent で、エミッシブとオパシティがどちらも関数の既定（半径 0.5・密度 2.333）の `RadialGradientExponential`（板の縁へ薄れる点）。扇と同じく Default Lit・Masked にし、その値をベースカラーとオパシティマスクへ、クリップ 0.1。
 - `M_DD_Powers`: マテリアルドメイン User Interface・Translucent。UV を中心基準にし、`atan2(u, −v)` を 2π で割って 1 を足し `Frac` で 0〜1 の「12 時からの時計回りの角度」にし、`ceil(saturate(Percent − 角度))` のマスクで `EnabledPower`（灰色のアイコン）と `DisabledPower`（色つきのアイコン）を混ぜる。`Percent` 1 で全面が色つき。
 
 ## 作るアセット
-`WasamiDDTools.import_dd_tablet` が `/Game/DD`（原作の `/Game` の木をそのまま）に 46 個。
+`WasamiDDTools.import_dd_tablet` が `/Game/DD`（原作の `/Game` の木をそのまま）に 49 個。
 
 | 種類 | パス | 数・設定 |
 | --- | --- | --- |
-| テクスチャ | `Textures/Characters/Player/Tablet/Tablet_{Front_D,Back_D,N,S}`、`UI/Tablet/tablet_screen_bg`・`tablet_map_{player,shard,ring,bonus_shard,arrow}`、`UI/Menu/Streaks/T_Vignette`、`UI/RingAltar_UI/Textures/ring_altar_power_{teleport,speed_boost}_icon{,_inactive}`（`pak_reference`）と `ring_altar_power_{telepathy,primal,telekinesis,vanish}_icon{,_inactive}`（`pak_reference_2`。両版で PNG も設定も同じ）、`UI/Minimap/T_06_Zone01`・`T_06_Zone2`・`T_06_Zone2_02`（Zone 2 の上の階）、`Materials/Special/T_Arrow`（`pak_reference_2`。1024 × 1024、sRGB） | 27。sRGB・圧縮・LOD グループは原作の `_textures.json` のまま（アイコンは sRGB・既定の圧縮・`TEXTUREGROUP_UI`、105 × 104） |
+| テクスチャ | `Textures/Characters/Player/Tablet/Tablet_{Front_D,Back_D,N,S}`、`UI/Tablet/tablet_screen_bg`・`tablet_map_{player,shard,ring,bonus_shard,arrow}`、`UI/Menu/Streaks/T_Vignette`、`UI/RingAltar_UI/Textures/ring_altar_power_{teleport,speed_boost}_icon{,_inactive}`（`pak_reference`）と `ring_altar_power_{telepathy,primal,telekinesis,vanish}_icon{,_inactive}`（`pak_reference_2`。両版で PNG も設定も同じ）、`UI/Minimap/T_06_Zone01`・`T_06_Zone2`・`T_06_Zone2_02`（Zone 2 の上の階）、`Materials/Special/T_Arrow`（`pak_reference_2`。1024 × 1024、sRGB）、`Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search`（`pak_reference_2`。1024 × 1024、sRGB・`TEXTUREGROUP_UI`） | 28。sRGB・圧縮・LOD グループは原作の `_textures.json` のまま（アイコンは sRGB・既定の圧縮・`TEXTUREGROUP_UI`、105 × 104） |
 | メッシュ | `Meshes/Player/Tablet/tablet_new_pCube2` | 1（Nanite なし、スロット `phong2`・`phong3`、ライトマップは原作の 64・UV 2） |
 | マテリアル | `Materials/Player/Tablet/M_P_TabletBack`・`M_P_TabletFront` | 2（`M_DD_Substance` のインスタンス、Albedo / Normal / Packed） |
 | フォント | `UI/Fonts/helvetica-neue-bold`（FontFace）・`helvetica-neue-bold_Font`（Font、Runtime） | 2 |
 | 音 | `Audio/SharedGameplay/05_Tablet_Woosh_v1_1`・`_v2_1`、`Audio/UI/UI_Select_V3`（Volume 0.7。値は SoundWave の書き出しから `dd_assets.sound` が入れる） | 3 |
 | ミニマップ | `UI/Minimap/T_NewMap`（レンダーターゲット 512 × 512 RGBA8）、`UI/Minimap/MM_Map_06_Zone01`・`MM_Map_06_Zone2` | 3 |
 | 地図の矢印 | `Materials/Special/M_Arrow`（`M_DD_Arrow` のインスタンス、`Color` は本家の既定 (0.48146, 0, 1, 1)）・`M_Arrow_Inst`（`M_Arrow` のインスタンス、`Color` (0.361042, 0, 1, 1)。本家の `BasePropertyOverrides` は値だけで上書きの印が無いので、上書きしない） | 2 |
+| 視界コーンの地図の印 | `Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat`（`M_DD_MapSearch` のインスタンス、`Opacity` は本家の既定 1）・`ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat`（`M_DD_DotCircle` のインスタンス）。本家はどちらもマテリアル（インスタンスでない）だが、グラフが消えているので矢印と同じく推定のマスターのインスタンスを本家のパスに置く | 2 |
 | パワーのアイコン | `Materials/MasterMaterials/MM_Powers_SpeedBoost`・`MM_Powers_Inst_Teleport`・`MM_Powers_Inst_Telepathy`・`MM_Powers_PrimalFear`・`MM_Powers_Inst_Telekinesis`・`MM_Powers_Vanish`（`M_DD_Powers` のインスタンス。`DisabledPower` = 色つき、`EnabledPower` = `_inactive`、`Percent` 1.0。名前は最新版のインスタンスのまま） | 6 |
 
-自前のマスターは `/Game/Pipeline/Materials/M_DD_MapPlane`・`M_DD_MapScreen`・`M_DD_Powers`・`M_DD_Arrow`（4）。どれも呼び直すと作り直す（既にあるものは読み込んで親とパラメータを入れ直す）。
+自前のマスターは `/Game/Pipeline/Materials/M_DD_MapPlane`・`M_DD_MapScreen`・`M_DD_Powers`・`M_DD_Arrow`・`M_DD_MapSearch`・`M_DD_DotCircle`（6）。どれも呼び直すと作り直す（既にあるものは読み込んで親とパラメータを入れ直す）。
 
 ## 原作データの根拠
 - ウィジェットの配置・フォント・色: `pak_reference/_assets/DDeception/Content/UI/Tablet/UMG_Tablet.json`（`CanvasPanel_0`/`_1`/`_762`、`Overlay_102` のパディング 34、`Image_25`・`Image_41`・`Image_212`・`Button_0`・`TextBlock_0`・`TextBlock_107`・`ShardCount`）と `UMG_TabletPowers.json`（`CanvasPanel_2`/`_3`/`_4`、`Skill1`・`Skill2`）。
@@ -147,6 +150,7 @@ updated: 2026-09-19
 - ミニマップ: `BP_DD_PlayerCharacter` の `SceneCaptureComponent2D`（正射影・`OrthoWidth` 4000・`T_NewMap`・`SCS_BaseColor`・`PRM_UseShowOnlyList`）と `Show Only`（@27345）、`pak_reference_2/_levels/06_Hospital_Zone_01.full.json` の `BP_MapTexture_2`（`/Engine/BasicShapes/Plane`、位置 (30, −10775, −500)、スケール 365.014984、マテリアル `MM_Map_06_Zone01`）。
 - 階ごとの地図: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/MinimapMultifloor/BP_MapTexture_MultiFloor.txt`（`ReceiveBeginPlay` @929、`Check Map` @1088）・`BP_MapArea.txt`（`Get Shards`）、`_assets/…/MinimapMultifloor/BP_MapArea.json`（`Box_GEN_VARIABLE` の当たり、SCS の根が `Box`）・`BP_MapTexture_MultiFloor.json`（親 `BP_MapTexture`）、`_assets/…/Blueprints/Main/BP_MapTexture.json`（`StaticMeshActor` の子）、`_levels/06_Hospital_Zone_02.full.json` の `BP_MapTexture_MultiFloor_2`（`Map`・`StaticMeshComponent0`）と `BP_MapArea_2`・`BP_MapArea2` の `Box`、`_assets/…/UI/Minimap/MM_Map_Parent.json`（`Texture` の既定は `T_08_Map_01_1`）。
 - 地図の矢印: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_ArrowPointer.txt`（`ReceiveBeginPlay` @10、`Find Object` @2435、`Set Rotation` @1474、`Smooth Rotation` @1722、`Change Color` @2763、`FindClosestShard`）と `_assets/…/BP_ArrowPointer.json`（`Plane_GEN_VARIABLE`、`Shards?` 真）、`Blueprints/Macros/MoreporkFunctions.txt` の `FindLookAtRotation_(YawOnly)`、`BP_DD_PlayerCharacter.json` の `BP_ArrowPointer_GEN_VARIABLE`（`ChildActorComponent`）と `SCS_Node_8`（親 `CharacterMesh0`）、同 BP の `Show Only`（@32211）、`_materials.json` の `M_Arrow`・`M_Arrow_Inst`、`_assets/…/Materials/Special/M_Arrow.json`（`Color` の既定、`EmissiveColor` が `Lerp`）。
+- 視界コーンの地図の印: `pak_reference_2/_assets/DDeception/Content/Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat.json`（Unlit・Translucent、`Opacity` の既定 1、`TextureSample` の `map_enemy_search`）・`map_enemy_search.json`（1024 × 1024、`TEXTUREGROUP_UI`）、`_assets/…/ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat.json`（Unlit・Translucent、`RadialGradientExponential`）、両者の焼き込みのシェーダー（上の「マテリアル」）。
 - 目的の文字列: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt` の `Current Objective`（@2293 の `COLLECT ALL SHARDS` ほか）。
 
 ## 依存関係
@@ -166,6 +170,7 @@ updated: 2026-09-19
 - **枠のアイコンの位置**（2026-09-18、ユーザーの指摘「タブレットの特殊効果ロゴが円からやや下より」）: 灰色の輪の画素に円を当てはめ、両方の枠が Speed Boost のときのアイコンの赤の外接矩形の中心との縦のずれを輪の半径 r で割った。最新版の実機（`observations/original/ref-zone1-tablet-full.png`）+0.089 r、直す前（画面の角を中心 − (357, 432) と取っていた。枠が 2・12 px ずれていた。`observations/ours/note/02-tablet.jpg`）+0.291 r、直した後（PIE の (0, −2900)・ヨー 90、`observations/ours/pie-tablet-sockets-fixed.png`）+0.105 r。横のずれは 3 つとも +0.14 r 前後（アイコンの形による）。
 - **地図の矢印**（2026-09-18、テスト `Wasami.ArrowPointer.Actor` と PIE）: テストで、子のアクタの位置と拡縮・板の値・Show Only に入ること、チェッカーの箱の外で隠れ、箱の中の最も近いシャードを指して見せ（上の階のシャードは箱の外で数えない）、的の向き（−X の的でヨー ±180）と大きさ（300 cm で 6.7）に 1 s で落ち着き、次に近いものへ移り、100 個で隠れ 99 個で見え、0 個で見えたまま、`Shards?` でなければ的の有無で出し分け、`Change Color` で `Color` が入ることを確かめた。PIE（Zone 1 の (0, −2900)、シャード 30 を残す）で、地図のプレイヤーの印の周りに薄紫の弧が出て、向きを変えても最も近いシャードの側を指し続けた。全回収の後は黄色（`Color` (1, 0.8002, 0)）の小さな弧になり、矢印のヨー −76.3558° が駐車場の箱 `06_CutsceneStart` への向きと一致した（`Intermediate/Overnight/arrow_grid.png`）。
 - **階ごとの地図**（2026-09-19、テスト `Wasami.MapMultiFloor.Actor` と PIE）: テストで、箱の当たりと大きさ、`Get Shards` がその箱のシャードだけを返すこと、板が Movable で材質が板の材質から作り直されること、最初の `Check Map`（0.9 s）までは印がすべて見え、その後はいる箱の絵と印だけになり、上の階へ移ると次の `Check Map` で絵（`T_06_Zone2_02`）と印が替わり、どの箱の外でもそのまま残り、下りると戻ることを確かめた（56 本すべて通過）。PIE（Zone 2）で、下の階 (6304, −2740) では `T_06_Zone2` と下の階の印 204 だけ、上の階の渡り廊下 (5400, 3593, 640) では `T_06_Zone2_02` と上の階の印 138 だけが出て、タブレットの地図の通路と印が重なり、下りると戻った（`Intermediate/Overnight/zone2_map_grid.png`）。
+- **視界コーンの地図の印**（2026-09-19、PIE の Zone 2 のミニボスの廊下）: プレイヤーの `MinimapCapture` の `ShowOnlyActors` に見張りのコーン 5 つ（見つけて消えた 1 つを除く）が入り、`capture_scene` の後の `T_NewMap` に、点いているコーン 3 つの灰色の扇（頂点に点、遠い端へ暗くなる）が地図の通路の線の上に写った。消えているコーンは写らない。
 - ミニマップ: `T_NewMap` を書き出して確認。`OrthoWidth` 4000 と 10000 で写る範囲が変わる（地図の線は輝度 38 の灰、背景は黒、α は 0）。
 - 歩いても画面上で揺れないこと: 歩きのカメラシェイクを掛けた PIE で 4 回標本を取り、視点（`PlayerCameraManager` の POV）は Z 186.65 → 187.15 → 185.74 → 183.56・ピッチ 0.19 → 0.03 → −0.19 → 0.16 と揺れているのに、**板の視点空間での位置は 4 回とも (35.3989, −21.9944, −4.3216) で不動**だった。同じときカメラコンポーネントは視点空間で Z −1.50 → −2.00 → −0.59 → +1.59 と動いており、板をカメラの子にしたままだとこのぶん逆に揺れていた（02 記録の `PlaceTablet`）。
 - 画面が毎フレーム描き直されることは確かめていない（エディタが背面だとビューポートが描かれず、`UWidgetComponent` が描き直さない。`.claude/guides/verification.md`）。出し入れの手触りと音も同じ理由で未確認。
@@ -181,9 +186,11 @@ updated: 2026-09-19
 - 階ごとの地図の板の材質は、本家は `MM_Map_Parent` から作り直す（その `Texture` の既定は別の章の地図 `T_08_Map_01_1` で、最初の `Check Map` までの 0.9 s はそれが写る）。本作は板の今の材質（`MM_Map_06_Zone2`。下の階の地図）から作る。
 - 地図の板は UE5 の `bVisibleInSceneCaptureOnly` を立てて本編の描画と Lumen から外している（原作は床下に置いてベイク済みライティングで済ませていた）。
 - シーンキャプチャは**タブレットを上げている間だけ**描く（`bCaptureEveryFrame`）。原作は常に描いているが、下ろしている間は画面が見えないので絵は変わらない（`.claude/guides/performance.md`）。
+- 視界コーンの地図の印の材質は、本家の Unlit・Translucent を Default Lit・Masked に替えた推定（上の「マテリアル」）。扇の縁は切り抜きで硬く、半透明の重なりは出ない（作業一覧の項目 28 の後回しの一覧）。本家の `SCS_BaseColor` のキャプチャに半透明がどう写っていたかは確かめていない。
 - `UWidgetComponent` は `bTickWhenOffscreen` が false のままなので、画面がビューポートに映っていない間は描き直さない（下ろしている間は描画も止まる）。エディタを背面にして PIE を撮ると、この理由で地図が止まったままになる。
 
 ## 変更履歴
+- 2026-09-19: 見張りの視界コーンの地図の印の材質（`map_enemy_search` と推定の `M_DD_MapSearch`・`M_DD_DotCircle`、本家のパスの `map_enemy_search_Mat`・`0_DotCircle_Mat`、`make_viewcone_materials`）を足した（作業一覧の項目 7 のステップ 5b）
 - 2026-09-19: Zone 2 の階ごとの地図（`AWasamiMapArea`・`AWasamiMapTextureMultiFloor`。本家の `BP_MapArea`・`BP_MapTexture_MultiFloor`）と `T_06_Zone2_02` の取り込みを足した。テスト `Wasami.MapMultiFloor.Actor`
 - 2026-09-18: 地図の矢印（`AWasamiArrowPointer`。本家の `BP_ArrowPointer`）と、その材質（`T_Arrow`・推定の `M_DD_Arrow`・`M_Arrow`・`M_Arrow_Inst`、`make_arrow_materials`）を足した。テスト `Wasami.ArrowPointer.Actor`
 - 2026-09-18: パワーの枠と「Z」の位置を、背景のキャンバス `CanvasPanel_1`（ルートの中心から (−355, −420)）の角から数えるように直した（それまでは画面の角をルートの中心 − (357, 432) と取っていて、枠が右へ 2・下へ 12 px ずれ、アイコンが輪の下に寄っていた。ユーザーの指摘）

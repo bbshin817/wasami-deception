@@ -109,7 +109,8 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         the emitters asleep, with their particle systems), the zone barriers (WasamiZoneBarrier, with their planes'
         materials), the zone shard checkers (WasamiZoneShardChecker, the tablet's arrow's box over the zone) and Zone 2's
         lifts (WasamiLift, BP_06_Lift_03 / _04, and WasamiCornerLift, BP_06_LiftBase_Corner, with their meshes and box
-        sizes; after import_dd_stage_assets) in again where the original places them, each tagged
+        sizes; after import_dd_stage_assets) and sentries (WasamiEnemySentry, BP_06_ReaperNurse_Sentry, with their
+        CanSpawn, Offset and Jump Down Spot) in again where the original places them, each tagged
         'src:<the original's name>' for the zone's flow and fixed to the ambulance or the spikes it moves with, taking
         out what an earlier call placed, and saves the level. Nothing else changes, and the baked lighting stays valid
         (none of them is in it).
@@ -117,12 +118,13 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         Args:
             zone: 'Zone1' (6 trigger boxes, 9 volumes, 2 navigation volumes, 9 target points, 1 door break, 2 double
                 doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift) or 'Zone2' (8 trigger boxes, 10 volumes, 59
-                navigation volumes, 10 target points, 1 door break, 1 barrier, 1 shard checker, 15 lifts, 2 garage lifts).
+                navigation volumes, 10 target points, 1 door break, 1 barrier, 1 shard checker, 15 lifts, 2 garage lifts,
+                6 sentries).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
             'removed', 'removed_lights', 'triggers', 'volumes', 'navVolumes', 'targetPoints', 'doorBreaks', 'doubleDoors', 'emitters',
-            'zoneBarriers', 'shardCheckers', 'lifts', 'garageLifts', 'attached' and 'failed_settings' (listed in the
+            'zoneBarriers', 'shardCheckers', 'lifts', 'garageLifts', 'sentries', 'attached' and 'failed_settings' (listed in the
             output log).
         """
         return _module("dd_level").place_flow(zone, map_path)

@@ -24,7 +24,7 @@ updated: 2026-09-19
 # 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）
 
 ## 役割
-本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）（作業一覧の項目 4 のステップ 1〜3）と、**判断**（本家のナースの `Make Choice`: 巡回・発見・追跡・見失い。作業一覧の項目 7 のステップ 2）、**06 の追跡型**（Zone 1 の駐車場の `BP_06_ReaperNurse_06_Chase`: 毎ティック追い、トンネルの扉を突く。ステップ 3）、**Zone 2 の迷路の型**（`BP_06_ReaperNurse_Zone2`: プレイヤーと階が違うとリフトへ向かう。ステップ 4）、**見張りと視界コーン**（Zone 2 のミニボスの廊下の `BP_06_ReaperNurse_Sentry` と `BP_06_Miniboss_viewcone(_Nurse)`: 高い所で見張り、コーンに入ると跳び降りて追う。ステップ 5a。レベルに置くのと板の材質はステップ 5b）まで。出現はゾーンの流れ（11 記録）。追跡中の変化・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
+本家のナース（`BP_06_ReaperNurse`）の代わりに Zone 1・2 を巡回し追う敵ワサミ。いまは**素材の取り込み**（ユーザーのモデルを、スケルタルメッシュと役の名前で引けるアニメにする）、**アニメの再生**（`UWasamiEnemyAnimInstance`。本家のナースの ABP の形でクリップを混ぜる）、**敵のアクタ**（`AWasamiEnemy`。本家のナースの部品と気絶。パワーの受け口）（作業一覧の項目 4 のステップ 1〜3）と、**判断**（本家のナースの `Make Choice`: 巡回・発見・追跡・見失い。作業一覧の項目 7 のステップ 2）、**06 の追跡型**（Zone 1 の駐車場の `BP_06_ReaperNurse_06_Chase`: 毎ティック追い、トンネルの扉を突く。ステップ 3）、**Zone 2 の迷路の型**（`BP_06_ReaperNurse_Zone2`: プレイヤーと階が違うとリフトへ向かう。ステップ 4）、**見張りと視界コーン**（Zone 2 のミニボスの廊下の `BP_06_ReaperNurse_Sentry` と `BP_06_Miniboss_viewcone(_Nurse)`: 高い所で見張り、コーンに入ると跳び降りて追う。ステップ 5a・5b）まで。出現はゾーンの流れ（11 記録）。追跡中の変化・捕獲はこの記録に書き足していく。役とアニメの対応の決まりは `.claude/references/enemy-wasami-motions.md`。
 
 ## 公開インターフェース
 - `WasamiDDTools.import_wasami_enemy()`（01 記録）→ `dd_enemy.import_all()`。戻り値 `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 18。
@@ -162,7 +162,7 @@ Zone 2 の `Maze Transition` の `Spawn Nurses` が `NurseSpawn_4`・`_1`・`_2`
 - PIE（2026-09-19、Zone 2 をチェックポイント 9 で開く）: `Maze Transition ` で 3 体が下の階に出て巡回する。プレイヤーを上の階 (7295, −1176) に置くと、3 体とも `IsSameLevelAsPlayer` が偽になって `lift_04_61` へ歩き、台に乗って上がり（Z 312 → 650）、上の階で見つけて 800 で追い、プレイヤーの手前で止まった（約 30 s）。プレイヤーを下の階 (2978, 70) に移すと、上の 3 体が同じ `lift_04_61` の所から下りて約 10 s でプレイヤーの手前へ来た。
 
 ### 見張りと視界コーン（`AWasamiEnemySentry`・`AWasamiViewcone`。本家の `BP_06_ReaperNurse_Sentry`・`BP_06_Miniboss_viewcone(_Nurse)`）
-Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z 約 430〜450）に本家のレベルが置く 6 体。置くのはレベルの組み立て（ステップ 5b）、見始めるのはゾーンの流れの `Activate MiniBoss Enemies`（11 記録）。
+Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z 約 430〜450）に本家のレベルが置く 6 体。置くのはレベルの組み立て（01 記録の `_flow` の見張り: 位置と向き・`CanSpawn`・`Offset`・`Jump Down Spot` の相対位置）、見始めるのはゾーンの流れの `Activate MiniBoss Enemies`（11 記録）。
 - **見張りの BeginPlay は空**（`BeginNurse` を空で上書き）: 判断しない・動かない・`CanSpawn` も見ない（本家の `ReceiveBeginPlay` が親を呼ばない）。待機は `bAggressiveIdle` の `Idle_Alert`。
 - **`Activate`**: 子のコーンの `Offset` に自分の `Offset`（本家のレベルで `ReaperNurse_Idle_Alert3`・`4`・`7` が 10、ほかは 0）を入れ、`Initialize`。
 - **コーンの `Initialize` → `UpdateSight`**: 0.3〜0.5 s の乱数（1 回だけ引く）のループのタイマー。`UpdateSight` はまず `Delay(Offset)`（待つ間に来た呼び出しは捨てる。2 回目からは `Offset` 0 の `Delay` で次のティックだが、ここではすぐ調べる）→ `Offset` = 0 → (1) `PlayerInsideCone` かつ `PlayerInFullView` なら DoOnce で `Player Spotted` を親のアクタ（`GetParentActor`）と持ち主（`GetOwner`。子のアクタは持ち主を持たないので null）に送る → (2) DoOnce で `InitializeFinished` と、`bAutoOn` なら `TurnOn`。見つけて見張りがコーンを消したら (2) は飛ばす。
@@ -171,8 +171,9 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - **`_Nurse`**: `InitializeFinished` で 10 s のループの `Turn`（真偽を反転し、真なら `TurnOff`、偽なら `TurnOn`）。見始めてから 10 s 見て、10 s 消え、点いた 1 s 後にまた見る、を繰り返す。
 - **見張りの `Player Spotted`**（DoOnce）: 実績 `06_NurseAlert` は作らない。`Viewcone` 部品を `DestroyComponent`（コーンのアクタも消える）、`bChasing` 真（以後ずっと。`IsChasing` はこれを返し、ナースの `Seen Player Recently` が偽になっても真）、`GetDirectionUnitVector(自分, JumpDownSpot)` の X・Y × 400 と Z 500 で `LaunchCharacter`（XY・Z とも上書き）、親の `BeginNurse`（ナースの判断が 0.5 s ごとに始まる）。本家はこの後 tick の Gate を開き、ナースの tick（スケートの音。作らない）が動き出す。
 - **`Start Looking`・`Stop Looking`**: `bVarIdle` を偽・真に（本家のナースの変数。ABP の Alert の 2 本目の組が読むが、本作のアニメは Alert 1 本なので読まない）。
-- **地図の印**: コーンの `Scene` の下の `Plane`（エンジンの `Plane`、`map_enemy_search_Mat`。`_Nurse` は (837.8, 0, 0)・拡縮 (17.006, 9.620, 28) でコーンに沿う扇）と `Plane1`（`0_DotCircle_Mat`、(0, 0, 1000)）。`BeginPlay` で隠しを解き（本家の CDO は `bHidden`）、次のティックで `Plane` の `Opacity` を 0 にして `AddLocalOffset(0, 0, 1000)`。両方ともコーンの 1000 上（ピッチ −20 の座標なので水平にも前へずれる）にあり、本家はプレイヤーの地図のキャプチャの `Show Only` が `BP_06_Miniboss_viewcone` を全部足す。本作はコーンにタグ `dd_minimap` を付け、プレイヤーの `RefreshMinimapContents`（02 記録）が拾う。本家は天井の上に置いて本編から見えなくしているが、本作は地図の板と同じく `bVisibleInSceneCaptureOnly`。影なし・当たりなし・ナビに効かない。材質はソフト参照（`/Game/DD/Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat`・`/Game/DD/ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat`）で `BeginPlay` に読む。取り込みはステップ 5b（それまでは読めずに警告が出て、エンジンの既定の材質で描く）。
+- **地図の印**: コーンの `Scene` の下の `Plane`（エンジンの `Plane`、`map_enemy_search_Mat`。`_Nurse` は (837.8, 0, 0)・拡縮 (17.006, 9.620, 28) でコーンに沿う扇）と `Plane1`（`0_DotCircle_Mat`、(0, 0, 1000)）。`BeginPlay` で隠しを解き（本家の CDO は `bHidden`）、次のティックで `Plane` の `Opacity` を 0 にして `AddLocalOffset(0, 0, 1000)`。両方ともコーンの 1000 上（ピッチ −20 の座標なので水平にも前へずれる）にあり、本家はプレイヤーの地図のキャプチャの `Show Only` が `BP_06_Miniboss_viewcone` を全部足す。本作はコーンにタグ `dd_minimap` を付け、プレイヤーの `RefreshMinimapContents`（02 記録）が拾う。本家は天井の上に置いて本編から見えなくしているが、本作は地図の板と同じく `bVisibleInSceneCaptureOnly`。影なし・当たりなし・ナビに効かない。材質はソフト参照（`/Game/DD/Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat`・`/Game/DD/ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat`）で `BeginPlay` に読む。材質は `import_dd_tablet` が作る（03 記録の `make_viewcone_materials`。本家の Unlit・半透明を、キャプチャの `SCS_BaseColor` に写る Default Lit・Masked にした推定）。
 - **見つける前の気絶**: 判断が動いていないので、Primal Fear で State が Stun になると気絶の姿勢のまま 17 s の DoOnce が始まらない（本家も同じ。見つけて判断が始まると 17 s で明ける）。コーンは見続ける。
+- **PIE で確かめたこと**（2026-09-19、Zone 2 をチェックポイント 8〈`Miniboss Transition `〉で）: 6 体が本家の位置の棚の上（床の Z 311〜334）に立ち、コーンは `Offset` 0 の 3 体と 10 の 3 体が 10 s ずつ交互に点く・消える。点いているコーンでも角度の外（`Alert3` から 1029 cm・35° 横）のプレイヤーは見つけない。消えているコーンの中に立ったプレイヤーを、`Alert_5` がコーンが点いた直後に見つけ、コーンを消して跳び（Z 564 まで上がって）`Jump Down Spot` の側へ降り、追ってプレイヤーの 90 cm まで来た（接触の先は項目 9）。6 体の `Jump Down Spot` の下の床はどれも NavMesh の上で、プレイヤーの出発点への道がつながる。地図の印は 03 記録の「確かめたこと」。
 
 ### 取り込み
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
@@ -211,7 +212,7 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 06 の追跡型: `UAudioComponent`・`UGameplayStatics::SpawnEmitterAtLocation`（Cascade）・`PlayWorldCameraShake`、`/Game/DD` の素材 3 つ（08 記録の `import_nurse_door_hit`。ソフト参照で、音は BeginPlay、粒子と揺れは最初の `HitFX` で読む）。出すのは Zone 1 の流れ（11 記録の `SpawnEnemy`）。
 - 敵のアクタ: `ACharacter`・`UCharacterMovementComponent`・`FTimerManager`、`IWasamiEnemyInterface`（04 記録）、`WasamiAssets::Path`。判断はモジュール `AIModule`（`UAIBlueprintHelperLibrary`・`UAIAsyncTaskBlueprintProxy`・既定の `AIController`）・`NavigationSystem`（`UNavigationSystemV1`）と、両ゾーンの NavMesh（01 記録の「ナビゲーション」、設定は 00 記録）。
 - Zone 2 の迷路の型: `AWasamiLift`（12 記録）の位置と `GetMoveLocation()`。出すのは Zone 2 の流れ（11 記録）。
-- 見張りと視界コーン: `UChildActorComponent`、`UKismetSystemLibrary::LineTraceSingle`、`FRichCurve`（`Fade In`）、プレイヤーの地図のキャプチャのタグ `dd_minimap`（02 記録）、`/Game/DD` の材質 2 つ（ステップ 5b で取り込む）。見始めるのは Zone 2 の流れ（11 記録の `Activate MiniBoss Enemies`）。
+- 見張りと視界コーン: `UChildActorComponent`、`UKismetSystemLibrary::LineTraceSingle`、`FRichCurve`（`Fade In`）、プレイヤーの地図のキャプチャのタグ `dd_minimap`（02 記録）、`/Game/DD` の材質 2 つ（03 記録の `make_viewcone_materials`）。見始めるのは Zone 2 の流れ（11 記録の `Activate MiniBoss Enemies`）。
 - 使う側: アニメの再生が取り込んだクリップを名前で読み、持ち主の敵のアクタから値を読む。パワー（04 記録）の Primal Fear（球の重なりの Pawn とインターフェース）・Vanish（タグ `Enemy` とインターフェース）・Telepathy（インターフェース）が敵のアクタに届く。2 つの状態の混ぜ `FWasamiStateBlend` はガレージリフトのアニメ（12 記録）も使う。
 
 ## 既知の制約・注意点
@@ -232,7 +233,6 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 06 の追跡型は毎ティック移動の依頼を出し直す（本家どおり。1 秒に数十回の経路探索）。2 体なので重さは見えない。
 - 06 の追跡型の扉を突く代用 `Chase_Charge`（0.53 s）は本家の針の突き（0.97 s）より短く、次の突きまで約 0.2〜0.7 s 立つ。見た目は大目標 3 で詰める（作業一覧の項目 28）。
 - Zone 2 の迷路のナースは、目当てのリフト（原点に最も近い `lift_04_61`）でなくても、通り道のリフトの台に乗るとそのリフトで上がる（リフトはキャラクターが乗ると上がる。12 記録）。本家も同じ作り。2026-09-19 の PIE では、上の階に置いたプレイヤーへ 3 体のうち 2 体が `lift_04_61` で上がり、1 体はそれより先に上の階にいた。
-- 視界コーンの板の材質（`map_enemy_search_Mat`・`0_DotCircle_Mat`）はまだ取り込んでいない（ステップ 5b）。読めない間は警告が出る（`Actor.Sentry` のテストにも出る）。
 - 視界コーンの `Update Sight` の 2 回目からの `Delay(0)` は本家では次のティックだが、本作はすぐ調べる（1 コマの差）。`BeginPlay` の `Delay(0)` の後の板の持ち上げは次のティックで本家どおり。
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
@@ -251,3 +251,4 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 2026-09-19: Zone 2 の迷路の型 `AWasamiEnemyZone2`（階の判定と、階が違うときの原点に最も近いリフトとその `Move Location`）とテスト `Actor.Zone2` を足した（作業一覧の項目 7 のステップ 4）
 - 2026-09-19: 見張り `AWasamiEnemySentry` と視界コーン `IWasamiViewconeInterface`・`AWasamiViewcone`・`AWasamiViewconeNurse` を足し、`AWasamiEnemy` の `BeginPlay` の中身を `BeginNurse` に出した。テスト `Actor.Sentry` を足し、`Actor.Choice` のリスナーを `TStrongObjectPtr` で持つようにした（全体の実行で 1 回、最初の `CloseBy` を取りこぼした。参照の無い `NewObject` が回収された疑い）（作業一覧の項目 7 のステップ 5a）
 - 2026-09-19: `WasamiViewcone.cpp` の無名名前空間の `MinimapTag`・`OpacityName` を `ViewconeMinimapTag`・`ViewconeOpacityName` に改めた（ユニティビルドで `WasamiPlayerCharacter.cpp`・`WasamiPrimalPower.cpp` の同じ名前とぶつかった。ステップ 5a では未コミットのファイルが塊の外でコンパイルされて表に出ず、コミットの後の最初のビルドで落ちた。症状索引）
+- 2026-09-19: 見張り 6 体をレベルに置き（01 記録の `_flow`）、視界コーンの板の材質を取り込んだ（03 記録）。PIE で見張り・コーンの交互の点滅・見つけて跳び降りて追うことを確かめた（作業一覧の項目 7 のステップ 5b）
