@@ -95,7 +95,9 @@ def main():
         lines.append("**無人モード**（駆動役 Tools/overnight.py が起動。`.claude/guides/autonomy.md` に従う）: ユーザーに質問せず、"
                      "本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて記録の「要確認（ユーザー）」に書く。"
                      "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
-                     "Intermediate/Overnight/status.json を書いて応答を終える。変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わない"
+                     "Intermediate/Overnight/status.json を書いて応答を終える（Discord の反復の報告になる summary・learned・"
+                     "pending〈この反復で新しく出た要確認だけ〉・shots も書く。autonomy.md の「Discord への通知」）。"
+                     "変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わない"
                      "（本家のセーブが遊んで書き換わる・控えから戻す・入れ替えるのはしてよい）。")
     else:
         lines.append("**有人セッション**（`.claude/guides/autonomy.md` の「有人セッション」）: 作業一覧は基本、無人運転が進める"

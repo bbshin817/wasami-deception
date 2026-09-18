@@ -22,8 +22,9 @@ the user forbids it, but the editor is their app too: don't send while they are 
 (`.claude/guides/verification.md`). Exit code 0 when the agent answered ok, 1 otherwise.
 
 In unattended mode (WASAMI_UNATTENDED=1, .claude/guides/autonomy.md) a shot taken while the window in front belongs to
-this game (the editor, or our packaged game) is also posted to the Discord webhook (Tools/discord_notify.py); a shot of
-the reference game never is. What happened is added to the printed answer as "discord".
+this game (the editor, or our packaged game) is queued in Intermediate/Overnight/shots.jsonl: the driver
+(Tools/overnight.py) attaches the queued shots to the Discord report of the run when Claude names no images of its own.
+A shot of the reference game never is. What happened is added to the printed answer as "discord".
 """
 import argparse
 import json
@@ -35,9 +36,10 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import console_session  # noqa: E402  (same folder)
-import discord_notify  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+# The shots of this game taken in unattended mode, for the report of the run (Tools/overnight.py reads and empties it).
+SHOT_QUEUE = os.path.join(ROOT, "Intermediate", "Overnight", "shots.jsonl")
 SPOOL = os.path.join(ROOT, "Intermediate", "DesktopAgent")
 IN_DIR, OUT_DIR = os.path.join(SPOOL, "in"), os.path.join(SPOOL, "out")
 PID = os.path.join(SPOOL, "agent.pid")
@@ -78,24 +80,25 @@ def shows_this_game(process):
     return name == "unrealeditor.exe" or name.startswith("wasami_deception")
 
 
-def post_shot(answer):
-    """In unattended mode, posts a shot of this game to Discord. Returns what happened (None outside that mode)."""
+def queue_shot(answer):
+    """In unattended mode, queues a shot of this game for the Discord report of the run. Returns what happened (None
+    outside that mode)."""
     if os.environ.get("WASAMI_UNATTENDED") != "1" or not answer.get("ok"):
         return None
     result = answer.get("result") or {}
     front = result.get("foreground") or {}
     if not shows_this_game(front.get("process")):
-        return "送らない（前面が %s）" % (front.get("process") or "不明")
+        return "載せない（前面が %s）" % (front.get("process") or "不明")
     if result.get("all_black"):
-        return "送らない（真っ黒）"
-    url, _ = discord_notify.webhook_url()
-    if not url:
-        return "送らない（webhook の URL が無い）"
-    errors = []
-    caption = "スクリーンショット %s（%s）" % (os.path.basename(result["path"]), front.get("title", ""))
-    if discord_notify.Webhook(url, errors.append).post_images([result["path"]], caption):
-        return "送った"
-    return "送れない: " + " / ".join(errors)
+        return "載せない（真っ黒）"
+    try:
+        os.makedirs(os.path.dirname(SHOT_QUEUE), exist_ok=True)
+        with open(SHOT_QUEUE, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"path": os.path.abspath(result["path"]), "title": front.get("title", ""),
+                                     "time": time.time()}, ensure_ascii=False) + "\n")
+    except OSError as e:
+        return "積めない: %s" % e
+    return "反復の報告の候補に積んだ（状態ファイルの shots に画像が無ければ、反復の終わりに送られる）"
 
 
 def agent_running():
@@ -196,9 +199,9 @@ def main():
 
     answer = request(opts.cmd, timeout=opts.timeout, **payload)
     if opts.cmd == "shot":
-        posted = post_shot(answer)
-        if posted:
-            answer["discord"] = posted
+        queued = queue_shot(answer)
+        if queued:
+            answer["discord"] = queued
     print(json.dumps(answer, ensure_ascii=False, indent=2))
     return 0 if answer.get("ok") else 1
 
