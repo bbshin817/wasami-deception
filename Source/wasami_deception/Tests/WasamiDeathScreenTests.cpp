@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 
 #include "../WasamiDeathScreenWidget.h"
+#include "../WasamiPopUpWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -112,6 +113,98 @@ bool FWasamiDeathScreenGameOverTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the whole row with 5 lives"), Many->GetShownLives(), 6);
 	RunUntil(Many, 3.05f);
 	TestTrue(TEXT("a line of 0 s: the respawn at 3 s"), Many->HasRespawned());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiDeathScreenButtonsTest, "Wasami.DeathScreen.Buttons",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiDeathScreenButtonsTest::RunTest(const FString& Parameters)
+{
+	using W = UWasamiDeathScreenWidget;
+	// RESTART's YES: Fade Out, and the level 1 s later; once only.
+	UWasamiDeathScreenWidget* Restart = NewObject<UWasamiDeathScreenWidget>();
+	Restart->Begin(0, 3.f, true);
+	RunUntil(Restart, 3.f);
+	TestTrue(TEXT("the buttons are there"), Restart->AreButtonsShown());
+	Restart->RestartEvent();
+	TestTrue(TEXT("RESTART's way out began"), Restart->GetChoice() == W::EChoice::Restart);
+	RunUntil(Restart, 3.95f);
+	TestFalse(TEXT("not before 1 s"), Restart->HasLeft());
+	RunUntil(Restart, 4.05f);
+	TestTrue(TEXT("the level at 1 s"), Restart->HasLeft());
+	TestTrue(TEXT("black by then"), Restart->GetCoverAlpha() > 0.99f);
+
+	// LAST CHECKPOINT past its warning.
+	UWasamiDeathScreenWidget* Checkpoint = NewObject<UWasamiDeathScreenWidget>();
+	Checkpoint->Begin(0, 3.f, true);
+	RunUntil(Checkpoint, 3.f);
+	Checkpoint->LastCheckpointEvent();
+	TestTrue(TEXT("LAST CHECKPOINT's way out began"), Checkpoint->GetChoice() == W::EChoice::LastCheckpoint);
+	RunUntil(Checkpoint, 4.05f);
+	TestTrue(TEXT("its level at 1 s"), Checkpoint->HasLeft());
+
+	// QUIT TO TITLE goes without asking; a second click changes nothing.
+	UWasamiDeathScreenWidget* Quit = NewObject<UWasamiDeathScreenWidget>();
+	Quit->Begin(0, 3.f, false);
+	RunUntil(Quit, 3.f);
+	Quit->PressQuitToTitle();
+	RunUntil(Quit, 3.5f);
+	Quit->PressQuitToTitle();
+	RunUntil(Quit, 3.95f);
+	TestFalse(TEXT("the first click's 1 s"), Quit->HasLeft());
+	RunUntil(Quit, 4.05f);
+	TestTrue(TEXT("QUIT TO TITLE's level at 1 s"), Quit->GetChoice() == W::EChoice::QuitToTitle && Quit->HasLeft());
+
+	// Without a player there is no question to ask, and without a save LAST CHECKPOINT does nothing (as the original
+	// when SaveSlot cannot be read).
+	UWasamiDeathScreenWidget* Alone = NewObject<UWasamiDeathScreenWidget>();
+	Alone->Begin(0, 3.f, true);
+	RunUntil(Alone, 3.f);
+	Alone->PressRestart();
+	Alone->PressLastCheckpoint();
+	RunUntil(Alone, 5.f);
+	TestTrue(TEXT("nothing began"), Alone->GetChoice() == W::EChoice::None && !Alone->HasLeft());
+	TestTrue(TEXT("the cover stays clear"), Alone->GetCoverAlpha() < 0.01f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiPopUpTest, "Wasami.DeathScreen.PopUp",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiPopUpTest::RunTest(const FString& Parameters)
+{
+	using P = UWasamiPopUpWidget;
+	// Popup: fades in over 0.25 s, and its scale overshoots a little before settling at 1.
+	TestEqual(TEXT("clear at 0"), P::EvaluateOpacity(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("opaque at 0.25 s"), P::EvaluateOpacity(0.25f), 1.f, 1e-4f);
+	TestEqual(TEXT("and after"), P::EvaluateOpacity(0.4f), 1.f, 1e-4f);
+	TestEqual(TEXT("no size at 0"), P::EvaluateScale(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("full size at 0.25 s"), P::EvaluateScale(0.25f), 1.f, 1e-4f);
+	TestTrue(TEXT("a little larger at 0.33 s"), P::EvaluateScale(0.33f) > 1.05f && P::EvaluateScale(0.33f) < 1.1f);
+	TestEqual(TEXT("full size at 0.5 s"), P::EvaluateScale(0.5f), 1.f, 1e-4f);
+
+	// NO: backwards from 0.25 s, off the screen 0.25 s later.
+	UWasamiPopUpWidget* PopUp = NewObject<UWasamiPopUpWidget>();
+	for (int32 Frame = 0; Frame < 30; ++Frame)
+	{
+		PopUp->Advance(1.f / 60.f);
+	}
+	TestEqual(TEXT("open after 0.5 s"), PopUp->GetBoxOpacity(), 1.f, 1e-4f);
+	PopUp->PressNo();
+	TestTrue(TEXT("closing"), PopUp->IsClosing());
+	for (int32 Frame = 0; Frame < 6; ++Frame)
+	{
+		PopUp->Advance(1.f / 60.f);
+	}
+	TestTrue(TEXT("half gone at 0.1 s"), PopUp->GetBoxOpacity() < 1.f && PopUp->GetBoxOpacity() > 0.f);
+	TestFalse(TEXT("still there"), PopUp->IsFinished());
+	for (int32 Frame = 0; Frame < 10; ++Frame)
+	{
+		PopUp->Advance(1.f / 60.f);
+	}
+	TestTrue(TEXT("gone at 0.25 s"), PopUp->IsFinished());
+	TestEqual(TEXT("clear and shrunk"), PopUp->GetBoxScale(), 0.f, 1e-4f);
 	return true;
 }
 

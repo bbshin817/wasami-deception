@@ -15,14 +15,14 @@
 namespace
 {
 	using WasamiWidgetAnimation::Eval;
-	using WasamiWidgetAnimation::FKey;
+	using WasamiWidgetAnimation::FAnimKey;
 	using WasamiWidgetAnimation::MakeCurve;
 
 	// init (pak_reference_2's UMG_Saving): TextBlock_232's and Throbber_207's RenderOpacity, 0 → 0.5 (0.5 s) → 0.5 (2 s)
 	// → 0 (2.5 s) → 0 (3 s). The words' keys were saved flat, the throbber's middle two with UE's auto tangents.
-	const FKey TextKeys[] = {{0., 0.f, 0., 0.}, {30000., 0.5f, 0., 0.}, {120000., 0.5f, 0., 0.}, {150000., 0.f, 0., 0.},
+	const FAnimKey TextKeys[] = {{0., 0.f, 0., 0.}, {30000., 0.5f, 0., 0.}, {120000., 0.5f, 0., 0.}, {150000., 0.f, 0., 0.},
 		{180000., 0.f, 0., 0.}};
-	const FKey ThrobberKeys[] = {{0., 0.f, 0., 0.}, {30000., 0.5f, 4.1666667129902635e-06, 4.1666667129902635e-06},
+	const FAnimKey ThrobberKeys[] = {{0., 0.f, 0., 0.}, {30000., 0.5f, 4.1666667129902635e-06, 4.1666667129902635e-06},
 		{120000., 0.5f, -4.1666667129902635e-06, -4.1666667129902635e-06}, {150000., 0.f, 0., 0.}, {180000., 0.f, 0., 0.}};
 
 	void Place(UCanvasPanel* Panel, UWidget* Child, const FMargin& Offsets)

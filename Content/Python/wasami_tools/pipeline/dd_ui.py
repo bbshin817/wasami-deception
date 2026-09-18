@@ -1,6 +1,8 @@
 """Dark Deception's game-flow screens: what the death screen (UWasamiDeathScreenWidget, after the original's
 Blueprints/UMG/UMG_DeathScreen) shows and plays — the life icon, YOU ARE DEAD, the menu's font, the life-lost sound and
-the game-over music. The vignette, the heading's font and the UI select come with the tablet (dd_tablet).
+the game-over music — and its YES / NO question (UWasamiPopUpWidget, after UI/Main/TitleScreen/UMG_PopUp): the pause
+menu's three window frames and the pop-up sound. The vignette, the heading's font and the UI select come with the
+tablet (dd_tablet).
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
@@ -15,6 +17,9 @@ VERSION = 2
 TEXTURES = (
     "UI/Main/life_icon_02",
     "UI/Main/you_are_dead",
+    "UI/Menu/Pause/restart_window_frame_2",
+    "UI/Menu/Pause/quit_window_frame",
+    "UI/Menu/Pause/blank_window_frame",
 )
 FONTS = (
     "UI/Fonts/helvetica-normal",
@@ -22,11 +27,12 @@ FONTS = (
 SOUNDS = (
     "Audio/UI/Life_Lost",
     "Audio/SharedGameplay/66_-_Game_Over",
+    "Audio/UI/UI_Window_PopUp_V3",
 )
 
 
 def import_all():
-    """Imports the death screen's textures, font and sounds, then saves /Game/DD."""
+    """Imports the death screen's and the pop-up's textures, font and sounds, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}

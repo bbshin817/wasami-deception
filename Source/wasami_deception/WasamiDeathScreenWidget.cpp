@@ -23,6 +23,7 @@
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiPopUpWidget.h"
 #include "WasamiPowerComponent.h"
 #include "WasamiSaveGame.h"
 #include "WasamiWidgetAnimation.h"
@@ -31,41 +32,41 @@ namespace
 {
 	// The animations' keys as exported (pak_reference_2's UMG_DeathScreen; WasamiWidgetAnimation.h).
 	using WasamiWidgetAnimation::Eval;
-	using WasamiWidgetAnimation::FKey;
+	using WasamiWidgetAnimation::FAnimKey;
 	using WasamiWidgetAnimation::MakeCurve;
 
 	// Fade In / Fade Out: Button_0's BackgroundColor alpha; the author's tangent makes the black leave late and go fast.
-	const FKey FadeInKeys[] = {{0., 1.f, 0., 0.}, {60000., 0.f, -3.375811138539575e-05, -3.37581368512474e-05}};
-	const FKey FadeOutKeys[] = {{0., 0.f, -3.375811138539575e-05, -3.37581368512474e-05}, {59999., 1.f, 0., 0.}};
+	const FAnimKey FadeInKeys[] = {{0., 1.f, 0., 0.}, {60000., 0.f, -3.375811138539575e-05, -3.37581368512474e-05}};
+	const FAnimKey FadeOutKeys[] = {{0., 0.f, -3.375811138539575e-05, -3.37581368512474e-05}, {59999., 1.f, 0., 0.}};
 
 	// Shake: Image_161's alpha and scale, CanvasPanel_0's translation (its section is [6000, 18000]), and the lives'
 	// green and blue (their section is [0, 18000]; red and alpha stay 1).
-	const FKey ShakeVignetteAlphaKeys[] = {{0., 0.f, 0., 0.}, {6000., 1.f, 2.0000001313746907e-05, 2.0000001313746907e-05},
+	const FAnimKey ShakeVignetteAlphaKeys[] = {{0., 0.f, 0., 0.}, {6000., 1.f, 2.0000001313746907e-05, 2.0000001313746907e-05},
 		{15000., 0.30000001192092896f, -1.8518519937060773e-05, -1.8518519937060773e-05}, {60000., 0.f, 0., 0.}};
-	const FKey ShakeVignetteScaleKeys[] = {{0., 1.25f, 0., 0.}, {6000., 1.100000023841858f, -4.1666667129902635e-06, -4.1666667129902635e-06},
+	const FAnimKey ShakeVignetteScaleKeys[] = {{0., 1.25f, 0., 0.}, {6000., 1.100000023841858f, -4.1666667129902635e-06, -4.1666667129902635e-06},
 		{60000., 1.f, 0., 0.}};
-	const FKey ShakeXKeys[] = {{6000., 0.f, 0., 0.}, {9000., 10.f, -0.0008333333535119891, -0.0008333333535119891},
+	const FAnimKey ShakeXKeys[] = {{6000., 0.f, 0., 0.}, {9000., 10.f, -0.0008333333535119891, -0.0008333333535119891},
 		{12000., -5.f, -0.0011111111380159855, -0.0011111111380159855}, {18000., 0.f, 0., 0.}};
-	const FKey ShakeYKeys[] = {{6000., 0.f, 0., 0.}, {9000., -10.f, 0.0008333333535119891, 0.0008333333535119891},
+	const FAnimKey ShakeYKeys[] = {{6000., 0.f, 0., 0.}, {9000., -10.f, 0.0008333333535119891, 0.0008333333535119891},
 		{12000., 5.f, 0.0011111111380159855, 0.0011111111380159855}, {18000., 0.f, 0., 0.}};
-	const FKey ShakeLifeTintKeys[] = {{0., 1.f, 0., 0.}, {6000., 0.f, 0., 0.}, {18000., 1.f, 0., 0.}};
+	const FAnimKey ShakeLifeTintKeys[] = {{0., 1.f, 0., 0.}, {6000., 0.f, 0., 0.}, {18000., 1.f, 0., 0.}};
 
 	// Death. Sections that start at 30000 (0.5 s) leave their widget alone before that.
 	constexpr float DeathLateStart = 0.5f;
 	// TextBlock_149 (REMAINING LIVES)'s alpha.
-	const FKey DeathHeadingKeys[] = {{0., 1.f, 0., 0.}, {30000., 0.f, -4.7619050747016445e-06, -4.7619050747016445e-06}, {210000., 0.f, 0., 0.}};
+	const FAnimKey DeathHeadingKeys[] = {{0., 1.f, 0., 0.}, {30000., 0.f, -4.7619050747016445e-06, -4.7619050747016445e-06}, {210000., 0.f, 0., 0.}};
 	// YouAreDead's alpha (from 0.5 s).
-	const FKey DeathDeadKeys[] = {{30000., 0.f, 0., 0.}, {150000., 1.f, 5.555555617320351e-06, 5.555555617320351e-06}, {210000., 1.f, 0., 0.}};
+	const FAnimKey DeathDeadKeys[] = {{30000., 0.f, 0., 0.}, {150000., 1.f, 5.555555617320351e-06, 5.555555617320351e-06}, {210000., 1.f, 0., 0.}};
 	// The three buttons' texts' alpha (RESTART's and QUIT TO TITLE's from 0.5 s, LAST CHECKPOINT's from 0) and
 	// VerticalBox_161's RenderOpacity (from 0.5 s).
-	const FKey DeathMenuKeys[] = {{30000., 0.f, 0., 0.}, {150000., 1.f, 0., 0.}};
+	const FAnimKey DeathMenuKeys[] = {{30000., 0.f, 0., 0.}, {150000., 1.f, 0., 0.}};
 	// The buttons' ColorAndOpacity alpha: the track made for Restart is bound to LastCheckpoint, and QUITTOTITLE's
 	// starts later; Restart's own stays 1.
-	const FKey DeathCheckpointKeys[] = {{30000., 0.f, 6.666666649834951e-06, 6.666666649834951e-06}, {150000., 1.f, 6.666666649834951e-06, 6.666666649834951e-06}};
-	const FKey DeathQuitKeys[] = {{0., 0.f, 0., 0.}, {60000., 0.f, 6.666666649834951e-06, 6.666666649834951e-06},
+	const FAnimKey DeathCheckpointKeys[] = {{30000., 0.f, 6.666666649834951e-06, 6.666666649834951e-06}, {150000., 1.f, 6.666666649834951e-06, 6.666666649834951e-06}};
+	const FAnimKey DeathQuitKeys[] = {{0., 0.f, 0., 0.}, {60000., 0.f, 6.666666649834951e-06, 6.666666649834951e-06},
 		{150000., 1.f, 6.666666649834951e-06, 6.666666649834951e-06}, {210000., 1.f, 0., 0.}};
 	// Tips' RenderOpacity.
-	const FKey DeathTipKeys[] = {{0., 1.f, 0., 0.}, {30000., 0.f, 0., 0.}};
+	const FAnimKey DeathTipKeys[] = {{0., 1.f, 0., 0.}, {30000., 0.f, 0., 0.}};
 
 	// Bierce's death lines' Duration (pak_reference_2's SoundWaves): BierceDeathTraps (Shared/Bierce_Death_Traps_02..08)
 	// and BierceDeathAsylum (Ch06/Bierce_Asylum_Death_01..04).
@@ -78,6 +79,18 @@ namespace
 	constexpr float TipGrey = 0.619791985f;
 	constexpr float ButtonGrey = 0.114583001f;
 	constexpr float ButtonTextGrey = 0.520833015f;
+	// The buttons' hover: white, and back to Unhover Color.
+	const FLinearColor UnhoverColour(ButtonGrey, ButtonGrey, ButtonGrey, 1.f);
+
+	// The questions, as written.
+	const TCHAR* const RestartQuestion = TEXT("ARE YOU SURE YOU WANT TO RESTART?");
+	const TCHAR* const LastCheckpointWarning = TEXT("Obtaining S Rank is not possible with Last Checkpoint.\r\n \r\nContinue anyway?");
+
+	AWasamiGameMode* GameModeOf(const UUserWidget* Widget)
+	{
+		UWorld* World = Widget->GetWorld();
+		return World ? World->GetAuthGameMode<AWasamiGameMode>() : nullptr;
+	}
 
 	UCanvasPanelSlot* Place(UCanvasPanel* Panel, UWidget* Child, const FAnchors& Anchors, const FMargin& Offsets,
 		const FVector2D& Alignment, bool bAutoSize)
@@ -132,6 +145,7 @@ UWasamiDeathScreenWidget::UWasamiDeathScreenWidget(const FObjectInitializer& Obj
 	TipFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Engine/EngineFonts/RobotoTiny")));
 	LifeLostSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Life_Lost")));
 	GameOverSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/66_-_Game_Over")));
+	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
 }
 
 UWasamiDeathScreenWidget* UWasamiDeathScreenWidget::Show(const UObject* WorldContextObject, uint8 InLevel)
@@ -215,6 +229,16 @@ void UWasamiDeathScreenWidget::BuildScreen(UCanvasPanel* Root)
 	RestartButton = MakeButton(TEXT("Restart"), TEXT("TextBlock_0"), TEXT("RESTART"), FLinearColor(86.f, 86.f, 86.f, 0.f));
 	LastCheckpointButton = MakeButton(TEXT("LastCheckpoint"), TEXT("TextBlock_2"), TEXT("LAST CHECKPOINT"), FLinearColor(86.f, 86.f, 86.f, 0.f));
 	QuitButton = MakeButton(TEXT("QUITTOTITLE"), TEXT("TextBlock_1"), TEXT("QUIT TO TITLE "), FLinearColor(1.f, 1.f, 1.f, 0.f));
+	// The original's ComponentDelegateBinding: each button's click and hover.
+	RestartButton->OnClicked.AddDynamic(this, &UWasamiDeathScreenWidget::OnRestartClicked);
+	RestartButton->OnHovered.AddDynamic(this, &UWasamiDeathScreenWidget::OnRestartHovered);
+	RestartButton->OnUnhovered.AddDynamic(this, &UWasamiDeathScreenWidget::OnRestartUnhovered);
+	LastCheckpointButton->OnClicked.AddDynamic(this, &UWasamiDeathScreenWidget::OnLastCheckpointClicked);
+	LastCheckpointButton->OnHovered.AddDynamic(this, &UWasamiDeathScreenWidget::OnLastCheckpointHovered);
+	LastCheckpointButton->OnUnhovered.AddDynamic(this, &UWasamiDeathScreenWidget::OnLastCheckpointUnhovered);
+	QuitButton->OnClicked.AddDynamic(this, &UWasamiDeathScreenWidget::OnQuitClicked);
+	QuitButton->OnHovered.AddDynamic(this, &UWasamiDeathScreenWidget::OnQuitHovered);
+	QuitButton->OnUnhovered.AddDynamic(this, &UWasamiDeathScreenWidget::OnQuitUnhovered);
 	Place(Root, Menu, FAnchors(0.5f, 1.f), FMargin(0.f, -358.1879577636719f, 0.f, 0.f), FVector2D(0.5f, 0.f), true);
 
 	// TextBlock_149: REMAINING LIVES, 308 px from the top's middle.
@@ -266,8 +290,7 @@ void UWasamiDeathScreenWidget::NativeConstruct()
 		Lives = Instance->GetLives();
 	}
 	bool bCheckpoint = false;
-	UWorld* World = GetWorld();
-	if (AWasamiGameMode* Mode = World ? World->GetAuthGameMode<AWasamiGameMode>() : nullptr)
+	if (AWasamiGameMode* Mode = GameModeOf(this))
 	{
 		if (UWasamiSaveGame* Save = Mode->GetSave())
 		{
@@ -306,6 +329,8 @@ void UWasamiDeathScreenWidget::Begin(int32 LivesLeft, float VoiceSeconds, bool b
 	Elapsed = 0.f;
 	StepTime = 0.f;
 	bProceeded = bGameOver = bButtonsShown = bRespawned = false;
+	bRestartClosed = bLastCheckpointClosed = bQuitClosed = bLeft = false;
+	Choice = EChoice::None;
 	FadeInTime = FadeOutTime = ShakeTime = DeathTime = -1.f;
 	CoverAlpha = 1.f;
 	ShownLives = LifeIcons;
@@ -490,7 +515,222 @@ void UWasamiDeathScreenWidget::RunStep(EStep Step)
 			Controller->SetShowMouseCursor(true);
 		}
 		break;
+
+	case EStep::Restart:
+		// The level again at no checkpoint (Zone 1 turns 0 into its arrival; Zone 2 opens Zone 1).
+		if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+		{
+			Instance->ForgetCollectedShards();
+		}
+		OpenLevel();
+		break;
+
+	case EStep::LastCheckpoint:
+		// The level again at its checkpoint; the shards collected stay collected.
+		if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+		{
+			Instance->ResetLives();
+		}
+		OpenLevel();
+		break;
+
+	case EStep::QuitToTitle:
+		// The original opens TitleScreen. Until the title (item 17) is made, Zone 1 from the start, as its NEW GAME
+		// would: 3 lives, the hospital's save entry emptied.
+		if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+		{
+			Instance->ResetLives();
+		}
+		if (AWasamiGameMode* Mode = GameModeOf(this))
+		{
+			if (UWasamiSaveGame* Save = Mode->GetSave())
+			{
+				Save->Hospital = FWasamiLevelProgress();
+				Mode->WriteSave();
+			}
+		}
+		OpenLevel(AWasamiGameMode::Zone1LevelName);
+		break;
 	}
+}
+
+void UWasamiDeathScreenWidget::PressRestart()
+{
+	// A question over the screen; nothing more until its YES.
+	RestartPopUp = UWasamiPopUpWidget::Show(this, FText::FromString(RestartQuestion), UWasamiPopUpWidget::RestartFrame, RestartPopUpZOrder);
+	if (RestartPopUp)
+	{
+		RestartPopUp->OnYesClick.AddDynamic(this, &UWasamiDeathScreenWidget::RestartEvent);
+	}
+}
+
+void UWasamiDeathScreenWidget::RestartEvent()
+{
+	if (RestartPopUp)
+	{
+		RestartPopUp->CloseAnimation();
+	}
+	// Reset Game Instance and Reset Lives (Used Hard Respawn? and Hard Check Point belong to the results and the
+	// entrance, which this game does not have yet or at all).
+	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+	{
+		Instance->ForgetCollectedShards();
+		Instance->ResetLives();
+	}
+	if (bRestartClosed)
+	{
+		return;
+	}
+	bRestartClosed = true;
+	// levelStruct[the level] = levelStruct[10] (an empty entry), written.
+	if (AWasamiGameMode* Mode = GameModeOf(this))
+	{
+		if (UWasamiSaveGame* Save = Mode->GetSave())
+		{
+			Save->Hospital = FWasamiLevelProgress();
+			Mode->WriteSave();
+		}
+	}
+	BeginLeaving(EChoice::Restart, EStep::Restart);
+}
+
+void UWasamiDeathScreenWidget::PressLastCheckpoint()
+{
+	// The original reads SaveSlot and does nothing if it cannot.
+	AWasamiGameMode* Mode = GameModeOf(this);
+	UWasamiSaveGame* Save = Mode ? Mode->GetSave() : nullptr;
+	if (!Save)
+	{
+		return;
+	}
+	if (Save->bLastCheckpointWarning)
+	{
+		LastCheckpointProceed();
+		return;
+	}
+	if (UWasamiPopUpWidget* Warning = UWasamiPopUpWidget::Show(this, FText::FromString(LastCheckpointWarning),
+		UWasamiPopUpWidget::BlankFrame, WarningPopUpZOrder))
+	{
+		Warning->OnYesClick.AddDynamic(this, &UWasamiDeathScreenWidget::LastCheckpointEvent);
+	}
+	PlaySound(SelectSound, 1.f);
+}
+
+void UWasamiDeathScreenWidget::LastCheckpointEvent()
+{
+	// The warning stays on the screen until the level opens (nothing closes it).
+	if (AWasamiGameMode* Mode = GameModeOf(this))
+	{
+		if (UWasamiSaveGame* Save = Mode->GetSave())
+		{
+			Save->bLastCheckpointWarning = true;
+			Mode->WriteSave();
+		}
+	}
+	LastCheckpointProceed();
+}
+
+void UWasamiDeathScreenWidget::LastCheckpointProceed()
+{
+	// Used Hard Respawn? and Game Instance Time are the results' (item 14).
+	if (bLastCheckpointClosed)
+	{
+		return;
+	}
+	bLastCheckpointClosed = true;
+	BeginLeaving(EChoice::LastCheckpoint, EStep::LastCheckpoint);
+}
+
+void UWasamiDeathScreenWidget::PressQuitToTitle()
+{
+	if (bQuitClosed)
+	{
+		return;
+	}
+	bQuitClosed = true;
+	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+	{
+		Instance->ForgetCollectedShards();
+	}
+	BeginLeaving(EChoice::QuitToTitle, EStep::QuitToTitle);
+}
+
+void UWasamiDeathScreenWidget::BeginLeaving(EChoice InChoice, EStep Step)
+{
+	if (APlayerController* Controller = GetOwningPlayer())
+	{
+		Controller->SetShowMouseCursor(false);
+	}
+	Choice = InChoice;
+	FadeOutTime = 0.f;
+	ApplyAnimations();
+	// A click comes between ticks: its Delay counts from now.
+	StepTime = Elapsed;
+	Schedule(Step, LeaveDelay);
+}
+
+void UWasamiDeathScreenWidget::OpenLevel(const TCHAR* LevelName)
+{
+	bLeft = true;
+	if (GetWorld())
+	{
+		if (APlayerController* Controller = GetOwningPlayer())
+		{
+			UWidgetBlueprintLibrary::SetInputMode_GameOnly(Controller);
+		}
+		UGameplayStatics::OpenLevel(this, LevelName ? FName(LevelName) : FName(UGameplayStatics::GetCurrentLevelName(this, true)), true);
+	}
+}
+
+void UWasamiDeathScreenWidget::OnRestartClicked()
+{
+	PressRestart();
+}
+
+void UWasamiDeathScreenWidget::OnLastCheckpointClicked()
+{
+	PressLastCheckpoint();
+}
+
+void UWasamiDeathScreenWidget::OnQuitClicked()
+{
+	PressQuitToTitle();
+}
+
+void UWasamiDeathScreenWidget::OnRestartHovered()
+{
+	RestartButton->SetColorAndOpacity(FLinearColor::White);
+}
+
+void UWasamiDeathScreenWidget::OnRestartUnhovered()
+{
+	RestartButton->SetColorAndOpacity(UnhoverColour);
+}
+
+void UWasamiDeathScreenWidget::OnLastCheckpointHovered()
+{
+	if (LastCheckpointButton)
+	{
+		LastCheckpointButton->SetColorAndOpacity(FLinearColor::White);
+	}
+}
+
+void UWasamiDeathScreenWidget::OnLastCheckpointUnhovered()
+{
+	if (LastCheckpointButton)
+	{
+		LastCheckpointButton->SetColorAndOpacity(UnhoverColour);
+	}
+}
+
+void UWasamiDeathScreenWidget::OnQuitHovered()
+{
+	QuitButton->SetColorAndOpacity(FLinearColor::White);
+}
+
+void UWasamiDeathScreenWidget::OnQuitUnhovered()
+{
+	QuitButton->SetColorAndOpacity(UnhoverColour);
 }
 
 void UWasamiDeathScreenWidget::LifeAnimation()

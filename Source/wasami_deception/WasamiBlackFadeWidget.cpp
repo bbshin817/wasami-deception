@@ -11,13 +11,13 @@
 namespace
 {
 	using WasamiWidgetAnimation::Eval;
-	using WasamiWidgetAnimation::FKey;
+	using WasamiWidgetAnimation::FAnimKey;
 	using WasamiWidgetAnimation::MakeCurve;
 
 	// Image_29's RenderOpacity (pak_reference_2's UMG_BlackFade_2), over 300000 ticks; the black end has the author's
 	// tangent.
-	const FKey FadeInKeys[] = {{0., 0.f, 0., 0.}, {300000., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}};
-	const FKey FadeOutKeys[] = {{0., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}, {300000., 0.f, 0., 0.}};
+	const FAnimKey FadeInKeys[] = {{0., 0.f, 0., 0.}, {300000., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}};
+	const FAnimKey FadeOutKeys[] = {{0., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}, {300000., 0.f, 0., 0.}};
 }
 
 UWasamiBlackFadeWidget* UWasamiBlackFadeWidget::Show(const UObject* WorldContextObject, bool bInFadeIn, float InSpeed, int32 ZOrder)

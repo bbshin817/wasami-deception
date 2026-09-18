@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 4f12a50
 started: 2026-09-18 15:29
-updated: 2026-09-18 18:40
+updated: 2026-09-18 19:10
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -28,11 +28,7 @@ updated: 2026-09-18 18:40
 - [x] 3. ゲームインスタンス・セーブ・ゲームモードの状態 … 2026-09-18 完了。`UWasamiGameInstance`（ライフ・回収済みのシャード）・`UWasamiSaveGame`（`structSlot`、`Hospital` の欄と `bLastCheckpointWarning`）・ゲームモードの `DeathEvent`/`ResetDeath`/`OnDeath`・時間・`SaveCheckpoint`・`GetSave`/`WriteSave`・0.2 s 後の回収済みシャードの除去（`OnAllShardsAlreadyCollected`）。中身は実装記録 06 の「ライフ・セーブ・死亡の受け口」。テスト 33 本通過、PIE で 2 つ回収 → `open L_Hospital_Zone1` → 337 が 335
 - [x] 4. 死亡画面と素材 … 2026-09-18 完了。`UWasamiDeathScreenWidget`（木・Construct・遅延・アニメ 4 本・ゲームオーバーの表示・ライフが残れば `ResetPowers` → `OnRespawn` → `OpenLevel`、画面を出す静的な `Show(WorldContext, Level)`）と `dd_ui.py`（`import_dd_ui`）。中身は実装記録 09。テスト 36 本通過、PIE でライフ残り 2 と 0 を収録
 - [x] 5. 死亡から再開までをつなぐ・SAVING PROGRESS・デバッグの呼び出し … 2026-09-18 完了。ゲームモードが本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でチェックポイントの PlayerStart、Zone 1 の 0 は 4 を書く、Zone 2 の 0 は Zone 1 を開く、`DeathEvent` で死亡画面、`SaveCheckpoint` で `UWasamiSavingWidget`、`BeginPlay` で `UWasamiBlackFadeWidget` の 0.5 s の明け）と `Wasami.Kill`・`Wasami.Checkpoint N`・`Wasami.ResetSave`・`Wasami.Lives N`。PlayerStart の `PlayerStartTag` に本家の名前（取り込みと両マップ）。中身は実装記録 06 の「開始の場所・死亡画面・SAVING PROGRESS」と 09。テスト 38 本通過、PIE で `Checkpoint 5` → 2 つ回収 → `Kill` → `05_Start` で再開（ライフ 2・シャード 335）、Zone 2 の 7 と 0 も確かめた
-- [ ] 6. ゲームオーバー（ライフ 0）の 3 つのボタン … **作業中**（2026-09-18 18:40〜）
-  - 資料の「ゲームオーバーの 3 つのボタン」: RESTART（`UMG_PopUp`「ARE YOU SURE YOU WANT TO RESTART?」→ ライフ 3・回収の記憶を空に・セーブの項目を空に → Zone 1 を開く = `04_Start`）、LAST CHECKPOINT（`bLastCheckpointWarning` が偽なら S ランクの警告の `UMG_PopUp`〈Frame 2〉を 1 度 → ライフ 3 → 今のレベルを開き直す。回収の記憶は残す）、QUIT TO TITLE（タイトル〈項目 17〉ができるまでは RESTART と同じ行き先を確かめ無しで）。マウスカーソルと UI の入力モード、ホバーの色、`Fade Out` → 1 s。`UMG_PopUp` の木と素材はこのステップで読む（WebGL 版 10・13 記録にも写しがある）。
-  - 変更予定: `WasamiDeathScreenWidget.*`、新規 `WasamiPopUpWidget.*`、`WasamiGameMode.*`（`ResetGameInstance`）、`Tests/WasamiDeathScreenTests.cpp`、`Content/Python/wasami_tools/pipeline/dd_ui.py`（枠 3 枚 `/Game/DD/UI/Menu/Pause/*_window_frame*` と `/Game/DD/Audio/UI/UI_Window_PopUp_V3`）、実装記録 06・09
-  - 読んだ結果（番地は資料の表）: ポップアップは `UI/Main/TitleScreen/UMG_PopUp`（木・Popup のアニメ 0.5 s・Construct の音 `UI_Window_PopUp_V3`・YES は OnClicked で `UI_Select_V3` と YesClick、NO は OnPressed で 0.25 s から逆再生・選択音の Pitch 0.7・0.25 s で外す、Close Animation は無音で逆再生と 0.25 s、ホバーは白と `Unhovered Color` 0.114583、文字は `PopupText` の Default = helvetica-normal 28・0.9647）。死亡画面のホバーは白と `Unhover Color` 0.114583。3 つの道は別々の DoOnce
-  - 確かめ方: PIE で `Wasami.Lives 1` → `Wasami.Kill` でゲームオーバー（約 3 s でボタン）→ 各ボタンを押して行き先を確かめる（収録）。ボタンはマウスで押す（`python Tools/desktop.py click X Y --allow UnrealEditor.exe`。ゲームオーバーは `SetInputMode_UIOnlyEx` とカーソル）
+- [x] 6. ゲームオーバー（ライフ 0）の 3 つのボタン … 2026-09-18 完了。死亡画面のボタンの押下・ホバーの色・行き先（RESTART は問うてからライフ 3・回収の記憶とセーブの病院の欄を空に → 今のレベル、LAST CHECKPOINT ははじめてだけ S ランクの警告 → ライフ 3 で今のレベル、QUIT TO TITLE はタイトルができるまで Zone 1 を最初から）と YES / NO の問い `UWasamiPopUpWidget`（本家の `UMG_PopUp`）、素材（枠 3 枚・`UI_Window_PopUp_V3`）。中身は実装記録 09 の「ゲームオーバーの 3 つのボタン」「YES / NO の問い」。テスト 40 本通過、PIE で 4 つの道（RESTART の NO と YES・LAST CHECKPOINT の警告と YES・警告の後・QUIT）を確かめた
 - [ ] 7. 仕上げ
   - PIE で「チェックポイント → 死亡 → 再開 → 3 回目でゲームオーバー → LAST CHECKPOINT」を 1 本収録し（ステップ 5 の死亡 → `05_Start` の収録は `Intermediate/DesktopAgent/shots/step5-death-respawn.mkv`、グリッドは `Intermediate/Overnight/shots/death_respawn_checkpoint5.png`）、`python Tools/video_probe.py sheet` で Discord の連番のグリッドにする。
   - 実装記録（06・02・04・09）と `_index.md`、`python .claude/scripts/check_records.py --update`。`.claude/roadmap.md` の項目 5 を「完了（日付）」、後回しにした見た目を項目 28 の一覧へ。`.claude/references/handover.md` の「現状と次の一歩」。note の原稿 `docs/note/progress.md`（`.claude/guides/note-progress.md`。セッションの値が無ければ「note へは未反映」）。
@@ -40,7 +36,7 @@ updated: 2026-09-18 18:40
 
 ## 次にやること
 
-ステップ 6。まず資料の「ゲームオーバーの 3 つのボタン」（番地つき）と実装記録 09（死亡画面の `Buttons`・`RestartButton` ほか・`SetInputMode_UIOnlyEx`）・06（`Wasami.ResetSave` の中身・`GetStartCheckpoint`）を読み、`UMG_PopUp` の書き出し（`pak_reference_2/_assets/DDeception/Content/` の下を `find -iname "UMG_PopUp*"`）と WebGL 版 10・13 記録の写しを見てから、ボタンの押下・ホバーの色・ポップアップを作る。
+ステップ 7（仕上げ）。PIE で「チェックポイント → 死亡 → 再開 → 3 回目でゲームオーバー → LAST CHECKPOINT」を 1 本収録してグリッドにし、実装記録・作業一覧・handover・note の原稿を直して、この記録を消す（計画のステップ 7 の行）。
 
 ## 決定事項
 
@@ -64,12 +60,12 @@ updated: 2026-09-18 18:40
 - エディタは動いている想定（ステップ 5 の後に建て直して開き直した）。C++ を変えたら `python Tools/editor_cycle.py`（閉じる前に保存し、PIE は止める）。テストはリモート実行で `Automation RunTests Wasami` を送り、ログの `Test Completed` を読む（ステップ 4 では MCP の `RunTestsByFilter` がソケットごと切れて走らなかった）。**エディタが背面だと 3 fps のまま待つ**ので、`python Tools/desktop.py start` の後、エディタの詳細パネルの空き (3133, 733) を `click … --allow WindowsTerminal.exe --allow UnrealEditor.exe` で押して前面にする。開き直すとメッセージログの小窓がビューポートに重なる（閉じるボタンは (2197, 407)）。PIE のビューポートは (1825, 202)〜(2979, 858)。
 - PIE で死なせる: `python Tools/pie.py cmd "Wasami.Kill"`（ゲームオーバーは先に `"Wasami.Lives 1"`）。チェックポイントは `"Wasami.Checkpoint N"`、最初からは `"Wasami.ResetSave" "open L_Hospital_Zone1"`。PIE の開始は `04_Start`（セーブの値の PlayerStart）から。死亡の後の開き直しは約 7 s。
 - セーブは `Saved/SaveGames/structSlot.sav`（git の外）。ワールドを遊ばせる自動テストも既定のゲームモードを作るので、無ければ空のセーブを書く（06 記録の「既知の制約」）。やり直しの確かめでは消してよい（本作のセーブ。本家のセーブではない）。
-- ステップ 6 の覚え: RESTART の行き先は本家では「チェックポイント 0 のまま今のレベル」→ Zone は入口を開く。本作は Zone 1 を開けば `PrepareStart` が 0 を 4 にする（Zone 2 で押しても 0 なら Zone 1 へ移る）。ボタンを押した後の `Fade Out` → 1 s は、死亡画面の予定（`Schedule`）に足せばゲームを止めたまま進む。
+- PIE のゲームオーバーのボタン（画面の座標、ビューポートが (1825, 202)〜(2979, 858) のとき）: RESTART (2402, 663)・LAST CHECKPOINT (2402, 708)・QUIT TO TITLE (2398, 752)。RESTART? の YES (2346, 639)・NO (2447, 639)、S ランクの警告の YES (2346, 665)。ゲームオーバーから約 3 s でボタンが出る。警告はセーブの `bLastCheckpointWarning` が偽のときだけ出る（`Wasami.ResetSave` で偽に戻る。いまは真）。シャードを拾うのは `python Tools/pie.py place 1.4 2.4`（Zone 1 のチェックポイント 5 の区間の最初の 2 つは (1.4, 2.4)・(1.4, −595.7)）。
 - 保留の記録 `20260918-power-look-tuning.md`（項目 23、大目標 3）は触らない。
 - 調べ物のサブエージェントは前面で呼ぶ（2026-09-18 の反復 2 がバックグラウンドのまま打ち切られた。`.claude/guides/autonomy.md` の「無人モード」）。
 
 ## 検証
 
-- check_records: ステップ 5 で通した（01・02・06・09・`_index.md`）
-- C++ ビルド: ステップ 5 で通した（`editor_cycle.py`）。自動テスト 38 本通過（`Wasami.GameFlow.Checkpoints`・`Saving` を含む）
-- エディタでの確認: ステップ 5 で PIE（上の計画のステップ 5 の行）。SAVING PROGRESS は右下に文字と明滅する丸
+- check_records: ステップ 6 で通した（01・06・09・`_index.md`）
+- C++ ビルド: ステップ 6 で通した（`editor_cycle.py`）。自動テスト 40 本通過（`Wasami.DeathScreen.Buttons`・`PopUp` を含む）
+- エディタでの確認: ステップ 6 で PIE（上の計画のステップ 6 の行。開き直した後も W で歩けた）

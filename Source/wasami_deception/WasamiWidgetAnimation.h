@@ -12,7 +12,7 @@ namespace WasamiWidgetAnimation
 {
 	constexpr double TicksPerSecond = 60000.;
 
-	struct FKey
+	struct FAnimKey
 	{
 		double Ticks;
 		float Value;
@@ -20,10 +20,10 @@ namespace WasamiWidgetAnimation
 		double LeavePerTick;
 	};
 
-	inline FRichCurve MakeCurve(TConstArrayView<FKey> Keys)
+	inline FRichCurve MakeCurve(TConstArrayView<FAnimKey> Keys)
 	{
 		FRichCurve Curve;
-		for (const FKey& Each : Keys)
+		for (const FAnimKey& Each : Keys)
 		{
 			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(static_cast<float>(Each.Ticks / TicksPerSecond), Each.Value));
 			Key.InterpMode = RCIM_Cubic;
