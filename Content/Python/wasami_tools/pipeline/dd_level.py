@@ -86,6 +86,11 @@ LIFT_CLASSES = {
                         (8.60695743560791, 4.586122035980225, 1.1901240348815918)),
     "BP_06_LiftBase_Corner_C": ("WasamiCornerLift", LIFT_MESHES + "01", None, None),
 }
+# The garage lifts: BP_06_GarageLift (Zone 2's two → AWasamiGarageLift) and BP_06_GarageLift_Zone1_Special (Zone 1's
+# car park → AWasamiGarageLiftZone1Special). The C++ classes hold everything (the skeletal mesh is a soft reference
+# they load), and no placed one has values of its own.
+GARAGE_LIFT_CLASSES = {"BP_06_GarageLift_C": "WasamiGarageLift",
+                       "BP_06_GarageLift_Zone1_Special_C": "WasamiGarageLiftZone1Special"}
 LIFT_FOLDER = "Hospital/Gameplay/Lifts"
 # The level's emitters the flow wakes (their ParticleSystemComponent's Activate): Zone 1's burst of concrete as the
 # tunnel's doors break in. They keep the original's bAutoActivate (false) and template.
@@ -436,8 +441,8 @@ def set_emitter(actor, zone, name, level):
 
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes, door breaks, the double doors and emitters the flow names, the zone barriers,
-    the zone shard checkers and the lifts, each where the original has it, and fixed to what it moves with (an
-    ambulance, the spikes) when that is in the level."""
+    the zone shard checkers, the lifts and the garage lifts, each where the original has it, and fixed to what it moves
+    with (an ambulance, the spikes) when that is in the level."""
     placed = []
     level = {}
     for a in zone["actors"]:
@@ -445,7 +450,7 @@ def _flow(eas, stage, zone, counts, failures):
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
-                              and not doors and not emitter):
+                              and a["class"] not in GARAGE_LIFT_CLASSES and not doors and not emitter):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -492,6 +497,12 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["lifts"] += 1
+        elif a["class"] in GARAGE_LIFT_CLASSES:
+            actor = eas.spawn_actor_from_class(getattr(unreal, GARAGE_LIFT_CLASSES[a["class"]]), _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["garageLifts"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -507,7 +518,8 @@ def _flow(eas, stage, zone, counts, failures):
             _set_brush_collision(comp, a.get("brushCollision") or {})
             counts["volumes"] += 1
         actor.set_actor_scale3d(_vec(world["scale"]))
-        _tag(actor, a["name"], LIFT_FOLDER if a["class"] in LIFT_CLASSES else FLOW_FOLDER, FLOW_TAG, "src:" + a["name"])
+        lift = a["class"] in LIFT_CLASSES or a["class"] in GARAGE_LIFT_CLASSES
+        _tag(actor, a["name"], LIFT_FOLDER if lift else FLOW_FOLDER, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
     by_source = {}
     for actor in eas.get_all_level_actors():
@@ -524,7 +536,7 @@ def _flow(eas, stage, zone, counts, failures):
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers and lifts in again (and takes out the barrier lights an earlier build placed on their own), leaving the
+    checkers, lifts and garage lifts in again (and takes out the barrier lights an earlier build placed on their own), leaving the
     rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts
     and the barriers' lights are movable), and saves the level."""
     stage = paths.load_dd_stage()
@@ -536,7 +548,7 @@ def place_flow(zone="Zone1", map_path=""):
     lights = [a for a in eas.get_all_level_actors()
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "doorBreaks": 0,
-              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "attached": 0}
+              "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -559,7 +571,7 @@ def build(zone="Zone1", map_path=""):
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "lifts", "attached")}
+                             "shardCheckers", "lifts", "garageLifts", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)
