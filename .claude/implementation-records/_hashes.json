@@ -24,7 +24,7 @@
     "Tools/desktop_agent.py": "0a03ed8b704f285813b032861f34f12e08723b00",
     "Tools/pie.py": "e023b71c5f66291e475ca19d19d648073eb86d64",
     "Tools/video_probe.py": "9c3391a0a8478da28e8f8bf4a0e4f41538ca18a5",
-    "Tools/overnight.py": "20274cab7dff5102ba0ca1ecb7ab49796efea111",
+    "Tools/overnight.py": "f59f3d2dee56961105e3b56e65d6359e35c54c4d",
     "Tools/discord_notify.py": "0958652aca3c31dffe00dafea86fecd3817f1d8e",
     "Tools/work_list.py": "d801a344815e986b64096c7f9bc1227bd7fc8e07",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",

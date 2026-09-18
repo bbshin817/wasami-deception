@@ -361,7 +361,6 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
         ("## ⚠️ 反復 #%d 終了（成果なし）" if no_result else "## 📌 反復 #%d 終了") % number,
         "",
         "%s ステータス" % SECTION,
-        "",
         "- exit: %s" % (exit_code if exit_code is not None else "起動できない"),
         "- 作業時間: %s" % duration_text(seconds),
         "- 進捗率: %s" % progress,
@@ -374,19 +373,15 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
     lines += [
         "",
         "%s 🔧 作業概要" % SECTION,
-        "",
         summary_text,
         "",
         "%s 💡 分かったこと" % SECTION,
-        "",
         bullets(status_list(status, "learned") or []),
         "",
         "%s 🚨 要検討事項" % SECTION,
-        "",
         bullets(pending),
         "",
         "%s 📷 スクショ" % SECTION,
-        "",
         (caption or "画像を添付します。") if images else "なし",
     ]
     return "\n".join(lines), images
@@ -404,11 +399,9 @@ def final_report(runs, seconds, ending, done, pending):
         "- 終了理由: %s" % ending,
         "",
         "%s 🔧 やったこと" % SECTION,
-        "",
         bullets(list(dict.fromkeys(done))),
         "",
         "%s 🚨 要確認事項" % SECTION,
-        "",
         bullets(list(dict.fromkeys(pending))),
     ])
 
@@ -654,7 +647,6 @@ def main():
         "## 🚀 無人運転 開始",
         "",
         "%s ステータス" % SECTION,
-        "",
         "- ブランチ: %s（HEAD %s）" % (branch(), head()),
         "- 終了の時刻: %s" % (stamp(deadline) if deadline else "なし"),
         "- 反復の上限: %s" % (args.max_iterations if args.max_iterations is not None else "なし"),
