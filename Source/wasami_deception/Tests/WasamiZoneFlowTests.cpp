@@ -3,6 +3,7 @@
 #include "../WasamiDoubleDoors.h"
 #include "../WasamiEnemy.h"
 #include "../WasamiEnemy06Chase.h"
+#include "../WasamiEnemySentry.h"
 #include "../WasamiEnemyZone2.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiGarageLift.h"
@@ -450,6 +451,14 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	Ceiling->GetRootComponent()->SetMobility(EComponentMobility::Movable);
 	const FVector SwitchAt(-14199.4062, 712.5936, 199.5126);
 	const AStaticMeshActor* Switch = SpawnStatic(World, TEXT("hospital_zone_02_holdingCell_01_wall_switch_14"), SwitchAt, FRotator(0., 0., -43.689768));
+	// A sentry the level places (its BeginPlay is empty: it stays without CanSpawn), far below.
+	AWasamiEnemySentry* Sentry = World->SpawnActor<AWasamiEnemySentry>(FVector(0., -5000., -40000.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("a sentry"), Sentry) || !TestNotNull(TEXT("with its cone"), Sentry->GetViewcone()))
+	{
+		return false;
+	}
+	Sentry->Offset = 10.f;
+	const TWeakObjectPtr<AWasamiEnemySentry> WeakSentry(Sentry);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 7);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -478,9 +487,12 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	Advance(Wrapper, 1.1f);
 	Walk(World, TEXT("Miniboss_BierceTalk"));
 	TestEqual(TEXT("Bierce's trigger, bound 1 s on"), Flow->GetSection(), FName(TEXT("Miniboss_BierceTalk")));
+	TestFalse(TEXT("the sentry not looking in the cell"), Sentry->GetViewcone()->IsInitialized());
 
 	Walk(World, TEXT("BP_MiniBoss_Trigger"));
 	TestEqual(TEXT("the Matron's corridor"), Flow->GetSection(), FName(TEXT("Miniboss Transition ")));
+	TestTrue(TEXT("Activate MiniBoss Enemies: the sentry looks"), Sentry->GetViewcone()->IsInitialized());
+	TestEqual(TEXT("its cone waiting its Offset"), Sentry->GetViewcone()->Offset, 10.f);
 	TestEqual(TEXT("checkpoint 8 saved"), SavedCheckpoint(), 8);
 	TestEqual(TEXT("past the nurses, with the original's space"), Objective(Mode), FString(TEXT("Get past the nurses ")));
 	TestTrue(TEXT("the arrow clear"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(0.f, 0.f, 0.f, 0.f)));
@@ -490,6 +502,7 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("checkpoint 9 saved"), SavedCheckpoint(), 9);
 	TestEqual(TEXT("the maze's shards"), Objective(Mode), FString(TEXT("COLLECT ALL SHARDS")));
 	TestTrue(TEXT("the arrow on the shards"), Flow->IsArrowOnShards());
+	TestTrue(TEXT("the sentry removed"), !WeakSentry.IsValid() || WeakSentry->IsActorBeingDestroyed());
 	// Spawn Nurses: a Zone 2 nurse at each of NurseSpawn_4, _1 and _2, turned as the point is.
 	const TArray<AWasamiEnemy*> MazeNurses = Alive<AWasamiEnemy>(World, false);
 	TestEqual(TEXT("three nurses in the maze"), MazeNurses.Num(), 3);

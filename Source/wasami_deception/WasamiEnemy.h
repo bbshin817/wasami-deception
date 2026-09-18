@@ -171,6 +171,12 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	/**
+	 * The nurse's ReceiveBeginPlay (and its base's): the CanSpawn check, Generate Random Point and Make Choice every
+	 * DecisionInterval. BeginPlay runs it; the sentry's is empty, and its Player Spotted runs this one.
+	 */
+	virtual void BeginNurse();
+
 	virtual void SetState_Implementation(EWasamiEnemyState NewState, bool bByOrb) override;
 	// The nurse's Get State always answers Patrol (it does not read State), and its No Telepathy false.
 	virtual EWasamiEnemyState GetState_Implementation() const override { return EWasamiEnemyState::Patrol; }

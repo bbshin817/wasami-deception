@@ -73,7 +73,11 @@ void AWasamiEnemy::OnConstruction(const FTransform& Transform)
 void AWasamiEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	BeginNurse();
+}
 
+void AWasamiEnemy::BeginNurse()
+{
 	// BP_DD_Character_Base: an enemy the level did not spawn with CanSpawn is removed.
 	if (!bCanSpawn)
 	{
