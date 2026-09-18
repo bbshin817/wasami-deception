@@ -83,6 +83,25 @@ class WasamiStageTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def place_dd_minimap(zone: str = "Zone2", map_path: str = "") -> dict[str, int]:
+        """Puts one zone's minimap plane (the zone's map under the level, which the player's minimap capture draws) in
+        again, and Zone 2's floor boxes (WasamiMapArea, the original's BP_MapArea) with its plane that shows the map of
+        the floor the player is in (WasamiMapTextureMultiFloor, BP_MapTexture_MultiFloor, with its Map), taking out
+        what an earlier build placed, and saves the level. Zone 2's baked lighting stays valid (its plane is movable);
+        Zone 1's plane is static, so its level counts as unbuilt until the lighting is built again. The map materials
+        and textures come from WasamiDDTools.import_dd_tablet.
+
+        Args:
+            zone: 'Zone2' (1 plane, 2 floor boxes) or 'Zone1' (1 plane).
+            map_path: Package path of the level; the zone's own is used when this is empty.
+
+        Returns:
+            'removed', 'mapPlane', 'mapAreas' and 'failed_settings' (listed in the output log).
+        """
+        return _module("dd_level").place_minimap(zone, map_path)
+
+    @toolset_registry.tool_call
+    @staticmethod
     def place_dd_flow(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Puts one zone's trigger boxes (WasamiTriggerBox, the original's BP_TriggerBox_Base), blocking and trigger
         volumes, door breaks (WasamiDoorBreak, BP_06_Hospital_DoorBreak, with their Progress Speed), the double doors

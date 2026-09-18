@@ -650,6 +650,9 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
         own = (by_path.get(prefix + name) or {}).get("props") or {}
         props = {k: v for k, v in own.items()
                  if not isinstance(v, (list, dict)) and not str(v).startswith(map_name + ".")}
+        for k, v in own.items():                     # a map keyed by the level's actors, by their names
+            if isinstance(v, dict) and v and all(str(x).startswith(prefix) for x in v):
+                props[k] = {actor_of(x): y for x, y in v.items()}   # BP_MapTexture_MultiFloor's Map
         entry = {"name": name, "class": cls, "world": actor_world.get(name), "props": props}
         root = (by_path.get(own.get("RootComponent") or "") or {}).get("props") or {}
         if root.get("AttachParent"):

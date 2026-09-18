@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/zone-progression   # ステップ 1 の始めに main から作る（計画のコミットは main）
 base: 5e296a2
 started: 2026-09-18 17:59
-updated: 2026-09-18 23:52
+updated: 2026-09-19 00:12
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -43,12 +43,12 @@ updated: 2026-09-18 23:52
 - [x] 8a. 乗ると上がる床（2026-09-18 完了）: `AWasamiLiftBase`・`AWasamiLift`（`BP_06_Lift_03`・`_04`）・`AWasamiCornerLift`（`BP_06_LiftBase_Corner`）、前処理の `CLASS_MESHES`、`_flow` が Zone 2 に 15 台、`dd_gimmicks.import_lifts`（音 3）。テスト 2 本（54 本すべて通過）、PIE で走って乗ると上の階へ運ばれる（実装記録 12・01・08・11）。
 - [x] 8b1. ガレージリフトの取り込み（2026-09-18 完了）: `dd_skeletal.py`（psa → glTF のアニメ、24 Hz で焼く `PL_DD_Skeletal`）で `/Game/DD/Meshes/06_Hospital/hospital_garage_lift_anim`（骨 4・`_Skeleton`・`_PhysicsAsset`）と `_Anim`（2.4583 s・59 コマ）、材質 4 は前処理の `CLASS_MATERIALS`、`M_DD_Substance` に `used_with_skeletal_mesh`、`dd_gimmicks.import_garage_lift`（実装記録 12・01・07・08）。
 - [x] 8b2. ガレージリフトのアクタ（2026-09-18 完了）: `AWasamiGarageLift`・`AWasamiGarageLiftZone1Special`（`bNurseNear`。項目 7 で結ぶ）・本家の ABP を写した `UWasamiGarageLiftAnimInstance`（07 の `FWasamiStateBlend` で 0.2 s の混ぜ、入り / 出の通知で Up / Down）、`dd_level._flow` の `GARAGE_LIFT_CLASSES` が両ゾーンに 3 台。テスト `Wasami.GarageLift.Actor`（55 本すべて通過）、PIE で Zone 1 の台に乗ると 316 cm 上がる（実装記録 12・01・11・07）。
-- [ ] 9. Zone 2 の地図 `BP_MapTexture_MultiFloor` と `BP_MapArea` ×2（いる階の箱で地図の絵を `T_06_Zone2` ↔ `T_06_Zone2_02` に替える）。
+- [x] 9. Zone 2 の地図（2026-09-19 完了）: `AWasamiMapArea`・`AWasamiMapTextureMultiFloor`（本家の `BP_MapArea`・`BP_MapTexture_MultiFloor`。0.9 s ごとにいる階の地図の絵とその階のシャードの印だけを出す）、`AWasamiShard::GetPlane`、前処理がアクタを鍵にした `Map` を名前で残す、`dd_tablet` の `T_06_Zone2_02`、`dd_level._map_plane`・`place_minimap`（`WasamiStageTools.place_dd_minimap`）で Zone 2 に置いた。テスト 56 本すべて通過、PIE で階ごとに絵と印が替わる（実装記録 03・01・06）。
 - [ ] 10. 仕上げ: PIE で Zone 1 の到着 → 扉の破壊 → 全回収（デバッグで数個を残す）→ 障壁 → 駐車場 → トンネル → 扉が破られる → ガレージリフトで上がりテレポーテーションで救急車の屋根へ（パワーが使えなければ `place` で乗せ、そのことを書く）→ Zone 2 の独房 → 扉の破壊 → 迷路 → 全回収 → COLLECT THE RING PIECE までを通しで収録し、Discord のグリッドにする。実装記録・handover・作業一覧（項目 6 を完了、完了の条件の読み替え）・note を直し、進捗記録を消して main へマージし push。
 
 ## 次にやること
 
-ステップ 9（Zone 2 の地図 `BP_MapTexture_MultiFloor` と `BP_MapArea` ×2）を始める。記録のステップ 9 を「作業中」にする。まず本家の `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/MinimapMultifloor/BP_MapTexture_MultiFloor.txt`・`BP_MapArea.txt`（`bp_flow.py … --list`）と `_assets/…/MinimapMultifloor/*.json`、置き場所（`_levels/06_Hospital_Zone_02.full.json` の `BP_MapArea*`）を読み、今の地図の板（`dd_level._map_plane`、Zone 2 は `MM_Map_06_Zone2` の 1 階ぶんだけ。01・03 記録）とプレイヤーのシーンキャプチャ（02・03 記録）にどう足すかを決める。
+ステップ 10（仕上げ: 通しの収録と項目 6 を閉じる）を始める。記録のステップ 10 を「作業中」にする。長いので、まず通しの手順（下の「再開時の注意」の置き場所とデバッグのコマンド）を並べた台本を記録に書き、収録を区間ごとに分けてよい（1 反復で終わらなければ 10a 収録・10b 記録と閉じる、に分ける）。ガレージリフトから救急車の屋根へテレポーテーションで渡れるかを最初に確かめる。
 
 ## 決定事項
 
@@ -84,6 +84,7 @@ updated: 2026-09-18 23:52
 
 ## 検証
 
+- ステップ 9: テスト `Wasami.*` 56 本すべて通過、check_records OK。`place_minimap Zone2` = 板 1・箱 2・`failed_settings` 0。PIE で下の階 `T_06_Zone2`・印 204、上の階 `T_06_Zone2_02`・印 138。グリッド `Intermediate/Overnight/zone2_map_grid.png`。
 - ステップ 8b2: テスト `Wasami.*` 55 本すべて通過（`Wasami.GarageLift.Actor` の警告なし）、check_records OK。`place_flow` Zone1 = `garageLifts` 1、Zone2 = 2、`failed_settings` 0。PIE のグリッド `Intermediate/Overnight/garage_lift_grid.png`。
 - ステップ 8b1: `import_dd_gimmicks` の通しでメッシュ 1・アニメ 1、アニメの平行移動が psa と一致（12 記録）。
 - ステップ 8a: テスト `Wasami.*` 54 本すべて通過、check_records OK。`place_flow Zone2` = リフト 15・`failed_settings` 0。PIE のグリッド `Intermediate/Overnight/lift_grid.png`。

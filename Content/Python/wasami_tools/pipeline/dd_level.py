@@ -37,6 +37,11 @@ SKIP_LIGHT_PROPS = ("LightGuid", "MapBuildDataId", "IESTexture")
 MAP_PLANE_MESH = "/Engine/BasicShapes/Plane"
 MAP_PLANE_CLASSES = ("BP_MapTexture_C", "BP_MapTexture_MultiFloor_C")
 MAP_PLANE_MATERIAL = {"Zone1": "/Game/DD/UI/Minimap/MM_Map_06_Zone01", "Zone2": "/Game/DD/UI/Minimap/MM_Map_06_Zone2"}
+# Zone 2's plane (BP_MapTexture_MultiFloor → AWasamiMapTextureMultiFloor) puts on itself the map of the floor the player
+# is in: its Map takes each BP_MapArea (→ AWasamiMapArea, a box over a floor, its root's scale its size) to a texture.
+MULTI_FLOOR_CLASS = "BP_MapTexture_MultiFloor_C"
+MAP_AREA_CLASS = "BP_MapArea_C"
+MAP_AREA_TAG = "dd_map_area"
 # WasamiPlayerCharacter's scene capture shows only the actors with this tag and the shards.
 MINIMAP_TAG = "dd_minimap"
 # The soul shards (BP_Shard): an AWasamiShard where the original places each. A shard's light is a component of it, so
@@ -329,10 +334,34 @@ def _player_starts(eas, zone, counts):
 def _map_plane(eas, zone, zone_name, counts, failures):
     mesh = unreal.load_asset(MAP_PLANE_MESH)
     material = unreal.load_asset(MAP_PLANE_MATERIAL.get(zone_name, ""))
+    areas = {}
+    for a in zone["actors"]:
+        if a["class"] != MAP_AREA_CLASS or not a["world"]:
+            continue
+        actor = eas.spawn_actor_from_class(unreal.WasamiMapArea, _vec(a["world"]["location"]), _rot(a["world"]["quat_xyzw"]))
+        actor.set_actor_scale3d(_vec(a["world"]["scale"]))
+        if a["props"]:
+            failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+        _tag(actor, a["name"], "Hospital/Gameplay", MAP_AREA_TAG)
+        areas[a["name"]] = actor
+        counts["mapAreas"] += 1
     for a in zone["actors"]:
         if a["class"] not in MAP_PLANE_CLASSES or not a["world"]:
             continue
-        actor = eas.spawn_actor_from_object(mesh, _vec(a["world"]["location"]), _rot(a["world"]["quat_xyzw"]))
+        if a["class"] == MULTI_FLOOR_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiMapTextureMultiFloor, _vec(a["world"]["location"]),
+                                               _rot(a["world"]["quat_xyzw"]))
+            actor.static_mesh_component.set_static_mesh(mesh)
+            floors = {}
+            for area, texture in (a["props"].get("Map") or {}).items():
+                target = dd_assets.asset_path(dd_assets.game_rel(texture))
+                if area not in areas or not EAL.does_asset_exist(target):
+                    failures.append("%s: no %s or %s (run WasamiDDTools.import_dd_tablet)" % (a["name"], area, target))
+                    continue
+                floors[areas[area]] = unreal.load_asset(target)
+            actor.set_editor_property("map", floors)
+        else:
+            actor = eas.spawn_actor_from_object(mesh, _vec(a["world"]["location"]), _rot(a["world"]["quat_xyzw"]))
         actor.set_actor_scale3d(_vec(a["world"]["scale"]))
         comp = actor.static_mesh_component
         comp.set_editor_property("cast_shadow", False)
@@ -347,6 +376,30 @@ def _map_plane(eas, zone, zone_name, counts, failures):
             failures.append("%s: no map material for %s" % (a["name"], zone_name))
         _tag(actor, a["name"], "Hospital/Gameplay", MINIMAP_TAG)
         counts["mapPlane"] += 1
+
+
+def place_minimap(zone="Zone1", map_path=""):
+    """Puts the zone's map plane and its floor boxes in again, leaving the rest of the level as it is, and saves the
+    level. Zone 2's plane is movable and its boxes have no light, so its baked lighting stays valid; Zone 1's plane is
+    static, and a new one has no baked lighting until the level's is built again (the capture reads only its base colour,
+    but the editor counts it as unbuilt)."""
+    stage = paths.load_dd_stage()
+    if zone not in stage["zones"]:
+        raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
+    z = stage["zones"][zone]
+    les, eas = _open_level(map_path or z["level"], clear=False)
+    old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(MINIMAP_TAG) or a.actor_has_tag(MAP_AREA_TAG)]
+    counts = {"removed": len(old), "mapPlane": 0, "mapAreas": 0}
+    if old:
+        eas.destroy_actors(old)
+    failures = []
+    _map_plane(eas, z, zone, counts, failures)
+    for f in failures:
+        unreal.log_warning("place_dd_minimap: " + f)
+    counts["failed_settings"] = len(failures)
+    if not les.save_current_level():
+        raise RuntimeError("could not save " + (map_path or z["level"]))
+    return counts
 
 
 # ------------------------------------------------------------------------------------------------ shards
@@ -570,7 +623,7 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "emitters", "zoneBarriers",
+                             "mapPlane", "mapAreas", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "emitters", "zoneBarriers",
                              "shardCheckers", "lifts", "garageLifts", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)

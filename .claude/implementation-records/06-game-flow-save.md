@@ -11,7 +11,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiShardTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_shards.py
   - SourceArt/Wasami/wasami_mochi.glb
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # ゲームの流れ（シャード・ライフ・セーブ）
@@ -29,7 +29,7 @@ updated: 2026-09-18
   - `Activate`（インターフェース）… 本家の `Activate`。下の「引き寄せ」。
   - `IsPulling()`・`GetPullRate()`・`GetSpinRate()` … 確認用。
   - 静的関数: `EvaluatePullAlpha(Seconds)`（`Shard Pull` の `Alpha`）、`PullLocation(From, Player, Alpha)`（ExpoIn で水平だけ寄せた位置）、`SpinSpeed(PlayRate)`（餅の回る速さ °/s）。定数 `PullLength` = 1。
-  - 部品: `DefaultSceneRoot`、`Body`（本家の `SkeletalMesh` の位置と拡縮だけを持つ `USceneComponent`）、その子の `Mochi`（`UStaticMeshComponent`）・`PointLight`・`Capsule`、ルートの子の `Plane`（ミニマップの印）。
+  - 部品: `DefaultSceneRoot`、`Body`（本家の `SkeletalMesh` の位置と拡縮だけを持つ `USceneComponent`）、その子の `Mochi`（`UStaticMeshComponent`）・`PointLight`・`Capsule`、ルートの子の `Plane`（ミニマップの印）。`GetPlane()` が印を返す（Zone 2 の階ごとの地図が、プレイヤーの階のシャードの印だけを見せる。03 記録）。
   - 値: `LightIntensity` 175（本家の `Light Intensity`）、`MinimapPlaneHeight` 2000（`Minimap Plane Height`）。
   - 素材（ソフト参照、`WasamiAssets.h`）: `MochiMesh` `/Game/Wasami/Shard/SM_WasamiMochi`、`PlaneMesh` `/Engine/BasicShapes/Plane`、`MapMarkMaterial` `/Game/DD/Materials/Shared/M_Shard`、`PickupSound` `/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue`、`PickupConcurrency` `/Game/DD/Audio/OnlyFew`、`CollectShake` `/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect`、`CollectFlash` `/Game/Wasami/Shard/P_WasamiShardFlash`（本家は `P_ky_flash3`。下の「本作の回収の閃光」）。
 - `UWasamiGameInstance`（`UGameInstance`。`Config/DefaultEngine.ini` の `GameInstanceClass`、00 記録）… 本家の `BP_DD_GameInstance`。レベルを開き直しても残り、ディスクには書かない。
@@ -236,6 +236,7 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 - `Tests/WasamiGameFlowTests.cpp`: `Wasami.GameFlow.Lives`（3 で始まり、0..6 に Clamp、`ResetLives` で 3。`ShardKey` の 0 の方への切り捨て、同じ整数の位置は 1 つ、`ForgetCollectedShards`）、`Wasami.GameFlow.Save`（スロット名 `structSlot`、全欄のメモリ上の往復）、`Wasami.GameFlow.RemoveShards`（3 つ置いて、切り捨てて一致する 2 つが消え、残り 1 を返す）、`Wasami.GameFlow.GameMode`（テスト用のスロットで BeginPlay がセーブを作って書く、1 秒の時間・止めている間は数えない、`SaveCheckpoint(5)` がスロットに書いて時間を足し 0 に戻す、`DeathEvent` の DoOnce と `ResetDeath`・連続回収の最高、作り直したゲームモードがスロットを読む、Zone でないワールドの `GetStartCheckpoint` はセーブの値のまま）、`Wasami.GameFlow.Checkpoints`（`ZoneOf`、`PlayerStartTagFor` の 7 つと表に無い値、`DeathScreenLevelFor` の 4 通り）、`Wasami.GameFlow.Saving`（09 記録の SAVING PROGRESS の `init` の値と 3 s で外れること、黒のフェードの両端と速さ 10 で 0.5 s）、`Wasami.GameFlow.Loading`（09 記録の読み込み画面の `FadeIn` の値・2.5 s からの逆再生・3.5 s で外れること）。
 
 ## 変更履歴
+- 2026-09-19: `GetPlane()`（地図の印）を足した（Zone 2 の階ごとの地図が使う。03 記録）
 - 2026-09-18: テスト `Wasami.GameFlow.Loading`（読み込み画面。09 記録）を足した（作業一覧の項目 6 のステップ 5）
 - 2026-09-18: ゲームモードに `Check Shards`（`Collect Shard`・0.05 s 後の全回収の判定）とゾーンの流れの生成、`Zone2LevelName`、デバッグの `Wasami.CollectShards`・`Wasami.Trigger` を足し、シャードの回収が `Check Shards` を呼ぶようにした。目的の既定を空にした（作業一覧の項目 6 のステップ 1。流れは 11 記録）
 - 2026-09-18: 作業一覧の項目 5（ゲームの流れの土台）を終えた。死亡から LAST CHECKPOINT までを PIE で通して確かめた（上の「確かめたこと」の 2026-09-18）

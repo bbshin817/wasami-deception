@@ -60,6 +60,7 @@ TEXTURES = (
     # The hospital's baked maps (the plane in the level carries them; chapter 6 is not in the older export).
     (2, "UI/Minimap/T_06_Zone01"),
     (2, "UI/Minimap/T_06_Zone2"),
+    (2, "UI/Minimap/T_06_Zone2_02"),       # Zone 2's upper floor (BP_MapTexture_MultiFloor's Map)
     # The map's arrow (M_Arrow's texture).
     (2, "Materials/Special/T_Arrow"),
 )
