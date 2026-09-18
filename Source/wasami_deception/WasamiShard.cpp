@@ -17,6 +17,7 @@
 #include "Sound/SoundBase.h"
 #include "Sound/SoundConcurrency.h"
 #include "WasamiAssets.h"
+#include "WasamiGameInstance.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiTabletWidget.h"
 
@@ -244,13 +245,22 @@ void AWasamiShard::Collect(bool bNoSound)
 	Screen->SetShardCount(FMath::Clamp(Screen->GetShardCount() - 1, 0, MaxShardCount));
 	Screen->PlayCountShake();
 
-	// Not yet: the game mode's Check Shards, and the game instance's Shards To Be Removed (a checkpoint's list).
+	// Not yet: the game mode's Check Shards.
 	if (APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		Controller->ClientStartCameraShake(LoadedCollectShake, CollectShakeScale, ECameraShakePlaySpace::CameraLocal);
 	}
 	UGameplayStatics::SpawnEmitterAtLocation(this, LoadedCollectFlash, Body->GetComponentLocation(), FRotator::ZeroRotator,
 		FVector(CollectFlashScale), true, EPSCPoolMethod::None, true);
+	// Shards To Be Removed: a shard collected with its sound is remembered by where it began play, so that reopening
+	// the level (a death, LAST CHECKPOINT) leaves it out.
+	if (!bNoSound)
+	{
+		if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+		{
+			Instance->RememberCollectedShard(PreviousLocation);
+		}
+	}
 	// The original destroys the shard and then plays the sound in the same frame; here the sound goes first, while the
 	// shard is still a valid world context.
 	UGameplayStatics::PlaySound2D(this, LoadedPickupSound, bNoSound ? 0.f : PickupVolume, 1.f, 0.f, LoadedPickupConcurrency);

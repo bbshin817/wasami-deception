@@ -1,6 +1,11 @@
 ---
-title: ゲームの流れ（シャード）
+title: ゲームの流れ（シャード・ライフ・セーブ）
 sources:
+  - Source/wasami_deception/WasamiGameInstance.h
+  - Source/wasami_deception/WasamiGameInstance.cpp
+  - Source/wasami_deception/WasamiSaveGame.h
+  - Source/wasami_deception/WasamiSaveGame.cpp
+  - Source/wasami_deception/Tests/WasamiGameFlowTests.cpp
   - Source/wasami_deception/WasamiShard.h
   - Source/wasami_deception/WasamiShard.cpp
   - Source/wasami_deception/Tests/WasamiShardTests.cpp
@@ -9,12 +14,14 @@ sources:
 updated: 2026-09-18
 ---
 
-# ゲームの流れ（シャード）
+# ゲームの流れ（シャード・ライフ・セーブ）
 
 ## 役割
-本家のソウルシャード（最新版 `pak_reference_2` の `Blueprints/Main/BP_Shard`）。ステージに置かれ、触れると回収され（タブレットの数が 1 減る）、テレキネシスで引き寄せられる。見た目は本作のワサミ餅（ユーザーの決定）。チェックポイント・セーブ・ライフ・死亡・脱出（M3 の残り）はこの記録に書き足していく。
+本家のソウルシャード（最新版 `pak_reference_2` の `Blueprints/Main/BP_Shard`）。ステージに置かれ、触れると回収され（タブレットの数が 1 減る）、テレキネシスで引き寄せられる。見た目は本作のワサミ餅（ユーザーの決定）。チェックポイント・セーブ・ライフ・死亡・脱出（M3 の残り）はこの記録に書き足していく。原作の流れの調べは `.claude/references/game-flow/README.md`。
 
-いまは**シャードの最小限**（タブレットのパワーの作業〈作業一覧の項目 1〉のステップ 9 で作った）: ゲームモードの `Check Shards`（`Collect Shard` の通知と連続回収の判定 `Check Streak`）、ゲームインスタンスの `Shards To Be Removed`（チェックポイントからのやり直しで取ったシャードを消す）、`bDisabled` と `Enable` はまだ無い。回収の閃光 `P_ky_flash3` はステップ 9b で足し、作業一覧の項目 3 で本作の紫でやや弱い版 `P_WasamiShardFlash` に替えた。
+ゲームの流れの土台（作業一覧の項目 5）のステップ 3 で、**ゲームインスタンス**（ライフと回収済みのシャードの記憶）・**セーブ**（`structSlot`）と、ゲームモード（02 記録）の死亡の受け口・時間・チェックポイントの保存・開き直したときの回収済みのシャードの除去を足した（下の「ライフ・セーブ・死亡の受け口」）。死亡画面・再開・SAVING PROGRESS・ゲームオーバーはまだ無い。
+
+シャードは**最小限**（タブレットのパワーの作業〈作業一覧の項目 1〉のステップ 9 で作った）: ゲームモードの `Check Shards`（`Collect Shard` の通知と連続回収の判定 `Check Streak`）、`bDisabled` と `Enable` はまだ無い。回収の閃光 `P_ky_flash3` はステップ 9b で足し、作業一覧の項目 3 で本作の紫でやや弱い版 `P_WasamiShardFlash` に替えた。
 
 ## 公開インターフェース
 - `AWasamiShard`（`AActor`、`IWasamiTelekinesisInterface` を実装）
@@ -25,6 +32,12 @@ updated: 2026-09-18
   - 部品: `DefaultSceneRoot`、`Body`（本家の `SkeletalMesh` の位置と拡縮だけを持つ `USceneComponent`）、その子の `Mochi`（`UStaticMeshComponent`）・`PointLight`・`Capsule`、ルートの子の `Plane`（ミニマップの印）。
   - 値: `LightIntensity` 175（本家の `Light Intensity`）、`MinimapPlaneHeight` 2000（`Minimap Plane Height`）。
   - 素材（ソフト参照、`WasamiAssets.h`）: `MochiMesh` `/Game/Wasami/Shard/SM_WasamiMochi`、`PlaneMesh` `/Engine/BasicShapes/Plane`、`MapMarkMaterial` `/Game/DD/Materials/Shared/M_Shard`、`PickupSound` `/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue`、`PickupConcurrency` `/Game/DD/Audio/OnlyFew`、`CollectShake` `/Game/DD/Blueprints/Shared/BP_CameraShake_ShardCollect`、`CollectFlash` `/Game/Wasami/Shard/P_WasamiShardFlash`（本家は `P_ky_flash3`。下の「本作の回収の閃光」）。
+- `UWasamiGameInstance`（`UGameInstance`。`Config/DefaultEngine.ini` の `GameInstanceClass`、00 記録）… 本家の `BP_DD_GameInstance`。レベルを開き直しても残り、ディスクには書かない。
+  - `GetLives()`・`DecrementLives()`・`IncrementLives()`（どちらも 0..`MaxLives` 6 に Clamp）・`ResetLives()`（= `StartingLives` 3）… 本家の `BP_DD_Functions` の同名の関数。本家の既定の `Lives` は 3、`Reset Lives` はプレイヤーのレベル 0〜4 で 3（本作にプレイヤーのレベルは無い）。
+  - `RememberCollectedShard(StartLocation)`（`ShardKey` にして `AddUnique`）・`ForgetCollectedShards()`・`GetShardsToBeRemoved()` … 本家の `Shards To Be Removed`。静的関数 `ShardKey(Location)` は本家の `FTruncVector`（各成分を 0 の方へ切り捨てた整数）を `FVector` に戻したもの。
+- `UWasamiSaveGame`（`USaveGame`）… 本作のセーブ 1 つ。スロット `SlotName` = `structSlot`（本家の `BP_DD_levelStructSave` のスロット）、`UserIndex` 0。`Hospital`（`FWasamiLevelProgress`）と `bLastCheckpointWarning`（本家の `SaveSlot` の `Last Checkpoint Warning`）。
+  - `FWasamiLevelProgress` … 本家の `DD_LevelStructureyyy` のうち病院が書く欄: `LevelCheckpoint`（int。Zone 1 は 4〜6、Zone 2 は 7〜10、0 は無し）・`Deaths`・`Time`（float、秒）・`CurrentStreak`・`Streak`（本家の byte の enum を `uint8` で）。本家は 11 個の配列 `levelStruct` の添字 5 が病院。
+- ゲームモードの口（`AWasamiGameMode`、02 記録）: `DeathEvent(Cause)`・`ResetDeath()`・`IsDeathOpen()`、`OnDeath`（本家の `Death Dispatcher`）・`OnAllShardsAlreadyCollected`、`PauseTimeCounter()`・`UnpauseTimeCounter()`・`ResetTimeCounter()`・`GetTime()`、`SaveCheckpoint(Checkpoint)`、`GetSave()`・`WriteSave()`、`GetWasamiGameInstance()`、`GetTotalShards()`・`GetShardStreak()`、静的関数 `RemoveCollectedShards(World, Collected)`、`SaveSlotName`（既定 `structSlot`。テストが別のスロットにする）。
 - ツール: `WasamiDDTools.import_dd_shards()`（素材）、`WasamiStageTools.place_dd_shards(zone)`（配置。01 記録）。
 
 ## 内部構造と処理の流れ
@@ -56,10 +69,19 @@ updated: 2026-09-18
 3. 画面の数を `Clamp(数 − 1, 0, 9999)` にして（本家は文字列を整数にして引く）、`PlayCountShake()`（本家の `PlayAnimation(Count Shake, 0, 1, Forward, 2.0)`。03 記録）。
 4. （本家のゲームモードの `Check Shards` はまだ無い。）
 5. `ClientStartCameraShake(BP_CameraShake_ShardCollect, 0.4, CameraLocal)`。
-6. `SpawnEmitterAtLocation(P_WasamiShardFlash, Body の位置, 回転 0, 拡縮 0.2, 自動破棄, プールなし, 自動起動)`（本家は `P_ky_flash3` を `SkeletalMesh` の `K2_GetComponentLocation` に。`BP_Shard` @900〜@950）。部品はワールドの `WorldSettings` に付き、シャードの破棄の影響を受けない。エミッタの長さ（`RequiredModule` の既定の 1 秒）で終わって消える。（`NoSound` が偽のときの `Shards To Be Removed` はまだ無い。）
-7. `PlaySound2D(Soul_Shard_Pickup_v2_Cue, NoSound ? 0 : 0.65, 1.0, 0, OnlyFew)` → `Destroy()`。本家は破棄してから鳴らすが、同じフレームなので聞こえ方は同じ。破棄の後のワールドの取り方を当てにしないよう、音を先にした。
+6. `SpawnEmitterAtLocation(P_WasamiShardFlash, Body の位置, 回転 0, 拡縮 0.2, 自動破棄, プールなし, 自動起動)`（本家は `P_ky_flash3` を `SkeletalMesh` の `K2_GetComponentLocation` に。`BP_Shard` @900〜@950）。部品はワールドの `WorldSettings` に付き、シャードの破棄の影響を受けない。エミッタの長さ（`RequiredModule` の既定の 1 秒）で終わって消える。
+7. `NoSound` が偽なら、ゲームインスタンス（`UWasamiGameInstance`。無ければ飛ばす）の `RememberCollectedShard(PreviousLocation)`（BeginPlay の位置を切り捨てて `AddUnique`。本家 @1228〜@1388）。
+8. `PlaySound2D(Soul_Shard_Pickup_v2_Cue, NoSound ? 0 : 0.65, 1.0, 0, OnlyFew)` → `Destroy()`。本家は破棄してから鳴らすが、同じフレームなので聞こえ方は同じ。破棄の後のワールドの取り方を当てにしないよう、音を先にした。
 - 重なりの開始（`OnCapsuleBeginOverlap`）: 相手がプレイヤー（`GetPlayerCharacter(0)`）なら `Collect(false)`。本家の重なりの経路は `NoSound` を書かずに回収へ飛ぶが、そこへ来るのは DoOnce が開いているとき（＝`Collect` がまだ呼ばれていない、`NoSound` が既定の偽）だけなので同じ。
 - タブレットの数は、プレイヤーが 0.1 秒ごとにシャードのアクタを数え直す（02 記録。破棄されたアクタは数えない）。回収の直後の −1 は本家どおり画面に直接書く。
+
+### ライフ・セーブ・死亡の受け口（ゲームモードとゲームインスタンス）
+- **ゲームモードの BeginPlay**（本家 @33228〜）: `CheckForLevelStructSave`（本家の `Check For Level Struct Save` @40634。`LoadGameFromSlot(SaveSlotName, 0)` を `UWasamiSaveGame` にキャストして持ち、無ければ `CreateSaveGameObject` してすぐ `SaveGameToSlot`）。本家はここでタブレットの数をレベルのシャードの数にするが、本作はプレイヤーの 0.1 秒ごとの数え直し（02 記録）が同じことをする。**0.2 秒後**（本家の `Delay 0.2` → @4551）に `RemoveShardsToBeRemoved`: `TotalShards` = レベルのシャードの数（消す前）。ゲームインスタンスの `Shards To Be Removed` が空でなければ `RemoveCollectedShards` で消し、残りが 1 未満なら `OnAllShardsAlreadyCollected` を流す（本家も空のときは数えて終わる）。
+- `RemoveCollectedShards(World, Collected)`: 各シャードの**今の位置**を `ShardKey` にして `Collected` にあるものを集めてから `Destroy`（音も数えもしない）、残りの数（`TActorIterator` は破棄したアクタを数えない）を返す。
+- **時間**: ゲームモードの `Tick` が `Time += dt`（本家の `ReceiveTick` のゲート。始めから開いている）。`PauseTimeCounter` / `UnpauseTimeCounter` でゲートを閉じる・開く、`ResetTimeCounter` で 0。ゲームを止めている間（`SetGamePaused`）はティックしないので数えない（本家も同じ）。
+- **`DeathEvent(Cause)`**（本家 @34486 → @15098）: DoOnce（`bDeathClosed`。`ResetDeath` で開く）。`OnDeath.Broadcast(Cause)`、`ShardStreak` = max(`ShardStreak`, セーブの `CurrentStreak`)、セーブの `CurrentStreak` = 0（書くのは死亡画面）。本家が先に止める Bierce の独り言のタイマーは声の項目（20）までは無い。いま `OnDeath` を結ぶものは無い（死亡画面はステップ 4・5）。
+- **`SaveCheckpoint(Checkpoint)`**（本家のレベル BP のチェックポイントの保存と同じ形）: `LevelCheckpoint` = 値、`Time += ゲームモードの Time`、`ResetTimeCounter`、`WriteSave`。SAVING PROGRESS の画面（`UMG_Saving`）はまだ出さない。呼ぶ場面もまだ無い（項目 6・13）。
+- レベルを開き直すと（本家の再開も開き直し）、ゲームモードは作り直されてセーブを読み直し、ゲームインスタンスのライフと `Shards To Be Removed` は残る。
 
 ## 作るアセット
 `WasamiDDTools.import_dd_shards`（`pipeline/dd_shards.py`）が作る。
@@ -125,11 +147,14 @@ updated: 2026-09-18
 - UE 5.8: `ShapeComponent.cpp`（`OverlapAllDynamic`、`AreaClass` の既定）、`SkinnedMeshComponent.cpp`（`bRecentlyRendered` の 1 秒）、`Timeline.cpp`（`PlayFromStart` の更新）、`KismetMathLibrary`（`VEase`）、`GameplayStatics.h`（`PlaySound2D` の `bIsUISound` 既定 真。UE 4.24 も真）。
 
 ## 依存関係
+- ライフ・セーブ: ゲームモード（`AWasamiGameMode`、02 記録）がセーブとゲームインスタンスを使い、シャードが `RememberCollectedShard` を呼ぶ。エンジンの `USaveGame`・`UGameplayStatics`（`LoadGameFromSlot`・`SaveGameToSlot`・`CreateSaveGameObject`）・`UKismetMathLibrary::FTruncVector`・`TActorIterator`。
 - 自前: `AWasamiPlayerCharacter`（`GetTabletScreen`、02 記録）、`UWasamiTabletWidget`（`GetShardCount`・`SetShardCount`・`PlayCountShake`、03 記録）、`IWasamiTelekinesisInterface`（04 記録）、`WasamiAssets.h`（00 記録）。取り込みは `dd_assets`・`dd_stage`・`paths`（01 記録）。
 - 使う側: プレイヤーの `ShardActorClass`（既定がこのクラス。数と地図、02 記録）、レベルの組み立て（01 記録）、テレキネシス（`AWasamiTelekinesisPower::PullShards` が半径の中のシャードに `Activate` を呼ぶ。04 記録）。
 - エンジン: `UCapsuleComponent`・`UPointLightComponent`・`UStaticMeshComponent`、`UGameplayStatics`（`PlaySound2D`・`GetPlayerCharacter`・`GetPlayerController`）、`UKismetMathLibrary::VEase`、`FRichCurve`、`APlayerController::ClientStartCameraShake`。
 
 ## 既知の制約・注意点
+- **自動テストも本物のセーブに触れる**: `FTestWorldWrapper::BeginPlayInTestWorld` は既定のゲームモード（`AWasamiGameMode`）を作るので、ワールドを遊ばせるテストはどれも `structSlot` を読み、無ければ空のセーブを書く（`Saved/SaveGames/structSlot.sav`）。空のセーブはセーブが無いのと同じ中身（チェックポイント 0）。ゲームモードのテストは `SaveSlotName` を `WasamiTest_structSlot` にして、終わりに消す。
+- セーブを消してやり直すときは `Saved/SaveGames/structSlot.sav` を消す（デバッグのコンソールコマンド `Wasami.ResetSave` は項目 5 のステップ 5 で足す予定）。
 - **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光を足したもの。大きさだけはユーザーの依頼で原作の 1.5 倍。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。2026-09-17 のユーザーの回答に従い、**紫の明滅を外して餅を 1.5 倍（0.825 m）にした**（作業一覧の項目 22）。2026-09-18 に**モデルをユーザーの `wasami_mochi_v3` に替えた**（同じ項目。下の「餅のモデル」）。**回り方は本家の結晶と同じ撮り方で見比べたうえで、直さないと決めた**（2026-09-18。下の「餅の回り方」）。回収の閃光の値（`FLASH_GAMMA` 0.5・`FLASH_STRENGTH` 0.8）は同じ回答で確定した。
 - 原作の結晶の `Material`（`m_crystal_Inst1`）は、餅がメッシュの材質を持つので使わない。
 
@@ -190,8 +215,10 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 - `Wasami.Shard.PullCurve` … `Alpha` の値（0 / 0.375 / 0.75 / 1 秒）、ExpoIn の位置（Alpha 0 で元の位置、0.5 で 1/32、0.9 で 1/2、1 でプレイヤーの X・Y、高さは元のまま）、回る速さ（0.05 で 10.8、0.15 で 32.4 °/s）。
 - `Wasami.Shard.Actor` … 一時的なゲームのワールドに置いて、閃光の既定のパス（`CollectFlash`）、カプセル（半径と半高さ 49.57、高さ約 100 cm、`WorldStatic`・`Custom`・QueryOnly・Pawn とワールドへ Overlap・重なりのイベントあり）、灯（位置・強さ 175・単位なし・半径 200・色・影なし・Movable）、餅（0.825 m・97.085 cm・描画距離 3000・カスタム プリミティブ データなし）、印（20 m 上・拡縮・当たりなし）、再生速度の範囲。`Activate` でその場の位置の更新、再生速度の範囲、0.45 の時点でわずかにしか寄らないこと、終わりに原点へ着いて止まること、プレイヤーがいないので破棄されないこと。
 - `Wasami.Tablet.CountShake`（03 記録）。
+- `Tests/WasamiGameFlowTests.cpp`: `Wasami.GameFlow.Lives`（3 で始まり、0..6 に Clamp、`ResetLives` で 3。`ShardKey` の 0 の方への切り捨て、同じ整数の位置は 1 つ、`ForgetCollectedShards`）、`Wasami.GameFlow.Save`（スロット名 `structSlot`、全欄のメモリ上の往復）、`Wasami.GameFlow.RemoveShards`（3 つ置いて、切り捨てて一致する 2 つが消え、残り 1 を返す）、`Wasami.GameFlow.GameMode`（テスト用のスロットで BeginPlay がセーブを作って書く、1 秒の時間・止めている間は数えない、`SaveCheckpoint(5)` がスロットに書いて時間を足し 0 に戻す、`DeathEvent` の DoOnce と `ResetDeath`・連続回収の最高、作り直したゲームモードがスロットを読む）。
 
 ## 変更履歴
+- 2026-09-18: ゲームインスタンス（`UWasamiGameInstance`: ライフ 3・0..6、回収済みのシャードの記憶）とセーブ（`UWasamiSaveGame`、`structSlot`）を足し、ゲームモードに死亡の受け口・時間・チェックポイントの保存・開き直したときの回収済みのシャードの除去を足した。シャードの回収がゲームインスタンスに位置を覚えさせる（テスト 4 本。PIE で 2 つ回収 → `open L_Hospital_Zone1` → 337 が 335 になり、回収した 2 つが無いのを確かめた。作業一覧の項目 5 のステップ 3）
 - 2026-09-18: 餅の回り方を本家の結晶と同じ撮り方で見比べ、**直さないと決めた**（速さは個体ごとの乱数のまま。上の「餅の回り方」。作業一覧の項目 22 のステップ 4。コードは変えていない）
 - 2026-09-18: 餅のモデルを `wasami_mochi_v3` に替えた（6,000 → 101,368 三角形、テクスチャは PNG の 2048²・2048²・4096²。下の「餅のモデル」。作業一覧の項目 22 のステップ 3）
 - 2026-09-18: 餅の紫の明滅を外し、大きさを 0.55 → 0.825 m（1.5 倍）にした（`M_DD_WasamiMochi` の自己発光は `Glow` だけ、`PulsePhaseData` と `BeginPlay` の乱数を削除、テスト。作業一覧の項目 22 のステップ 2）

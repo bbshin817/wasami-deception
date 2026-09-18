@@ -5,7 +5,7 @@ sources:
   - Source/wasami_deception/WasamiGameMode.cpp
   - Source/wasami_deception/WasamiPlayerCharacter.h
   - Source/wasami_deception/WasamiPlayerCharacter.cpp
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # プレイヤーとゲームモード
@@ -15,7 +15,7 @@ updated: 2026-09-17
 
 ## 公開インターフェース
 
-- `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定 `Collect all shards`）はタブレットの帯に出す目的（本家の `BP_DD_GameMode` の `Current Objective`）。
+- `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定 `Collect all shards`）はタブレットの帯に出す目的（本家の `BP_DD_GameMode` の `Current Objective`）。ほかにゲームの流れの受け持ち（BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）を持つ。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」。
 - `AWasamiPlayerCharacter : ACharacter`
   - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。2 つの速さを書いて使う方を当てる。スピードブーストが使う）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetPowers()`。
   - 移動の値: `WalkingSpeed` 300、`SprintingSpeed` 600（cm/s）。
@@ -88,6 +88,7 @@ updated: 2026-09-17
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-18: ゲームモードにゲームの流れの受け持ち（セーブ・時間・死亡の受け口・チェックポイントの保存・回収済みのシャードの除去）を足した。中身は 06 記録（作業一覧の項目 5 のステップ 3）
 - 2026-09-17: 視点の対応づけから Scalar 0.07 を外した（`AxisConfig` の 0.07 と重なって視点が遅すぎた。ユーザーの指摘、作業一覧の項目 2）
 - 2026-09-17: `ShardActorClass` の既定を `AWasamiShard` にした。画面のアニメを進める呼び出しを `TickAnimations` に改めた（シャードの `Count Shake` も進める）
 - 2026-09-16: 左クリックとホイールの入力を足し、テレポートの照準（04 記録）へ渡すようにした

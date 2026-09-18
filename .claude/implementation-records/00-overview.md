@@ -14,7 +14,7 @@ sources:
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
   - Source/wasami_deception/WasamiAssets.h
-updated: 2026-09-16
+updated: 2026-09-18
 ---
 
 # 全体像
@@ -56,7 +56,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 ## 設定（`Config/`）
 
 - **`DefaultEngine.ini`**
-  - `[/Script/EngineSettings.GameMapsSettings]`: `GameDefaultMap` と `EditorStartupMap` は `/Game/Stage/Maps/L_Hospital_Zone1`、`GlobalDefaultGameMode` は `/Script/wasami_deception.WasamiGameMode`。
+  - `[/Script/EngineSettings.GameMapsSettings]`: `GameDefaultMap` と `EditorStartupMap` は `/Game/Stage/Maps/L_Hospital_Zone1`、`GlobalDefaultGameMode` は `/Script/wasami_deception.WasamiGameMode`、`GameInstanceClass` は `/Script/wasami_deception.WasamiGameInstance`（ライフと回収済みのシャードの記憶。06 記録）。
   - `[/Script/Engine.RendererSettings]`: **静的ライティング有効**（`r.AllowStaticLighting=True`）、仮想シャドウマップ有効、**メッシュ距離フィールドは作らない**（`r.GenerateMeshDistanceFields=False`）、**動的 GI なし**（`r.DynamicGlobalIlluminationMethod=0`）、**反射は SSR**（`r.ReflectionMethod=2`）、Substrate 有効、**`r.RayTracing=False`**（この PC の GeForce GTX 1660 SUPER に RT コアが無い）。最初の 4 つは 2026-09-16 に Lumen から切り替えたもの。理由は下の「灯の焼き込み」。
   - `[/Script/Engine.LocalPlayer]`: `AspectRatioAxisConstraint=AspectRatio_MaintainXFOV`（2026-09-16）。カメラの FOV 90 は原作では**水平**（UE 4.24 のエンジン既定が `MaintainXFOV` で、原作のプロジェクト設定は上書きしていない）。UE 5 の既定は `MaintainYFOV` に変わっており、そのままだとこの PC の 21:9（3440x1440）で水平 107° になって何もかも小さく写る。16:9 ではどちらでも同じ。
   - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。原作の `r.UsePreExposure=False`（プレエクスポージャ無し）は、代わりに `r.EyeAdaptation.PreExposureOverride=1`（プレエクスポージャを 1.0 に固定）で写す（2026-09-16、ユーザーの決定。下の「既知の制約・注意点」）。根拠と効果は下の「露出」。
@@ -157,6 +157,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 
 ## 変更履歴
 - 2026-09-16: 初版（現行の構成・設定を記録）
+- 2026-09-18: `GameInstanceClass` を `WasamiGameInstance` にした（作業一覧の項目 5 のステップ 3）
 - 2026-09-16: パイプラインのアセットをソフト参照で持つ決まり（`WasamiAssets.h`）と、Automation テストの置き場所を足した
 - 2026-09-16: 露出を原作のプロジェクト設定に合わせた（「露出」の節）。写していない 2 つの設定を「既知の制約・注意点」に足した
 - 2026-09-16: 「灯の焼き込み」の結果を、マテリアルのコンパイル失敗と灯の色の取り違え（01 記録）を直した後の値に書き換えた
