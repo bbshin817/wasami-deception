@@ -13,7 +13,7 @@ updated: 2026-09-19
 # 見て使う（視線の手のマークと左クリック）
 
 ## 役割
-本家 Dark Deception の「見て使う」仕組みを写したもの。プレイヤーがカメラの前 200 cm に使える物を捉えている間、画面の中央に手のマーク（本家の `UMG_Interact`）を出し、左クリック（本家の `Interact (Secondary)`）でその物の `InteractWithObject` を呼ぶ。使える物はインターフェース `IWasamiInteractable`（本家の `BP_InteractInterface`）を持つアクタ。作業一覧の項目 13 のステップ 1 で作った。プレイヤー側の処理（トレース・ティック・左クリック）は `AWasamiPlayerCharacter`（02 記録）にあり、この記録で流れをまとめる。使う側（障壁の拒否・祭壇・欠片）は項目 13 の後のステップで足す（08・11 記録）。
+本家 Dark Deception の「見て使う」仕組みを写したもの。プレイヤーがカメラの前 200 cm に使える物を捉えている間、画面の中央に手のマーク（本家の `UMG_Interact`）を出し、左クリック（本家の `Interact (Secondary)`）でその物の `InteractWithObject` を呼ぶ。使える物はインターフェース `IWasamiInteractable`（本家の `BP_InteractInterface`）を持つアクタ。作業一覧の項目 13 のステップ 1 で作った。プレイヤー側の処理（トレース・ティック・左クリック）は `AWasamiPlayerCharacter`（02 記録）にあり、この記録で流れをまとめる。使う側は障壁の拒否（`AWasamiZoneBarrier`、項目 13 のステップ 2。08 記録）。祭壇・欠片は項目 13 の後のステップで足す（08・11 記録）。
 
 ## 公開インターフェース
 - `IWasamiInteractable`（`UINTERFACE(BlueprintType)`）: `InteractWithObject(AActor* Interactee)`（BlueprintNativeEvent。`Interactee` はプレイヤー。本家の引数も Actor）、`StopInteractWithObject()`（同。クリックを離した）。既定はどちらも何もしない。本家の 3 つ目の `Use` は手に持つ物のもので、本作に手に持つ物は無いので持たない。
@@ -44,9 +44,10 @@ updated: 2026-09-19
 - エンジン: `UWorld::LineTraceSingleByChannel`、`UPrimitiveComponent::ComponentHasTag`、`UUserWidget`・`UCanvasPanel`・`UImage`、`UInterface`。
 
 ## 既知の制約・注意点
-- タグ `interact` を持つ部品はまだ無い（障壁・祭壇が項目 13 のステップ 2・3 で付ける）。レベルの組み立ては本家の部品のタグを写さないので、本家のレベルの静的メッシュに `interact` があっても手のマークは出ない。
+- タグ `interact` を持つのは障壁（アクタ・ルート・板 2 枚。08 記録）と両開き扉のアクタ（部品には無いので手は出ない）。祭壇は項目 13 のステップ 3 で付ける。レベルの組み立ては本家の部品のタグを写さないので、本家のレベルの静的メッシュに `interact` があっても手のマークは出ない。
 - テスト用のアクタ `AWasamiTestInteractable`（`Tests/`。100 cm の BlockAll の箱で、部品にタグ `interact`、呼ばれた数を数える）は、ゲームのモジュールに入るがレベルには置かない（04 記録の `AWasamiTestEnemy` と同じ扱い）。
 - テスト: `Wasami.Interact.Widget`（`UMG_Interact` の木とスロット）、`Wasami.Interact.Trace`（手のマークの出し入れ〈タグ・`Can Interact?`・200 cm〉、押しの `InteractWithObject` と離しの `StopInteractWithObject`、`Can Interact?` が偽の押しでも離しは前の当たりへ）。
 
 ## 変更履歴
+- 2026-09-19: 使う側に障壁の拒否を足した（08 記録。作業一覧の項目 13 のステップ 2）
 - 2026-09-19: 初版。インターフェース `IWasamiInteractable`、手のマーク `UWasamiInteractWidget`、プレイヤーのトレース・ティック・左クリック（02 記録）、素材の取り込み `dd_ui.import_interact`、テスト 2 本（作業一覧の項目 13 のステップ 1）

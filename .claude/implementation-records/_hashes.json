@@ -32,7 +32,7 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "cdcf7b195794b7292fe49920c524e271096b8a1a",
+    "Content/Python/wasami_tools/toolsets/dd.py": "0775ebd05d4eba3d1f964cd6f1262f0a77a243aa",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "033a8c527fa24714f1afe20ea3f35a24ee30555d",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
@@ -47,7 +47,7 @@
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "0f9440a36537a6379efcc520495115cf9425076a",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "c2a31e1bd4167e314a58b20bb4d8478a87ed5af5",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "0a72d73f74647f2d266d6977f9b75c1d436f325a",
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "c709e1b81b99b4f22a2ef6736888dd015fd633bc",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "e8a7098d90714c4f2f6d4009b7b79e9e02d1c120",
@@ -162,7 +162,10 @@
     "Source/wasami_deception/WasamiBlackFadeWidget.cpp": "395ccfb2342ecd87ebf686438deccb911b12a090",
     "Source/wasami_deception/WasamiLoadingWidget.h": "ee36bee48473a2c17659d7e20fbcd386720ffefc",
     "Source/wasami_deception/WasamiLoadingWidget.cpp": "74d3df430b853409a20851dc97482277281de009",
-    "Source/wasami_deception/WasamiWidgetAnimation.h": "83bb9caadeb91d0a38e08117f705356a3f5a3f34",
+    "Source/wasami_deception/WasamiTextPromptWidget.h": "5a5fc60c805771e8d6b56e25d10880b6d1caf5e2",
+    "Source/wasami_deception/WasamiTextPromptWidget.cpp": "f7995b571cc551c6c37cfb9df549cb8fcf69fbb2",
+    "Source/wasami_deception/Tests/WasamiTextPromptTests.cpp": "d025749474a2df7ba309cd6a53cb653af06d759c",
+    "Source/wasami_deception/WasamiWidgetAnimation.h": "bb7f4db7b7e9cd3c2497883c1b980a61270ad785",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "c2a31e1bd4167e314a58b20bb4d8478a87ed5af5"
   },
   "11-zone-flow.md": {
@@ -185,13 +188,13 @@
     "Source/wasami_deception/WasamiDoubleDoors.h": "69ddf1570a8f5addfc2a2fbffd9edda0f3d14bac",
     "Source/wasami_deception/WasamiDoubleDoors.cpp": "9e0b343f1fc41d7bf2b508146f4c31175357a9be",
     "Source/wasami_deception/Tests/WasamiDoubleDoorsTests.cpp": "05d8a97fdb6c71e829b04a040e00a98de3a51e1b",
-    "Source/wasami_deception/WasamiZoneBarrier.h": "9f08467569421d91694b07e76624517f3af3f4e7",
-    "Source/wasami_deception/WasamiZoneBarrier.cpp": "756455bd47c5382d157ca0a1a00553e33f880fd3",
-    "Source/wasami_deception/Tests/WasamiZoneBarrierTests.cpp": "b43224a46a32f539a4e22b51d513e1f2a26ad8c1",
+    "Source/wasami_deception/WasamiZoneBarrier.h": "cd89f53c477c88d32831a3e1bc16edaa56b0ebb0",
+    "Source/wasami_deception/WasamiZoneBarrier.cpp": "65ecfcb1d4eb5cf4de96464ce3bd22ba0eb9176c",
+    "Source/wasami_deception/Tests/WasamiZoneBarrierTests.cpp": "b40ef14bb037934365a74c372108dfb44f928a8a",
     "Source/wasami_deception/WasamiHitFX.h": "e01a423fa56e25756c0ecfeda5c9b2c14f236280",
     "Source/wasami_deception/WasamiHitFX.cpp": "3f06d3926c2dac1d9209c7cdfd09f40796b61715",
     "Source/wasami_deception/Tests/WasamiHitFXTests.cpp": "89b8e130c17db44b1c197bb375307723a1e1c63c",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "0a72d73f74647f2d266d6977f9b75c1d436f325a"
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "c709e1b81b99b4f22a2ef6736888dd015fd633bc"
   },
   "12-lifts.md": {
     "Source/wasami_deception/WasamiLift.h": "070308d6fd060466c90f0ae322ec654e1dcf1102",

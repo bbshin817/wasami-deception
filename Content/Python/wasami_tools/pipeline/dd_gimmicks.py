@@ -1,17 +1,18 @@
 """Dark Deception's hospital gimmicks: what the stage's moving parts play. The double doors (AWasamiDoubleDoors, after
-the original's Blueprints/06_Hospital/BP_06_DoubleDoors): the swing's two sounds and their attenuation (MonkeyAttenuation),
-and the locked rattle (Locked_Door, a SoundCue of two waves) with the attenuation the doors play it through
-(01_Lobby_Attenuation). The doors' meshes and materials come with the stage's assets (dd_stage), and the level build puts
-them on the placed doors (dd_level). The zone barrier (AWasamiZoneBarrier, after Blueprints/Main/BP_ZoneBarrier): its
-hum and shatter, its planes' materials (MM_SpeedBarrier, whose graph the cook took away, rebuilt from its compiled
-shader, and the barrier's two instances of it) and the burst it breaks with (P_ky_impact3); the level build puts the
-materials on the placed barriers. The tunnel's doors broken in (the zone flow, AWasamiZone1Flow): their crash
+the original's Blueprints/06_Hospital/BP_06_DoubleDoors): the swing's two sounds and their attenuation
+(MonkeyAttenuation), and the locked rattle (Locked_Door, a SoundCue of two waves) with the attenuation the doors play it
+through (01_Lobby_Attenuation). The doors' meshes and materials come with the stage's assets (dd_stage), and the level
+build puts them on the placed doors (dd_level). The zone barrier (AWasamiZoneBarrier, after
+Blueprints/Main/BP_ZoneBarrier): its hum and shatter, the sound it turns the player away with and that sound's
+attenuation, its planes' materials (MM_SpeedBarrier, whose graph the cook took away, rebuilt from its compiled shader,
+and the barrier's two instances of it) and the burst it breaks with (P_ky_impact3); the level build puts the materials
+on the placed barriers. The tunnel's doors broken in (the zone flow, AWasamiZone1Flow): their crash
 (DD_TT_Door_BustedOpen_02) and the burst of concrete the level's emitter Fracture_concrete_5 plays (BallisticsVFX's
 Fracture_concrete_3, whose materials' graphs the cook took away: estimated, as the particle packs' others are). Zone 2's
 cell: the needles' stab as its spikes reach the player (DD_Needle_Trap_R1_V3, AWasamiZone2Flow), and the particles its
 sequences fire (06_Hospital_Zone2_Spikes: the sparks the spikes throw, P_06_NurseSparks, and the dust as they come down,
-Fracture_dark_slow; 06_Hospital_Zone2_Cell_DoorPicked: the burst at the cell door, Concrete_impact_large), with the
-four materials the cook took the graphs of, estimated off their compiled shaders. Zone 2's lifts (AWasamiLift and
+Fracture_dark_slow; 06_Hospital_Zone2_Cell_DoorPicked: the burst at the cell door, Concrete_impact_large), with the four
+materials the cook took the graphs of, estimated off their compiled shaders. Zone 2's lifts (AWasamiLift and
 AWasamiCornerLift, after Blueprints/06_Hospital/Lifts/Zone2): the clunk as they start and stop (DD_TT_GarageLift_Down,
 through MonkeyAttenuation), the loop while they move (DD_TT_Lift_Loop, through 01_Lobby_Attenuation), and the garage
 lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets. The garage lifts
@@ -45,12 +46,16 @@ DOUBLE_DOOR_ATTENUATIONS = (
 
 
 KY = "ThirdParty/AdvancedMagicFX13/"
+# The hum, the shatter, and the sound as a look and a click at the barrier is turned away (DD_RingBarrierDenied_louder,
+# through DialogueAttenuation; the ring altar turns the player away with the same).
 ZONE_BARRIER_SOUNDS = (
     "Audio/02_School/Barrier_Loop",
     "Audio/02_School/Barrier_Shatter",
+    "Audio/RingStatue/DD_RingBarrierDenied_louder",
 )
 ZONE_BARRIER_ATTENUATIONS = (
     "Audio/01_Hotel/01_Lobby_Attenuation",
+    "Audio/Misc/DialogueAttenuation",
 )
 SPEED_BARRIER_TEXTURE = "Textures/02_ElementarySchool/school_decal_speedBarrier_01_A"
 ZONE_BARRIER_TEXTURES = (SPEED_BARRIER_TEXTURE, KY + "Textures/T_ky_flare14_4x4")

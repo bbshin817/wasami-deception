@@ -77,7 +77,7 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     def import_dd_gimmicks() -> dict[str, int]:
         """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
         sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
-        hum and shatter, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
+        hum and shatter, the sound it turns the player away with and its attenuation, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
         after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
         their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
         the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
