@@ -15,8 +15,8 @@ driver stops at once ("使用量が読めない") unless --no-usage-check is giv
 of Claude itself is watched, and the driver waits for the reset it names (or 30 minutes) and goes on.
 
 After each run the driver reads Intermediate/Overnight/status.json (Claude writes {"result": "continue" | "stop",
-"reason": ..., "step": ..., "commit": ..., "written": ..., "summary": [...], "learned": [...], "pending": [...],
-"shots": {"caption": ..., "files": [...]}}) and compares HEAD before and after. It stops on "stop",
+"reason": ..., "step": ..., "commit": ..., "written": ..., "done": ..., "summary": [...], "learned": [...],
+"pending": [...], "shots": {"caption": ..., "files": [...]}}) and compares HEAD before and after. It stops on "stop",
 when HEAD did not move in two runs in a row, at --until, after --max-iterations, or when the budget says so.
 Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log with a header and footer per run, and a
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
@@ -28,8 +28,10 @@ exit code, working time and 進捗率 (overall_progress: the whole from the star
 the 規模 in .claude/roadmap.md), then 作業概要 / 分かったこと / 要検討事項 (only what came up in this run) from the
 status file, then the images Claude named in "shots" attached as one grid: only images meant for people (sequence
 grids of effects, enemy motions, shard pickups), never shots taken to check the work. The reply of Claude itself goes
-to the log only. Without a URL, or with --no-discord, nothing is
-posted; a dry run prints the report of the last status file instead. A post that fails is logged and the run goes on.
+to the log only. The summary at the end is the other format the user gave on 2026-09-18 (final_report): 反復回数,
+無人運転時間 and 終了理由 as a sentence, then やったこと ("done" of every run, one line each) and 要確認事項 (the
+"pending" of every run put together). Without a URL, or with --no-discord, nothing is posted; a dry run prints both
+posts built from the last status file instead. A post that fails is logged and the run goes on.
 
 While it runs the driver keeps Intermediate/Overnight/driver.json ({"pid", "started", "log"}): a second driver refuses
 to start, and the SessionStart hook tells an attended session not to change anything until the driver is stopped
@@ -286,6 +288,20 @@ def bullets(items):
     return "\n".join("- " + item for item in items) if items else "なし"
 
 
+def run_done(status):
+    """The lines of a run for やったこと of the summary: "done" of its status file, else the first item of "summary"."""
+    return status_list(status, "done") or (status_list(status, "summary") or [])[:1]
+
+
+def run_pending(status, new_pending):
+    """要検討事項 of a run: "pending" of its status file, else the 要確認 lines that appeared in the progress records
+    during the run (`new_pending`)."""
+    pending = status_list(status, "pending")
+    if pending is None:
+        pending = [re.sub(r"^- ", "", line) for line in new_pending]
+    return pending
+
+
 def report_images(status):
     """(caption, image paths) for the 📷 section: only the files Claude named in "shots" of the status file, the images
     meant for people (sequence grids of effects, enemy motions, shard pickups; the user's instruction of 2026-09-18).
@@ -318,9 +334,7 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
         summary_text = "（状態ファイルに作業概要が無いので、Claude の最後の応答を載せます）\n\n" + (output.strip() or "（出力なし）")
     else:
         summary_text = bullets(summary)
-    pending = status_list(status, "pending")
-    if pending is None:
-        pending = [re.sub(r"^- ", "", line) for line in new_pending]
+    pending = run_pending(status, new_pending)
     caption, images = report_images(status)
     lines = [
         "## 📌 反復 #%d 終了" % number,
@@ -348,6 +362,27 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
         (caption or "画像を添付します。") if images else "なし",
     ]
     return "\n".join(lines), images
+
+
+def final_report(runs, seconds, ending, done, pending):
+    """The Discord post at the end of the driver in the format the user gave on 2026-09-18. `ending` is why it ended as
+    a sentence (「スケジュール時刻を迎えたため」), `done` and `pending` the lines of every run in order (the same
+    line twice is shown once)."""
+    return "\n".join([
+        "# 🏁 無人運転終了",
+        "",
+        "- 反復回数: %d回" % runs,
+        "- 無人運転時間: %s" % duration_text(seconds),
+        "- 終了理由: %s" % ending,
+        "",
+        "%s 🔧 やったこと" % SECTION,
+        "",
+        bullets(list(dict.fromkeys(done))),
+        "",
+        "%s 🚨 要確認事項" % SECTION,
+        "",
+        bullets(list(dict.fromkeys(pending))),
+    ])
 
 
 def parse_when(text):
@@ -478,9 +513,10 @@ def run_claude(command, log):
     return proc.returncode, "".join(chunks), time.time() - started
 
 
-def summarize(log, discord, runs, reason, status, code, started, progress_at_start):
+def summarize(log, discord, runs, reason, ending, status, code, started, done, night_pending):
+    """The summary for the morning: the log gets the detail (the SessionStart hook reads its head lines), Discord the
+    user's format (final_report)."""
     pending = pending_lines()
-    progress = overall_progress()
     lines = ["反復: %d 回、終了の理由: %s" % (runs, reason)]
     if status:
         lines.append("最後の状態ファイル: result=%s step=%s commit=%s reason=%s" % (
@@ -495,23 +531,7 @@ def summarize(log, discord, runs, reason, status, code, started, progress_at_sta
     log.say("--- まとめ ---")
     for line in lines:
         log.say(line)
-    discord.post("\n".join([
-        "## 🏁 無人運転 終了",
-        "",
-        "%s ステータス" % SECTION,
-        "",
-        "- 終了コード: %d" % code,
-        "- 反復: %d 回" % runs,
-        "- 終了の理由: %s" % reason,
-        "- 稼働時間: %s" % duration_text(time.time() - started),
-        "- 進捗率: %s（開始時 %s）" % (progress_text(progress), progress_text(progress_at_start)),
-        "- HEAD: %s（%s）" % (head(), branch()),
-        "",
-        "%s 🚨 要確認（ユーザー）" % SECTION,
-        "",
-        ("進捗記録に未回答が %d 件あります（一覧は有人セッションの始めに出します）。" % len(pending))
-        if pending else "なし",
-    ]))
+    discord.post(final_report(runs, time.time() - started, ending, done, night_pending))
     return code
 
 
@@ -589,6 +609,8 @@ def main():
         if previous:
             report, images = run_report(0, 0, 0, previous, "", [], overall_progress())
             log.say("前回の状態ファイルから組んだ反復の報告の見本（添付 %d 枚）:\n%s" % (len(images), report))
+            log.say("同じ状態ファイルの 1 反復で終えたときの終わりのまとめの見本:\n%s" % final_report(
+                1, 0, "スケジュール時刻を迎えたため", run_done(previous), run_pending(previous, [])))
         log.say("dry run なので走らせない")
         return 0 if probe.returncode == 0 else 3
 
@@ -608,29 +630,36 @@ def main():
     runs = 0
     stalled = 0
     last_status = None
-    reason = None
+    # Why the driver ended: `reason` for the log (with the detail), `ending` as the sentence of the Discord summary.
+    reason = ending = None
     code = 0
+    done, night_pending = [], []
     try:
         while True:
             if args.max_iterations is not None and runs >= args.max_iterations:
                 reason = "反復の上限 %d 回" % args.max_iterations
+                ending = "反復の上限（%d回）に達したため" % args.max_iterations
                 break
             if deadline and now() >= deadline:
                 reason = "終了の時刻 %s" % stamp(deadline)
+                ending = "スケジュール時刻を迎えたため"
                 break
             if args.usage_cmd:
                 usage, error = read_usage(args.usage_cmd)
                 if usage is None:
                     reason, code = "使用量が読めない: %s" % error, 2
+                    ending = "使用量を読めなかったため"
                     break
                 action, text, wait_until = budget_verdict(usage)
                 log.say("使用量: %s" % text)
                 if action == "stop":
                     reason, code = "予算: %s" % text, 2
+                    ending = "週間の使用量の残りが予算の決まりを下回ったため"
                     break
                 if action == "wait":
                     if not sleep_until(wait_until, deadline, log, discord, "5 時間の枠が尽きた"):
                         reason = "終了の時刻 %s（5 時間の枠の待ちの途中）" % stamp(deadline)
+                        ending = "5時間の使用量の枠の回復を待つ間にスケジュール時刻を迎えたため"
                         break
                     continue
             runs += 1
@@ -649,6 +678,8 @@ def main():
                                                   status.get("reason", ""))) if status else "書かれていない")
             log.say("=== " + footer)
             new_pending = [line for _, line in pending_lines() if line not in pending_before]
+            done += run_done(status)
+            night_pending += run_pending(status, new_pending)
             report, images = run_report(runs, exit_code, seconds, status, output, new_pending, overall_progress())
             if images:
                 discord.post_images(images, report)
@@ -656,21 +687,25 @@ def main():
                 discord.post(report)
             if exit_code is None:
                 reason, code = "Claude を起動できない", 3
+                ending = "Claude を起動できなかったため"
                 break
             reset = limit_reset(output, exit_code)
             if reset is not None and after == before:
                 log.say("使用量の上限に達した返事（5 時間の枠とみなす）")
                 if not sleep_until(reset, deadline, log, discord, "使用量の上限に達した返事"):
                     reason = "終了の時刻 %s（上限の待ちの途中）" % stamp(deadline)
+                    ending = "使用量の上限の回復を待つ間にスケジュール時刻を迎えたため"
                     break
                 continue
             if status and status.get("result") == "stop":
                 reason = "Claude が stop: %s" % status.get("reason", "（理由なし）")
+                ending = "Claude が作業を止めたため（%s）" % (status.get("reason") or "理由なし")
                 break
             if after == before:
                 stalled += 1
                 if stalled >= STALL_LIMIT:
                     reason, code = "進捗なし（HEAD が %d 回続けて動かない）" % STALL_LIMIT, 3
+                    ending = "%d回続けてコミットが増えなかったため" % STALL_LIMIT
                     break
             else:
                 stalled = 0
@@ -678,7 +713,8 @@ def main():
                 time.sleep(args.pause)
     except KeyboardInterrupt:
         reason, code = "中断（Ctrl+C）", 130
-    result = summarize(log, discord, runs, reason, last_status, code, driver_started, progress_at_start)
+        ending = "Ctrl+C で中断したため"
+    result = summarize(log, discord, runs, reason, ending, last_status, code, driver_started, done, night_pending)
     log.close()
     return result
 

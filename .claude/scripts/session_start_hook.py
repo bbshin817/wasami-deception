@@ -95,7 +95,7 @@ def main():
         lines.append("**無人モード**（駆動役 Tools/overnight.py が起動。`.claude/guides/autonomy.md` に従う）: ユーザーに質問せず、"
                      "本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて記録の「要確認（ユーザー）」に書く。"
                      "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
-                     "Intermediate/Overnight/status.json を書いて応答を終える（Discord の反復の報告になる summary・learned・"
+                     "Intermediate/Overnight/status.json を書いて応答を終える（Discord の報告になる done〈終わりのまとめのやったことの 1 行〉・summary・learned・"
                      "pending〈この反復で新しく出た要確認だけ〉・shots〈人に見せる連番のグリッドだけ。確かめるための撮影は付けない〉"
                      "も書く。autonomy.md の「Discord への通知」）。"
                      "変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わない"
