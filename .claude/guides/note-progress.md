@@ -24,9 +24,13 @@
 
 ## セッションの値（`_note_session_v5`）
 
-- **ファイルに書かない**（ソース・設定・原稿・ガイド・進捗記録・ログ・コミット・メモリのどれにも）。ユーザーがその会話で渡した値を、コマンドの `--session` に実行時にだけ入れる。報告やコマンドの説明では `<PROJECT_SESSION_TOKEN>` と書く。
-- **会話で渡されていないとき**（`/clear` の後、無人モード）は、原稿 `docs/note/progress.md` だけを直してコミットし、完了の報告に「note へは未反映（セッションの値が無い）」と 1 行書く。値を探したり推測したりしない。次に値をもらったときに `edit` を 1 回走らせれば追いつく。
-- `401` が返ったら止めて、値の出し直しをユーザーに頼む。無制限に再試行しない（非公式の API）。
+- **置き場は `Tools/note.local.json`（git の外。`.gitignore` の `/Tools/*.local.json`）。** 形は `{"note_session_v5": "<値>", "given": "<受け取った日>"}`。
+  - 2026-09-18 のユーザーの指示（「notion_session_id を失っているのが問題です。非追跡ファイルへきちんと記録してください」）で、それまでの「ファイルに書かない・会話で渡された値だけを使う」をやめた。`/clear` のたびに値を失い、note が何ステップも未反映のままになっていたため。`tmp/note-cli/CLAUDE.md`・`AGENTS.md` の「ファイルへ保存しない」より、このプロジェクトではこの指示を優先する。
+  - 会話で新しい値をもらったら、その場でこのファイルを書き換える（`given` も直す）。
+- **このファイルのほかには書かない**（ソース・設定・原稿・ガイド・進捗記録・ログ・コミット・メモリ・Discord への送信のどれにも）。値を画面に出さない（`cat` や `Get-Content` で表示しない）。報告やコマンドの説明では `<PROJECT_SESSION_TOKEN>` と書く。
+- 使うときは、下の「コマンド」のとおり `--session` にこのファイルから実行時に読み込む。無人モードでも同じように使ってよい。
+- **ファイルが無い・値が空のとき**は、原稿 `docs/note/progress.md` だけを直してコミットし、完了の報告に「note へは未反映（セッションの値が無い）」と 1 行書く。値を探したり推測したりしない。次に値をもらったときに `edit` を 1 回走らせれば追いつく。
+- `401` が返ったら止めて、値の出し直しをユーザーに頼む（無人モードでは「要確認（ユーザー）」に書いて、原稿だけ直す）。無制限に再試行しない（非公式の API）。
 
 ## いつ更新するか
 
@@ -50,14 +54,16 @@
 - 浮いた小窓（メッセージログなど）がビューポートに重なっているときは、画面の撮影の代わりに PIE のコンソールで `shot showui` を打つ（2026-09-17 夜）。UI 込みでエディタの主窓だけが `Saved/Screenshots/WindowsEditor/ScreenShotNNNNN.png` に出て、小窓は写らない。その日の配置ではビューポートは `crop=1146:644:9:142`。Speed Boost はこれで撮った: 待合 (15, 385)・ヨー 90 で左の枠の `UsePower(true)` をリモート実行で呼び、`hold w --ms 4000` の約 2 秒後に撮る。シャードの光（`08-shard-glow.jpg`）もこれで撮った: `pie.py place 0 -2130 --yaw -90 --pitch -8`、`slomo 0.02` で `BP_Shard5` を `observations/tools/shard_glow/collect.py` で回収し、約 0.5 s 後に `shot showui`（同じ切り出し）。
 - 検証用の比較シートや、デバッグ表示の入った絵は載せない。
 
-## コマンド（`tmp/note-cli` で、必ず 1 行で）
+## コマンド（プロジェクトの根から PowerShell で、必ず 1 行で）
 
-決まりの正本は `tmp/note-cli/AGENTS.md`（note の操作の前に読む）。
+決まりの正本は `tmp/note-cli/AGENTS.md`（note の操作の前に読む。セッションの値の置き場だけは上の節が優先）。
 
 ```console
-# 公開中の記事を書き換える
-python note_cli.py edit --session '<PROJECT_SESSION_TOKEN>' --id 180735989 --key n38f5d6ef4565 --title 'WASAMI DECEPTION（UE5 版）開発進捗' --body-file ../../docs/note/progress.md --markdown --no-notify
+# 公開中の記事を書き換える。セッションの値は Tools/note.local.json から読むので、コマンドの文に値は出ない
+python tmp/note-cli/note_cli.py edit --session (Get-Content Tools/note.local.json -Raw | ConvertFrom-Json).note_session_v5 --id 180735989 --key n38f5d6ef4565 --title 'WASAMI DECEPTION（UE5 版）開発進捗' --body-file docs/note/progress.md --markdown --no-notify
 ```
+
+- 画像の相対パスは原稿のフォルダから解決されるので、プロジェクトの根から走らせてよい。
 
 - 投稿の前に、API を使わない変換だけを確かめられる: `markdown_to_note.convert(md, {"imageResolver": <ダミー>})` が例外を出さないこと。
 - 結果の JSON の `status` を確かめ、報告には タイトル・id・key・status・editor_url だけを書く。
