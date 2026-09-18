@@ -62,7 +62,7 @@ AWasamiGarageLift::AWasamiGarageLift()
 	SkeletalMesh->AnimClass = UWasamiGarageLiftAnimInstance::StaticClass();
 
 	// Box_GEN_VARIABLE: query and physics, blocking pawns. (Its NavArea_Obstacle and PhysMat_Metal are left out: the
-	// enemies' navigation is the work list's item 7, and nothing reads the surface.)
+	// area changes none of the nurses' paths (implementation record 12), and nothing reads the surface.)
 	Box = CreateDefaultSubobject<UBoxComponent>(TEXT("Box"));
 	Box->SetupAttachment(SkeletalMesh, PlatformBone);
 	Box->SetRelativeRotation(LiftBoxRotation);

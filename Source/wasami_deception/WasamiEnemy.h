@@ -2,21 +2,27 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "WasamiEnemyInterface.h"
 #include "WasamiEnemy.generated.h"
 
 class USkeletalMesh;
 class UWasamiEnemyAnimInstance;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiEnemyCloseBy);
+
 /**
  * The enemy Wasami, after Dark Deception's hospital nurse BP_06_ReaperNurse and its parent BP_DD_Character_Base
  * (pak_reference_2): a character with the Enemy tag and the enemy interface, the nurse's capsule, movement and mesh
- * placement, this game's Wasami (SK_WasamiEnemy) with UWasamiEnemyAnimInstance, and the nurse's stun. The AI (the
- * chase, the patrol and what it decides every half second) is not made yet; Make Choice only runs the stun.
+ * placement, this game's Wasami (SK_WasamiEnemy) with UWasamiEnemyAnimInstance, and the nurse's AI: no behaviour
+ * tree, only what Make Choice decides every 0.5 s from BeginPlay and the engine's AI MoveTo.
  *
- * The stun, as the nurse's: Set State only sets State. The decision timer (Make Choice, every 0.5 s from BeginPlay)
- * that finds State == Stun stops the movement at once, waits 17 s and sets State back to Patrol, once (a DoOnce: a
- * stun sent while it waits changes nothing). The animation reads State == Stun every frame, as the nurse's ABP does.
+ * Make Choice, as the nurse's: when State == Stun, it stops the movement at once (which also aborts the path the AI
+ * follows), waits 17 s and sets State back to Patrol, once (a DoOnce: a stun sent while it waits changes nothing);
+ * Set State only sets State, and the animation reads State == Stun every frame, as the nurse's ABP does. Otherwise it
+ * first acts on Seen Player Recently (Chase Player and a retriggerable 3 s delay that forgets the player, or Not Seeing
+ * Player), then sets it when Can See Player. Every decision asks for a new move, which aborts the one before and fails
+ * its proxy: the next decision's move clears the Point Of Interest, and each one draws the random point again.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiEnemy : public ACharacter, public IWasamiEnemyInterface
@@ -45,6 +51,16 @@ public:
 	// Make Choice's timer (K2_SetTimer, looping) and the stun's Delay.
 	static constexpr float DecisionInterval = 0.5f;
 	static constexpr float StunSeconds = 17.f;
+	// Can See Player: the player within this angle (degrees) of its front, at any distance.
+	static constexpr float ViewAngle = 100.f;
+	// The RetriggerableDelay after Chase Player that forgets the player.
+	static constexpr float ForgetSeconds = 3.f;
+	// Generate Random Point's radius around the player (or itself when there is none).
+	static constexpr float RandomPointRadius = 3000.f;
+	// The AI MoveTo acceptance radii: to the player, to the Point Of Interest, to the random point.
+	static constexpr float ChaseAcceptance = 5.f;
+	static constexpr float PointOfInterestAcceptance = 5.f;
+	static constexpr float RandomPointAcceptance = 50.f;
 
 	/**
 	 * Spawns one whose capsule centre is at Location, turned to Yaw, with CanSpawn set as the hospital's level script
@@ -72,11 +88,14 @@ public:
 	bool IsStunRunning() const { return bStunRunning; }
 
 	/**
-	 * How long until the stun sets State back to Patrol: what is left of the 17 s, or, before the next decision starts
-	 * them, the time to that decision and the 17 s. 0 when not stunned.
+	 * How long until the stun sets State back to Patrol: what is left of the 17 s, or, before they start, the time until
+	 * they do (GetTimeToStunStart) and the 17 s. 0 when not stunned.
 	 */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	float GetStunTimeLeft() const;
+
+	/** How long a stun set now waits before its 17 s start: to the next decision (the 06 nurse's next tick: none). */
+	virtual float GetTimeToStunStart() const;
 
 	/** The mesh's animation (PlayOnce and the rest), or null before it starts. */
 	UFUNCTION(BlueprintPure, Category = "Enemy")
@@ -108,8 +127,55 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Enemy")
 	bool bSeenPlayerRecently = false;
 
+	/** Where Chase Player last saw the player; Not Seeing Player walks there, and zero once that move ends. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Enemy")
+	FVector PointOfInterest = FVector::ZeroVector;
+
+	/** The point Generate Random Point drew, which Not Seeing Player walks to when there is no Point Of Interest. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy")
+	FVector RandomPoint = FVector::ZeroVector;
+
+	/**
+	 * CloseBy: sent with the first Chase Player after the enemy last forgot the player (the nurse's Detected line goes
+	 * with it). The Zone 1 level's Setup Nurse Bierce Quips listens.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "Enemy")
+	FWasamiEnemyCloseBy OnCloseBy;
+
+	/** Chasing: Seen Player Recently. */
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	virtual bool IsChasing() const { return bSeenPlayerRecently; }
+
+	/** Can See Player: the player within ViewAngle of its front, and a Camera trace from it hits the player first. */
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	bool CanSeePlayer() const;
+
+	/** Chase Player: sees the player, keeps where it is, runs and moves to Player Target. */
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	void ChasePlayer();
+
+	/** Not Seeing Player: walks to the Point Of Interest, or else to the random point. */
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	void NotSeeingPlayer();
+
+	/** Generate Random Point: a point reachable from the player (or itself) within RandomPointRadius. */
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	void GenerateRandomPoint();
+
+	/** Player Target: what Chase Player moves to (the player; the Zone 2 nurse a lift when on another floor). */
+	virtual AActor* GetPlayerTarget() const;
+
+	/** Random Point Destination: where Not Seeing Player goes without a Point Of Interest. */
+	virtual FVector GetRandomPointDestination() const { return RandomPoint; }
+
 protected:
 	virtual void BeginPlay() override;
+
+	/**
+	 * The nurse's ReceiveBeginPlay (and its base's): the CanSpawn check, Generate Random Point and Make Choice every
+	 * DecisionInterval. BeginPlay runs it; the sentry's is empty, and its Player Spotted runs this one.
+	 */
+	virtual void BeginNurse();
 
 	virtual void SetState_Implementation(EWasamiEnemyState NewState, bool bByOrb) override;
 	// The nurse's Get State always answers Patrol (it does not read State), and its No Telepathy false.
@@ -117,9 +183,24 @@ protected:
 	virtual void PlayerVanish_Implementation() override { bSeenPlayerRecently = false; }
 	virtual bool NoTelepathy_Implementation() const override { return false; }
 
-	/** Every DecisionInterval: the stun when State is Stun. */
+	/** Every DecisionInterval: the stun, or the chase and what it has seen. */
 	void MakeChoice();
+	/**
+	 * The stun's DoOnce: stops the movement and sets State back to Patrol StunSeconds on, unless it already runs. Make
+	 * Choice starts it, and the 06 nurse's tick (whose own DoOnce does the same; the first to start ends the stun).
+	 */
+	void StartStun();
 	void EndStun();
+	/** The retriggerable delay's end: Seen Player Recently false and Reset Detection. */
+	void ForgetPlayer();
+	/** Reset Detection: the next Chase Player sends CloseBy again. */
+	void ResetDetection() { bDetectionClosed = false; }
+
+	/** Not Seeing Player's moves: to the random point (either way, a new one), to the Point Of Interest (then zero). */
+	UFUNCTION()
+	void OnRandomPointMoveEnded(EPathFollowingResult::Type MovementResult);
+	UFUNCTION()
+	void OnPointOfInterestMoveEnded(EPathFollowingResult::Type MovementResult);
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy")
 	EWasamiEnemyState State = EWasamiEnemyState::Patrol;
@@ -130,5 +211,8 @@ protected:
 private:
 	FTimerHandle DecisionTimer;
 	FTimerHandle StunTimer;
+	FTimerHandle ForgetTimer;
 	bool bStunRunning = false;
+	// Chase Player's DoOnce around CloseBy.
+	bool bDetectionClosed = false;
 };

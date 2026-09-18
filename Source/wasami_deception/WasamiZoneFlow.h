@@ -6,6 +6,7 @@
 #include "WasamiZoneFlow.generated.h"
 
 class AWasamiDoubleDoors;
+class AWasamiEnemy;
 class AWasamiGameMode;
 class AWasamiTriggerBox;
 class AWasamiZoneBarrier;
@@ -23,9 +24,9 @@ class USoundBase;
  *
  * The flow moves the story on and plays what the level Blueprints play themselves: the level sequences placed in the
  * level, the fade, the camera shakes, sounds and the level's emitters; it wakes the door breaks and listens to them,
- * and locks, opens and destroys the double doors it names. What the events show or voice through other actors (the barrier, the loading screen, Bierce and the nurses'
- * lines, the music, the nurses themselves) is left to the items that make those; each has its place in the event, marked
- * by a comment.
+ * and locks, opens and destroys the double doors it names. It spawns the nurses at the level's target points as the events do. What the events show or voice through other
+ * actors (the barrier, the loading screen, Bierce and the nurses' lines, the music) is left to the items that make those;
+ * each has its place in the event, marked by a comment.
  */
 UCLASS(Abstract)
 class WASAMI_DECEPTION_API AWasamiZoneFlow : public AActor
@@ -140,6 +141,14 @@ protected:
 
 	/** The ParticleSystemComponent's Activate(true) of the emitter placed from the original's actor of that name. */
 	void ActivateEmitter(FName Source);
+
+	/**
+	 * BeginDeferredActorSpawnFromClass(Class, the transform of the target point placed from the original's of that name,
+	 * AdjustIfPossibleButAlwaysSpawn), CanSpawn set, Setup (the spawn's other values, when given) and FinishSpawningActor:
+	 * how the zones spawn their nurses. Null with a warning when there is no such point.
+	 */
+	AWasamiEnemy* SpawnEnemy(TSubclassOf<AWasamiEnemy> Class, FName SpawnPoint,
+		const TFunction<void(AWasamiEnemy&)>& Setup = nullptr) const;
 
 	/** SetCollisionEnabled on the brush of the blocking volume of that name. */
 	void SetVolumeCollision(FName Source, ECollisionEnabled::Type Enabled);

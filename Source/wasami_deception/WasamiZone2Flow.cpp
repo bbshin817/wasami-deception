@@ -6,6 +6,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiEnemySentry.h"
+#include "WasamiEnemyZone2.h"
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
 
@@ -132,7 +134,8 @@ void AWasamiZone2Flow::OnMinibossTriggerTransition()
 void AWasamiZone2Flow::MinibossTransition()
 {
 	Enter(TEXT("Miniboss Transition "));
-	// The achievement's 06_NurseAlert set to 0 (achievements are not in this game). Activate MiniBoss Enemies (item 11).
+	// The achievement's 06_NurseAlert set to 0 (achievements are not in this game).
+	ActivateMinibossEnemies();
 	// Bierce_TormentTherapy_Event_19 (item 20).
 	SetArrowShards(false);
 	SetArrowColor(MinibossArrow);
@@ -141,6 +144,15 @@ void AWasamiZone2Flow::MinibossTransition()
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGetPastNurses", "Get past the nurses "));
 	BindTrigger(TEXT("Trigger_MazeStart"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnMazeTriggerStart));
 	BindTrigger(TEXT("Trigger_Miniboss_BehindMatron"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnMinibossBehindMatron));
+}
+
+void AWasamiZone2Flow::ActivateMinibossEnemies()
+{
+	// Every BP_06_ReaperNurse_Sentry's Activate, then the Matron's (MnM_Matron_Idle_2, item 11).
+	for (TActorIterator<AWasamiEnemySentry> It(GetWorld()); It; ++It)
+	{
+		It->Activate();
+	}
 }
 
 void AWasamiZone2Flow::OnMinibossBehindMatron()
@@ -166,7 +178,15 @@ void AWasamiZone2Flow::MazeTransition()
 	SetArrowShards(true);
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveCollectAllShards", "COLLECT ALL SHARDS"));
 	BindAllShardsCollected(GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnMazeAllShards));
-	// Spawn Nurses (item 7).
+	SpawnNurses();
+}
+
+void AWasamiZone2Flow::SpawnNurses()
+{
+	for (const TCHAR* Point : {TEXT("NurseSpawn_4"), TEXT("NurseSpawn_1"), TEXT("NurseSpawn_2")})
+	{
+		SpawnEnemy(AWasamiEnemyZone2::StaticClass(), Point);
+	}
 }
 
 void AWasamiZone2Flow::OnMazeAllShards()

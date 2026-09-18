@@ -177,6 +177,14 @@
 
 ## Python（UE 5.8 の API の罠）
 
+### ログが毎フレームの `LogPython: Error: … in tick` で埋まる（`module 'unreal' has no attribute 'unregister_slate_post_tick_handle'`）
+
+- 症状: リモート実行の `-c` で登録した tick の関数が、自分を外すところで落ち続け、毎フレーム同じトレースバックを出す（2026-09-19 は 03:43 から 1 時間余りで 7 万行。外した後の処理も走らない）。
+- 原因: 外す関数の名前の誤り。正しくは `unreal.unregister_slate_post_tick_callback(handle)`（登録は `register_slate_post_tick_callback`）。
+- 対処: 残った関数をリモート実行で探して外す: `gc.get_objects()` から `__name__ == 'tick'`・`__code__.co_filename == '<string>'` の関数を拾い、閉包（`__closure__`）の中のハンドル（`_DelegateHandle`）を `unregister_slate_post_tick_callback` に渡す。
+- 確かめ方: `Saved/Logs/wasami_deception.log` の行数が数秒で増えなくなる。
+- 出典: 項目 7 のステップ 5b（2026-09-19。読み込み画面の紋章の確かめで残ったもの）。
+
 ### `MaterialEditingLibrary.delete_all_material_expressions` が式を半分しか消さない
 
 - 症状: 式を消して組み直したマスターに、出力につながらない式の残骸が残ってコンパイルされる（2026-09-17 に 8 つのマスターで見つけた。絵は変わっていなかった）。
@@ -254,6 +262,7 @@
 - 対処: 定数や補助の名前はファイルごとに固有にし、UE のメンバー名と同じローカル変数を避ける。ファイルを足さなくても、ヘッダーを 1 つ変えて再コンパイルの範囲が変わるだけで起きる（2026-09-18: `WasamiEnemyAnimInstance.h` の定数を変えたら `WasamiEnemy.cpp` と `Tests/WasamiTestEnemy.cpp` の `EnemyTag` がぶつかった。テスト側を `TestEnemyTag` にした）。
 - 2026-09-18: 新しいファイルを 7 つ足したら、既存のファイル同士（`WasamiPopUpWidget.cpp` と死亡画面の `ButtonGrey`・`Place`、パワーの `OpacityKeys`、`WasamiTelepathyTrackerWidget.cpp` の自前の `FAnimKey` と `using WasamiWidgetAnimation::FAnimKey`、`WasamiBlackFadeWidget.cpp` と死亡画面の `FadeInKeys`）がぶつかって 2 回落ちた。**先に重複を洗い出すと 1 回で済む**: 各 `.cpp` の `namespace { … }` の中の `const`/`constexpr` の名前・関数名・`struct` 名を集め、2 つ以上のファイルにあるもの（`using` の宣言は同じ実体なので除く）を片方で固有の名前に改める。
 - 2026-09-18: **エンジンのヘッダーの引数名ともぶつかる**（`error C4459: declaration of 'BoxExtent' hides global declaration`）。無名名前空間の名前はその翻訳単位では大域に見えるので、同じ塊に入った `Kismet/KismetMathLibrary.inl` の `BreakBoxSphereBounds(…, FVector& BoxExtent, …)` が `WasamiDoorBreak.cpp` の `BoxExtent` を隠すと言われた（`WasamiDoubleDoors.cpp` を足して塊が変わった）。`BoxExtent`・`ComponentScale` のような一般の名前は避け、ファイルの頭字を付ける（`DoorBreakBoxExtent`・`DoorsLeaveScale`）。
+- 2026-09-19: **未コミットのファイルは塊の外でコンパイルされるので、ビルドが通ってもコミットの後に落ちることがある**（UBT の適応ユニティビルドは、git で変更中のファイルをユニティの塊から外す）。項目 7 のステップ 5a で足した `WasamiViewcone.cpp` の `MinimapTag`・`OpacityName` が `WasamiPlayerCharacter.cpp`・`WasamiPrimalPower.cpp` とぶつかっていたのに、ステップ 5a のビルドは通り、コミットした後の次のビルドで落ちた。C++ のファイルを足したら、コミットの前に上の洗い出しをする。落ちた後に直すときは、直しを先にコミットしてからビルドすると、塊が本来のまとまり方になって残りのぶつかりも出る。
 - `Tools/editor_cycle.py` はビルドに失敗するとエディタを閉じたままにする。直したら `python Tools/editor_cycle.py --no-quit` でビルドして開く。
 - 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4、11 記録（作業一覧の項目 6 のステップ 1・3c）。
 

@@ -43,8 +43,12 @@ private:
 	void SkippedScenesEnd();
 	/** Miniboss Transition: the Matron's corridor. */
 	void MinibossTransition();
+	/** Activate MiniBoss Enemies: the sentry nurses start looking. */
+	void ActivateMinibossEnemies();
 	/** Maze Transition: the maze's shards wanted. */
 	void MazeTransition();
+	/** Spawn Nurses: BP_06_ReaperNurse_Zone2 at NurseSpawn_4, _1 and _2. */
+	void SpawnNurses();
 	/** Postmaze Transition: the ring piece as the goal. */
 	void PostmazeTransition();
 

@@ -11,7 +11,7 @@ sources:
   - Source/wasami_deception/WasamiHitFX.cpp
   - Source/wasami_deception/Tests/WasamiHitFXTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_gimmicks.py
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # ステージの仕掛け（両開き扉・ゾーンの障壁・打たれた閃き）
@@ -69,6 +69,8 @@ Zone 2 のリフト（`import_lifts`）: 音 3 と減衰 2。中身は 12 記録
 
 Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnSpikesDeath` が鳴らす。11 記録）: 音 `/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3`（1.117 s）。打たれた閃きの揺れ `BP_04_BossFight_CameraShake_Initial` はシーケンスの取り込み（`dd_sequence.CAMERA_SHAKES`、01 記録）が作る。シーケンスが起こすレベルのエミッタの粒子 3 つ（`CELL_PARTICLES`。エミッタはシーケンスの取り込みが本家の位置に置き、テンプレートを入れる。01 記録）: `/Game/DD/Blueprints/Characters/Nurse/P_06_NurseSparks`（`06_Hospital_Zone2_Spikes` の頭の 4.27 s に廊下の床を −14170 → −12410 へ動きながら 0.6 s ごとに赤い火花。エミッタ `P_06_NurseSparks_24`、拡縮 2、自動で起きる）、`/Game/DD/ThirdParty/BallisticsVFX/Particles/Destruction/Fractures/V2/Fracture_dark_slow`（同じシーケンスの 58.8 s。独房の床の 3 m 下の `Dirt_impact_2_large_57`、拡縮 5。黒い塵 10 粒、CPU）、`…/Impacts/LegacyFX/Small-Medium-Large/Concrete/Concrete_impact_large`（`06_Hospital_Zone2_Cell_DoorPicked` の頭。独房の扉の `MetalDull_impact_Dyn_27`。火花・煙・破片のエミッタ 5、うち GPU 2）。テクスチャ 4（`Textures/FX_Textures/dust`〈パッケージの中の名前は `dust_0`〉、`Flares/Textures/Flare_white`、`SmokeDust/Textures/Squib_one_1024_8x8`・`Squib_one_normal`）。材質 4 は cook で式が消えたので、焼き込みの半透明のベースパスのシェーダーを読んだ式で推定（`CELL_MATERIALS` を `dd_assets.estimated_materials` に。推定のマスターは `/Game/Pipeline/Materials/M_DD_NurseSparks`・`M_DD_BvfxSpark`・`M_DD_BvfxRadialGradient`・`M_DD_Squib`、原作のパスにそのインスタンス）: `Blueprints/Characters/Nurse/M_06_NurseSparks`（加算・ライティングあり・被写界深度の前。ベースカラーと発光 = 粒子の RGB、不透明度 = `dust` の A の 50 乗 × 粒子の A を深さ 50 で溶かし × `CameraDepthFade`〈長さ 400・始まり 24〉）、`Flares/M_Spark`（加算・Unlit・半透明の影なし。発光 = `Flare_white` の RGB × 粒子の RGB、不透明度 = 両者の A の積）、`Flares/M_Radial_Gradient`（半透明・Unlit・レスポンシブ AA・ビーム用。発光 = 粒子の RGB、不透明度 = max(1 − 2 × UV の中心からの距離, 0) の 4 乗 × 粒子の A。本家の `RadialGradient` の呼び出しの結果を式で書いた）、`SmokeDust/Squib_one`（半透明・ライティングあり〈ボリューム・方向あり、方向の強さ 0.4 ほか影の値は書き出しから〉・球状の法線。ベースカラー = `Base` の RGB × 粒子の RGB〈`Base` は粒子の SubUV の段階の UV〉、法線 = `Squib_one_normal` の段階を混ぜて `FlattenNormal` で平らに寄せる、不透明度 = `Base` の A × 粒子の A × `Opacity` を `Fade Distance` で深さに溶かし × カメラの近くで薄め〈25 cm で 0、250 cm で 1。`CameraDepthFade` の長さ 225・始まり 25。何も切らない静的スイッチ `Cam close fade?` は作らない〉× `MasterOpacity`）。
 
+駐車場のナースが扉を突くとき（`import_nurse_door_hit`。`import_doors_busted` の後。`AWasamiEnemy06Chase::HitFX` が鳴らし・出す。07 記録）: SoundCue `/Game/DD/Audio/01_Hotel/20-Elevator_Slams`（`20-Elevator_Slams_V3`・`_V1`・`_V2` のランダムをモジュレータに通す。ピッチ 1.8・`01_Lobby_Attenuation`。3 本の音も作る）、粒子 `/Game/DD/Particles/06_Hospital/P_06_NurseDoorHit`（スプライトのエミッタ 1、テクスチャ `whisp_One_512_8x8`）とその材質 `/Game/DD/ThirdParty/BallisticsVFX/Particles/FXMaterials/SmokeDust/Whisps_additive`（`Whisps_trans` のインスタンスで、本家の `BlendMode` の上書き〈加算〉と `Fade Distance` 120 を写す。`Radius` は推定の材質に無いので落とす〈`SMOKE_LEFT_OUT`〉）。暗いトンネルでは塵はほとんど見えない（2026-09-19 の PIE。本家の見え方は大目標 3）。
+
 ## 原作データの根拠
 - `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_DoubleDoors.txt`（上の番地）と `_assets/…/BP_06_DoubleDoors.json`（SCS の部品の位置・拡縮・メッシュ、`Open Amount` 90、タグ `interact`、`Timeline_0_Template`・`Timeline_1_Template`〈長さ 1、`CurveFloat_0_1`・`CurveFloat_0_1_3` のキー、`Sound` のイベントのキー `CurveFloat_0`〉、部品のイベントの結び付け `ComponentDelegateBinding_0`）。
 - 音: `_assets/…/Audio/06_Hospital/SFX_06_DoubleDoor_Open.json`・`_Close.json`、`Audio/01_Hotel/Locked_Door.json`（Random・重み 1 × 2・`AttenuationSettings` `MonkeyAttenuation`）、`Audio/Misc/MonkeyAttenuation.json`。
@@ -111,3 +113,4 @@ Zone 1 の 04: エレベーターの前の `BP_06_DoubleDoors11` は赤い 2 枚
 - 2026-09-18: `dd_gimmicks.import_cell` に独房のシーケンスが起こす粒子 3 つ（`P_06_NurseSparks`・`Fracture_dark_slow`・`Concrete_impact_large`）とテクスチャ 4・推定の材質 4 を足した（作業一覧の項目 6 のステップ 7b）
 - 2026-09-18: `dd_gimmicks.import_lifts`（Zone 2 のリフトの音 3 と減衰 2。12 記録）を足した（作業一覧の項目 6 のステップ 8a）
 - 2026-09-18: `dd_gimmicks.import_garage_lift`（ガレージリフトの骨入りのメッシュとアニメ。`dd_skeletal`。12 記録）を足した（作業一覧の項目 6 のステップ 8b1）
+- 2026-09-19: `dd_gimmicks.import_nurse_door_hit`（06 のナースの `HitFX` の音・塵・加算の材質）を足し、`import_all` に入れた（作業一覧の項目 7 のステップ 3）

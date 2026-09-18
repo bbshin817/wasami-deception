@@ -1,21 +1,36 @@
 #include "Animation/AnimSequence.h"
 #include "Animation/Skeleton.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
+#include "UObject/StrongObjectPtr.h"
+#include "UObject/UObjectIterator.h"
 #include "../WasamiEnemy.h"
+#include "../WasamiEnemy06Chase.h"
 #include "../WasamiEnemyAnimInstance.h"
+#include "../WasamiEnemySentry.h"
+#include "../WasamiEnemyZone2.h"
+#include "../WasamiLift.h"
 #include "../WasamiPowerTypes.h"
 #include "../WasamiPrimalPower.h"
 #include "../WasamiTelepathyPower.h"
 #include "../WasamiTelepathyTracker.h"
 #include "../WasamiVanishPower.h"
+#include "../WasamiViewcone.h"
+#include "WasamiTestListener.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -479,6 +494,147 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the mesh plays the enemy's animation"), Body->AnimClass.Get() == UWasamiEnemyAnimInstance::StaticClass());
 	TestEqual(TEXT("the decisions' interval"), AWasamiEnemy::DecisionInterval, 0.5f);
 	TestEqual(TEXT("the stun's wait"), AWasamiEnemy::StunSeconds, 17.f);
+	TestEqual(TEXT("Can See Player's angle"), AWasamiEnemy::ViewAngle, 100.f);
+	TestEqual(TEXT("the delay that forgets the player"), AWasamiEnemy::ForgetSeconds, 3.f);
+	TestEqual(TEXT("the random point's radius"), AWasamiEnemy::RandomPointRadius, 3000.f);
+	TestEqual(TEXT("the chase's acceptance"), AWasamiEnemy::ChaseAcceptance, 5.f);
+	TestEqual(TEXT("the Point Of Interest's"), AWasamiEnemy::PointOfInterestAcceptance, 5.f);
+	TestEqual(TEXT("the random point's"), AWasamiEnemy::RandomPointAcceptance, 50.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorChoiceTest, "Wasami.Enemy.Actor.Choice",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorChoiceTest::RunTest(const FString& Parameters)
+{
+	// A game world without navigation, ticked by hand as in Actor.Stun: every move fails 0.1 s after it is asked for.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	// The player: the first player controller's character, not possessed so that it stays where it is put.
+	const FVector InFront(1000., 0., 500.);
+	ACharacter* Player = World->SpawnActor<ACharacter>(InFront, FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	if (!TestTrue(TEXT("the player is the player"), UGameplayStatics::GetPlayerCharacter(World, 0) == Player))
+	{
+		return false;
+	}
+	AWasamiEnemy* Enemy = AWasamiEnemy::SpawnEnemy(World, FVector(0., 0., 500.), 0.f);
+	if (!TestNotNull(TEXT("a spawned enemy"), Enemy))
+	{
+		return false;
+	}
+	Enemy->GetCharacterMovement()->GravityScale = 0.f;
+	// Held strongly: nothing else refers to it, and a garbage collection while the test runs would unbind it.
+	const TStrongObjectPtr<UWasamiTestListener> Listener(NewObject<UWasamiTestListener>());
+	FScriptDelegate Heard;
+	Heard.BindUFunction(Listener.Get(), GET_FUNCTION_NAME_CHECKED(UWasamiTestListener, Hear));
+	Enemy->OnCloseBy.Add(Heard);
+	auto HeardCount = [&Listener]() { return Listener->Count; };
+
+	// Generate Random Point at BeginPlay leaves the point as it was without navigation data.
+	TestTrue(TEXT("no random point without navigation"), Enemy->RandomPoint.IsZero());
+
+	// Can See Player: within 100 degrees of its front at any distance, when a Camera trace hits the player first.
+	TestTrue(TEXT("it sees the player in front"), Enemy->CanSeePlayer());
+	auto PutAt = [Player](double Degrees, double Distance)
+	{
+		const double Radians = FMath::DegreesToRadians(Degrees);
+		Player->SetActorLocation(FVector(Distance * FMath::Cos(Radians), Distance * FMath::Sin(Radians), 500.));
+	};
+	PutAt(99., 1000.);
+	TestTrue(TEXT("99 degrees aside"), Enemy->CanSeePlayer());
+	PutAt(-101., 1000.);
+	TestFalse(TEXT("not 101"), Enemy->CanSeePlayer());
+	PutAt(180., 1000.);
+	TestFalse(TEXT("not behind"), Enemy->CanSeePlayer());
+	PutAt(0., 50000.);
+	TestTrue(TEXT("however far"), Enemy->CanSeePlayer());
+	Player->SetActorLocation(InFront);
+	ACharacter* Between = World->SpawnActor<ACharacter>(FVector(500., 0., 500.), FRotator::ZeroRotator);
+	TestFalse(TEXT("not past another character"), Enemy->CanSeePlayer());
+	Between->Destroy();
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	TestFalse(TEXT("not while the player vanishes (its capsule ignores Camera)"), Enemy->CanSeePlayer());
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+	TestTrue(TEXT("and again after"), Enemy->CanSeePlayer());
+
+	// The decisions come on the ticks at 0.625, 1.125, … s. The first has not seen the player: Not Seeing Player walks
+	// to the random point, then Can See Player sets Seen Player Recently.
+	TickTo(0.625f);
+	TestTrue(TEXT("it saw the player"), Enemy->IsChasing());
+	TestEqual(TEXT("walking to the random point"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestEqual(TEXT("not chased yet"), HeardCount(), 0);
+	TestTrue(TEXT("no Point Of Interest"), Enemy->PointOfInterest.IsZero());
+
+	// The next chases: runs to the player, keeps where it is, CloseBy once.
+	TickTo(1.125f);
+	TestEqual(TEXT("the chase runs"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestTrue(TEXT("the Point Of Interest is the player"), Enemy->PointOfInterest.Equals(InFront));
+	TestEqual(TEXT("CloseBy"), HeardCount(), 1);
+	TickTo(1.625f);
+	TestEqual(TEXT("once"), HeardCount(), 1);
+
+	// Out of sight it keeps chasing: each chase starts the 3 s delay over, and it knows where the player is.
+	const FVector Behind(-1000., 0., 500.);
+	Player->SetActorLocation(Behind);
+	TestFalse(TEXT("the player is out of sight"), Enemy->CanSeePlayer());
+	TickTo(6.125f);
+	TestTrue(TEXT("still chasing"), Enemy->IsChasing());
+	TestTrue(TEXT("to where the player is"), Enemy->PointOfInterest.Equals(Behind));
+	TestEqual(TEXT("running"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+
+	// Player Vanish: the next decision walks to the Point Of Interest, whose failed move clears it 0.1 s later.
+	IWasamiEnemyInterface::Execute_PlayerVanish(Enemy);
+	TestFalse(TEXT("Vanish: not chasing"), Enemy->IsChasing());
+	TickTo(6.625f);
+	TestEqual(TEXT("walking"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestTrue(TEXT("to the Point Of Interest"), Enemy->PointOfInterest.Equals(Behind));
+	TickTo(6.75f);
+	TestTrue(TEXT("which the failed move clears"), Enemy->PointOfInterest.IsZero());
+
+	// The delay from the last chase (at 6.125 s, due 9.125 s) opens CloseBy again.
+	Player->SetActorLocation(InFront);
+	Enemy->SetActorRotation(FRotator(0., 180., 0.));
+	TickTo(9.125f);
+	TestFalse(TEXT("turned away, it does not see the player"), Enemy->IsChasing());
+	Enemy->SetActorRotation(FRotator::ZeroRotator);
+	TickTo(9.625f);
+	TestTrue(TEXT("it sees the player again"), Enemy->IsChasing());
+	TickTo(10.125f);
+	TestEqual(TEXT("CloseBy again"), HeardCount(), 2);
+
+	// A stun stops the decisions, so the delay after the last chase (10.125 s) forgets the player.
+	Player->SetActorLocation(Behind);
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, false);
+	TickTo(10.625f);
+	TestTrue(TEXT("stunned"), Enemy->IsStunRunning());
+	TestTrue(TEXT("chasing yet"), Enemy->IsChasing());
+	TickTo(13.125f);
+	TestTrue(TEXT("until the delay is past"), Enemy->IsChasing());
+	TickTo(13.1875f);
+	TestFalse(TEXT("then it has forgotten the player"), Enemy->IsChasing());
 	return true;
 }
 
@@ -665,6 +821,387 @@ bool FWasamiEnemyActorPowersTest::RunTest(const FString& Parameters)
 		OnEnemy += It->Actor.Get() == Enemy ? 1 : 0;
 	}
 	TestEqual(TEXT("the telepathy marks it"), OnEnemy, 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorChase06Test, "Wasami.Enemy.Actor.Chase06",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorChase06Test::RunTest(const FString& Parameters)
+{
+	// A game world without navigation, ticked by hand in steps a float adds up exactly (as Actor.Stun). The actors tick
+	// before the timers in a frame, so what a timer opens is taken up by the next tick.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	// The player behind it, where it cannot see them.
+	ACharacter* Player = World->SpawnActor<ACharacter>(FVector(-1000., 0., 500.), FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	const FTransform At(FRotator::ZeroRotator, FVector(0., 0., 500.));
+	AWasamiEnemy06Chase* Nurse = World->SpawnActorDeferred<AWasamiEnemy06Chase>(AWasamiEnemy06Chase::StaticClass(), At,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!TestNotNull(TEXT("a spawned nurse"), Nurse))
+	{
+		return false;
+	}
+	Nurse->bCanSpawn = true;
+	Nurse->FinishSpawning(At);
+	Nurse->GetCharacterMovement()->GravityScale = 0.f;
+	const UWasamiEnemyAnimInstance* Anim = Nurse->GetEnemyAnim();
+	if (!TestNotNull(TEXT("its animation"), Anim))
+	{
+		return false;
+	}
+	const UAudioComponent* Audio = Nurse->FindComponentByClass<UAudioComponent>();
+	TestTrue(TEXT("its slam"), Audio && Audio->Sound && Audio->Sound->GetName() == TEXT("20-Elevator_Slams"));
+	TestTrue(TEXT("Chasing always answers true"), Nurse->IsChasing());
+	TestFalse(TEXT("it does not see the player"), Nurse->CanSeePlayer());
+
+	// Its tick chases the player, seen or not.
+	TickTo(Step);
+	TestTrue(TEXT("chasing from its first tick"), Nurse->bSeenPlayerRecently);
+	TestTrue(TEXT("to where the player is"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	TestEqual(TEXT("at the chase's speed"), Nurse->GetCharacterMovement()->MaxWalkSpeed, AWasamiEnemy::MaxSpeed);
+	Player->SetActorLocation(FVector(-1000., 500., 500.));
+	TickTo(2 * Step);
+	TestTrue(TEXT("every tick"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+
+	// bAttackDoor: a stab from the next tick, Wasami's stand-in clip over the rest once it has blended in; the next
+	// after the montage's end (0.7167 s) and 0 to 0.5 s.
+	TestEqual(TEXT("no stab without bAttackDoor"), Nurse->GetDoorAttacks(), 0);
+	Nurse->bAttackDoor = true;
+	TickTo(3 * Step);
+	TestEqual(TEXT("the tick stabs"), Nurse->GetDoorAttacks(), 1);
+	TickTo(3 * Step + 0.25f);
+	float ClipTime = 0.f;
+	float ClipWeight = 0.f;
+	TestEqual(TEXT("with Chase_Charge"), Anim->GetMainClip(ClipTime, ClipWeight), AWasamiEnemy06Chase::DoorAttackClip);
+	const float Completed = 3 * Step + FMath::CeilToFloat(AWasamiEnemy06Chase::DoorAttackSeconds / Step) * Step;
+	TickTo(Completed + Step);
+	TestEqual(TEXT("one stab until the montage's end and the wait"), Nurse->GetDoorAttacks(), 1);
+	TickTo(Completed + AWasamiEnemy06Chase::DoorAttackMaxWait + 2 * Step);
+	TestEqual(TEXT("then the next"), Nurse->GetDoorAttacks(), 2);
+	// Each stab takes 0.75 s to its end on these ticks, a wait of up to 0.5 s and a tick to start the next.
+	const float From = Now;
+	const int32 Before = Nurse->GetDoorAttacks();
+	TickTo(From + 20.f);
+	const int32 In20 = Nurse->GetDoorAttacks() - Before;
+	TestTrue(FString::Printf(TEXT("%d stabs in 20 s"), In20), In20 >= 14 && In20 <= 26);
+	TestTrue(TEXT("still chasing"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	Nurse->bAttackDoor = false;
+	TickTo(Now + 1.5f);
+	const int32 Stopped = Nurse->GetDoorAttacks();
+	TickTo(Now + 3.f);
+	TestEqual(TEXT("no stab once bAttackDoor is cleared"), Nurse->GetDoorAttacks(), Stopped);
+
+	// Hit FX: the dust 230 cm in front of it at half size.
+	Nurse->HitFX();
+	const UParticleSystemComponent* Dust = nullptr;
+	for (TObjectIterator<UParticleSystemComponent> It; It; ++It)
+	{
+		if (It->GetWorld() == World && It->Template && It->Template->GetName() == TEXT("P_06_NurseDoorHit"))
+		{
+			Dust = *It;
+		}
+	}
+	if (TestNotNull(TEXT("the dust"), Dust))
+	{
+		const FVector Front = Nurse->GetActorLocation() + Nurse->GetActorForwardVector() * AWasamiEnemy06Chase::HitFXForward;
+		TestTrue(TEXT("in front of it"), Dust->GetComponentLocation().Equals(Front, 0.01));
+		TestTrue(TEXT("at half size"), Dust->GetComponentScale().Equals(FVector(AWasamiEnemy06Chase::HitFXScale), 1e-4));
+	}
+
+	// A stun starts on its next tick and holds it for 17 s: no chase until then.
+	IWasamiEnemyInterface::Execute_SetState(Nurse, EWasamiEnemyState::Stun, false);
+	TestEqual(TEXT("17 s from its next tick"), Nurse->GetStunTimeLeft(), AWasamiEnemy::StunSeconds);
+	TickTo(Now + Step);
+	TestTrue(TEXT("its tick starts the stun"), Nurse->IsStunRunning());
+	const float Stunned = Now;
+	const FVector Seen = Nurse->PointOfInterest;
+	Player->SetActorLocation(FVector(-1000., -500., 500.));
+	TickTo(Stunned + 1.f);
+	TestTrue(TEXT("no chase while stunned"), Nurse->PointOfInterest.Equals(Seen, 1e-3));
+	TickTo(Stunned + AWasamiEnemy::StunSeconds);
+	TestTrue(TEXT("stunned for 17 s"), Nurse->IsStunned());
+	TickTo(Stunned + AWasamiEnemy::StunSeconds + Step);
+	TestTrue(TEXT("then Patrol"), Nurse->GetCurrentState() == EWasamiEnemyState::Patrol);
+	TickTo(Now + Step);
+	TestTrue(TEXT("and chasing again"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorZone2Test, "Wasami.Enemy.Actor.Zone2",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorZone2Test::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	const FTransform At(FRotator::ZeroRotator, FVector(13000., -1300., 100.));
+	AWasamiEnemyZone2* Nurse = World->SpawnActorDeferred<AWasamiEnemyZone2>(AWasamiEnemyZone2::StaticClass(), At,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!TestNotNull(TEXT("a spawned nurse"), Nurse))
+	{
+		return false;
+	}
+	Nurse->bCanSpawn = true;
+	Nurse->FinishSpawning(At);
+	Nurse->GetCharacterMovement()->GravityScale = 0.f;
+
+	// Without a player, the player reads as on the lower floor.
+	TestFalse(TEXT("no player: not up"), Nurse->IsPlayerUp());
+	TestTrue(TEXT("so on its floor"), Nurse->IsSameLevelAsPlayer());
+
+	ACharacter* Player = World->SpawnActor<ACharacter>(FVector(13000., 0., 100.), FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	Player->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	auto PlayerAt = [Player](double Z) { Player->SetActorLocation(FVector(13000., 0., Z), false, nullptr, ETeleportType::TeleportPhysics); };
+	auto NurseAt = [Nurse](double Z) { Nurse->SetActorLocation(FVector(13000., -1300., Z), false, nullptr, ETeleportType::TeleportPhysics); };
+
+	// is Up? over 640, is Player Up? over 610.
+	NurseAt(640.);
+	TestFalse(TEXT("640: not up"), Nurse->IsUp());
+	NurseAt(640.1);
+	TestTrue(TEXT("over 640: up"), Nurse->IsUp());
+	PlayerAt(610.);
+	TestFalse(TEXT("the player at 610: not up"), Nurse->IsPlayerUp());
+	PlayerAt(610.1);
+	TestTrue(TEXT("over 610: up"), Nurse->IsPlayerUp());
+	TestTrue(TEXT("both up: the same floor"), Nurse->IsSameLevelAsPlayer());
+
+	// The same floor: the player and the random point, as the nurse's.
+	TestTrue(TEXT("the same floor: the player"), Nurse->GetPlayerTarget() == Player);
+	TestTrue(TEXT("and the random point"), Nurse->GetRandomPointDestination().Equals(Nurse->RandomPoint));
+
+	// Zone 2's lifts, where the level has two of them: the lift nearest the world's origin, however far from the nurse;
+	// the corner lift (not a BP_06_LiftBase) is not one of them.
+	AWasamiLift* Near = World->SpawnActor<AWasamiLift>(FVector(6303.2421875, -438.52606201171875, -30.01825714111328), FRotator::ZeroRotator);
+	AWasamiLift* ByTheNurse = World->SpawnActor<AWasamiLift>(FVector(13499.5546875, -1325.2242431640625, -29.621246337890625), FRotator::ZeroRotator);
+	World->SpawnActor<AWasamiCornerLift>(FVector(100., 0., -30.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("a lift"), Near) || !TestNotNull(TEXT("another"), ByTheNurse))
+	{
+		return false;
+	}
+	NurseAt(100.);
+	TestFalse(TEXT("the nurse down, the player up: not the same floor"), Nurse->IsSameLevelAsPlayer());
+	FVector MoveLocation;
+	TestTrue(TEXT("the closest lift is the one nearest the origin"), Nurse->GetClosestLift(MoveLocation) == Near);
+	TestTrue(TEXT("Player Target: that lift"), Nurse->GetPlayerTarget() == Near);
+	const FVector NearMove = Near->GetMoveLocation()->GetComponentLocation();
+	TestTrue(TEXT("its Move Location"), MoveLocation.Equals(NearMove));
+	TestTrue(TEXT("149.5 cm over the floor"), NearMove.Equals(Near->GetActorLocation() + FVector(0., 0., 149.53536987304688), 0.01));
+	TestTrue(TEXT("Random Point Destination: its Move Location"), Nurse->GetRandomPointDestination().Equals(NearMove));
+	NurseAt(700.);
+	PlayerAt(100.);
+	TestTrue(TEXT("the nurse up, the player down: the same lift"), Nurse->GetPlayerTarget() == Near);
+
+	// Of lifts as far from the origin, the last.
+	AWasamiLift* Twin = World->SpawnActor<AWasamiLift>(-Near->GetActorLocation(), FRotator::ZeroRotator);
+	TestTrue(TEXT("the last of equals"), Nurse->GetClosestLift(MoveLocation) == Twin);
+
+	// None within the first best (1e9, squared): no lift and no location.
+	Near->Destroy();
+	ByTheNurse->Destroy();
+	Twin->Destroy();
+	World->SpawnActor<AWasamiLift>(FVector(31623., 0., 0.), FRotator::ZeroRotator);
+	TestNull(TEXT("a lift past 31622.8 cm is never taken"), Nurse->GetClosestLift(MoveLocation));
+	TestTrue(TEXT("and there is no location"), MoveLocation.IsZero());
+	TestNull(TEXT("nothing to chase to"), Nurse->GetPlayerTarget());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorSentryTest, "Wasami.Enemy.Actor.Sentry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorSentryTest::RunTest(const FString& Parameters)
+{
+	// A game world ticked by hand as in Actor.Stun. Update Sight's rate is drawn from 0.3 to 0.5 s, and a timer comes up
+	// to two ticks after its time, so the checks leave room on either side.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	// The player (not possessed, so that it stays where it is put), behind the sentry.
+	const FVector Behind(-1000., 0., 500.);
+	ACharacter* Player = World->SpawnActor<ACharacter>(Behind, FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+
+	const FTransform At(FRotator::ZeroRotator, FVector(0., 0., 500.));
+	AWasamiEnemySentry* Sentry = World->SpawnActorDeferred<AWasamiEnemySentry>(AWasamiEnemySentry::StaticClass(), At,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!TestNotNull(TEXT("a sentry"), Sentry))
+	{
+		return false;
+	}
+	Sentry->bCanSpawn = true;
+	Sentry->Offset = 2.f;
+	Sentry->FinishSpawning(At);
+	Sentry->GetCharacterMovement()->GravityScale = 0.f;
+	Sentry->GetJumpDownSpot()->SetRelativeLocation(FVector(658., 0., 0.));
+	Sentry->bVarIdle = true;
+	TestTrue(TEXT("its idle is the alert one"), Sentry->bAggressiveIdle);
+	TestFalse(TEXT("not chasing"), Sentry->IsChasing());
+
+	// Its cone: a BP_06_Miniboss_viewcone_Nurse on the capsule, 72 cm up and 20 degrees down.
+	AWasamiViewcone* Cone = Sentry->GetViewcone();
+	if (!TestNotNull(TEXT("its view cone"), Cone))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the nurse's cone"), Cone->GetClass() == AWasamiViewconeNurse::StaticClass());
+	TestTrue(TEXT("a child of the sentry"), Cone->GetParentActor() == Sentry);
+	TestTrue(TEXT("72 cm over the capsule's centre"), Cone->GetActorLocation().Equals(FVector(0., 0., 572.), 1e-3));
+	TestEqual(TEXT("20 degrees down"), Cone->GetActorRotation().Pitch, -20., 1e-3);
+	TestEqual(TEXT("1500 cm long"), Cone->Length, 1500.f);
+	TestEqual(TEXT("20 degrees wide"), Cone->Angle, 20.f);
+	TestTrue(TEXT("turned on as it finishes initializing"), Cone->bAutoOn);
+	TestFalse(TEXT("shown as play begins"), Cone->IsHidden());
+	TestTrue(TEXT("on the map"), Cone->ActorHasTag(TEXT("dd_minimap")));
+	TestTrue(TEXT("its marks in the captures only"), Cone->GetPlane()->bVisibleInSceneCaptureOnly && Cone->GetDot()->bVisibleInSceneCaptureOnly);
+	TestTrue(TEXT("its fan along the cone"), Cone->GetPlane()->GetRelativeLocation().Equals(AWasamiViewconeNurse::NursePlaneLocation)
+		&& Cone->GetPlane()->GetRelativeScale3D().Equals(AWasamiViewconeNurse::NursePlaneScale));
+	TickTo(0.125f);
+	TestTrue(TEXT("lifted 1000 cm the next tick"),
+		Cone->GetPlane()->GetRelativeLocation().Equals(AWasamiViewconeNurse::NursePlaneLocation + AWasamiViewcone::PlaneLift));
+	TestTrue(TEXT("with the dot"), Cone->GetDot()->GetRelativeLocation().Equals(AWasamiViewcone::DotLocation));
+
+	// Its BeginPlay is empty: it does not decide (Not Seeing Player would walk at 350).
+	TickTo(1.f);
+	TestFalse(TEXT("not looking before Activate"), Cone->IsInitialized());
+	TestEqual(TEXT("not deciding"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+
+	// Activate at 1 s: the first Update Sight (0.3 to 0.5 s on) waits the 2 s Offset, then turns the cone on, which sees
+	// a second later and fades in over 0.5 s.
+	Sentry->Activate();
+	TestTrue(TEXT("Activate starts it looking"), Cone->IsInitialized());
+	TestEqual(TEXT("with the sentry's Offset"), Cone->Offset, 2.f);
+	TickTo(3.3f);
+	TestEqual(TEXT("waiting the Offset"), Cone->Offset, 2.f);
+	TestTrue(TEXT("not looking yet"), Sentry->bVarIdle);
+	TickTo(3.8f);
+	TestEqual(TEXT("then Offset 0"), Cone->Offset, 0.f);
+	TestFalse(TEXT("Start Looking"), Sentry->bVarIdle);
+	TestFalse(TEXT("not on yet"), Cone->IsOn());
+	TestEqual(TEXT("not shown yet"), Cone->GetFade(), 0.f);
+	TickTo(4.3f);
+	TestFalse(TEXT("a second on"), Cone->IsOn());
+	TickTo(4.8f);
+	TestTrue(TEXT("on"), Cone->IsOn());
+	TickTo(5.3f);
+	TestEqual(TEXT("faded in"), Cone->GetFade(), 1.f);
+
+	// Every 10 s from the end of the Offset it turns: off, then on (seeing a second later).
+	TickTo(13.3f);
+	TestTrue(TEXT("on for 10 s"), Cone->IsOn());
+	TickTo(13.8f);
+	TestFalse(TEXT("then off"), Cone->IsOn());
+	TestTrue(TEXT("Stop Looking"), Sentry->bVarIdle);
+	TickTo(14.3f);
+	TestEqual(TEXT("faded out"), Cone->GetFade(), 0.f);
+	TickTo(23.8f);
+	TestFalse(TEXT("Start Looking 10 s on"), Sentry->bVarIdle);
+	TestFalse(TEXT("blind for a second"), Cone->IsOn());
+	TickTo(24.85f);
+	TestTrue(TEXT("on again"), Cone->IsOn());
+
+	// The cone's sight, from 72 cm up and 20 degrees down.
+	const FVector Eye = Cone->GetActorLocation();
+	auto PutAt = [Player, Eye](double Pitch, double Distance)
+	{
+		Player->SetActorLocation(Eye + FRotator(Pitch, 0., 0.).Vector() * Distance);
+	};
+	PutAt(-20., 1000.);
+	TestTrue(TEXT("inside on its axis"), Cone->PlayerInsideCone());
+	TestTrue(TEXT("in full view, past the sentry's own capsule"), Cone->PlayerInFullView());
+	PutAt(-1., 1000.);
+	TestTrue(TEXT("19 degrees off"), Cone->PlayerInsideCone());
+	PutAt(1., 1000.);
+	TestFalse(TEXT("not 21"), Cone->PlayerInsideCone());
+	TestFalse(TEXT("so not in full view"), Cone->PlayerInFullView());
+	PutAt(-20., 1499.);
+	TestTrue(TEXT("1499 cm"), Cone->PlayerInFullView());
+	PutAt(-20., 1501.);
+	TestFalse(TEXT("not 1501"), Cone->PlayerInsideCone());
+	PutAt(-20., 1000.);
+	ACharacter* Between = World->SpawnActor<ACharacter>(Eye + FRotator(-20., 0., 0.).Vector() * 500., FRotator::ZeroRotator);
+	TestFalse(TEXT("not past another character"), Cone->PlayerInFullView());
+	TestTrue(TEXT("though inside"), Cone->PlayerInsideCone());
+	Between->Destroy();
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	TestFalse(TEXT("not while the player vanishes"), Cone->PlayerInFullView());
+	Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
+
+	// Seen at the next Update Sight (within 0.5 s): the cone is gone, it chases for good and leaps toward Jump Down Spot,
+	// then decides as a nurse, from half a second on.
+	const TWeakObjectPtr<AWasamiViewcone> WeakCone(Cone);
+	const float Placed = Now;
+	while (Sentry->GetViewcone() && Now < Placed + 1.f)
+	{
+		TickTo(Now + Step);
+	}
+	const float Spotted = Now;
+	TestTrue(TEXT("spotted within the sight's rate"), Spotted <= Placed + AWasamiViewcone::SightRateMax + Step);
+	TestTrue(TEXT("its cone destroyed"), !WeakCone.IsValid() || WeakCone->IsActorBeingDestroyed());
+	TestNull(TEXT("and gone from it"), Sentry->GetViewcone());
+	TestTrue(TEXT("chasing"), Sentry->IsChasing());
+	TickTo(Spotted + 2.f * Step);
+	TestTrue(TEXT("leaping 400 cm/s toward the spot and 500 up"), Sentry->GetCharacterMovement()->Velocity.Equals(FVector(400., 0., 500.), 1.));
+	TestEqual(TEXT("not deciding yet"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TickTo(Spotted + AWasamiEnemy::DecisionInterval + 2.f * Step);
+	TestEqual(TEXT("its first decision walks"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TickTo(Spotted + 2.f * AWasamiEnemy::DecisionInterval + 2.f * Step);
+	TestEqual(TEXT("the next chases"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	IWasamiEnemyInterface::Execute_PlayerVanish(Sentry);
+	TestTrue(TEXT("Chasing is its own, whatever the nurse forgets"), Sentry->IsChasing());
 	return true;
 }
 
