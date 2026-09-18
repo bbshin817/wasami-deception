@@ -30,7 +30,7 @@
 | 状態 | **公開中**（2026-09-18 に下書きで作り、ユーザーの回答「公開する（通知あり）」で同日に公開。以後の書き換えは `--no-notify`） |
 | 公開の URL | https://note.com/n/n0f128ab4399d |
 | 原稿 | `docs/note/enemy-wasami-motions.md` |
-| 画像 | `observations/ours/note/enemy/01〜18-*.gif`（git の外）。Blender で glb から描く: `blender -b --factory-startup --python observations/tools/motion_gifs_blender.py -- <glb> observations/ours/note/enemy/frames <動き,動き>` → `python observations/tools/motion_gifs_encode.py`（480²・20 fps・実際の速さ。v3 の動きは `SourceArt/Wasami/enemy_wasami_v3.glb`、捕獲の 3 本は前処理の出力 `Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb` の `A_WasamiEnemy_Capture_*`。`Vault_and_Land` には元の台と手すりを足して描く） |
+| 画像 | `observations/ours/note/enemy/01〜20-*.gif`（git の外）。Blender で glb から描く: `blender -b --factory-startup --python observations/tools/motion_gifs_blender.py -- <glb> observations/ours/note/enemy/frames <動き,動き>` → `python observations/tools/motion_gifs_encode.py`（480²・20 fps・実際の速さ。v3 の動きは `SourceArt/Wasami/enemy_wasami_v3.glb`、捕獲の 3 本は前処理の出力 `Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb` の `A_WasamiEnemy_Capture_*`。`Vault_and_Land` には元の台と手すりを足して描く）。ゲームでの気絶の流れ（19・20）は `blender -b --factory-startup --python observations/tools/stun_sequence_blender.py -- Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb observations/ours/note/enemy/frames`（寝ている間は 1 s に縮める）→ 同じ `motion_gifs_encode.py` |
 
 - 書き換え: `python tmp/note-cli/note_cli.py edit --session (Get-Content Tools/note.local.json -Raw | ConvertFrom-Json).note_session_v5 --id 180890064 --key n0f128ab4399d --title 'WASAMI DECEPTION（UE5 版）敵ワサミのモーション一覧' --body-file docs/note/enemy-wasami-motions.md --markdown --no-notify`
 

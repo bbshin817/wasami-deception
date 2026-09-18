@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/enemy-stun-knockdown
 base: 6915229
 started: 2026-09-18 12:30
-updated: 2026-09-18 14:30
+updated: 2026-09-18 14:25
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -26,11 +26,12 @@ updated: 2026-09-18 14:30
 - [x] 1. 取り込み … 2026-09-18 完了。`dd_enemy.py` の `ROLES` が `Stun_FlyUp`・`Stun_KnockDown`（倒れる、始めの骨盤を `Idle_11` の位置へ）と `Stun_GetUp_FlyUp`・`Stun_GetUp_KnockDown`（`_stun_get_up`: 寝返り `_roll` + `push_up_to_idle`、終わりが待機の位置と向き）を作り、`/Game/Wasami/Enemy` はアニメ 18 本（古い 5 本は消した）。通しの見た目は `observations/tools/stun_sequence_blender.py`（連番 `observations/ours/enemy-stun/frames/`）。
 - [x] 2. C++ … 2026-09-18 完了。`WasamiEnemyClip` を取り込みの 18 本の並びにし（`StunFlyUp`・`StunKnockDown`・`StunGetUpFlyUp`・`StunGetUpKnockDown`。`WasamiEnemyAnim::GetUpAfter`）、`FWasamiStunPlayback` を「倒れる（1 回・終わりで止まる）→ 起き上がり（`GetUpStart = max(倒れる長さ, 気絶の長さ − 起き上がりの長さ)`）」に、倒れる 2 本は `FWasamiEnemyAnimState::StunRandom`（`Init` の種。インスタンスは `FMath::Rand()`）で抽選。起き上がりに入った更新が `StunGetUpStarted` を立て、`UWasamiEnemyAnimInstance::MoveToGetUp` がアクタとコントローラーの向きを移す（差は `WasamiEnemyAnim::MeasureGetUpMove`、`NativeInitializeAnimation` で倒れる 2 本ぶん）。テスト 29 件すべて通過、PIE で確かめた（下の「検証」）。
 - [x] 3a. 記録 … 2026-09-18 完了。`dd_enemy.py` の寝返りの `TODO(仮)` を外し（0.8 s と手足の寄せ方は PIE で潜りも跳びも無く確定）、実装記録 07・索引、`.claude/references/enemy-wasami-motions.md`、作業一覧（「決めたこと」・項目 4・10）、`observations/README.md`（ステップ 2 の PIE の値）を新しい気絶に合わせた。
-- [ ] 3b. note: モーション一覧の記事（気絶の節）と進捗記事（Primal Fear の文と GIF 06 の撮り直し）。main へマージ。
+- [x] 3b1. note のモーション一覧の記事 … 2026-09-18 完了。気絶の節を倒れる 2 本（ランダム）→ 寝返り + `push_up_to_idle` にし、ゲームと同じつなぎの GIF `19-stun-flyup`・`20-stun-knock-down`（`stun_sequence_blender.py` → `motion_gifs_encode.py`。描き方はガイド）を足し、`01a0a88f-…` は「使わない動き」へ。note へ反映（published）。
+- [ ] 3b2. note の進捗記事（Primal Fear の文と GIF 06 の撮り直し）。note へ反映。記録を消して main へマージし、作業ブランチを消して push。
 
 ## 次にやること
 
-ステップ 3b: `.claude/guides/note-progress.md`（「敵ワサミのモーション一覧の記事」と進捗記事の節）に従い、(1) `docs/note/enemy-wasami-motions.md` の早見と「気絶」の節を `BeHit_FlyUp`・`Knock_Down`（倒れる。ランダム）と `push_up_to_idle`（起き上がり。前に寝返り）に替え、「使いどころが未定の動き」からその 3 本を移し、`01a0a88f-…` の節と GIF `06-stun.gif` の扱いを決める（使わなくなった動きとして残すか消す）。(2) `docs/note/progress.md` の Primal Fear の文（「ふらついて動けなくなります」）を「倒れて、17 秒の終わりに起き上がる」に直し、GIF `observations/ours/note/gif/06-primal-fear.gif` を撮り直す（撮り方はガイド。収録 `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv` が使えるかも先に見る）。(3) `tmp/note-cli` で 2 つの記事を書き換える（`Tools/note.local.json` が無ければ原稿だけ）。(4) 記録を消して main へマージし、`handover.md` の「現状と次の一歩」を確かめ、作業ブランチを消して push。
+ステップ 3b2: `.claude/guides/note-progress.md`（進捗記事の節と「GIF」）に従い、(1) `docs/note/progress.md` の Primal Fear の文（「ふらついて動けなくなります」）を「倒れて、17 秒の終わりに起き上がる」に直し、GIF `observations/ours/note/gif/06-primal-fear.gif` を撮り直す（ガイドの 06 の撮り方。倒れるところと、できれば起き上がりまで。収録 `observations/ours/enemy-stun/pie-enemy-stun-seq.mkv` が使えるかも先に見る）。(2) `tmp/note-cli` で進捗記事を書き換える。(3) 記録を消して main へマージし、`handover.md` の「現状と次の一歩」を確かめ、作業ブランチを消して push。
 
 ## 決定事項
 
