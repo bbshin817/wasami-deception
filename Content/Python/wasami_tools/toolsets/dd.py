@@ -69,11 +69,14 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     @staticmethod
     def import_dd_gimmicks() -> dict[str, int]:
         """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
-        sounds, the locked rattle's SoundCue and its waves, and their attenuations. The doors' meshes and materials come
-        with the stage's assets, and the level build puts them on the doors.
+        sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
+        hum and shatter, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
+        after import_dd_shards, which makes the burst's other materials). The doors' meshes and materials come with the
+        stage's assets; the level build puts them and the barriers' materials on the placed actors.
 
         Returns:
-            How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues').
+            How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues', and
+            'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems').
         """
         _module("dd_stage")
         _module("dd_assets")

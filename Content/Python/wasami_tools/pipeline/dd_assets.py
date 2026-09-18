@@ -264,6 +264,10 @@ def texture(rel, version=1):
                                    "compression": entry["compression"], "lodGroup": entry["lod_group"]})
     props = main_export(export_json(rel, version), rel)["props"]
     tex.set_editor_property("never_stream", bool(props.get("NeverStream")))
+    # The addressing the table lists (left out: UE's Wrap, which the import leaves).
+    for axis in ("address_x", "address_y"):
+        if entry.get(axis):
+            tex.set_editor_property(axis, ue_props.enum_member(unreal.TextureAddress, entry[axis]))
     return target
 
 
@@ -382,6 +386,37 @@ def material_instance(asset_path, parent, scalars=None, vectors=None, textures=N
         if MEL.get_material_instance_static_switch_parameter_value(mic, key) != bool(value):
             raise RuntimeError("%s: the static switch %s did not take %s" % (asset_path, key, value))
     return mic
+
+
+# A material instance's BasePropertyOverrides the export can have switched on (bOverride_<name>), by the Python names of
+# FMaterialInstanceBasePropertyOverrides' switch and value, and how the export's value is read.
+BASE_PROPERTY_OVERRIDES = {
+    "TwoSided": ("override_two_sided", "two_sided", bool),
+    "BlendMode": ("override_blend_mode", "blend_mode",
+                  lambda v: ue_props.enum_member(unreal.BlendMode, v.split("::")[-1])),
+    "ShadingModel": ("override_shading_model", "shading_model",
+                     lambda v: ue_props.enum_member(unreal.MaterialShadingModel, v.split("::")[-1])),
+    "OpacityMaskClipValue": ("override_opacity_mask_clip_value", "opacity_mask_clip_value", float),
+}
+
+
+def base_property_overrides(mic, rel, version):
+    """Switches on the material instance's base property overrides its export switches on (bOverride_TwoSided with
+    TwoSided, ...), with their values, and updates it. The export lists values it does not switch on (the parent's), which
+    are left alone. Returns the names switched on."""
+    props = main_export(export_json(rel, version), rel)["props"].get("BasePropertyOverrides") or {}
+    on = [k[len("bOverride_"):] for k, v in props.items() if k.startswith("bOverride_") and v]
+    unknown = [name for name in on if name not in BASE_PROPERTY_OVERRIDES]
+    if unknown:
+        raise NotImplementedError("%s overrides %s" % (rel, unknown))
+    overrides = mic.get_editor_property("base_property_overrides")
+    for name in on:
+        switch, value, convert = BASE_PROPERTY_OVERRIDES[name]
+        overrides.set_editor_property(switch, True)
+        overrides.set_editor_property(value, convert(props[name]))
+    mic.set_editor_property("base_property_overrides", overrides)
+    MEL.update_material_instance(mic)
+    return on
 
 
 # The engine's material function libraries.

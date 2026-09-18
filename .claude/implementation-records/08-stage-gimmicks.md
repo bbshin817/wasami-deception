@@ -1,17 +1,20 @@
 ---
-title: ステージの仕掛け（両開き扉）
+title: ステージの仕掛け（両開き扉・ゾーンの障壁）
 sources:
   - Source/wasami_deception/WasamiDoubleDoors.h
   - Source/wasami_deception/WasamiDoubleDoors.cpp
   - Source/wasami_deception/Tests/WasamiDoubleDoorsTests.cpp
+  - Source/wasami_deception/WasamiZoneBarrier.h
+  - Source/wasami_deception/WasamiZoneBarrier.cpp
+  - Source/wasami_deception/Tests/WasamiZoneBarrierTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_gimmicks.py
 updated: 2026-09-18
 ---
 
-# ステージの仕掛け（両開き扉）
+# ステージの仕掛け（両開き扉・ゾーンの障壁）
 
 ## 役割
-病院のステージで動く仕掛け。いまは本家の両開き扉 `BP_06_DoubleDoors`（`pak_reference_2` の `Blueprints/06_Hospital`）を写した `AWasamiDoubleDoors` だけ: 幅 400 cm の出入口の両端に蝶番のある扉 2 枚で、キャラクター（プレイヤーかナース）が前の箱に入ると奥へ、後ろの箱に入ると手前へ、音とともに 1 s で 90° 開き、両側を覆う `Leave` の箱からキャラクターが出て、プレイヤーが中に残っていなければ閉じる。閉ざされている（`bLocked`）と、入ってもガタつく音（2 s に 1 回まで）だけ。ゾーンの流れ（11 記録）が名指しする扉を `Lock`・`Unlock`・`Open Front`・`Force Close` で閉ざし・開ける。作業一覧の項目 6（ゾーンの進行）のステップ 3c で、流れが名指しする Zone 1 の 2 枚のために作った（残りの 60 枚を置くのは項目 8、Zone 2 の 1 枚は項目 13）。
+病院のステージで動く仕掛け。いまは本家の両開き扉と、ゾーンの障壁 `BP_ZoneBarrier`（`Blueprints/Main`）を写した `AWasamiZoneBarrier`（全回収まで道をふさぐ光る壁。流れが `Destroy` で壊す。作業一覧の項目 6 のステップ 4a）。両開き扉は本家の `BP_06_DoubleDoors`（`pak_reference_2` の `Blueprints/06_Hospital`）を写した `AWasamiDoubleDoors`: 幅 400 cm の出入口の両端に蝶番のある扉 2 枚で、キャラクター（プレイヤーかナース）が前の箱に入ると奥へ、後ろの箱に入ると手前へ、音とともに 1 s で 90° 開き、両側を覆う `Leave` の箱からキャラクターが出て、プレイヤーが中に残っていなければ閉じる。閉ざされている（`bLocked`）と、入ってもガタつく音（2 s に 1 回まで）だけ。ゾーンの流れ（11 記録）が名指しする扉を `Lock`・`Unlock`・`Open Front`・`Force Close` で閉ざし・開ける。作業一覧の項目 6（ゾーンの進行）のステップ 3c で、流れが名指しする Zone 1 の 2 枚のために作った（残りの 60 枚を置くのは項目 8、Zone 2 の 1 枚は項目 13）。
 
 ## 公開インターフェース
 - `AWasamiDoubleDoors`（`AActor`）
@@ -20,6 +23,10 @@ updated: 2026-09-18
   - `NotifyFrontEnter(Other)`・`NotifyBackEnter(Other)`・`NotifyLeave(Other)` … 前の箱に入った・後ろの箱に入った・`Leave` から出た（本家の 3 つの部品のイベント）。箱の重なりが呼ぶ。テストは直接呼ぶ。
   - 読むだけ: `AnySideOpen()`・`IsOpenFront()`・`IsOpenBack()`・`IsOpening()`・`IsClosing()`（タイムラインが走っているか）・`IsLockedSoundBlocked()`・部品 `GetStaticMesh()`・`GetStaticMesh1()`・`GetFrontEnter()`・`GetBackEnter()`・`GetLeave()`。
   - 静的: `EvaluateSwing(Seconds)`（タイムラインの Float の曲線）、定数 `SwingLength` 1・`CloseSoundTime` 0.5922・`LockedSoundDelay` 2。
+- `AWasamiZoneBarrier`（`AActor`）
+  - `Layer1MinBrightness` 5・`Layer1MaxBrightness` 9.5（前の板 `StaticMesh1` の `Emissive Pulse Min / Max`）、`Layer2MinBrightness` 0.8・`Layer2MaxBrightness` 1.2（後ろの板 `StaticMesh`）、`bSound` 真（唸りの音）。
+  - `DestroyBarrier()` … 本家の `Destroy`（`AActor::Destroy` と名前がぶつかるので改名）。
+  - 読むだけ: `GetStaticMesh()`・`GetStaticMesh1()`・`GetPointLight()`・`GetAudio()`。
 
 ## 内部構造と処理の流れ
 - 部品（本家の SCS）: ルート `DefaultSceneRoot`、`StaticMesh`（x −200）・`StaticMesh1`（x +200）は `UStaticMeshComponent` の既定（BlockAllDynamic・Movable）でナビゲーションに入らない。`FrontEnter`（(0, −150, 50)・拡縮 (6.2587, 2.8200, 1)）・`BackEnter`（(0, 150, 50)・(6.2587, 2.9723, 1)）・`Leave`（(0, 0, 50)・(6.2587, 12.0652, 1)）は `UBoxComponent` の既定（32 cm・OverlapAllDynamic・ゲームで隠れる）を拡縮した箱（約 400 × 180、400 × 190、400 × 772 cm）。箱の `AreaClass`（NavArea_Obstacle）は `bCanEverAffectNavigation` 偽なので効かない。クラスのタグ `interact`（プレイヤーの「使えるもの」を見る処理が読む。項目 5 の視線の手）。
@@ -33,30 +40,44 @@ updated: 2026-09-18
 - タイムライン（`Timeline_0` 開く・`Timeline_1` 閉じる。どちらも 1 s、同じ Float の曲線 0 → 0.951（0.552 s）→ 1.040（0.685 s）→ 1（1 s）。書き出しのキーと UE 4.24 が出した接線のまま、`RCTM_Break` で入れて UE 5 に接線を計算し直させない）。UE の `FTimeline` を写した自前の小さな状態（位置と再生中か）をアクタのティックで進める（走っている間だけティックする）: `PlayFromStart` は位置 0 で更新を 1 回（イベントは出さない）してから再生。ティックで位置を `Δt × 速さ` 進め、1 を超えたら 1 で止め、閉じる側は `Sound` のキー（0.5922 s）が [前の位置, 新しい位置)（最後のティックは終わりを少し越す）に入ったら `PlaySoundAtLocation(SFX_06_DoubleDoor_Close, …, 0.5, 1.0, 0, MonkeyAttenuation)`、そして `Update Func`。両方が走るときは開く側 → 閉じる側の順（閉じる側が勝つ）。
 - `Update Func`（開く / 閉じる、曲線の値 α）: 振れ幅 = `Animation` ? `OpenAmount` : −`OpenAmount`。開くときは `Lerp(0, 振れ幅, α)`、閉じるときは `Lerp(振れ幅, 0, α)` を `Apply Update Values`: `StaticMesh` の相対回転をヨー v、`StaticMesh1` を −v（前から開くと 2 枚とも +Y 側 = 後ろへ振れる）。
 
+### ゾーンの障壁（`AWasamiZoneBarrier`）
+- 部品（本家の SCS）: ルート `DefaultSceneRoot`（拡縮 3.2。置いた障壁はアクタの拡縮で大きさを決める: Zone 1 (3.2, 3.904, 1.504) = 幅 390・高さ 150 cm、Zone 2 (3.2, 3.820, 3.2)）、`StaticMesh1`（エンジンの `/Engine/BasicShapes/Plane`、回転 (P 0, Y 90, R −90) で立てて x を向く）、`StaticMesh`（同じ Plane、x −3.04・回転 (P −90, Y −359.98, R 359.98)・拡縮 1.071）。板は当たりを Custom（WorldStatic、応答は既定の Block のまま、QueryAndPhysics）にし、ナビゲーションに入らない。タグ `interact`（アクタ・ルート・板 2 枚）。`PointLight`（Movable・Unitless 2500・(255, 0, 188)・`SourceRadius` 214.338・`SoftSourceRadius` 1000・`AttenuationRadius` 400・`VolumetricScatteringIntensity` 0）。`Audio`（`Barrier_Loop`・音量 0.5・ピッチ 0.8、減衰の上書き: 遮蔽あり・複雑な当たりで遮蔽・低域 1500 Hz・NaturalSound・`FalloffDistance` 2000。ほかは `FSoundAttenuationSettings` の既定）。本家の `Box`（NavArea_Obstacle の重なりの箱）は何も遮らずナビゲーションに入らないので写さない。
+- **板の材質はクラスが入れない**。レベルの組み立て（`dd_level._flow`、01 記録）が `MM_ZoneBarrier_Inst1`（`StaticMesh1`）・`_Inst2`（`StaticMesh`）を置いた障壁に入れる。Plane はエンジンの素材なのでコンストラクタで読む。
+- `BeginPlay`: 音と粒子を読み（ソフト参照）、本家の構築スクリプト（各板の `SetScalarParameterValueOnMaterials` で `Emissive Pulse Max / Min` を層の明るさに）をここでする（エディタで動的な材質をレベルに保存しないため）。`bSound` なら `Barrier_Loop` を入れて鳴らし、偽なら `Audio` を消す（本家の `ReceiveBeginPlay` @772。本家は部品が自動で鳴り出す）。
+- `DestroyBarrier`（本家 @802）: `SpawnEmitterAtLocation(P_ky_impact3, StaticMesh の位置, 回転 0, 2, 自動で消える, プールなし, 起きた状態)` → `PlaySoundAtLocation(Barrier_Shatter, アクタの位置, 回転 0, 1, 1, 0, 01_Lobby_Attenuation)` → アクタを消す。
+- 写さないもの: 見て左クリック（本家の `InteractWithObject` @787: `NoInteract` でなければ 5 s に 1 回、`DD_RingBarrierDenied_louder`〈0.75・1.1・`DialogueAttenuation`〉と `UMG_TextPrompt`「Collect all soul shards in this zone to break the barrier.」）は、視線の手のマークと一緒に項目 13 で作る。`Set Visibilty`（音量・見え方・板の当たりを切り替え、消すときは粒子と音）・`Spawn Particle`・`Off By Default`・`NoInteract` は、病院の 2 つの障壁が既定のままでレベル BP も呼ばないので写さない。
+
 ## 作るアセット
 `pipeline/dd_gimmicks.py`（`WasamiDDTools.import_dd_gimmicks`。01 記録）: `/Game/DD/Audio/06_Hospital/SFX_06_DoubleDoor_Open`（0.622 s）・`SFX_06_DoubleDoor_Close`（1.007 s）、`/Game/DD/Audio/01_Hotel/Locked_Door`（SoundCue。Random に `Locked_Door_v1`・`_v2`、減衰 `MonkeyAttenuation`、1.343 s）とその波形 2、減衰 `/Game/DD/Audio/Misc/MonkeyAttenuation`・`/Game/DD/Audio/01_Hotel/01_Lobby_Attenuation`。扉のメッシュと材質はステージの素材。
+
+障壁（`import_zone_barrier`。`import_dd_shards` の後）: `/Game/DD/Audio/02_School/Barrier_Loop`・`Barrier_Shatter`、テクスチャ `/Game/DD/Textures/02_ElementarySchool/school_decal_speedBarrier_01_A`（Mirror 貼り）・`/Game/DD/ThirdParty/AdvancedMagicFX13/Textures/T_ky_flare14_4x4`、材質 `/Game/DD/Materials/Shared/MM_SpeedBarrier`（cook で式が消えたので、焼き込みの半透明のベースパスのシェーダー〈`Tools/dd/cooked_shaders.py "Materials/Shared/MM_SpeedBarrier." --show 26`〉を読んだ式で組んだ: UV を中心から `Min Scale`〜`Max Scale`〈Time × `Size Pulse Speed` の正弦〉で拡縮し、背後の景色が `FadeDistance Secondary` 離れているところほど拡縮を効かせ〈DepthFade で Lerp〉、`Texture` の RGB × `Color Multiplier` を色として、その `Emissive Pulse Min`〜`Max` 倍〈Time × `Emissive Pulse Speed` の正弦〉を発光、2 倍をベースカラーに、A を `FadeDistance` の DepthFade × `Opacity Multiplier` を不透明度に。半透明・ライティングあり・被写界深度の前〈本家の `bEnableSeparateTranslucency` 偽〉。インスタンスが持つ `Color + Emissive Multiplier` はシェーダーに無い〈何も読まない〉ので作らない）とそのインスタンス `MM_ZoneBarrier_Inst1`・`_Inst2`（両面の上書き）、粒子 `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_impact3`（`dd_particles`。材質の `MI_ky_primitive2_trs` と推定の `M_ky_flare01_primitive` はシャードの閃光のもの〈06 記録〉、`MI_ky_flare14R` はその新しいインスタンス〈加算の上書き〉）。
 
 ## 原作データの根拠
 - `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_DoubleDoors.txt`（上の番地）と `_assets/…/BP_06_DoubleDoors.json`（SCS の部品の位置・拡縮・メッシュ、`Open Amount` 90、タグ `interact`、`Timeline_0_Template`・`Timeline_1_Template`〈長さ 1、`CurveFloat_0_1`・`CurveFloat_0_1_3` のキー、`Sound` のイベントのキー `CurveFloat_0`〉、部品のイベントの結び付け `ComponentDelegateBinding_0`）。
 - 音: `_assets/…/Audio/06_Hospital/SFX_06_DoubleDoor_Open.json`・`_Close.json`、`Audio/01_Hotel/Locked_Door.json`（Random・重み 1 × 2・`AttenuationSettings` `MonkeyAttenuation`）、`Audio/Misc/MonkeyAttenuation.json`。
-- 置き場所と値: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`（前処理の `stage_ue.json` の `actors`。Zone 1 に 62 枚、Zone 2 に 1 枚〈`bLocked` 真〉）。子の `BP_06_DoubleDoors_Child`（1 枚扉 `hospital_entrance_walkway_singledoor`・箱の位置違い）は病院に置かれていない。
+- 障壁: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_ZoneBarrier.txt`（上の番地）と `_assets/…/BP_ZoneBarrier.json`（SCS の部品・クラスの既定 `Layer 1/2 | Min/Max Brightness`・`Interaction Text`・`bSound`・タグ）、`_assets/…/Materials/Shared/MM_SpeedBarrier.json`（残った式の値）・`MM_ZoneBarrier_Inst1.json`・`_Inst2.json`、`ThirdParty/AdvancedMagicFX13/Materials/MI_ky_flare14R.json`・`Particles/P_ky_impact3.json`。レベル BP が呼ぶのは `Destroy` だけ（Zone 1 は `05 All Shards Collected` @16409、Zone 2 は @21485。11 記録）。
+- 置き場所と値: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`（前処理の `stage_ue.json` の `actors`。両開き扉は Zone 1 に 62 枚、Zone 2 に 1 枚〈`bLocked` 真〉。障壁は両ゾーンに `BP_ZoneBarrier_2` が 1 つずつ、アクタの値は既定のまま）。子の `BP_06_DoubleDoors_Child`（1 枚扉 `hospital_entrance_walkway_singledoor`・箱の位置違い）は病院に置かれていない。
 
 ## 依存関係
 - 自前: `AWasamiPlayerCharacter`（`Player Overlapping?` の相手のクラス。02 記録）、`WasamiAssets.h`。
-- 使う側: ゾーンの流れ（`AWasamiZoneFlow::DoubleDoors`・`AWasamiZone1Flow` の 04 と 06。11 記録）、レベルの組み立て（`dd_level._flow`。01 記録）。
-- エンジン: `UBoxComponent`・`UStaticMeshComponent`・`FRichCurve`・`UGameplayStatics::PlaySoundAtLocation`・`FTimerManager`。
+- 使う側: ゾーンの流れ（`AWasamiZoneFlow::DoubleDoors`・`ZoneBarrier`、`AWasamiZone1Flow` の 04・05・06。11 記録）、レベルの組み立て（`dd_level._flow`。01 記録）。
+- エンジン: `UBoxComponent`・`UStaticMeshComponent`・`FRichCurve`・`UGameplayStatics::PlaySoundAtLocation`・`SpawnEmitterAtLocation`・`FTimerManager`・`UPointLightComponent`・`UAudioComponent`、エンジンの素材 `/Engine/BasicShapes/Plane`（100 × 100 の板、厚さ 0 の箱の当たり）。
 
 ## 既知の制約・注意点
 - 置いてあるのは流れが名指しする Zone 1 の 2 枚だけ（`BP_06_DoubleDoors11`・`BP_06_DoubleDoors33_36`）。ほかの出入口は扉が無く、通り抜けられる（項目 8）。
 - 扉は当たりを持ったまま掃引せずに回る（本家どおり）。開くときにプレイヤーが扉の振れる範囲（蝶番から 200 cm）にいると、扉がカプセルに食い込むことがある。
 - `Unlock`・`Lock` は前のイベントの相手で本家の処理を繰り返す（上）。流れは `On04DoorBreak` で `Unlock` を使わず `bLocked` を直に書く（本家どおり）。
 - 両方のタイムラインが同時に走ったときの勝ち方（閉じる側が後）は、本家では部品のティックの順で決まり、コードからは確定できない。
+- 障壁の粒子 `P_ky_impact3` の `MI_ky_flare14R` は推定の `M_ky_flare01_primitive` のインスタンス（06 記録の閃光と同じ推定）。Zone 2 の障壁はまだ壊す所が無い（項目 13 の、欠片の画面が閉じたときの `Ring Piece Collect `）。
 
 ## テスト（`Tests/WasamiDoubleDoorsTests.cpp`）
-`Wasami.DoubleDoors.Actor`: 曲線のキー（0・0.951・1.040・1）、部品の値（`interact`・90°・扉の位置と当たり・箱の大きさと位置と Pawn の重なり）、キャラクターでないと開かない、前から開いて 0.5 s で曲線どおり・1 s で 90°（2 枚は逆向き）、開いている間は後ろから開かない、`Leave` を出ると閉じ始めて 1 s で 0、後ろから開くと −90° / +90°、`Force Close`、閉ざすとガタつくだけ・2 s で次が鳴らせる・`Unlock` で前にいた者のために開く、`Lock` で開いた扉が閉じる、閉ざしたまま `Open Front` は開かない・`bLocked` 偽なら開く、`Update Animation Speed(2)` で 0.5 s で閉じる。テストのワールドの 0 秒のティックは `MinUndilatedFrameTime`（0.5 ms）進むので、途中の角度は 0.5005 s の値と比べる。流れから閉ざし・開けるのは `Wasami.ZoneFlow.Zone1`（11 記録）。
+`Wasami.DoubleDoors.Actor`: 曲線のキー（0・0.951・1.040・1）、部品の値（`interact`・90°・扉の位置と当たり・箱の大きさと位置と Pawn の重なり）、キャラクターでないと開かない、前から開いて 0.5 s で曲線どおり・1 s で 90°（2 枚は逆向き）、開いている間は後ろから開かない、`Leave` を出ると閉じ始めて 1 s で 0、後ろから開くと −90° / +90°、`Force Close`、閉ざすとガタつくだけ・2 s で次が鳴らせる・`Unlock` で前にいた者のために開く、`Lock` で開いた扉が閉じる、閉ざしたまま `Open Front` は開かない・`bLocked` 偽なら開く、`Update Animation Speed(2)` で 0.5 s で閉じる。`Wasami.ZoneBarrier.Actor`（`Tests/WasamiZoneBarrierTests.cpp`）: 部品の値（`interact`・ルート 3.2・板 2 枚がエンジンの Plane で x を向き、後ろの板が 3.04 × 3.2 cm 後ろ・Block の当たり・ナビゲーションに入らない・灯・音の音量とピッチと減衰・`Barrier_Loop`）、`DestroyBarrier` でアクタが消え、`P_ky_impact3` が後ろの板の位置に 2 倍で出る。流れから壊すのは `Wasami.ZoneFlow.Zone1`（11 記録）。テストのワールドの 0 秒のティックは `MinUndilatedFrameTime`（0.5 ms）進むので、途中の角度は 0.5005 s の値と比べる。流れから閉ざし・開けるのは `Wasami.ZoneFlow.Zone1`（11 記録）。
 
 ## 確かめたこと（2026-09-18、PIE）
 Zone 1 の 04: エレベーターの前の `BP_06_DoubleDoors11` は赤い 2 枚扉で閉じている → 鍵が外れると手前へ 1 s で開き、少し行き過ぎて戻る → `Leave` の外へ出ると閉じる（11 記録の「確かめたこと」）。
 
+障壁（項目 6 のステップ 4a）: Zone 1 の 05 で `(0, −18450)` から −Y を向くと、エレベーターホールの先の出入口を紫の網目の障壁がふさいでいる → `Wasami.CollectShards` で全回収すると、紫の閃光と放射する線（`P_ky_impact3`）が出て障壁が消え、奥の廊下が見える（収録 `Intermediate/DesktopAgent/shots/barrier_break.mkv`、git の外）。デバッグの全回収は 337 個を一度に消すので、閃光の直後に約 0.6 s 止まる。
+
 ## 変更履歴
 - 2026-09-18: 初版。本家の `BP_06_DoubleDoors` を `AWasamiDoubleDoors` に写し、音の取り込み `dd_gimmicks.py` を足した（作業一覧の項目 6 のステップ 3c）
+- 2026-09-18: 本家の `BP_ZoneBarrier` を `AWasamiZoneBarrier` に写し、`dd_gimmicks.import_zone_barrier`（音・テクスチャ・シェーダーから組んだ `MM_SpeedBarrier` とインスタンス・`P_ky_impact3`）を足した（作業一覧の項目 6 のステップ 4a）

@@ -19,6 +19,7 @@
 #include "WasamiTriggerBox.h"
 #include "WasamiZone1Flow.h"
 #include "WasamiZone2Flow.h"
+#include "WasamiZoneBarrier.h"
 
 namespace
 {
@@ -165,6 +166,16 @@ AWasamiDoubleDoors* AWasamiZoneFlow::DoubleDoors(FName Source) const
 		UE_LOG(LogTemp, Warning, TEXT("%s: no double doors %s"), *GetClass()->GetName(), *Source.ToString());
 	}
 	return Doors;
+}
+
+AWasamiZoneBarrier* AWasamiZoneFlow::ZoneBarrier(FName Source) const
+{
+	AWasamiZoneBarrier* Barrier = Cast<AWasamiZoneBarrier>(FindSource(GetWorld(), Source));
+	if (!Barrier)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no zone barrier %s"), *GetClass()->GetName(), *Source.ToString());
+	}
+	return Barrier;
 }
 
 void AWasamiZoneFlow::BindAllShardsCollected(FName Function)

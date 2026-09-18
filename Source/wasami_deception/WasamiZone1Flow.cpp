@@ -6,6 +6,7 @@
 #include "WasamiDoubleDoors.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
+#include "WasamiZoneBarrier.h"
 
 namespace
 {
@@ -102,7 +103,10 @@ void AWasamiZone1Flow::On05AllShardsCollected()
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveReachParkingLot", "REACH THE PARKING LOT"));
 	// BP_06_MusicPlayer_2's bFadeOut true (item 19).
 	BindTrigger(TEXT("06_CutsceneStart"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On05ParkingLotCutscene));
-	// Not yet: BP_ZoneBarrier_2's Destroy (the barrier breaks).
+	if (AWasamiZoneBarrier* Barrier = ZoneBarrier(TEXT("BP_ZoneBarrier_2")))
+	{
+		Barrier->DestroyBarrier();
+	}
 }
 
 void AWasamiZone1Flow::On05ParkingLotCutscene()

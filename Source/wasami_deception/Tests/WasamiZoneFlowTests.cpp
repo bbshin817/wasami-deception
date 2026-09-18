@@ -7,6 +7,7 @@
 #include "../WasamiTriggerBox.h"
 #include "../WasamiZone1Flow.h"
 #include "../WasamiZone2Flow.h"
+#include "../WasamiZoneBarrier.h"
 #include "Components/BoxComponent.h"
 #include "Components/BrushComponent.h"
 #include "Engine/BlockingVolume.h"
@@ -174,6 +175,9 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	LiftDoors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors11")));
 	AWasamiDoubleDoors* TunnelDoors = World->SpawnActor<AWasamiDoubleDoors>(FVector(0., 0., -70000.), FRotator::ZeroRotator);
 	TunnelDoors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors33_36")));
+	AWasamiZoneBarrier* Barrier = World->SpawnActor<AWasamiZoneBarrier>(FVector(0., 0., -60000.), FRotator::ZeroRotator);
+	Barrier->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_ZoneBarrier_2")));
+	const TWeakObjectPtr<AWasamiZoneBarrier> BarrierRef(Barrier);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -214,6 +218,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	// A shard left: its check 1 s on finds it. Gone: two checks 0.03 s apart count once, 0.05 s after the first.
 	Advance(Wrapper, AWasamiZone1Flow::ShardCheckDelay + 0.1f);
 	TestEqual(TEXT("a shard left"), Flow->GetSection(), FName(TEXT("05_Persistent")));
+	TestTrue(TEXT("the barrier stands"), BarrierRef.IsValid() && !BarrierRef->IsActorBeingDestroyed());
 	Shard->Destroy();
 	Mode->CheckShards();
 	Advance(Wrapper, 0.03f);
@@ -221,6 +226,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Advance(Wrapper, 0.03f);
 	TestEqual(TEXT("all collected"), Flow->GetSection(), FName(TEXT("05 All Shards Collected")));
 	TestEqual(TEXT("to the parking lot"), Objective(Mode), FString(TEXT("REACH THE PARKING LOT")));
+	TestTrue(TEXT("the barrier broken"), !BarrierRef.IsValid() || BarrierRef->IsActorBeingDestroyed());
 	TestFalse(TEXT("the arrow off the shards"), Flow->IsArrowOnShards());
 	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8002f, 0.f, 1.f), 1e-4f));
 	TestTrue(TEXT("at the parking lot's trigger"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("06_CutsceneStart")));

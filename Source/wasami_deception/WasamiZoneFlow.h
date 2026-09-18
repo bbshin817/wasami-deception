@@ -8,6 +8,7 @@
 class AWasamiDoubleDoors;
 class AWasamiGameMode;
 class AWasamiTriggerBox;
+class AWasamiZoneBarrier;
 class UCameraShakeBase;
 
 /**
@@ -88,6 +89,9 @@ protected:
 
 	/** The double doors placed from the original's actor of that name (BP_06_DoubleDoors), or null with a warning. */
 	AWasamiDoubleDoors* DoubleDoors(FName Source) const;
+
+	/** The zone barrier placed from the original's actor of that name (BP_ZoneBarrier), or null with a warning. */
+	AWasamiZoneBarrier* ZoneBarrier(FName Source) const;
 
 	/** The game mode's All Shards Collected calls the flow's event of that name. */
 	void BindAllShardsCollected(FName Function);

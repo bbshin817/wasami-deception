@@ -1,8 +1,8 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
-zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors) and the level sequences the flow plays
-(dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes first."""
+zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, zone barriers) and the level
+sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -59,6 +59,14 @@ DOUBLE_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_entrance
                       "static_mesh1": "/Game/Meshes/06_Hospital/hospital_entrance_walkway_doubledoor1"}
 # A placed door's own values in the export → the class's properties.
 DOUBLE_DOOR_PROPS = {"bLocked": "locked", "Open Amount": "open_amount"}
+# The zone barriers (BP_ZoneBarrier → AWasamiZoneBarrier), with their planes' materials (the SCS templates'
+# OverrideMaterials; the class leaves them unset, as the doors' meshes). The barrier's light is a component of it, so the
+# lights the preprocessing lists under a barrier are not placed on their own (builds before 2026-09-18 did, into
+# BARRIER_LIGHT_FOLDER; place_flow takes those out).
+BARRIER_CLASS = "BP_ZoneBarrier_C"
+BARRIER_MATERIALS = {"static_mesh1": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst1",
+                     "static_mesh": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst2"}
+BARRIER_LIGHT_FOLDER = "Hospital/Lights/" + BARRIER_CLASS
 VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume}
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
@@ -178,7 +186,7 @@ def _lights(eas, zone, counts, failures):
     with unreal.ScopedSlowTask(len(zone["lights"]), "Placing the hospital's lights") as task:
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
-            if lt["actorClass"] == SHARD_CLASS:
+            if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS):
                 continue
             cls = LIGHT_CLASS.get(lt["class"])
             if cls is None or not lt["world"]:
@@ -379,13 +387,13 @@ def _set_mesh(comp, stage, source):
 
 
 def _flow(eas, stage, zone, counts, failures):
-    """The trigger boxes, brush volumes, door breaks and the double doors the flow names, each where the original has
-    it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
+    """The trigger boxes, brush volumes, door breaks, the double doors the flow names and the zone barriers, each where
+    the original has it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
     placed = []
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
-        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS) and a["class"] not in VOLUME_CLASSES
-                              and not doors):
+        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS)
+                              and a["class"] not in VOLUME_CLASSES and not doors):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -405,6 +413,16 @@ def _flow(eas, stage, zone, counts, failures):
                 if key in a["props"]:
                     actor.set_editor_property(name, a["props"][key])
             counts["doubleDoors"] += 1
+        elif a["class"] == BARRIER_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiZoneBarrier, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            for prop, path in BARRIER_MATERIALS.items():
+                material = unreal.load_asset(path)
+                if material is None:
+                    raise RuntimeError("missing %s: run WasamiDDTools.import_dd_gimmicks" % path)
+                actor.get_editor_property(prop).set_material(0, material)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["zoneBarriers"] += 1
         else:
             actor = eas.spawn_actor_from_class(VOLUME_CLASSES[a["class"]], _vec(world["location"]), _rot(world["quat_xyzw"]))
             if a.get("brushBox") != DEFAULT_BRUSH_BOX:
@@ -430,16 +448,21 @@ def _flow(eas, stage, zone, counts, failures):
 
 
 def place_flow(zone="Zone1", map_path=""):
-    """Puts the zone's trigger boxes, brush volumes, door breaks and double doors in again, leaving the rest of the
-    level and its baked lighting as they are (none of them is in the baked lighting: the doors are movable), and saves
-    the level."""
+    """Puts the zone's trigger boxes, brush volumes, door breaks, double doors and zone barriers in again (and takes
+    out the barrier lights an earlier build placed on their own), leaving the rest of the level and its baked lighting
+    as they are (none of them is in the baked lighting: the doors and the barriers' lights are movable), and saves the
+    level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"], clear=False)
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
-    counts = {"removed": len(old), "triggers": 0, "volumes": 0, "doorBreaks": 0, "doubleDoors": 0, "attached": 0}
+    lights = [a for a in eas.get_all_level_actors()
+              if a.actor_has_tag(TAG) and str(a.get_folder_path()) == BARRIER_LIGHT_FOLDER]
+    counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "doorBreaks": 0,
+              "doubleDoors": 0, "zoneBarriers": 0, "attached": 0}
+    old += lights
     if old:
         eas.destroy_actors(old)
     failures = []
@@ -460,7 +483,8 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "attached")}
+                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "zoneBarriers",
+                             "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

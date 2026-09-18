@@ -180,7 +180,7 @@
 ### 13. 脱出（ガレージの祭壇 → 欠片 → ポータル）と視線の手のマーク
 
 - 目標: Zone 2 の全回収後、ガレージの祭壇（本家 `BP_01_Statue` の見た目）を Use して欠片を取り、現れたポータルをくぐると脱出完了。流れは Deadly Decadence（旧版 `03_Manor_Zone2`）に倣う。ボス戦は作らない。
-- 完了の条件: 全回収で祭壇の球（`ring_statue_orb`）が消え、見て左クリック（視線の手のマーク `UMG_Interact`。実装記録の予定 05）で `Ring_Piece_Pickup` と `UMG_01_RingPieceCollect`、ポータル（本家 `BP_00_Teleport` の見た目と `21-Ballroom_portal_V2` の音）が現れ、くぐると敵を消して脱出。全回収前は祭壇を使えない。ガレージの位置は本家の `Postmaze_Trigger_Garage`。脱出の後のスコア画面（項目 14）ができるまでは、脱出で入力を止めて画面を暗くするだけでよい。Bierce の台詞は項目 20（大目標 2）。
+- 完了の条件: 全回収で祭壇の球（`ring_statue_orb`）が消え、見て左クリック（視線の手のマーク `UMG_Interact`。実装記録の予定 05）で `Ring_Piece_Pickup` と `UMG_01_RingPieceCollect`、ポータル（本家 `BP_00_Teleport` の見た目と `21-Ballroom_portal_V2` の音）が現れ、くぐると敵を消して脱出。全回収前は祭壇を使えない。ガレージの位置は本家の `Postmaze_Trigger_Garage`。脱出の後のスコア画面（項目 14）ができるまでは、脱出で入力を止めて画面を暗くするだけでよい。欠片の画面（`UMG_01_RingPieceCollect`）が閉じると（本家の `Ring Piece Collect `）、灯 2 つを消して Zone 2 の障壁 `BP_ZoneBarrier_2` を `DestroyBarrier` で壊し、矢印をガレージ（`Postmaze_Trigger_Garage`）へ向ける（本家 @21373〜。障壁は項目 6 で置いた）。視線の手のマークと一緒に、障壁を見て左クリックしたときの本家の `InteractWithObject`（`DD_RingBarrierDenied_louder` と `UMG_TextPrompt`「Collect all soul shards in this zone to break the barrier.」、5 s に 1 回。実装記録 08）も作る。Bierce の台詞は項目 20（大目標 2）。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/03_Manor_Zone2.txt`（@1385〜@4380 の祭壇と欠片、`Portal Extra Brightness`）、`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt`（@43〜 Postmaze、@1423〜@1773 の台詞・曲のフェード・ポータルの音・敵の除去）、`Blueprints/01_Hotel/BP_01_Statue.txt`、`Blueprints/00_Ballroom/BP_00_Teleport.txt`、`UI/Main/UMG_Interact`。
 - 依存: 6、7。
 - 規模: 2
