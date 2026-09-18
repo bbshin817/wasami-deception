@@ -1,4 +1,4 @@
-**最終更新: 2026-09-18**
+**最終更新: 2026-09-19**
 
 『Dark Deception』のワサミ版ファンゲーム「WASAMI DECEPTION」を Unreal Engine 5 で作っています。いま遊べることを、実際のプレイ画面の GIF で紹介します。開発が進むたびに、この記事を書き換えます。
 
@@ -11,6 +11,38 @@
 舞台は原作の病院「Torment Therapy」の Zone 1・Zone 2。集めるシャードは紫の結晶の代わりに「ワサミ餅」で、触れると紫の閃光とともに回収されます。Shift でダッシュ。
 
 ![廊下を走ってシャードを集める](../../observations/ours/note/gif/01-run-collect.gif)
+
+### Zone 1: エレベーターの到着から駐車場へ
+
+ゲームは Zone 1 のエレベーターが着くところから始まります。扉の前の鍵を F の連打で外して先へ進み、シャードを全部集めると駐車場への障壁が消えます。
+
+![エレベーターの扉が開く](../../observations/ours/note/gif/11-elevator-arrive.gif)
+
+駐車場の奥のトンネルへ向かうと、扉が閉ざされ、しばらくすると破られます。
+
+![トンネルの扉が破られる](../../observations/ours/note/gif/12-doors-busted.gif)
+
+### 救急車に乗って Zone 2 へ
+
+ガレージのリフトで上がり、Teleport で救急車の屋根へ跳び移ると、救急車がトンネルを走り出し、Zone 2 へ運ばれます。
+
+![リフトで上がり、Teleport で救急車の屋根へ](../../observations/ours/note/gif/13-garage-lift-teleport.gif)
+
+![救急車でトンネルを抜けて Zone 2 の独房へ](../../observations/ours/note/gif/14-ambulance-zone2.gif)
+
+### Zone 2: 独房から迷路へ
+
+Zone 2 は独房から。天井の棘が下りてくる前に、扉の鍵を外して逃げ出します（GIF は確かめのための命令で鍵を一度に外しています）。
+
+![独房の扉を破る](../../observations/ours/note/gif/15-cell-door.gif)
+
+迷路の床は、乗ると上の階へ上がります。タブレットの地図も、いる階の絵に替わります。
+
+![床に乗って上の階へ。地図が切り替わる](../../observations/ours/note/gif/16-lift-map.gif)
+
+最後のシャードを取ると、目的が「COLLECT THE RING PIECE」に変わります。
+
+![最後のシャードを取る](../../observations/ours/note/gif/17-last-shard.gif)
 
 ### タブレット
 
@@ -62,4 +94,4 @@ Space で出すと、残りのシャードの数と地図が見えます。Z で
 
 ## これから
 
-敵ワサミの巡回と追跡、捕まったときの演出、罠、脱出のポータルを作っていきます。
+敵ワサミの巡回と追跡、捕まったときの演出、Zone 2 の祭壇と脱出のポータルを作っていきます。

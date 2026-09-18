@@ -15,7 +15,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp
   - Source/wasami_deception/WasamiZoneShardChecker.h
   - Source/wasami_deception/WasamiZoneShardChecker.cpp
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # ゾーンの進行（トリガー・区間の流れ・扉の破壊）
@@ -165,3 +165,4 @@ updated: 2026-09-18
 - 2026-09-18: 流れに `PlayFadeOut`・`PlayWorldCameraShake`・`PlaySoundAt`・`ActivateEmitter` を足し、Zone 1 の 06 Transition のフェードと、06 の扉の塞ぎの 25 s 後に扉が破られる所（音・揺れ・破片・0.1 s 後に扉を消す）を埋めた。Zone 1 のテストに足した（項目 6 のステップ 4b）
 - 2026-09-18: Zone 2 の 7 を独房から始めるようにした: 飛ばした場面が残す状態（救急車・前の塞ぎ・偽の天井・壁のスイッチ）を入れ、棘のシーケンス・独房の扉の鍵（`OnCellDoorBreak`: 扉のシーケンスと揺れ）・棘の死の打たれた閃き（`AWasamiHitFX`、08 記録）と音を足した。ゲームモードの 7 の PlayerStart を `PlayerStart_Cell` にした（06 記録）。Zone 2 と開始のテストを足した（項目 6 のステップ 7a）
 - 2026-09-18: `OnMazeTriggerStart` の項目 20 の口のコメントに、`Setup Bierce Lift Quip` が `AWasamiLift::OnPlayerOverlap` を結ぶことを書いた（作業一覧の項目 6 のステップ 8a。リフトは 12 記録）
+- 2026-09-19: 作業一覧の項目 6 を閉じた。Zone 1 の到着から救急車で Zone 2 へ移り、Zone 2 の独房から全回収の COLLECT THE RING PIECE までを PIE で通した（「確かめたこと」の通し 2 つ）。救急車の屋根の後ろの端で低いフレームレートのときに落ちることを「既知の制約」に書いた（項目 6 のステップ 10a〜10c）
