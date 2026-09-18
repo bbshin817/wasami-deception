@@ -34,7 +34,7 @@ Space で出すと、残りのシャードの数と地図が見えます。Z で
 
 ![Telepathy](../../observations/ours/note/gif/05-telepathy.gif)
 
-**Primal Fear** … 周りの敵を気絶させます。敵ワサミは 17 秒のあいだ、ふらついて動けなくなります。
+**Primal Fear** … 周りの敵を気絶させます。敵ワサミは倒れて 17 秒のあいだ動けなくなり、最後に寝返りを打って起き上がります（GIF は寝ている間を縮めています）。
 
 ![Primal Fear で敵ワサミを気絶させる](../../observations/ours/note/gif/06-primal-fear.gif)
 
