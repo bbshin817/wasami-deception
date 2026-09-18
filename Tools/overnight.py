@@ -17,16 +17,19 @@ of Claude itself is watched, and the driver waits for the reset it names (or 30 
 After each run the driver reads Intermediate/Overnight/status.json (Claude writes {"result": "continue" | "stop",
 "reason": ..., "step": ..., "commit": ..., "written": ..., "done": ..., "summary": [...], "learned": [...],
 "pending": [...], "shots": {"caption": ..., "files": [...]}}) and compares HEAD before and after. It stops on "stop",
-when HEAD did not move in two runs in a row, at --until, after --max-iterations, or when the budget says so.
+when the big goal in progress has been reached (every item of it 完了 in .claude/roadmap.md, read by
+Tools/work_list.py; the unattended work never goes past a goal, the user's instruction of 2026-09-18), when HEAD did
+not move in two runs in a row, at --until, after --max-iterations, or when the budget says so. It does not start when
+no goal is 進行中 or the goal in progress is already reached (only the user makes the next goal 進行中).
 Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log with a header and footer per run, and a
 summary for the morning (runs, why it stopped, the last status, how many 要確認 lines wait in the progress records) is
 printed at the end and appended to the log.
 
 Discord (Tools/discord_notify.py, which also says where the webhook URL comes from): the start, a report per run, the
 waits and the summary are posted to the webhook. The report is the format the user gave on 2026-09-18 (run_report):
-exit code, working time and 進捗率 (overall_progress: the whole from the start of the project to the final goal, from
-the 規模 in .claude/roadmap.md), then 作業概要 / 分かったこと / 要検討事項 (only what came up in this run) from the
-status file, then the images Claude named in "shots" attached as one grid: only images meant for people (sequence
+exit code, working time and 進捗率 (progress_line: the whole from the start of the project to the final goal, from
+the 規模 in .claude/roadmap.md, and in brackets the big goal in progress), then 作業概要 / 分かったこと / 要検討事項
+(only what came up in this run) from the status file, then the images Claude named in "shots" attached as one grid: only images meant for people (sequence
 grids of effects, enemy motions, shard pickups), never shots taken to check the work. The reply of Claude itself goes
 to the log only. The summary at the end is the other format the user gave on 2026-09-18 (final_report): 反復回数,
 無人運転時間 and 終了理由 as a sentence, then やったこと ("done" of every run, one line each) and 要確認事項 (the
@@ -37,8 +40,9 @@ While it runs the driver keeps Intermediate/Overnight/driver.json ({"pid", "star
 to start, and the SessionStart hook tells an attended session not to change anything until the driver is stopped
 (autonomy.md「作業の流れ」). A file left by a driver that died is ignored (its process is gone).
 
-Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop); 2 budget or usage not readable;
-3 no progress or Claude could not be started; 4 bad arguments; 5 another driver is running; 130 interrupted.
+Exit codes: 0 ended as planned (--until, --max-iterations, Claude said stop, the goal was reached); 2 budget or usage
+not readable; 3 no progress or Claude could not be started; 4 bad arguments; 5 another driver is running; 6 no big goal
+in progress (or it is already reached); 130 interrupted.
 """
 import argparse
 import atexit
@@ -54,6 +58,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import discord_notify  # noqa: E402  (same folder)
+import work_list  # noqa: E402  (same folder)
 
 # The replies of Claude and the records hold characters this console's code page (cp932) cannot show: print what we
 # can rather than dying with a UnicodeEncodeError in the middle of the night. The log file is written as UTF-8.
@@ -66,7 +71,6 @@ OVERNIGHT_DIR = os.path.join(ROOT, "Intermediate", "Overnight")
 STATUS_FILE = os.path.join(OVERNIGHT_DIR, "status.json")
 DRIVER_FILE = os.path.join(OVERNIGHT_DIR, "driver.json")
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
-ROADMAP = os.path.join(ROOT, ".claude", "roadmap.md")
 # What Claude Code prints in -p mode when the subscription window is used up (推定: the classic form is
 # "Claude AI usage limit reached|<unix epoch of the reset>"; the newer wording says "hit your limit").
 LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.I)
@@ -212,49 +216,49 @@ def pending_lines():
     return found
 
 
-def record_shares():
-    """{work list item number: share of the checked top-level steps in the 計画 of its unfinished progress record}. A
-    record belongs to item N when its "# " title names 「項目 N」 (autonomy.md「何を作業するか」)."""
-    shares = {}
-    for _, text in progress_records():
-        title = re.search(r"^# .*$", text, re.M)
-        item = re.search(r"項目\s*(\d+)", title.group(0)) if title else None
-        plan = re.search(r"^## 計画\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
-        if not item or not plan:
-            continue
-        marks = re.findall(r"^- \[([ xX])\]", plan.group(1), re.M)
-        if marks:
-            shares[int(item.group(1))] = sum(1 for mark in marks if mark != " ") / float(len(marks))
-    return shares
-
-
 def overall_progress():
     """進捗率 in percent of the whole work, from the start of the project to the final goal (.claude/roadmap.md
-    「進捗率」): the 規模 of the groundwork done before the work list, of the finished items, and of each unfinished item
-    times the share of the checked steps of its progress record, over the groundwork plus every item not called off
-    (取りやめ). None when the work list gives no 規模."""
-    try:
-        with open(ROADMAP, encoding="utf-8") as f:
-            text = f.read()
-    except OSError:
-        return None
-    number = r"(\d+(?:\.\d+)?)"
-    base = re.search(r"^- 作業一覧の前に済んだ土台の規模[:：]\s*" + number, text, re.M)
-    base = float(base.group(1)) if base else 0.0
-    shares = record_shares()
-    total = done = base
-    for item, body in re.findall(r"^### (\d+)\. [^\n]*$(.*?)(?=^##|\Z)", text, re.M | re.S):
-        size = re.search(r"^- 規模[:：]\s*" + number, body, re.M)
-        state = re.search(r"^- 状態[:：]\s*\**(\S*)", body, re.M)
-        state = state.group(1) if state else ""
-        if not size or state.startswith("取りやめ"):
-            continue
-        size = float(size.group(1))
-        total += size
-        done += size if state.startswith("完了") else size * shares.get(int(item), 0.0)
-    if total <= base:
-        return None
-    return 100.0 * done / total
+    「進捗率」, computed by Tools/work_list.py). None when the work list gives no 規模."""
+    work = work_list.load()
+    return work.progress(work_list.record_shares()) if work else None
+
+
+def progress_line():
+    """The 進捗率 of the reports: the whole, and in brackets the goal in progress (roadmap.md「進捗率」)."""
+    work = work_list.load()
+    if not work:
+        return progress_text(None)
+    shares = work_list.record_shares()
+    text = progress_text(work.progress(shares))
+    goal = work.current_goal()
+    if goal:
+        text += "（%s: %s）" % (goal.label, work_list.percent_text(work.progress(shares, goal)))
+    return text
+
+
+def goal_in_progress():
+    """(the goal in progress, None) when the driver may start, else (None, why not): the unattended work never goes
+    past the big goal in progress, and only the user makes the next goal 進行中 (autonomy.md「何を作業するか」)."""
+    work = work_list.load()
+    if work is None:
+        return None, "作業一覧 .claude/roadmap.md が読めない。"
+    goal = work.current_goal()
+    if goal is None:
+        reached = [g.label for g in work.goals if g.state == "達成"]
+        return None, ("進行中の大目標が無い（%s）。次の大目標を進行中にするのはユーザーの指示のときだけ"
+                      "（有人セッションで .claude/roadmap.md の大目標の「状態」を変える）。" % (
+                          "達成: " + "、".join(reached) if reached else "作業一覧に大目標の節が無い"))
+    if goal.complete:
+        return None, ("%s の項目はすべて完了している（達成として止まる）。有人セッションで達成を確かめ、"
+                      "ユーザーの指示で次の大目標を進行中にする。" % goal.label)
+    return goal, None
+
+
+def goal_reached(number):
+    """True when the big goal `number` has been reached: every item of it is 完了, or its 状態 says 達成."""
+    work = work_list.load()
+    goal = work.goal(number) if work else None
+    return bool(goal and (goal.complete or goal.state == "達成"))
 
 
 def progress_text(percent):
@@ -328,7 +332,7 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
     """The Discord post of a finished run in the format the user gave on 2026-09-18, and the images to attach.
     作業概要 / 分かったこと / 要検討事項 come from the status file Claude wrote in this run (None when it wrote none):
     without "summary" the reply of Claude stands in, without "pending" the 要確認 lines that appeared in the progress
-    records during the run (`new_pending`) do."""
+    records during the run (`new_pending`) do. `progress` is the 進捗率 as text (progress_line)."""
     summary = status_list(status, "summary")
     if summary is None:
         summary_text = "（状態ファイルに作業概要が無いので、Claude の最後の応答を載せます）\n\n" + (output.strip() or "（出力なし）")
@@ -343,7 +347,7 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
         "",
         "- exit: %s" % (exit_code if exit_code is not None else "起動できない"),
         "- 作業時間: %s" % duration_text(seconds),
-        "- 進捗率: %s" % progress_text(progress),
+        "- 進捗率: %s" % progress,
         "",
         "%s 🔧 作業概要" % SECTION,
         "",
@@ -567,6 +571,10 @@ def main():
         print("別の駆動役が動いている（PID %s、%s から、ログ %s）。止めてから起動する。" % (
             other.get("pid", "?"), other.get("started", "?"), other.get("log", "?")), file=sys.stderr)
         return 5
+    goal, refusal = goal_in_progress()
+    if refusal:
+        print(refusal, file=sys.stderr)
+        return 6
     command = resolve_command(args.claude) + ["-p", args.prompt, "--permission-mode", "auto",
                                               "--permission-prompts", "none"]
 
@@ -577,6 +585,8 @@ def main():
     log.say("環境: WASAMI_UNATTENDED=1、終了の時刻 %s、反復の上限 %s、使用量 %s" % (
         stamp(deadline) if deadline else "なし", args.max_iterations if args.max_iterations is not None else "なし",
         ("`%s`" % args.usage_cmd) if args.usage_cmd else "読まない（--no-usage-check）"))
+    log.say("大目標: %s（進行中の大目標の項目がすべて完了したら止まる）" % work_list.goals_line(
+        work_list.load(), work_list.record_shares()))
     url, source = discord_notify.webhook_url()
     if args.no_discord:
         url = None
@@ -607,7 +617,7 @@ def main():
                 log.say("予算の決まりでは今は走らない")
                 return 2
         if previous:
-            report, images = run_report(0, 0, 0, previous, "", [], overall_progress())
+            report, images = run_report(0, 0, 0, previous, "", [], progress_line())
             log.say("前回の状態ファイルから組んだ反復の報告の見本（添付 %d 枚）:\n%s" % (len(images), report))
             log.say("同じ状態ファイルの 1 反復で終えたときの終わりのまとめの見本:\n%s" % final_report(
                 1, 0, "スケジュール時刻を迎えたため", run_done(previous), run_pending(previous, [])))
@@ -616,7 +626,6 @@ def main():
 
     claim_driver(log.path)
     driver_started = time.time()
-    progress_at_start = overall_progress()
     discord.post("\n".join([
         "## 🚀 無人運転 開始",
         "",
@@ -625,7 +634,8 @@ def main():
         "- ブランチ: %s（HEAD %s）" % (branch(), head()),
         "- 終了の時刻: %s" % (stamp(deadline) if deadline else "なし"),
         "- 反復の上限: %s" % (args.max_iterations if args.max_iterations is not None else "なし"),
-        "- 進捗率: %s" % progress_text(progress_at_start),
+        "- 大目標: %s（この大目標を達成したら止まる）" % goal.label,
+        "- 進捗率: %s" % progress_line(),
     ]))
     runs = 0
     stalled = 0
@@ -680,7 +690,7 @@ def main():
             new_pending = [line for _, line in pending_lines() if line not in pending_before]
             done += run_done(status)
             night_pending += run_pending(status, new_pending)
-            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, overall_progress())
+            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, progress_line())
             if images:
                 discord.post_images(images, report)
             else:
@@ -697,6 +707,10 @@ def main():
                     ending = "使用量の上限の回復を待つ間にスケジュール時刻を迎えたため"
                     break
                 continue
+            if goal_reached(goal.number):
+                reason = "%s を達成（項目がすべて完了）" % goal.label
+                ending = "%sを達成したため" % goal.label
+                break
             if status and status.get("result") == "stop":
                 reason = "Claude が stop: %s" % status.get("reason", "（理由なし）")
                 ending = "Claude が作業を止めたため（%s）" % (status.get("reason") or "理由なし")
