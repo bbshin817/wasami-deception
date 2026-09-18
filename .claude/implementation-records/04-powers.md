@@ -35,7 +35,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiTestEnemy.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
   - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # タブレットのパワー
