@@ -6,7 +6,7 @@
 
 The URL is read from the environment variable WASAMI_DISCORD_WEBHOOK, else from "discord_webhook" in
 Tools/overnight.local.json (ignored by git: whoever knows the URL can post). Tools/overnight.py posts the start, a
-report per run (with the images of this game attached as one grid), the waits and the summary. Posts go out under the
+report per run (with the images Claude picked for people attached as one grid), the waits and the summary. Posts go out under the
 name "Claude". A post that fails is reported in one line and never raises.
 Exit codes: 0 posted, 1 not posted, 2 no URL.
 """
