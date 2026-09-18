@@ -30,11 +30,16 @@ namespace
 	constexpr float CountRight = 549.02615f;
 	constexpr float CountBottom = 158.9541f;
 
-	// UMG_TabletPowers sits at (−356.9609375, −428.54052734375) from the middle and its CanvasPanel_2 at (−355, −420)
-	// from its own, so its inside starts (2.0390625, 15.45947265625) from the screen's corner; CanvasPanel_3 and
-	// CanvasPanel_4 are (23.432003, 32 .. 562.253967, 705.0459) and (560, 32 .. 25, 705) from that canvas' edges.
-	constexpr float PowersX = 2.0390625f;
-	constexpr float PowersY = 15.45947265625f;
+	// The screen is CanvasPanel_1, the background's canvas, at (−355, −420) from the root's middle (pak_reference_2's
+	// UMG_Tablet). UMG_TabletPowers (714 × 864) sits at (−356.9609375, −428.54052734375) from that middle and its
+	// CanvasPanel_2 at (−355, −420) from its own middle, 2 and 12 in from its corner, so that canvas starts
+	// (0.0390625, 3.45947265625) from the screen's corner; CanvasPanel_3 and CanvasPanel_4 are (23.432003, 32 ..
+	// 562.253967, 705.0459) and (560, 32 .. 25, 705) from its edges. The sockets' middles are then the rings' of the
+	// background, as the latest version's screen shows them.
+	constexpr float RootMiddleX = 355.f;
+	constexpr float RootMiddleY = 420.f;
+	constexpr float PowersX = RootMiddleX - 356.9609375f + (357.f - 355.f);
+	constexpr float PowersY = RootMiddleY - 428.54052734375f + (432.f - 420.f);
 	constexpr float LeftSocketLeft = PowersX + 23.432003f;
 	constexpr float LeftSocketRight = PowersX + 714.f - 562.253967f;
 	constexpr float RightSocketLeft = PowersX + 560.f;
@@ -53,7 +58,7 @@ namespace
 	constexpr float BandWidth = 644.7755f;
 	constexpr float BandHeight = 49.1100f;
 
-	// TextBlock_107 "Z" at (−304, 312) from the middle, RenderOpacity 0.1.
+	// TextBlock_107 "Z" at (−304, 312) from the root's middle, RenderOpacity 0.1.
 	constexpr float ZoomKeyX = -304.f;
 	constexpr float ZoomKeyY = 312.f;
 	constexpr float ZoomKeyOpacity = 0.1f;
@@ -256,7 +261,7 @@ void UWasamiTabletWidget::BuildScreen(UCanvasPanel* Root)
 	ZoomKey->SetFont(MakeFont(BandFontSize, 0));
 	ZoomKey->SetText(FText::FromString(TEXT("Z")));
 	ZoomKey->SetRenderOpacity(ZoomKeyOpacity);
-	UCanvasPanelSlot* ZoomSlot = PlaceBox(Root, ZoomKey, ScreenWidth * 0.5f + ZoomKeyX, ScreenHeight * 0.5f + ZoomKeyY, 0.f, 0.f);
+	UCanvasPanelSlot* ZoomSlot = PlaceBox(Root, ZoomKey, RootMiddleX + ZoomKeyX, RootMiddleY + ZoomKeyY, 0.f, 0.f);
 	ZoomSlot->SetAutoSize(true);
 }
 

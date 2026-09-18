@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 073c833
 started: 2026-09-18 12:10
-updated: 2026-09-18 12:40
+updated: 2026-09-18 12:55
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -24,9 +24,8 @@ updated: 2026-09-18 12:40
 ## 計画
 
 - [x] 1. ブーストの横線 … 2026-09-18 完了。`M_Speedlines` の Opacity ← `T_Speedlines` の A（04 記録、測った値は `observations/README.md` の「A を不透明度にした後」）
-- [ ] 2. タブレットのアイコン ← 作業中: `WasamiTabletWidget.cpp` の `PowersX/Y` を背景のキャンバス基準 (0.0390625, 3.45947265625) に、「Z」を (51, 732) に
-  - 変更予定: `Source/wasami_deception/WasamiTabletWidget.cpp`、実装記録 03
-- [ ] 3. 敵ワサミの大きさ: `AWasamiEnemy` のメッシュに一様の拡縮 `MeshScale` = 229.0514 / 168.53（頭頂の骨どうし）、再生の速さの分母（歩幅の速さ）も × `MeshScale`、テストの期待値
+- [x] 2. タブレットのアイコン … 2026-09-18 完了。枠と「Z」を背景のキャンバスの角から数えた（03 記録の「枠のアイコンの位置」）
+- [ ] 3. 敵ワサミの大きさ ← 作業中（C++ は書いた）: `AWasamiEnemy` のメッシュに一様の拡縮 `MeshScale` = 229.0514 / 168.53（頭頂の骨どうし）、再生の速さの分母（歩幅の速さ）も × `MeshScale`、テストの期待値
   - 変更予定: `Source/wasami_deception/WasamiEnemy.h/.cpp`、`WasamiEnemyAnimInstance.cpp`（`.h` のコメント）、`Tests/WasamiEnemyTests.cpp`、実装記録 07
 - 2 と 3 は C++ なので書き終えてから `python Tools/editor_cycle.py` を 1 回走らせ、テスト `Wasami.Enemy`・`Wasami.Tablet`（あれば）を通し、PIE で確かめて、それぞれコミットする。
 - 最後に note の原稿と記事（`.claude/guides/note-progress.md`）を見直す。
@@ -47,7 +46,8 @@ updated: 2026-09-18 12:40
 
 ## 再開時の注意
 
-- エディタは開いたまま（`L_Hospital_Zone1`、PIE なし、未保存なし。2026-09-18 12:10）。
+- 2026-09-18 12:55: ステップ 2・3 の C++ を書き終え、`python Tools/editor_cycle.py`（エディタを閉じてビルドし開き直す）を走らせる。確かめ方: 出力の最後にビルドの成功とエディタの応答、`python Tools/pie.py state` が `L_Hospital_Zone1` を返すこと。失敗したらログを読んで直す（変更は未コミットのまま）。
+- ビルドの後: テスト `Wasami.Enemy` を走らせ、PIE でタブレット（左右の枠のアイコンが円の中心に来るか）と敵（`observations/tools/note_gif.py` の `stand` で立たせ、`head_end` の高さが約 229 cm か）を確かめる。
 
 ## 検証
 
