@@ -35,7 +35,7 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 - 音: 本家の DoOnce 2 つ（止まる側は閉じて始まる）が互いを開け直すので、`IsMoving?` の変わり目で鳴る: 動き出すと `MovementAudio->FadeIn(0.5, 1, 0)` と `Audio->Play(0)`、止まると `FadeOut(0.5, 0)` と `Audio->Play(0)`。始めから止まっている床は鳴らない。
 - `AWasamiLift`: 目標 = キャラクターが乗っていれば Top、でなければ 0。`BeginPlay`（本家の `BP_06_Lift` の `ReceiveBeginPlay`）で `LiftCollision1` を消す。`LiftCollisionOverlap` の重なりの始まりで相手が `AWasamiPlayerCharacter`（本家の `BP_DD_PlayerCharacter` へのキャスト）なら `OnPlayerOverlap`。Zone 2 のレベル BP は `Maze Trigger Start` の 1 s 後の `Setup Bierce Lift Quip` で全部の `BP_06_LiftBase` にこれを結び、`Bierce Lift Quip`（DoOnce・1 s 後に `Bierce_TormentTherapy_Gameplay_07`）を流す（項目 20。11 記録の `OnMazeTriggerStart` のコメント）。
 - `AWasamiCornerLift`: 目標 = `Player Force Movement` なら `GoUp?` の階、でなければプレイヤーのいる階（プレイヤーの Z > 610 なら Top、プレイヤーがいなければ 0）。アクタの重なりの始まりで相手がプレイヤーなら 1 s の `Double Check` のタイマー（置き直し）。`Double Check`: まだ `LiftCollisionOverlap` にプレイヤーが重なっていれば `Player Force Movement` 真・`GoUp?` = 上の階にいない・`Audio` を鳴らす。重なりの終わりでプレイヤーならタイマーを止め `Player Force Movement` 偽。`LiftCollision1` は消さない。
-- 写さないもの: `Preview Top`（エディタで床を上に見せる構築スクリプトの分岐）、`NavModifier`（`NavArea_Default`）と箱の `AreaClass`（敵の経路は項目 7。モジュールが NavigationSystem に依存していない）。`LiftCollisionOverlap` は何も遮らないのでナビゲーションに入れない。
+- 写さないもの: `Preview Top`（エディタで床を上に見せる構築スクリプトの分岐）、`NavModifier`（`NavArea_Default`。通れる所を通れるままにするだけで道を変えない）と箱の `AreaClass`（動く障害物〈`bDynamicObstacle`〉のときだけ効く。2026-09-19、項目 7 のステップ 1 で確かめた。01 記録の「ナビゲーション」）。床の箱は BlockAll の当たりとして道の形に入る（エンジンの既定）。`LiftCollisionOverlap` は何も遮らないのでナビゲーションに入れない。
 
 ### ガレージリフト（`AWasamiGarageLift`）
 - 部品（本家の SCS）: `DefaultSceneRoot` → `SkeletalMesh`（`hospital_garage_lift_anim`、拡縮 30、当たりはエンジンの既定の NoCollision、`AnimClass = UWasamiGarageLiftAnimInstance`）→ 骨 `joint4` に `Box`（ロール −90.0002・拡縮 (0.2031, 0.2734, 0.00953)。メッシュの 30 倍で 390 × 525 × 18.3 cm の台。QueryAndPhysics、WorldDynamic で Pawn だけ Block）と `Overlap Box`（(0, −2.333, 0)・ロール −90.0002・拡縮 (0.2031, 0.2734, 0.07127)。台の上 2〜139 cm。Pawn だけ Overlap、ナビゲーションに入れない）。根に `Audio`（`DD_TT_GarageLift_Up`）・`Audio1`（`DD_TT_GarageLift_Down`）、どちらも `01_Lobby_Attenuation`・自動で鳴らない。箱の当たりは本家の Custom の一覧どおりエンジンのチャンネルを Ignore にし、並ばない Pawn は既定の Block（`Overlap Box` は Overlap）、プロジェクトの Teleport は既定の Overlap のまま。
@@ -48,7 +48,7 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
   - 通知（本家の状態の `StartNotify` / `EndNotify` = `Player On Event` / `Player Off Event`）: `PlayerOn` に入ると持ち主の `Audio->Play(0)`、出ると `Audio->FadeOut(0.25, 0)` → `Audio1->Play(0)`。
   - Proxy: 重み 0 なら 0 コマ、1 なら `PlayerOn` の時刻、間なら 2 つを `FAnimationRuntime::BlendTwoPosesTogether` で混ぜる。スケルトンの無いアニメは参照姿勢。
   - アニメを読むのはゲームのワールドだけ（07 記録と同じ）。エディタのレベルでは参照姿勢で、**参照姿勢の台は上にある**（`Box` が Z 333 cm。0 コマは 9.3 cm、上がり切ると 316.4 cm）。UE の `bUpdateAnimationInEditor` の既定は偽なので、本家のエディタでも参照姿勢と見る。
-- 写さないもの: `Box` の `AreaClass`（`NavArea_Obstacle`。敵の経路は項目 7）と `PhysMaterialOverride`（`PhysMat_Metal`。面を読むものが無い）、`SkeletalMesh` の `AnimationData.AnimToPlay`（ABP のモードでは使われない）と置かれた部品の `EndTickGroup`（`TG_PostPhysics`）。
+- 写さないもの: `Box` の `AreaClass`（`NavArea_Obstacle`。動く障害物のときだけ効く）と `PhysMaterialOverride`（`PhysMat_Metal`。面を読むものが無い）、`SkeletalMesh` の `AnimationData.AnimToPlay`（ABP のモードでは使われない）と置かれた部品の `EndTickGroup`（`TG_PostPhysics`）。
 - 置き場所（`dd_level._flow` の `GARAGE_LIFT_CLASSES`。01 記録）: Zone 1 `hospital_garage_lift_anim_Anim_2`（`_Zone1_Special`、(11248.9, −21154.9, 0)・ヨー 0。救急車〈(11245, −20080)〉の後ろ）、Zone 2 `BP_06_GarageLift2`（(−12851.3, −5038.3, 800.1)・ヨー −90）・`BP_06_GarageLift_2`（(−10348.9, −5446.0, 0)・ヨー 0）。どれも置かれた値の上書きは無い。
 
 ## 作るアセット

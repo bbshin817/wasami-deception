@@ -14,7 +14,7 @@ sources:
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
   - Source/wasami_deception/WasamiAssets.h
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # 全体像
@@ -62,6 +62,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
   - `[/Script/Engine.RendererSettings]` の**露出**（2026-09-16）: 原作のプロジェクト設定をそのまま写した。`r.DefaultFeature.AutoExposure=False`・`.Method=0`・`.ExtendDefaultLuminanceRange=False`・`.Bias=0.0`、`r.DefaultFeature.LensFlare=False`、`r.DefaultFeature.LightUnits=1`。UE5 だけの**ローカル露出**は無効値の 1.0 にする（`r.DefaultFeature.LocalExposure.HighlightContrastScale` / `.ShadowContrastScale`。新規プロジェクトの既定 0.8 は原作に無い階調補正になる）。原作の `r.UsePreExposure=False`（プレエクスポージャ無し）は、代わりに `r.EyeAdaptation.PreExposureOverride=1`（プレエクスポージャを 1.0 に固定）で写す（2026-09-16、ユーザーの決定。下の「既知の制約・注意点」）。根拠と効果は下の「露出」。
   - `[/Script/WindowsTargetPlatform.WindowsTargetSettings]`: DX12 / SM6、音声 48 kHz。
   - `[/Script/Engine.CollisionProfile]`（2026-09-16）: 独自のオブジェクトチャンネル **`Teleport`**（`ECC_GameTraceChannel1`、既定の応答 **Overlap**）。本家の旧版 `DefaultEngine.ini` の値（最新版は既定 Ignore。テレポーテーションは旧版に従う）。テレポートの照準が病院のゾーンをこのチャンネルで探す（04 記録）。旧版のもう 1 つの `Malak`（`ECC_GameTraceChannel2`、Block）は別の章の敵のものなので写していない。チャンネルの設定はエディタの起動時に読まれる。
+  - `[/Script/NavigationSystem.RecastNavMesh]` と `[/Script/NavigationSystem.NavigationSystemV1]`（2026-09-19）: 本家の最新版の `DefaultEngine.ini` のナビの設定を写した。`RuntimeGeneration=DynamicModifiersOnly`（道は読み込みのときに作り、動く修飾子だけを実行中に直す）・`bForceRebuildOnLoad=True`（レベルを読むたびに作り直す）・`bFixedTilePoolSize=True`・`ObservedPathsTickInterval=1`・`bAutoDestroyWhenNoNavigation=False`、セルの大きさ 10 cm（UE 5 はタイルの解像度ごとに持つので `NavMeshResolutionParams[0..2]` の 3 つとも `CellSize=10`。`CellHeight` 10・`AgentMaxStepHeight` 35 は UE 4.24 の既定で、UE 5 が古い NavMesh から埋めるのと同じ）、エージェント `Default` 1 つ（半径 40・高さ 144・`DefaultQueryExtent` (50, 50, 250)。本家のレベルの `RecastNavMesh-Default` も `AgentRadius` 40・`AgentMaxHeight` 144。UE 5 は `AgentMaxHeight` を `AgentHeight` と呼び、エージェントから入れる）、`bSkipAgentHeightCheckWhenPickingNavData=True`。探索の上限 `DefaultMaxSearchNodes` は両方とも既定の 2048 のままで、セル 10 cm では約 20 m より遠い 2 点の道が途中までになることがある（本家も同じ。01 記録の「ナビゲーション」）。設定はエディタの起動時に読まれる。
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
@@ -157,6 +158,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 
 ## 変更履歴
 - 2026-09-16: 初版（現行の構成・設定を記録）
+- 2026-09-19: `DefaultEngine.ini` に本家のナビの設定（`RecastNavMesh`・`NavigationSystemV1`）を足した（作業一覧の項目 7 のステップ 1）
 - 2026-09-18: `GameInstanceClass` を `WasamiGameInstance` にした（作業一覧の項目 5 のステップ 3）
 - 2026-09-16: パイプラインのアセットをソフト参照で持つ決まり（`WasamiAssets.h`）と、Automation テストの置き場所を足した
 - 2026-09-16: 露出を原作のプロジェクト設定に合わせた（「露出」の節）。写していない 2 つの設定を「既知の制約・注意点」に足した
