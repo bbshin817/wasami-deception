@@ -13,9 +13,9 @@
 namespace
 {
 	// BP_06_Hospital_DoorBreak (pak_reference_2): Box1's and Widget's templates.
-	const FVector BoxExtent(100., 150., 100.);
-	const FVector ComponentScale(0.5, 0.5, 0.5);
-	const FVector2D WidgetDrawSize(64., 64.);
+	const FVector DoorBreakBoxExtent(100., 150., 100.);
+	const FVector DoorBreakScale(0.5, 0.5, 0.5);
+	const FVector2D DoorBreakWidgetSize(64., 64.);
 
 	// Finished's PlaySound2D (volume, pitch); the press's PlaySoundAtLocation is at 1 and 1.
 	constexpr float SlamVolume = 0.5f;
@@ -37,8 +37,8 @@ AWasamiDoorBreak::AWasamiDoorBreak()
 	Widget->SetupAttachment(DefaultSceneRoot);
 	Widget->SetWidgetSpace(EWidgetSpace::Screen);
 	Widget->SetWidgetClass(UWasamiSwitchboxWidget::StaticClass());
-	Widget->SetDrawSize(WidgetDrawSize);
-	Widget->SetRelativeScale3D(ComponentScale);
+	Widget->SetDrawSize(DoorBreakWidgetSize);
+	Widget->SetRelativeScale3D(DoorBreakScale);
 	Widget->SetVisibility(false);
 
 	// Box1_GEN_VARIABLE: a UBoxComponent at its defaults (OverlapAllDynamic, hidden in game) with its extent and half
@@ -46,8 +46,8 @@ AWasamiDoorBreak::AWasamiDoorBreak()
 	// part of the navigation.
 	Box1 = CreateDefaultSubobject<UBoxComponent>(TEXT("Box1"));
 	Box1->SetupAttachment(DefaultSceneRoot);
-	Box1->SetBoxExtent(BoxExtent, false);
-	Box1->SetRelativeScale3D(ComponentScale);
+	Box1->SetBoxExtent(DoorBreakBoxExtent, false);
+	Box1->SetRelativeScale3D(DoorBreakScale);
 	Box1->SetGenerateOverlapEvents(false);
 
 	// The class's AutoReceiveInput (Player0, priority 5) is how its Interact reaches it; here the player passes it on.

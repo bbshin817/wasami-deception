@@ -50,8 +50,9 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     @staticmethod
     def build_dd_stage_level(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Builds one zone's level from the imported assets (meshes, lights, reflection captures, fog, sky light, post
-        process volumes, player starts, the minimap's plane, the soul shards, the flow's trigger boxes, volumes and door breaks), replacing what an earlier build placed,
-        and saves it. The level is left open. The meshes are made again, so the level's lighting has to be baked again.
+        process volumes, player starts, the minimap's plane, the soul shards, the flow's trigger boxes, volumes, door
+        breaks and double doors), replacing what an earlier build placed, and saves it. The level is left open. The
+        meshes are made again, so the level's lighting has to be baked again.
 
         Args:
             zone: 'Zone1' (06_Hospital_Zone_01) or 'Zone2' (06_Hospital_Zone_02).
@@ -84,19 +85,20 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     @staticmethod
     def place_dd_flow(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Puts one zone's trigger boxes (WasamiTriggerBox, the original's BP_TriggerBox_Base), blocking and trigger
-        volumes and door breaks (WasamiDoorBreak, BP_06_Hospital_DoorBreak, with their Progress Speed) in again where
+        volumes, door breaks (WasamiDoorBreak, BP_06_Hospital_DoorBreak, with their Progress Speed) and the double doors
+        the flow names (WasamiDoubleDoors, BP_06_DoubleDoors, with the original's meshes and materials) in again where
         the original places them, each tagged 'src:<the original's name>' for the zone's flow and fixed to the
         ambulance or the spikes it moves with, taking out what an earlier call placed, and saves the level. Nothing
-        else changes, and the baked lighting stays valid (none of them is lit).
+        else changes, and the baked lighting stays valid (none of them is in it).
 
         Args:
-            zone: 'Zone1' (6 trigger boxes, 9 volumes, 1 door break) or 'Zone2' (8 trigger boxes, 10 volumes, 1 door
-                break).
+            zone: 'Zone1' (6 trigger boxes, 9 volumes, 1 door break, 2 double doors) or 'Zone2' (8 trigger boxes,
+                10 volumes, 1 door break).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
-            'removed', 'triggers', 'volumes', 'doorBreaks', 'attached' and 'failed_settings' (listed in the output
-            log).
+            'removed', 'triggers', 'volumes', 'doorBreaks', 'doubleDoors', 'attached' and 'failed_settings' (listed in
+            the output log).
         """
         return _module("dd_level").place_flow(zone, map_path)
 

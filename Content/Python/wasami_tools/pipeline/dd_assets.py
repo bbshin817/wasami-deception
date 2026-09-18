@@ -237,7 +237,10 @@ def sound_cue(rel, version=1):
 
     props = main_export(pkg, rel)["props"]
     lib.finish_sound_cue(cue, node(props["FirstNode"]))
-    failures = ue_props.apply(cue, props, skip=SOUND_CUE_SKIP)
+    attenuation = props.get("AttenuationSettings")
+    if attenuation:   # Locked_Door's MonkeyAttenuation, made here when missing
+        cue.set_editor_property("attenuation_settings", sound_attenuation(game_rel(attenuation), version))
+    failures = ue_props.apply(cue, props, skip=SOUND_CUE_SKIP + ("AttenuationSettings",))
     if failures:
         raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
     EAL.save_asset(target, only_if_is_dirty=False)

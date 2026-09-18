@@ -67,6 +67,20 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_gimmicks() -> dict[str, int]:
+        """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
+        sounds, the locked rattle's SoundCue and its waves, and their attenuations. The doors' meshes and materials come
+        with the stage's assets, and the level build puts them on the doors.
+
+        Returns:
+            How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_gimmicks").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_dd_powers() -> dict[str, int]:
         """Imports (or re-imports) what the tablet's powers show and play: their sounds (with the original SoundWave
         settings and sound concurrency), camera shakes, camera anims (as WasamiCameraAnim), the speed boost's

@@ -253,8 +253,9 @@
 - 原因: ユニティビルドでファイルのまとまり方が変わり、無名名前空間の同じ名前（`WaveVolume`・`WavePitch`・`FadeKeys`・`EnemyTag`・`VignetteScale`）が 1 つの翻訳単位に入る。C4458 はローカル変数が `UWidget::Slot`・`UUserWidget::bInitialized` などを隠す。
 - 対処: 定数や補助の名前はファイルごとに固有にし、UE のメンバー名と同じローカル変数を避ける。ファイルを足さなくても、ヘッダーを 1 つ変えて再コンパイルの範囲が変わるだけで起きる（2026-09-18: `WasamiEnemyAnimInstance.h` の定数を変えたら `WasamiEnemy.cpp` と `Tests/WasamiTestEnemy.cpp` の `EnemyTag` がぶつかった。テスト側を `TestEnemyTag` にした）。
 - 2026-09-18: 新しいファイルを 7 つ足したら、既存のファイル同士（`WasamiPopUpWidget.cpp` と死亡画面の `ButtonGrey`・`Place`、パワーの `OpacityKeys`、`WasamiTelepathyTrackerWidget.cpp` の自前の `FAnimKey` と `using WasamiWidgetAnimation::FAnimKey`、`WasamiBlackFadeWidget.cpp` と死亡画面の `FadeInKeys`）がぶつかって 2 回落ちた。**先に重複を洗い出すと 1 回で済む**: 各 `.cpp` の `namespace { … }` の中の `const`/`constexpr` の名前・関数名・`struct` 名を集め、2 つ以上のファイルにあるもの（`using` の宣言は同じ実体なので除く）を片方で固有の名前に改める。
+- 2026-09-18: **エンジンのヘッダーの引数名ともぶつかる**（`error C4459: declaration of 'BoxExtent' hides global declaration`）。無名名前空間の名前はその翻訳単位では大域に見えるので、同じ塊に入った `Kismet/KismetMathLibrary.inl` の `BreakBoxSphereBounds(…, FVector& BoxExtent, …)` が `WasamiDoorBreak.cpp` の `BoxExtent` を隠すと言われた（`WasamiDoubleDoors.cpp` を足して塊が変わった）。`BoxExtent`・`ComponentScale` のような一般の名前は避け、ファイルの頭字を付ける（`DoorBreakBoxExtent`・`DoorsLeaveScale`）。
 - `Tools/editor_cycle.py` はビルドに失敗するとエディタを閉じたままにする。直したら `python Tools/editor_cycle.py --no-quit` でビルドして開く。
-- 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4、11 記録（作業一覧の項目 6 のステップ 1）。
+- 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4、11 記録（作業一覧の項目 6 のステップ 1・3c）。
 
 ### Automation テストで、タイマー（`Delay`・`SetTimer`）が進まない
 

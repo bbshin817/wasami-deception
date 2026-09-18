@@ -1,5 +1,6 @@
 #include "Misc/AutomationTest.h"
 #include "../WasamiDoorBreak.h"
+#include "../WasamiDoubleDoors.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiShard.h"
@@ -169,6 +170,10 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	DoorBreak->ProgressSpeed = 1.5f;
 	DoorBreak->FinishSpawning(FTransform::Identity);
 	DoorBreak->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_Hospital_DoorBreak_2")));
+	AWasamiDoubleDoors* LiftDoors = World->SpawnActor<AWasamiDoubleDoors>(FVector(0., 0., -80000.), FRotator::ZeroRotator);
+	LiftDoors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors11")));
+	AWasamiDoubleDoors* TunnelDoors = World->SpawnActor<AWasamiDoubleDoors>(FVector(0., 0., -70000.), FRotator::ZeroRotator);
+	TunnelDoors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors33_36")));
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -178,6 +183,9 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("4: the lift arrives"), Flow->GetSection(), FName(TEXT("04_Start")));
 	TestTrue(TEXT("its sequence plays"), Arrival->GetSequencePlayer() && Arrival->GetSequencePlayer()->IsPlaying());
+	TestTrue(TEXT("the lift's doors locked"), LiftDoors->bLocked);
+	LiftDoors->OpenFront();
+	TestFalse(TEXT("and they stay shut"), LiftDoors->AnySideOpen());
 	TestTrue(TEXT("no objective yet"), Objective(Mode).IsEmpty());
 	// A trigger box walked through before the zone listens is spent (its DoOnce), as in the original; these are walked
 	// through only once they are bound.
@@ -196,6 +204,8 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 		DoorBreak->Interact();
 	}
 	TestEqual(TEXT("picked: 04_DoorBreak"), Flow->GetSection(), FName(TEXT("04_DoorBreak")));
+	TestFalse(TEXT("the lift's doors unlocked"), LiftDoors->bLocked);
+	TestTrue(TEXT("and swinging open from the front"), LiftDoors->IsOpenFront() && LiftDoors->IsOpening());
 	Walk(World, TEXT("BP_04_Trigger_Maze"));
 	TestEqual(TEXT("05_Persistent"), Flow->GetSection(), FName(TEXT("05_Persistent")));
 	TestEqual(TEXT("checkpoint 5 saved"), SavedCheckpoint(), 5);
@@ -224,8 +234,12 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("onto the ambulance"), Objective(Mode), FString(TEXT("GET ON TOP OF THE AMBULANCE")));
 	TestTrue(TEXT("the arrow at its roof"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("TriggerBox_06_AmbulanceTop")));
 
-	// The doors hold for 25 s.
+	// The doors swing shut, locked, and hold for 25 s.
+	TunnelDoors->OpenFront();
+	TestTrue(TEXT("the tunnel's doors open"), TunnelDoors->IsOpenFront());
 	Walk(World, TEXT("06_DoorsLock"));
+	TestTrue(TEXT("locked"), TunnelDoors->bLocked);
+	TestTrue(TEXT("and swinging shut"), !TunnelDoors->AnySideOpen() && TunnelDoors->IsClosing());
 	TestTrue(TEXT("the doors block"), Collides(Doors));
 	Advance(Wrapper, AWasamiZone1Flow::DoorsBreakSeconds - 0.5f);
 	TestTrue(TEXT("still at 24.5 s"), Collides(Doors));

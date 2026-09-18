@@ -3,6 +3,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "WasamiAssets.h"
+#include "WasamiDoubleDoors.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 
@@ -35,7 +36,10 @@ void AWasamiZone1Flow::StartAt(int32 Checkpoint)
 void AWasamiZone1Flow::Start04()
 {
 	Enter(TEXT("04_Start"));
-	// Not yet: BP_06_DoubleDoors11 locked (the doors).
+	if (AWasamiDoubleDoors* Doors = DoubleDoors(TEXT("BP_06_DoubleDoors11")))
+	{
+		Doors->Lock();
+	}
 	PlaySequence(TEXT("06_Hospital_Zone01_ElevatorArrive"));
 	PlayCameraShake(ElevatorShakeClass);
 	After(ArrivalShakeSeconds, [this]()
@@ -55,7 +59,13 @@ void AWasamiZone1Flow::On04Intercom()
 void AWasamiZone1Flow::On04DoorBreak()
 {
 	Enter(TEXT("04_DoorBreak"));
-	// Not yet: BP_06_DoubleDoors11's bLocked false and Open Front. Bierce 1 s on (item 20).
+	// bLocked written directly, not Unlock (which would open them only for the last character in front).
+	if (AWasamiDoubleDoors* Doors = DoubleDoors(TEXT("BP_06_DoubleDoors11")))
+	{
+		Doors->bLocked = false;
+		Doors->OpenFront();
+	}
+	// Bierce 1 s on (item 20).
 	BindTrigger(TEXT("BP_04_Trigger_Maze"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On05Transition));
 }
 
@@ -137,7 +147,12 @@ void AWasamiZone1Flow::On06TunnelEnter()
 void AWasamiZone1Flow::On06DoorsLock()
 {
 	Enter(TEXT("06_DoorsLock"));
-	// Not yet: BP_06_DoubleDoors33_36's Lock and Force Close. The nurses of 06 (item 7) get bAttackDoor.
+	// The nurses of 06 (item 7) get bAttackDoor.
+	if (AWasamiDoubleDoors* Doors = DoubleDoors(TEXT("BP_06_DoubleDoors33_36")))
+	{
+		Doors->Lock();
+		Doors->ForceClose();
+	}
 	SetVolumeCollision(TEXT("BlockingVolume_1"), ECollisionEnabled::QueryAndPhysics);
 	After(DoorsBreakSeconds, [this]()
 	{

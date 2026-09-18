@@ -13,6 +13,7 @@
 #include "LevelSequencePlayer.h"
 #include "TimerManager.h"
 #include "WasamiDoorBreak.h"
+#include "WasamiDoubleDoors.h"
 #include "WasamiGameMode.h"
 #include "WasamiShard.h"
 #include "WasamiTriggerBox.h"
@@ -154,6 +155,16 @@ void AWasamiZoneFlow::EnableDoorBreak(FName Source, FName Function)
 	FScriptDelegate Delegate;
 	Delegate.BindUFunction(this, Function);
 	DoorBreak->FinishedEvent.AddUnique(Delegate);
+}
+
+AWasamiDoubleDoors* AWasamiZoneFlow::DoubleDoors(FName Source) const
+{
+	AWasamiDoubleDoors* Doors = Cast<AWasamiDoubleDoors>(FindSource(GetWorld(), Source));
+	if (!Doors)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no double doors %s"), *GetClass()->GetName(), *Source.ToString());
+	}
+	return Doors;
 }
 
 void AWasamiZoneFlow::BindAllShardsCollected(FName Function)

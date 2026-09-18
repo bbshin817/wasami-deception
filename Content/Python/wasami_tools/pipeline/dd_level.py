@@ -1,7 +1,7 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
-zones' flow names (trigger boxes, blocking and trigger volumes, door breaks) and the level sequences the flow plays
+zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors) and the level sequences the flow plays
 (dd_sequence). Every actor it places carries the tag 'dd', which a rebuild removes first."""
 import unreal
 
@@ -49,6 +49,16 @@ SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
 TRIGGER_CLASS = "BP_TriggerBox_Base_C"
 # The door breaks (BP_06_Hospital_DoorBreak → AWasamiDoorBreak), with their Progress Speed.
 DOOR_BREAK_CLASS = "BP_06_Hospital_DoorBreak_C"
+# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors) the flow names: Zone 1's lift doors and the tunnel's. The
+# zones' others (Zone 1's 60, Zone 2's one) come with the work list's items 8 and 13.
+DOUBLE_DOORS_CLASS = "BP_06_DoubleDoors_C"
+FLOW_DOUBLE_DOORS = ("BP_06_DoubleDoors11", "BP_06_DoubleDoors33_36")
+# The class's door components and their meshes (BP_06_DoubleDoors' SCS templates), which the C++ class leaves unset (it
+# loads nothing from /Game/DD in its constructor); each takes its mesh's own materials, as in the original.
+DOUBLE_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_entrance_walkway_doubledoor2",
+                      "static_mesh1": "/Game/Meshes/06_Hospital/hospital_entrance_walkway_doubledoor1"}
+# A placed door's own values in the export → the class's properties.
+DOUBLE_DOOR_PROPS = {"bLocked": "locked", "Open Amount": "open_amount"}
 VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume}
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
@@ -95,9 +105,11 @@ def _set_collision(comp, collision):
 
 
 def _tag(actor, label, folder, *tags):
+    """The label, the folder, and the tags: 'dd', the class's own (the double doors' 'interact'), then these."""
     actor.set_actor_label(label)
     actor.set_folder_path(folder)
-    actor.tags = [unreal.Name(TAG)] + [unreal.Name(t) for t in tags if t]
+    own = [t for t in actor.tags if str(t) != TAG]
+    actor.tags = [unreal.Name(TAG)] + own + [unreal.Name(t) for t in tags if t]
 
 
 def _open_level(map_path, clear=True):
@@ -350,12 +362,30 @@ def _set_brush_collision(comp, collision):
                                                ue_props.enum_member(unreal.CollisionResponseType, response))
 
 
-def _flow(eas, zone, counts, failures):
-    """The trigger boxes, brush volumes and door breaks, each where the original has it, and fixed to what it moves
-    with (an ambulance, the spikes) when that is in the level."""
+def _set_mesh(comp, stage, source):
+    """The stage's mesh made from the original's (a Blueprint component's, which the placements leave out) on comp,
+    with the mesh's own materials."""
+    info = stage["meshes"].get(source)
+    mesh = unreal.load_asset(info["asset"]) if info else None
+    if mesh is None:
+        raise RuntimeError("missing mesh %s: run WasamiStageTools.import_dd_stage_assets until nothing remains" % source)
+    comp.set_static_mesh(mesh)
+    for i, slot in enumerate(info["slots"]):
+        m = stage["materials"].get(slot.rsplit(".", 1)[0]) if slot else None
+        material = unreal.load_asset(m["asset"]) if m else None
+        if material is None:
+            raise RuntimeError("missing material %s of %s" % (slot, source))
+        comp.set_material(i, material)
+
+
+def _flow(eas, stage, zone, counts, failures):
+    """The trigger boxes, brush volumes, door breaks and the double doors the flow names, each where the original has
+    it, and fixed to what it moves with (an ambulance, the spikes) when that is in the level."""
     placed = []
     for a in zone["actors"]:
-        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS) and a["class"] not in VOLUME_CLASSES):
+        doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
+        if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS) and a["class"] not in VOLUME_CLASSES
+                              and not doors):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -367,6 +397,14 @@ def _flow(eas, zone, counts, failures):
             if "Progress Speed" in a["props"]:
                 actor.set_editor_property("progress_speed", float(a["props"]["Progress Speed"]))
             counts["doorBreaks"] += 1
+        elif doors:
+            actor = eas.spawn_actor_from_class(unreal.WasamiDoubleDoors, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            for prop, source in DOUBLE_DOOR_MESHES.items():
+                _set_mesh(actor.get_editor_property(prop), stage, source)
+            for key, name in DOUBLE_DOOR_PROPS.items():
+                if key in a["props"]:
+                    actor.set_editor_property(name, a["props"][key])
+            counts["doubleDoors"] += 1
         else:
             actor = eas.spawn_actor_from_class(VOLUME_CLASSES[a["class"]], _vec(world["location"]), _rot(world["quat_xyzw"]))
             if a.get("brushBox") != DEFAULT_BRUSH_BOX:
@@ -392,19 +430,20 @@ def _flow(eas, zone, counts, failures):
 
 
 def place_flow(zone="Zone1", map_path=""):
-    """Puts the zone's trigger boxes, brush volumes and door breaks in again, leaving the rest of the level and its
-    baked lighting as they are (none of them is lit), and saves the level."""
+    """Puts the zone's trigger boxes, brush volumes, door breaks and double doors in again, leaving the rest of the
+    level and its baked lighting as they are (none of them is in the baked lighting: the doors are movable), and saves
+    the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"], clear=False)
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
-    counts = {"removed": len(old), "triggers": 0, "volumes": 0, "doorBreaks": 0, "attached": 0}
+    counts = {"removed": len(old), "triggers": 0, "volumes": 0, "doorBreaks": 0, "doubleDoors": 0, "attached": 0}
     if old:
         eas.destroy_actors(old)
     failures = []
-    _flow(eas, z, counts, failures)
+    _flow(eas, stage, z, counts, failures)
     for f in failures:
         unreal.log_warning("place_dd_flow: " + f)
     counts["failed_settings"] = len(failures)
@@ -421,7 +460,7 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "attached")}
+                             "mapPlane", "shards", "triggers", "volumes", "doorBreaks", "doubleDoors", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)
@@ -431,7 +470,7 @@ def build(zone="Zone1", map_path=""):
     _player_starts(eas, z, counts)
     _map_plane(eas, z, zone, counts, failures)
     _shards(eas, z, counts)
-    _flow(eas, z, counts, failures)
+    _flow(eas, stage, z, counts, failures)
     # Last: a sequence binds the level's actors by their paths, which this build has just made anew.
     from wasami_tools.pipeline import dd_sequence
     sequences = dd_sequence.place_all(eas, zone, z)
