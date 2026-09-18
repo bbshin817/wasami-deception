@@ -25,35 +25,14 @@
 #include "WasamiPlayerCharacter.h"
 #include "WasamiPowerComponent.h"
 #include "WasamiSaveGame.h"
+#include "WasamiWidgetAnimation.h"
 
 namespace
 {
-	// The animations' keys as exported (pak_reference_2's UMG_DeathScreen): ticks at 60000 a second, the value, and the
-	// arrive and leave tangents per tick. Every key is cubic; the exported tangents are the ones UE worked out (auto) or
-	// the author's (user), and go in as they are.
-	constexpr double TicksPerSecond = 60000.;
-
-	struct FKey
-	{
-		double Ticks;
-		float Value;
-		double ArrivePerTick;
-		double LeavePerTick;
-	};
-
-	FRichCurve MakeCurve(TConstArrayView<FKey> Keys)
-	{
-		FRichCurve Curve;
-		for (const FKey& Each : Keys)
-		{
-			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(static_cast<float>(Each.Ticks / TicksPerSecond), Each.Value));
-			Key.InterpMode = RCIM_Cubic;
-			Key.TangentMode = RCTM_Break;
-			Key.ArriveTangent = static_cast<float>(Each.ArrivePerTick * TicksPerSecond);
-			Key.LeaveTangent = static_cast<float>(Each.LeavePerTick * TicksPerSecond);
-		}
-		return Curve;
-	}
+	// The animations' keys as exported (pak_reference_2's UMG_DeathScreen; WasamiWidgetAnimation.h).
+	using WasamiWidgetAnimation::Eval;
+	using WasamiWidgetAnimation::FKey;
+	using WasamiWidgetAnimation::MakeCurve;
 
 	// Fade In / Fade Out: Button_0's BackgroundColor alpha; the author's tangent makes the black leave late and go fast.
 	const FKey FadeInKeys[] = {{0., 1.f, 0., 0.}, {60000., 0.f, -3.375811138539575e-05, -3.37581368512474e-05}};
@@ -87,11 +66,6 @@ namespace
 		{150000., 1.f, 6.666666649834951e-06, 6.666666649834951e-06}, {210000., 1.f, 0., 0.}};
 	// Tips' RenderOpacity.
 	const FKey DeathTipKeys[] = {{0., 1.f, 0., 0.}, {30000., 0.f, 0., 0.}};
-
-	float Eval(const FRichCurve& Curve, float Seconds, float Length)
-	{
-		return Curve.Eval(FMath::Clamp(Seconds, 0.f, Length));
-	}
 
 	// Bierce's death lines' Duration (pak_reference_2's SoundWaves): BierceDeathTraps (Shared/Bierce_Death_Traps_02..08)
 	// and BierceDeathAsylum (Ch06/Bierce_Asylum_Death_01..04).

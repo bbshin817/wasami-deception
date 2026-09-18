@@ -1,7 +1,10 @@
 #include "Misc/AutomationTest.h"
+#include "../WasamiBlackFadeWidget.h"
+#include "../WasamiDeathScreenWidget.h"
 #include "../WasamiGameInstance.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiSaveGame.h"
+#include "../WasamiSavingWidget.h"
 #include "../WasamiShard.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -140,6 +143,7 @@ bool FWasamiGameFlowGameModeTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestTrue(TEXT("written at once"), UGameplayStatics::DoesSaveGameExist(TestSlotName, UWasamiSaveGame::UserIndex));
+	TestEqual(TEXT("outside the zones, the save's checkpoint as it is"), Mode->GetStartCheckpoint(), 0);
 
 	// The time counter: counts while its gate is open.
 	constexpr float Step = 1.f / 60.f;
@@ -191,6 +195,79 @@ bool FWasamiGameFlowGameModeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the checkpoint read at BeginPlay"), Reopened->GetSave() ? Reopened->GetSave()->Hospital.LevelCheckpoint : -1, 5);
 
 	UGameplayStatics::DeleteGameInSlot(TestSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiGameFlowCheckpointsTest, "Wasami.GameFlow.Checkpoints",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiGameFlowCheckpointsTest::RunTest(const FString& Parameters)
+{
+	using M = AWasamiGameMode;
+	TestEqual(TEXT("Zone 1"), M::ZoneOf(TEXT("L_Hospital_Zone1")), 1);
+	TestEqual(TEXT("Zone 2"), M::ZoneOf(TEXT("L_Hospital_Zone2")), 2);
+	TestEqual(TEXT("not a zone"), M::ZoneOf(TEXT("Untitled_1")), 0);
+	TestEqual(TEXT("Zone 1 opens by name"), FString(M::Zone1LevelName), FString(TEXT("L_Hospital_Zone1")));
+
+	// The zones' Spawn: the checkpoint's player start.
+	TestEqual(TEXT("4: the lift"), M::PlayerStartTagFor(1, 4), FName(TEXT("04_Start")));
+	TestEqual(TEXT("5"), M::PlayerStartTagFor(1, 5), FName(TEXT("05_Start")));
+	TestEqual(TEXT("6"), M::PlayerStartTagFor(1, 6), FName(TEXT("06_Start")));
+	TestEqual(TEXT("7: the arrival"), M::PlayerStartTagFor(2, 7), FName(TEXT("PlayerStart_1")));
+	TestEqual(TEXT("8"), M::PlayerStartTagFor(2, 8), FName(TEXT("PlayerStart_MiniBoss")));
+	TestEqual(TEXT("9"), M::PlayerStartTagFor(2, 9), FName(TEXT("PlayerStart_Maze")));
+	TestEqual(TEXT("10"), M::PlayerStartTagFor(2, 10), FName(TEXT("PlayerStart_PostMaze")));
+	TestTrue(TEXT("Zone 2's checkpoints are not Zone 1's"), M::PlayerStartTagFor(1, 7).IsNone());
+	TestTrue(TEXT("nor Zone 1's Zone 2's"), M::PlayerStartTagFor(2, 5).IsNone());
+	TestTrue(TEXT("no player start for 0"), M::PlayerStartTagFor(1, 0).IsNone());
+	TestTrue(TEXT("none outside the zones"), M::PlayerStartTagFor(0, 4).IsNone());
+
+	// The zones' DeathEvent: which death lines, Zone 2 the other way round.
+	TestEqual(TEXT("Zone 1, the player: Traps"), M::DeathScreenLevelFor(1, true), UWasamiDeathScreenWidget::TrapsLevel);
+	TestEqual(TEXT("Zone 1, an enemy: Asylum"), M::DeathScreenLevelFor(1, false), UWasamiDeathScreenWidget::AsylumLevel);
+	TestEqual(TEXT("Zone 2, the player: Asylum"), M::DeathScreenLevelFor(2, true), UWasamiDeathScreenWidget::AsylumLevel);
+	TestEqual(TEXT("Zone 2, an enemy: Traps"), M::DeathScreenLevelFor(2, false), UWasamiDeathScreenWidget::TrapsLevel);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiGameFlowSavingTest, "Wasami.GameFlow.Saving",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiGameFlowSavingTest::RunTest(const FString& Parameters)
+{
+	using S = UWasamiSavingWidget;
+	// init: 0 → 0.5 by 0.5 s, held to 2 s, 0 by 2.5 s.
+	TestEqual(TEXT("the words start unseen"), S::EvaluateTextOpacity(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("half by 0.5 s"), S::EvaluateTextOpacity(0.5f), 0.5f, 1e-4f);
+	TestEqual(TEXT("still half at 1.25 s"), S::EvaluateTextOpacity(1.25f), 0.5f, 1e-4f);
+	TestEqual(TEXT("gone by 2.5 s"), S::EvaluateTextOpacity(2.5f), 0.f, 1e-4f);
+	TestEqual(TEXT("the throbber half by 0.5 s"), S::EvaluateThrobberOpacity(0.5f), 0.5f, 1e-4f);
+	TestTrue(TEXT("and its auto tangents lift it over half between"), S::EvaluateThrobberOpacity(0.75f) > 0.5f);
+	TestEqual(TEXT("the throbber gone by 2.5 s"), S::EvaluateThrobberOpacity(2.5f), 0.f, 1e-4f);
+
+	UWasamiSavingWidget* Saving = NewObject<UWasamiSavingWidget>();
+	for (int32 Frame = 0; Frame < 179; ++Frame)
+	{
+		Saving->Advance(1.f / 60.f);
+	}
+	TestFalse(TEXT("on the screen until 3 s"), Saving->IsFinished());
+	Saving->Advance(2.f / 60.f);
+	TestTrue(TEXT("off at 3 s"), Saving->IsFinished());
+
+	// The fade a level opens with: FadeOut at 10, 0.5 s.
+	using F = UWasamiBlackFadeWidget;
+	TestEqual(TEXT("FadeOut starts black"), F::EvaluateFadeOut(0.f), 1.f, 1e-4f);
+	TestEqual(TEXT("and ends clear"), F::EvaluateFadeOut(F::AnimationLength), 0.f, 1e-4f);
+	TestEqual(TEXT("FadeIn starts clear"), F::EvaluateFadeIn(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("and ends black"), F::EvaluateFadeIn(F::AnimationLength), 1.f, 1e-4f);
+	UWasamiBlackFadeWidget* Fade = NewObject<UWasamiBlackFadeWidget>();
+	Fade->bFadeIn = false;
+	Fade->Speed = AWasamiGameMode::OpeningFadeSpeed;
+	Fade->Advance(0.45f);
+	TestTrue(TEXT("still fading at 0.45 s"), !Fade->IsFinished() && Fade->GetOpacity() > 0.f && Fade->GetOpacity() < 0.5f);
+	Fade->Advance(0.1f);
+	TestTrue(TEXT("done by 0.55 s"), Fade->IsFinished());
+	TestEqual(TEXT("clear"), Fade->GetOpacity(), 0.f, 1e-4f);
 	return true;
 }
 

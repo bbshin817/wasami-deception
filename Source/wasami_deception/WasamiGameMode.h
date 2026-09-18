@@ -14,7 +14,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiAllShardsAlreadyCollectedSignature);
  * The game's mode, after Dark Deception's BP_DD_GameMode (pak_reference_2): spawns the player (AWasamiPlayerCharacter)
  * at the level's player start, keeps what the tablet's band shows, reads the save (or makes and writes one) when play
  * begins, counts the time played, takes the shards collected before a reopening out of the level, and passes a death on
- * to whoever listens (Death Dispatcher).
+ * to whoever listens (Death Dispatcher). The hospital's zones have no level Blueprints of their own here, so it also
+ * does their part: the player starts at the saved checkpoint's player start (their Spawn), a death shows the death
+ * screen and pauses the game (their DeathEvent), and a checkpoint's save shows SAVING PROGRESS.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiGameMode : public AGameModeBase
@@ -25,6 +27,7 @@ public:
 	AWasamiGameMode();
 
 	virtual void Tick(float DeltaSeconds) override;
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	/**
 	 * Current Objective: the tablet's band shows it in upper case. The hospital's Zone 1 sets it to COLLECT ALL SHARDS
@@ -34,8 +37,9 @@ public:
 	FText CurrentObjective;
 
 	/**
-	 * DeathEvent(Cause), once until ResetDeath: broadcasts OnDeath, keeps the best shard streak and sets the save's
-	 * current streak back to 0 (written by the death screen).
+	 * DeathEvent(Cause), once until ResetDeath: broadcasts OnDeath, shows the death screen (Level by the zone and whether
+	 * the player caused it) and pauses the game, keeps the best shard streak and sets the save's current streak back to
+	 * 0 (written by the death screen).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void DeathEvent(AActor* Cause);
@@ -71,8 +75,8 @@ public:
 	float GetTime() const { return Time; }
 
 	/**
-	 * A checkpoint's save: the level's checkpoint, the time played added to the saved time, the counter back to 0, and
-	 * the save written.
+	 * A checkpoint's save: SAVING PROGRESS on the screen, the level's checkpoint, the time played added to the saved time,
+	 * the counter back to 0, and the save written.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void SaveCheckpoint(int32 Checkpoint);
@@ -99,6 +103,36 @@ public:
 	 */
 	static int32 RemoveCollectedShards(UWorld* World, const TArray<FVector>& Collected);
 
+	/**
+	 * The checkpoint the level opened at: the save's, with Zone 1's 0 written as 4 (the entrance, which this game does
+	 * not have, saves 4 before it opens Zone 1). Settled when the player is placed, before any actor begins play; items
+	 * 6 and 13 set their sections up from it.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Game")
+	int32 GetStartCheckpoint() const { return StartCheckpoint; }
+
+	/** The hospital's zone a level name is (1 for 'L_Hospital_Zone1', 2 for 'L_Hospital_Zone2'), or 0. */
+	static int32 ZoneOf(const FString& LevelName);
+
+	/**
+	 * The player start (its PlayerStartTag, the original's actor name) a zone's Spawn moves the player to at a
+	 * checkpoint: Zone 1's 4, 5, 6 and Zone 2's 7 to 10; None for any other.
+	 */
+	static FName PlayerStartTagFor(int32 Zone, int32 Checkpoint);
+
+	/**
+	 * The death screen's Level a zone's DeathEvent gives: Zone 1 Traps when the player caused the death and Asylum
+	 * otherwise, Zone 2 the other way round (as in the original).
+	 */
+	static uint8 DeathScreenLevelFor(int32 Zone, bool bCausedByPlayer);
+
+	/** Zone 1's level, which Zone 2 opens without a checkpoint (the original opens the entrance). */
+	static const TCHAR* Zone1LevelName;
+
+	/** The fade from black a level opens with (UMG_BlackFade_2 fading out at 10, Z 10). */
+	static constexpr float OpeningFadeSpeed = 10.f;
+	static constexpr int32 OpeningFadeZOrder = 10;
+
 	/** The save's slot (the original's structSlot); the tests write elsewhere. */
 	UPROPERTY(EditDefaultsOnly, Category = "Game")
 	FString SaveSlotName;
@@ -113,6 +147,12 @@ private:
 	/** 0.2 s after BeginPlay: Total Shards, and the collected shards taken out. */
 	void RemoveShardsToBeRemoved();
 
+	/** Reads the save and settles StartCheckpoint, once (the player is placed before BeginPlay). */
+	void PrepareStart();
+
+	/** The zone's DeathEvent: the death screen for the cause, the game paused. */
+	void ShowDeathScreen(AActor* Cause);
+
 	UPROPERTY(Transient)
 	TObjectPtr<UWasamiSaveGame> StructSave;
 
@@ -123,5 +163,7 @@ private:
 	bool bDeathClosed = false;
 	int32 TotalShards = 0;
 	int32 ShardStreak = 0;
+	int32 StartCheckpoint = 0;
+	bool bStartPrepared = false;
 	FTimerHandle ShardRemovalTimer;
 };

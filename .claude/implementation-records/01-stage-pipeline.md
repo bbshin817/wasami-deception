@@ -144,7 +144,7 @@ updated: 2026-09-18
 - 反射キャプチャ: 球と箱。明るさ、球の影響半径、箱は書き出しのスケール。
 - 霧・スカイライト: 書き出しのプロパティをそのまま（`ue_props.apply`。UE5 で改名されたものは `ue_props.RENAMED` が読み替える）。スカイライトの `SLS_SpecifiedCubemap` には TextureCube が要るが、書き出しの HDRI は平面の PNG（`PF_FloatRGBA` を 8 bit に落としたもの）なので Texture2D にしかならない。その場合は指定せずシーンのキャプチャに任せ、`failed_settings` に記録する。
 - ポストプロセスボリューム: `bOverride_*` が立っているものだけ入れ、値が書き出しに無いもの（＝既定値のまま上書き）は override だけ立てる。
-- プレイヤースタート: `actors` の `PlayerStart`（変換はその `CollisionCapsule` のもの）。
+- プレイヤースタート: `actors` の `PlayerStart`（変換はその `CollisionCapsule` のもの）。レベルの組み立て（`dd_level._player_starts`）が `PlayerStartTag` に本家の名前を入れる（ゲームモードがセーブのチェックポイントの開始の場所をタグで探す。ラベルはエディタにしか無い。06 記録）。
 - シャード（`_shards`）: `actors` の `BP_Shard_C` の位置・回転・拡縮に `unreal.WasamiShard` を置く（構築時に餅と印の素材を読むので、`import_dd_shards` の後に）。タグ `dd`・`dd_shard`、フォルダ `Hospital/Gameplay/Shards`、ラベルは本家の名前。**シャードの灯はアクタの部品なので、`_lights` は `actorClass` が `BP_Shard_C` の灯を置かない**（2026-09-17 までの組み立ては単独の灯として `Hospital/Lights/BP_Shard_C` に置いていた）。`place_shards` は `_open_level(clear=False)` で開き、タグ `dd_shard` のアクタと、タグ `dd` でそのフォルダにある灯だけを消して置き直す。
 
 ### 登録（`init_unreal.py`、`wasami_tools/__init__.py`）
@@ -287,6 +287,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-18: レベルの組み立ての PlayerStart に `PlayerStartTag`（本家の名前）を入れるようにした（`dd_level._player_starts`）。組み立て直さず、両ゾーンのレベルの既存の PlayerStart にも同じ値を入れて保存した（作業一覧の項目 5 のステップ 5）
 - 2026-09-18: 死亡画面の素材の取り込み（`pipeline/dd_ui.py`、`WasamiDDTools.import_dd_ui`）を足した。フォントの取り込みを `dd_tablet.import_font` から `dd_assets.font(face_rel, version)` に移した（09 記録）
 - 2026-09-18: `Tools/dd/bp_flow.py` を足した（原作のブループリントのバイトコードを入口から制御の流れで読む。上の「ブループリントを流れで読む」。作業一覧の項目 5 のステップ 2）
 - 2026-09-18: Discord の反復の報告・終わりのまとめ・開始の投稿で、`###` の節の見出しの直後の空行をなくした（ユーザーの指示「Discordフォーマットの見出し4の後の改行は不要です」。見出し 4 はサンプルの `####`）。

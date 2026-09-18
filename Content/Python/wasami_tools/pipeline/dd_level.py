@@ -259,6 +259,8 @@ def _player_starts(eas, zone, counts):
         if a["class"] != "PlayerStart" or not a["world"]:
             continue
         actor = eas.spawn_actor_from_class(unreal.PlayerStart, _vec(a["world"]["location"]), _rot(a["world"]["quat_xyzw"]))
+        # The game mode finds the checkpoint's start by the original's name (labels are editor-only).
+        actor.set_editor_property("player_start_tag", a["name"])
         _tag(actor, a["name"], "Hospital/Gameplay")
         counts["playerStarts"] += 1
 
