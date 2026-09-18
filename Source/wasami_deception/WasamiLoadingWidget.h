@@ -20,6 +20,8 @@ class WASAMI_DECEPTION_API UWasamiLoadingWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	UWasamiLoadingWidget(const FObjectInitializer& ObjectInitializer);
+
 	/** The original's Enum_Levels value Zone 1 gives Level (06_ReachAmbulance). */
 	static constexpr uint8 AsylumLevel = 7;
 	/** AddToViewport's Z. */
@@ -49,6 +51,12 @@ public:
 	/** Whether the delays ran out and the widget took itself off. */
 	bool IsFinished() const { return bFinished; }
 
+	/** The emblem Construct shows for InLevel (null where there is none). */
+	TSoftObjectPtr<UTexture2D> GetLevelEmblem(uint8 InLevel) const
+	{
+		return LevelEmblems.IsValidIndex(InLevel) ? LevelEmblems[InLevel] : TSoftObjectPtr<UTexture2D>();
+	}
+
 	/** CanvasPanel_0's RenderOpacity Seconds after Construct: FadeIn forwards, and backwards from 2.5 s. */
 	static float EvaluateOpacity(float Seconds);
 
@@ -62,8 +70,9 @@ protected:
 
 	/**
 	 * The emblems Construct picks by Level (the original's UI/Main/Loaders: loader_monkey, _agatha, _watcher, none, none,
-	 * _ducky, _gremclown, _reapernurse, _lucky, _triggerteddy, none, none). Left empty until the user says whether
-	 * they may be used; a level without one shows the red screen alone.
+	 * _ducky, _gremclown, _reapernurse, _lucky, _triggerteddy, none, none). Only the hospital's (AsylumLevel) is set:
+	 * the original's magic circle with this game's Wasami symbol in place of the Reaper Nurse's mark (the user's answer,
+	 * 2026-09-19; Tools/dd/prepare_loader.py composes it). A level without one shows the red screen alone.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Loading|Assets")
 	TArray<TSoftObjectPtr<UTexture2D>> LevelEmblems;

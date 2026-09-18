@@ -288,6 +288,10 @@ bool FWasamiGameFlowLoadingTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("gone by 3 s"), L::EvaluateOpacity(3.01f), 0.f, 1e-4f);
 
 	UWasamiLoadingWidget* Loading = NewObject<UWasamiLoadingWidget>();
+	// Only the hospital has an emblem: the original's magic circle with the Wasami symbol (Tools/dd/prepare_loader.py).
+	TestEqual(TEXT("the hospital's emblem"), Loading->GetLevelEmblem(L::AsylumLevel).ToSoftObjectPath(),
+		FSoftObjectPath(TEXT("/Game/Wasami/UI/loader_wasami.loader_wasami")));
+	TestTrue(TEXT("none for the other levels"), Loading->GetLevelEmblem(0).IsNull() && Loading->GetLevelEmblem(8).IsNull());
 	for (int32 Frame = 0; Frame < 209; ++Frame)
 	{
 		Loading->Advance(1.f / 60.f);

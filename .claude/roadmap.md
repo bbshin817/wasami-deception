@@ -157,7 +157,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`、`_sequences/06_Hospital_Zone01_ElevatorArrive.json`、`Blueprints/06_Hospital/Lifts/**`、`Blueprints/Main/BP_ZoneBarrier.txt`、`_levels/06_Hospital_Zone_0*.full.json`。
 - 依存: 4、5。
 - 規模: 4
-- 状態: **完了（2026-09-19）**。ゲームモードが開始時に出す区間の流れ `AWasamiZone1Flow`・`AWasamiZone2Flow`（本家のレベル BP の代わり。トリガーの箱・チェックポイントの保存・目的の文・矢印の値）で、Zone 1 はエレベーターの到着のシーケンス（扉が約 11 s に開く）→ 扉の破壊（F の連打）と両開き扉 → 迷路で COLLECT ALL SHARDS → 全回収で障壁が壊れて駐車場へのフェード → トンネルの扉が閉ざされ 25 s 後に破られる → 救急車の屋根で保存 7 → 救急車が走り出し読み込み画面 → Zone 2、Zone 2 は独房（棘が下りる中で扉の鍵を外す）→ ミニボスの廊下（GET PAST THE NURSES）→ 迷路（COLLECT ALL SHARDS、乗ると上がる床 15 台、階ごとの地図）→ 全回収で COLLECT THE RING PIECE まで、PIE で通しで遊べる（実装記録 11・12・08・09・03・01）。**完了の条件の読み替え**（本家のコードに合わせた）: 「ガレージリフトで Zone 2 へ」は作業一覧を作ったときの読み違いで、本家で Zone 2 を開くのは救急車の屋根（`06_ReachAmbulance`）。ガレージリフトは駐車場の車のリフトで、上がった台から屋根へはテレポーテーションで移る（2026-09-19 に PIE で通した）。ガレージリフトの `NurseNear`・`Spawn Nurses*`・ミニボスは項目 7・11、場面は項目 25、Bierce の台詞とナースの放送は項目 20、曲は項目 19。読み込み画面の紋章と読み替えは下の「未回答の要確認」。
+- 状態: **完了（2026-09-19）**。ゲームモードが開始時に出す区間の流れ `AWasamiZone1Flow`・`AWasamiZone2Flow`（本家のレベル BP の代わり。トリガーの箱・チェックポイントの保存・目的の文・矢印の値）で、Zone 1 はエレベーターの到着のシーケンス（扉が約 11 s に開く）→ 扉の破壊（F の連打）と両開き扉 → 迷路で COLLECT ALL SHARDS → 全回収で障壁が壊れて駐車場へのフェード → トンネルの扉が閉ざされ 25 s 後に破られる → 救急車の屋根で保存 7 → 救急車が走り出し読み込み画面 → Zone 2、Zone 2 は独房（棘が下りる中で扉の鍵を外す）→ ミニボスの廊下（GET PAST THE NURSES）→ 迷路（COLLECT ALL SHARDS、乗ると上がる床 15 台、階ごとの地図）→ 全回収で COLLECT THE RING PIECE まで、PIE で通しで遊べる（実装記録 11・12・08・09・03・01）。**完了の条件の読み替え**（本家のコードに合わせた）: 「ガレージリフトで Zone 2 へ」は作業一覧を作ったときの読み違いで、本家で Zone 2 を開くのは救急車の屋根（`06_ReachAmbulance`）。ガレージリフトは駐車場の車のリフトで、上がった台から屋根へはテレポーテーションで移る（2026-09-19 に PIE で通した）。ガレージリフトの `NurseNear`・`Spawn Nurses*`・ミニボスは項目 7・11、場面は項目 25、Bierce の台詞とナースの放送は項目 20、曲は項目 19。読み替えは 2026-09-19 にユーザーが承認した。読み込み画面の紋章は、本家の魔法陣の中の印をワサミのシンボルに替えたもの（2026-09-19 のユーザーの回答。実装記録 09）。
 
 ### 7. NavMesh と敵の AI（追跡型）
 
@@ -381,8 +381,3 @@
 - 2026-09-18: 全回収後の追跡の走り `Run_Nightmare` への切り替え — 仮に走りと同じ 0.25 s のブレンドにした。理由: 本家の ABP に無い分岐。場所: `WasamiEnemyAnimInstance.h` の `TODO(仮): the original has one run`。
 - 2026-09-18: 待機と見張りの待機のアニメ — 仮に `Idle_11`（直立）と `Idle_5`（足を開いた低い構え）にした。理由: Claude が v3 の中から選び、PIE で見て不自然さが無かった（`observations/ours/pie-enemy-idle-*.png`・`pie-enemy-alert-*.png`）。場所: `.claude/references/enemy-wasami-motions.md` の表、`dd_enemy.py` の `ROLES`。
 - 2026-09-18: `Chase_VaultLand`（`Vault_and_Land`）の扱い — 元は「高さ約 76 cm の台の上から片手をついて跳び降りる」動きで、平らな廊下では宙から始まった。仮に、取り込みで台の高さの分を離れるまで下げて床から跳び越える形（見えない低い障害物を越える形。足は最高約 78 cm、骨盤は 130 cm）にし、着地後に立っているだけの区間を切り（2.4 s）、この 1 本だけ 31° 斜めに進むのを真っすぐに回した（体の向きは −7° で始まり 21° で終わる）。ほかの案: 追跡の候補から外して場面（項目 6 の Zone 1 の出来事）でだけ使う / そのまま流す。理由: ユーザーが追跡中の例に挙げた動きなので、候補に残す。場所: `dd_enemy.py` の `VAULT_FRAMES`・`_vault`、一覧の追跡中の変化の表、映像 `observations/ours/pie-enemy-once-Chase_VaultLand.mkv`・`-sheet.png`。
-
-### 項目 6（ゾーンの進行、2026-09-19 に閉じた記録 `20260918-zone-progression`）
-
-- 2026-09-18: Zone 2 へ移るときの読み込み画面の紋章 `loader_reapernurse`（本家の `UI/Main/Loaders`。リーパーナースの印の絵で、キャラクターそのものは描かれていない）を使ってよいか — 仮に使わず、暗い赤の全面だけを出している。理由: 原作の素材の使用範囲で「判断に迷うもの（キャラクターが写った画像や UI 素材など）」に当たる。使ってよければ `dd_ui` で取り込み `UWasamiLoadingWidget::LevelEmblems` の 7 番に入れるだけ。ほかの案: 本作のワサミの絵に替える。場所: 実装記録 09 の「既知の制約」、`WasamiLoadingWidget.h` の `LevelEmblems`。
-- 2026-09-18: 作業一覧の項目 6 と大目標 1 の「ガレージリフトで Zone 2 へ」を、本家のコードどおり**救急車の上に乗って Zone 2 へ移る**形に読み替えた（2026-09-19 に項目 6・27 と大目標 1 の達成の姿を書き換えた）。理由: 本家の `06_Hospital_Zone_01` のレベル BP で Zone 2 を開くのは `06_ReachAmbulance`（`TriggerBox_06_AmbulanceTop`）で、ガレージリフトは駐車場の車のリフトの仕掛け。PIE ではガレージリフトで上がり、テレポーテーションで屋根へ移って通した。場所: 項目 6 の「状態」、実装記録 11 の「確かめたこと」の通し。
