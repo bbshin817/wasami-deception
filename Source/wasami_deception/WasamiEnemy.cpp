@@ -29,9 +29,11 @@ AWasamiEnemy::AWasamiEnemy()
 	Movement->bUseControllerDesiredRotation = true;
 	Movement->bOrientRotationToMovement = true;
 
-	// CharacterMesh0: the nurse's place and turn (its mesh faces +Y, as SK_WasamiEnemy does) and its animation.
+	// CharacterMesh0: the nurse's place and turn (its mesh faces +Y, as SK_WasamiEnemy does), Wasami grown to the
+	// nurse's height, and its animation.
 	USkeletalMeshComponent* Body = GetMesh();
 	Body->SetRelativeLocationAndRotation(FVector(MeshX, MeshY, MeshZ), FRotator(0., MeshYaw, 0.));
+	Body->SetRelativeScale3D(FVector(MeshScale));
 	Body->AnimClass = UWasamiEnemyAnimInstance::StaticClass();
 
 	MeshAsset = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));

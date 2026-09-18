@@ -72,7 +72,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 | `Chase_Slide` | `slide_right` | in_place | 1.767 s | 0.01 / 3.35 m（途中で横に最大 0.17 m） |
 | `BeHit_FlyUp`・`Knock_Down`・`Push_Up_To_Idle` | 同名（`push_up_to_idle`） | once | 1.533・2.500・3.100 s | 役なし（場面の代用の候補）。`Knock_Down` は骨盤が始めから 1.15 m 後ろにある |
 
-足の運びの速さ（接地した足の後ろへの速さ。再生の速さを移動に合わせるときの物差し。項目 4 のステップ 4 の PIE で、骨 `ball_l`・`ball_r` の世界での速さから測った）: `Walk` 1.34 m/s、`Run` 4.46 m/s、`Run_Nightmare` 4.96 m/s。本家の巡回 350 cm/s・追跡 800 cm/s より遅い。
+足の運びの速さ（接地した足の後ろへの速さ。再生の速さを移動に合わせるときの物差し。項目 4 のステップ 4 の PIE で、骨 `ball_l`・`ball_r` の世界での速さから測った。**メッシュの元の大きさ（拡縮 1）での値**）: `Walk` 1.34 m/s、`Run` 4.46 m/s、`Run_Nightmare` 4.96 m/s。敵のアクタは `MeshScale`（1.3591）倍で描くので、ゲームの中では 1.82・6.06・6.74 m/s。
 
 ### アニメの再生（`UWasamiEnemyAnimInstance`）
 
@@ -91,11 +91,11 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
   - Moving の中: `Walk` | 走り（速さ > 400、0.25 s、Linear）。走りの中: `Run` | `Run_Nightmare`（`bNightmare`、0.25 s。本家に無い分岐で、走りと同じ切り替えにした。`TODO(仮)`）。
 - **ブレンドの動き**（エンジンの `FAnimNode_BlendListBase` と同じ）: 重みは 1 / ブレンド時間 の速さで目標へ動く（途中で折り返すと、残りの重みの分の時間で戻る）。リセットの後の最初の更新は目標へ飛ぶ。
 - **時刻の進め方**: 重み 0 の枝は進めない。重み 0 から入った状態（Idle / Moving）は中のクリップを 0 から始め、中の切り替えもリセットする（本家の `bAlwaysResetOnEntry` 偽・`bResetChildOnActivation` 偽と同じ）。**本家と違い、移動の木は気絶の下でも 1 回再生の下でも進める**（本家の Slot と BlendList は重み 0 の子を進めない）。気絶が明けたときに移動の木を速さに合った状態（止まっていれば Idle）にしておき、起き上がりの終わりの待機へ走りの姿勢が混ざらないようにするため。追跡中の変化が終わったときも走りの位相が続いている。
-- **再生の速さ**（`TODO(仮)`。本家はスケートで速さ 1）: `Walk` = 速さ / 133 を 0.5〜2、`Run` = 速さ / 450 を 0.6〜1.8、`Run_Nightmare` = 速さ / 500 を 0.6〜1.8。分母は各クリップの接地した足の速さ（上の「足の運びの速さ」）、範囲は WebGL 版の 15 記録の `speedRatio` の範囲。PIE での接地中の足の滑り（前向きの速さ）は、追跡 800 cm/s の `Run` で 1 %（ほぼ止まる）。巡回 350 cm/s の `Walk` は上限 2 に当たって速さの 24 %（83 cm/s）滑る（足に合わせるなら 2.6 倍で、1 秒に約 5 歩になる）。`Run_Nightmare` は初めの分母 460（取り込み前の骨盤の進みから出した値）では足が後ろへ 8 % 流れたので、測った 500 にした。待機・気絶は速さ 1、1 回再生は指定の速さ。
+- **再生の速さ**（`TODO(仮)`。本家はスケートで速さ 1）: `Walk` = 速さ / (133 × `MeshScale`) を 0.5〜2、`Run` = 速さ / (450 × `MeshScale`) を 0.6〜1.8、`Run_Nightmare` = 速さ / (500 × `MeshScale`) を 0.6〜1.8。分母は各クリップの接地した足の速さ（上の「足の運びの速さ」）を、敵のアクタがメッシュを描く大きさ `AWasamiEnemy::MeshScale` 倍にしたもの（歩幅が大きさに比例するため。`WasamiEnemyAnimInstance.cpp` の `StrideScale`）、範囲は WebGL 版の 15 記録の `speedRatio` の範囲。巡回 350 cm/s の `Walk` は 1.94、追跡 800 cm/s の `Run` は 1.31。拡縮 1 のときの PIE での接地中の足の滑り（前向きの速さ）は、追跡 800 cm/s の `Run` で 1 %（ほぼ止まる）、巡回 350 cm/s の `Walk` は上限 2 に当たって速さの 24 % 滑った（2026-09-18 に大きくしてからは、上限に当たらない。滑りは測り直していない）。`Run_Nightmare` は初めの分母 460（取り込み前の骨盤の進みから出した値）では足が後ろへ 8 % 流れたので、測った 500 にした。待機・気絶は速さ 1、1 回再生は指定の速さ。
 - **気絶**（`FWasamiStunPlayback::Start(Duration, ループの長さ, 起き上がりの長さ)`）: 起き上がりを気絶の終わりにちょうど終わるよう `Duration − 起き上がりの長さ`（17 s なら 9.433 s）で始め、ループはその時刻に境目（時刻 0 = 起き上がりの最初のキーと同じ姿勢）が来る位相から始める（`LoopStart` = 1.5 − (9.433 mod 1.5) = 1.067 s）。気絶が起き上がりより短いときは、起き上がりを途中（長さ − Duration）から始める。起き上がりは終わりの姿勢で止まる。`bStunned` の立ち上がり（ブレンドアウト中の 2 回目も）で始め直し、同時に 1 回再生を 0.25 s でブレンドアウトさせる。
 - **1 回再生**（`FWasamiOncePlayback`。UE のモンタージュの更新の順に倣う）: 重みを先に動かし（ブレンドインは 1 / BlendIn、ブレンドアウトは 1 / BlendOut の速さ）、次に時刻を進め（速さを掛け、長さで止める）、残りの実時間（(長さ − 時刻) / 速さ）が BlendOut 以下になったらブレンドアウトを始める。重み 0 で消える。新しい `PlayOnce` は前のものを新しい BlendIn でブレンドアウトさせ、既にブレンドアウト中のものは短い方の時間にする（BlendIn 0 なら前のものはすぐ消える）。`StopOnce` も同じ規則。
 
-テスト（`Tests/WasamiEnemyTests.cpp`）— 敵のアクタ `Wasami.Enemy.Actor.*`: `Defaults`（CDO と部品の値）、`Stun`（手で進めるゲームのワールドで 0.0625 s 刻み。上のタイマーの刻みで、判断は 0.625・1.125 … s の更新に来る: `CanSpawn` なしは消える、AI が付く、メッシュとアニメ、`Set Walk State`、`SetState` の直後は気絶だが動いたまま → 判断で止まる、アニメの残り、2 回目と Patrol への往復で延びない（Patrol の間の残りは 0）、17.625 s の更新で起き上がりが終わり次の更新で Patrol、明けの次の判断から 2 回目）、`Powers`（Primal Fear・Vanish・Telepathy が届く）。アニメの再生 `Wasami.Enemy.Anim.*`: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s と 5 s の位相、走り → 気絶 → 起き上がり → 明け、2 回目）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 19 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。取り込みが変わったらここが落ちる）。
+テスト（`Tests/WasamiEnemyTests.cpp`）— 敵のアクタ `Wasami.Enemy.Actor.*`: `Defaults`（CDO と部品の値。メッシュの拡縮 `MeshScale` を含む）、`Stun`（手で進めるゲームのワールドで 0.0625 s 刻み。上のタイマーの刻みで、判断は 0.625・1.125 … s の更新に来る: `CanSpawn` なしは消える、AI が付く、メッシュとアニメ、`Set Walk State`、`SetState` の直後は気絶だが動いたまま → 判断で止まる、アニメの残り、2 回目と Patrol への往復で延びない（Patrol の間の残りは 0）、17.625 s の更新で起き上がりが終わり次の更新で Patrol、明けの次の判断から 2 回目）、`Powers`（Primal Fear・Vanish・Telepathy が届く）。アニメの再生 `Wasami.Enemy.Anim.*`: `Blends`（切り替えと遷移の曲線）、`Locomotion`（350・800・2000 cm/s〈再生の速さは `MeshScale` 倍の歩幅で割る〉、止まる、ちょうど 5、見張り、Nightmare）、`Stun`（17 s と 5 s の位相、走り → 気絶 → 起き上がり → 明け、2 回目）、`Once`（ブレンド、自動のブレンドアウト、2 倍速、途中の停止、重ね掛け、欠けたクリップ）、`Clips`（名前と場所。**取り込んだ 19 本が揃い、スケルトンが `SK_WasamiEnemy_Skeleton` で、長さがテストの値と合う**。取り込みが変わったらここが落ちる）。
 
 ### 敵のアクタ（`AWasamiEnemy`）
 
@@ -104,7 +104,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - **CDO**: タグ `Enemy`、`AutoPossessAI = PlacedInWorldOrSpawned`（エンジンの既定の `AIController` が付く。付くと移動の計算が走る）、`bUseControllerRotationYaw = false`。
 - **カプセル**: 半分の高さ 118.05822（本家の上書き）、半径 34（本家は上書きしない。UE 5.8 の `ACharacter` の既定。UE4 から同じ値で、4.24 のソースは手元に無い）。当たりはエンジンの既定の `Pawn`。本家の基底の `AreaClass = NavArea_Obstacle` は 4.24 の `ShapeComponent` の既定と同じなので書かない（UE5 は `bUseSystemDefaultObstacleAreaClass`）。
 - **移動**: `MaxWalkSpeed` 800、`RotationRate` (0, 300, 0)、`bUseControllerDesiredRotation`・`bOrientRotationToMovement` 真。`Set Walk State` は `bNormalWalk` で 350 / 800 を選ぶ。
-- **メッシュ**（`CharacterMesh0`）: 相対位置 (−0.00006, −0.0002, −117.84394)・Yaw −90.00012（本家のまま。`SK_WasamiEnemy` も正面が +Y なので、アクタの前を向く。足はカプセルの底から 0.2 cm 上）、`AnimClass = UWasamiEnemyAnimInstance`。メッシュ `/Game/Wasami/Enemy/SK_WasamiEnemy` はソフト参照で、`OnConstruction` で読む（`WasamiAssets.h` の起動時の読み込みを避ける。シャードと同じ）。
+- **メッシュ**（`CharacterMesh0`）: 相対位置 (−0.00006, −0.0002, −117.84394)・Yaw −90.00012（本家のまま。`SK_WasamiEnemy` も正面が +Y なので、アクタの前を向く。足はカプセルの底から 0.2 cm 上）、拡縮は X・Y・Z とも `MeshScale` = 229.05135 / 168.52719 = 1.3591（本作の値。2026-09-18 のユーザーの指示「Z軸スケールは本家の敵と同じ身長になるよう、敵ワサミモデルはX・Y・Zスケールを拡大する」。頭頂の骨どうしで合わせる: 本家のナース `nurse_idle1` の基準姿勢の `Nurse_TopOfHead_AuxSHJnt` が 229.05 cm〈その上の帽子を含むメッシュの頂は 246.35 cm〉、`SK_WasamiEnemy` の `head_end` が 168.53 cm〈髪を含むメッシュの頂は 170.0 cm〉。身長なので帽子は含めない。足はメッシュの原点にあるので拡縮しても床に立つ）、`AnimClass = UWasamiEnemyAnimInstance`。メッシュ `/Game/Wasami/Enemy/SK_WasamiEnemy` はソフト参照で、`OnConstruction` で読む（`WasamiAssets.h` の起動時の読み込みを避ける。シャードと同じ）。
 - **BeginPlay**: 基底どおり `bCanSpawn` が偽なら自分を消す（本家は既定が偽で、Zone 1 のレベルのスクリプト `Spawn Nurses` が `CanSpawn` を真にして出す。`SpawnEnemy` が同じことをする）。真なら、基底の `Ignore All Speed Barriers`（項目 8）の後、ナースの `Generate Random Point`（項目 7）と、`Make Choice` の 0.5 s ごとのループのタイマー（最初は 0.5 s 後）。
 - **気絶**（ナースの Make Choice の DoOnce）: `SetState` は State を入れるだけ。判断（`MakeChoice`）が State == Stun を見たら、1 回だけ（`bStunRunning`）`StopMovementImmediately` → 17 s のタイマー → `EndStun` で State = Patrol・`bStunRunning` 偽。待っている間は判断は何もしない。待っている間の 2 回目の気絶は時間を延ばさず、State を Patrol にしてまた Stun にしても始め直さない（最初の 17 s で終わる）。ナースの `Cloak(False)`（透明化）と気絶の台詞（`Nurse_Hospital_Zone01_Stunned`。項目 20 でワサミの声）は作らない。判断のほかの枝（薬投げ・`Chase Player` / `Not Seeing Player`）は項目 7。
 - **アニメとの受け渡し**: アニメは毎フレーム `IsStunned()` を読む（本家の ABP の `bStunned = State == 2`。`SetState` の直後から気絶の姿勢になり、止まるのは次の判断）。立ち上がりで `GetStunTimeLeft()` を読み、起き上がりを巡回に戻る瞬間に終える。残りは、気絶でなければ 0、判断の前なら「次の判断までの残り（判断のタイマーの残り）+ 17 s」、判断の後なら 17 s のタイマーの残り。エンジンではタイマーが移動とメッシュの更新（TG_PrePhysics）の後に進むので、アニメが読む残りはその前のフレームの終わりの値で、そのフレームの経過と合わせて合う。
@@ -120,7 +120,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 
 | パス | 中身 |
 |---|---|
-| `/Game/Wasami/Enemy/SK_WasamiEnemy` | スケルタルメッシュ。高さ 170 cm（`head_end` 168.5 cm）、幅 148 cm（基準姿勢の腕）。**正面は +Y、左手は +X**（UE のマネキンと同じ。アクタではメッシュを Yaw −90 にする。本家のナースのメッシュも Yaw −90） |
+| `/Game/Wasami/Enemy/SK_WasamiEnemy` | スケルタルメッシュ。高さ 170 cm（`head_end` 168.5 cm）、幅 148 cm（基準姿勢の腕）。敵のアクタは 1.3591 倍で描く（上の「メッシュ」）。**正面は +Y、左手は +X**（UE のマネキンと同じ。アクタではメッシュを Yaw −90 にする。本家のナースのメッシュも Yaw −90） |
 | `…/SK_WasamiEnemy_Skeleton` | 骨 28、根 `pelvis`（高さ 88.5 cm） |
 | `…/SK_WasamiEnemy_PhysicsAsset` | Interchange の自動の物理アセット |
 | `…/A_WasamiEnemy_<役>` | 上の表の 19 本 |
@@ -152,7 +152,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - クリップはゲームのワールドでしか読まないので、エディタのレベルに置いた敵は参照姿勢（腕を広げた形）で見える。
 - 1 回再生にアニメ通知・終わりのイベントは無い。終わりは `IsPlayingOnce()` で見る。
 - `FAnimInstanceProxy::IsSkeletonCompatible` は UE 5.8 で非推奨（警告 C4996）なので使わない。
-- 敵のアクタのカプセルは本家のナースの高さ（約 236 cm）で、ワサミ（170 cm。PIE で `head_end` 170 cm、見張りの構えで 151 cm）より 66 cm 高い。Telepathy の印はアクタの位置（カプセルの中心、床から 120 cm = 身長の 7 割）に付き、PIE では胸に重なって見えた。
+- 敵のアクタのカプセルは本家のナースの高さ（約 236 cm）。ワサミは 2026-09-18 に `MeshScale` 倍にして、メッシュの頂 231 cm（PIE の待機で `head_end` 228.9 cm）になった（それまでは 170 cm で、カプセルより 66 cm 低かった）。Telepathy の印はアクタの位置（カプセルの中心、床から 120 cm）に付くので、今は腰の高さに重なる（本家のナースも同じ位置。大きくする前は胸に重なって見えた）。
 - 捕獲の 3 本は前へ進んだ形のままなので、1 回再生が終わると体が元の位置へ跳んで戻る（`Capture_2` は 5.7 m）。捕獲の別室での使い方は項目 9。
 - `bCanSpawn` が既定で偽なので、エディタのレベルに置いた敵は PIE で消える（置くなら詳細で真にする）。エディタのレベルでは参照姿勢で見える。
 - 気絶の間も AI の移動の要求は止めていない（本家も `StopMovementImmediately` だけ）。項目 7 で AI の移動を入れるときに、気絶の間に動き出さないかを確かめる。
@@ -163,3 +163,4 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）は取り込まな�
 - 2026-09-18: 敵のアクタ `AWasamiEnemy`（本家のナースの部品・`CanSpawn`・0.5 s の判断と 17 s の気絶・インターフェース・`SpawnEnemy`）とテスト `Wasami.Enemy.Actor.*` を追加。アニメの再生が持ち主の敵から値を読むようにした
 - 2026-09-18: PIE で確かめた（立ち姿・歩き・走り・気絶と明け・Telepathy・Vanish・1 回再生 9 本。値は `observations/README.md`）。足の運びの速さを測り直し、`Run_Nightmare` の分母を 460 → 500 にした
 - 2026-09-18: 追跡中の変化 `Chase_VaultLand` を前処理の `vault` で床から跳び越える形にし（台の高さ 76.6 cm を離れるまで下げる・2.4 s で切る・−31.7° 回す）、前処理の glb を `WasamiEnemy.glb` に改名した（`SK_WasamiEnemy.glb` ではメッシュだけの再取り込みになり、アニメが置き換わっていなかった）。テストの長さの期待を直した（作業一覧の項目 4 のステップ 4b）
+- 2026-09-18: 敵のアクタのメッシュを X・Y・Z とも `MeshScale`（1.3591。本家のナースと頭頂の骨の高さをそろえる）倍にし、再生の速さの分母（歩幅の速さ）も同じ倍率にした。テストの期待値を直し、`Defaults` に拡縮を足した（ユーザーの指摘「敵ワサミが極端に小さい」）

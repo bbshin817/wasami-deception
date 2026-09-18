@@ -20,6 +20,9 @@
 
 namespace
 {
+	/** The size the enemy draws its mesh at, which the clips' strides grow with. */
+	constexpr float Grown = static_cast<float>(AWasamiEnemy::MeshScale);
+
 	/** The imported clips' lengths (30 fps frames, implementation record 07). */
 	TArray<float> ImportedLengths()
 	{
@@ -104,8 +107,9 @@ bool FWasamiEnemyAnimLocomotionTest::RunTest(const FString& Parameters)
 	State.Update(Inputs, 0.25f);
 	TestEqual(TEXT("half way into moving"), State.GetClipWeight(WasamiEnemyClip::Walk), 0.5f, 1e-5f);
 	TestEqual(TEXT("half the idle left"), State.GetClipWeight(WasamiEnemyClip::Idle), 0.5f, 1e-5f);
-	TestEqual(TEXT("the walk's rate is held at 2"), State.GetClipRate(WasamiEnemyClip::Walk), 2.f);
-	TestEqual(TEXT("the walk started from 0"), State.GetClipTime(WasamiEnemyClip::Walk), 0.5f);
+	const float WalkRate = 350.f / (133.f * Grown);
+	TestEqual(TEXT("the walk's rate follows the speed and the grown stride"), State.GetClipRate(WasamiEnemyClip::Walk), WalkRate);
+	TestEqual(TEXT("the walk started from 0"), State.GetClipTime(WasamiEnemyClip::Walk), 0.25f * WalkRate, 1e-5f);
 	TestEqual(TEXT("the idle moves on while it blends out"), State.GetClipTime(WasamiEnemyClip::Idle), 0.35f);
 	State.Update(Inputs, 0.25f);
 	TestEqual(TEXT("walking"), State.GetClipWeight(WasamiEnemyClip::Walk), 1.f);
@@ -116,14 +120,15 @@ bool FWasamiEnemyAnimLocomotionTest::RunTest(const FString& Parameters)
 	State.Update(Inputs, 0.125f);
 	TestEqual(TEXT("half walk"), State.GetClipWeight(WasamiEnemyClip::Walk), 0.5f);
 	TestEqual(TEXT("half run"), State.GetClipWeight(WasamiEnemyClip::Run), 0.5f);
-	TestEqual(TEXT("the run's rate follows the speed"), State.GetClipRate(WasamiEnemyClip::Run), 800.f / 450.f);
-	TestEqual(TEXT("the run starts where it was left (0)"), State.GetClipTime(WasamiEnemyClip::Run), 0.125f * 800.f / 450.f, 1e-5f);
+	const float ChaseRate = 800.f / (450.f * Grown);
+	TestEqual(TEXT("the run's rate follows the speed"), State.GetClipRate(WasamiEnemyClip::Run), ChaseRate);
+	TestEqual(TEXT("the run starts where it was left (0)"), State.GetClipTime(WasamiEnemyClip::Run), 0.125f * ChaseRate, 1e-5f);
 	State.Update(Inputs, 0.125f);
 	TestEqual(TEXT("running"), State.GetClipWeight(WasamiEnemyClip::Run), 1.f);
 	Inputs.Speed = 2000.f;
 	State.Update(Inputs, 0.1f);
 	TestEqual(TEXT("the run's rate is held at 1.8"), State.GetClipRate(WasamiEnemyClip::Run), 1.8f);
-	TestEqual(TEXT("a loop wraps"), State.GetClipTime(WasamiEnemyClip::Run), FMath::Fmod(0.125f * 800.f / 450.f * 2.f + 0.18f, 20.f / 30.f), 1e-5f);
+	TestEqual(TEXT("a loop wraps"), State.GetClipTime(WasamiEnemyClip::Run), FMath::Fmod(0.125f * ChaseRate * 2.f + 0.18f, 20.f / 30.f), 1e-5f);
 
 	// Stopping: Moving → Idle over 0.25 s (ExpOut), and the idle starts over.
 	Inputs.Speed = 0.f;
@@ -160,7 +165,7 @@ bool FWasamiEnemyAnimLocomotionTest::RunTest(const FString& Parameters)
 	Sentry.Update(SentryInputs, 0.5f);
 	TestEqual(TEXT("the Nightmare run from the start of moving"), Sentry.GetClipWeight(WasamiEnemyClip::RunNightmare), 1.f);
 	TestEqual(TEXT("the plain run is not used"), Sentry.GetClipWeight(WasamiEnemyClip::Run), 0.f);
-	TestEqual(TEXT("the Nightmare run's rate"), Sentry.GetClipRate(WasamiEnemyClip::RunNightmare), 800.f / 500.f);
+	TestEqual(TEXT("the Nightmare run's rate"), Sentry.GetClipRate(WasamiEnemyClip::RunNightmare), 800.f / (500.f * Grown));
 	SentryInputs.bNightmare = false;
 	Sentry.Update(SentryInputs, 0.125f);
 	TestEqual(TEXT("it switches like the run"), Sentry.GetClipWeight(WasamiEnemyClip::Run), 0.5f);
@@ -269,7 +274,7 @@ bool FWasamiEnemyAnimOnceTest::RunTest(const FString& Parameters)
 	State.Init(Lengths);
 	FWasamiEnemyAnimInputs Inputs;
 	Inputs.Speed = 700.f;
-	const float RunRate = 700.f / 450.f;
+	const float RunRate = 700.f / (450.f * Grown);
 	const float RunLength = Lengths[WasamiEnemyClip::Run];
 	State.Update(Inputs, 0.5f);
 	TestFalse(TEXT("a missing clip does not play"), State.PlayOnce(WasamiEnemyClip::Capture1, 1.f, 0.25f, 0.25f));
@@ -385,6 +390,8 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	const USkeletalMeshComponent* Body = Enemy->GetMesh();
 	TestTrue(TEXT("the mesh's place"), Body->GetRelativeLocation().Equals(FVector(-6.216e-5, -2.155e-4, -117.84394), 1e-4));
 	TestEqual(TEXT("the mesh's turn"), Body->GetRelativeRotation().Yaw, -90.00012, 1e-4);
+	TestEqual(TEXT("Wasami's head top at the nurse's"), AWasamiEnemy::MeshScale, 229.05135 / 168.52719);
+	TestTrue(TEXT("grown the same on X, Y and Z"), Body->GetRelativeScale3D().Equals(FVector(AWasamiEnemy::MeshScale), 1e-6));
 	TestTrue(TEXT("the mesh plays the enemy's animation"), Body->AnimClass.Get() == UWasamiEnemyAnimInstance::StaticClass());
 	TestEqual(TEXT("the decisions' interval"), AWasamiEnemy::DecisionInterval, 0.5f);
 	TestEqual(TEXT("the stun's wait"), AWasamiEnemy::StunSeconds, 17.f);

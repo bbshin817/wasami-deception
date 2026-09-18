@@ -35,6 +35,13 @@ public:
 	static constexpr double MeshY = -0.00021553380065597594;
 	static constexpr double MeshZ = -117.84394073486328;
 	static constexpr double MeshYaw = -90.0001220703125;
+	// This game's scale on the mesh, the same on X, Y and Z (the user's request, 2026-09-18: the nurse's height). The
+	// top of the head, bind pose to bind pose: the nurse's nurse_idle1 has Nurse_TopOfHead_AuxSHJnt 229.05135 cm up
+	// (its cap reaches 246.35), SK_WasamiEnemy its head_end 168.52719 cm up (its hair 170.0). Its feet stand on the
+	// mesh's origin, so they stay where the nurse's are.
+	static constexpr double NurseHeadTop = 229.05135;
+	static constexpr double WasamiHeadTop = 168.52719;
+	static constexpr double MeshScale = NurseHeadTop / WasamiHeadTop;
 	// Make Choice's timer (K2_SetTimer, looping) and the stun's Delay.
 	static constexpr float DecisionInterval = 0.5f;
 	static constexpr float StunSeconds = 17.f;

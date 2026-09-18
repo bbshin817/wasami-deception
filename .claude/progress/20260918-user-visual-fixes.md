@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 073c833
 started: 2026-09-18 12:10
-updated: 2026-09-18 12:55
+updated: 2026-09-18 13:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -25,20 +25,16 @@ updated: 2026-09-18 12:55
 
 - [x] 1. ブーストの横線 … 2026-09-18 完了。`M_Speedlines` の Opacity ← `T_Speedlines` の A（04 記録、測った値は `observations/README.md` の「A を不透明度にした後」）
 - [x] 2. タブレットのアイコン … 2026-09-18 完了。枠と「Z」を背景のキャンバスの角から数えた（03 記録の「枠のアイコンの位置」）
-- [ ] 3. 敵ワサミの大きさ ← 作業中（C++ は書いた）: `AWasamiEnemy` のメッシュに一様の拡縮 `MeshScale` = 229.0514 / 168.53（頭頂の骨どうし）、再生の速さの分母（歩幅の速さ）も × `MeshScale`、テストの期待値
-  - 変更予定: `Source/wasami_deception/WasamiEnemy.h/.cpp`、`WasamiEnemyAnimInstance.cpp`（`.h` のコメント）、`Tests/WasamiEnemyTests.cpp`、実装記録 07
-- 2 と 3 は C++ なので書き終えてから `python Tools/editor_cycle.py` を 1 回走らせ、テスト `Wasami.Enemy`・`Wasami.Tablet`（あれば）を通し、PIE で確かめて、それぞれコミットする。
-- 最後に note の原稿と記事（`.claude/guides/note-progress.md`）を見直す。
+- [x] 3. 敵ワサミの大きさ … 2026-09-18 完了。メッシュを 1.3591 倍・歩幅の速さも同じ倍率（07 記録、PIE の値は `observations/README.md` の「大きさ」）
+- [ ] 4. note の GIF と記事 ← 作業中: 見た目が変わった 02（タブレット）・03（Speed Boost）・05（Telepathy）・06（Primal Fear）を撮り直し（`.claude/guides/note-progress.md` の「GIF」）、原稿と記事を書き換える
 
 ## 次にやること
 
-ステップ 2 と 3 の C++ を書く（`WasamiTabletWidget.cpp` の `PowersX/Y` と「Z」、`AWasamiEnemy::MeshScale` と歩幅の速さ、テスト）→ `python Tools/editor_cycle.py` → テスト → PIE で確かめる。
+ステップ 4: `.claude/guides/note-progress.md` の「GIF」の撮り方で 02・03・05・06 を撮り直して `observations/ours/note/gif/` を置き換え、原稿 `docs/note/progress.md` の該当の説明を見直し、記事を書き換える。終わったらこの記録を消してコミットし、push する。
 
 ## 決定事項
 
-- 2026-09-18: ブーストの横線は本番でも出る — `T_Speedlines` の画面いっぱいの横線の画素は RGB が白で A が 0（見せる楔は A > 0）。原作のコンパイル済みシェーダー（`python Tools/dd/cooked_shaders.py "UI/Main/Powers/M_Speedlines." --show 4`）は `mov_sat r0.w, r0.w` で A を不透明度にしている（コマ送り 2 × 5・3 周/秒は本作と一致）。本家の実機の連写 `orig-speedlines-burst2/f064.png`（コマ 0）には楔だけが出て横線は 1 本も無い。本作は Opacity が未接続（1）なので横線が出ていた。
-- 2026-09-18: タブレットのアイコンは原作より約 12 texel 低い — 原作 `UMG_Tablet`（pak_reference_2）では背景のキャンバス `CanvasPanel_1` が中心から (−355, −420)、`UMG_TabletPowers` が (−356.9609, −428.5405)（その中の `CanvasPanel_2` は自分の中心から (−355, −420)）なので、背景から見た枠の原点は (0.0390625, 3.45947265625)。本作は画面の角を中心 − (357, 432) と取って (2.039, 15.459) にしていた。実測も合う（アイコンの中心が円の中心より、原作の実機は約 8 texel 下、本作は約 20 texel 下）。「Z」（`TextBlock_107`、中心から (−304, 312)）も同じ取り違えで (2, 12) ずれている。
-- 2026-09-18: 敵ワサミの身長は頭頂の骨どうしで合わせる — 本家のナース `nurse_idle1` の `Nurse_TopOfHead_AuxSHJnt` は 229.0514 cm（その上の帽子を含むメッシュの頂は 246.35 cm）、ワサミの `head_end` は 168.53 cm（髪を含むメッシュの頂 170.0 cm）。身長は帽子を含まないので 229.0514 / 168.53 = 1.3591。部品の拡縮で掛ける（取り込みは変えない）。足はメッシュの原点（床）にあるので位置は変わらない。
+- 2026-09-18: 3 件とも本番でも出る本作の誤りと判断して直した（理由と値は 04・03・07 記録とコミットのメッセージ）。
 
 ## 要確認（ユーザー）
 
@@ -46,11 +42,10 @@ updated: 2026-09-18 12:55
 
 ## 再開時の注意
 
-- 2026-09-18 12:55: ステップ 2・3 の C++ を書き終え、`python Tools/editor_cycle.py`（エディタを閉じてビルドし開き直す）を走らせる。確かめ方: 出力の最後にビルドの成功とエディタの応答、`python Tools/pie.py state` が `L_Hospital_Zone1` を返すこと。失敗したらログを読んで直す（変更は未コミットのまま）。
-- ビルドの後: テスト `Wasami.Enemy` を走らせ、PIE でタブレット（左右の枠のアイコンが円の中心に来るか）と敵（`observations/tools/note_gif.py` の `stand` で立たせ、`head_end` の高さが約 229 cm か）を確かめる。
+- エディタは開いたまま（`L_Hospital_Zone1`、PIE なし、未保存なし）。デスクトップのエージェント（`Tools/desktop.py`）は動いたまま。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（7 件）
+- C++ ビルド: 成功（`Tools/editor_cycle.py`）。Automation `Wasami.` 29 件すべて成功
+- PIE: タブレットのアイコンの縦のずれ +0.105 r（実機 +0.089 r）、敵の `head_end` 228.87 cm（ナース 229.05）

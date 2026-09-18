@@ -11,6 +11,12 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogWasamiEnemyAnim, Log, All);
 
+namespace
+{
+	// The clips' strides grow with the size the enemy draws its mesh at.
+	constexpr float StrideScale = static_cast<float>(AWasamiEnemy::MeshScale);
+}
+
 namespace WasamiEnemyAnim
 {
 	const TCHAR* const ClipNames[WasamiEnemyClip::Num] = {
@@ -233,15 +239,15 @@ void FWasamiEnemyAnimState::Update(const FWasamiEnemyAnimInputs& Inputs, float D
 		Nightmare.Update(Inputs.bNightmare, NightmareBlendTime, DeltaSeconds);
 		if (1.f - Running.Weight > ZERO_ANIMWEIGHT_THRESH)
 		{
-			AdvanceClip(WasamiEnemyClip::Walk, FMath::Clamp(Inputs.Speed / WalkStrideSpeed, WalkRateMin, WalkRateMax), DeltaSeconds);
+			AdvanceClip(WasamiEnemyClip::Walk, FMath::Clamp(Inputs.Speed / (WalkStrideSpeed * StrideScale), WalkRateMin, WalkRateMax), DeltaSeconds);
 		}
 		if (Running.Weight > ZERO_ANIMWEIGHT_THRESH && 1.f - Nightmare.Weight > ZERO_ANIMWEIGHT_THRESH)
 		{
-			AdvanceClip(WasamiEnemyClip::Run, FMath::Clamp(Inputs.Speed / RunStrideSpeed, RunRateMin, RunRateMax), DeltaSeconds);
+			AdvanceClip(WasamiEnemyClip::Run, FMath::Clamp(Inputs.Speed / (RunStrideSpeed * StrideScale), RunRateMin, RunRateMax), DeltaSeconds);
 		}
 		if (Running.Weight > ZERO_ANIMWEIGHT_THRESH && Nightmare.Weight > ZERO_ANIMWEIGHT_THRESH)
 		{
-			AdvanceClip(WasamiEnemyClip::RunNightmare, FMath::Clamp(Inputs.Speed / NightmareStrideSpeed, RunRateMin, RunRateMax), DeltaSeconds);
+			AdvanceClip(WasamiEnemyClip::RunNightmare, FMath::Clamp(Inputs.Speed / (NightmareStrideSpeed * StrideScale), RunRateMin, RunRateMax), DeltaSeconds);
 		}
 	}
 }
