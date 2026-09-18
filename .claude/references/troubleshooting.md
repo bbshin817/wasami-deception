@@ -408,7 +408,35 @@
 - 対処: 粒を 1 つずつ拾う（`observations/tools/burst_blobs.py`。閃光の前のフレームを引き、高域を取って局所の背景 +30 で閾値、連結成分の面積・慣性主軸・白飛びを測る）。**短軸/長軸 > 0.2 だけ**を数える（細長い塊は部屋の稜線）。
 - 出典: `observations/README.md` の「終わりの破片は星屑で、本家のは四芒星だった」（項目 23 のステップ 5d1）。
 
+### 推定の材質を組んだら粒子が丸ごと消えた（`RadialGradientExponential` は中心でも 0.632）
+
+- 症状: 粒子の材質の不透明度を `pow(なにか × RadialGradientExponential, starDensity)` の形に組んだら、スプライトが 1 つも写らなくなった（2026-09-18 のステップ 5d2）。
+- 原因: `RadialGradientExponential`（半径 0.5・密度 1）の**最大値は中心の 0.632**（1 − 1/e）で 1 ではない。冪の指数が 35〜68 なので 0.632^50 ≈ 1e-10 になり、掛ける `flashPower`（3〜10）では戻らない。
+- 対処: このマスクは**冪の外**で使う。冪の中で形を作りたいなら中心がちょうど 1 の `DiamondGradient` を使う。ついでに、**`starDensity` 乗の内側に入れた因子が形を独り占めする**（冪が残すのはスプライトの数百分の一で、その中では他の因子は 1 と変わらない）ので、テクスチャの線で形を作りたいならサンプルの側を冪にする。
+- 出典: `observations/README.md` の「星屑を四芒星にした」（項目 23 のステップ 5d2）。
+
+### `DrawMaterialToRenderTarget` が真っ白な絵しか描かない
+
+- 症状: `unreal.RenderingLibrary.draw_material_to_render_target` で材質の形を見ようとしたら、どの材質でも全面が白（または既定の灰）になる（2026-09-18 のステップ 5d2）。
+- 原因: この関数は材質を**キャンバスの材質**として描くので、ドメインが Surface のままだと使われない。UE 5.8 の Python には `bUsedWithUI` に当たるプロパティが無い（`used_with_ui` も `b_used_with_ui` も見つからない）。
+- 対処: 描く前に `mat.set_editor_property("material_domain", unreal.MaterialDomain.MD_UI)` してから `recompile_material`。読み取りのときは、**RTF_RGBA8 のレンダーターゲットが持つのは線形の値**（PNG の 255 = 1.0）なので sRGB として読まない。道具は `observations/tools/material_probe.py`。
+- 出典: 同上。
+
+### 材質を作り直した直後に PIE を撮ると、シェーダーの準備中の絵が撮れる
+
+- 症状: 材質を組み直してすぐ `telekinesis_burst.sh` を回したら、ビューポートの左上に「N 個のシェーダーを準備しています」が写り、粒子の見え方も当てにならなかった（2026-09-18 のステップ 5d2）。
+- 原因: 材質を保存してもシェーダーの compile は非同期で、UE 5.8 の Python にはその残りを数える API が無い（`ShaderCompilingManager` は出ていない）。
+- 対処: 撮る前に `python Tools/desktop.py shot --region 1826 205 2400 320` でビューポートの左上だけ撮って、文字が出ていないことを確かめる。
+- 出典: 同上。
+
 ## 画面の操作・本家の実機
+
+### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている
+
+- 症状: `telekinesis_burst.sh` が何も印字せずに終わる。`set -e` が最初の `desktop.py click` の失敗で止めている（2026-09-18 のステップ 5d2）。
+- 原因: 対話デスクトップの代理人が動いていない（セッションをまたぐと落ちている）。`python Tools/desktop.py start` で上げ直す。
+- 対処: そのうえで `ping` の `rect` を見る。`[-8, -8, 3448, 1400]` なら**最大化されていて収録の枠はビューポートではない**ので、`python Tools/desktop.py click 2680 12 --count 2` で元に戻す（クリックを 2 回に分けると間が空いてダブルクリックにならない）。`observations/tools/check_viewport.py` が `[1819, 68, 3279, 1269]` を確かめる。
+- 出典: `observations/README.md` の「星屑を四芒星にした」（項目 23 のステップ 5d2）。
 
 ### PIE にキーを送っても届かない
 

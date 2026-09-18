@@ -689,29 +689,37 @@ def _build_star_dust(mat, d):
     """M_ky_starDust (the force field's star dust: MI_ky_starDust_sq), estimated. The cook kept its settings
     (translucent, unlit, responsive AA, for sprites and mesh particles), its emissive colour (the particle colour's
     RGB), a static switch useDistanceSize as the world position offset (B a constant), the parameters threshold,
-    starPower (no default: 0), maskRadius, maskDensity and fadeValue, a DynamicParameter (flashTime, flashPower,
-    starDensity; defaults 0), the functions DiamondGradient, RadialGradientExponential and Blend_Screen, two samples of
-    T_ky_dust_longStar (sRGB; one at TexCoord 0, one at a Rotator) and the static switch swSQdust (on by default; A
-    (on) a Multiply_28, B (off) a Multiply_9), of 40 expressions. T_ky_dust_longStar is 1 along its middle row and
-    falls to 0.37 at its top and bottom, so a high power of it is a thin line. The instance (_sq) turns swSQdust off,
-    and the latest version's recording (observations/README.md, step 11b4) shows its dust as small squares, flat
-    inside with a soft edge about as wide, a tenth of the sprite across: so the off side, whose Multiply's number is
-    older than the star's expressions, is the square. DiamondGradient is the product of two tents, (1 − |2u − 1|) ×
-    (1 − |2v − 1|), to the power of its Falloff; near its centre that is a diamond, and a power of starDensity (35 –
-    68 from the particle system) × flashPower (3 – 10) leaves ln(flashPower) / starDensity of it opaque and fades over
-    about as much again. The estimate:
-      off  DiamondGradient(Falloff = starDensity) × flashPower
-      on   a four-pointed star: each sample's R to the power starDensity, the second at the TexCoord turned by a
-           Rotator over Time × flashTime (the two lines turn against each other, and the star twinkles), screened
-           together, × RadialGradientExponential(maskRadius, maskDensity) (the arms fade out) × flashPower
-    The opacity is saturate(the switch) × the particle's alpha, faded over fadeValue. useDistanceSize's on side
+    starPower (no default: 0), maskRadius (0.5), maskDensity (1) and fadeValue, a DynamicParameter (flashTime,
+    flashPower, starDensity; defaults 0), the functions DiamondGradient, RadialGradientExponential and Blend_Screen,
+    two samples of T_ky_dust_longStar (sRGB; one at TexCoord 0, one at a Rotator) and the static switch swSQdust (on
+    by default; A (on) a Multiply_28, B (off) a Multiply_9), of 40 expressions. T_ky_dust_longStar is 512 square, 1
+    along its middle row and falling to 0.365 (0.11 once the sRGB is undone) at its top and bottom, the same for every
+    column: a vertical ramp, not a star. Each sample's R to the power starDensity (35 - 68 from the particle system)
+    is therefore one thin line the whole width of the sprite, opaque over about a hundredth of it; the two screened
+    together (the second at the TexCoord turned by a Rotator over Time x flashTime, so the star twinkles) are a cross.
+    What the force field draws is the off side, a small four-pointed star with a white-hot core and tapering,
+    concave-edged arms about 30 - 100 of the original's pixels across (observations/README.md, steps 5d1 and 5d2), so
+    the cross has to be cut down to about a twentieth of the sprite. DiamondGradient(Falloff = starDensity) does it:
+    it is 1 at the middle and falls like exp(-2 x starDensity x (|du| + |dv|)), which leaves the arms
+    ln(10 x flashPower) / (2 x starDensity) long against half of that between them, and the arm's own width is set by
+    the sample. The estimate:
+      off  Blend_Screen(each sample's R to the power starDensity) x DiamondGradient(Falloff = starDensity)
+           x RadialGradientExponential(maskRadius, maskDensity) x flashPower
+      on   DiamondGradient x flashPower, the same gradient on its own: a diamond, which a particle's random roll
+           shows as a square (the switch's name), opaque over ln(flashPower) / starDensity of the sprite
+    The opacity is saturate(the switch) x the particle's alpha, faded over fadeValue. useDistanceSize's on side
     (threshold) and starPower are not made, and the world position offset is left unconnected.
-    TODO(wrong): the two sides are the wrong way round. The lossless burst shows the force field's dust (this
-    instance, swSQdust off) as a small four-pointed star with a white-hot core and tapering arms, not as a diamond
-    (observations/README.md, step 5d1: ours is a flat cyan diamond of twice the radius and never clips). Step 11b4
-    read a square off an h264 frame, where the star blurs into one. The off side has to be the star, and its arms
-    have to end within about a twentieth of the sprite - which the star built here does not do (before 11b4 it drew
-    a cross across the screen), so the switch cannot just be swapped. Step 5d2."""
+    TODO(guess): which side is which is read off the burst, not off the cook, whose only clue - the off side's
+    Multiply is older than the star's other expressions - says the opposite. Step 11b4 read a square off an h264
+    frame, where the star blurs into one; 5d1 read the star off the lossless one. What cuts the arms is a guess as
+    well, but a narrow one: RadialGradientExponential is only 0.632 at its middle (0.5 radius, density 1), so it
+    cannot go inside a power - raising it to starDensity leaves nothing at all - and outside one it fades over half
+    the sprite, which leaves a cross that crosses the screen. DiamondGradient is 1 at its middle and is the only kept
+    expression that ends the arms where the burst has them (step 5d2).
+    TODO(wrong): the original's core is blown out white and ours is a plain cyan, which no side of this switch can
+    fix: the emissive is the particle colour (0, 0.3225, 1) and UE 5 saturates the opacity (MaterialTemplate.ush,
+    GetMaterialOpacity), so nothing here can be brighter than that colour. The dust's ParticleModuleColor sets
+    StartAlpha 2, which is where the original's extra punch has to come from. Step 5d3."""
     dd_assets.particle_material(mat, responsive_aa=True)
     g = dd_stage._Graph(mat, checked=True)
     particle = g.node(unreal.MaterialExpressionParticleColor, -400, 400)
@@ -730,16 +738,17 @@ def _build_star_dust(mat, d):
     dd_assets.connect(line_a, "", screen, "Base")
     dd_assets.connect(line_b, "", screen, "Blend")
     cross = dd_assets.channel(g, screen, "Result", "R", -750, -100)
-    arms = dd_assets.radial_gradient(g, g.scalar("maskRadius", d["maskRadius"], -950, 150),
-                                     g.scalar("maskDensity", d["maskDensity"], -950, 250), -750, 150)
-    shaped = g.multiply(cross, "", arms, "RadialGradientExponential", -550, 0)
-    glint = g.multiply(shaped, "", dynamic, "flashPower", -400, 50)
     diamond = dd_assets.function_call(g, "Gradient/DiamondGradient", -750, -350)
     dd_assets.connect(dynamic, "starDensity", diamond, "Falloff")
-    square = g.multiply(diamond, "DiamondGradient", dynamic, "flashPower", -400, -300)
-    dust = g.switch("swSQdust", glint, "", square, "", -250, -100)
+    cut = g.multiply(cross, "", diamond, "DiamondGradient", -550, -200)
+    mask = dd_assets.radial_gradient(g, g.scalar("maskRadius", d["maskRadius"], -750, 100),
+                                     g.scalar("maskDensity", d["maskDensity"], -750, 200), -550, 100)
+    glint = g.multiply(g.multiply(cut, "", mask, "RadialGradientExponential", -400, -100), "",
+                       dynamic, "flashPower", -250, -50)
+    square = g.multiply(diamond, "DiamondGradient", dynamic, "flashPower", -400, -350)
+    dust = g.switch("swSQdust", square, "", glint, "", -150, -200)
     dust.set_editor_property("default_value", True)
-    clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, dust, "", -100, -100)
+    clamped = dd_assets.single(g, unreal.MaterialExpressionSaturate, dust, "", -50, -200)
     faded = g.multiply(clamped, "", particle, "A", 50, 0)
     dd_assets.depth_faded_opacity(g, faded, g.scalar("fadeValue", d["fadeValue"], 50, 150), 250, 50)
 

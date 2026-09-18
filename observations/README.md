@@ -314,6 +314,30 @@
 
 **画面全体の明るさは合っている**（本家と本作の平均輝度が τ0.0〜1.4 で 199/190・213/203・133/106・138/145・101/119・79/71・70/69・58/63）ので、**演出の時刻と灯はずれていない**。違うのは破片の形と芯の強さだけ。
 
+### 星屑を四芒星にした（2026-09-18、作業一覧の項目 23 のステップ 5d2）
+
+5d1 で分かった「本家の星屑は四芒星、本作は平らなひし形」を材質で直した。**収録を撮らずに材質の形を見る道具**（`tools/material_probe.py`）を作ったのが要で、これで推定の候補を数秒ずつ試せた。
+
+**材質の形は PIE を撮らずに見られる**（`material_probe.py`）。候補ごとに `/Game/Pipeline/Debug` の材質を建て、粒子系が入れる `flashTime`・`flashPower`・`starDensity` を定数に置き換え、不透明度を Emissive につないで 512 角のレンダーターゲットへ描く。落とし穴が 2 つ: **ドメインを UI にしないと `DrawMaterialToRenderTarget` は材質を使わず真っ白になる**（黙って間違った絵が出る）。**RTF_RGBA8 のレンダーターゲットは線形の値を持つ**ので、PNG の 255 が 1.0、テクスチャの端の 0.365 は 28 と読める（93 ではない）。
+
+**分かったこと**:
+
+1. **`RadialGradientExponential`（半径 0.5・密度 1）は中心でも 0.632 しかない**（1 − 1/e）。`starDensity`（35〜68）乗の内側に置くと 0.632^50 ≈ 1e-10 で**スプライトが丸ごと消える**。実際、そう組んだ材質で撮った収録（`pie-dust-star025`）は τ0.7 以降に粒が 1 つも写らなかった。
+2. **`starDensity` 乗の内側に入れたものが形を独り占めする**。冪が残すのはスプライトの数百分の一なので、その中では他の因子は 1 と変わらない。`screen × RadialGradientExponential` を冪に入れると丸い粒、`screen × DiamondGradient(Falloff = 1)` を入れるとひし形そのもので、どちらも**テクスチャの線が形に効かない**（プローブでひし形と数値が一致した）。
+3. **冪の外に置くと腕が長すぎる**。`Blend_Screen(線, 線) × RadialGradientExponential × flashPower` は、マスクが `1/flashPower` まで落ちるのが中心から UV で 0.17〜0.33 のところなので、腕は本家の px で 130〜500 になる（11b4 の前に「画面を横切る十字」が出ていたのはこれ）。本家の塊は τ0.9〜1.1 で**長軸 30〜100 本家 px**（細長いものは部屋の稜線と残像）なので、まったく合わない。
+4. **腕を切れるのは `DiamondGradient` だけ**。中心がちょうど 1 なので冪の外でも中を削らず、exp(−2 × `starDensity` × (|du| + |dv|)) で落ちるから、腕は `ln(10 × flashPower) / (2 × starDensity)`（`flashPower` 7・`starDensity` 50 で UV 0.043 = 34〜64 本家 px）で終わり、腕の間はその半分で終わる。腕の太さはサンプルが決める（同じ条件で UV 0.029）ので**縦横比は 1.5 ほど**の、辺の凹んだ四芒星になる。
+5. **直した後の収録**（`pie-dust-star2-025`、`dustSq` だけ、閃光 f026 t=1.470）: τ0.7 で面積 1367・長軸 44.1、τ1.0 で面積 697・長軸 36.7 本家 px。**前のひし形は τ1.0 で面積 1755・長軸 61.5** だったので、本家の 33〜74 の側へ寄った。絵は先の尖った小さな粒（本作のビューポートは 1152 px 幅なので、腕は 3〜4 px にしかならず四芒星には見えない）。
+6. **芯の白飛びは材質では直せない**。Emissive は粒子の色 (0, 0.3225, 1) で、UE 5 は Opacity を saturate する（`MaterialTemplate.ush` の `GetMaterialOpacity`）ので、translucent の合成では**この色より明るくなりようがない**。`dustSq` の `ParticleModuleColor` は `StartAlpha` 2 なので、本家の余分な強さはそこから来ているはず（UE 4.21 が Opacity を saturate していなければ、2 × (0, 0.3225, 1) は青が 1 を超えてトーンマッパーで白くなる）。ステップ 5d3 に回した。
+
+**cook の手がかりと食い違う点**: `swSQdust` の偽の側は `Multiply_9`、真の側は `Multiply_28` で、番号の古い偽の側は星の式（`Blend_Screen` = `MaterialFunctionCall_22`、`maskRadius`/`maskDensity` = `ScalarParameter_20`/`_21`）より先に作られている。それでも**偽の側を四芒星にした**のは、力場が使うのが偽の側（`MI_ky_starDust_sq` が `swSQdust` を偽にする）で、無劣化の連写にはそこに四芒星しか写っていないから。`Expressions` の 40 個のうち残るのは 13 個で、並びの番号（`DiamondGradient` = `MaterialFunctionCall_0`、`RadialGradientExponential` = `_1`）も新旧をはっきりさせない。
+
+**本作の収録**（どちらも `telekinesis_burst.sh`、200 枚、`dustSq` だけ）:
+
+| フォルダー | 材質 | 閃光 | 結果 |
+| --- | --- | --- | --- |
+| `pie-dust-star025` | `pow(screen × radial, starDensity) × flashPower` | f025 t=1.431 | **粒が写らない**（マスクが 0.632 なので消える）。シェーダーの準備中の文字がビューポートに出ているコマもある |
+| `pie-dust-star2-025` | `screen × DiamondGradient × radial × flashPower` | f026 t=1.470 | 先の尖った小さな粒。τ1.0 で長軸 36.7 本家 px |
+
 ### 視点の速さと集中線（2026-09-17、作業一覧の項目 2 のステップ 2、MOD 入り）
 
 OPTIONS の GAMEPLAY（`orig-options-gameplay.png`）: MOUSE SENSITIVITY **1**、MOUSE SMOOTHING **オン**、HEADBOBBING オン、INVERT Y オフ（見ただけ。設定のファイルとセーブには感度の値が無い = 既定）。
@@ -784,6 +808,7 @@ Zone 1 の −Y へ延びる廊下で、プレイヤーをシャードの 4.4 m 
 | `tools/burst_flow.py` | `python observations/tools/burst_flow.py width / decay / flow <連写のフォルダー> --t0 A [--t1 B] [...]`。連写の模様の**太さ**（自己相関が 0.5 を切るずれ）・**崩れる速さ**（最良のずれで補正した相関の落ち方）・**流れ**（最も合うずれ）を測る。`times.json` を読むので間隔が一定でなくてよい。`--high N` で高域だけ、`--ds N` で縮めて速く（印字の px は N 倍して読む）。項目 23 のステップ 5a |
 | `tools/burst_bands.py` | `python observations/tools/burst_bands.py bands / tone / crop / broad / full <窓> [出力] [τ …]`。**本家と本作の同じ窓**を並べて測る（水平の画角と上下の中心が同じなので、本家の px の窓を (x − 1720) / 2.97 + 576 で本作に写す）。帯ごとのエネルギー（333〜667 … 8〜20 本家 px）・太さ・`room`（100〜700 px の帯と**閃光の前**の同じ窓との相関 = どれだけ部屋を測っているか）、チャンネルごとの平均と白飛びの割合、窓の絵、100〜700 px の帯だけの絵、全画面の並び。窓は `centre`・`far-doors`・`left-wall`・`right-wall`・`ceiling`。項目 23 のステップ 5c2b |
 | `tools/burst_blobs.py` | `python observations/tools/burst_blobs.py blobs [窓] [τ …]` / `map <out.png> [窓] [τ …]`。連写の**明るい塊を 1 つずつ**拾って測る（閃光の前のフレームを引き、40 本家 px の高域を取って局所の背景 +30 で閾値、8 近傍で連結。面積・慣性主軸・白飛びの割合・位置を本家の px で印字）。破片が出る頃には窓の大半が部屋に戻っていて `burst_bands.py` では見えないので、そのための道具。`map` は拾った画素を重ねた絵。項目 23 のステップ 5d1 |
+| `tools/material_probe.py` | `python Tools/ue_remote.py observations/tools/material_probe.py`。候補の材質を `/Game/Pipeline/Debug` に建て、動的パラメータを定数に置き換え、不透明度を Emissive につないで 512 角のレンダーターゲットへ描く（**ドメインを UI にしないと真っ白**。RTF_RGBA8 は**線形**の値）。PIE を撮らずに形を比べられるので、推定の候補を数秒ずつ試せる。`build()` に枝を足して使う。項目 23 のステップ 5d2 |
 | `tools/forcefield_solo.py` | `python Tools/ue_remote.py -c "$(cat observations/tools/forcefield_solo.py; echo; echo "main('aura')")"`。`/Game/Wasami/Powers/P_WasamiForceField` のエミッタを名前で 1 つだけ残す（`main('all')` で戻す）。切るのは `DetailModeBitmask` を 0 にする方法で、**LOD の `bEnabled` は読み込みで真に戻されるので効かない**。項目 23 のステップ 5d1 |
 | `tools/forcefield_stats.sh` | `[SCALE=N] sh observations/tools/forcefield_stats.sh <連写> <slomo> <閃光の時刻> [L T R B]`。力場の 3 つの窓（V 幕・F 薄れる幕・A オーラの筋）を閃光からのゲーム時間で揃えて、上の 3 つを同じ値で測る。本家と本作を同じ手つきで比べるための台本。`SCALE` は収録の小ささ（本作のビューポートは本家の 1 / 2.97）で、px の指定を「値 × ds」の形で割り直す。項目 23 のステップ 5a・5b |
 | `tools/cmp.py` | `python observations/tools/cmp.py <画像> <画像> …`（3440x1440）。画面全体・床・壁・天井・天井灯の面・エレベーターの壁・廊下の奥の中央値と平均輝度を並べる |

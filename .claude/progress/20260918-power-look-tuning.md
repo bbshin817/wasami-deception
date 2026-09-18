@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 559d87e
 started: 2026-09-18 03:55
-updated: 2026-09-18 12:10
+updated: 2026-09-18 09:45
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -34,22 +34,20 @@ updated: 2026-09-18 12:10
   - [x] 5c2a. **V の窓の流れは対象外**（球の幾何と発動ごとの乱数で決まる）。
   - [x] 5c2b. **幕の広い模様の差は背景だった** … 2026-09-18。窓に写っているのは白飛びした廊下で、`room`（部屋をどれだけ測っているか）は奥の扉の窓で本家 0.81・本作 0.16〜0.38。**材質は変えていない**。値と表は `observations/README.md` の「幕の広い模様は背景だった」、道具は `tools/burst_bands.py`。
   - [x] 5d1. **破片は星屑（`dustSq`）で、本家のそれは四芒星**だと分かった … 2026-09-18。道具 `burst_blobs.py`（明るい塊を 1 つずつ拾う）と `forcefield_solo.py`（エミッタを 1 つだけにする）を作り、本作のエミッタ別の収録 4 件（`pie-solo-{aura,ground,sphere,dust}025`）で確かめた。**値もアセットも変えていない**。`observations/README.md` の「終わりの破片は星屑で、本家のは四芒星だった」。
-  - [ ] 5d2. `_build_star_dust` の `swSQdust` の真偽を入れ替え、四芒星の腕を本家の長さに収める
+  - [x] 5d2. **星屑を四芒星にした** … 2026-09-18。`swSQdust` の真偽を入れ替え、偽の側を「2 本の線（サンプルの R の `starDensity` 乗）を `Blend_Screen` → `DiamondGradient`（`Falloff` = `starDensity`）で腕を切る → `RadialGradientExponential` → `flashPower`」にした。`RadialGradientExponential` は中心でも 0.632 なので冪の内側に置けない。道具 `material_probe.py`（収録せずに材質の形を見る）。収録 `pie-dust-star2-025`。`observations/README.md` の「星屑を四芒星にした」。
 - [ ] 6. Telepathy の印を収録に合わせて詰める（`TELEPATHY_PAN_*`、縁のこぶ）
 - [ ] 7. 仕上げ（実装記録 04 の「既知の制約・注意点」と変更履歴、`observations/README.md`、`.claude/roadmap.md` の項目 23、`handover.md`、note の原稿）
 
 ## 次にやること
 
-ステップ 5d2（**星屑の形**）。5d1 で目標がはっきりした。
+ステップ **5d3**（**芯の白飛び**）。5d2 で形は合ったが、芯の色が本家 (250, 255, 255) に対し本作 (1, 173, 223) のまま。
 
-- **本家**（`orig-tk-a025/f114`、τ1.1 の 1 粒）: 四芒星。芯は (250, 255, 255) で白飛び、腕は細って辺が凹む。明るさが半分になる半径 **9 本家 px**、1/10 が **21 本家 px**。
-- **本作**（`pie-solo-dust025/f098`、τ1.0 の 1 粒）: 平らなひし形。芯は (1, 173, 223) で飽和せず、半分 **30**・1/10 **48 本家 px**。
+- **材質では直せないと分かっている**。Emissive は粒子の色 (0, 0.3225, 1)、UE 5 は Opacity を saturate する（`MaterialTemplate.ush` の `GetMaterialOpacity`、エンジンのソースで確認）ので、translucent の合成ではこの色より明るくならない。
+- **筋は `dustSq` の `ParticleModuleColor` の `StartAlpha` 2**（cook にそうある。本作の `P_WasamiForceField` も同じか確かめる）。UE 4.21 が Opacity を saturate していなければ 2 × (0, 0.3225, 1) = (0, 0.645, 2) が書かれ、青が 1 を超えてトーンマッパー（AP1 へ移してチャンネルごとに曲げる）で白くなる。**まず UE 4.21 の `MaterialTemplate.ush` に saturate があるかを調べる**（手元に UE4 は無いので、pak やエンジンのソースが無ければ「合わせるための逸脱」としてユーザーに確認する）。
+- 直すなら、材質ではなく**粒子の色か、Emissive に粒子の α を掛ける**形になる。原作のグラフから離れるので、決めたら実装記録 04 の `M_DD_KyStarDust` に理由を書く。
+- 測り方: `tools/material_probe.py`（形は収録なしで見られる）と、収録は `forcefield_solo.py` で `dustSq` だけにしてから `sh observations/tools/telekinesis_burst.sh observations/ours/pie-dust-<版> 200`。終わったら `main('all')` で戻す。塊は `burst_blobs.py`、芯の色は 1 粒を切り出して読む。
 
-1. **偽の側を四芒星にする**。cook が残すのは `swSQdust`（既定 真・A = `Multiply_28`・B = `Multiply_9`）という並びだけで、番号の新旧では決められない。見えているものを根拠に入れ替える（実装記録 04 と `_build_star_dust` の `TODO(wrong)` に理由を書いてある）。
-2. **腕を短くする仕掛けを探す**のが本題。`T_ky_dust_longStar` は **512²・中央の行が 1 で上下の端が 0.365 の縦の勾配だけ**（横は一定）なので、R の `starDensity` 乗は幅 2〜7 % の横帯で長さはスプライト全体。`RadialGradientExponential(maskRadius 0.5, maskDensity 1)` だけでは腕が残る（11b4 の前は画面を横切る十字が出ていた）。候補: 2 つのサンプルの合わせ方（`Blend_Screen` の前後に何か）、`RadialGradientExponential` に渡す UV、作らなかった `starPower`・`threshold`・`useDistanceSize` の側の読み直し。**cook の「式が 40 個」に収まる形**にする。
-3. 作り直す前に `python Tools/pie.py stop`。作り直しは `Tools/ue_remote.py` から `dd_powers.make_telekinesis_materials()`。
-4. 撮るときは **`forcefield_solo.py` で `dustSq` だけにしてから** `sh observations/tools/telekinesis_burst.sh observations/ours/pie-dust-<版> 200`（粒が幕に埋もれない）。終わったら `main('all')` で戻す。測るのは `burst_blobs.py` と 1 粒の半径。
-5. 値を採るのは**同じ値で 2 回撮って**その差より大きい変化だけ。
+そのあとはステップ 6（Telepathy）→ 7（仕上げ）。
 
 ## 決定事項
 
@@ -67,6 +65,9 @@ updated: 2026-09-18 12:10
 - 2026-09-18（5d1）: **エミッタを 1 つだけにするには `DetailModeBitmask` を 0 にする**。LOD の `bEnabled` は系の読み込みで真に戻され、黙って全部入りのまま撮れる。切ったものが本当に消えたか 1 コマ見る。
 - 2026-09-18（5d1）: **まばらな粒は帯の統計では測れない**（`room` が τ0.85 で 0.78〜0.97）。`burst_blobs.py` で 1 つずつ拾い、**短軸/長軸 > 0.2** だけを粒として数える（細長い塊は部屋の稜線）。
 - 2026-09-18（5d1）: **芯の白飛びは「とても明るい青」の意味**。4 つの材質はどれも `BLEND_Translucent`・`MSM_Unlit` で Emissive は粒子の色（`dustSq` は R = 0）だが、UE のトーンマッパーは AP1 に移してからチャンネルごとに曲げるので、十分明るい青は R も 1 を超える。**色の推定を疑う前に明るさを疑う。**
+- 2026-09-18（5d2）: **材質の形は収録せずに見る**（`tools/material_probe.py`）。ドメインを UI にしないと `DrawMaterialToRenderTarget` は真っ白、RTF_RGBA8 は線形の値。症状索引に 2 件。
+- 2026-09-18（5d2）: **`RadialGradientExponential`（0.5・1）は中心でも 0.632**なので `starDensity` 乗の内側に置けない。**`starDensity` 乗の内側に入れた因子が形を独り占めする**（冪が残すのはスプライトの数百分の一）。症状索引に 1 件。
+- 2026-09-18（5d2）: **材質を作り直した直後に PIE を撮らない**（シェーダーの準備中の文字がビューポートに出る。残りを数える API は無いので、撮る前に左上を 1 枚見る）。**`desktop.py` は代理人が落ちていることがある**（`start` → `ping` の `rect` を確かめる。最大化されていたら `click 2680 12 --count 2`）。症状索引に 2 件。
 
 ## 要確認（ユーザー）
 
@@ -78,7 +79,7 @@ updated: 2026-09-18 12:10
 
 - 連写は `observations/original/`・`observations/ours/`、道具は `observations/tools/`（どれも git の外）。使い方は `observations/README.md` の tools の表（5c2b で `burst_bands.py` を足した）。`times.json` は `perf_counter` 秒で**等間隔ではない**。
 - **PIE を動かしたままアセットを作り直すと `unreal.load_asset` が None を返す**（`'NoneType' object has no attribute 'set_editor_property'` で止まる）。`telekinesis_burst.sh` は PIE を動かしたまま終わるので、作り直す前に `python Tools/pie.py stop`。
-- 本作の収録は `pie-solo-{aura,ground,sphere,dust}025`（5d1。閃光は f025 t=1.397 / f026 t=1.476 / f025 t=1.415 / f025 t=1.399）・`pie-wall-{a..e}025`（5c・5c2a）・`pie-wall-noshake{,-b,-c}025`（5c2a）・`pie-tk-{a..e}025`（5b）。5c2b の絵は `ours/veil-5c2b-scene.png`・`veil-5c2b-broad.png`。走り書きは `tmp/tk5d/`（5d1 の絵）・`tmp/tk5b/`・`tmp/tk5c/`・`tmp/tk5c2/`・`tmp/tk5c2b/`（git の外）。
+- 本作の収録は `pie-dust-star2-025`（5d2 の直した後。閃光 f026 t=1.470）・`pie-dust-star025`（5d2 の失敗。粒が写らない）・`pie-solo-{aura,ground,sphere,dust}025`（5d1。閃光は f025 t=1.397 / f026 t=1.476 / f025 t=1.415 / f025 t=1.399）・`pie-wall-{a..e}025`（5c・5c2a）・`pie-wall-noshake{,-b,-c}025`（5c2a）・`pie-tk-{a..e}025`（5b）。5c2b の絵は `ours/veil-5c2b-scene.png`・`veil-5c2b-broad.png`。走り書きは `tmp/tk5d/`（5d1・5d2 の絵と `M_Probe_*.png`）・`tmp/tk5b/`・`tmp/tk5c/`・`tmp/tk5c2/`・`tmp/tk5c2b/`（git の外）。
 - カメラの揺れを切って撮るには、PIE を始める前に `Tools/ue_remote.py` で `unreal.get_default_object(unreal.WasamiTelekinesisPower).set_editor_property('shake_class', None)`。戻すのは `unreal.load_class(None, '/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop.01_Hotel_Lobby_ElevatorShakeStop_C')`（CDO なので保存は要らない）。
 - 背景で走らせた測りの出力を読むときは、パスを**スラッシュ**で書く（`"...\tasks\$f.output"` は `\$` が展開を止めて空になる）。
 - 本家のセーブは、観察の途中で捕まって書き換わっている（控えは `%LOCALAPPDATA%\DDeception\SaveBackups\pre-obs-20260918-044132`。**戻さない・編集しない**）。本家をもう一度起動するときはエディタを先に閉じる（VRAM 6 GB）。手順は `.claude/guides/observation.md`。
@@ -86,4 +87,4 @@ updated: 2026-09-18 12:10
 
 ## 検証
 
-- ステップ 5d1 も**記録と注記だけ**を変え、値とアセットは 5a の終わりと同じ（`forcefield_solo.py` で切ったエミッタは `main('all')` で 15 に戻して保存済み。`check_records.py --update` は OK・7 件）。本家は起動していない。エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。
+- ステップ 5d2 は `dd_powers._build_star_dust` を組み直し、`make_telekinesis_materials()` で 4 つの材質を作り直した（C++ は変えていない）。`dustSq` だけの収録 2 件で確かめ、`forcefield_solo.py` のエミッタは `main('all')` で 15 に戻して保存済み。プローブの材質は `/Game/Pipeline/Debug`（git の外）に保存した。`check_records.py --update` は OK・7 件。本家は起動していない。エディタは `L_Hospital_Zone1`・PIE なし・未保存なし。
