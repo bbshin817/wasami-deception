@@ -15,7 +15,7 @@ updated: 2026-09-18
 
 ## 公開インターフェース
 
-- `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定 `Collect all shards`）はタブレットの帯に出す目的（本家の `BP_DD_GameMode` の `Current Objective`）。ほかにゲームの流れの受け持ち（BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）を持つ。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」。
+- `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定は空 = 本家の `BP_DD_GameMode` の `Current Objective` の既定）はタブレットの帯に出す目的。ゾーンの流れ（11 記録）が区間ごとに入れる。ほかにゲームの流れの受け持ち（BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）と、シャードの `Check Shards`（全回収の通知）、開始時にゾーンの流れ（`AWasamiZoneFlow`、11 記録）を出すことを持つ。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」「シャードの確かめ（`Check Shards`）」。
 - `AWasamiPlayerCharacter : ACharacter`
   - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。2 つの速さを書いて使う方を当てる。スピードブーストが使う）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetPowers()`。
   - 移動の値: `WalkingSpeed` 300、`SprintingSpeed` 600（cm/s）。
@@ -88,6 +88,7 @@ updated: 2026-09-18
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-18: 目的の既定を空にし（本家の既定。ゾーンの流れが入れる）、ゲームモードに `Check Shards` とゾーンの流れの生成を足した。中身は 06・11 記録（作業一覧の項目 6 のステップ 1）
 - 2026-09-18: ゲームモードに本家の Zone のレベル BP の受け持ち（開始の場所・死亡画面・SAVING PROGRESS・黒からの明け・デバッグのコンソールコマンド）を足した。中身は 06 記録（作業一覧の項目 5 のステップ 5）
 - 2026-09-18: ゲームモードにゲームの流れの受け持ち（セーブ・時間・死亡の受け口・チェックポイントの保存・回収済みのシャードの除去）を足した。中身は 06 記録（作業一覧の項目 5 のステップ 3）
 - 2026-09-17: 視点の対応づけから Scalar 0.07 を外した（`AxisConfig` の 0.07 と重なって視点が遅すぎた。ユーザーの指摘、作業一覧の項目 2）

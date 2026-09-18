@@ -565,6 +565,7 @@ updated: 2026-09-18
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-18: `WasamiTelepathyTrackerWidget.cpp` の無名名前空間のキーの型を `FTrackerAnimKey` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiWidgetAnimation::FAnimKey` の `using` とぶつかった。作業一覧の項目 6 のステップ 1）
 - 2026-09-18: `ResetPowers` の呼び元を死亡画面に書き直した（作業一覧の項目 5。09 記録）
 - 2026-09-18: `M_DD_KyShockWave02`（力場の地面の輪）を原作のコンパイル済みシェーダーの式どおりに組み直した（`T_ky_maskRGB3` の R をパン (0.3, 1.0)・B をパン (−0.2, −0.2)、TexCoord × 4。Emissive = 粒子の色 × shape + `coreColor` × 火花、Opacity = shape^`baseDensity` × α。式は cook と同じ 31 個。仮の値 `SHOCKWAVE_PANS` を消した。`dd_powers`。C++ は変えていない。作業一覧の項目 23、ステップ 5g）
 - 2026-09-18: `M_DD_KyAura7`（力場のオーラ）を原作のコンパイル済みシェーダーの式どおりに組み直した（`T_ky_maskRGB5` の G の欠片 × 150 と R のもや、頂点カラーの R を不透明度に掛ける。仮の値 `AURA_LAYERS` を消した。`dd_powers`。`Tools/dd/cooked_shaders.py` は cb3 の並びを印字するようにした〈01 記録〉。C++ は変えていない。作業一覧の項目 23、ステップ 5f）

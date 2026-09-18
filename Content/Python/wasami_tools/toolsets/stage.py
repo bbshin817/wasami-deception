@@ -49,7 +49,7 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     @staticmethod
     def build_dd_stage_level(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
         """Builds one zone's level from the imported assets (meshes, lights, reflection captures, fog, sky light, post
-        process volumes, player starts, the minimap's plane, the soul shards), replacing what an earlier build placed,
+        process volumes, player starts, the minimap's plane, the soul shards, the flow's trigger boxes and volumes), replacing what an earlier build placed,
         and saves it. The level is left open. The meshes are made again, so the level's lighting has to be baked again.
 
         Args:
@@ -78,3 +78,20 @@ class WasamiStageTools(unreal.ToolsetDefinition):
             'removed_shards', 'removed_lights' and 'shards' (placed).
         """
         return _module("dd_level").place_shards(zone, map_path)
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def place_dd_flow(zone: str = "Zone1", map_path: str = "") -> dict[str, int]:
+        """Puts one zone's trigger boxes (WasamiTriggerBox, the original's BP_TriggerBox_Base) and blocking and trigger
+        volumes in again where the original places them, each tagged 'src:<the original's name>' for the zone's flow
+        and fixed to the ambulance or the spikes it moves with, taking out what an earlier call placed, and saves the
+        level. Nothing else changes, and the baked lighting stays valid (none of them is drawn).
+
+        Args:
+            zone: 'Zone1' (6 trigger boxes, 9 volumes) or 'Zone2' (8 trigger boxes, 10 volumes).
+            map_path: Package path of the level; the zone's own is used when this is empty.
+
+        Returns:
+            'removed', 'triggers', 'volumes', 'attached' and 'failed_settings' (listed in the output log).
+        """
+        return _module("dd_level").place_flow(zone, map_path)

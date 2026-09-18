@@ -493,6 +493,26 @@ def teleport_zones(ex, prefix, full, actor_class, meshes, materials, problems):
     return out
 
 
+def brush_volume(by_path, component_path, problems):
+    """A volume's brush (BlockingVolume, TriggerVolume): the box of its one convex element and the brush component's
+    collision and Mobility as the level writes them (left-out ones are the volume class's own)."""
+    comp = (by_path.get(component_path) or {}).get("props") or {}
+    body = ((by_path.get(comp.get("BrushBodySetup") or "") or {}).get("props") or {}).get("AggGeom") or {}
+    elems = body.get("ConvexElems") or []
+    if len(elems) != 1:
+        problems.append("%s: %d convex elements in the brush" % (component_path, len(elems)))
+    out = {"brushBox": elems[0]["ElemBox"][:6] if elems else None}
+    instance = comp.get("BodyInstance") or {}
+    collision = {k: instance[k] for k in ("CollisionProfileName", "CollisionEnabled", "ObjectType") if k in instance}
+    responses = (instance.get("CollisionResponses") or {}).get("ResponseArray")
+    if responses:
+        collision["responses"] = {r["Channel"]: r["Response"] for r in responses}
+    out["brushCollision"] = collision
+    if comp.get("Mobility"):
+        out["brushMobility"] = comp["Mobility"]
+    return out
+
+
 def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     scene = jload("_levels/%s.scene.json" % map_name)
     full = jload("_levels/%s.full.json" % map_name)
@@ -615,9 +635,16 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
     for name, cls in sorted(actor_class.items()):
         if cls in SKIP_ACTOR_CLASSES or cls is None:
             continue
-        props = {k: v for k, v in ((by_path.get(prefix + name) or {}).get("props") or {}).items()
+        own = (by_path.get(prefix + name) or {}).get("props") or {}
+        props = {k: v for k, v in own.items()
                  if not isinstance(v, (list, dict)) and not str(v).startswith(map_name + ".")}
-        actors.append({"name": name, "class": cls, "world": actor_world.get(name), "props": props})
+        entry = {"name": name, "class": cls, "world": actor_world.get(name), "props": props}
+        root = (by_path.get(own.get("RootComponent") or "") or {}).get("props") or {}
+        if root.get("AttachParent"):
+            entry["attachParent"] = actor_of(root["AttachParent"])   # moves with it (the ambulances, the spikes)
+        if own.get("BrushComponent"):
+            entry.update(brush_volume(by_path, own["BrushComponent"], problems))
+        actors.append(entry)
 
     return {
         "map": map_name, "level": level_path, "placements": placements, "lights": lights, "captures": captures,

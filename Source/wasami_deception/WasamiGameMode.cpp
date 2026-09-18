@@ -13,11 +13,16 @@
 #include "WasamiSaveGame.h"
 #include "WasamiSavingWidget.h"
 #include "WasamiShard.h"
+#include "WasamiTriggerBox.h"
+#include "WasamiZoneFlow.h"
 
 namespace
 {
 	// ReceiveBeginPlay's Delay before the collected shards are taken out (@34280 → @4551).
 	constexpr float ShardRemovalDelay = 0.2f;
+
+	// Check Shards' Delay before it counts (@34510).
+	constexpr float CheckShardsDelay = 0.05f;
 
 	// Zone 1's first checkpoint, the lift's arrival (the entrance's 03_ElevatorEnter saves it).
 	constexpr int32 Zone1Arrival = 4;
@@ -32,7 +37,7 @@ namespace
 		return Count;
 	}
 
-	AWasamiGameMode* GameModeOf(UWorld* World)
+	AWasamiGameMode* WasamiModeOf(UWorld* World)
 	{
 		return World ? World->GetAuthGameMode<AWasamiGameMode>() : nullptr;
 	}
@@ -43,7 +48,7 @@ namespace
 		TEXT("Kills the player: the game mode's DeathEvent with the player as the cause."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			if (AWasamiGameMode* Mode = GameModeOf(World))
+			if (AWasamiGameMode* Mode = WasamiModeOf(World))
 			{
 				Mode->DeathEvent(UGameplayStatics::GetPlayerCharacter(World, 0));
 			}
@@ -53,7 +58,7 @@ namespace
 		TEXT("Wasami.Checkpoint N: saves checkpoint N as the levels do (SAVING PROGRESS, the time, the slot)."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			AWasamiGameMode* Mode = GameModeOf(World);
+			AWasamiGameMode* Mode = WasamiModeOf(World);
 			if (Mode && Args.Num() > 0)
 			{
 				Mode->SaveCheckpoint(FCString::Atoi(*Args[0]));
@@ -64,7 +69,7 @@ namespace
 		TEXT("Starts the save over (no checkpoint, deaths, time or streaks, no warning) with 3 lives and no shards remembered; open the level again to begin anew."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			AWasamiGameMode* Mode = GameModeOf(World);
+			AWasamiGameMode* Mode = WasamiModeOf(World);
 			if (Mode && Mode->GetSave())
 			{
 				Mode->GetSave()->Hospital = FWasamiLevelProgress();
@@ -78,11 +83,41 @@ namespace
 			}
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs CollectShardsCommand(TEXT("Wasami.CollectShards"),
+		TEXT("Wasami.CollectShards [N]: collects the level's shards (as if touched) but N of them (0 by default)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			const int32 Keep = Args.Num() > 0 ? FMath::Max(0, FCString::Atoi(*Args[0])) : 0;
+			TArray<AWasamiShard*> Shards;
+			for (TActorIterator<AWasamiShard> It(World); It; ++It)
+			{
+				Shards.Add(*It);
+			}
+			for (int32 Index = Keep; Index < Shards.Num(); ++Index)
+			{
+				Shards[Index]->Collect(false);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs TriggerCommand(TEXT("Wasami.Trigger"),
+		TEXT("Wasami.Trigger Name: the trigger box of the original's name (06_CutsceneStart, Trigger_MazeStart, ...) fires as if the player went through it."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() == 0)
+			{
+				return;
+			}
+			if (AWasamiTriggerBox* Box = Cast<AWasamiTriggerBox>(AWasamiZoneFlow::FindSource(World, FName(*Args[0]))))
+			{
+				Box->NotifyPlayerOverlap(!Box->bEndOverlap);
+			}
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs LivesCommand(TEXT("Wasami.Lives"),
 		TEXT("Wasami.Lives N: sets the lives to N (0 to 6)."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			AWasamiGameMode* Mode = GameModeOf(World);
+			AWasamiGameMode* Mode = WasamiModeOf(World);
 			UWasamiGameInstance* Instance = Mode ? Mode->GetWasamiGameInstance() : nullptr;
 			if (!Instance || Args.Num() == 0)
 			{
@@ -101,12 +136,12 @@ namespace
 }
 
 const TCHAR* AWasamiGameMode::Zone1LevelName = TEXT("L_Hospital_Zone1");
+const TCHAR* AWasamiGameMode::Zone2LevelName = TEXT("L_Hospital_Zone2");
 
 AWasamiGameMode::AWasamiGameMode()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	DefaultPawnClass = AWasamiPlayerCharacter::StaticClass();
-	CurrentObjective = NSLOCTEXT("Wasami", "ObjectiveCollectAllShards", "Collect all shards");
 	SaveSlotName = UWasamiSaveGame::SlotName;
 }
 
@@ -121,10 +156,14 @@ void AWasamiGameMode::BeginPlay()
 	UWasamiBlackFadeWidget::Show(this, false, OpeningFadeSpeed, OpeningFadeZOrder);
 
 	// A zone's Spawn opens the entrance when the save has no checkpoint; here Zone 2 opens Zone 1 (whose 0 reads as 4).
-	if (ZoneOf(UGameplayStatics::GetCurrentLevelName(this, true)) == 2 && StartCheckpoint == 0)
+	const int32 Zone = ZoneOf(UGameplayStatics::GetCurrentLevelName(this, true));
+	if (Zone == 2 && StartCheckpoint == 0)
 	{
 		UGameplayStatics::OpenLevel(this, Zone1LevelName, true);
+		return;
 	}
+	// The rest of the zone's level Blueprint (its Setup → Spawn and the events it binds).
+	ZoneFlow = AWasamiZoneFlow::SpawnFor(this, Zone);
 }
 
 void AWasamiGameMode::PrepareStart()
@@ -278,6 +317,27 @@ void AWasamiGameMode::RemoveShardsToBeRemoved()
 	if (RemoveCollectedShards(GetWorld(), Instance->GetShardsToBeRemoved()) < 1)
 	{
 		OnAllShardsAlreadyCollected.Broadcast();
+	}
+}
+
+void AWasamiGameMode::CheckShards()
+{
+	// @34491: Collect Shard, then (not yet) Check Streak — the streak of shards and its UMG_ShardStreak.
+	OnCollectShard.Broadcast();
+	if (!GetWorldTimerManager().IsTimerActive(CheckShardsTimer))
+	{
+		GetWorldTimerManager().SetTimer(CheckShardsTimer, this, &AWasamiGameMode::CountShardsLeft, CheckShardsDelay, false);
+	}
+}
+
+void AWasamiGameMode::CountShardsLeft()
+{
+	// After the Delay: Bierce's idle lines (item 20), and the level's shards counted. The hospital (Level 7) has no line
+	// for half of them and none for all of them, and Event All Shards sends only BP_Monkey into a frenzy (no monkey here)
+	// besides stopping the idle lines' timer, so none left comes down to All Shards Collected.
+	if (CountShards(GetWorld()) < 1)
+	{
+		OnAllShardsCollected.Broadcast();
 	}
 }
 

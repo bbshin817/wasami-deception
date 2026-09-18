@@ -21,7 +21,7 @@ updated: 2026-09-18
 
 ゲームの流れの土台（作業一覧の項目 5）のステップ 3 で、**ゲームインスタンス**（ライフと回収済みのシャードの記憶）・**セーブ**（`structSlot`）と、ゲームモード（02 記録）の死亡の受け口・時間・チェックポイントの保存・開き直したときの回収済みのシャードの除去を足した（下の「ライフ・セーブ・死亡の受け口」）。ステップ 4 で死亡画面（ライフ −1・死亡数の保存・ゲームオーバーの表示・パワーのリセットとレベルの開き直し）を足した（09 記録）。ステップ 5 で、病院の Zone のレベル BP が受け持つ所をゲームモードに足した: `DeathEvent` が死亡画面を出してゲームを止める、セーブのチェックポイントの PlayerStart から始める、チェックポイントの保存で SAVING PROGRESS、レベルを開くたびの黒からの明け、デバッグのコンソールコマンド（下の「開始の場所・死亡画面・SAVING PROGRESS」）。ステップ 6 でゲームオーバーの 3 つのボタンの行き先（RESTART・LAST CHECKPOINT・QUIT TO TITLE。ライフ・回収の記憶・セーブの扱いを含む）を足した（09 記録）。
 
-シャードは**最小限**（タブレットのパワーの作業〈作業一覧の項目 1〉のステップ 9 で作った）: ゲームモードの `Check Shards`（`Collect Shard` の通知と連続回収の判定 `Check Streak`）、`bDisabled` と `Enable` はまだ無い。回収の閃光 `P_ky_flash3` はステップ 9b で足し、作業一覧の項目 3 で本作の紫でやや弱い版 `P_WasamiShardFlash` に替えた。
+シャードは**最小限**（タブレットのパワーの作業〈作業一覧の項目 1〉のステップ 9 で作った）: 連続回収の判定 `Check Streak`、`bDisabled` と `Enable` はまだ無い。ゲームモードの `Check Shards`（`Collect Shard` の通知と全回収の判定）は作業一覧の項目 6 のステップ 1 で足した（下の「シャードの確かめ」）。回収の閃光 `P_ky_flash3` はステップ 9b で足し、作業一覧の項目 3 で本作の紫でやや弱い版 `P_WasamiShardFlash` に替えた。
 
 ## 公開インターフェース
 - `AWasamiShard`（`AActor`、`IWasamiTelekinesisInterface` を実装）
@@ -37,8 +37,8 @@ updated: 2026-09-18
   - `RememberCollectedShard(StartLocation)`（`ShardKey` にして `AddUnique`）・`ForgetCollectedShards()`・`GetShardsToBeRemoved()` … 本家の `Shards To Be Removed`。静的関数 `ShardKey(Location)` は本家の `FTruncVector`（各成分を 0 の方へ切り捨てた整数）を `FVector` に戻したもの。
 - `UWasamiSaveGame`（`USaveGame`）… 本作のセーブ 1 つ。スロット `SlotName` = `structSlot`（本家の `BP_DD_levelStructSave` のスロット）、`UserIndex` 0。`Hospital`（`FWasamiLevelProgress`）と `bLastCheckpointWarning`（本家の `SaveSlot` の `Last Checkpoint Warning`）。
   - `FWasamiLevelProgress` … 本家の `DD_LevelStructureyyy` のうち病院が書く欄: `LevelCheckpoint`（int。Zone 1 は 4〜6、Zone 2 は 7〜10、0 は無し）・`Deaths`・`Time`（float、秒）・`CurrentStreak`・`Streak`（本家の byte の enum を `uint8` で）。本家は 11 個の配列 `levelStruct` の添字 5 が病院。
-- ゲームモードの口（`AWasamiGameMode`、02 記録）: `DeathEvent(Cause)`・`ResetDeath()`・`IsDeathOpen()`、`OnDeath`（本家の `Death Dispatcher`）・`OnAllShardsAlreadyCollected`、`PauseTimeCounter()`・`UnpauseTimeCounter()`・`ResetTimeCounter()`・`GetTime()`、`SaveCheckpoint(Checkpoint)`、`GetSave()`・`WriteSave()`、`GetWasamiGameInstance()`、`GetTotalShards()`・`GetShardStreak()`、`GetStartCheckpoint()`（レベルを開いたときのチェックポイント。項目 6・13 が区間の準備に使う）、静的関数 `RemoveCollectedShards(World, Collected)`・`ZoneOf(LevelName)`・`PlayerStartTagFor(Zone, Checkpoint)`・`DeathScreenLevelFor(Zone, bCausedByPlayer)`、定数 `Zone1LevelName`（`L_Hospital_Zone1`）・`OpeningFadeSpeed` 10・`OpeningFadeZOrder` 10、`SaveSlotName`（既定 `structSlot`。テストが別のスロットにする）。
-- デバッグのコンソールコマンド（`WasamiGameMode.cpp`。PIE では `python Tools/pie.py cmd "…"`）: `Wasami.Kill`（プレイヤーを原因に `DeathEvent`）、`Wasami.Checkpoint N`（`SaveCheckpoint(N)`。SAVING PROGRESS も出る）、`Wasami.ResetSave`（セーブの `Hospital` と警告を空にして書き、ライフ 3・回収の記憶を空に。開き直すと最初から）、`Wasami.Lives N`（ライフを N〈0〜6〉に）。本家の開発用の近道（パッケージしないときの `Fake` のチェックポイント、J キー）は写さない。
+- ゲームモードの口（`AWasamiGameMode`、02 記録）: `DeathEvent(Cause)`・`ResetDeath()`・`IsDeathOpen()`、`OnDeath`（本家の `Death Dispatcher`）・`OnAllShardsAlreadyCollected`、`CheckShards()`・`OnCollectShard`・`OnAllShardsCollected`、`GetZoneFlow()`、`PauseTimeCounter()`・`UnpauseTimeCounter()`・`ResetTimeCounter()`・`GetTime()`、`SaveCheckpoint(Checkpoint)`、`GetSave()`・`WriteSave()`、`GetWasamiGameInstance()`、`GetTotalShards()`・`GetShardStreak()`、`GetStartCheckpoint()`（レベルを開いたときのチェックポイント。項目 6・13 が区間の準備に使う）、静的関数 `RemoveCollectedShards(World, Collected)`・`ZoneOf(LevelName)`・`PlayerStartTagFor(Zone, Checkpoint)`・`DeathScreenLevelFor(Zone, bCausedByPlayer)`、定数 `Zone1LevelName`（`L_Hospital_Zone1`）・`Zone2LevelName`（`L_Hospital_Zone2`）・`OpeningFadeSpeed` 10・`OpeningFadeZOrder` 10、`SaveSlotName`（既定 `structSlot`。テストが別のスロットにする）。
+- デバッグのコンソールコマンド（`WasamiGameMode.cpp`。PIE では `python Tools/pie.py cmd "…"`）: `Wasami.Kill`（プレイヤーを原因に `DeathEvent`）、`Wasami.Checkpoint N`（`SaveCheckpoint(N)`。SAVING PROGRESS も出る）、`Wasami.ResetSave`（セーブの `Hospital` と警告を空にして書き、ライフ 3・回収の記憶を空に。開き直すと最初から）、`Wasami.Lives N`（ライフを N〈0〜6〉に）、`Wasami.CollectShards [N]`・`Wasami.Trigger <名前>`（下の「シャードの確かめ」）。本家の開発用の近道（パッケージしないときの `Fake` のチェックポイント、J キー）は写さない。
 - ツール: `WasamiDDTools.import_dd_shards()`（素材）、`WasamiStageTools.place_dd_shards(zone)`（配置。01 記録）。
 
 ## 内部構造と処理の流れ
@@ -68,7 +68,7 @@ updated: 2026-09-18
 1. DoOnce（`bCollected`）。
 2. プレイヤー（`AWasamiPlayerCharacter`）とタブレットの画面（`GetTabletScreen`）が無ければここで終わる（本家のキャストの失敗と同じ。DoOnce は閉じたまま）。
 3. 画面の数を `Clamp(数 − 1, 0, 9999)` にして（本家は文字列を整数にして引く）、`PlayCountShake()`（本家の `PlayAnimation(Count Shake, 0, 1, Forward, 2.0)`。03 記録）。
-4. （本家のゲームモードの `Check Shards` はまだ無い。）
+4. ゲームモード（`GetAuthGameMode<AWasamiGameMode>`）の `CheckShards()`（本家 @773 の `GameMode.Check Shards`。下の「シャードの確かめ」）。
 5. `ClientStartCameraShake(BP_CameraShake_ShardCollect, 0.4, CameraLocal)`。
 6. `SpawnEmitterAtLocation(P_WasamiShardFlash, Body の位置, 回転 0, 拡縮 0.2, 自動破棄, プールなし, 自動起動)`（本家は `P_ky_flash3` を `SkeletalMesh` の `K2_GetComponentLocation` に。`BP_Shard` @900〜@950）。部品はワールドの `WorldSettings` に付き、シャードの破棄の影響を受けない。エミッタの長さ（`RequiredModule` の既定の 1 秒）で終わって消える。
 7. `NoSound` が偽なら、ゲームインスタンス（`UWasamiGameInstance`。無ければ飛ばす）の `RememberCollectedShard(PreviousLocation)`（BeginPlay の位置を切り捨てて `AddUnique`。本家 @1228〜@1388）。
@@ -89,9 +89,14 @@ updated: 2026-09-18
 - **開始の準備 `PrepareStart`**（1 回だけ）: セーブを読み（`CheckForLevelStructSave`）、Zone 1（`ZoneOf` がレベル名の `Zone1` / `Zone2` で 1 / 2、ほかは 0）でチェックポイントが 0 なら **4 を書く**（本家は入口の `03_ElevatorEnter` が 4 を保存してから Zone 1 を開くので、Zone 1 は必ず 4 以上。本作に入口は無い）。その値を `StartCheckpoint` に持つ。プレイヤーはどのアクタの `BeginPlay` より先に置かれる（`UEngine::LoadMap` が `SpawnPlayActor` の後に `BeginPlay`）ので、最初に呼ぶのは下の `ChoosePlayerStart`。プレイヤーのいないワールド（テスト）では `BeginPlay`。
 - **開始の場所 `ChoosePlayerStart`**: 本家の Zone の `Spawn`（Zone 1 @13483、Zone 2 @22328）は、チェックポイントの PlayerStart へ `K2_TeleportTo`（回転 0）して `SetControlRotation`（その PlayerStart の回転）する。本作はその PlayerStart から出す（出る位置とヨーは同じ）。対応は `PlayerStartTagFor`: Zone 1 の 4 → `04_Start`、5 → `05_Start`、6 → `06_Start`、Zone 2 の 7 → `PlayerStart_1`、8 → `PlayerStart_MiniBoss`、9 → `PlayerStart_Maze`、10 → `PlayerStart_PostMaze`。PlayerStart は `PlayerStartTag` が本家の名前（取り込みが入れる。01 記録）。表に無い値は UE の既定の選び方（空いている PlayerStart から無作為。本家もその Zone の既定の場所のまま）。PIE の Play From Here（`APlayerStartPIE`）があればそれを優先する。
 - **Zone 2 でチェックポイントが 0** なら `BeginPlay` で Zone 1 を開く（本家は入口を開く）。PIE で Zone 2 を試すときは、先に `Wasami.Checkpoint 7`（〜10）を書いてから開く。
-- **区間の準備**（ナース・目的・扉・シーケンス。本家の `Spawn` の続き）は項目 6・13 が `GetStartCheckpoint()` を見て結ぶ。本家の `Spawn` の頭の `SetViewTargetWithBlend`・`EnableInput` は、開き直したワールドでは既定のままなので要らない。
+- **区間の準備**（ナース・目的・扉・シーケンス。本家の `Spawn` の続き）はゾーンの流れ（`AWasamiZoneFlow`、11 記録）が `GetStartCheckpoint()` を見て始める。ゲームモードの `BeginPlay` が、Zone 2 を 0 で開いて Zone 1 を開き直すとき以外、`AWasamiZoneFlow::SpawnFor(this, ZoneOf(レベル名))` で出して `GetZoneFlow()` に持つ。本家の `Spawn` の頭の `SetViewTargetWithBlend`・`EnableInput` は、開き直したワールドでは既定のままなので要らない。
 - **死亡画面 `ShowDeathScreen`**（本家の Zone の `DeathEvent`、Zone 1 @14791 → @5731、Zone 2 @23519 → @5758）: `UWasamiDeathScreenWidget::Show(this, Level)`（Z 5 で足してゲームを止める。09 記録）。`Level` は `DeathScreenLevelFor`: Zone 1 は原因がプレイヤー（`AWasamiPlayerCharacter`。本家はクラスの一致）なら Traps（4）、ほかは Asylum（7）。Zone 2 は逆（本家はプレイヤーか `BP_GremClown` で Asylum）。本家は画面の `Respawn Event` をレベルの `Respawn`（画面を外す・ポーズを解く・`EnableInput`・`Reset Death`・`Spawn`）に結ぶが、画面がその直後に今のレベルを開き直すので結ばない。
 - **レベルを開いたときの黒からの明け**: `BeginPlay` が `UWasamiBlackFadeWidget::Show(this, false, 10, 10)`（本家の @6710。`FadeOut` を速さ 10 = 0.5 s。09 記録）。プレイヤーコントローラーが無ければ（テスト）出さない。
+
+### シャードの確かめ（`Check Shards`。本家 `BP_DD_GameMode` @34491）
+- `CheckShards()`: `OnCollectShard`（本家の `Collect Shard`）を流し、**0.05 s 後**（本家の `Delay 0.05`）にレベルの `AWasamiShard` を数え、1 未満なら `OnAllShardsCollected`（本家の `All Shards Collected`）を流す。待っている間にもう一度呼ばれても待ち直さない（`IsTimerActive` なら置かない。本家の `Delay` と同じ）。呼ぶのはシャードの `Collect` と、ゾーンの流れ（Zone 1 の `05_Persistent` の 1 s 後。11 記録）。
+- 本家はその間に `Check Streak`（連続回収の数と `UMG_ShardStreak`。まだ無い）、待った後に Bierce の独り言の開始（項目 20）、半分のときの声・全回収の声を鳴らすが、病院（`Level` 7）はどちらの声も `None`。全回収の `Event All Shards` は `BP_Monkey` だけを `Activate Frenzy` にし（病院にはいない）、独り言のタイマーを止めるだけなので、病院では `All Shards Collected` を流すことに尽きる。開発用の PrintString（`ALL SHARDS COLLECTED!`）は写さない。
+- デバッグのコンソールコマンド: `Wasami.CollectShards [N]`（レベルのシャードを N 個残して、触れたときと同じく `Collect(false)` で回収する。既定 0）、`Wasami.Trigger <本家の名前>`（その名前のトリガーの箱〈11 記録〉を、プレイヤーが通ったように発火させる）。
 
 ## 作るアセット
 `WasamiDDTools.import_dd_shards`（`pipeline/dd_shards.py`）が作る。
@@ -231,6 +236,7 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 - `Tests/WasamiGameFlowTests.cpp`: `Wasami.GameFlow.Lives`（3 で始まり、0..6 に Clamp、`ResetLives` で 3。`ShardKey` の 0 の方への切り捨て、同じ整数の位置は 1 つ、`ForgetCollectedShards`）、`Wasami.GameFlow.Save`（スロット名 `structSlot`、全欄のメモリ上の往復）、`Wasami.GameFlow.RemoveShards`（3 つ置いて、切り捨てて一致する 2 つが消え、残り 1 を返す）、`Wasami.GameFlow.GameMode`（テスト用のスロットで BeginPlay がセーブを作って書く、1 秒の時間・止めている間は数えない、`SaveCheckpoint(5)` がスロットに書いて時間を足し 0 に戻す、`DeathEvent` の DoOnce と `ResetDeath`・連続回収の最高、作り直したゲームモードがスロットを読む、Zone でないワールドの `GetStartCheckpoint` はセーブの値のまま）、`Wasami.GameFlow.Checkpoints`（`ZoneOf`、`PlayerStartTagFor` の 7 つと表に無い値、`DeathScreenLevelFor` の 4 通り）、`Wasami.GameFlow.Saving`（09 記録の SAVING PROGRESS の `init` の値と 3 s で外れること、黒のフェードの両端と速さ 10 で 0.5 s）。
 
 ## 変更履歴
+- 2026-09-18: ゲームモードに `Check Shards`（`Collect Shard`・0.05 s 後の全回収の判定）とゾーンの流れの生成、`Zone2LevelName`、デバッグの `Wasami.CollectShards`・`Wasami.Trigger` を足し、シャードの回収が `Check Shards` を呼ぶようにした。目的の既定を空にした（作業一覧の項目 6 のステップ 1。流れは 11 記録）
 - 2026-09-18: 作業一覧の項目 5（ゲームの流れの土台）を終えた。死亡から LAST CHECKPOINT までを PIE で通して確かめた（上の「確かめたこと」の 2026-09-18）
 - 2026-09-18: 病院の Zone のレベル BP の受け持ちをゲームモードに足した: `DeathEvent` が死亡画面を出してゲームを止める、セーブのチェックポイントの PlayerStart から出す（Zone 1 の 0 は 4 を書く、Zone 2 の 0 は Zone 1 を開く）、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド 4 つ（テスト 2 本。PIE で `Wasami.Checkpoint 5` → 別の場所で 2 つ回収 → `Wasami.Kill` → 死亡画面 → `05_Start` で再開〈ライフ 2・死亡数 1・シャード 335〉、`Wasami.Checkpoint 7` → Zone 2 の `PlayerStart_1`、`Wasami.ResetSave` → Zone 2 を開くと Zone 1 の `04_Start`。作業一覧の項目 5 のステップ 5）
 - 2026-09-18: ゲームインスタンス（`UWasamiGameInstance`: ライフ 3・0..6、回収済みのシャードの記憶）とセーブ（`UWasamiSaveGame`、`structSlot`）を足し、ゲームモードに死亡の受け口・時間・チェックポイントの保存・開き直したときの回収済みのシャードの除去を足した。シャードの回収がゲームインスタンスに位置を覚えさせる（テスト 4 本。PIE で 2 つ回収 → `open L_Hospital_Zone1` → 337 が 335 になり、回収した 2 つが無いのを確かめた。作業一覧の項目 5 のステップ 3）

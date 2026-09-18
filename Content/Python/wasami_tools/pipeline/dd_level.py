@@ -1,7 +1,8 @@
 """Dark Deception's hospital: assembles one zone's level from the imported assets (dd_stage) and stage_ue.json — the
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
-fog, the sky light, the post process volumes, the player starts, the minimap's map plane and the soul shards. Every
-actor it places carries the tag 'dd', which a rebuild removes first."""
+fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards and what the
+zones' flow names (trigger boxes, blocking and trigger volumes). Every actor it places carries the tag 'dd', which a
+rebuild removes first."""
 import unreal
 
 from wasami_tools.pipeline import paths, ue_props
@@ -41,6 +42,15 @@ SHARD_CLASS = "BP_Shard_C"
 SHARD_TAG = "dd_shard"
 SHARD_FOLDER = "Hospital/Gameplay/Shards"
 SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
+# What the zones' flow (the original's level Blueprints, AWasamiZoneFlow here) names: the trigger boxes
+# (BP_TriggerBox_Base → AWasamiTriggerBox) and the brush volumes it switches or listens to. The flow finds each by the
+# tag 'src:<the original's name>'. Every brush in the hospital is the default 200 cm cube, which is what UE's box volume
+# factory makes, so the actor's scale is the whole of its size.
+TRIGGER_CLASS = "BP_TriggerBox_Base_C"
+VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume}
+DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
+FLOW_TAG = "dd_flow"
+FLOW_FOLDER = "Hospital/Gameplay/Flow"
 
 # The original's custom collision channels by slot, as Config/DefaultEngine.ini names them.
 CUSTOM_CHANNELS = {"ECC_GameTraceChannel1": "ECC_Teleport"}
@@ -321,6 +331,81 @@ def place_shards(zone="Zone1", map_path=""):
     return counts
 
 
+# ------------------------------------------------------------------------------------------------ flow
+def _set_brush_collision(comp, collision):
+    """A volume's brush collision as the level writes it, over the volume class's own profile (InvisibleWall for a
+    blocking volume, Trigger for a trigger volume): the profile when named, then the object type, what the body takes
+    part in and each listed channel's response (which makes the profile 'Custom')."""
+    profile = collision.get("CollisionProfileName")
+    if profile and profile != "Custom":
+        comp.set_collision_profile_name(profile)
+    if collision.get("ObjectType") and comp.get_collision_object_type() != _channel(collision["ObjectType"]):
+        comp.set_collision_object_type(_channel(collision["ObjectType"]))   # a named profile's own type stays named
+    if collision.get("CollisionEnabled"):
+        comp.set_collision_enabled(ue_props.enum_member(unreal.CollisionEnabled, collision["CollisionEnabled"].split("::")[-1]))
+    for channel, response in (collision.get("responses") or {}).items():
+        comp.set_collision_response_to_channel(_channel("ECC_" + channel),
+                                               ue_props.enum_member(unreal.CollisionResponseType, response))
+
+
+def _flow(eas, zone, counts, failures):
+    """The trigger boxes and brush volumes, each where the original has it, and fixed to what it moves with (an
+    ambulance, the spikes) when that is in the level."""
+    placed = []
+    for a in zone["actors"]:
+        if not a["world"] or (a["class"] != TRIGGER_CLASS and a["class"] not in VOLUME_CLASSES):
+            continue
+        world = a["world"]
+        if a["class"] == TRIGGER_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiTriggerBox, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            actor.set_editor_property("end_overlap", bool(a["props"].get("EndOverlap")))
+            counts["triggers"] += 1
+        else:
+            actor = eas.spawn_actor_from_class(VOLUME_CLASSES[a["class"]], _vec(world["location"]), _rot(world["quat_xyzw"]))
+            if a.get("brushBox") != DEFAULT_BRUSH_BOX:
+                failures.append("%s: brush %s is not the default cube" % (a["name"], a.get("brushBox")))
+            comp = actor.get_editor_property("brush_component")
+            _set_mobility(comp, {"Mobility": a.get("brushMobility")})
+            _set_brush_collision(comp, a.get("brushCollision") or {})
+            counts["volumes"] += 1
+        actor.set_actor_scale3d(_vec(world["scale"]))
+        _tag(actor, a["name"], FLOW_FOLDER, FLOW_TAG, "src:" + a["name"])
+        placed.append((actor, a))
+    by_source = {}
+    for actor in eas.get_all_level_actors():
+        for t in actor.tags:
+            if str(t).startswith("src:"):
+                by_source.setdefault(str(t)[4:], actor)
+    for actor, a in placed:
+        parent = by_source.get(a.get("attachParent") or "")
+        if parent is not None and parent != actor:
+            actor.attach_to_actor(parent, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
+                                  unreal.AttachmentRule.KEEP_WORLD, False)
+            counts["attached"] += 1
+
+
+def place_flow(zone="Zone1", map_path=""):
+    """Puts the zone's trigger boxes and brush volumes in again, leaving the rest of the level and its baked lighting
+    as they are (none of them is drawn), and saves the level."""
+    stage = paths.load_dd_stage()
+    if zone not in stage["zones"]:
+        raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
+    z = stage["zones"][zone]
+    les, eas = _open_level(map_path or z["level"], clear=False)
+    old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
+    counts = {"removed": len(old), "triggers": 0, "volumes": 0, "attached": 0}
+    if old:
+        eas.destroy_actors(old)
+    failures = []
+    _flow(eas, z, counts, failures)
+    for f in failures:
+        unreal.log_warning("place_dd_flow: " + f)
+    counts["failed_settings"] = len(failures)
+    if not les.save_current_level():
+        raise RuntimeError("could not save " + (map_path or z["level"]))
+    return counts
+
+
 # ------------------------------------------------------------------------------------------------ build
 def build(zone="Zone1", map_path=""):
     stage = paths.load_dd_stage()
@@ -329,7 +414,7 @@ def build(zone="Zone1", map_path=""):
     z = stage["zones"][zone]
     les, eas = _open_level(map_path or z["level"])
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
-                             "mapPlane", "shards")}
+                             "mapPlane", "shards", "triggers", "volumes", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)
@@ -339,6 +424,7 @@ def build(zone="Zone1", map_path=""):
     _player_starts(eas, z, counts)
     _map_plane(eas, z, zone, counts, failures)
     _shards(eas, z, counts)
+    _flow(eas, z, counts, failures)
     for f in failures[:50]:
         unreal.log_warning("build_dd_stage_level: " + f)
     counts["failed_settings"] = len(failures)

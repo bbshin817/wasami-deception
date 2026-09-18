@@ -16,8 +16,8 @@ namespace
 
 	// Image_29's RenderOpacity (pak_reference_2's UMG_BlackFade_2), over 300000 ticks; the black end has the author's
 	// tangent.
-	const FAnimKey FadeInKeys[] = {{0., 0.f, 0., 0.}, {300000., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}};
-	const FAnimKey FadeOutKeys[] = {{0., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}, {300000., 0.f, 0., 0.}};
+	const FAnimKey BlackFadeInKeys[] = {{0., 0.f, 0., 0.}, {300000., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}};
+	const FAnimKey BlackFadeOutKeys[] = {{0., 1.f, 2.365180080232676e-06, 2.3651853098272113e-06}, {300000., 0.f, 0., 0.}};
 }
 
 UWasamiBlackFadeWidget* UWasamiBlackFadeWidget::Show(const UObject* WorldContextObject, bool bInFadeIn, float InSpeed, int32 ZOrder)
@@ -103,12 +103,12 @@ void UWasamiBlackFadeWidget::ApplyAnimation()
 
 float UWasamiBlackFadeWidget::EvaluateFadeIn(float Seconds)
 {
-	static const FRichCurve Curve = MakeCurve(FadeInKeys);
+	static const FRichCurve Curve = MakeCurve(BlackFadeInKeys);
 	return Eval(Curve, Seconds, AnimationLength);
 }
 
 float UWasamiBlackFadeWidget::EvaluateFadeOut(float Seconds)
 {
-	static const FRichCurve Curve = MakeCurve(FadeOutKeys);
+	static const FRichCurve Curve = MakeCurve(BlackFadeOutKeys);
 	return Eval(Curve, Seconds, AnimationLength);
 }
