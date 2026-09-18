@@ -53,7 +53,8 @@ def main():
         lines.append("**無人モード**（駆動役 Tools/overnight.py が起動。`.claude/guides/autonomy.md` に従う）: ユーザーに質問せず、"
                      "本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて記録の「要確認（ユーザー）」に書く。"
                      "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
-                     "Intermediate/Overnight/status.json を書いて応答を終える。変更を捨てる操作・配布・本家のセーブの編集は行わない。")
+                     "Intermediate/Overnight/status.json を書いて応答を終える。変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わない"
+                     "（本家のセーブが遊んで書き換わる・控えから戻す・入れ替えるのはしてよい）。")
     status = read_status()
     if status:
         lines.append("前回の無人運転: %s %s — %s（ステップ: %s、コミット: %s）" % (

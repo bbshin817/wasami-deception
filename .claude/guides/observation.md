@@ -38,7 +38,7 @@ tasklist | grep -i -E "UnrealEditor|DDeception|ffmpeg"          # 何も動い�
 ls -la "/c/Program Files (x86)/Steam/steamapps/common/Dark Deception/DDeception/Content/Paks/"
 #   DDeception-WindowsNoEditor.pak が 7,854,848,189 バイト = pak_reference_2 と同一。違えば観察を止めて記録に書く
 ts=$(date +%Y%m%d-%H%M%S); B="/c/Users/User/AppData/Local/DDeception/SaveBackups/pre-obs-$ts"
-mkdir -p "$B" && cp -p /c/Users/User/AppData/Local/DDeception/Saved/SaveGames/*.sav "$B/"   # セーブの控え（読むだけ・戻さない）
+mkdir -p "$B" && cp -p /c/Users/User/AppData/Local/DDeception/Saved/SaveGames/*.sav "$B/"   # セーブの控え（起動の前に毎回。控えは消さない）
 python Tools/editor_cycle.py --quit-only                          # VRAM 6 GB なのでエディタと同時に動かさない
 python Tools/console_session.py --wait DDeception-Win64-Shipping.exe "C:\Users\User\AppData\Local\DDeception\Launch-Latest.cmd"
 python Tools/desktop.py start
@@ -221,7 +221,7 @@ python Tools/pie.py stop                                    # 必ず止める。
 
 **MOD とセーブの跡**
 - MOD の自動保存 `%LOCALAPPDATA%\SimpleModMenu\Saved\Transformation\` の更新時刻を見る。W-Editor を開いてしまったときの跡が残る。
-- 本家は、捕まったときやチェックポイントでセーブを書き換える。控えの場所を記録に書く。Claude は戻さない（要確認に書く）。
+- 本家は、捕まったときやチェックポイントでセーブを書き換える。気にしなくてよく、要確認にも書かない（2026-09-18 から。`verification.md`）。控えの場所は記録の「再開時の注意」に書く。観察の条件（解放・強化段階）が変わって困るときは、控えから戻してよい。
 
 **書く場所**
 - 測った値: `observations/README.md`

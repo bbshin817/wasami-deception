@@ -78,7 +78,7 @@ WebGL 版の同名のルール（`<WEBGL>/.claude/guides/original-fidelity.md`�
 
 - **Steam は app 332950 の登録を 1 つしか持てない**。live のマニフェストが旧版のフォルダを指した状態で Steam が更新すると、**旧版が最新版で上書きされる**。だから登録は最新版のままにしておき、旧版は exe を直接起動する（上の表のとおり）。
 - 最新版は Steam が自動で更新する（`AutoUpdateBehavior 0`）。pak の大きさ（7,854,848,189 バイト）やファイル数が変わったら `pak_reference_2` と同一ではなくなるので、`pak_reference_2/_manifest.json` と比べ直し、違っていたらユーザーに伝えて記録に書く。
-- セーブは `C:\Users\User\AppData\Local\DDeception\Saved\SaveGames\SaveSlot.sav` を**2 つのビルドで共有する**。スピードブーストとテレポーテーションは解放済み・装備済み。最新版で遊ぶと旧版のセーブが書き換わることがあるので、行き来するときはセーブを入れ替える。旧版のセーブの控えは `C:\Users\User\AppData\Local\DDeception\SaveBackups\classic-20260916-125039\`（Claude はセーブを編集しない。必要になったらユーザーに確認する）。
+- セーブは `C:\Users\User\AppData\Local\DDeception\Saved\SaveGames\SaveSlot.sav` を**2 つのビルドで共有する**。スピードブーストとテレポーテーションは解放済み・装備済み。最新版で遊ぶと旧版のセーブが書き換わることがあるので、行き来するときはセーブを入れ替える。旧版のセーブの控えは `C:\Users\User\AppData\Local\DDeception\SaveBackups\classic-20260916-125039\`（入れ替えと控えから戻すのは確認しなくてよい。中身を手で書き換えるときだけ先に確認する。`verification.md`）。
 
 ### どちらのビルドで観察するか
 
