@@ -215,6 +215,55 @@ def _open_level(map_path, clear=True):
     return les, eas
 
 
+def _navigable_volumes():
+    """(bounds volumes with navmesh in them, bounds volumes) in the level open in the editor."""
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    volumes = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.NavMeshBoundsVolume)
+    found = 0
+    for volume in volumes:
+        origin, extent = volume.get_actor_bounds(False)
+        found += unreal.NavigationSystemV1.get_random_location_in_navigable_radius(
+            world, origin, max(extent.x, extent.y)) is not None
+    return found, len(volumes)
+
+
+def _save_level(les, map_path):
+    """Saves the level open in the editor. Opening a level empties its navmesh and builds it again over the next ticks,
+    and a game plays the saved navmesh as it is (DynamicModifiersOnly), so a level opened and saved in the same call
+    has no paths in the game: warns to call build_navigation afterwards."""
+    if not les.save_current_level():
+        raise RuntimeError("could not save " + map_path)
+    found, volumes = _navigable_volumes()
+    if found < volumes:
+        unreal.log_warning("%s is saved with navigation in %d of %d bounds volumes: call WasamiStageTools.build_navigation"
+                           " in a call of its own" % (map_path, found, volumes))
+
+
+def build_navigation(map_path=""):
+    """Builds the navigation of the level open in the editor (RebuildNavigation: the whole navmesh, synchronously) and
+    saves the level when every bounds volume has paths. A level opened in the same call is locked against building
+    (ENavigationBuildLock::AsyncLoadLock, released some seconds later once the level's assets are ready), so a map_path
+    other than the open level is only opened: call again a few seconds later."""
+    ues = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+    open_path = ues.get_editor_world().get_outermost().get_name()
+    if map_path and map_path != open_path:
+        _open_level(map_path, clear=False)
+        return {"opened": 1, "built": 0, "saved": 0, "volumes": 0, "navigable": 0}
+    unreal.SystemLibrary.execute_console_command(ues.get_editor_world(), "RebuildNavigation")
+    found, volumes = _navigable_volumes()
+    result = {"opened": 0, "built": int(found == volumes and volumes > 0), "saved": 0, "volumes": volumes,
+              "navigable": found}
+    if result["built"]:
+        les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        if not les.save_current_level():
+            raise RuntimeError("could not save " + open_path)
+        result["saved"] = 1
+    else:
+        unreal.log_warning("build_navigation: paths in %d of %d bounds volumes of %s (a level opened within the last few"
+                           " seconds cannot build yet: call again later); not saved" % (found, volumes, open_path))
+    return result
+
+
 # ------------------------------------------------------------------------------------------------ meshes
 def _meshes(eas, stage, zone, counts, failures):
     cache = {}
@@ -444,8 +493,7 @@ def place_minimap(zone="Zone1", map_path=""):
     for f in failures:
         unreal.log_warning("place_dd_minimap: " + f)
     counts["failed_settings"] = len(failures)
-    if not les.save_current_level():
-        raise RuntimeError("could not save " + (map_path or z["level"]))
+    _save_level(les, map_path or z["level"])
     return counts
 
 
@@ -476,8 +524,7 @@ def place_shards(zone="Zone1", map_path=""):
     if old:
         eas.destroy_actors(old)
     _shards(eas, z, counts)
-    if not les.save_current_level():
-        raise RuntimeError("could not save " + (map_path or z["level"]))
+    _save_level(les, map_path or z["level"])
     return counts
 
 
@@ -729,8 +776,7 @@ def place_flow(zone="Zone1", map_path=""):
     for f in failures:
         unreal.log_warning("place_dd_flow: " + f)
     counts["failed_settings"] = len(failures)
-    if not les.save_current_level():
-        raise RuntimeError("could not save " + (map_path or z["level"]))
+    _save_level(les, map_path or z["level"])
     return counts
 
 
@@ -765,6 +811,5 @@ def build(zone="Zone1", map_path=""):
     for f in failures[:50]:
         unreal.log_warning("build_dd_stage_level: " + f)
     counts["failed_settings"] = len(failures)
-    if not les.save_current_level():
-        raise RuntimeError("could not save " + (map_path or z["level"]))
+    _save_level(les, map_path or z["level"])
     return counts

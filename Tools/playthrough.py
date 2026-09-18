@@ -135,11 +135,32 @@ turn = (want - r.yaw + 180.0) % 360.0 - 180.0
 turn = max(-max_turn, min(max_turn, turn))
 pc.set_control_rotation(unreal.Rotator(roll=0.0, pitch={pitch!r} if {pitch!r} is not None else r.pitch, yaw=r.yaw + turn))
 mode = unreal.GameplayStatics.get_game_mode(w)
+sentries = unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiEnemySentry)
+escaped = {escape!r} and any(f.get_editor_property('hold') for f in unreal.WidgetLibrary.get_all_widgets_of_class(
+    w, unreal.WasamiBlackFadeWidget, False))
 print('JSON ' + json.dumps({{'at': [l.x, l.y, l.z], 'index': index, 'left': flat(goal), 'turn': turn,
+                             'time': unreal.GameplayStatics.get_time_seconds(w),
                              'captured': len(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiCapture)) > 0,
                              'paused': unreal.GameplayStatics.is_game_paused(w),
                              'objective': str(mode.get_editor_property('current_objective')),
-                             'checkpoint': mode.get_save().get_editor_property('hospital').get_editor_property('level_checkpoint')}}))
+                             'checkpoint': mode.get_save().get_editor_property('hospital').get_editor_property('level_checkpoint'),
+                             'cones': {{a.get_actor_label(): a.get_viewcone().is_on() for a in sentries if a.get_viewcone()}},
+                             'spotted': [a.get_actor_label() for a in sentries if a.is_chasing()],
+                             'escaped': escaped}}))
+"""
+
+# The sentries' cones: where each looks from and how far (07 record: the cone's actor 72 cm over the sentry's head,
+# pitched 20 degrees down; a player inside Angle of its forward and nearer than Length, and in full view, is spotted).
+CONES = """
+w = _need_game()
+out = []
+for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiEnemySentry):
+    c = a.get_viewcone()
+    if c:
+        l, f = c.get_actor_location(), c.get_actor_forward_vector()
+        out.append([a.get_actor_label(), a.get_editor_property('offset'), [l.x, l.y, l.z], [f.x, f.y, f.z],
+                    c.get_editor_property('angle'), c.get_editor_property('length')])
+print('JSON ' + json.dumps(out))
 """
 
 NAV_PATH = """
@@ -162,6 +183,101 @@ pc.set_control_rotation(unreal.Rotator(roll=0.0, pitch={pitch!r} if {pitch!r} is
 
 def flat(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+class Cones:
+    """Keeps the player out of the sight of Zone 2's six sentries (GET PAST THE NURSES), as a player would: the cones
+    take turns, each looking for 9 s and resting for 11 s, those whose sentry's Offset is 10 ten seconds after those with
+    0 (07 record: the first UpdateSight 0.3 to 0.5 s after Activate, the look 1 s after TurnOn, Turn every 10 s). The
+    player stops before a stretch of the way that a cone looks at while the cone looks, or would look before the player
+    is out of it. A cone's clock starts from awake (the game time the sentries were activated) and is set again when the
+    cone is seen to turn on or off; with neither, the cone counts as looking."""
+    ON, CYCLE = 9.0, 20.0
+    FIRST_LOOK = 1.4            # s after Activate (and Offset) that a cone first looks
+    MARGIN_ANGLE, MARGIN_LENGTH = 4.0, 100.0
+    STEP = 25.0                 # cm between the samples along the way
+    LOOK_AHEAD = 260.0          # stop when a stretch begins this near (a sprint stops within about 90 cm)
+    RUN, SLOW = 600.0, 400.0    # cm/s: the sprint to a stretch, and a slower pace out of it (corners)
+    SLACK = 1.2                 # s: a cone looks every 0.3 to 0.5 s, and a turn is seen up to a step late
+    CENTRE = 85.0               # the player's capsule centre over the navigation path
+
+    def __init__(self, g, awake=None):
+        self.g = g
+        self.cones = {c[0]: c for c in g.ed.json(CONES)}
+        self.clock = {name: (awake + c[1] + self.FIRST_LOOK if awake is not None else None)
+                      for name, c in self.cones.items()}  # a time the cone turned on
+        self.seen = {}
+        self.samples, self.stretches, self.at_sample = [], [], 0
+        self.holding = False
+
+    def looking(self, name, t):
+        on_at = self.clock.get(name)
+        return on_at is None or (t - on_at) % self.CYCLE < self.ON
+
+    def covers(self, p):
+        names = []
+        for name, (_, _, l, f, angle, length) in self.cones.items():
+            v = [p[i] - l[i] for i in range(3)]
+            d = math.sqrt(sum(c * c for c in v))
+            if 1.0 < d < length + self.MARGIN_LENGTH:
+                cos = sum(v[i] * f[i] for i in range(3)) / d
+                if math.degrees(math.acos(max(-1.0, min(1.0, cos)))) < angle + self.MARGIN_ANGLE:
+                    names.append(name)
+        return names
+
+    def prepare(self, path):
+        """Samples the way from the player along the path and finds the stretches the cones look at."""
+        here = self.g.status()["player"]
+        points = [[here[0], here[1], here[2] - self.CENTRE]] + path
+        self.samples, arc = [], 0.0
+        for a, b in zip(points, points[1:]):
+            length = flat(a, b)
+            n = max(1, int(length // self.STEP))
+            for k in range(n):
+                t = k / n
+                p = [a[i] + (b[i] - a[i]) * t for i in range(3)]
+                p[2] += self.CENTRE
+                self.samples.append((arc + length * t, p[0], p[1], self.covers(p)))
+            arc += length
+        end = points[-1]
+        self.samples.append((arc, end[0], end[1], self.covers([end[0], end[1], end[2] + self.CENTRE])))
+        self.stretches = []
+        for at, _, _, names in self.samples:
+            if not names:
+                continue
+            if self.stretches and self.stretches[-1][1] >= at - 1.5 * self.STEP:
+                self.stretches[-1][1] = at
+                self.stretches[-1][2].update(names)
+            else:
+                self.stretches.append([at, at, set(names)])
+        self.at_sample = 0
+        self.g.log("cones on the way: %s" % ", ".join("%.0f-%.0f cm %s" % (a, b, "/".join(sorted(n)))
+                                                     for a, b, n in self.stretches))
+
+    def hold(self, step):
+        now = step["time"]
+        for name, on in step["cones"].items():
+            if name in self.seen and self.seen[name] != on:
+                self.clock[name] = now if on else now - self.ON
+            self.seen[name] = on
+        window = range(self.at_sample, min(len(self.samples), self.at_sample + 40))
+        self.at_sample = min(window, key=lambda i: flat(self.samples[i][1:3], step["at"]))
+        here = self.samples[self.at_sample][0]
+        blocking = set()
+        for start, end, names in self.stretches:
+            if end < here or start <= here or start - here > self.LOOK_AHEAD:
+                continue  # behind, inside (the way out is on), or not yet near
+            t, t_out = max(0.0, (start - here) / self.RUN - 0.4), (end - here) / self.SLOW + self.SLACK
+            for name in names:
+                if name not in step["cones"]:
+                    continue  # its sentry is gone or has left its shelf
+                if step["cones"][name] and t < 0.5 or any(self.looking(name, now + t + k * 0.1)
+                                                          for k in range(int((t_out - t) / 0.1) + 1)):
+                    blocking.add(name)
+        if bool(blocking) != self.holding:
+            self.holding = bool(blocking)
+            self.g.log(("waiting for %s" % "/".join(sorted(blocking))) if blocking else "going on")
+        return self.holding
 
 
 class Play:
@@ -276,9 +392,11 @@ class Play:
         return self.ed.json(NAV_PATH.format(x=x, y=y, z=z))
 
     def walk(self, x, y, z=None, reach=70.0, timeout=60.0, until=None, keys=None, pitch=None, max_turn=35.0,
-             straight=False, snap=False):
+             straight=False, snap=False, guard=None, escape=False):
         """Walks (Shift + W) along the navigation path to (x, y) until within reach, or until until(step) is true.
-        Returns the last step. The view keeps the pitch unless one is given; snap turns it to the path at once."""
+        Returns the last step. The view keeps the pitch unless one is given; snap turns it to the path at once. A guard
+        (Cones) stops the player, keys up, while guard.hold(step) is true; the time held does not count to the timeout.
+        escape: the step says whether the escape's black fade is up ('escaped'), for an until."""
         path = None if straight else self.nav_path(x, y, z)
         if not path:
             if not straight:
@@ -288,16 +406,23 @@ class Play:
             path = path[1:] or [[x, y, z or 0.0]]
             path[-1] = [x, y, path[-1][2]]  # the path ends on the navmesh; walk to the point itself
         self.log("walk to (%.0f, %.0f): %d points" % (x, y, len(path)))
+
+        def steer(index, turn):
+            return self.ed.json(STEER.format(path=path, index=index, reach=max(reach, 110.0), max_turn=turn, pitch=pitch,
+                                             escape=escape))
+
         if snap:
-            self.ed.json(STEER.format(path=path, index=0, reach=max(reach, 110.0), max_turn=180.0, pitch=pitch))
+            steer(0, 180.0)
+        if guard:
+            guard.prepare(path)
         index, stuck_since, stuck_at, repaths, refocused = 0, None, None, 0, False
         deadline = time.time() + timeout
         started, first_at = time.time(), None
+        held_since = None
         self.down(keys or WALK_KEYS)
         try:
             while True:
-                step = self.ed.json(STEER.format(path=path, index=index, reach=max(reach, 110.0), max_turn=max_turn,
-                                                 pitch=pitch))
+                step = steer(index, max_turn)
                 index = step["index"]
                 if until and until(step):
                     return step
@@ -305,7 +430,20 @@ class Play:
                     return step
                 if step["paused"] or step["captured"]:
                     raise Failed("stopped while walking (%s)" % ("paused" if step["paused"] else "captured"))
+                if step["spotted"] and guard:
+                    raise Failed("spotted by %s" % ", ".join(step["spotted"]))
                 at = step["at"]
+                if guard and guard.hold(step):
+                    if held_since is None:
+                        self.up()
+                        held_since = time.time()
+                    time.sleep(0.05)
+                    continue
+                if held_since is not None:
+                    deadline += time.time() - held_since
+                    held_since = None
+                    self.down(keys or WALK_KEYS)
+                    stuck_at, stuck_since = at, time.time()
                 first_at = first_at or at
                 if not refocused and time.time() - started > 1.5 and flat(at, first_at) < 1.0:
                     # not a step at all: the keys are not reaching the game (seen once after a few deaths and opens)
@@ -327,6 +465,8 @@ class Play:
                         path = fresh[1:]
                         path[-1] = [x, y, path[-1][2]]
                         index = 0
+                        if guard:
+                            guard.prepare(path)
                     stuck_at, stuck_since = at, time.time()
                 if time.time() > deadline:
                     raise Failed("did not reach (%.0f, %.0f) within %.0f s (at (%.0f, %.0f))"
@@ -349,9 +489,10 @@ print('JSON ' + json.dumps([[a.get_actor_label(), a.get_actor_location().x, a.ge
                              a.get_actor_location().z] for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiShard)]))
 """)
 
-    def collect_all_but(self, keep, near):
-        """Collects every shard (as if touched, as Wasami.CollectShards does) but the keep nearest to near."""
-        shards = sorted(self.shards(), key=lambda s: flat(s[1:3], near))
+    def collect_all_but(self, keep, near, floor=None):
+        """Collects every shard (as if touched, as Wasami.CollectShards does) but the keep nearest to near (on the floor
+        of the height floor when given: Zone 2's maze has two)."""
+        shards = sorted(self.shards(), key=lambda s: (floor is not None and abs(s[3] - floor) > 250.0, flat(s[1:3], near)))
         names = [s[0] for s in shards[keep:]]
         self.ed.run("""
 w = _need_game()
@@ -529,7 +670,120 @@ print("JSON " + json.dumps(str(player.get_component_by_class(unreal.WasamiPowerC
     g.shot("z2_cell")
 
 
-SECTIONS = [z1_arrive, z1_maze, z1_shards, z1_parking, z1_ambulance]
+DOOR_BREAK = """
+w = _need_game()
+breaks = unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiDoorBreak)
+boxes = breaks[0].get_components_by_class(unreal.BoxComponent) if breaks else []
+print('JSON ' + json.dumps(bool(boxes) and boxes[0].is_collision_enabled()))
+"""
+
+
+def pick_lock(g, presses_max=100):
+    """Presses F by the zone's door break until its box goes (the lock gives); the player stands in the box."""
+    deadline = time.time() + 20
+    while not g.ed.json(DOOR_BREAK):
+        if time.time() > deadline:
+            raise Failed("the lock did not show")
+        time.sleep(0.3)
+    presses = 0
+    while presses < presses_max:
+        g.key(*(["f"] * 10), gap_ms=60)
+        presses += 10
+        if not g.ed.json(DOOR_BREAK):
+            g.log("the lock gave after %d presses of F" % presses)
+            return
+    raise Failed("the lock held after %d presses of F" % presses_max)
+
+
+def z2_cell(g):
+    """Zone 2's cell (7): the spikes come down from the opening and reach the player's head in about 19 s; the lock on
+    the cell's door is picked (F), the player goes out and along to the corridor's box (saved 8, GET PAST THE NURSES),
+    where the six sentries wake."""
+    g.walk(-14145, 1330, reach=30.0, snap=True)
+    g.face(-90.0, 0.0)
+    g.shot("z2_cell_lock")
+    pick_lock(g)
+    time.sleep(1.0)
+    g.shot("z2_cell_door")
+    # the cell's navmesh ends at the door, which was shut when the paths were built: straight out through it first
+    g.walk(-14145, 1000, reach=60.0, straight=True)
+    step = g.walk(-11285, -93, reach=40.0, timeout=60.0, until=lambda st: st["checkpoint"] == 8)
+    g.sentries_awake = step["time"]
+    g.expect("GET PAST THE NURSES (saved 8)",
+             lambda s: s.get("checkpoint") == 8 and "NURSES" in s.get("objective", "").upper())
+
+
+def z2_corridor(g):
+    """8: past the six sentries on their shelves to the maze's box (saved 9, COLLECT ALL SHARDS), stopping before a
+    stretch of the way that a cone looks at while it looks or would look before the player is through (Cones)."""
+    guard = Cones(g, getattr(g, "sentries_awake", None))
+    g.shot("z2_corridor")
+    g.walk(-3400, 0, reach=60.0, timeout=120.0, guard=guard, until=lambda st: st["checkpoint"] == 9)
+    g.expect("COLLECT ALL SHARDS (saved 9)",
+             lambda s: s.get("checkpoint") == 9 and "SHARDS" in s.get("objective", "").upper())
+    g.shot("z2_maze_start")
+
+
+def z2_maze(g):
+    """9: the maze's shards but the one nearest on the player's floor are collected by hand; walking to the last saves
+    10 (COLLECT THE RING PIECE) and takes the three nurses away."""
+    s = g.status()
+    left = g.collect_all_but(1, s["player"][:2], floor=s["player"][2])
+    for shard in left:
+        g.walk(shard[1], shard[2], reach=40.0)
+    g.expect("COLLECT THE RING PIECE (saved 10)",
+             lambda s: s.get("checkpoint") == 10 and "RING" in s.get("objective", "").upper(), 5.0)
+    g.shot("z2_maze_done")
+
+
+ALTAR = (-8584.0, -983.0, 120.0)  # where to look at the altar (ring_statue_2) from its way in
+EYE = 95.0                        # the camera over the capsule's centre (02 record)
+
+
+def z2_altar(g):
+    """10: back along the corridor (its sentries are gone) to the altar; a click on it puts up the ring piece's screen
+    (the game stops), CLOSE takes it down: the altar's lights, the barrier and the piece go and the garage's doors unlock
+    (HEAD TOWARDS THE GARAGE)."""
+    # The altar stands among stretchers and ambulances, off the navmesh (the level's NavModifierVolume2 keeps the nurses
+    # out). The one way in for the player's capsule (radius 50) is from the north-west, between the stretchers west of
+    # the altar and the ambulance north of it; from its end the altar is 2 m away over a stretcher (found with capsule
+    # traces on a 40 cm grid, 2026-09-19).
+    g.walk(-8360, 0, reach=60.0, timeout=90.0)
+    g.walk_through([(-8880, -520), (-8880, -760), (-8760, -880)], reach=40.0, straight=True)
+    here = g.status()["player"]
+    dx, dy, dz = ALTAR[0] - here[0], ALTAR[1] - here[1], ALTAR[2] - (here[2] + EYE)
+    g.face(math.degrees(math.atan2(dy, dx)), math.degrees(math.atan2(dz, math.hypot(dx, dy))))
+    time.sleep(0.6)
+    g.shot("z2_altar")
+    left, top, right, bottom = g.viewport
+    g.send("click", x=(left + right) // 2, y=(top + bottom) // 2)
+    g.expect("the ring piece's screen", lambda s: s.get("paused"), 5.0)
+    time.sleep(1.5)  # the piece grows and CLOSE bounces in (09 record)
+    g.shot("z2_altar_piece")
+    # CLOSE is about 100 px over the bottom of a 1038 x 656 viewport (09 record); a miss clicks nothing
+    for dy in (100, 85, 115, 70, 130):
+        g.send("click", x=(left + right) // 2, y=bottom - dy)
+        time.sleep(1.2)
+        if not g.status().get("paused"):
+            break
+    else:
+        raise Failed("CLOSE did not take the ring piece's screen down")
+    g.expect("HEAD TOWARDS THE GARAGE",
+             lambda s: not s.get("paused") and "GARAGE" in s.get("objective", "").upper(), 5.0)
+
+
+def z2_escape(g):
+    """Through the unlocked doors to the garage's box (GET TO THE PORTAL: the portal opens), then along the garage to
+    the portal: the player stops and the screen goes black and stays."""
+    g.walk(-6300, -3950, reach=60.0, timeout=60.0, until=lambda st: "PORTAL" in st["objective"].upper())
+    g.shot("z2_escape_garage")
+    g.walk(-10357, -7700, reach=30.0, timeout=90.0, escape=True, until=lambda st: st["escaped"])
+    g.log("escaped: " + g.brief())
+    time.sleep(1.0)
+    g.shot("z2_escape_black")
+
+
+SECTIONS = [z1_arrive, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
 
 # How a section run alone begins: the save's checkpoint (None: the save started over) and the level opened again,
 # then console commands.
@@ -539,9 +793,15 @@ SETUPS = {
     "z1_shards": (5, ZONE1, []),
     "z1_parking": (5, ZONE1, ["Wasami.CollectShards"]),
     "z1_ambulance": (6, ZONE1, []),
+    "z2_cell": (7, ZONE2, []),
+    "z2_corridor": (8, ZONE2, []),
+    "z2_maze": (9, ZONE2, []),
+    "z2_altar": (10, ZONE2, []),
+    "z2_escape": (10, ZONE2, ["Wasami.Flow OnRingPieceCollect"]),
 }
-# Sections that must start moving as soon as the level is up (the 06 nurses chase from the start).
-NO_WARMUP = {"z1_ambulance"}
+# Sections that must start moving as soon as the level is up (the 06 nurses chase from the start, the cell's spikes
+# come down).
+NO_WARMUP = {"z1_ambulance", "z2_cell"}
 
 
 def setup(g, name):

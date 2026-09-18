@@ -449,6 +449,5 @@ def place(zone="Zone1", map_path=""):
     if old:
         eas.destroy_actors(old)
     place_all(eas, zone, z, result)
-    if not les.save_current_level():
-        raise RuntimeError("could not save " + (map_path or z["level"]))
+    dd_level._save_level(les, map_path or z["level"])
     return result

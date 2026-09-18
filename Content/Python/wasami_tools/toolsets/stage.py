@@ -154,3 +154,22 @@ class WasamiStageTools(unreal.ToolsetDefinition):
             toolset's dict has to hold one type; this one mixes counts and lists.)
         """
         return json.dumps(_module("dd_sequence").place(zone, map_path))
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def build_navigation(map_path: str = "") -> dict[str, int]:
+        """Builds the navigation (the enemies' paths) of the level open in the editor and saves the level. Call it, in a
+        call of its own, after any build_dd_stage_level / place_dd_* call: those open the level and save it in the same
+        call, and opening a level empties its navmesh until the editor has ticked a few seconds, while the game plays
+        the saved navmesh as it is (the project's RuntimeGeneration is DynamicModifiersOnly), so the level is saved
+        without paths (they warn in the output log). A level opened within the last few seconds cannot build yet, so a
+        map_path other than the open level is only opened: call again a few seconds later.
+
+        Args:
+            map_path: Package path of the level (e.g. '/Game/Stage/Maps/L_Hospital_Zone2'); the open level when empty.
+
+        Returns:
+            'opened' 1 when map_path was opened (call again later), 'built' 1 when every NavMeshBoundsVolume has paths,
+            'saved' 1 when the level was saved (only when built), 'volumes' and 'navigable' (volumes with paths).
+        """
+        return _module("dd_level").build_navigation(map_path)

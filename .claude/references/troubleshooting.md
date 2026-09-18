@@ -243,6 +243,7 @@
 - `MaterialExpressionIf` の `ConstAGreaterThanB` など: 扇形のマスクは `ceil(saturate(…))` で作る（03 記録）。
 - `SlateBlueprintLibrary`（画面上の大きさ）: ウィジェットのパス（`get_user_widget_object()` のパス + `.WidgetTree.<名前>`）を `find_object` して `render_transform` と `get_render_opacity()` を読む（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
+- `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
 
 ### 毎フレームのコールバック（`register_slate_post_tick_callback`）が例外で黙って外れ、記録を失う
 
@@ -381,6 +382,14 @@
 
 - 原因: 結合メッシュの `bCastShadowAsTwoSided` を取り込んでおらず、内側向きの片面の天井が Movable の平行光源を遮らない。
 - 対処: 取り込む（コミット 58b66ec）。確かめ方: 平行光源を切っても平均輝度が変わらない（変わるなら漏れている）。
+
+### PIE で敵が動かない・`find_path_to_location_synchronously` が空・`project_point_to_navigation` が `None`（レベルに道が保存されていない）
+
+- 症状: PIE の Zone 2 で、どこでも `NavigationSystemV1.project_point_to_navigation` が `None`、道の問い合わせが 0 点。見張りは見つけても追えず、迷路のナースも動かない。PIE の中で `RebuildNavigation` しても `Build total execution time: 0.00s` で何も変わらない。エディタで開いた直後も `None` だが、数秒後には道がある。
+- 原因: ゲームのワールドは `RuntimeGeneration=DynamicModifiersOnly` なので形から道を作らず、**保存した道をそのまま使う**（UE 5.8 の `IsGeometryRebuildDisabled`）。エディタはレベルを開くと道を空にして数秒のティックで焼き直す（`bForceRebuildOnLoad`）ので、開いたのと同じ Python の呼び出しで保存すると空の道が保存される。同じ呼び出しの `RebuildNavigation` は `UNavigationSystemV1::Build Navigation NOT building because navigation build is locked (flags: 0x20).`（`AsyncLoadLock`）で断られる。
+- 対処: レベルを保存するツールの後に、**別の呼び出しで** `WasamiStageTools.build_navigation()`（開いているレベルを同期で焼き、すべての `NavMeshBoundsVolume` に道があれば保存）。保存するツールは道の無いボリュームがあると `… is saved with navigation in N of M bounds volumes` と警告する。マップは git の外なので、組み立て直したら毎回要る。
+- 確かめ方: `build_navigation()` の戻り値の `navigable` が `volumes` と同じ（Zone 1 は 2、Zone 2 は 29）。PIE で `open L_Hospital_Zone2` の後に `project_point_to_navigation(world, (-7406, -607, 0), None, None, (200, 200, 500))` が点を返す。Zone 2 のマップは道を焼くと約 0.7 MB 大きくなった（4.62 → 5.35 MB）。
+- 出典: 2026-09-19、作業一覧の項目 27 のステップ 2（01 記録の「ナビゲーション」）。
 
 ### ステージを組み立て直すと焼き込みが外れる
 
