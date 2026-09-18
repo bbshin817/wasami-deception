@@ -76,6 +76,10 @@ PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
 LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.I)
 LIMIT_EPOCH = re.compile(r"limit reached\|(\d{9,})")
 LIMIT_BACKOFF = datetime.timedelta(minutes=30)
+# What Claude Code prints in -p mode when the reply ended with background tasks (agents, background commands) still
+# running and they did not finish within the wait ceiling (600 s, CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS): it
+# terminates them and exits 0 (2026-09-18, troubleshooting.md).
+BG_CUTOFF_PATTERN = re.compile(r"Background tasks still running after \d+s; terminating")
 STALL_LIMIT = 2
 # The images of a report go in one message, which Discord shows as one grid (at most 10 attachments).
 REPORT_IMAGES = discord_notify.FILES_LIMIT
@@ -328,11 +332,24 @@ def report_images(status):
     return caption.strip(), found[:REPORT_IMAGES]
 
 
-def run_report(number, exit_code, seconds, status, output, new_pending, progress):
+def run_problems(exit_code, status, moved, output):
+    """What went wrong in a run that may still have exited 0, as (no_result, cut_off). no_result: it wrote no status
+    file and HEAD did not move, so nothing of it is left. cut_off: `claude -p` terminated background tasks the reply
+    left running. Added on 2026-09-18, when such a run (its research agents cut off after 600 s) showed up as an
+    ordinary report with exit 0."""
+    no_result = exit_code is not None and status is None and not moved
+    cut_off = bool(BG_CUTOFF_PATTERN.search(output or ""))
+    return no_result, cut_off
+
+
+def run_report(number, exit_code, seconds, status, output, new_pending, progress, moved=True):
     """The Discord post of a finished run in the format the user gave on 2026-09-18, and the images to attach.
     作業概要 / 分かったこと / 要検討事項 come from the status file Claude wrote in this run (None when it wrote none):
     without "summary" the reply of Claude stands in, without "pending" the 要確認 lines that appeared in the progress
-    records during the run (`new_pending`) do. `progress` is the 進捗率 as text (progress_line)."""
+    records during the run (`new_pending`) do. `progress` is the 進捗率 as text (progress_line). `moved`: HEAD moved
+    during the run. A run that left nothing (run_problems) gets ⚠️ in the heading and a 結果 line, so that exit 0 does
+    not read as an ordinary run."""
+    no_result, cut_off = run_problems(exit_code, status, moved, output)
     summary = status_list(status, "summary")
     if summary is None:
         summary_text = "（状態ファイルに作業概要が無いので、Claude の最後の応答を載せます）\n\n" + (output.strip() or "（出力なし）")
@@ -341,13 +358,20 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
     pending = run_pending(status, new_pending)
     caption, images = report_images(status)
     lines = [
-        "## 📌 反復 #%d 終了" % number,
+        ("## ⚠️ 反復 #%d 終了（成果なし）" if no_result else "## 📌 反復 #%d 終了") % number,
         "",
         "%s ステータス" % SECTION,
         "",
         "- exit: %s" % (exit_code if exit_code is not None else "起動できない"),
         "- 作業時間: %s" % duration_text(seconds),
         "- 進捗率: %s" % progress,
+    ]
+    if no_result:
+        lines.append("- 結果: 状態ファイルが書かれず、コミットも増えていない（この反復の作業は残っていない）")
+    if cut_off:
+        lines.append("- 原因: 応答を終えた後もバックグラウンドの作業が残り、`claude -p` が打ち切った"
+                     "（症状索引の「Background tasks still running after 600s」）")
+    lines += [
         "",
         "%s 🔧 作業概要" % SECTION,
         "",
@@ -687,10 +711,17 @@ def main():
                 ("result=%s step=%s reason=%s" % (status.get("result", "?"), status.get("step", ""),
                                                   status.get("reason", ""))) if status else "書かれていない")
             log.say("=== " + footer)
+            no_result, cut_off = run_problems(exit_code, status, after != before, output)
+            if cut_off:
+                log.say("バックグラウンドの作業が残ったまま応答が終わり、打ち切られた（症状索引）")
             new_pending = [line for _, line in pending_lines() if line not in pending_before]
             done += run_done(status)
+            if no_result:
+                done.append("反復 %d: 成果なし（%s）" % (
+                    runs, "バックグラウンドの作業の打ち切り" if cut_off else "状態ファイルもコミットも無い"))
             night_pending += run_pending(status, new_pending)
-            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, progress_line())
+            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, progress_line(),
+                                        after != before)
             if images:
                 discord.post_images(images, report)
             else:

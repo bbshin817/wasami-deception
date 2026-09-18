@@ -57,6 +57,14 @@
 - 対処: 駆動役はユーザーの端末から起動する。セッションの中で確かめてよいのは `--dry-run` だけ（`.claude/settings.json` の allow もそれだけ）。
 - 出典: 進捗記録 `20260917-autonomy.md` の決定事項（ステップ 2）、01 記録の表。
 
+### 無人運転の反復が `Background tasks still running after 600s; terminating.` で終わり、状態ファイルが書かれない
+
+- 症状: 反復の Claude が調査のサブエージェントをバックグラウンドで走らせ、「終わるのを待っています」と応答を終えると、600 秒後に上の文言で打ち切られる。コミットも状態ファイルも無く、その反復の調査は失われる。駆動役のログは「状態ファイル 書かれていない」、exit は 0。
+- 原因: `claude -p`（駆動役の反復）は、応答を終えた後に残ったバックグラウンドの作業を最大 600 秒待ち、過ぎると打ち切って終わる（上限は環境変数 `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS`。文言の案内どおり）。反復 2 の調査 3 本は 600 秒に収まらなかった。600 秒以内に終わった場合に、その知らせで応答が続くかは確かめていない（どちらでも頼らない）。
+- 対処: **バックグラウンドの作業を残して応答を終えない**（`.claude/guides/autonomy.md` の「無人モード」）。サブエージェントは前面（`run_in_background: false`）で呼ぶ。並べるなら 1 つのメッセージに前面の呼び出しを並べる。`run_in_background` のコマンドは、応答を終える前に終わりを待って結果を読む。2026-09-18 から、駆動役はこの反復を Discord の報告で「⚠️ 成果なし」として出す（見出しとステータスの行。打ち切りの文言があれば原因の 1 行も）。
+- 確かめ方: `Intermediate/Overnight/<日時>.log` の反復の終わりに `Background tasks still running after 600s` があるか。
+- 出典: 2026-09-18 15:30 の無人運転の反復 2（作業一覧の項目 5 のステップ 2。調査 3 本が失われた）。
+
 ### `git checkout main` が `'main' is already checked out at '…/scratchpad/main-wt'` で失敗する / `git branch` の main に `+` が付く
 
 - 症状: 作業ブランチを main へマージしようとすると、main が Claude の一時フォルダ（`%LOCALAPPDATA%\Temp\claude\<プロジェクト>\<セッション>\scratchpad\main-wt`）の worktree で開かれていて切り替えられない。その worktree の `git status` は大量の「staged の変更」を示す。

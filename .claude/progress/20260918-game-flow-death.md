@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 4f12a50
 started: 2026-09-18 15:29
-updated: 2026-09-18 15:29
+updated: 2026-09-18 15:35
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -22,7 +22,7 @@ updated: 2026-09-18 15:29
 ## 計画
 
 - [x] 1. 計画（この記録）… 2026-09-18 完了。ステップ 2〜7 に分けた。順序の理由は「決定事項」
-- [ ] 2. 原作の死亡・再開・セーブの流れを読んでまとめる（コードを読むだけ。C++ は変えない） ← 次
+- [ ] 2. 原作の死亡・再開・セーブの流れを読んでまとめる（コードを読むだけ。C++ は変えない） ← 作業中（変更予定: 新規 `.claude/references/game-flow/README.md`、CLAUDE.md の参考資料、この記録）
   - 読むもの（すべて `pak_reference_2/_bytecode/DDeception/Content/`）:
     - `Blueprints/Main/BP_DD_GameMode.txt`: `DeathEvent(Cause Actor)`（入口 @34486 → @33223 → …）、`Reset Death`（@35117）、`Lives`・`Total Lives`、`Struct Save`（`DD_LevelStructureyyy` の配列をレベルの enum 0〜11 で引く）と `Check For Level Struct Save`・書き出し、`Death Dispatcher` を誰が結ぶか。
     - `Blueprints/Main/DD_PlayerController.txt` の `Shards To Be Removed`、`Blueprints/Main/BP_Shard.txt` の `NoSound` の分岐、`UI/Main/UMG_Loading.txt`（シャードの消し方）。
@@ -71,6 +71,7 @@ updated: 2026-09-18 15:29
 
 - エディタは動いている想定。ステップ 2 はコードを読むだけなのでエディタに触らない。ステップ 3 から C++ を変えるので `python Tools/editor_cycle.py` で閉じて建て直す（閉じる前に保存し、PIE は止める）。
 - 保留の記録 `20260918-power-look-tuning.md`（項目 23、大目標 3）は触らない。
+- ステップ 2 は 2 回中断していて、成果物（`.claude/references/game-flow/README.md`）はまだ無い。反復 2 は調査のサブエージェントをバックグラウンドで走らせて打ち切られ（症状索引「`Background tasks still running after 600s`」）、反復 3 はユーザーの Ctrl+C で止まった（2026-09-18）。調査は前面で行う（`.claude/guides/autonomy.md` の「無人モード」）。
 
 ## 検証
 
