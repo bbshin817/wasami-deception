@@ -9,6 +9,9 @@
 有人セッション（合図が無い）では、作業一覧を進めるのは無人運転なので（2026-09-18 から）`/continue` を勧めず、
 無人運転の結果を報告して指示を待つよう知らせ、最新の駆動役のログのまとめと、駆動役が今も動いているか
 （Intermediate/Overnight/driver.json）を出す（autonomy.md の「有人セッション」）。
+
+どちらのモードでも、作業一覧の大目標の状態（Tools/work_list.py。進行中の大目標の項目だけを取り、達成したら止まる。
+2026-09-18 から）を出し、`status: 保留` の記録（進行中でない大目標の項目）に印を付ける。
 """
 import json
 import os
@@ -29,6 +32,27 @@ OVERNIGHT_DIR = os.path.join(ROOT, "Intermediate", "Overnight")
 STATUS_FILE = os.path.join(OVERNIGHT_DIR, "status.json")
 DRIVER_FILE = os.path.join(OVERNIGHT_DIR, "driver.json")  # written by Tools/overnight.py while it runs
 SUMMARY_MARK = "--- まとめ ---"  # Tools/overnight.py's summarize()
+sys.path.insert(0, os.path.join(ROOT, "Tools"))
+
+
+def goals_lines(unattended):
+    """The big goals of the work list (Tools/work_list.py), or [] when it cannot be read."""
+    try:
+        import work_list
+        work = work_list.load()
+        if work is None or not work.goals:
+            return []
+        lines = ["作業一覧の大目標: " + work_list.goals_line(work, work_list.record_shares())]
+        goal = work.current_goal()
+        if goal is None:
+            lines.append("  進行中の大目標がありません（駆動役は起動を断る）。次の大目標を進行中にするのはユーザーの指示のときだけ"
+                         "（`.claude/guides/autonomy.md` の「有人セッション」の表）。" + ("何も始めず `stop` を書いて終える。" if unattended else ""))
+        elif unattended:
+            lines.append("  進行中の%sの節の項目だけを取る。ほかの大目標の項目は始めない。その節の項目がすべて完了したら、大目標を「達成」にして "
+                         "`stop` を書く（`.claude/guides/autonomy.md` の「何を作業するか」）。" % goal.label)
+        return lines
+    except Exception:
+        return []
 
 
 def git(*args):
@@ -94,7 +118,7 @@ def main():
     if unattended:
         lines.append("**無人モード**（駆動役 Tools/overnight.py が起動。`.claude/guides/autonomy.md` に従う）: ユーザーに質問せず、"
                      "本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて記録の「要確認（ユーザー）」に書く。"
-                     "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
+                     "`status: ユーザー待ち`・`保留` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
                      "Intermediate/Overnight/status.json を書いて応答を終える（Discord の報告になる done〈終わりのまとめのやったことの 1 行〉・summary・learned・"
                      "pending〈この反復で新しく出た要確認だけ〉・shots〈人に見せる連番のグリッドだけ。確かめるための撮影は付けない〉"
                      "も書く。autonomy.md の「Discord への通知」）。"
@@ -115,6 +139,7 @@ def main():
             path, summary = latest
             lines.append("最新の駆動役のログ: %s — %s" % (
                 path, " / ".join(summary) if summary else "（まとめなし: 駆動役が動いているか、途中で止まった）"))
+    lines.extend(goals_lines(unattended))
     status = read_status()
     if status:
         lines.append("前回の無人運転: %s %s — %s（ステップ: %s、コミット: %s）" % (
@@ -133,8 +158,10 @@ def main():
             title = re.search(r"^title:\s*(.+)$", text, re.M)
             status_line = re.search(r"^status:\s*(.+)$", text, re.M)
             waiting = bool(status_line and "ユーザー待ち" in status_line.group(1))
+            on_hold = bool(status_line and "保留" in status_line.group(1))
             nxt = section(text, "次にやること")
-            lines.append("- .claude/progress/%s — %s%s" % (name, title.group(1).strip() if title else "", "（ユーザー待ち）" if waiting else ""))
+            lines.append("- .claude/progress/%s — %s%s" % (name, title.group(1).strip() if title else "",
+                                                     "（ユーザー待ち）" if waiting else "（保留: 進行中でない大目標の項目。飛ばす）" if on_hold else ""))
             size = len(text.encode("utf-8"))
             if size > PROGRESS_LIMIT:
                 lines.append("  大きさ: %d KB（上限 30 KB を超えています。次のステップの前に、"

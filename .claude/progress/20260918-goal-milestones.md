@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/goal-milestones
 base: 3018836
 started: 2026-09-18 15:12
-updated: 2026-09-18 15:35
+updated: 2026-09-18 15:50
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -23,12 +23,12 @@ updated: 2026-09-18 15:35
 
 - [x] 1. 作業一覧を大目標 1〜3 の節に組み直した … 2026-09-18。項目 6・7・9 から後に回す部分を 24〜26 に分け、27（大目標 1 の通しプレイの確かめ）と 28（後回しの一覧）を足した。項目 23 の記録は `status: 保留`。
 - [x] 2. 決まりを直した … 2026-09-18。`autonomy.md`（大目標を超えない・取る項目・`stop` の理由・駆動役が止める条件と起動を断る終了コード 6・決め方の階段の 2 と見た目の仮の値・有人セッションで次の大目標を始める）、`original-fidelity.md` の「大目標による違い」、`observation.md`、`continue` のスキル、`_template.md` の `保留`、`CLAUDE.md` の索引、handover の次の一歩。
-- [ ] 3. ← 作業中。駆動役と hook: 作業一覧を読む `Tools/work_list.py`（新規）、`Tools/overnight.py`（進行中の大目標が無ければ起動を断り、大目標を達成したら止まる。Discord の進捗率に大目標の進み）、`.claude/scripts/session_start_hook.py`（大目標の状態を出す）、実装記録 01。`--dry-run` で確かめる
-- [ ] 4. main へマージして push、ローカルブランチを消し、この記録を消す
+- [x] 3. 駆動役と hook … 2026-09-18。`Tools/work_list.py`（作業一覧の大目標・項目・進捗率を読む）、`overnight.py`（`goal_in_progress` で起動を断る〈終了コード 6〉、`goal_reached` で達成したら止まる、`progress_line` で大目標の進み）、hook（大目標の 1 行、保留の印）。実装記録 01。
+- [ ] 4. ← 作業中。main へマージして push、ローカルブランチを消し、この記録を消す
 
 ## 次にやること
 
-ステップ 3（駆動役と hook）。`autonomy.md` に書いたとおり、進行中の大目標が無ければ起動を断る（終了コード 6）。
+ステップ 4（この記録を消すコミット → main へマージ → push → `feature/goal-milestones` を消す）。
 
 ## 決定事項
 
@@ -46,5 +46,7 @@ updated: 2026-09-18 15:35
 
 ## 検証
 
-- check_records: 未実行
-- `python Tools/overnight.py --dry-run --no-usage-check`: 未実行
+- check_records: OK（`--update` の前に作業コピーが LF であることを確かめた）
+- `work_list.parse` を、今の作業一覧・大目標 1 の項目をすべて完了にした写し・大目標 1 を達成にした写しで確かめた: 今 → 大目標 1 で起動、全部完了 → 起動を断り `goal_reached(1)` が真、達成 → 「進行中の大目標が無い」で断る。
+- `python Tools/overnight.py --dry-run --no-usage-check --no-discord`: exit 0。ログに大目標の 1 行、報告の見本の進捗率が `29%（大目標 1「最小の通しプレイ」: 0%）`。
+- SessionStart hook を有人・無人の両方で走らせ、大目標の 1 行・無人の取り方の注意・保留の印が出ることを確かめた。
