@@ -8,6 +8,7 @@
     python Tools/desktop.py key esc enter              press keys one after another
     python Tools/desktop.py combo ctrl s               press together, release in reverse
     python Tools/desktop.py hold w --ms 1500           hold keys down (walking, sprinting)
+    python Tools/desktop.py down shift w               press keys and leave them down; "up shift w" lets them go
     python Tools/desktop.py look --dx 300 --dy 0       relative mouse movement (mouse look; --burst N = N events per step)
     python Tools/desktop.py type "some text"
     python Tools/desktop.py record --seconds 8 --name x.mkv   record the screen at 60 fps in the background
@@ -99,9 +100,10 @@ def start(timeout=90):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", help="start / status / stop / ping / shot / click / key / combo / hold / look / type / "
+    ap.add_argument("cmd", help="start / status / stop / ping / shot / click / key / combo / hold / down / up / look / "
+                               "type / "
                                "scroll / wait / record / record_status")
-    ap.add_argument("args", nargs="*", help="keys for key/combo/hold, X Y for click, the text for type")
+    ap.add_argument("args", nargs="*", help="keys for key/combo/hold/down/up, X Y for click, the text for type")
     ap.add_argument("--allow", action="append", help="image name of a process whose window may receive the input")
     ap.add_argument("--scale", type=float, default=1.0)
     ap.add_argument("--name")
@@ -148,6 +150,8 @@ def main():
         payload.update(keys=opts.args, hold_ms=opts.hold_ms, gap_ms=opts.gap_ms)
     elif opts.cmd == "hold":
         payload.update(keys=opts.args, ms=opts.ms)
+    elif opts.cmd in ("down", "up"):
+        payload["keys"] = opts.args
     elif opts.cmd == "look":
         payload.update(dx=opts.dx, dy=opts.dy, steps=opts.steps, burst=opts.burst)
     elif opts.cmd == "type":

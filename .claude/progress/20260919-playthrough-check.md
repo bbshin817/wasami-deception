@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5add88a
 started: 2026-09-19 07:54
-updated: 2026-09-19 07:54
+updated: 2026-09-19 08:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -22,9 +22,7 @@ updated: 2026-09-19 07:54
 
 ## 計画
 
-- [ ] 1. Zone 1 の下見（台本を書いて区間ごとに流し、止まる箇所を探して小さいものは直す）
-  - 変更予定: `Tools/playthrough.py`（新規。下の決定事項）、止まる箇所があればその C++・アセット
-  - 流れ: `Wasami.ResetSave` → `L_Hospital_Zone1` で PIE → エレベーターの到着（扉が約 11 s に開く）→ `(0, 1010)` で扉の破壊（F を 67 回）→ 迷路の箱 `BP_04_Trigger_Maze`（保存 5・COLLECT ALL SHARDS、敵 3 体）→ **迷路の敵に見つかって触れ、捕獲 → 死亡画面 → 5 で開き直す**（ライフ 2、回収済みのシャードは戻らない）→ `Wasami.CollectShards N` で数個を残す → 残りを歩いて取る（敵に追われながら）→ 障壁が壊れ `06_CutsceneStart` で駐車場 → `06_DoorsLock` → 25 s で扉が破られる → `06_TunnelEnter` → ガレージリフトの台 `(11249, -21250, 125)` → Space・2・E でテレポーテーションの狙い → 救急車の屋根（屋根の真ん中を狙う。11 記録の「既知の制約」の落ちる件）→ 読み込み画面 → Zone 2 の独房。
+- [x] 1. Zone 1 の下見 — `Tools/playthrough.py` に 5 区間（`z1_arrive`・`z1_maze`・`z1_shards`・`z1_parking`・`z1_ambulance`）を書き、どれも `--setup` の単独と続けての両方で通った（到着 → F 70 回で扉 → 保存 5 → 2 個取って敵に捕まり死亡画面 → 05 でライフ 2 → 1 個を残して回収 → 障壁の跡から駐車場 → 扉・トンネル・リフト・テレポーテーションで屋根〈y −20120〉→ Zone 2 の独房）。止まる箇所は無し（ゲームの側の変更なし）。`desktop.py` に `down`・`up` を足した。
 - [ ] 2. Zone 2 の下見（同じ台本の続き。止まる箇所を探して小さいものは直す）
   - 変更予定: `Tools/playthrough.py`、止まる箇所があればその C++・アセット
   - 流れ: 独房（棘が下りる。開いて約 19 s で死ぬので続けて進める）→ `(-14145, 1330)` で扉の鍵（F を 34 回）→ ミニボスの廊下 `BP_MiniBoss_Trigger`（保存 8、見張り 6 体）→ `Trigger_MazeStart`（保存 9、敵 3 体、リフト）→ `Wasami.CollectShards N` → 残りを歩いて取る（保存 10・COLLECT THE RING PIECE）→ 祭壇 `(-8385, -983)` を左クリック → 欠片の画面の CLOSE → 扉 `BP_06_DoubleDoors2` を抜けてガレージの箱 → GET TO THE PORTAL → ポータルの前の箱で暗転。
@@ -34,9 +32,12 @@ updated: 2026-09-19 07:54
 
 ## 次にやること
 
-ステップ 1。エディタで `L_Hospital_Zone1` を開き、`Tools/playthrough.py` に Zone 1 の区間の台本（11 記録の「通し」の手順 + 迷路での捕獲）を書いて、区間ごとに流して止まる箇所を探す。
+ステップ 2。`Tools/playthrough.py` に Zone 2 の区間（`z2_cell`・`z2_corridor`・`z2_maze`・`z2_escape` など。`SECTIONS` と `SETUPS` に足す。7〜10 の `--setup` は `Wasami.Checkpoint N` → `open L_Hospital_Zone2`）を書き、`python Tools/pie.py start` → `python Tools/playthrough.py run z2_cell --setup --shots` のように区間ごとに流す。`z1_ambulance` の終わり（独房に着いた所）から続けて流せることも確かめる。
 
 ## 決定事項
+
+- 2026-09-19: 捕まるのは迷路（`z1_maze`）の 1 回だけにし、開き直した後に歩いて取るシャードは入口にいちばん近い 1 個にした（`z1_shards`）— 05 で開き直すと迷路のナースが数秒で入口の近くまで巡回して来て、見つかると 800 cm/s で追う（プレイヤーは走って 600）。2 個を歩いて取ろうとしたら 2 度目に捕まった。立ち止まっていても 15 s ほどで捕まる。作りどおり（07 記録）なので直さない。
+- 2026-09-19: 駐車場へのフェード（`06_CutsceneStart`）の後は、待たずにすぐ振り向いて扉へ走る（`z1_ambulance` の最初の歩きは `snap`）— 06 の追跡型 2 体は `Start06`（フェードと同時）で 06_Start の約 22 m 西に出て毎ティック 800 cm/s で追い、06_Start はそちらを向いて始まる。フェードの 3 s を待ったら捕まった。本家も `06 Transition` で同じ順（場面〈項目 25〉を飛ばしているだけ）なので直さず、ステップ 3 の遊んで確かめる手順に「暗転したらすぐ東の扉へ走る」と書く。06 は保存しない（本家どおり。死ぬと 05 から）。
 
 - 2026-09-19: 通しの台本は `Tools/playthrough.py`（git の中）に書き、区間（`z1_arrive`・`z1_maze`・`z1_parking`・`z1_ambulance`・`z2_cell`・`z2_corridor`・`z2_maze`・`z2_escape` など）ごとに単独でも続けても流せる形にする — 下見を区間ごとにやり直せるようにし、項目 21（仕上げの通しプレイ）でも使い回すため。操作は今までの確かめと同じ `Tools/pie.py`（place・cmd）と `Tools/desktop.py`（key・hold・click・record）。
 - 2026-09-19: 移動は区間の間の長い道のりを `pie.py place` で縮めてよいが、区間の出入口の箱・扉・リフト・テレポーテーション・祭壇・ポータルは歩いて（キーで）通す — 今までの区間の確かめ（11 記録）と同じやり方。結ぶ前に箱を通ると使い切られる（11 記録の「既知の制約」）ので、place の先は箱の手前にする。
@@ -47,13 +48,15 @@ updated: 2026-09-19 07:54
 
 ## 再開時の注意
 
-- 開始時のエディタ: `L_Hospital_Zone2` を開いたまま、PIE なし、未保存なし（2026-09-19 07:54）。
+- エディタ: `L_Hospital_Zone1` を開いたまま、PIE なし、未保存なし（2026-09-19 08:30）。セーブはチェックポイント 7。
+- 台本の使い方と作りは 01 記録の `Tools/playthrough.py` の行。ビューポートの既定の位置 (1822, 206, 2862, 858) はエディタの窓の配置で変わる（違ったら `--viewport`）。デスクトップの代理は `down`・`up` を足した後に起動し直してある（古い代理だと `unknown command 'down'`）。
+- 一度だけ、何度かの死亡と `open` の後にキーがゲームに届かなくなった（前面はエディタ、代理は ok）。新しい PIE では再現しなかったので、歩き始めて 1.5 s 動かなければビューポートを押し直す手当てだけ入れた。本番で出たらログに `the keys do not reach the game` が出る。
 - 収録は `python Tools/desktop.py record --seconds N --name <名前>.mkv`（`Intermediate/DesktopAgent/shots/`、git の外）。長い 1 本はビューポートの領域（`--region`）と `--fps 30` で大きさを抑える。ddagrab が止まるときは `--grab gdi`。
 - 救急車の屋根は後ろの端に着くとフレームレートが低いときに落ちる（11 記録の「既知の制約」）。テレポーテーションはホイールで前へ寄せて屋根の真ん中を狙う。
 - 独房は開いて約 19 s で棘に打たれて死ぬ。PIE を始めてから（Zone 2 が開いてから）1 つの台本の続きで扉を外して出る。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: 通過（01 記録と索引に `Tools/playthrough.py`・`down`/`up` を足した）
+- C++ ビルド: 変更なし
+- エディタでの確認（PIE）: Zone 1 の 5 区間を単独（`--setup`）と続けてで通した（撮った画面 `Intermediate/DesktopAgent/shots/pt_*.png`、git の外）

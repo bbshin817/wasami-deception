@@ -247,6 +247,23 @@ def do_hold(req):
     return {"held": names, "ms": req.get("ms", 500), "window": front["title"]}
 
 
+def do_down(req):
+    """Presses keys and leaves them down (walking while the view is turned from elsewhere); "up" lets them go."""
+    front = check_target(req)
+    names = check_keys(req.get("keys", []))
+    for name in names:
+        send(key_input(name))
+    return {"down": names, "window": front["title"]}
+
+
+def do_up(req):
+    """Lets keys go whatever window is in front: a release never acts on anything."""
+    names = check_keys(req.get("keys", []))
+    for name in reversed(names):
+        send(key_input(name, up=True))
+    return {"up": names}
+
+
 def do_type(req):
     front = check_target(req)
     text = str(req.get("text", ""))
@@ -323,7 +340,7 @@ def do_ping(req):
 
 
 HANDLERS = {"ping": do_ping, "shot": do_shot, "click": do_click, "key": do_key, "combo": do_combo, "hold": do_hold,
-            "look": do_look, "type": do_type, "scroll": do_scroll, "wait": do_wait, "record": do_record,
+            "down": do_down, "up": do_up, "look": do_look, "type": do_type, "scroll": do_scroll, "wait": do_wait, "record": do_record,
             "record_status": do_record_status}
 
 
