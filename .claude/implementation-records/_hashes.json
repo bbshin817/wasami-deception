@@ -32,7 +32,7 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "2014db5f831e3152e6354c56b354cbfe64cabb97",
+    "Content/Python/wasami_tools/toolsets/dd.py": "cdcf7b195794b7292fe49920c524e271096b8a1a",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "033a8c527fa24714f1afe20ea3f35a24ee30555d",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
@@ -46,7 +46,7 @@
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "62cf5c53e0b249affdd0f409cefa86e2f1970367",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "0f9440a36537a6379efcc520495115cf9425076a",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
-    "Content/Python/wasami_tools/pipeline/dd_ui.py": "d682992cc842df49279e6f761948642d378c52c5",
+    "Content/Python/wasami_tools/pipeline/dd_ui.py": "c2a31e1bd4167e314a58b20bb4d8478a87ed5af5",
     "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "0a72d73f74647f2d266d6977f9b75c1d436f325a",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
@@ -62,8 +62,8 @@
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "352f6ab86e459f46eb2a4fc3896164c39aa41012",
     "Source/wasami_deception/WasamiGameMode.cpp": "6abe875423ddc005e80e88830f7e2b5fb164edd6",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "779ec49a58897b55415536cd8b944f03658af009",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "cb998e4d84a66ed082fb4f4ac41952e5cd12719a"
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "7f5fc4250b46579b4de270e5ab818a00837b94a1",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "1f4004bcc6f8982228346d9f26c43d4b9e9f03e1"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
@@ -163,7 +163,7 @@
     "Source/wasami_deception/WasamiLoadingWidget.h": "ee36bee48473a2c17659d7e20fbcd386720ffefc",
     "Source/wasami_deception/WasamiLoadingWidget.cpp": "74d3df430b853409a20851dc97482277281de009",
     "Source/wasami_deception/WasamiWidgetAnimation.h": "83bb9caadeb91d0a38e08117f705356a3f5a3f34",
-    "Content/Python/wasami_tools/pipeline/dd_ui.py": "d682992cc842df49279e6f761948642d378c52c5"
+    "Content/Python/wasami_tools/pipeline/dd_ui.py": "c2a31e1bd4167e314a58b20bb4d8478a87ed5af5"
   },
   "11-zone-flow.md": {
     "Source/wasami_deception/WasamiDoorBreak.h": "7bbf17f8a3c7d00b4ff104a3bbc09db88a2ff473",
@@ -201,5 +201,13 @@
     "Source/wasami_deception/WasamiGarageLift.cpp": "4c0ce0d9448374f1480c47120123592e871af161",
     "Source/wasami_deception/Tests/WasamiGarageLiftTests.cpp": "76742c1a3a3572928e8a1cdfbc7791509773df40",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "e8a7098d90714c4f2f6d4009b7b79e9e02d1c120"
+  },
+  "05-interact.md": {
+    "Source/wasami_deception/WasamiInteractable.h": "afca27363ebb5ab3e042c9a1911ebf54662661e5",
+    "Source/wasami_deception/WasamiInteractWidget.h": "d7b14ba7a102e602124b3152294ffca9e2fbf4d1",
+    "Source/wasami_deception/WasamiInteractWidget.cpp": "ac5865e147bdd8677518a0c48aeef1e07d3f70b6",
+    "Source/wasami_deception/Tests/WasamiInteractTests.cpp": "e6dd93aac3a19e99a245fda13a28c148ef79f959",
+    "Source/wasami_deception/Tests/WasamiTestInteractable.h": "fb37adca3f72863f8e71a14cc98a5bc2adc9a1eb",
+    "Source/wasami_deception/Tests/WasamiTestInteractable.cpp": "328dd96989bb371ced9cba2b5940051cb8acd774"
   }
 }

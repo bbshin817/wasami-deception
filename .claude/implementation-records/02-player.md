@@ -20,11 +20,12 @@ updated: 2026-09-19
   - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `PutDownTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。`PutDownTablet` は本家の `Put Down Tablet`〈@31904〉: 上げていれば判定なしで下ろす〈woosh とカーブ〉。捕獲〈07 記録〉が呼ぶ。2 つの速さを書いて使う方を当てる。スピードブーストが使う）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetPowers()`。
   - `IsMapZoomedOut()`（Z で地図を引いているか。本家の `mapZoomedOut?`）、`GetCamera()`、`GetArrowPointer()`（地図の矢印。子のアクタができてから。03 記録）。
   - `OnInteract`（`FSimpleMulticastDelegate`。C++ だけ）と `InteractPressed()`（それを流す。F が呼び、デバッグの `Wasami.Interact` も呼ぶ）。
+  - 見て使う（本家の `Interact (Secondary)` と手のマーク。流れは 05 記録）: 定数 `InteractDistance` 200、`InteractSecondaryPressed()` / `InteractSecondaryReleased()`（左クリックの押し・離し）、`TraceInteract(FHitResult&)`（カメラから前 200 cm の Visibility の線のトレース）、`UpdateInteractWidget()`（ティックが呼ぶ）、`GetInteractWidget()`（`UWasamiInteractWidget`。`BeginPlay` で作る）。
   - 移動の値: `WalkingSpeed` 300、`SprintingSpeed` 600（cm/s）。
   - オプション: `bToggleSprint`、`MouseSensitivity` 1.0、`bInvertY`、`bHeadBob`（本家の OPTIONS の TOGGLE SPRINT / MOUSE SENSITIVITY / INVERTED Y AXIS / HEAD BOBBING）。
   - カメラ: `BaseFOV` 90、`FastFOV` 115、`FOVSpeedRange` (300, 900)、`FOVInterpSpeed` 0.5。
   - 頭の揺れ: `WalkShakeClass` / `RunShakeClass`（`TSoftClassPtr`。既定は `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake` と `_RunShake` の `_C`）。
-  - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E が見る）、`ShardActorClass`（画面が数え、地図に写すシャードのクラス。既定は `AWasamiShard`〈06 記録〉。空なら 0 を出す）。
+  - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E、左クリックの見て使う、手のマークが見る）、`ShardActorClass`（画面が数え、地図に写すシャードのクラス。既定は `AWasamiShard`〈06 記録〉。空なら 0 を出す）。
   - 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `TabletMesh`（`/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2`）、`MinimapTarget`（`/Game/DD/UI/Minimap/T_NewMap`）、`TabletUpSound`（`/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1`）、`TabletDownSound`（`_v1_1`）、`ResizeMapSound`（`/Game/DD/Audio/UI/UI_Select_V3`）。
   - コンポーネント: `Tablet`（板のスタティックメッシュ）、`TabletScreen`（`UWidgetComponent`、`UWasamiTabletWidget`）、`MinimapCapture`（`USceneCaptureComponent2D`）、`ArrowPointer`（`UChildActorComponent`、名前は本家の `BP_ArrowPointer`。地図の矢印 `AWasamiArrowPointer` を持つ。03 記録）、`Powers`（`UWasamiPowerComponent`）、`Chameleon`（名前は `FX`。`UWasamiChameleonComponent`、`GetChameleon()`。本家の子アクタ `FX` の Chameleon。本家は Z +2000・拡縮 (5,5,1) に置くが、範囲なしのボリュームなので位置は絵に関係せず、アクタコンポーネントにした。中身は 04 記録）。
 
@@ -36,7 +37,7 @@ updated: 2026-09-19
   - 視点: `EKeys::Mouse2D` に Smooth → FOVScaling（`FOVScale` 0.01111、`UE4_BackCompat`）の順で修飾子を付ける（UE4 のマウススムージングと FOV スケーリングと同じ）。感度 0.07（本家の `DefaultInput.ini` の `MouseX/Y`）は C++ では掛けず、`Config/DefaultInput.ini` の `AxisConfig`（Mouse2D 0.07）で効かせる: Enhanced Input の `ApplyAxisPropertyModifiers`（UE 5.8 `EnhancedInputSubsystemInterface.cpp`）が、マウスのキーの対応づけに旧入力の `AxisConfig` の感度を `UInputModifierScalar` として先頭に自動で足す（CVar `input.GlobalAxisConfigMode` の既定 0 = マウスだけ）。C++ でも Scalar を足すと 0.07² になり、視点が 1/14 の速さになる（2026-09-17 に直した。1 カウント 0.01225° → 0.175°）。自動の修飾子は Smooth より前に入るが、どれも値に比例するので順は結果を変えない。1 カウント 0.175°（= 0.07 × 感度 1 × FOV 90 × 0.01111 × 2.5）は最新版の実機で測った値と一致する（`observations/README.md` の「視点の速さと集中線」）。`Look` は `AddControllerYawInput` / `AddControllerPitchInput`（`bInvertY` でなければ Y を反転）。コントローラ側の 2.5 / −2.5 は `bEnableLegacyInputScales=True` により掛かる。
   - Shift（ダッシュ）、中クリック（180° ターン）、Space（タブレット）、Z（地図の拡縮）。
   - Q / E / 1 / 2（本家の `Use Power Left` / `Use Power Right` / `Cycle Power Left` / `Cycle Power Right`）は `Powers` の `UsePowerLeftPressed` / `UsePowerRightPressed` / `CyclePowerLeft` / `CyclePowerRight` に直に結ぶ（中身は 04 記録）。本家の `Use Power`（R）はどの BP も受けていないので割り当てない。
-  - 左クリック（`IA_LeftMouseButton`、押した瞬間 = `Started`）とホイール（`IA_MouseWheelAxis`、`EKeys::MouseWheelAxis` の Axis1D、1 目盛り ±1）は、`LeftMousePressed` / `MouseWheel` から `Powers` の `ConfirmTeleport` / `AdjustTeleportDistance` へ渡す（テレポートの照準が出ているときだけ効く。04 記録）。本家では照準のアクタ（`BP_Power_Teleport`）がキーを直に受け、入力を消費しない。本家のプレイヤー自身の左クリック（手持ちの `Use` か前方 200 cm の `InteractWithObject`）は、調べる物ができたとき（M2）にここへ足す。ホイールの Axis1D は値が 0 のフレームでは呼ばれないが、本家の毎フレームの軸の束縛も値が変わるフレームでしか結果が変わらないので同じ。どちらも `bCanMove` などの条件を見ない（本家の照準のアクタも見ない）。
+  - 左クリック（`IA_LeftMouseButton`、押した瞬間 = `Started`、離した瞬間 = `Completed`）とホイール（`IA_MouseWheelAxis`、`EKeys::MouseWheelAxis` の Axis1D、1 目盛り ±1）は、`LeftMousePressed` / `MouseWheel` から `Powers` の `ConfirmTeleport` / `AdjustTeleportDistance` へ渡す（テレポートの照準が出ているときだけ効く。04 記録）。本家では照準のアクタ（`BP_Power_Teleport`）がキーを直に受け、入力を消費しないので、同じクリックでプレイヤー自身の `Interact (Secondary)` も走る。本作も `LeftMousePressed` が `ConfirmTeleport` の後に `InteractSecondaryPressed` を呼び、`LeftMouseReleased` が `InteractSecondaryReleased` を呼ぶ（前方 200 cm の `InteractWithObject` / `StopInteractWithObject`。05 記録）。ホイールの Axis1D は値が 0 のフレームでは呼ばれないが、本家の毎フレームの軸の束縛も値が変わるフレームでしか結果が変わらないので同じ。どちらも `bCanMove` などの条件を見ない（本家の照準のアクタも見ない）。
   - F（`IA_Interact`、押した瞬間 = `Started`）は `InteractPressed` → `OnInteract`。本家の `Interact` はプレイヤー自身は受けず、扉の破壊（`BP_06_Hospital_DoorBreak`）など 6 つの BP が `AutoReceiveInput` でキーを直に受ける（入力は消費しない）。本作ではそれらのアクタが `OnInteract` を聞く（扉の破壊は 11 記録）。条件（`bCanMove` など）は見ない（本家のアクタも見ない）。ゲームパッドのキーはほかの操作と同じく割り当てない。
   - 本家の割り当ての全体（`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini` の `ActionMappings` / `AxisMappings`。2026-09-16 に実機 v1.9.6 でも同じことを確認）:
 
@@ -46,7 +47,7 @@ updated: 2026-09-19
     | LookHorizontal / LookVertical | MouseX / MouseY | 同じ |
     | Sprint | LeftShift | 同じ |
     | Interact | F | `OnInteract`（受けるアクタが聞く。扉の破壊） |
-    | Interact (Secondary) | 左クリック | M2 で実装予定（左クリックはテレポートの確定に使っている） |
+    | Interact (Secondary) | 左クリック | 前方 200 cm の `InteractWithObject`（05 記録。テレポートの確定と同じクリック） |
     | （テレポートの照準のアクタがキーを直に受ける） | 左クリック / マウスホイール | 同じ（04 記録） |
     | Toggle Tablet | SpaceBar | 同じ |
     | Resize Map | Z | 同じ |
@@ -88,10 +89,11 @@ updated: 2026-09-19
 - 本家はタブレットをカメラ → `Scene`(0, 0, −94.9577) → `Tablet` と繋いでいるが、タイムラインが入れる相対 Z（−39.70 → −4.32）はカメラ基準の値で、`Scene` を挟むと板はカメラの約 1 m 下に行き画面に映らない。原作の収録から測った画面上の位置（x 4.8〜31.8 %・y 30.3〜91.0 %。WebGL 版 10 記録）は、カメラ相対 (35.399, −21.994, −4.322) に置いた計算（x 4.6〜31.5 %・y 30.0〜91.5 %）と合うので、`Scene` は置かずカメラの直下に付けている。
 - 本家の画面はシャードの数を 0.01 秒ごとに数え直す（`UMG_Tablet` の Construct のループ）。本作は 0.1 秒ごと（数は回収でしか変わらないので見た目は変わらない）。
 - シャードを回収した瞬間の −1 と `Count Shake` は、シャードが画面に直接書く（06 記録）。0.1 秒ごとの数え直しは、破棄されたシャードを数えない。
-- まだ無いもの: 視線の先の手のマーク（interact）、足音。しゃがみは作らない（本家に無い）。
+- まだ無いもの: 足音。しゃがみは作らない（本家に無い）。
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-19: 見て使う仕組みを足した: ティックの最初に手のマークの出し入れ（`UpdateInteractWidget`）、`BeginPlay` で手のマークのウィジェットを作る、左クリックの押しで `ConfirmTeleport` に続けて `InteractSecondaryPressed`、離しで `InteractSecondaryReleased`（05 記録。作業一覧の項目 13 のステップ 1）
 - 2026-09-19: `PutDownTablet`（本家の `Put Down Tablet`）を足し、ビューターゲットがプレイヤーでない間はタブレットを自分のカメラに置くようにした（捕獲の別室。07 記録）
 - 2026-09-18: 地図の矢印の子のアクタ `ArrowPointer`（`GetArrowPointer`）と、矢印が読む `IsMapZoomedOut`・`GetCamera` を足し、地図のキャプチャに矢印を写すようにした（03 記録。作業一覧の項目 6 のステップ 6）
 - 2026-09-18: F（`IA_Interact`）と `OnInteract`・`InteractPressed`、ゲームモードのデバッグのコマンド `Wasami.Interact [N]`（F を N 回）を足した（扉の破壊が聞く。作業一覧の項目 6 のステップ 3b）

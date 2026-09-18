@@ -26,6 +26,8 @@
 #include "WasamiAssets.h"
 #include "WasamiChameleonComponent.h"
 #include "WasamiGameMode.h"
+#include "WasamiInteractWidget.h"
+#include "WasamiInteractable.h"
 #include "WasamiPowerComponent.h"
 #include "WasamiShard.h"
 #include "WasamiTabletWidget.h"
@@ -188,6 +190,16 @@ void AWasamiPlayerCharacter::BeginPlay()
 	ApplyTabletInterp(0.f);
 	WasamiGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AWasamiGameMode>() : nullptr;
 	UpdateTabletScreen();
+	// UMG_Interact, added at 0 and collapsed until the player looks at something to use.
+	InteractWidget = CreateWidget<UWasamiInteractWidget>(GetWorld(), UWasamiInteractWidget::StaticClass());
+	if (InteractWidget)
+	{
+		if (GetWorld()->GetGameViewport())
+		{
+			InteractWidget->AddToViewport(0);
+		}
+		InteractWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
 	GetWorldTimerManager().SetTimer(FOVTimer, this, &AWasamiPlayerCharacter::UpdateFOV, FOVTimerRate, true);
 	GetWorldTimerManager().SetTimer(TabletScreenTimer, this, &AWasamiPlayerCharacter::UpdateTabletScreen, ScreenRefreshRate, true);
 }
@@ -195,6 +207,7 @@ void AWasamiPlayerCharacter::BeginPlay()
 void AWasamiPlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	UpdateInteractWidget();
 	UpdateTablet(DeltaSeconds);
 	UpdateHeadBob();
 }
@@ -238,6 +251,7 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(ResizeMapAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::ResizeMap);
 	Input->BindAction(InteractAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::InteractPressed);
 	Input->BindAction(LeftMouseAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::LeftMousePressed);
+	Input->BindAction(LeftMouseAction, ETriggerEvent::Completed, this, &AWasamiPlayerCharacter::LeftMouseReleased);
 	Input->BindAction(MouseWheelAction, ETriggerEvent::Triggered, this, &AWasamiPlayerCharacter::MouseWheel);
 }
 
@@ -314,7 +328,7 @@ void AWasamiPlayerCharacter::CreateInput()
 	Map(ResizeMapAction, EKeys::Z);
 	// The original's Interact (F; like the other actions, its gamepad key is not mapped), pressed.
 	Map(InteractAction, EKeys::F);
-	// Pressed, and the wheel's value (±1 a notch; the original's MouseWheelAxis has sensitivity 1). An Axis1D only
+	// Pressed and released, and the wheel's value (±1 a notch; the original's MouseWheelAxis has sensitivity 1). An Axis1D only
 	// triggers on a frame the wheel moves, which is when the original's every-frame binding changes anything.
 	Map(LeftMouseAction, EKeys::LeftMouseButton);
 	Map(MouseWheelAction, EKeys::MouseWheelAxis);
@@ -327,9 +341,63 @@ void AWasamiPlayerCharacter::InteractPressed()
 
 void AWasamiPlayerCharacter::LeftMousePressed()
 {
-	// The teleport's aim takes the click without consuming it; the player's own use of the click (Interact) comes with
-	// the things to interact with.
+	// The teleport's aim takes the click without consuming it (its input sits above the pawn's), so the player's own
+	// Interact (Secondary) runs on the same click.
 	Powers->ConfirmTeleport();
+	InteractSecondaryPressed();
+}
+
+void AWasamiPlayerCharacter::LeftMouseReleased()
+{
+	InteractSecondaryReleased();
+}
+
+bool AWasamiPlayerCharacter::TraceInteract(FHitResult& OutHit) const
+{
+	// LineTraceSingle(Visibility, not complex, no actors to ignore but the player itself) from the camera.
+	const FVector Start = Camera->GetComponentLocation();
+	const FVector End = Start + Camera->GetForwardVector() * InteractDistance;
+	const FCollisionQueryParams Params(SCENE_QUERY_STAT(WasamiInteract), false, this);
+	return GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, Params);
+}
+
+void AWasamiPlayerCharacter::InteractSecondaryPressed()
+{
+	if (!bCanInteract)
+	{
+		return;
+	}
+	// A held item's Use would come first; this game has none.
+	FHitResult Hit;
+	const bool bHit = TraceInteract(Hit);
+	InteractHitActor = Hit.GetActor();
+	AActor* Target = Hit.GetActor();
+	if (bHit && Target && Target->Implements<UWasamiInteractable>())
+	{
+		IWasamiInteractable::Execute_InteractWithObject(Target, this);
+	}
+}
+
+void AWasamiPlayerCharacter::InteractSecondaryReleased()
+{
+	AActor* Target = InteractHitActor.Get();
+	if (Target && Target->Implements<UWasamiInteractable>())
+	{
+		IWasamiInteractable::Execute_StopInteractWithObject(Target);
+	}
+}
+
+void AWasamiPlayerCharacter::UpdateInteractWidget()
+{
+	if (!bCanInteract || !InteractWidget)
+	{
+		return;
+	}
+	FHitResult Hit;
+	const bool bHit = TraceInteract(Hit);
+	const UPrimitiveComponent* HitComponent = Hit.GetComponent();
+	const bool bShow = bHit && IsValid(Hit.GetActor()) && HitComponent && HitComponent->ComponentHasTag(TEXT("interact"));
+	InteractWidget->SetVisibility(bShow ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 void AWasamiPlayerCharacter::MouseWheel(const FInputActionValue& Value)
