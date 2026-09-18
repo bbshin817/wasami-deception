@@ -39,7 +39,7 @@
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "c67e0df3e869b88b9a004ce8c9154e0a9079ad76",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "8902d5e6db7b442640b644e16b2d78583ef5a568",
-    "Content/Python/wasami_tools/pipeline/dd_level.py": "3a8709e26ea6ecb256cdd0d7a319f699e3226416",
+    "Content/Python/wasami_tools/pipeline/dd_level.py": "e12593b05a6ac5e2ce39124f3858d08190fe4cce",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "99462326a6a643e80209090a3e5b4b9b59cc5c08",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "64845f868ae112937d07b8e8c57c0bd33a866c83",
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "62cf5c53e0b249affdd0f409cefa86e2f1970367",
@@ -179,8 +179,8 @@
     "Source/wasami_deception/WasamiLift.h": "9e351e7bb5cef12567d3bdfb40730e42ec8a9d9e",
     "Source/wasami_deception/WasamiLift.cpp": "88cde6798be24bbdbff5cd7539fbfebc654abb0e",
     "Source/wasami_deception/Tests/WasamiLiftTests.cpp": "073e314c9663467d258f9a8b9674dea7949c7246",
-    "Source/wasami_deception/WasamiGarageLift.h": "114ded27419eb1150781f777d5d80a064d1c2dcd",
-    "Source/wasami_deception/WasamiGarageLift.cpp": "5aba270cf833695f013c4fe7cb2b200e5399d3f9",
+    "Source/wasami_deception/WasamiGarageLift.h": "e4d8569272b02aa3dd8c5930881a3ed368702c94",
+    "Source/wasami_deception/WasamiGarageLift.cpp": "c075d27f1e4c8462b210b544089cbb488904eff2",
     "Source/wasami_deception/Tests/WasamiGarageLiftTests.cpp": "76742c1a3a3572928e8a1cdfbc7791509773df40",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "e8a7098d90714c4f2f6d4009b7b79e9e02d1c120"
   }
