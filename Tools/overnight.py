@@ -26,9 +26,9 @@ Discord (Tools/discord_notify.py, which also says where the webhook URL comes fr
 waits and the summary are posted to the webhook. The report is the format the user gave on 2026-09-18 (run_report):
 exit code, working time and 進捗率 (overall_progress: the whole from the start of the project to the final goal, from
 the 規模 in .claude/roadmap.md), then 作業概要 / 分かったこと / 要検討事項 (only what came up in this run) from the
-status file, then the images Claude named in "shots" attached as one grid; when it named none, the shots of this game
-the run took (Tools/desktop.py queues them in Intermediate/Overnight/shots.jsonl) and the HighResShot images it left in
-Saved/Screenshots/. The reply of Claude itself goes to the log only. Without a URL, or with --no-discord, nothing is
+status file, then the images Claude named in "shots" attached as one grid: only images meant for people (sequence
+grids of effects, enemy motions, shard pickups), never shots taken to check the work. The reply of Claude itself goes
+to the log only. Without a URL, or with --no-discord, nothing is
 posted; a dry run prints the report of the last status file instead. A post that fails is logged and the run goes on.
 
 While it runs the driver keeps Intermediate/Overnight/driver.json ({"pid", "started", "log"}): a second driver refuses
@@ -65,16 +65,12 @@ STATUS_FILE = os.path.join(OVERNIGHT_DIR, "status.json")
 DRIVER_FILE = os.path.join(OVERNIGHT_DIR, "driver.json")
 PROGRESS_DIR = os.path.join(ROOT, ".claude", "progress")
 ROADMAP = os.path.join(ROOT, ".claude", "roadmap.md")
-# Tools/desktop.py appends the shots of this game taken in unattended mode here; the driver empties it before a run.
-SHOT_QUEUE = os.path.join(OVERNIGHT_DIR, "shots.jsonl")
 # What Claude Code prints in -p mode when the subscription window is used up (推定: the classic form is
 # "Claude AI usage limit reached|<unix epoch of the reset>"; the newer wording says "hit your limit").
 LIMIT_PATTERN = re.compile(r"usage limit reached|hit your limit|rate limit", re.I)
 LIMIT_EPOCH = re.compile(r"limit reached\|(\d{9,})")
 LIMIT_BACKOFF = datetime.timedelta(minutes=30)
 STALL_LIMIT = 2
-# PIE's HighResShot writes here (Saved/Screenshots/WindowsEditor/); only this game ever lands in it.
-SCREENSHOT_DIR = os.path.join(ROOT, "Saved", "Screenshots")
 # The images of a report go in one message, which Discord shows as one grid (at most 10 attachments).
 REPORT_IMAGES = discord_notify.FILES_LIMIT
 # The user's sample has #### headings, but Discord renders headings only down to ### (#### shows as text).
@@ -118,60 +114,6 @@ class Log:
         if self.file:
             self.file.close()
             self.file = None
-
-
-def new_screenshots(since):
-    """Images under Saved/Screenshots/ written at or after `since` (epoch seconds), oldest first."""
-    found = []
-    for folder, _, names in os.walk(SCREENSHOT_DIR):
-        for name in names:
-            if os.path.splitext(name)[1].lower() not in discord_notify.IMAGE_TYPES:
-                continue
-            path = os.path.join(folder, name)
-            try:
-                written = os.path.getmtime(path)
-            except OSError:
-                continue
-            if written >= since:
-                found.append((written, path))
-    return [path for _, path in sorted(found)]
-
-
-def queued_shots(since):
-    """[(epoch seconds, path)] of the shots of this game Tools/desktop.py queued at or after `since`."""
-    found = []
-    try:
-        with open(SHOT_QUEUE, encoding="utf-8") as f:
-            lines = f.read().splitlines()
-    except OSError:
-        return found
-    for line in lines:
-        try:
-            entry = json.loads(line)
-            written, path = float(entry["time"]), str(entry["path"])
-        except (ValueError, KeyError, TypeError):
-            continue
-        if written >= since and os.path.isfile(path):
-            found.append((written, path))
-    return found
-
-
-def run_images(since):
-    """The images of this game a run left behind, oldest first: the queued desktop shots and the HighResShot files."""
-    found = queued_shots(since)
-    for path in new_screenshots(since):
-        found.append((os.path.getmtime(path), path))
-    return [path for _, path in sorted(found)]
-
-
-def spread(items, count):
-    """At most `count` of the items, evenly spaced from the first to the last."""
-    if len(items) <= count:
-        return list(items)
-    if count <= 1:
-        return items[-1:]
-    step = (len(items) - 1) / float(count - 1)
-    return [items[int(round(i * step))] for i in range(count)]
 
 
 def git(*args):
@@ -344,31 +286,29 @@ def bullets(items):
     return "\n".join("- " + item for item in items) if items else "なし"
 
 
-def report_images(status, since):
-    """(caption, image paths) for the 📷 section: the files Claude named in "shots" of the status file, else the
-    images of this game the run left behind (evenly picked when there are more than one grid holds)."""
+def report_images(status):
+    """(caption, image paths) for the 📷 section: only the files Claude named in "shots" of the status file, the images
+    meant for people (sequence grids of effects, enemy motions, shard pickups; the user's instruction of 2026-09-18).
+    Shots taken to check the work, of the editor or of the whole desktop are never attached, so nothing else is looked
+    for: without named files the section says なし."""
     shots = status.get("shots") if status else None
-    if isinstance(shots, dict):
-        named = status_list(shots, "files") or []
-        paths = [os.path.normpath(p if os.path.isabs(p) else os.path.join(ROOT, p)) for p in named]
-        found = [p for p in paths if os.path.isfile(p)]
-        if found:
-            caption = str(shots.get("caption") or "").strip()
-            missing = len(paths) - len(found)
-            if missing:
-                caption += "（見つからない画像が %d 枚）" % missing
-            if len(found) > REPORT_IMAGES:
-                caption += "（%d 枚のうち先頭の %d 枚）" % (len(found), REPORT_IMAGES)
-            return caption.strip(), found[:REPORT_IMAGES]
-    found = run_images(since)
+    if not isinstance(shots, dict):
+        return None, []
+    named = status_list(shots, "files") or []
+    paths = [os.path.normpath(p if os.path.isabs(p) else os.path.join(ROOT, p)) for p in named]
+    found = [p for p in paths if os.path.isfile(p)]
     if not found:
         return None, []
-    caption = "この反復で撮った本作の画面を添付します（%d 枚%s）。" % (
-        len(found), "から %d 枚を選びました" % REPORT_IMAGES if len(found) > REPORT_IMAGES else "")
-    return caption, spread(found, REPORT_IMAGES)
+    caption = str(shots.get("caption") or "").strip()
+    missing = len(paths) - len(found)
+    if missing:
+        caption += "（見つからない画像が %d 枚）" % missing
+    if len(found) > REPORT_IMAGES:
+        caption += "（%d 枚のうち先頭の %d 枚）" % (len(found), REPORT_IMAGES)
+    return caption.strip(), found[:REPORT_IMAGES]
 
 
-def run_report(number, exit_code, seconds, status, output, new_pending, progress, since):
+def run_report(number, exit_code, seconds, status, output, new_pending, progress):
     """The Discord post of a finished run in the format the user gave on 2026-09-18, and the images to attach.
     作業概要 / 分かったこと / 要検討事項 come from the status file Claude wrote in this run (None when it wrote none):
     without "summary" the reply of Claude stands in, without "pending" the 要確認 lines that appeared in the progress
@@ -381,7 +321,7 @@ def run_report(number, exit_code, seconds, status, output, new_pending, progress
     pending = status_list(status, "pending")
     if pending is None:
         pending = [re.sub(r"^- ", "", line) for line in new_pending]
-    caption, images = report_images(status, since)
+    caption, images = report_images(status)
     lines = [
         "## 📌 反復 #%d 終了" % number,
         "",
@@ -647,7 +587,7 @@ def main():
                 log.say("予算の決まりでは今は走らない")
                 return 2
         if previous:
-            report, images = run_report(0, 0, 0, previous, "", [], overall_progress(), time.time())
+            report, images = run_report(0, 0, 0, previous, "", [], overall_progress())
             log.say("前回の状態ファイルから組んだ反復の報告の見本（添付 %d 枚）:\n%s" % (len(images), report))
         log.say("dry run なので走らせない")
         return 0 if probe.returncode == 0 else 3
@@ -697,11 +637,6 @@ def main():
             before = head()
             stamp_before = status_stamp()
             pending_before = set(line for _, line in pending_lines())
-            try:
-                os.remove(SHOT_QUEUE)
-            except OSError:
-                pass
-            run_started = time.time()
             log.say("=== 反復 %d 開始: HEAD %s (%s)" % (runs, before, branch()))
             exit_code, output, seconds = run_claude(command, log)
             after = head()
@@ -714,8 +649,7 @@ def main():
                                                   status.get("reason", ""))) if status else "書かれていない")
             log.say("=== " + footer)
             new_pending = [line for _, line in pending_lines() if line not in pending_before]
-            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, overall_progress(),
-                                        run_started)
+            report, images = run_report(runs, exit_code, seconds, status, output, new_pending, overall_progress())
             if images:
                 discord.post_images(images, report)
             else:

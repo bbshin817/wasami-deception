@@ -96,7 +96,8 @@ def main():
                      "本家のコード → 実機 → WebGL 版 → 仮の値の順に決めて記録の「要確認（ユーザー）」に書く。"
                      "`status: ユーザー待ち` の記録は飛ばす。ステップを終えてコミットしたら、`/clear` を頼まずに "
                      "Intermediate/Overnight/status.json を書いて応答を終える（Discord の反復の報告になる summary・learned・"
-                     "pending〈この反復で新しく出た要確認だけ〉・shots も書く。autonomy.md の「Discord への通知」）。"
+                     "pending〈この反復で新しく出た要確認だけ〉・shots〈人に見せる連番のグリッドだけ。確かめるための撮影は付けない〉"
+                     "も書く。autonomy.md の「Discord への通知」）。"
                      "変更を捨てる操作・配布・本家のセーブの中身の手での書き換えは行わない"
                      "（本家のセーブが遊んで書き換わる・控えから戻す・入れ替えるのはしてよい）。")
     else:
