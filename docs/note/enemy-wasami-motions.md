@@ -13,10 +13,11 @@
 - **Walking** … 巡回
 - **Running** … プレイヤーを追いかけるとき
 - **run_fast_2** … シャードを全部集めた後に追いかけるとき
-- **01a0a88f-0db6-7251-85e6-1a97b799ee52** … 気絶
+- **BeHit_FlyUp・Knock_Down** … 気絶して倒れる（2 本から 1 本をランダム）
+- **push_up_to_idle** … 気絶から起き上がる（前に寝返りを足す）
 - **Female_Run_Forward_Pick_Up_Right・Male_Head_Down_Charge・Parkour_Vault_with_Roll・Vault_and_Land・run_fast_5・slide_right** … 追いかけている間に、ときどき挟む動き
 - **Backflip・sliding_rool・Stylish_Walk** … 捕まったときの演出（3 本から 1 本）
-- **BeHit_FlyUp・Knock_Down・push_up_to_idle** … 使いどころは未定（場面の演出の候補）
+- **01a0a88f-0db6-7251-85e6-1a97b799ee52** … 使わない（以前の気絶）
 - **restpose** … 使わない（腕を広げた基準の姿勢）
 
 ## 待機と移動
@@ -53,11 +54,37 @@ Zone 2 で見張りをしている 6 体。足を前後に開いた低い構え�
 
 ## 気絶
 
-### 01a0a88f-0db6-7251-85e6-1a97b799ee52（気絶）
+Primal Fear やスタンオーブで気絶すると、倒れる 2 本のどちらかをランダムに流し、あおむけのまま寝ています。気絶の 17 秒が終わるころに寝返りを打ってうつぶせになり、push_up_to_idle で起き上がって、17 秒ちょうどで待機の姿勢に戻ります。
 
-名前が文字の並びだけのモーションです。前かがみでふらつき、やがて体を起こして上を仰ぎます。Primal Fear などで気絶した 17 秒のあいだ、前かがみでふらつく部分（1.5 秒）をくり返し、最後にその続きの起き上がる部分（7.6 秒）を流します。GIF は元の 10.0 秒をそのまま流したものです。
+### BeHit_FlyUp（倒れる）
 
-![気絶](../../observations/ours/note/enemy/06-stun.gif)
+打たれて高く宙へ飛ばされ、あおむけに倒れる。1.6 秒（GIF はほかより少し引いて描きました）。
+
+![BeHit_FlyUp](../../observations/ours/note/enemy/16-behit-flyup.gif)
+
+### Knock_Down（倒れる）
+
+後ろへ吹き飛ばされて倒れる。2.6 秒。
+
+![Knock_Down](../../observations/ours/note/enemy/17-knock-down.gif)
+
+### push_up_to_idle（起き上がる）
+
+床から起き上がり、待機の姿勢に戻る。3.2 秒。うつぶせから始まる動きなので、ゲームでは前に、あおむけから体を半回転させてうつぶせになる寝返り（0.8 秒。元のモーションには無く、こちらで作りました）を足して、あわせて 3.9 秒で流します。GIF は元の 3.2 秒だけです。
+
+![push_up_to_idle](../../observations/ours/note/enemy/18-push-up-to-idle.gif)
+
+### ゲームでの気絶の流れ
+
+倒れる → 寝る → 寝返り → 起き上がる を、ゲームと同じつなぎ方で描いたものです。ゲームでは倒れてから 10〜11 秒ほど寝ていますが、GIF では寝ている時間を 1 秒に縮めました。
+
+BeHit_FlyUp で倒れたとき:
+
+![BeHit_FlyUp で倒れてから起き上がるまで](../../observations/ours/note/enemy/19-stun-flyup.gif)
+
+Knock_Down で倒れたとき:
+
+![Knock_Down で倒れてから起き上がるまで](../../observations/ours/note/enemy/20-stun-knock-down.gif)
 
 ## 追いかけている間にときどき挟む動き
 
@@ -123,27 +150,13 @@ GIF では前へ進みますが、ゲームではその場で動く形に直し�
 
 ![Stylish_Walk](../../observations/ours/note/enemy/15-capture-stylish-walk.gif)
 
-## 使いどころが未定の動き
+## 使わない動き
 
-場面の演出の候補です。
+### 01a0a88f-0db6-7251-85e6-1a97b799ee52
 
-### BeHit_FlyUp
+名前が文字の並びだけのモーションです。前かがみでふらつき、やがて体を起こして上を仰ぎます。10.0 秒。以前は気絶に使っていましたが、上の「倒れて、寝返りを打って起き上がる」流れに替えました。
 
-打たれて高く宙へ飛ばされ、あおむけに倒れる。1.6 秒（GIF はほかより少し引いて描きました）。
-
-![BeHit_FlyUp](../../observations/ours/note/enemy/16-behit-flyup.gif)
-
-### Knock_Down
-
-後ろへ吹き飛ばされて倒れる。2.6 秒。
-
-![Knock_Down](../../observations/ours/note/enemy/17-knock-down.gif)
-
-### push_up_to_idle
-
-床から起き上がり、待機の姿勢に戻る。3.2 秒。
-
-![push_up_to_idle](../../observations/ours/note/enemy/18-push-up-to-idle.gif)
+![01a0a88f-0db6-7251-85e6-1a97b799ee52](../../observations/ours/note/enemy/06-stun.gif)
 
 ## 場面での使い方（仮）
 

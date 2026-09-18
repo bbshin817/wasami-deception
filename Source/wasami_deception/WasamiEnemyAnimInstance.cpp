@@ -3,9 +3,12 @@
 #include "Animation/AnimNodeBase.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationPoseData.h"
+#include "Animation/Skeleton.h"
 #include "AnimationRuntime.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
-#include "GameFramework/Actor.h"
+#include "GameFramework/Controller.h"
+#include "GameFramework/Pawn.h"
 #include "WasamiAssets.h"
 #include "WasamiEnemy.h"
 
@@ -25,8 +28,10 @@ namespace WasamiEnemyAnim
 		TEXT("Walk"),
 		TEXT("Run"),
 		TEXT("Run_Nightmare"),
-		TEXT("Stun_Loop"),
-		TEXT("Stun_Recover"),
+		TEXT("Stun_FlyUp"),
+		TEXT("Stun_KnockDown"),
+		TEXT("Stun_GetUp_FlyUp"),
+		TEXT("Stun_GetUp_KnockDown"),
 		TEXT("Capture_1"),
 		TEXT("Capture_2"),
 		TEXT("Capture_3"),
@@ -36,9 +41,6 @@ namespace WasamiEnemyAnim
 		TEXT("Chase_VaultLand"),
 		TEXT("Chase_RunFast"),
 		TEXT("Chase_Slide"),
-		TEXT("BeHit_FlyUp"),
-		TEXT("Knock_Down"),
-		TEXT("Push_Up_To_Idle"),
 	};
 
 	int32 FindClip(FName Name)
@@ -57,6 +59,24 @@ namespace WasamiEnemyAnim
 	{
 		check(Clip >= 0 && Clip < WasamiEnemyClip::Num);
 		return WasamiAssets::Path(*FString::Printf(TEXT("/Game/Wasami/Enemy/A_WasamiEnemy_%s"), ClipNames[Clip]));
+	}
+
+	FTransform GetRootTransform(const UAnimSequence& Sequence, double Time)
+	{
+		// The root's local transform is its transform in the mesh's space. A clip without its track leaves the atom as
+		// it was: the skeleton's reference pose.
+		const USkeleton* Skeleton = Sequence.GetSkeleton();
+		FTransform Atom = Skeleton && Skeleton->GetRefLocalPoses().Num() > 0 ? Skeleton->GetRefLocalPoses()[0] : FTransform::Identity;
+		Sequence.GetBoneTransform(Atom, FSkeletonPoseBoneIndex(0), FAnimExtractContext(Time), false);
+		return Atom;
+	}
+
+	FTransform MeasureGetUpMove(const UAnimSequence& Fall, const UAnimSequence& GetUp)
+	{
+		const FTransform Move = GetRootTransform(GetUp, 0.).Inverse() * GetRootTransform(Fall, Fall.GetPlayLength());
+		const FVector Forward = Move.GetRotation().RotateVector(FVector::ForwardVector);
+		const FVector Along = Move.GetTranslation();
+		return FTransform(FRotator(0., FMath::RadiansToDegrees(FMath::Atan2(Forward.Y, Forward.X)), 0.), FVector(Along.X, Along.Y, 0.));
 	}
 }
 
@@ -95,24 +115,24 @@ void FWasamiStateBlend::Advance(float DeltaSeconds)
 	WeightB = bInB ? Entered : 1.f - Entered;
 }
 
-void FWasamiStunPlayback::Start(float Duration, float InLoopLength, float InRecoverLength)
+void FWasamiStunPlayback::Start(float Duration, float InFallLength, float InGetUpLength)
 {
-	LoopLength = InLoopLength;
-	RecoverLength = InRecoverLength;
+	FallLength = InFallLength;
+	GetUpLength = InGetUpLength;
 	Elapsed = 0.f;
-	RecoverStart = FMath::Max(0.f, Duration - RecoverLength);
-	RecoverTimeStart = FMath::Max(0.f, RecoverLength - Duration);
-	// The loop's time is 0 (its first key, which is the recovery's) when the recovery starts.
-	LoopStart = LoopLength > 0.f ? FMath::Fmod(LoopLength - FMath::Fmod(RecoverStart, LoopLength), LoopLength) : 0.f;
+	GetUpStart = FMath::Max(FallLength, Duration - GetUpLength);
+}
+
+bool FWasamiStunPlayback::Advance(float DeltaSeconds)
+{
+	const bool bWasGettingUp = IsGettingUp();
+	Elapsed += DeltaSeconds;
+	return !bWasGettingUp && IsGettingUp();
 }
 
 float FWasamiStunPlayback::GetClipTime() const
 {
-	if (!IsRecovering())
-	{
-		return LoopLength > 0.f ? FMath::Fmod(LoopStart + Elapsed, LoopLength) : 0.f;
-	}
-	return FMath::Min(RecoverTimeStart + Elapsed - RecoverStart, RecoverLength);
+	return IsGettingUp() ? FMath::Min(Elapsed - GetUpStart, GetUpLength) : FMath::Min(Elapsed, FallLength);
 }
 
 void FWasamiOncePlayback::Advance(float DeltaSeconds)
@@ -143,13 +163,23 @@ void FWasamiOncePlayback::Stop(float InBlendOut)
 	}
 }
 
-void FWasamiEnemyAnimState::Init(TArrayView<const float> InLengths)
+void FWasamiEnemyAnimState::Init(TArrayView<const float> InLengths, int32 Seed)
 {
 	*this = FWasamiEnemyAnimState();
+	StunRandom.Initialize(Seed);
 	Lengths.Append(InLengths.GetData(), InLengths.Num());
 	Lengths.SetNumZeroed(FMath::Max(Lengths.Num(), static_cast<int32>(WasamiEnemyClip::Num)));
 	ClipTimes.SetNumZeroed(Lengths.Num());
 	ClipRates.SetNumZeroed(Lengths.Num());
+}
+
+int32 FWasamiEnemyAnimState::DrawStunFall()
+{
+	// The user's choice (2026-09-18): either fall at random, whether Primal Fear or the orb stunned it.
+	const int32 Draw = StunRandom.RandRange(0, WasamiEnemyAnim::NumStunFalls - 1);
+	const int32 Fall = WasamiEnemyClip::StunFlyUp + Draw;
+	const int32 Other = WasamiEnemyClip::StunFlyUp + (Draw + 1) % WasamiEnemyAnim::NumStunFalls;
+	return GetLength(Fall) <= 0.f && GetLength(Other) > 0.f ? Other : Fall;
 }
 
 void FWasamiEnemyAnimState::AdvanceClip(int32 Clip, float Rate, float DeltaSeconds)
@@ -178,20 +208,25 @@ void FWasamiEnemyAnimState::Update(const FWasamiEnemyAnimInputs& Inputs, float D
 	}
 	Once.RemoveAll([](const FWasamiOncePlayback& Playback) { return Playback.IsFinished(); });
 
-	// The root: the stun.
+	// The root: the stun. Blending out, it holds its pose, and so does not start its get-up then.
+	StunGetUpStarted = INDEX_NONE;
 	const bool bStunStarts = Inputs.bStunned && (!Stun.bStarted || !Stun.bValue);
 	if (bStunStarts)
 	{
-		StunPlayback.Start(Inputs.StunDuration, Lengths[WasamiEnemyClip::StunLoop], Lengths[WasamiEnemyClip::StunRecover]);
+		StunFall = DrawStunFall();
+		StunPlayback.Start(Inputs.StunDuration, Lengths[StunFall], Lengths[GetUpAfter(StunFall)]);
 		StopOnce(StunBlendTime);
 	}
 	Stun.Update(Inputs.bStunned, StunBlendTime, DeltaSeconds);
-	if (Stun.Weight > ZERO_ANIMWEIGHT_THRESH)
+	if (Inputs.bStunned && StunPlayback.Advance(DeltaSeconds))
 	{
-		StunPlayback.Advance(DeltaSeconds);
-		const int32 StunClip = StunPlayback.IsRecovering() ? WasamiEnemyClip::StunRecover : WasamiEnemyClip::StunLoop;
+		StunGetUpStarted = StunFall;
+	}
+	if (StunFall != INDEX_NONE && Stun.Weight > ZERO_ANIMWEIGHT_THRESH)
+	{
+		const int32 StunClip = StunPlayback.IsGettingUp() ? GetUpAfter(StunFall) : StunFall;
 		ClipTimes[StunClip] = StunPlayback.GetClipTime();
-		ClipRates[StunClip] = 1.f;
+		ClipRates[StunClip] = Inputs.bStunned ? 1.f : 0.f;
 	}
 
 	// The locomotion: Idle ↔ Moving. A state entered from nothing starts over.
@@ -314,14 +349,10 @@ void FWasamiEnemyAnimState::GetSamples(TArray<FWasamiEnemyAnimSample>& OutSample
 	const float OnceWeight = GetOnceWeight(&OnceSum);
 	const float Base = 1.f - OnceWeight;
 
-	const float StunWeight = Base * Stun.Weight;
-	if (StunPlayback.IsRecovering())
+	if (StunFall != INDEX_NONE)
 	{
-		Add(WasamiEnemyClip::StunRecover, StunPlayback.GetClipTime(), StunWeight, false);
-	}
-	else
-	{
-		Add(WasamiEnemyClip::StunLoop, StunPlayback.GetClipTime(), StunWeight, true);
+		const int32 StunClip = StunPlayback.IsGettingUp() ? WasamiEnemyAnim::GetUpAfter(StunFall) : StunFall;
+		Add(StunClip, StunPlayback.GetClipTime(), Base * Stun.Weight, false);
 	}
 
 	const float Locomotion = Base * (1.f - Stun.Weight);
@@ -456,6 +487,37 @@ void UWasamiEnemyAnimInstance::StopOnce(float BlendOut)
 	AnimState.StopOnce(BlendOut);
 }
 
+const TOptional<FTransform>& UWasamiEnemyAnimInstance::GetGetUpMove(int32 Fall) const
+{
+	check(Fall >= WasamiEnemyClip::StunFlyUp && Fall < WasamiEnemyClip::StunFlyUp + WasamiEnemyAnim::NumStunFalls);
+	return GetUpMoves[Fall - WasamiEnemyClip::StunFlyUp];
+}
+
+void UWasamiEnemyAnimInstance::MoveToGetUp(int32 Fall)
+{
+	AActor* Owner = GetOwningActor();
+	const USkeletalMeshComponent* Body = GetSkelMeshComponent();
+	const TOptional<FTransform>& Move = GetGetUpMove(Fall);
+	if (!Owner || !Body || !Move.IsSet())
+	{
+		return;
+	}
+	// The pelvis where the get-up starts (placed by the mesh, then the actor) is where it lies at the fall's end: the
+	// actor takes the move, seen from the actor's space through the mesh's.
+	const FTransform Relative = Body->GetRelativeTransform();
+	const FTransform Moved = Relative.Inverse() * Move.GetValue() * Relative * Owner->GetActorTransform();
+	// TODO(仮): it does not sweep; by a wall the capsule may end up in it, and the movement pushes it out (PIE decides).
+	Owner->SetActorLocationAndRotation(Moved.GetLocation(), Moved.GetRotation(), false, nullptr, ETeleportType::TeleportPhysics);
+	// The controller's rotation too, so that it does not turn the enemy back (bUseControllerDesiredRotation).
+	if (const APawn* Pawn = Cast<APawn>(Owner))
+	{
+		if (AController* Controller = Pawn->GetController())
+		{
+			Controller->SetControlRotation(Moved.Rotator());
+		}
+	}
+}
+
 FName UWasamiEnemyAnimInstance::GetMainClip(float& OutTime, float& OutWeight) const
 {
 	const FWasamiEnemyAnimSample* Main = nullptr;
@@ -495,7 +557,17 @@ void UWasamiEnemyAnimInstance::NativeInitializeAnimation()
 			Lengths[Clip] = Sequence->GetPlayLength();
 		}
 	}
-	AnimState.Init(Lengths);
+	for (int32 Index = 0; Index < WasamiEnemyAnim::NumStunFalls; ++Index)
+	{
+		const UAnimSequence* Fall = Clips[WasamiEnemyClip::StunFlyUp + Index];
+		const UAnimSequence* GetUp = Clips[WasamiEnemyAnim::GetUpAfter(WasamiEnemyClip::StunFlyUp + Index)];
+		GetUpMoves[Index].Reset();
+		if (Fall && GetUp)
+		{
+			GetUpMoves[Index] = WasamiEnemyAnim::MeasureGetUpMove(*Fall, *GetUp);
+		}
+	}
+	AnimState.Init(Lengths, FMath::Rand());
 	FrameSamples.Reset();
 }
 
@@ -506,7 +578,7 @@ void UWasamiEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	const AActor* Owner = GetOwningActor();
 	Speed = Owner ? static_cast<float>(Owner->GetVelocity().Size()) : 0.f;
 	// The ABP's event graph: its nurse's State == Stun and bAggressiveIdle. What is left of the stun is read with it, so
-	// that the recovery ends as the enemy goes back to Patrol. Another owner sets the flags itself.
+	// that the get-up ends as the enemy goes back to Patrol. Another owner sets the flags itself.
 	if (const AWasamiEnemy* Enemy = Cast<AWasamiEnemy>(Owner))
 	{
 		bStunned = Enemy->IsStunned();
@@ -522,6 +594,10 @@ void UWasamiEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Inputs.bAggressiveIdle = bAggressiveIdle;
 	Inputs.bNightmare = bNightmare;
 	AnimState.Update(Inputs, DeltaSeconds);
+	if (AnimState.StunGetUpStarted != INDEX_NONE)
+	{
+		MoveToGetUp(AnimState.StunGetUpStarted);
+	}
 	AnimState.GetSamples(FrameSamples);
 }
 

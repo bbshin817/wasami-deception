@@ -22,8 +22,10 @@ namespace WasamiEnemyClip
 		Walk,
 		Run,
 		RunNightmare,
-		StunLoop,
-		StunRecover,
+		StunFlyUp,
+		StunKnockDown,
+		StunGetUpFlyUp,
+		StunGetUpKnockDown,
 		Capture1,
 		Capture2,
 		Capture3,
@@ -33,9 +35,6 @@ namespace WasamiEnemyClip
 		ChaseVaultLand,
 		ChaseRunFast,
 		ChaseSlide,
-		BeHitFlyUp,
-		KnockDown,
-		PushUpToIdle,
 		Num
 	};
 }
@@ -50,6 +49,23 @@ namespace WasamiEnemyAnim
 
 	/** '/Game/Wasami/Enemy/A_WasamiEnemy_<name>.A_WasamiEnemy_<name>'. */
 	WASAMI_DECEPTION_API FSoftObjectPath ClipPath(int32 Clip);
+
+	/** The stun's falls, Stun_FlyUp and Stun_KnockDown, from WasamiEnemyClip::StunFlyUp on. */
+	inline constexpr int32 NumStunFalls = 2;
+
+	/** The get-up that follows the fall Fall (Stun_FlyUp → Stun_GetUp_FlyUp). */
+	inline constexpr int32 GetUpAfter(int32 Fall) { return Fall + (WasamiEnemyClip::StunGetUpFlyUp - WasamiEnemyClip::StunFlyUp); }
+
+	/** The skeleton's root (the pelvis) in Sequence at Time: its transform in the mesh's space. */
+	WASAMI_DECEPTION_API FTransform GetRootTransform(const UAnimSequence& Sequence, double Time);
+
+	/**
+	 * How the mesh moves as the stun gets up: the get-up starts from the fall's last pose turned half round and moved
+	 * along the floor (Blender measured it, the importer's dd_enemy._stun_get_up), and this, in the mesh's space, takes
+	 * the pelvis where the get-up starts to where the fall ended. Only its turn about the up axis and its move along the
+	 * floor are kept: both lie on the floor.
+	 */
+	WASAMI_DECEPTION_API FTransform MeasureGetUpMove(const UAnimSequence& Fall, const UAnimSequence& GetUp);
 
 	// The original's nurse_idle1_Skeleton_AnimBlueprint (pak_reference_2): the root's Blend Poses by bool on bStunned,
 	// the Idle ↔ Skating crossfades on Speed = VSize(GetVelocity()), Skating's run above 400 and the idle's alert pose.
@@ -114,25 +130,24 @@ struct WASAMI_DECEPTION_API FWasamiStateBlend
 };
 
 /**
- * The stun: Stun_Loop loops, and Stun_Recover (whose first key is the loop's) plays so that it ends when the stun does.
- * The loop starts at the phase that brings its end round exactly when the recovery starts, so the two join seamlessly;
- * a stun shorter than the recovery starts the recovery part way through.
+ * The stun: a fall (Stun_FlyUp or Stun_KnockDown) plays once and holds its last pose, on its back, and its get-up
+ * (Stun_GetUp_*: it rolls over and pushes up to the idle) plays so that it ends when the stun does. A stun too short for
+ * the two gets up as the fall ends, and does not finish.
  */
 struct WASAMI_DECEPTION_API FWasamiStunPlayback
 {
-	void Start(float Duration, float InLoopLength, float InRecoverLength);
-	void Advance(float DeltaSeconds) { Elapsed += DeltaSeconds; }
+	void Start(float Duration, float InFallLength, float InGetUpLength);
+	/** Moves on; true when this crosses into the get-up. */
+	bool Advance(float DeltaSeconds);
 
-	bool IsRecovering() const { return Elapsed >= RecoverStart; }
-	/** The time in Stun_Loop, or in Stun_Recover once recovering (held at its end). */
+	bool IsGettingUp() const { return Elapsed >= GetUpStart; }
+	/** The time in the fall, or in the get-up once getting up (each held at its end). */
 	float GetClipTime() const;
 
-	float LoopLength = 0.f;
-	float RecoverLength = 0.f;
+	float FallLength = 0.f;
+	float GetUpLength = 0.f;
 	float Elapsed = 0.f;
-	float RecoverStart = 0.f;
-	float LoopStart = 0.f;
-	float RecoverTimeStart = 0.f;
+	float GetUpStart = 0.f;
 };
 
 /** A clip played once over the rest (an AnimMontage in a full-body slot): blends in, then out as it ends or is stopped. */
@@ -177,12 +192,15 @@ struct FWasamiEnemyAnimSample
  * Blend by bStunned (the stun | the locomotion: Idle (Idle | Idle_Alert) ↔ Moving (Walk | Run (Run | Run_Nightmare)))
  * — under a full-body slot that plays clips once. A branch whose weight is 0 does not move on, and a state entered from
  * nothing starts its clips from 0, as in the ABP; the locomotion moves on under the stun and what plays once too, so
- * it is in step with the speed when they end.
+ * it is in step with the speed when they end. The stun moves on only while stunned: blending out, it holds its pose.
  */
 struct WASAMI_DECEPTION_API FWasamiEnemyAnimState
 {
-	/** The clips' lengths in WasamiEnemyClip's order; a length of 0 is a missing clip, which never plays. */
-	void Init(TArrayView<const float> InLengths);
+	/**
+	 * The clips' lengths in WasamiEnemyClip's order; a length of 0 is a missing clip, which never plays. Seed starts
+	 * the draws of the stun's fall.
+	 */
+	void Init(TArrayView<const float> InLengths, int32 Seed = 0);
 	void Update(const FWasamiEnemyAnimInputs& Inputs, float DeltaSeconds);
 
 	/** Plays Clip once over the rest; what was playing once blends out over BlendIn. False for a missing clip. */
@@ -207,6 +225,11 @@ struct WASAMI_DECEPTION_API FWasamiEnemyAnimState
 	bool bStarted = false;
 	FWasamiBoolBlend Stun;
 	FWasamiStunPlayback StunPlayback;
+	/** The fall of the stun (StunFlyUp or StunKnockDown), or INDEX_NONE before the first. */
+	int32 StunFall = INDEX_NONE;
+	/** The fall whose get-up the last update started (the owner moves to where it starts), else INDEX_NONE. */
+	int32 StunGetUpStarted = INDEX_NONE;
+	FRandomStream StunRandom;
 	FWasamiStateBlend Moving;
 	FWasamiBoolBlend Alert;
 	FWasamiBoolBlend Running;
@@ -215,6 +238,8 @@ struct WASAMI_DECEPTION_API FWasamiEnemyAnimState
 
 private:
 	void AdvanceClip(int32 Clip, float Rate, float DeltaSeconds);
+	/** Either fall at random (one that is missing gives way to the other). */
+	int32 DrawStunFall();
 	/** How much of the frame what plays once takes, and the sum of its weights. */
 	float GetOnceWeight(float* OutSum = nullptr) const;
 };
@@ -257,7 +282,10 @@ class WASAMI_DECEPTION_API UWasamiEnemyAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
-	/** The owner's State is Stun (the ABP's bStunned). Setting it starts the stun's clips for StunDuration. */
+	/**
+	 * The owner's State is Stun (the ABP's bStunned). Setting it starts the stun's clips for StunDuration, and as they
+	 * get up the owner turns and moves to where the get-up starts.
+	 */
 	UPROPERTY(BlueprintReadWrite, Category = "Enemy")
 	bool bStunned = false;
 
@@ -301,6 +329,9 @@ public:
 
 	const FWasamiEnemyAnimState& GetAnimState() const { return AnimState; }
 
+	/** MeasureGetUpMove for the fall Fall's clips, when both loaded. */
+	const TOptional<FTransform>& GetGetUpMove(int32 Fall) const;
+
 protected:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
@@ -309,8 +340,16 @@ protected:
 private:
 	friend struct FWasamiEnemyAnimInstanceProxy;
 
+	/**
+	 * Moves the owner so that the get-up after the fall Fall starts, in the world, where the fall lies. Done in the
+	 * update, on the game thread, before the frame's pose is evaluated.
+	 */
+	void MoveToGetUp(int32 Fall);
+
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAnimSequence>> Clips;
+
+	TOptional<FTransform> GetUpMoves[WasamiEnemyAnim::NumStunFalls];
 
 	FWasamiEnemyAnimState AnimState;
 	TArray<FWasamiEnemyAnimSample> FrameSamples;
