@@ -152,6 +152,8 @@ updated: 2026-09-18
 
 通し（項目 6 のステップ 10a、2026-09-19）: `Wasami.ResetSave` → Zone 1 の 04 でエレベーターの扉が約 11 s に開き、7 s 後の鍵を `(0, 1010)` で `Wasami.Interact 67` で外して扉が開く → 迷路へ歩いて `BP_04_Trigger_Maze`（y 510）を通り、歩いてシャード 3 個を取る → `Wasami.CollectShards 1` → 最後の 1 個 `(-1574, -2031)` を歩いて取る → `Wasami.Trigger 06_CutsceneStart` で黒のフェードから駐車場 → `(7210, -21800)` から歩いて `06_DoorsLock`（y −22255）に入ると扉が閉ざされ、25 s 後に破片とともに破られる → `06_TunnelEnter` を歩いて通る → ガレージリフトの台 `(11249, -21250, 125)` で 2.5 s で上がる → Space・2（右の枠を Teleport へ）・E で救急車の屋根に狙いが出る → ホイール 2 目盛りで前へ寄せて左クリック → 屋根（y −20000）に着いて GOOD LUCK・SAVING PROGRESS → 救急車に乗ったままトンネルを走る → 読み込み画面 → Zone 2 の独房。収録 `Intermediate/DesktopAgent/shots/through_z1_1.mkv`〜`_4.mkv`・`through_z1_5c.mkv`（git の外）、グリッド `Intermediate/Overnight/through_z1_1.png`〜`_5.png`。
 
+通し Zone 2（項目 6 のステップ 10b、2026-09-19）: `Wasami.Checkpoint 7` → Zone 2 を開いて PIE → 独房で天井の棘が下りる → `(-14145, 1330)` で `Wasami.Interact 34`（開いて約 6 s）→ 扉が火花とともに開き、歩いて出る（開いて 19 s を過ぎると棘で死に、レベルが開き直るので、PIE を始めてから 1 つのコマンドの続きで進める）→ `(-11800, -93)` から +X へ歩いて `BP_MiniBoss_Trigger`（x −11285）を通ると SAVING PROGRESS、タブレットの目的が GET PAST THE NURSES → `(-3950, 0)` から +X へ歩いて `Trigger_MazeStart`（x −3497）を通ると SAVING PROGRESS・COLLECT ALL SHARDS（残り 342）→ 迷路の `lift_4` へ `(6304, -2810)` から走って乗り上の階（Z 634）へ、着いて約 1 s でタブレットの地図が上の階の絵に替わる → `Wasami.CollectShards 1` → 最後の 1 個 `(907, -449)`（下の階）を歩いて取ると 0・COLLECT THE RING PIECE・SAVING PROGRESS。収録 `Intermediate/DesktopAgent/shots/through_z2_1.mkv`〜`_4.mkv`（`_2` は `_2a`・`_2b` をつないだもの。git の外）、グリッド `Intermediate/Overnight/through_z2_1.png`〜`_4.png`。
+
 ## 変更履歴
 - 2026-09-18: 初版。トリガーの箱と、2 つのゾーンの区間の流れの骨組み（作業一覧の項目 6 のステップ 1）
 - 2026-09-18: `PlaySequence`・`PlayCameraShake` を足し、Zone 1 の 04 でエレベーターの到着のシーケンスと揺れ・7 s 後の揺れの終わりを流すようにした（項目 6 のステップ 3a）
