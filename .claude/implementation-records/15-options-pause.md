@@ -56,11 +56,11 @@ updated: 2026-09-19
 - `DD_SoundMix`（ベースのミックス）: `SoundClassEffects` は SFX・Dialogue・Music の 3 つ（音量 1、`bApplyToChildren` 偽）。フェード 0.2 s、`Duration` −1。
 - クラスの木（旧版）: `DD_SoundClass_SFX`（`bApplyAmbientVolumes`）の子に `DD_SoundClass_SFX_UI`（`bIsUISound`、残響なし）と `DD_SoundClass_SFX_Movies`（音量 0.5）。`DD_SoundClass_Music`（残響なし）と `DD_SoundClass_Dialogue` は親なし。最新版は Music の親がエンジンの `Master`（最新版の総音量のため。旧版のオプションに無いので写さない）。
 - **SFX のスライダーは SFX_UI・SFX_Movies に効かない**（本家どおり）: UE はクラスの木で音量を親から子へ掛けた後（`ParseSoundClasses`）にミックスの上書きを当てるので、`bApplyToChildren` 偽の上書きは SFX のクラスの音だけに効く（UE 5.8 の `FAudioDevice::UpdateSoundClassProperties`・`ApplyClassAdjusters`）。
-- 音のクラスは本家の書き出しの `SoundClassObject` のまま（01 記録の `dd_assets.sound_classes`）。**本家でクラスの無い音は無いまま**（病院の扉・リフト・エレベーター・鍵開け・針の罠など 21 件。本家でもどのスライダーも効かない）。`Pause_Sound_v1`（タイトルとポーズの曲）は旧版で SFX、最新版で Music で、最新版から取り込んだので Music。
+- 音のクラスは本家の書き出しの `SoundClassObject` のまま（01 記録の `dd_assets.sound_classes`）。**本家でクラスの無い音は無いまま**（病院の扉・リフト・エレベーター・鍵開け・針の罠など 21 件。本家でもどのスライダーも効かない。2026-09-19 のユーザーの回答でこのまま）。`Pause_Sound_v1`（タイトルとポーズの曲）は旧版で SFX、最新版で Music で、最新版から取り込んだので Music。
 
 ### 難易度の効き先
 - スコア画面（13 記録）: `AWasamiGameMode::Escape` とデバッグ `Wasami.LevelClear` が `FWasamiLevelResults::ForHospital(…, IsEasy())` を渡す（EASY MODE の文字と、FINAL RANK が A で止まる）。
-- 死亡画面の Easy の分岐は**作らない**（2026-09-19。進捗記録の要確認）: 旧版の `UMG_DeathScreen` は難易度を読まない。最新版はライフ 0 で EASY なら `Life Animation` だけで止まり、ボタンが出ない（ポーズからしか抜けられない）。オプション画面を写す旧版に合わせた。
+- 死亡画面の Easy の分岐は**最新版に倣う**（2026-09-19 のユーザーの回答。作業一覧の項目 18 のステップ 6 で作る。**まだ無い**）: 旧版の `UMG_DeathScreen` は難易度を読まない。最新版はライフ 0 で EASY なら `Life Animation` だけで止まり、ボタンが出ず開き直しもしない（ポーズからしか抜けられない）。いまは EASY でもライフ 0 でゲームオーバー。
 - 病院の敵は難易度を読まない（両版で `Difficulty` を読むのはホテル・学校・屋敷・下水・サーカスの敵と、死亡画面・スコア画面・ポーズ・オプション・ゲームインスタンス）。ポーズの EASY MODE はステップ 5。
 
 ### オプション画面（`UWasamiOptionsWidget`）
@@ -110,7 +110,7 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - アセット: `/Game/DD/Audio/SoundMix/DD_SoundMix`・`DD_SoundClass_Music`・`_SFX`・`_SFX_UI`・`_SFX_Movies`・`_Dialogue`（01 記録の `import_dd_sound_classes`）。
 
 ## 既知の制約・注意点
-- **感度の換算は仮**（進捗記録の要確認）: 本家はマウスの軸に設定の値そのもの（既定 0.5）を掛けるが、本作の視点の速さ（1 カウント 0.175°。02 記録）は最新版の実機を感度 1 で測って合わせたので、そのまま掛けると既定で半分の速さになる。`PlayerSensitivityFor` = 設定 / 0.5 で、既定の 0.5 を今の速さ 1.0 にした（WebGL 版の `lookScale` と同じ）。
+- **感度の換算は本家と違う**（2026-09-19 のユーザーの回答で確定）: 本家はマウスの軸に設定の値そのもの（既定 0.5）を掛けるが、本作の視点の速さ（1 カウント 0.175°。02 記録）は最新版の実機を感度 1 で測って合わせたので、そのまま掛けると既定で半分の速さになる。`PlayerSensitivityFor` = 設定 / 0.5 で、既定の 0.5 を今の速さ 1.0 にした（WebGL 版の `lookScale` と同じ）。
 - エディタではスケーラビリティ・解像度・ポストプロセスの品質を当てない（上）。QUALITY と RESOLUTION SCALE の効きはパッケージでしか確かめられない。
 - オプション画面はまだ操作できない（ステップ 4）: スライダー・チェック・矢印は UE の既定の動き（吸着・SAVE & EXIT・CANCEL・ホバーの色は無い）で、画面を閉じる道も無い。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も同じ（タイトル・死亡画面と同じく、そのままにしている。14 記録）。
