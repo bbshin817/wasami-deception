@@ -5,13 +5,16 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Materials/MaterialInterface.h"
 #include "NavigationSystem.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
@@ -22,6 +25,11 @@
 namespace
 {
 	const FName EnemyTag(TEXT("Enemy"));
+
+	// BP_06_ReaperNurse's StaticMesh (pak_reference_2), on CharacterMesh0: the map's mark.
+	const FVector NurseMarkLocation(-0.00019073486328125, 21.884078979492188, 1117.843994140625);
+	constexpr double NurseMarkYaw = -0.00011611320951487869;
+	const FVector NurseMarkScale(2.5238659381866455, 2.5238659381866455, 10.);
 }
 
 AWasamiEnemy::AWasamiEnemy()
@@ -56,7 +64,21 @@ AWasamiEnemy::AWasamiEnemy()
 	Sphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AWasamiEnemy::OnSphereBeginOverlap);
 
+	// StaticMesh: where the nurse's unscaled mesh puts it, 10 m over the capsule's centre. The original leaves it a static
+	// mesh's BlockAllDynamic; as the map's arrow's (AWasamiArrowPointer), it has no collision here, so that it stops
+	// nothing on Zone 2's upper floor.
+	const FTransform MarkOnCapsule = FTransform(FRotator(0., NurseMarkYaw, 0.), NurseMarkLocation, NurseMarkScale)
+		* FTransform(FRotator(0., MeshYaw, 0.), FVector(MeshX, MeshY, MeshZ));
+	MapMark = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	MapMark->SetupAttachment(GetCapsuleComponent());
+	MapMark->SetRelativeTransform(MarkOnCapsule);
+	MapMark->SetCastShadow(false);
+	MapMark->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+	MapMark->SetCanEverAffectNavigation(false);
+
 	MeshAsset = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
+	MapMarkMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Plane")));
+	MapMarkMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Shared/M_Enemy")));
 }
 
 AWasamiEnemy* AWasamiEnemy::SpawnEnemy(const UObject* WorldContextObject, FVector Location, float Yaw, bool bSentry)
@@ -82,6 +104,8 @@ void AWasamiEnemy::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	GetMesh()->SetSkeletalMeshAsset(MeshAsset.LoadSynchronous());
+	MapMark->SetStaticMesh(MapMarkMesh.LoadSynchronous());
+	MapMark->SetMaterial(0, MapMarkMaterial.LoadSynchronous());
 }
 
 void AWasamiEnemy::BeginPlay()

@@ -1,5 +1,5 @@
 ---
-title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Telepathy・Primal Fear とテレキネシスと Vanish と一瞬の演出の基底・カメラアニメ・FX）
+title: タブレットのパワー（枠・入力・ゲージ・強化段階・スピードブーストとその演出・テレポーテーション・Telepathy・Primal Fear とテレキネシスと Vanish と一瞬の演出の基底と球の基底・カメラアニメ・FX）
 sources:
   - Source/wasami_deception/WasamiPowerTypes.h
   - Source/wasami_deception/WasamiPowerTypes.cpp
@@ -17,6 +17,8 @@ sources:
   - Source/wasami_deception/WasamiTeleportAim.cpp
   - Source/wasami_deception/WasamiPowerBurst.h
   - Source/wasami_deception/WasamiPowerBurst.cpp
+  - Source/wasami_deception/WasamiSphereBurst.h
+  - Source/wasami_deception/WasamiSphereBurst.cpp
   - Source/wasami_deception/WasamiPrimalPower.h
   - Source/wasami_deception/WasamiPrimalPower.cpp
   - Source/wasami_deception/WasamiTelekinesisPower.h
@@ -95,14 +97,22 @@ updated: 2026-09-19
 - static: `MakeCurve(Keys)`（`FWasamiCurveKey` = 時刻・値・補間・到着と出発の接線、の並びから `FRichCurve` を作る。どのキーも `RCTM_User` にして書き出しの接線を保つ）、`TintWeight(float2)` = `Lerp(1, 0, float2)`、`FlashWeight(float2)` = `MapRangeClamped(float2, 0, 0.3, 1, 0)`。
 - 派生クラスが上書きするもの: `StartPower()`（`BeginPlay` の中、タイムラインの前）、`UpdateTimeline(Position)`（基底は重みを書く）。
 
-### `AWasamiPrimalPower : AWasamiPowerBurst`（`WasamiPrimalPower.h`）
-本家の `BP_PrimalPower`（最新版）。
-- `Range`（既定 1500。`ExposeOnSpawn`。パワーが強化段階の値〈Lv5 で 3500〉を入れる）。
-- static `StunEnemies(WorldContext, Center, Radius)`（BlueprintCallable）: 半径の中の Pawn の体を持つアクタのうち、`IWasamiEnemyInterface` を実装するものに `SetState(Stun, false)` を 1 回ずつ送り、その数を返す。
-- static: `GrowthCurve()`（`float`）・`PrimalFadeCurve()`（`float2`）・`DesaturationCurve()`・`OpacityCurve()`、`LoadAssets(Out)`。
-- コンポーネント: 基底の 3 つ + `Sphere`（`UStaticMeshComponent`、ルートの原点・拡縮 1、`NoCollision`、動かすので `Movable`）。`GetSphere()`・`GetMaterialInstance()`（C++ だけ）。
-- 値: `PostProcess` の `ColorGain` (1.6100000143051147, 0.12956300377845764, 0, 1)（赤）、`PostProcess1` の `SceneFringeIntensity` 50。
+### `AWasamiSphereBurst : AWasamiPowerBurst`（`WasamiSphereBurst.h`、抽象）
+本家の `BP_PrimalPower` と、特殊シャードのオーブを取ったときの `BP_StunCollectEffect`（16 記録の `AWasamiStunCollectEffect`）が共有する球の作り（2 つの BP は部品も流れも同じで、値だけが違う）。
+- `Range`（既定 1500。`ExposeOnSpawn`。球の半径 = `Range` × `float`）。
+- コンポーネント: 基底の 3 つ + `Sphere`（`UStaticMeshComponent`、ルートの原点・拡縮 1、`NoCollision`、動かすので `Movable`）。`GetSphere()`・`GetMaterialInstance()`・`GetWavePitch()`・`GetSphereColor()`（C++ だけ）。
+- `LoadDefaultAssets(Out)`（クラスの既定の素材 4 つを読んで足す）。
+- 派生クラスがコンストラクタで入れるもの: `GrowthTrack`・`DesaturationTrack`・`OpacityTrack`（`float`・`desaturation`・`opacity` のトラック。`float2` は基底の `FadeCurve`）、`WavePitch`（既定 1）、`SphereColor`（`TOptional`。入れたときだけ MID の `Color` に書く）。
+- `StartPower`: 球にメッシュと `M_05_Primal` の MID（`SphereColor` があれば `Color`）→ プレイヤーのカプセルの中心へ → 波の音 → シェイク。`UpdateTimeline`: 球の拡縮 = `Lerp(0, Range, float) / 50` → 基底の重み → MID の `Desaturation`・`Opacity`。
 - 素材（ソフト参照。`StartPower` で読む）: `SphereMesh` `/Engine/BasicShapes/Sphere`、`SphereMaterial` `/Game/DD/Materials/05_Circus/M_05_Primal`、`WaveSound` `/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04`、`ShakeClass` `/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop`（`_C`）。
+
+### `AWasamiPrimalPower : AWasamiSphereBurst`（`WasamiPrimalPower.h`）
+本家の `BP_PrimalPower`（最新版）。
+- `Range` はパワーが強化段階の値（Lv5 で 3500）を入れる（クラスの既定は基底の 1500）。
+- static `StunEnemies(WorldContext, Center, Radius)`（BlueprintCallable）: 半径の中の Pawn の体を持つアクタのうち、`IWasamiEnemyInterface` を実装するものに `SetState(Stun, false)` を 1 回ずつ送り、その数を返す。
+- static: `GrowthCurve()`（`float`）・`PrimalFadeCurve()`（`float2`）・`DesaturationCurve()`・`OpacityCurve()`、`LoadAssets(Out)`（`LoadDefaultAssets` を既定のオブジェクトで）。
+- 値: `PostProcess` の `ColorGain` (1.6100000143051147, 0.12956300377845764, 0, 1)（赤）、`PostProcess1` の `SceneFringeIntensity` 50、波のピッチ 1、球の色は入れない（`M_05_Primal` の赤のまま）。
+- `StartPower`: 基底の `StartPower` の後に `StunEnemies(アクタの位置〈= プレイヤーの位置〉, Range)`。
 
 ### `AWasamiTelekinesisPower : AWasamiPowerBurst`（`WasamiTelekinesisPower.h`）
 本家の `BP_TelekinesisPower`（最新版）。
@@ -565,6 +575,7 @@ updated: 2026-09-19
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-19: Primal Fear の球の作りを基底 `AWasamiSphereBurst` に切り出した（特殊シャードの `AWasamiStunCollectEffect` と共有する。16 記録）。値と振る舞いは変えていない
 - 2026-09-19: `WasamiVanishWidget.cpp` の無名名前空間の定数を `VanishTicksPerSecond` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiLevelClearWidget.cpp` の `using WasamiWidgetAnimation::TicksPerSecond` とぶつかった。作業一覧の項目 18 のステップ 1）
 - 2026-09-18: `WasamiTelepathyTrackerWidget.cpp` の無名名前空間のキーの型を `FTrackerAnimKey` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiWidgetAnimation::FAnimKey` の `using` とぶつかった。作業一覧の項目 6 のステップ 1）
 - 2026-09-18: `ResetPowers` の呼び元を死亡画面に書き直した（作業一覧の項目 5。09 記録）

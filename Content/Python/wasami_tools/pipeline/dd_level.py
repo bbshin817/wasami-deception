@@ -2,7 +2,7 @@
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
 zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers,
-Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps) and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
 import math
@@ -110,6 +110,20 @@ SAW_TRAP_LIGHT_CLASS = "BP_06_sawTrap_short01_C"
 SAW_TRAP_LIGHT = "PointLight"
 SAW_TRAP_LIGHT_FOLDER = "Hospital/Lights/" + SAW_TRAP_LIGHT_CLASS
 TRAP_FOLDER = "Hospital/Gameplay/Traps"
+# The special shards (BP_PowerOrb and BP_BonusShard → AWasamiPowerOrb and AWasamiBonusShard): one of each in either zone,
+# off the map until its first flicker, and the places they move to (BP_PowerOrbSpawnPoint and BP_BonusShardSpawnPoint →
+# AWasamiPowerOrbSpawnPoint and AWasamiBonusShardSpawnPoint: Zone 1's 11 and 10, Zone 2's 10 and 10), which the flow
+# does not name. The classes hold everything. A placed one's Spawn Points (which the preprocessing leaves out) holds every
+# point of its kind in its zone, which is what the class takes when SpawnPoints is left empty; its only other value of
+# its own is Zone 2's bonus shard's ID (SPECIAL_SHARD_PROPS). The light is a component of it, so the lights the
+# preprocessing lists under one are not placed on their own (builds before 2026-09-19 did, into
+# SPECIAL_SHARD_LIGHT_FOLDERS; place_flow takes those out). No MINIMAP_TAG: the player's MinimapActorClasses shows them.
+SPECIAL_SHARD_CLASSES = {"BP_PowerOrb_C": "WasamiPowerOrb", "BP_BonusShard_C": "WasamiBonusShard"}
+SPECIAL_SPAWN_POINT_CLASSES = {"BP_PowerOrbSpawnPoint_C": "WasamiPowerOrbSpawnPoint",
+                               "BP_BonusShardSpawnPoint_C": "WasamiBonusShardSpawnPoint"}
+SPECIAL_SHARD_PROPS = {"ID": "id"}
+SPECIAL_SHARD_LIGHT_FOLDERS = tuple("Hospital/Lights/" + c for c in SPECIAL_SHARD_CLASSES)
+SPECIAL_SHARD_FOLDER = "Hospital/Gameplay/SpecialShards"
 # Zone 2's altar (BP_01_Statue → AWasamiRingStatue) and the ring piece over it (BP_08_RingPiece_NoPickup →
 # AWasamiRingPiece), with what their classes leave unset: the altar's mesh with the materials the placed one puts on it
 # (its StaticMeshComponent0's OverrideMaterials in the level export, else the class's), and the piece's mesh with
@@ -348,7 +362,7 @@ def _lights(eas, zone, counts, failures):
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
             if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS, RING_PIECE_CLASS, SPEED_BARRIER_CLASS,
-                                    SAW_TRAP_LIGHT_CLASS):
+                                    SAW_TRAP_LIGHT_CLASS) or lt["actorClass"] in SPECIAL_SHARD_CLASSES:
                 continue
             cls = LIGHT_CLASS.get(lt["class"])
             if cls is None or not lt["world"]:
@@ -667,19 +681,20 @@ def set_saw_trap_light(actor, zone, name, level):
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar, the
-    ring piece, the defibrillators, the speed barriers and the saw traps, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    ring piece, the defibrillators, the speed barriers, the saw traps and the special shards with their spawn points, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS)."""
     placed = []
     level = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
+        special = a["class"] in SPECIAL_SHARD_CLASSES or a["class"] in SPECIAL_SPAWN_POINT_CLASSES
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
                                                  TARGET_POINT_CLASS, SENTRY_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
                                                  DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
-                              and not doors and not emitter):
+                              and not doors and not emitter and not special):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -783,6 +798,16 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["sawTraps"] += 1
+        elif special:
+            cls = SPECIAL_SHARD_CLASSES.get(a["class"]) or SPECIAL_SPAWN_POINT_CLASSES[a["class"]]
+            actor = eas.spawn_actor_from_class(getattr(unreal, cls), _vec(world["location"]), _rot(world["quat_xyzw"]))
+            for key, name in SPECIAL_SHARD_PROPS.items():
+                if key in a["props"]:
+                    actor.set_editor_property(name, a["props"][key])
+            unwritten = sorted(set(a["props"]) - set(SPECIAL_SHARD_PROPS))
+            if unwritten:
+                failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
+            counts["specialShards" if a["class"] in SPECIAL_SHARD_CLASSES else "specialSpawnPoints"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -802,6 +827,7 @@ def _flow(eas, stage, zone, counts, failures):
         folder = (LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES
                   else ENEMY_FOLDER if a["class"] == SENTRY_CLASS
                   else TRAP_FOLDER if a["class"] in (DEFIB_CLASS, SPEED_BARRIER_CLASS) or a["class"] in SAW_TRAP_CLASSES
+                  else SPECIAL_SHARD_FOLDER if special
                   else FLOW_FOLDER)
         _tag(actor, a["name"], folder, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
@@ -839,10 +865,11 @@ def _flow(eas, stage, zone, counts, failures):
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers, lifts, garage lifts, sentries, altar, ring piece, defibrillators, speed barriers and saw traps in again (and takes out the barrier,
-    ring piece, speed barrier and saw trap lights an earlier build placed on their own), leaving the rest of the level and its baked lighting as
-    they are (none of them is in the baked lighting: the doors, the lifts, the altar, the defibrillators' stands, the saw traps and the barriers',
-    the piece's and the traps' lights are movable), and saves the level."""
+    checkers, lifts, garage lifts, sentries, altar, ring piece, defibrillators, speed barriers, saw traps and special shards with their spawn
+    points in again (and takes out the barrier, ring piece, speed barrier, saw trap and special shard lights an earlier build placed on their
+    own), leaving the rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts, the
+    altar, the defibrillators' stands, the saw traps, the special shards and the barriers', the piece's and the traps' lights are movable), and
+    saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
@@ -851,12 +878,13 @@ def place_flow(zone="Zone1", map_path=""):
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
     lights = [a for a in eas.get_all_level_actors()
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) in (BARRIER_LIGHT_FOLDER, RING_PIECE_LIGHT_FOLDER,
-                                                                  SPEED_BARRIER_LIGHT_FOLDER, SAW_TRAP_LIGHT_FOLDER)]
+                                                                  SPEED_BARRIER_LIGHT_FOLDER, SAW_TRAP_LIGHT_FOLDER)
+                                                                  + SPECIAL_SHARD_LIGHT_FOLDERS]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
-              "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "portals": 0,
-              "attached": 0}
+              "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
+              "specialSpawnPoints": 0, "portals": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -880,7 +908,7 @@ def build(zone="Zone1", map_path=""):
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
                              "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "defibs",
-                             "speedBarriers", "sawTraps", "portals", "attached")}
+                             "speedBarriers", "sawTraps", "specialShards", "specialSpawnPoints", "portals", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

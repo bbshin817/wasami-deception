@@ -135,6 +135,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - **カプセル**: 半分の高さ 118.05822（本家の上書き）、半径 34（本家は上書きしない。UE 5.8 の `ACharacter` の既定。UE4 から同じ値で、4.24 のソースは手元に無い）。当たりはエンジンの既定の `Pawn`。本家の基底の `AreaClass = NavArea_Obstacle` は 4.24 の `ShapeComponent` の既定と同じなので書かない（UE5 は `bUseSystemDefaultObstacleAreaClass`）。
 - **移動**: `MaxWalkSpeed` 430、`RotationRate` (0, 300, 0)、`bUseControllerDesiredRotation`・`bOrientRotationToMovement` 真。`Set Walk State` は `bNormalWalk` で 200 / 430 を選ぶ（**速さだけは本家のナースの 800・350 / 800 でなく本家の `BP_Monkey` の値**。下の「既知の制約」）。
 - **メッシュ**（`CharacterMesh0`）: 相対位置 (−0.00006, −0.0002, −117.84394)・Yaw −90.00012（本家のまま。`SK_WasamiEnemy` も正面が +Y なので、アクタの前を向く。足はカプセルの底から 0.2 cm 上）、拡縮は X・Y・Z とも `MeshScale` = 229.05135 / 168.52719 = 1.3591（本作の値。2026-09-18 のユーザーの指示「Z軸スケールは本家の敵と同じ身長になるよう、敵ワサミモデルはX・Y・Zスケールを拡大する」。頭頂の骨どうしで合わせる: 本家のナース `nurse_idle1` の基準姿勢の `Nurse_TopOfHead_AuxSHJnt` が 229.05 cm〈その上の帽子を含むメッシュの頂は 246.35 cm〉、`SK_WasamiEnemy` の `head_end` が 168.53 cm〈髪を含むメッシュの頂は 170.0 cm〉。身長なので帽子は含めない。足はメッシュの原点にあるので拡縮しても床に立つ）、`AnimClass = UWasamiEnemyAnimInstance`。メッシュ `/Game/Wasami/Enemy/SK_WasamiEnemy` はソフト参照で、`OnConstruction` で読む（`WasamiAssets.h` の起動時の読み込みを避ける。シャードと同じ）。
+- **地図の印**（`MapMark`、名前は本家の `StaticMesh`。`GetMapMark()`）: エンジンの `Plane` に `M_Enemy`（16 記録の `dd_specials` が作る赤い三角）、影なし。本家はメッシュ（`CharacterMesh0`）の子で相対 (−0.0002, 21.884, 1117.844)・Yaw −0.0001・拡縮 (2.524, 2.524, 10)。本作のメッシュは `MeshScale` で拡大しているので、カプセルの子にし、本家の拡大しないメッシュが置く所（メッシュの変換と合成して、カプセルの中心から (21.884, 0, 1000)・Yaw −90.0002）に置く。メッシュと材質は `OnConstruction` で入れる。当たりは無し（本家はスタティックメッシュの既定。地図の矢印〈03 記録〉と同じ理由で外した: Zone 2 の迷路の下の階の敵の印が上の階を遮らないように）。ふだんの地図には写らず、赤いシャードの 60 s の間だけプレイヤーの `AddToMap` が敵ごと地図のキャプチャに入れる（16 記録）。板は上を向いた片面なので、下からは見えない。
 - **BeginPlay**（中身は `BeginNurse`）: 基底どおり `bCanSpawn` が偽なら自分を消す（本家は既定が偽で、Zone 1 のレベルのスクリプト `Spawn Nurses` が `CanSpawn` を真にして出す。`SpawnEnemy` が同じことをする）。真なら、基底の `Ignore All Speed Barriers`（項目 8）の後、ナースの `Generate Random Point` と、`Make Choice` の 0.5 s ごとのループのタイマー（最初は 0.5 s 後）。
 - **気絶**（ナースの Make Choice の DoOnce）: `SetState` は State を入れるだけ。判断（`MakeChoice`）が State == Stun を見たら、1 回だけ（`bStunRunning`）`StopMovementImmediately` → 17 s のタイマー → `EndStun` で State = Patrol・`bStunRunning` 偽。待っている間は判断は何もしない。待っている間の 2 回目の気絶は時間を延ばさず、State を Patrol にしてまた Stun にしても始め直さない（最初の 17 s で終わる）。`StopMovementImmediately` はナビの移動の `StopActiveMovement` も呼ぶので、**AI の経路の追従も止まる**（UE 4.24 も同じ。止められた移動の依頼は失敗として知らせる）。ナースの `Cloak(False)`（透明化）と気絶の台詞（`Nurse_Hospital_Zone01_Stunned`。項目 20 でワサミの声）は作らない。
 
@@ -286,6 +287,7 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
 ## 変更履歴
+- 2026-09-19: 地図の印 `MapMark`（本家のナースの `StaticMesh`。`Plane`・`M_Enemy`・カプセルの中心から 10 m 上）を足した（作業一覧の項目 10 のステップ 4。16 記録）
 - 2026-09-18: 初版。敵ワサミの素材の取り込み（`dd_enemy.py`、原本 2 つ）を記録
 - 2026-09-18: アニメの再生 `UWasamiEnemyAnimInstance`（本家の ABP の木・気絶の位相合わせ・1 回再生の口）とテスト `Wasami.Enemy.Anim.*` を追加
 - 2026-09-18: 敵のアクタ `AWasamiEnemy`（本家のナースの部品・`CanSpawn`・0.5 s の判断と 17 s の気絶・インターフェース・`SpawnEnemy`）とテスト `Wasami.Enemy.Actor.*` を追加。アニメの再生が持ち主の敵から値を読むようにした

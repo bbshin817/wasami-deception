@@ -1062,7 +1062,10 @@ def z2_altar(g):
     # out). The one way in for the player's capsule (radius 50) is from the north-west, between the stretchers west of
     # the altar and the ambulance north of it; from its end the altar is 2 m away over a stretcher (found with capsule
     # traces on a 40 cm grid, 2026-09-19).
-    g.walk(-8360, 0, reach=60.0, timeout=90.0)
+    # The maze's last shard leaves the player facing east, and the way back west goes through the maze entrance's arch,
+    # about 2 m wide for that capsule: turning while running swings the player into the side of the arch, where it
+    # stays (seen once, 2026-09-19), so it turns first.
+    g.walk(-8360, 0, reach=60.0, timeout=90.0, snap=True)
     g.walk_through([(-8880, -520), (-8880, -760), (-8760, -880)], reach=40.0, straight=True)
     here = g.status()["player"]
     dx, dy, dz = ALTAR[0] - here[0], ALTAR[1] - here[1], ALTAR[2] - (here[2] + EYE)

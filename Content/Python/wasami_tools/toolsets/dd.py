@@ -175,6 +175,26 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_specials() -> dict[str, int]:
+        """Imports (or re-imports) what the special shards (WasamiPowerOrb, the stun orb, and WasamiBonusShard, the
+        red shard) show and play: their meshes (power_orb, soul_shard), the crystal material (m_crystal, estimated off
+        its compiled shaders) with the orb's and the red shard's instances, the map marks' materials (M_PowerOrb, and
+        M_Bonus_Shard and M_Enemy cut to T_EnemyTriangle), the flashes as they move and are taken (P_ky_flash_PowerOrb_
+        and P_ky_flash_BonusOrb_Appear / _Disappear, P_ky_impact, P_ky_impact1, with their textures and the materials
+        not made yet), and the pickup and wave sounds. After import_dd_shards and import_dd_gimmicks, whose map mark
+        master and particle materials these share.
+
+        Returns:
+            How many assets of each kind were made ('sounds', 'textures', 'crystal_materials', 'meshes',
+            'map_mark_materials', 'flash_materials', 'particle_systems').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        _module("dd_particles")
+        return _module("dd_specials").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_wasami_enemy() -> dict[str, int]:
         """Imports (or re-imports) the enemy Wasami (WasamiEnemy) from this game's model in SourceArt: its skeletal
         mesh, skeleton and physics asset, its textures and material, and its animations named A_WasamiEnemy_<role>
