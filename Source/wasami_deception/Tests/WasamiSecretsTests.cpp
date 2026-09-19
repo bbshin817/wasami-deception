@@ -468,8 +468,10 @@ bool FWasamiSecretsCollectablePartsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("it overlaps pawns"), Box->GetGenerateOverlapEvents() && Box->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Overlap);
 	TestFalse(TEXT("out of the navigation"), Box->CanEverAffectNavigation());
 
-	// The folder: at 60, touching nothing, moved by Bounce.
+	// The folder: secret_file (OnConstruction's) at 60, touching nothing, moved by Bounce.
 	const UStaticMeshComponent* Mesh = File->GetStaticMesh();
+	TestEqual(TEXT("secret_file"), Mesh->GetStaticMesh() ? Mesh->GetStaticMesh()->GetPathName() : FString(),
+		FString(TEXT("/Game/DD/Meshes/Shared/secret_file.secret_file")));
 	TestEqual(TEXT("the folder at 60"), Mesh->GetRelativeScale3D(), FVector(60.));
 	TestEqual(TEXT("touching nothing"), Mesh->GetCollisionProfileName(), UCollisionProfile::NoCollision_ProfileName);
 	TestTrue(TEXT("movable"), Mesh->Mobility == EComponentMobility::Movable);

@@ -7,6 +7,7 @@
 class UBoxComponent;
 class UPointLightComponent;
 class USoundBase;
+class UStaticMesh;
 class UStaticMeshComponent;
 
 /**
@@ -23,7 +24,9 @@ class UStaticMeshComponent;
  * achievement, so it is left out: the ID goes into the save's Secrets either way (Unlock's end). So are the Audio
  * component, never played, and the cast to DD_GameState that Bounce waits on.
  *
- * The mesh is not set by the class (WasamiAssets.h): the level build places the file with the stage's secret_file.
+ * The mesh (FileMesh, the stage's secret_file, which carries MM_Shared_Secret_Folder on both slots) is put on by
+ * OnConstruction, as the special shards' are: the level build places the files, and Zone 2's flow spawns the one after
+ * the maze (Postmaze Transition), which has no build to dress it.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiCollectable : public AActor
@@ -70,7 +73,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Collectable|Assets")
 	TSoftObjectPtr<USoundBase> PickupSound;
 
+	/** StaticMesh_GEN_VARIABLE's mesh: secret_file (the stage's). */
+	UPROPERTY(EditAnywhere, Category = "Collectable|Assets")
+	TSoftObjectPtr<UStaticMesh> FileMesh;
+
 protected:
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 
 	UPROPERTY(VisibleAnywhere, Category = "Collectable")

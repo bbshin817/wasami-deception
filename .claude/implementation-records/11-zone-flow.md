@@ -15,7 +15,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp
   - Source/wasami_deception/WasamiZoneShardChecker.h
   - Source/wasami_deception/WasamiZoneShardChecker.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # ゾーンの進行（トリガー・区間の流れ・扉の破壊）
@@ -101,7 +101,7 @@ updated: 2026-09-19
 - `OnMazeTriggerStart`: `MazeTransition` → `SaveCheckpoint(9)`（1 s 後の Bierce の一言と `Setup Bierce Lift Quip`〈全部の `AWasamiLift` の `OnPlayerOverlap` に `Bierce Lift Quip` を結ぶ。12 記録〉は項目 20）。
 - `MazeTransition`（`Maze Transition `）: `RemoveAllEnemies`、矢印 `Shards?` 真、目的 `COLLECT ALL SHARDS`、全回収 → `OnMazeAllShards`、最後に `SpawnNurses`（本家の `Spawn Nurses`: `AWasamiEnemyZone2`〈07 記録の「Zone 2 の迷路の型」〉を `NurseSpawn_4`・`_1`・`_2` に。3 体とも下の階）。本家の Zone 2 には 1 s 後の `Check Shards` が無いので、9 で開き直してシャードが残っていなければ全回収には進まない（本家も同じ）。
 - `OnMazeAllShards`: `SaveCheckpoint(10)` → `PostmazeTransition`（2 s 後の Bierce は項目 20）。
-- `PostmazeTransition`（本家 @10627 あたり）: `RemoveAllEnemies`、`DestroyAllShards`、`ring_statue_2`（`AWasamiRingStatue`。08 記録）の `OnInteractAllShards`（本家の `Interact All Shards`）を `OnCollectedRingPiece` に結ぶ（本家 @10854。無ければ警告）、`src:ring_statue_orb_5` のアクタをすべて破棄、次のティック（本家の `Delay 0`）に矢印 偽・(1, 0.8941, 0, 1)・的 `BP_08_RingPiece_NoPickup_5`、目的 `COLLECT THE RING PIECE`。`BP_Collectable` ID 3 を `collec` に出す（項目 12）。
+- `PostmazeTransition`（本家 @10627 あたり）: `RemoveAllEnemies`、`DestroyAllShards`、目印 `collec`（`PostmazeFilePoint`）の変形に秘密の書類 `AWasamiCollectable` を `ID` 3（`PostmazeFileID`）で出す（本家 @10637 の `BeginDeferredActorSpawnFromClass(BP_Collectable, …, AdjustIfPossibleButAlwaysSpawn)`。目印が無ければ警告。18 記録）、`ring_statue_2`（`AWasamiRingStatue`。08 記録）の `OnInteractAllShards`（本家の `Interact All Shards`）を `OnCollectedRingPiece` に結ぶ（本家 @10854。無ければ警告）、`src:ring_statue_orb_5` のアクタをすべて破棄、次のティック（本家の `Delay 0`）に矢印 偽・(1, 0.8941, 0, 1)・的 `BP_08_RingPiece_NoPickup_5`、目的 `COLLECT THE RING PIECE`。
 - `OnCollectedRingPiece`（本家 `Collected Ring Piece` @13000）: 欠片の画面（`UWasamiRingPieceWidget::Show`。09 記録。`ringpiece_texture` は画面の既定と同じ `T_RingPiece_1`）を Z 0 で出し、その `OnClose` を `OnRingPieceCollect` に結び、`Ring_Piece_Pickup_v1` を 2D で（UI の音なので止めたゲームの上でも鳴る）。画面はゲームを止め、CLOSE で解く。
 - `OnRingPieceCollect`（本家 `Ring Piece Collect ` @21373 → @14304 → @9003 → @7139 → @43。名前の後ろに空白）: 祭壇のピンクの灯 `PointLight202`・`PointLight201_6`（レベルの `APointLight`、Movable）の `LightComponent` を隠す → `BP_ZoneBarrier_2` の `DestroyBarrier`（本家の `Destroy`）→ 矢印 偽・(1, 0.8941, 0, 1)・的 `Postmaze_Trigger_Garage` → 目的 `HEAD TOWARDS THE GARAGE` → `BP_08_RingPiece_NoPickup_5` を破棄 → `BP_06_DoubleDoors2` の `bLocked` を偽（直に書く。近づくと開く）→ 1 s 後（`GarageBindDelay`。Bierce 21 は項目 20）に `Postmaze_Trigger_Garage` を `OnPostmazeTriggerGarage` に結ぶ。本家は同時に救急車の屋根の `Postmaze_Trigger_Ambulance`（ボス戦へ）も結ぶが、本作はガレージのポータルで出るので結ばない。
 - `OnPostmazeTriggerGarage`（本家 `Postmaze_Trigger_Garage` @8540）: 本家は矢印を救急車へ・`GET ON TOP OF THE AMBULANCE`・1 s 後に Bierce 22（項目 20）。**本作は救急車とボス戦の代わりにガレージのポータルで出る**ので、ホテルが欠片の後に出口を開けるのに倣う（`01_Hotel` @43247〜@43565）: ガレージのポータル `Wasami_GaragePortal`（`AWasamiPortal`、08 記録）の `LockUnlock(false, false)`（ホテルと同じく音と揺れなし。箱からポータルまで約 56 m で、どちらにしても届かない）→ 矢印 偽・ホテルの赤 (1, 0, 0.016666, 1)・的 ポータル → 目的 `GET TO THE PORTAL`（ホテルの `Get back to the portal.` を病院の大文字にし、まだ行っていないので back を落とした。要確認）→ 脱出の箱 `Wasami_EscapeTrigger` を `OnEndTrigger` に結ぶ（ここで結ぶので、開く前に箱を通って使い切ることは無い。そもそも扉と障壁の奥）。
@@ -174,6 +174,7 @@ updated: 2026-09-19
 
 大目標 1 の通しプレイ（2026-09-19、作業一覧の項目 27 のステップ 3）: `python Tools/pie.py start` → `python Tools/playthrough.py run --from z1_arrive --to z2_escape --setup --record through.mkv --shots`（`Wasami.ResetSave` から、1 回の PIE・1 本の収録）で、10 区間がすべて終わりに着いた（終了コード 0、230 s）。Zone 1 のエレベーターの到着 → F 70 回で鍵が外れる → 迷路の箱で保存 5 → 2 個を歩いて取り、迷路のナースへ歩いて捕まる（別室の捕獲 → REMAINING LIVES のドクロ 2 つ → 05 で開き直してライフ 2）→ 329 個を手で回収、残りの 1 個 `BP_Shard_2`（0, −1800）を歩いて取り REACH THE PARKING LOT → 障壁の跡の先から駐車場へのフェード → すぐ扉へ走り、トンネルで GET ON TOP OF THE AMBULANCE → ガレージリフトで上がり、Teleport の照準をホイール 1 目盛り前へ寄せて屋根（y −20120）に着き保存 7 → 読み込み画面 → Zone 2 の独房（F 40 回、着いて約 6 s で鍵が外れる）→ 廊下の箱で保存 8 → 見張りの廊下をコーンが消えるのを 5 回待って抜け（58 s）、迷路の箱で保存 9 → 341 個を手で回収、残りの 1 個を歩いて取り保存 10・COLLECT THE RING PIECE → 廊下を戻り北西の隙間から祭壇に手のマーク → 欠片の画面 → CLOSE で HEAD TOWARDS THE GARAGE → 扉を抜けてガレージの箱で GET TO THE PORTAL → ポータルの前で暗転。止まる箇所・キーが届かない・屋根から落ちることは無かった。収録 `Intermediate/DesktopAgent/shots/through.mkv`（git の外。0〜227 s が通し。`--record-seconds` の既定の 900 s まで撮り続けるので、後ろは PIE を止めた後のエディタのビューポート）、区切りの画面 `Intermediate/DesktopAgent/shots/pt_*.png`、区間ごとのグリッド `Intermediate/Overnight/goal1_through_01_z1_arrive.png`〜`_08_z2_escape.png`（`through_run.mkv` は通しの 232 s を切り出したもの）。
 ## 変更履歴
+- 2026-09-20: `PostmazeTransition` が迷路の後の秘密の書類（ID 3）を目印 `collec` に出す。テスト `Wasami.ZoneFlow.Zone2` に確かめを足した（作業一覧の項目 12 のステップ 5）
 - 2026-09-19: `ActivateMinibossEnemies` が見張りの後に Matron（名前 `Matron` = `MnM_Matron_Idle_2`）の `Activate` を呼ぶようにし、テスト `Zone2` に Matron とコーン 2 つを足した（作業一覧の項目 11 のステップ 3。17 記録）
 - 2026-09-19: テスト `Wasami.ZoneFlow.Escape` が `FinishedLevel` の行き先（タイトル）も確かめるようにした（作業一覧の項目 17 のステップ 4）
 - 2026-09-19: Zone 2 の `OnEndTrigger` の最後にゲームモードの `Escape`（一時停止・チェックポイント 0 の保存・スコア画面。13 記録）を足し、テスト `Wasami.ZoneFlow.Escape` を保存と `FinishedLevel` まで延ばした（作業一覧の項目 14 のステップ 5）

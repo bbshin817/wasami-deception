@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Curves/RichCurve.h"
 #include "Engine/CollisionProfile.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
@@ -89,6 +90,13 @@ AWasamiCollectable::AWasamiCollectable()
 	PointLight->VolumetricScatteringIntensity = 0.f;
 
 	PickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/Bierce_Secret_Files_Pickup")));
+	FileMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Game/DD/Meshes/Shared/secret_file")));
+}
+
+void AWasamiCollectable::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	StaticMesh->SetStaticMesh(FileMesh.LoadSynchronous());
 }
 
 float AWasamiCollectable::EvaluateBounce(float Seconds)

@@ -23,7 +23,7 @@ updated: 2026-09-20
 # 秘密と収集物
 
 ## 役割
-本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: いまあるのは素材の取り込み（`dd_secrets.py`）と、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）と、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）と、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ（まだレベルに置いていない）。置くことはこれから（進捗記録 `20260919-secrets`）。
+本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: 素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）まである。PIE での確かめはこれから（進捗記録 `20260919-secrets`）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_secrets()`（素材。前処理 `Tools/dd/prepare_stage.py` と `WasamiStageTools.import_dd_stage_assets` を残りが 0 になるまで、`import_dd_tablet`・`import_dd_ui` の後に）。戻り値 `sounds` 5 / `textures` 6 / `meshes` 1 / `materials` 1。
@@ -31,7 +31,7 @@ updated: 2026-09-20
 - `UWasamiCollectablesWidget`（本家 `UMG_Collectables`）: `Show(WorldContext)`（`AddToPlayerScreen(0)`。最初のプレイヤーのコントローラーで作り、無ければ null）・`LoadAssets`・`Begin`（Construct）/`Advance`（ティック）・`GetIconIndex`・`EvaluateScale`/`EvaluateOpacity`/`EvaluateFlashOpacity`。
 - `UWasamiCollectablesSecretWidget`（`UMG_Collectables_Secret`。上の派生）: `Show`（`AddToViewport(1)`）・`LoadAssets`。
 - `UWasamiMysteryNoteWidget`（`UMG_MysteryNote`）: `Show(WorldContext, Texture, Texts, bLoreNote)`（`AddToViewport(2)`）・`Begin`/`Advance`・`PressNextPage`・`PressClose`・`GetCurrentText`・`GetPageText`・`Evaluate*`。
-- `AWasamiCollectable`（本家 `BP_Collectable`）: `ID`（セーブの `Secrets` の番号）・`Collect()`（取る。DoOnce）・`IsTaken`・`GetBouncePosition`・`EvaluateBounce`/`BounceHeight`/`BounceYaw`・部品の取得。
+- `AWasamiCollectable`（本家 `BP_Collectable`）: `ID`（セーブの `Secrets` の番号）・`FileMesh`（`secret_file` のソフト参照）・`Collect()`（取る。DoOnce）・`IsTaken`・`GetBouncePosition`・`EvaluateBounce`/`BounceHeight`/`BounceYaw`・部品の取得。
 - `AWasamiSecretRoomZone`（`BP_SecretRoomZone`）: `NotifyPlayerOverlap(bBegin)`（箱の重なりがプレイヤーのときだけ呼ぶ）・`GetGlitchOpacity`・`HasShownBanner`・`GetWhispers`・`GetGlitch`/`GetGlitchMaterial`。
 - `AWasamiSecretWall`（`BP_03_SecretWall1` と子 `BP_07_Zone1_SecretWall` の既定値）: `IWasamiInteractable`（05 記録）・`Height`（275）・`IsUsed`/`IsMoving`/`GetMoveUpPosition`/`GetOGHeight`/`GetInterpHeight`・`EvaluateMoveUp`。
 - `AWasamiMysteryCollectable`（`BP_MysteryCollectable`）: `IWasamiInteractable`・`Texture`（ソフト参照）・`Texts`・`bLoreNote`（`Lore Note`）・`GetLastNote`・`GetPlane`。
@@ -54,7 +54,7 @@ updated: 2026-09-20
   - メモの画面: `SizeBox_1`（1727×955）→ `ScaleBox_91` → `paper`（絵の大きさ。枠に収まるよう縮む）、`BackgroundBlur_0`（2）、`Image_0`（黒 0.798、当たりなし）、`SizeBox_0`（1547×724）→ `ScaleBox_0`（縮めるだけ）→ `RichTextBlock_0`（1400 で折り返し。本家の `MysteryText` の様式を画面が持つ表で: Default は helvetica-normal 18・黒の縁 2・(0.965, 0.965, 0.965)、Player は同じで (1, 0.900, 0.432)）、`Close`（背景が透明のボタンに `CLOSE`〈helvetica-neue-bold 36、白 0.5〉。右下の左 236・上 104）、`TextBlock_256`（ページ「n/N」= 本家 `GetText_0` の結び付け。helvetica-neue-bold 30・縁 4・幅 200 以上、下の中央の上 150）、`NextPage`（`selection_bar_arrow_hover` 21×32、普段は 0.703 の灰、中央の右 76・下 420）。`Open`（0.75 s）: 紙が下 1052 から −50（0.15 s）を経て 0（0.35 s）、角度 1.75° → −0.75° → 0、紙・黒・CLOSE・文・矢印の不透明度 0 → 1（0.35 s）、ページは 0.15 s から、ぼかし 0 → 3。`SwitchPage`（0.25 s）: 文の不透明度 0 → 1。
     - Construct（@183）: 紙に `Texture`（絵の大きさで）、UI だけの入力（この画面・`DoNotLock`）とカーソル、`Open`、ゲームを止める、`Update Text`（@1256: `Texts[currentText]`）、1 ページなら `NextPage` を外す、`E Note` なら `DD_LoreNote_01` を `CreateSound2D` で作って 0.5 s で上げる。
     - 矢印（@917）: `SwitchPage` を頭から、最後のページなら 0 へ・それ以外は次へ、`Update Text`。CLOSE（@823）: ゲームを動かし、ゲームだけの入力、カーソルを隠し、`Open` を逆に（UE の逆再生は `StartAtTime` を終わりから数えるので 0.4 s から 0 へ。0.05 s はそのまま）、0.5 s 後に外す（待っている間の 2 回目の `Delay` は効かない）。Destruct（@1361）: 音を 0.5 s で下げる。
-- 書類 `AWasamiCollectable`: 部品は `DefaultSceneRoot` → `Box`（z 36.44・拡縮 (1.23, 1.30, 1)。UE の重なりの箱、道の外）・`StaticMesh`（z 36.44・60 倍・当たりなし・メッシュはレベルの組み立てが入れる）・`PointLight`（根の上 z 35.77、1000〈単位なし〉・250 cm・`SoftSourceRadius` 2000・影なし・Movable）。
+- 書類 `AWasamiCollectable`: 部品は `DefaultSceneRoot` → `Box`（z 36.44・拡縮 (1.23, 1.30, 1)。UE の重なりの箱、道の外）・`StaticMesh`（z 36.44・60 倍・当たりなし。メッシュは `OnConstruction` が `FileMesh` を読み込んで入れる〈特殊シャードと同じ作り。レベルの組み立てが置くものも、迷路の後に流れが出すものも同じ〉）・`PointLight`（根の上 z 35.77、1000〈単位なし〉・250 cm・`SoftSourceRadius` 2000・影なし・Movable）。
   - BeginPlay: 取るときの声と画面の素材を読み込み、`Bounce` を 0 から、0.2 s のタイマーでセーブの確かめ（ゲームモードのセーブの `Hospital.Secrets` が `ID` を含めば `Destroy`）。
   - ティック（`Bounce`。5 s のループを 3 倍の速さ、位置は 5 で回る）: `NewTrack_0`（0・1・0 を 0・2.5・5 s、3 次で接線は 0）の値 v で、メッシュの相対位置 (0, 0, Lerp(35, 40, v))・ヨー Lerp(0, 7, v)。
   - 箱の重なり → 相手が `GetPlayerCharacter(0)` なら `Collect`: DoOnce → `CreateSound2D(Bierce_Secret_Files_Pickup, 0.85, 1)`・`Play`（ワールドの音なので書類が消えても鳴り続ける）→ `UWasamiCollectablesWidget::Show` → セーブの `Hospital.Secrets` に `AddUnique(ID)` → `Destroy`（灯も一緒に消える）。
@@ -76,6 +76,8 @@ updated: 2026-09-20
   - `AWasamiFakeUseSequencePlayer`: `UsedEvent` → `Sequence->GetSequencePlayer()->Play()`（無ければ警告だけ）。Zone 1 の秘密のエレベーター 2 つ（`BP_FakeUseActor_2` → `06_Hospital_Zone1_SecretElevator`、`BP_FakeUseActor5` → `…SecretElevator1_2`）。
   - `AWasamiFakeUseElevator`: 部品は `Scene`（根の下、相対 (305, 70, −145)）→ `StaticMesh`（右の扉）・`StaticMesh1`（左の扉）・`Audio1`（相対 (0, 0, 160)・自動で鳴らない。BeginPlay で `DD_TT_Elevator_Doors_Open` と `01_Lobby_Attenuation` を入れる）。扉は UE の `BlockAllDynamic`・道の外、メッシュはレベルの組み立てが入れる（`hospital_elevator_doors_R_elevator_door`・`…_L_elevator_door_`）。
     - `UsedEvent` → `ActorSequence` を頭から（ティックで進める）→ `Audio1.Play(0)`（音は使った時に、扉は 2.23 s から）。本家の `ActorSequence`（5 s = 120000 ÷ 24000）は `StaticMesh1` の x を 0 → 145、`StaticMesh` の x を 0 → −145 を 53600〜119200（2.23〜4.97 s）で動かす 2 本の変形のトラック（キー 2 つの 3 次・自動の接線は両端で 0 = `3t² − 2t³`。回転 0・拡縮 1 もキー）で、区間は `KeepState`・範囲は無限。ティックは相対の変形ごと (±x, 0, 0) に入れ、5 s で止めて開いたまま。
+- 置き方（レベルの組み立て `dd_level._flow`。01 記録。`place_dd_flow` で置き直す）: 本家のクラス → C++ の表 `SECRET_CLASSES`、`set_secret` が置いたものの値を入れる。書類は `ID`（Zone 1 の `BP_Collectable_2` は既定の 0・`BP_Collectable2_5` は 1、Zone 2 の `BP_Collectable_2` は 2）。区域は `Box` の相対の変形（Zone 2: (−95, 0, 20)・拡縮 (13.83, 16.22, 1.5)）。壁は `StaticMesh` の相対 (18.53, 0, 0) と `manor_fake_wall` に置いたものの材質 `M_06_Hospital_Brick_01`（根の拡縮 2.146 はアクタの拡縮）。メモは根の変形（回転・拡縮も）、`Texture`（`/Game/DD/Textures/06_Hospital/…`）、`Texts`（書き出しの文字列表の参照 `06_Hospital_Note_00`〜`02` を本家の `Blueprints/Main/Strings/Strings` の本文にした文字列。文字列表は取り込まない）、`Plane` の相対の変形（0 に戻す）と材質（`M_06_Hospital_MysteryRoom_Note_01`〜`03`）。おとりのエレベーターは扉 2 枚のメッシュ（右 `StaticMesh` = `hospital_elevator_doors_R_elevator_door`、左 `StaticMesh1` = `…_L_elevator_door_`、材質はメッシュのもの）。秘密のエレベーターの `Sequence` は `link_sequence_players` が書き出しの `Sequence` の名前（`06_Hospital_Zone1_SecretElevator`・`…SecretElevator1_2`）のタグ `src:` の `LevelSequenceActor` に結ぶ。シーケンスのアクタは `dd_sequence` が流れのアクタの後に置き直すので、`place_flow` の後と `dd_sequence.place_all` の終わりの両方で結ぶ。フォルダは `Hospital/Gameplay/Secrets`。書類の灯は書類の部品なので、前処理が書類の下に挙げる灯は置かない（`_lights` が飛ばし、`place_flow` が前の組み立てのもの〈`Hospital/Lights/BP_Collectable_C`〉を消す。どれも Movable で焼いた光に入っていない）。
+- 迷路の後の書類（11 記録の `Postmaze Transition`）: `AWasamiZone2Flow::PostmazeTransition` が目印 `collec` の変形に `AWasamiCollectable` を `ID` 3 で出す（本家 `BeginDeferredActorSpawnFromClass(BP_Collectable, …, 2)` = `AdjustIfPossibleButAlwaysSpawn`・`SetIntPropertyByName(ID, 3)`）。チェックポイント 10 から始め直すたびに出て、セーブに 3 があれば 0.2 s 後に消える。
 - ウィジェットのアニメの区間が途中で終わった後は、区間の最後の値が残る: 本家の BaseEngine.ini は `WidgetAnimation` の `DefaultCompletionMode` を設定せず、既定は 0 = `KeepState`（区間は `ProjectDefault` でそれに従う）。メモのぼかしは `Open` の後も 3（木の 2 に戻らない）。
 
 ## 作るアセット
@@ -97,7 +99,7 @@ updated: 2026-09-20
 - 画面: `WasamiWidgetAnimation.h`（キーから曲線）、`WasamiAssets.h`。
 - アクタ: ゲームモードのセーブ `UWasamiSaveGame::Hospital.Secrets`（06 記録。スコアの `SECRETS` が数える、13 記録）、見て使う仕組み `IWasamiInteractable` とプレイヤーのトレース（05 記録）、画面 3 つ（上）、グリッチの材質（上）、レベルのシーケンス（`ALevelSequenceActor`。モジュール `LevelSequence`）、エンジンの `Plane`・`BasicShapeMaterial`。書体 `helvetica-neue-bold_Font`（`import_dd_tablet`）・`helvetica-normal_Font`（`dd_ui`）、矢印 `selection_bar_arrow_hover`（`import_dd_ui`）、メモの絵（ステージの素材）。
 - ステージの素材（`Tools/dd/prepare_stage.py` → `import_dd_stage_assets`）、`import_dd_tablet`（書体 `helvetica-neue-bold_Font`）、`import_dd_ui`（矢印 `selection_bar_arrow_hover`）。
-- 使う側: 書類・秘密の部屋の区域・メモのアクタ（画面とグリッチ）。これから作るレベルの組み立て（`dd_level._flow`）と迷路の後の書類（`AWasamiZone2Flow`）。
+- 使う側: 書類・秘密の部屋の区域・メモのアクタ（画面とグリッチ）。レベルの組み立て（`dd_level._flow`・`link_sequence_players`、`dd_sequence.place_all`）と迷路の後の書類（`AWasamiZone2Flow::PostmazeTransition`）。
 
 ## 既知の制約・注意点
 - グリッチは推定（大目標 1・2 の決め方。本家の画面とは見比べていない）。本家の絵と並べて詰めるのは作業一覧の項目 28。
@@ -112,6 +114,7 @@ updated: 2026-09-20
 - テストのワールドにはプレイヤーの画面が無いので、メモの画面が作られるかはテストで確かめられない（`GetLastNote` が null になることだけ）。画面の中身は `Wasami.Secrets.Widgets.MysteryNote`、PIE での読みはステップ 6。
 
 ## 変更履歴
+- 2026-09-20: 両ゾーンに置いた（`dd_level` の `SECRET_CLASSES`・`set_secret`・`link_sequence_players`）。書類のメッシュを `OnConstruction` で入れるようにし、迷路の後の書類 ID 3 を Zone 2 の流れが出す（作業一覧の項目 12 のステップ 5）
 - 2026-09-20: メモ `AWasamiMysteryCollectable` と見て使う偽の部品 `AWasamiFakeUseActor`・`AWasamiFakeUseSequencePlayer`・`AWasamiFakeUseElevator`、テスト 4 件を足した（作業一覧の項目 12 のステップ 4）
 - 2026-09-20: 書類 `AWasamiCollectable`・秘密の部屋の区域 `AWasamiSecretRoomZone`・秘密の壁 `AWasamiSecretWall` とテスト 5 件を足した（作業一覧の項目 12 のステップ 3）
 - 2026-09-20: 画面 3 つ（`UWasamiCollectablesWidget`・`UWasamiCollectablesSecretWidget`・`UWasamiMysteryNoteWidget`）とテスト `Wasami.Secrets.Widgets.*` を足した（作業一覧の項目 12 のステップ 2）

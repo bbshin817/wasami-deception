@@ -42,6 +42,10 @@ public:
 	/** The Matron over the miniboss corridor (the level's BP_06_Matron_MiniBoss), whom Activate MiniBoss Enemies wakes. */
 	static const FName Matron;
 
+	/** Postmaze Transition's secret file: a BP_Collectable of this ID at the target point collec's transform. */
+	static const FName PostmazeFilePoint;
+	static constexpr int32 PostmazeFileID = 3;
+
 	/**
 	 * The escape's fade: UMG_BlackFade_2's FadeIn at this rate, black in 0.25 s (as the portal's own flash, UMG_BlackFade
 	 * at 2, peaks and moves the player), at BP_00_Teleport's Z order.

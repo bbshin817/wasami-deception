@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "../WasamiCollectable.h"
 #include "../WasamiDoorBreak.h"
 #include "../WasamiDoubleDoors.h"
 #include "../WasamiEnemy.h"
@@ -454,6 +455,10 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	AActor* Orb = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity);
 	Orb->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("ring_statue_orb_5")));
 	SpawnRingStatue(World);
+	// Where Postmaze Transition spawns the secret file (far below, turned as the level's is).
+	const FTransform FileAt(FRotator(0., -90., 0.), FVector(0., 3000., -40000.));
+	ATargetPoint* FilePoint = World->SpawnActor<ATargetPoint>(FileAt.GetLocation(), FileAt.Rotator());
+	FilePoint->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::PostmazeFilePoint));
 	const ALevelSequenceActor* Spikes = SpawnSequence(World, TEXT("06_Hospital_Zone2_Spikes"), 70.);
 	const ALevelSequenceActor* DoorPicked = SpawnSequence(World, TEXT("06_Hospital_Zone2_Cell_DoorPicked"), 4.2667);
 	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
@@ -562,6 +567,15 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("checkpoint 10 saved"), SavedCheckpoint(), 10);
 	TestEqual(TEXT("the maze's nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestFalse(TEXT("the statue's orb gone"), IsValid(Orb));
+	// The secret file after the maze: ID 3 at collec, with its folder.
+	const TArray<AWasamiCollectable*> Files = Alive<AWasamiCollectable>(World, true);
+	if (TestEqual(TEXT("one secret file"), Files.Num(), 1))
+	{
+		TestEqual(TEXT("ID 3"), Files[0]->ID, 3);
+		TestTrue(TEXT("at collec"), Files[0]->GetActorLocation().Equals(FileAt.GetLocation(), 0.01)
+			&& Files[0]->GetActorRotation().Equals(FileAt.Rotator(), 1e-3));
+		TestNotNull(TEXT("with secret_file"), Files[0]->GetStaticMesh()->GetStaticMesh().Get());
+	}
 	Advance(Wrapper, 0.02f);
 	TestEqual(TEXT("to the ring piece"), Objective(Mode), FString(TEXT("COLLECT THE RING PIECE")));
 	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8941f, 0.f, 1.f), 1e-4f));
