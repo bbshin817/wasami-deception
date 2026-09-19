@@ -8,6 +8,7 @@ class AWasamiZoneFlow;
 class UCameraShakeBase;
 class USoundBase;
 class UWasamiGameInstance;
+class UWasamiLevelClearWidget;
 class UWasamiSaveGame;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiDeathSignature, AActor*, Cause);
@@ -130,6 +131,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void SaveCheckpoint(int32 Checkpoint);
 
+	/**
+	 * The hospital's Escape (06_Hospital @55455, which its portal's Trigger_Escape calls): the game paused, the save as
+	 * at a checkpoint with checkpoint 0 (SAVING PROGRESS, the time added, the counter back to 0, written), and the level
+	 * clear screen with the save's results at Z 6, its Finished bound to FinishedLevel. Returns the screen, or null where
+	 * there is no player to show it to.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	UWasamiLevelClearWidget* Escape();
+
+	/**
+	 * Finished Level (@75934), once: the game unpaused, and FinishedLevelDelay on the hospital's save entry emptied and
+	 * written, the game instance reset (the shards collected forgotten, 3 lives) and Zone 1 opened from the start (the
+	 * original opens 06_Cinematic, or TitleScreen when replaying; this game's title is item 17).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void FinishedLevel();
+
+	/** Finished Level's Delay before the save is emptied and the level opens. */
+	static constexpr float FinishedLevelDelay = 1.f;
+
+	/** Whether Finished Level ran (its DoOnce closed). */
+	bool HasFinishedLevel() const { return bLevelFinished; }
+
 	/** The save read or made when play began (Struct Save). */
 	UFUNCTION(BlueprintPure, Category = "Game")
 	UWasamiSaveGame* GetSave() const { return StructSave; }
@@ -208,6 +232,9 @@ private:
 	/** The zone's DeathEvent: the death screen for the cause, the game paused. */
 	void ShowDeathScreen(AActor* Cause);
 
+	/** Finished Level after its Delay: the save entry emptied, the game instance reset, Zone 1 opened. */
+	void LeaveFinishedLevel();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UWasamiSaveGame> StructSave;
 
@@ -223,12 +250,15 @@ private:
 	bool bTimeCounting = true;
 	/** DeathEvent's DoOnce. */
 	bool bDeathClosed = false;
+	/** Finished Level's DoOnce. */
+	bool bLevelFinished = false;
 	int32 TotalShards = 0;
 	int32 ShardStreak = 0;
 	int32 StartCheckpoint = 0;
 	bool bStartPrepared = false;
 	FTimerHandle ShardRemovalTimer;
 	FTimerHandle CheckShardsTimer;
+	FTimerHandle FinishedLevelTimer;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiZoneFlow> ZoneFlow;

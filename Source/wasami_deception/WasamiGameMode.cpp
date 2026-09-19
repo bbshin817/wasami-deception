@@ -13,6 +13,7 @@
 #include "WasamiDeathScreenWidget.h"
 #include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
+#include "WasamiLevelClearWidget.h"
 #include "WasamiLevelResults.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiSaveGame.h"
@@ -78,6 +79,16 @@ namespace
 			if (Mode && Args.Num() > 0)
 			{
 				Mode->SaveCheckpoint(FCString::Atoi(*Args[0]));
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs EscapeCommand(TEXT("Wasami.Escape"),
+		TEXT("The hospital's Escape where the player stands: the game paused, checkpoint 0 saved with the time, the level clear screen; its NEXT empties the save and opens Zone 1 from the start."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (AWasamiGameMode* Mode = WasamiModeOf(World))
+			{
+				Mode->Escape();
 			}
 		}));
 
@@ -352,6 +363,54 @@ void AWasamiGameMode::SaveCheckpoint(int32 Checkpoint)
 	StructSave->Hospital.Time += Time;
 	ResetTimeCounter();
 	WriteSave();
+}
+
+UWasamiLevelClearWidget* AWasamiGameMode::Escape()
+{
+	// @55455: SetGamePaused(True), then as a checkpoint's save with 0 (UMG_Saving at Z 0 first, the time added, Reset
+	// Time Counter, written). Not copied: SaveSlot's read for the achievements.
+	UGameplayStatics::SetGamePaused(this, true);
+	SaveCheckpoint(0);
+	// The time's rank and the rows (@57305 → @38874), Create(UMG_LevelClear), Finished bound to Finished Level,
+	// AddToViewport(6). EASY comes with the difficulty (item 18).
+	UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(this,
+		FWasamiLevelResults::ForHospital(StructSave ? StructSave->Hospital : FWasamiLevelProgress(), false));
+	if (Screen)
+	{
+		Screen->OnFinished.AddDynamic(this, &AWasamiGameMode::FinishedLevel);
+	}
+	return Screen;
+}
+
+void AWasamiGameMode::FinishedLevel()
+{
+	// @75934: SaveSlot's Progress and Level Ranks (the level select's) are not copied. Then a DoOnce, SetGamePaused(False)
+	// and Delay(1).
+	if (bLevelFinished)
+	{
+		return;
+	}
+	bLevelFinished = true;
+	UGameplayStatics::SetGamePaused(this, false);
+	GetWorldTimerManager().SetTimer(FinishedLevelTimer, this, &AWasamiGameMode::LeaveFinishedLevel, FinishedLevelDelay, false);
+}
+
+void AWasamiGameMode::LeaveFinishedLevel()
+{
+	// @17537: levelStruct[the level] = levelStruct[10] (an empty entry), written; Hard Check Point = 0 (the entrance's,
+	// which this game does not have); Reset Game Instance(False), which forgets the shards collected and resets the
+	// lives; then the next level.
+	if (StructSave)
+	{
+		StructSave->Hospital = FWasamiLevelProgress();
+		WriteSave();
+	}
+	if (UWasamiGameInstance* Instance = GetWasamiGameInstance())
+	{
+		Instance->ForgetCollectedShards();
+		Instance->ResetLives();
+	}
+	UGameplayStatics::OpenLevel(this, Zone1LevelName, true);
 }
 
 UWasamiGameInstance* AWasamiGameMode::GetWasamiGameInstance() const

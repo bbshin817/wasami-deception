@@ -101,6 +101,7 @@ if w is not None:
         s['lives'] = instance.get_lives()
     s['shards'] = len(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiShard))
     s['captured'] = len(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiCapture)) > 0
+    s['clear'] = len(unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiLevelClearWidget, False)) > 0
     player = unreal.GameplayStatics.get_player_character(w, 0)
     if player is not None:
         l = player.get_actor_location()
@@ -324,6 +325,11 @@ class Play:
         left, top, right, bottom = self.viewport
         self.send("click", x=(left + right) // 2, y=(top + bottom) // 2)
         time.sleep(0.3)
+
+    def click_at(self, fx, fy):
+        """Clicks the viewport at a fraction of its width and height (a button of a screen with the cursor)."""
+        left, top, right, bottom = self.viewport
+        self.send("click", x=round(left + (right - left) * fx), y=round(top + (bottom - top) * fy))
 
     def key(self, *names, gap_ms=80):
         self.send("key", keys=list(names), gap_ms=gap_ms)
@@ -772,15 +778,31 @@ def z2_altar(g):
              lambda s: not s.get("paused") and "GARAGE" in s.get("objective", "").upper(), 5.0)
 
 
+# The score screen: ShowResults' Delays give it the input about 7 s after it comes up (13 record), and NEXT sits at
+# the viewport's lower right (at (2810, 824) of the 1040 x 652 viewport on 2026-09-19).
+RESULTS_INPUT = 7.0
+NEXT_BUTTON = (0.95, 0.948)
+
+
 def z2_escape(g):
     """Through the unlocked doors to the garage's box (GET TO THE PORTAL: the portal opens), then along the garage to
-    the portal: the player stops and the screen goes black and stays."""
+    the portal: the player stops, the screen goes black and the game pauses under the score screen (You Escaped!, the
+    results, FINAL RANK). Its NEXT fades out, and 5 s on Zone 1 opens from the start with the save emptied."""
     g.walk(-6300, -3950, reach=60.0, timeout=60.0, until=lambda st: "PORTAL" in st["objective"].upper())
     g.shot("z2_escape_garage")
     g.walk(-10357, -7700, reach=30.0, timeout=90.0, escape=True, until=lambda st: st["escaped"])
     g.log("escaped: " + g.brief())
+    g.expect("the game paused under the score screen", lambda s: s.get("paused") and s.get("clear"))
     time.sleep(1.0)
-    g.shot("z2_escape_black")
+    g.shot("z2_escape_escaped")
+    time.sleep(RESULTS_INPUT)
+    g.shot("z2_escape_results")
+    g.mark_world()
+    g.click_at(*NEXT_BUTTON)
+    g.expect("the game unpaused 4 s after NEXT", lambda s: not s.get("paused"), timeout=8.0)
+    s = g.wait_new_world(ZONE1, mark=False)
+    if s.get("checkpoint") != 4 or s.get("lives") != 3:
+        raise Failed("Zone 1 did not open from the start with 3 lives (%s)" % g.brief(s))
 
 
 SECTIONS = [z1_arrive, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
