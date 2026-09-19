@@ -36,8 +36,7 @@ public:
 
 	/**
 	 * The Z order Esc adds the menu at: the old version's character does CreateAndAddWidget(UMG_Pause, 5), the latest
-	 * version's player controller 1. 5 draws it over the death screen (added at 5 before it), which EASY leaves up with
-	 * no way out but this menu.
+	 * version's player controller 1.
 	 */
 	static constexpr int32 ViewportZOrder = 5;
 
@@ -70,7 +69,7 @@ public:
 
 	/**
 	 * RESUME (@3654): UI_Select_V3, FadeIn backwards from its end, the input to the game without the cursor, and 0.5 s
-	 * later the game unpaused (not over the death screen EASY holds) and the menu off the screen.
+	 * later the game unpaused and the menu off the screen.
 	 */
 	void PressResume();
 
@@ -104,7 +103,8 @@ public:
 	/**
 	 * RESTART?'s YES, as the latest version has it (@5408): the level's entry of the save emptied and written, the
 	 * shards collected forgotten, UI_Select_V3, the input to the game without the cursor, and a black fade (UMG_BlackFade_2,
-	 * Speed 5, Z 10) whose end (Finish Restart, @6656) unpauses and opens the level again. The lives stay as they are.
+	 * Speed 5, Z 10) whose end (Finish Restart, @6656) unpauses and opens the level again. The lives go back to 3 (Reset
+	 * Lives; the original leaves them as they are. The user's answer of 2026-09-20).
 	 */
 	void PressYes();
 

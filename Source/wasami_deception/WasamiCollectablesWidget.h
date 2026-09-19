@@ -17,8 +17,8 @@ class UTexture2D;
  * pictures (art, diary, sound, movie) drawn at random, the whole popping in from nothing over a faint red flash of the
  * screen. Construct plays NewAnimation_1 (2.2 s) and its Delay 2 takes the widget off. BP_Collectable adds it to the
  * player's screen at Z 0.
- * TODO(仮): the original also unlocks the picked extra in its own save (Extras_Art / Extras_SFX), which this game has no
- * screen for, so nothing is kept (item 12, the user to confirm).
+ * TODO(item 29): the original also unlocks the picked extra in its own save (Extras_Art / Extras_SFX); nothing is kept
+ * until the extras screen is made (the user's answer of 2026-09-20; the work list's item 29).
  *
  * The tree is built here as in the original, slot for slot, and the widget's own tick plays the animation and counts
  * the Delay, as UMG_VignetteSides' (UWasamiVignetteSidesWidget).

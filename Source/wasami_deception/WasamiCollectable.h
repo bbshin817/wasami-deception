@@ -17,8 +17,9 @@ class UStaticMeshComponent;
  * already has its ID among the level's Secrets. The player's touch takes it once: the pickup voice (2D, at 0.85), NEW
  * EXTRAS UNLOCKED! on the player's screen (UWasamiCollectablesWidget), its ID into the save's Secrets (written at the next
  * checkpoint's save; the score's SECRETS counts them), and the file gone with its light.
- * TODO(仮): Unlock's extras (the ones its Collectables list names, into the original's other save's Extras_Art and
- * Extras_SFX) are left out, with the list: this game has no extras screen (item 12, the user to confirm).
+ * TODO(item 29): Unlock's extras (the ones its Collectables list names, into the original's other save's Extras_Art
+ * and Extras_SFX) are left out, with the list, until the extras screen is made (the user's answer of 2026-09-20: made,
+ * and opened from the title screen; the work list's item 29).
  *
  * Secret? (true on every file) only adds to the game state's Secrets Amount, which nothing reads, and starts the hotel's
  * achievement, so it is left out: the ID goes into the save's Secrets either way (Unlock's end). So are the Audio

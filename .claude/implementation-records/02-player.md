@@ -5,7 +5,7 @@ sources:
   - Source/wasami_deception/WasamiGameMode.cpp
   - Source/wasami_deception/WasamiPlayerCharacter.h
   - Source/wasami_deception/WasamiPlayerCharacter.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # プレイヤーとゲームモード
@@ -21,7 +21,7 @@ updated: 2026-09-19
   - `IsMapZoomedOut()`（Z で地図を引いているか。本家の `mapZoomedOut?`）、`GetCamera()`、`GetArrowPointer()`（地図の矢印。子のアクタができてから。03 記録）。
   - `AddToMap(Class)`・`RemoveFromMap(Class)`（本家の同名のイベント。そのクラスの今いる全アクタを地図に足す・外す。赤いシャードが敵を足す。16 記録）、`IsOnMap(Actor)`（キャプチャの `ShowOnlyActors` に入っているか。最後の作り直しの時点）。
   - `OnInteract`（`FSimpleMulticastDelegate`。C++ だけ）と `InteractPressed()`（それを流す。F が呼び、デバッグの `Wasami.Interact` も呼ぶ）。
-  - `EscapePressed()`（Esc と、デバッグの `Wasami.Pause`〈`WasamiPauseWidget.cpp`〉が呼ぶ）: ゲームが止まっていなければポーズ画面 `UWasamiPauseWidget::Show`（Z 5。15 記録）。止まっていても、EASY でライフ 0 の死亡画面（`UWasamiDeathScreenWidget::FindHoldingOnEasy`。09 記録）が出ていれば開く。
+  - `EscapePressed()`（Esc と、デバッグの `Wasami.Pause`〈`WasamiPauseWidget.cpp`〉が呼ぶ）: ゲームが止まっていなければポーズ画面 `UWasamiPauseWidget::Show`（Z 5。15 記録）。止まっていれば開かない（EASY でライフ 0 の死亡画面の上も。本家どおり。09 記録）。
   - 見て使う（本家の `Interact (Secondary)` と手のマーク。流れは 05 記録）: 定数 `InteractDistance` 200、`InteractSecondaryPressed()` / `InteractSecondaryReleased()`（左クリックの押し・離し）、`TraceInteract(FHitResult&)`（カメラから前 200 cm の Visibility の線のトレース）、`UpdateInteractWidget()`（ティックが呼ぶ）、`GetInteractWidget()`（`UWasamiInteractWidget`。`BeginPlay` で作る）。
   - 移動の値: `WalkingSpeed` 300、`SprintingSpeed` 600（cm/s）。
   - オプション: `bToggleSprint`、`MouseSensitivity` 1.0、`bInvertY`、`bHeadBob`（本家の OPTIONS の TOGGLE SPRINT / MOUSE SENSITIVITY / INVERTED Y AXIS / HEAD BOBBING）。`BeginPlay` でゲームインスタンスの設定から `ApplySettings(Settings)` で入れる（感度は設定 / 0.5。既定の設定で上の値になる）。`SetUpMouseSmoothing(Settings)` は本家の `Set Up Mouse Smoothing`（スプリングアームの回転ラグ 12.5 / 50。オプションの SAVE & EXIT だけが呼ぶ）。中身は 15 記録。
@@ -40,7 +40,7 @@ updated: 2026-09-19
   - Shift（ダッシュ）、中クリック（180° ターン）、Space（タブレット）、Z（地図の拡縮）。
   - Q / E / 1 / 2（本家の `Use Power Left` / `Use Power Right` / `Cycle Power Left` / `Cycle Power Right`）は `Powers` の `UsePowerLeftPressed` / `UsePowerRightPressed` / `CyclePowerLeft` / `CyclePowerRight` に直に結ぶ（中身は 04 記録）。本家の `Use Power`（R）はどの BP も受けていないので割り当てない。
   - 左クリック（`IA_LeftMouseButton`、押した瞬間 = `Started`、離した瞬間 = `Completed`）とホイール（`IA_MouseWheelAxis`、`EKeys::MouseWheelAxis` の Axis1D、1 目盛り ±1）は、`LeftMousePressed` / `MouseWheel` から `Powers` の `ConfirmTeleport` / `AdjustTeleportDistance` へ渡す（テレポートの照準が出ているときだけ効く。04 記録）。本家では照準のアクタ（`BP_Power_Teleport`）がキーを直に受け、入力を消費しないので、同じクリックでプレイヤー自身の `Interact (Secondary)` も走る。本作も `LeftMousePressed` が `ConfirmTeleport` の後に `InteractSecondaryPressed` を呼び、`LeftMouseReleased` が `InteractSecondaryReleased` を呼ぶ（前方 200 cm の `InteractWithObject` / `StopInteractWithObject`。05 記録）。ホイールの Axis1D は値が 0 のフレームでは呼ばれないが、本家の毎フレームの軸の束縛も値が変わるフレームでしか結果が変わらないので同じ。どちらも `bCanMove` などの条件を見ない（本家の照準のアクタも見ない）。
-  - Esc（`IA_Escape`、押した瞬間 = `Started`）は `EscapePressed`。本家の旧版はキャラクターが Esc を直に受け（`InpActEvt_Escape` @7758 → `CreateAndAddWidget(UMG_Pause, 5)`）、最新版はプレイヤーコントローラーが Esc とゲームパッドの Special Left で Z 1 に作る（`DD_PlayerController` @746）。どちらも条件は見ず、キーの結び付けが止まっている間は動かない（`bExecuteWhenPaused` 偽）ので、`EscapePressed` がゲームの止まりを見る（デバッグのコマンドも同じ道を通るよう、入力アクションは止まっている間も起こす `bTriggerWhenPaused`）。例外は EASY でライフ 0 の死亡画面の上: 本家は止まったまま抜け道が無いので、本作はそこでだけ開く（ユーザーの回答「抜けるのはポーズから」。15 記録）。ポーズ画面が UI だけの入力の様式にするので、開いている間は Esc が届かない。PIE ではエディタが Esc で遊びを止めるので、確かめは `Wasami.Pause`。
+  - Esc（`IA_Escape`、押した瞬間 = `Started`）は `EscapePressed`。本家の旧版はキャラクターが Esc を直に受け（`InpActEvt_Escape` @7758 → `CreateAndAddWidget(UMG_Pause, 5)`）、最新版はプレイヤーコントローラーが Esc とゲームパッドの Special Left で Z 1 に作る（`DD_PlayerController` @746）。どちらも条件は見ず、キーの結び付けが止まっている間は動かない（`bExecuteWhenPaused` 偽）ので、`EscapePressed` がゲームの止まりを見る（デバッグのコマンドも同じ道を通るよう、入力アクションは止まっている間も起こす `bTriggerWhenPaused`）。EASY でライフ 0 の死亡画面の上も開かない（本家は止まったまま抜け道が無く、本作も同じ。2026-09-20 のユーザーの回答「本家通り」。それまではそこでだけ開いていた。15 記録）。ポーズ画面が UI だけの入力の様式にするので、開いている間は Esc が届かない。PIE ではエディタが Esc で遊びを止めるので、確かめは `Wasami.Pause`。
   - F（`IA_Interact`、押した瞬間 = `Started`）は `InteractPressed` → `OnInteract`。本家の `Interact` はプレイヤー自身は受けず、扉の破壊（`BP_06_Hospital_DoorBreak`）など 6 つの BP が `AutoReceiveInput` でキーを直に受ける（入力は消費しない）。本作ではそれらのアクタが `OnInteract` を聞く（扉の破壊は 11 記録）。条件（`bCanMove` など）は見ない（本家のアクタも見ない）。ゲームパッドのキーはほかの操作と同じく割り当てない。
   - 本家の割り当ての全体（`pak_reference_2/_raw/DDeception/Config/DefaultInput.ini` の `ActionMappings` / `AxisMappings`。2026-09-16 に実機 v1.9.6 でも同じことを確認）:
 
@@ -97,6 +97,7 @@ updated: 2026-09-19
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-20: `EscapePressed` の EASY でライフ 0 の死亡画面の例外を外した（本家どおりの行き止まり。2026-09-20 のユーザーの回答。09・15 記録）
 - 2026-09-19: 地図に足す・外す `AddToMap`・`RemoveFromMap`・`IsOnMap` を足し、`MinimapActorClasses` の既定に赤いシャード `AWasamiBonusShard` を足した（作業一覧の項目 10 のステップ 4。16 記録）
 - 2026-09-19: 地図がいつも写すクラスの一覧 `MinimapActorClasses`（既定はオーブ `AWasamiPowerOrb`）を足した（作業一覧の項目 10 のステップ 3。16 記録）
 - 2026-09-19: `Escape` がスコア画面に設定の難易度を渡すようにした（作業一覧の項目 18 のステップ 2。13・15 記録）

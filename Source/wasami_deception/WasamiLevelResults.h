@@ -67,7 +67,10 @@ struct FWasamiLevelResults
 	/** 06_Hospital's Escape: the rows for the level's save (its Time already has the time counter added). */
 	static FWasamiLevelResults ForHospital(const FWasamiLevelProgress& Progress, bool bEasy);
 
-	/** Get_TotalShardAmount_Text_0: every row's bonus shards and Shards_Var as a number (so 679 counts twice). */
+	/**
+	 * Get_TotalShardAmount_Text_0: every row's bonus shards. The original also adds Shards_Var as a number, so its 679
+	 * counts twice (Shards_Shards is 679 too); this game counts it once (the user's answer of 2026-09-20).
+	 */
 	int32 GetTotalShards() const;
 
 	/** Get_FinalRank_Text_0: the six ranks' sum over 6, rounded down, clamped to 0..4 (0..3 on EASY). */

@@ -95,7 +95,8 @@ namespace WasamiEnemyAnim
 	inline constexpr float RunSpeed = 400.f;
 	inline constexpr float RunBlendTime = 0.25f;
 	inline constexpr float AlertBlendTime = 1.f;
-	// TODO(仮): the original has one run; the Nightmare run (the chase after every shard) switches in like its run.
+	// The original has one run; the Nightmare run (the chase after every shard) switches in like its run (the user's
+	// answer of 2026-09-20).
 	inline constexpr float NightmareBlendTime = 0.25f;
 	// An AnimMontage's default blends, for what plays once.
 	inline constexpr float OnceBlendTime = 0.25f;

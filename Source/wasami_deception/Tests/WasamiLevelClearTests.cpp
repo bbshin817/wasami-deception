@@ -114,16 +114,16 @@ bool FWasamiLevelClearResultsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("1000 is grouped, as Conv_IntToText does"),
 		R::ForHospital(Progress(0.f, 0, 0, 0, 10), false).ShardStreak.Value.ToString(), FString(TEXT("1,000")));
 
-	// TOTAL SHARDS and FINAL RANK. A new save: S 70, 679 + 679, C 0, C 0, S 40, C 15; ranks 4 4 1 1 4 1 = 15.
-	TestEqual(TEXT("the total counts 679 twice (Shards_Shards and Shards_Var)"), Start.GetTotalShards(), 70 + 679 + 679 + 40 + 15);
+	// TOTAL SHARDS and FINAL RANK. A new save: S 70, S 679, C 0, C 0, S 40, C 15; ranks 4 4 1 1 4 1 = 15.
+	TestEqual(TEXT("the total counts 679 once (not Shards_Var as well)"), Start.GetTotalShards(), 70 + 679 + 40 + 15);
 	TestEqual(TEXT("15 / 6 rounds down to B"), Start.GetFinalRank(), uint8(2));
 	const R Best = R::ForHospital(Progress(2000.f, 2, 4, 0, 5), false);
 	TestEqual(TEXT("everything S"), Best.GetFinalRank(), uint8(4));
-	TestEqual(TEXT("the best total"), Best.GetTotalShards(), 70 + 679 + 679 + 25 + 35 + 40 + 30);
+	TestEqual(TEXT("the best total"), Best.GetTotalShards(), 70 + 679 + 25 + 35 + 40 + 30);
 	TestEqual(TEXT("EASY stops at A"), R::ForHospital(Progress(2000.f, 2, 4, 0, 5), true).GetFinalRank(), uint8(3));
 	const R Worst = R::ForHospital(Progress(5000.f, 9, 9, 9, 11), false);
 	TestEqual(TEXT("out-of-range counts take the Selects' default"), Worst.GetFinalRank(), uint8(0));
-	TestEqual(TEXT("and add nothing"), Worst.GetTotalShards(), 20 + 679 + 679);
+	TestEqual(TEXT("and add nothing"), Worst.GetTotalShards(), 20 + 679);
 
 	// Ranks' text and colour.
 	TestTrue(TEXT("rank 0 shows nothing"), R::RankText(0).IsEmpty());
@@ -288,7 +288,7 @@ bool FWasamiLevelClearScreenTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("no XP box"), Tree->FindWidget(TEXT("XPBox")));
 	TestNull(TEXT("no DIARY UNLOCKED!"), Tree->FindWidget(TEXT("FinalRankText")));
 	TestFalse(TEXT("easymode taken off"), Screen->IsEasyModeShown());
-	const TCHAR* const Images[][2] = {{TEXT("Image_216"), TEXT("you_escaped")}, {TEXT("LevelName"), TEXT("chapter_ui_title_tormenttherapy")},
+	const TCHAR* const Images[][2] = {{TEXT("Image_216"), TEXT("you_escaped")}, {TEXT("LevelName"), TEXT("T_LevelTitle")},
 		{TEXT("Image_6"), TEXT("T_Vignette")}};
 	for (const auto& Each : Images)
 	{
@@ -313,7 +313,7 @@ bool FWasamiLevelClearScreenTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("row %d's rank"), Row), Screen->GetRankText(Row).ToString(), R::RankText(Ranks[Row]).ToString());
 		TestTrue(FString::Printf(TEXT("row %d's rank colour"), Row), Screen->GetRankColor(Row).Equals(R::RankColor(Ranks[Row])));
 	}
-	TestEqual(TEXT("TOTAL SHARDS"), Screen->GetTotalText().ToString(), FString(TEXT("1,483")));
+	TestEqual(TEXT("TOTAL SHARDS"), Screen->GetTotalText().ToString(), FString(TEXT("804")));
 	TestEqual(TEXT("FINAL RANK"), Screen->GetFinalRankText().ToString(), FString(TEXT("B")));
 	TestTrue(TEXT("its colour"), Screen->GetFinalRankColor().Equals(R::RankColor(2)));
 
@@ -524,8 +524,8 @@ bool FWasamiLevelClearShowResultsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("LIVES LOST +40"), Screen->GetShardsText(4).ToString(), FString(TEXT("+40")));
 	TestEqual(TEXT("SHARD STREAK +15"), Screen->GetShardsText(5).ToString(), FString(TEXT("+15")));
 	TestEqual(TEXT("TOTAL SHARDS in"), Total->GetRenderOpacity(), 1.f, 1e-4f);
-	TestEqual(TEXT("its text still the bound total"), Screen->GetTotalText().ToString(), FString(TEXT("1,483")));
-	TestTrue(TEXT("its counter still going (one a frame to 1483)"), Screen->IsCounting(W::TotalCounter));
+	TestEqual(TEXT("its text still the bound total"), Screen->GetTotalText().ToString(), FString(TEXT("804")));
+	TestTrue(TEXT("its counter still going (one a frame to 804)"), Screen->IsCounting(W::TotalCounter));
 	TestEqual(TEXT("FINAL RANK in"), Final->GetRenderOpacity(), 1.f, 1e-4f);
 	TestEqual(TEXT("at its size"), Final->GetRenderTransform().Scale.X, 1., 1e-4);
 	TestEqual(TEXT("the screen still"), Tree->RootWidget->GetRenderTransform().Translation.Size(), 0., 1e-3);
@@ -555,8 +555,8 @@ bool FWasamiLevelClearShowResultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Finished at 4 s"), Screen->IsFinished());
 
 	// TOTAL SHARDS' counter, left alone, steps one a frame to its number.
-	RunTo(5.f + 1482.f / 60.f + 0.5f);
-	TestFalse(TEXT("TOTAL SHARDS' counter done after 1482 frames"), Screen->IsCounting(W::TotalCounter));
+	RunTo(5.f + 803.f / 60.f + 0.5f);
+	TestFalse(TEXT("TOTAL SHARDS' counter done after 803 frames"), Screen->IsCounting(W::TotalCounter));
 	return true;
 }
 

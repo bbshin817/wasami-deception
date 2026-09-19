@@ -58,7 +58,7 @@ updated: 2026-09-20
   - BeginPlay: 取るときの声と画面の素材を読み込み、`Bounce` を 0 から、0.2 s のタイマーでセーブの確かめ（ゲームモードのセーブの `Hospital.Secrets` が `ID` を含めば `Destroy`）。
   - ティック（`Bounce`。5 s のループを 3 倍の速さ、位置は 5 で回る）: `NewTrack_0`（0・1・0 を 0・2.5・5 s、3 次で接線は 0）の値 v で、メッシュの相対位置 (0, 0, Lerp(35, 40, v))・ヨー Lerp(0, 7, v)。
   - 箱の重なり → 相手が `GetPlayerCharacter(0)` なら `Collect`: DoOnce → `CreateSound2D(Bierce_Secret_Files_Pickup, 0.85, 1)`・`Play`（ワールドの音なので書類が消えても鳴り続ける）→ `UWasamiCollectablesWidget::Show` → セーブの `Hospital.Secrets` に `AddUnique(ID)` → `Destroy`（灯も一緒に消える）。
-  - 写さないもの: `Unlock` の EXTRAS（`Collectables` の型で本家の別のセーブ `SaveSlot` の `Extras_Art`・`Extras_SFX` に足して保存。`TODO(仮)`）と `Collectables` の変数、`Secret?`（真なら、ゲームステートの `Secrets Amount`〈どこも読まない〉を足し、レベルがホテルなら実績。セーブの `Secrets` への `AddUnique` は `Unlock` の終わりで `Secret?` に関わらず行う）、使われない `Audio` の部品、`Bounce` が待つ `DD_GameState` への cast。
+  - 写さないもの: `Unlock` の EXTRAS（`Collectables` の型で本家の別のセーブ `SaveSlot` の `Extras_Art`・`Extras_SFX` に足して保存。作業一覧の項目 29 で作る。`TODO(item 29)`）と `Collectables` の変数、`Secret?`（真なら、ゲームステートの `Secrets Amount`〈どこも読まない〉を足し、レベルがホテルなら実績。セーブの `Secrets` への `AddUnique` は `Unlock` の終わりで `Secret?` に関わらず行う）、使われない `Audio` の部品、`Bounce` が待つ `DD_GameState` への cast。
 - 秘密の部屋の区域 `AWasamiSecretRoomZone`: 部品は `DefaultSceneRoot` → `Box`（z 20・拡縮 (5, 2, 1.5)。Zone 2 の置き方は自分の大きさを持つ）・`Glitch`（本家の子のアクタ `Chameleon` の `InternalPP` の代わりの後処理。`bUnbound`・`BlendRadius` 0）。
   - BeginPlay: 画面の素材を読み込み、`CreateSound2D(67-Dark_Whispers_SFX_0704, 1, 1, 0, None, False, False)` を持つ（自動で消えない UI の音。テストのワールドでは作られない）。グリッチ `M_DD_ChameleonGlitch` の MID を作り、Chameleon の `Glitch Func` が入れる値（`Amount` 0.5〈`Glitch Blocking`〉・`Speed` 10・`Density` 30〈`Glitch Lines`〉・`GridDistortionPower` 0.001・`Size` 10・`Speed` 1〈Chameleon の既定〉）を入れて `AddOrUpdateBlendable(MID, 1)`、`BlendingOpacity` 0。
   - 箱の重なり（プレイヤーだけ）→ 入る: 囁き `FadeIn(1, 1, 0)`・`BlendingOpacity` 1・DoOnce で `UWasamiCollectablesSecretWidget::Show`。出る: `FadeOut(1, 0)`・`BlendingOpacity` 0。
@@ -103,7 +103,7 @@ updated: 2026-09-20
 
 ## 既知の制約・注意点
 - グリッチは推定（大目標 1・2 の決め方。本家の画面とは見比べていない）。本家の絵と並べて詰めるのは作業一覧の項目 28。
-- 書類の画面は本家どおり出すが、EXTRAS（本家の別のセーブの `Extras_Art`・`Extras_SFX`）は作らないので、引いた絵は何にも残らない（`TODO(仮)`。進捗記録の要確認）。
+- 書類の画面は本家どおり出すが、EXTRAS（本家の別のセーブの `Extras_Art`・`Extras_SFX`）はまだ無いので、引いた絵は何にも残らない（`TODO(item 29)`）。2026-09-20 のユーザーの回答で、EXTRAS は作ってタイトル画面から見られる形にする（中身は枠組みだけ先に作る）。作業一覧の項目 29。
 - メモの画面の木の既定の紙 `sewer_note_01`（下水道のメモ）は取り込まない（Construct が `Texture` を入れる）。本家の `Virtual Cursor`（ゲームパッド）はほかの画面と同じく写さない（09 記録）。`SetInputMode_UIOnlyEx` に画面を渡すと焦点を持てない警告が出るのは本家どおり（15 記録）。
 - テストで画面の木を作るときは `TakeWidget()` の戻り値を持つ。リッチテキストはスレートの木と一緒に様式を放すので、持たないと `GetDefaultTextStyle` が ensure に当たる。
 - 書類はセーブへの書き込みを赤いシャードと同じくメモリの上だけで行い、ディスクへはチェックポイントの保存で書く（本家どおり）。チェックポイントの前に死んで開き直すと書類はまた出る。
@@ -124,6 +124,7 @@ updated: 2026-09-20
 - 画面の操作の注意: PIE でクリックの位置を変えるとカーソルの移動が視点を回すので、見て使う物を狙うときは、狙いを入れてから前のクリックと同じ位置を押す。
 
 ## 変更履歴
+- 2026-09-20: 書類の EXTRAS の要確認に回答が出た（EXTRAS を作り、タイトル画面から見られる形に。中身は枠組みだけ先に）。`TODO(仮)` を作業一覧の項目 29 を指す `TODO(item 29)` にした
 - 2026-09-20: PIE で両ゾーンの秘密を確かめた（「確かめたこと」。作業一覧の項目 12 のステップ 6）
 - 2026-09-20: 両ゾーンに置いた（`dd_level` の `SECRET_CLASSES`・`set_secret`・`link_sequence_players`）。書類のメッシュを `OnConstruction` で入れるようにし、迷路の後の書類 ID 3 を Zone 2 の流れが出す（作業一覧の項目 12 のステップ 5）
 - 2026-09-20: メモ `AWasamiMysteryCollectable` と見て使う偽の部品 `AWasamiFakeUseActor`・`AWasamiFakeUseSequencePlayer`・`AWasamiFakeUseElevator`、テスト 4 件を足した（作業一覧の項目 12 のステップ 4）

@@ -27,9 +27,10 @@ Check Streak): the ten cards and the four milestone sounds. The vignette and EXT
 the life icon with the death screen, and the camera shake with the powers (dd_powers).
 
 The level clear screen (UWasamiLevelClearWidget, after UI/Menu/UMG_LevelClear) as the player escapes: You Escaped!,
-the rules above and under the rows, the hospital's title (Torment Therapy, which the widget tints red), You Escaped!'s
-sound, the rows' and FINAL RANK's grade stamps and the counters' fill. The white vignette and the font come with the
-tablet.
+the rules above and under the rows, You Escaped!'s sound, the rows' and FINAL RANK's grade stamps and the counters'
+fill, and in place of the hospital's title (Torment Therapy, which the widget tints red) this game's (the WebGL
+version's "Stinky Gachimi", SourceArt/Wasami/UI/level_title_stinky_gachimi.png drawn as the original's title card by
+Tools/dd/prepare_level_title.py) at /Game/Wasami/UI/T_LevelTitle. The white vignette and the font come with the tablet.
 
 The title screen (UWasamiTitleScreenWidget, after the old version's UI/Main/TitleScreen/UMG_TitleScreen): the smoky
 black over the left (title_screen_video_mask), the brush strokes panning over it (MM_TitleScreen_Mask_Grey over
@@ -108,8 +109,11 @@ STREAK_SOUNDS = tuple("Audio/UI/Shard_Streak_Milestone_%s" % v for v in ("V1A", 
 LEVEL_CLEAR_TEXTURES = (
     "UI/Menu/you_escaped",
     "UI/Menu/results_window",
-    "UI/Menu/TitleCards/chapter_ui_title_tormenttherapy",
 )
+# The level's title: the WebGL version's "Stinky Gachimi" in place of the hospital's chapter_ui_title_tormenttherapy (the
+# user's answer of 2026-09-20), drawn by Tools/dd/prepare_level_title.py; imported as the original's card is (UI).
+LEVEL_TITLE_FILE = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "wasami", "ui", "level_title.png")
+LEVEL_TITLE = paths.WASAMI_ROOT + "/UI/T_LevelTitle"
 LEVEL_CLEAR_SOUNDS = (
     "Audio/UI/UI_YouEscaped",
     "Audio/UI/Level_Clear_Grade_Stamp_v1",
@@ -297,9 +301,16 @@ def import_shard_streak():
 
 
 def import_level_clear():
-    """The level clear screen's pictures and sounds. Returns how many of each."""
-    return {"textures": len([dd_assets.texture(rel, VERSION) for rel in LEVEL_CLEAR_TEXTURES]),
-            "sounds": len([dd_assets.sound(rel, VERSION) for rel in LEVEL_CLEAR_SOUNDS])}
+    """The level clear screen's pictures and sounds, and this game's level title (saved). The title's image has to have
+    been drawn (python Tools/dd/prepare_level_title.py). Returns how many of each."""
+    if not os.path.exists(LEVEL_TITLE_FILE):
+        raise FileNotFoundError("%s is missing: run python Tools/dd/prepare_level_title.py first." % LEVEL_TITLE_FILE)
+    result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in LEVEL_CLEAR_TEXTURES]),
+              "sounds": len([dd_assets.sound(rel, VERSION) for rel in LEVEL_CLEAR_SOUNDS])}
+    title = dd_stage.import_texture(dict(LOADING_EMBLEM_SETTINGS, file=LEVEL_TITLE_FILE, asset=LEVEL_TITLE))
+    EAL.save_loaded_asset(title, only_if_is_dirty=False)
+    result["wasami_textures"] = 1
+    return result
 
 
 def import_title():
