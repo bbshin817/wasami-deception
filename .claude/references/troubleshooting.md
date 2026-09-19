@@ -256,6 +256,7 @@
 - `SkeletalMeshSocket` の `socket_name`・`bone_name`（読むだけ）: ソケットをメッシュを outer に作って `set_socket_parent(mesh, 骨)` で骨を決め、`mesh.add_socket(socket, True)`（UE 5.8 は `Socket` と名付けてメッシュの一覧に入れ、骨格に写しを足す）→ `mesh.rename_socket("Socket", 名前)`（両方の名前が変わる）。消すのは `remove_socket(名前)`（両方から消える）。`dd_skeletal.add_sockets`（01 記録。2026-09-19）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
 - `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
+- **ウィジェットを作る `Create`（`CreateWidget`）**: `unreal.WidgetLibrary.create` は無い（`type object 'WidgetLibrary' has no attribute 'create'`。K2 専用）。`unreal.new_object(cls, outer=pc)` → `add_to_viewport` は画面に載る（`is_in_viewport()` が True）が、**C++ で木を組むウィジェットは何も映らない**: 本作のウィジェットは `RebuildWidget` で `WidgetTree` があるときだけ木を組み、`WidgetTree` を作る `Initialize` は `CreateWidget` の中か、`Super::RebuildWidget` の中（木を組む判定の後）でしか呼ばれないので、空の木のまま載る。対処: そのウィジェットの BlueprintCallable の `Show(WorldContext)`（`CreateWidget` → `AddToViewport`。タイトル・オプション・EXTRAS の画面にある）を `unreal.WasamiExtrasWidget.show(world)` のように呼ぶ。無ければ足してビルドする（2026-09-20。エディタの開き直し 1 回。19 記録）。
 
 ### 毎フレームのコールバック（`register_slate_post_tick_callback`）が例外で黙って外れ、記録を失う
 
