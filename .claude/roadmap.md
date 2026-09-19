@@ -283,7 +283,7 @@
 - 根拠: `Intermediate/Pipeline/dd/shaders/`（上のコマンドの出力）、`pak_reference_2/_materials.json`（3 つのインスタンスの値）、`_assets/DDeception/Content/Blueprints/01_Hotel/BP_01_Statue.json`、`_levels/01_Hotel.full.json`（ホテルの `BP_01_Statue`・`ring_statue_orb_4`）・`06_Hospital_Zone_02.full.json`（`ring_statue_2`・`ring_statue_orb_5`）、実装記録 01（前処理のマスター `MASTERS`・`dd_stage`）・08（祭壇と欠片）・16（`m_crystal`）。
 - 依存: 13。
 - 規模: 1
-- 状態: **完了（2026-09-20）**。前処理 `MASTERS` が根で振り分け（祭壇 `metal`・欠片と書類 `fresnel`・球 `crystal`）、ステージの取り込み `dd_stage` がコンパイル済みのシェーダーの式で組んだ `M_DD_Metal`（真鍮の金属）・`M_DD_SubstanceFresnel`（紫の縁の光の欠片・白い縁の書類）に載せ、球は `dd_specials.make_crystal` に作らせて `M_DD_Crystal` の子（紫の渦の光）にした。4 つとも同じパスのまま作り直し（`refresh_settings` の `materials_remade`）、置いたものは置き直していない。PIE で Zone 2 の祭壇（全回収の後の区間 `z2_altar`。球つき）を撮った（実装記録 01・08・16・18）。本家の実機とは見比べていない（項目 28 の後回しの一覧）。
+- 状態: **完了（2026-09-20）**。前処理 `MASTERS` が根で振り分け（祭壇 `metal`・欠片と書類 `fresnel`・球 `crystal`）、ステージの取り込み `dd_stage` がコンパイル済みのシェーダーの式で組んだ `M_DD_Metal`（真鍮の金属）・`M_DD_SubstanceFresnel`（紫の縁の光の欠片・白い縁の書類）に載せ、球は `dd_specials.make_crystal` に作らせて `M_DD_Crystal` の子（紫の渦の光）にした。4 つとも同じパスのまま作り直し（`refresh_settings` の `materials_remade`）、置いたものは置き直していない。PIE で Zone 2 の祭壇を、全回収の前の球つきを静止画で、全回収の後に欠片を取る区間 `z2_altar` を収録で撮った（実装記録 01・08・16・18）。本家の実機とは見比べていない（項目 28 の後回しの一覧）。
 
 ### 29. EXTRAS（秘密の書類で解放される収集物。タイトル画面から開く）
 
