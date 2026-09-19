@@ -4,7 +4,7 @@
 
 各項目は「目標 / 完了の条件（何を測って何に合えば終わりか）/ 根拠の置き場 / 依存 / 規模（下の「進捗率」）/ 状態」。根拠は原則コード（`pak_reference_2/`。テレポーテーションは `pak_reference/`。`.claude/guides/original-fidelity.md`）。数は本家のレベルの書き出し（`_levels/06_Hospital*.scene.json`）から数えた。
 
-番号は項目を指すための名前で、**作業の順は大目標の節の中の並び順**（「最初の項目」は進行中の大目標の節の上から数える）。22・23 は 2026-09-17 の要確認の回答から足した項目。15・16（入口）は 2026-09-18 に取りやめた（経緯として残す）。24〜28 は 2026-09-18 に大目標に分けたとき、項目 6・7・9 から後の大目標へ回す部分を分けたものと、大目標ごとの確かめ・後回しの受け皿として足した。29 は 2026-09-20 の要確認の回答（EXTRAS を作る）から足した。
+番号は項目を指すための名前で、**作業の順は大目標の節の中の並び順**（「最初の項目」は進行中の大目標の節の上から数える）。22・23 は 2026-09-17 の要確認の回答から足した項目。15・16（入口）は 2026-09-18 に取りやめた（経緯として残す）。24〜28 は 2026-09-18 に大目標に分けたとき、項目 6・7・9 から後の大目標へ回す部分を分けたものと、大目標ごとの確かめ・後回しの受け皿として足した。29 は 2026-09-20 の要確認の回答（EXTRAS を作る）から足した。30・31 は 2026-09-20 の有人セッションの指摘（ステージ OP が無い・祭壇の見た目が本家と違う）から足した。
 
 ## 最終目標（2026-09-17、ユーザーの原文）
 
@@ -267,6 +267,24 @@
 - 規模: 2
 - 状態: 進行中（2026-09-19 から。進捗記録 `20260919-secrets`）。計画の段階で、`SECRETS` の 4 は `BP_Collectable` の ID 0〜3（Zone 1 の秘密のエレベーター 2 つの奥の 0・1、Zone 2 の秘密の部屋の 2、迷路の後にレベル BP が出す 3）で、秘密の部屋の区域とメモは数えない、書類の Unlock が本家の別のセーブに足す EXTRAS は作らない（画面 `NEW EXTRAS UNLOCKED!` は出す）、Zone 1 のおとりのエレベーター 5 つも同じ基底 `BP_FakeUseActor` で置く、と決めた。
 
+### 30. ステージ OP（本家のタイトルカード `UMG_ChapterPortal`。紋章と題字）
+
+- 目標: 2026-09-20 の有人セッションの指摘「ステージOPがありません。紋章＋ステージロゴのやつ」。本家は入口 `06_Hospital` のレベル BP の `00_Initial Start` が `UMG_ChapterPortal`（`Level` 7）を出す。入口ごと取りやめた項目 16 に入っていたため抜けていた。本作は Zone 1 のエレベーターの上昇・到着（`06_Hospital_Zone01_ElevatorArrive`）から始まるので、その始まりに出す。
+- 完了の条件: (1) 本家の `UMG_ChapterPortal` の木（ぼかし・赤い幕・黒い筆の帯 2 本・回る赤い輪とルーンの輪〈紋章〉・頭・題字）とアニメ `loop` を写したウィジェットを作る。`Construct` どおり `loop` を 0.8 s から 1 回・速さ 1 で流し、11 s で消える。(2) 頭は本家の `pause_reapernurse_head` の代わりにポーズ画面のワサミの頭（`/Game/Wasami/UI/Pause/T_PauseHead`。本家の頭と同じく赤く塗る）、題字は本家の `chapter_ui_title_tormenttherapy` の代わりにスコア画面と同じ「Stinky Gachimi」（`/Game/Wasami/UI/T_LevelTitle`。2026-09-20 の回答）。WebGL 版 10 記録の `stage-intro.ts` が同じ置き換えで写してあるので、値と置き方はそれに合わせる。(3) 出す時機と、その間にプレイヤーを止めるか（本家は出すと同時に `CanMove?` を偽にし、10 s 後に真）は、本家のレベル BP と Zone 1 の開始の流れ（エレベーターの 14.1 s）から決める。NEW GAME で Zone 1 を始めたときに出し、死んでチェックポイントから再開したとき（本家の `Respawn`）は出さない。(4) PIE で、タイトル → NEW GAME → エレベーターの上昇の間に OP が出て消えるまでを収録する。
+- 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital.txt`（`00_Initial Start` → @19290。`python Tools/dd/bp_flow.py … "00_Initial Start"`）、`pak_reference_2/_bytecode/DDeception/Content/UI/Menu/UMG_ChapterPortal.txt`・`_assets/DDeception/Content/UI/Menu/UMG_ChapterPortal.json`（木とアニメ `loop`）、`UI/Main/chapter_ui_portal_outer` ほかのテクスチャ、WebGL 版 10 記録の「stage-intro.ts」と 04 記録の「ステージ OP」、実装記録 09（UI）・11（Zone 1 の開始）・15（ポーズの頭）・13（題字）。
+- 依存: 6、17。
+- 規模: 2
+- 状態: 未着手（2026-09-20 に足した）。
+
+### 31. 祭壇の見た目（祭壇の金属・水晶の球・欠片の材質をコンパイル済みのシェーダーから）
+
+- 目標: 2026-09-20 の有人セッションの指摘「シャードリングの祭壇の見た目が本家と異なる気がします。私が記憶しているのは、MonkeyBusinessの祭壇」。本家の病院の祭壇は Monkey Business（ホテル）と同じ `BP_01_Statue`・`ring_statue`・材質 `MM_00_Ballroom_Ring_Altar_Metal`（ホテルは拡縮 2.8、病院は 4）と水晶の球 `ring_statue_orb`（`m_crystal_Inst2`）。本作は 3 つの材質の親（祭壇の `MM_Main_Metal`、球の `m_crystal`、欠片の `M_ring_metal2` の `MM_Main_Substance_Fresnel`）が前処理のマスターに無く、`substance` の推定で作られている（祭壇が青みの白、球が紫に光らない）。項目 28 の後回しの一覧から移した。
+- 完了の条件: (1) 祭壇: `MM_Main_Metal` をコンパイル済みのシェーダー（`python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Metal."`）の式で組む。2026-09-20 に読んだ式: 基底色は定数 (0.276042, 0.255386, 0.148085)（真鍮色）、金属 1、スペキュラ 0.5、粗さ `saturate(Roughness)`、法線は `Normal` のテクスチャを `Normal Flatness` で (0, 0, 1) へ寄せる、発光 = ((1 − max(N·V, 0))^6 × 0.999 + 0.001) × `Hover Intensity` × `Hover Color`（祭壇は `Hover Intensity` 0 なので光らない）。(2) 球: `m_crystal_Inst2`（紫、`emissive_entensity` 29）を、特殊シャードで組んだ `m_crystal` の推定（`dd_specials` の `M_DD_Crystal`。実装記録 16）の子にする。(3) 欠片: `MM_Main_Substance_Fresnel` を同じくシェーダーの式で組む。(4) 置いたものを組み直さずに済むなら材質だけ作り直し、PIE で Zone 2 の祭壇（全回収の前の球つき）を撮る。大目標 2 の決め方どおり、本家の実機との見比べはしない。
+- 根拠: `Intermediate/Pipeline/dd/shaders/`（上のコマンドの出力）、`pak_reference_2/_materials.json`（3 つのインスタンスの値）、`_assets/DDeception/Content/Blueprints/01_Hotel/BP_01_Statue.json`、`_levels/01_Hotel.full.json`（ホテルの `BP_01_Statue`・`ring_statue_orb_4`）・`06_Hospital_Zone_02.full.json`（`ring_statue_2`・`ring_statue_orb_5`）、実装記録 01（前処理のマスター `MASTERS`・`dd_stage`）・08（祭壇と欠片）・16（`m_crystal`）。
+- 依存: 13。
+- 規模: 1
+- 状態: 未着手（2026-09-20 に足した）。
+
 ### 29. EXTRAS（秘密の書類で解放される収集物。タイトル画面から開く）
 
 - 目標: 2026-09-20 のユーザーの回答「EXTRAを実装し、タイトル画面から参照できる形に」。秘密の書類（項目 12）を取ると、本家どおり EXTRAS が解放されて保存され、タイトル画面の EXTRAS から見られる。中身は同日の回答「枠組みだけ先に作る」: 本家どおりの画面と、解放・保存の仕組みを作り、並べる中身（絵・音・動画）は仮にしておく（本家の Art Gallery などの素材は使わない。中身は後でユーザーと決める）。
@@ -363,7 +381,6 @@
   - 2026-09-19（項目 7）: Zone 2 の見張りの視界コーンの地図の印（扇 `map_enemy_search_Mat` と点 `0_DotCircle_Mat`）の見え方 — 今は本家の Unlit・半透明の式（焼き込みのシェーダー）を、地図のキャプチャ（`SCS_BaseColor`）に写る Default Lit・Masked にした推定（切り抜き 0.1。扇の縁が硬く、薄れはベースカラーの暗さだけ。実装記録 03 の「マテリアル」）。本家の地図でコーンがどう見えるかは実機と見比べていない
   - 2026-09-19（項目 7）: 見つける前に Primal Fear などで気絶した見張りの姿勢 — 今はアニメが 17 s で起き上がって立つ（State は本家どおり Stun のまま。見つけて跳び降りた後の 17 s も立ったまま止まる。実装記録 07 の「既知の制約」）。本家での確かめ方: 最新版の Zone 2 のミニボスの廊下で、見張りに見つかる前に Primal Fear を使い、棚の上と跳び降りた後の姿勢を見る（本家の ABP は State が 0 に戻るまで気絶の姿勢）
   - 2026-09-19（項目 9・24）: 捕獲の別室の見た目と動き — 今は本家ホテルの 1 本目の Matinee の t=0 のカメラがサルの頭を写す写し方をワサミの上半分に当てた寄り（前 111・上 177 cm、FOV 90）から、Matinee のカメラのキーで動き、ワサミの首を目で追う向きを重ね（`AimSpeed` 8）、首の前 50 cm で突っ込みを止める。サルの真上の天井灯 `ceilinglights_80` を縮めた位置の灯（1500・半径 500・水色）と顔の灯（頭の前 50・上 30、300・半径 200）。組は `Capture_1`↔`MonkeyJumpscare`・`Capture_2`↔`MonkeyJumpscare3`（止まる区間に `MonkeyJumpscare` の揺れを 1.797 倍で入れた）・`Capture_3`↔`MonkeyJumpscare2`。場面の時間は 2.5 倍から 0.4 s で等速へ。滑りは 0.45 s、歩きは 1.2 s から始める。暗転は直線の `StartCameraFade`（本家は曲線）。`JumpscareCam` の旧 DOF（焦点 142.9 → 10・領域 571.4 → 100 のトラック）は写していない。顔の 4 本目（館の `BP_03_Watcher` の体）は、走りで 250 cm 後ろから 0.1 s の指数で寄り、カメラは前 121.5・上 186・FOV 75 から `03_Watcher_Kill3`、頭の前 40 cm で止め、ウォッチャーのカメラへの 0.15 s の寄せは切り替えにした。本家での確かめ方: 旧版の実機のホテルでサルに捕まる 3 本（`MonkeyJumpscare`・`2`・`3`）と館でゴールドウォッチャーに捕まる 3 本を撮り、寄り・明るさ・ぼけ・揺れの大きさ・暗転の速さを見比べる
-  - 2026-09-19（項目 13）: Zone 2 の祭壇と欠片の材質 — 今は祭壇の `MM_00_Ballroom_Ring_Altar_Metal`（親 `MM_Main_Metal`: 法線 `RingStatue_N`・`Roughness` 0.35・`Hover Color`）と欠片の `M_ring_metal2`（親 `MM_Main_Substance_Fresnel`）を前処理の `substance` のマスターの推定で作った（祭壇は色のテクスチャが無く、桃色の灯で青みの白の像に見える。実装記録 08）。欠片の光の粒子 `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。本家での確かめ方: 最新版の Zone 2 の迷路の後の部屋の祭壇と欠片を撮り、`python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Metal."` で式を読む。
   - 2026-09-19（項目 13）: ガレージのポータル `AWasamiPortal` の見え方 — 今は `M_00_Portal_Vortex` を焼き込みのシェーダーの式で組み（本家は Lit・Base Color なしを Unlit にした）、ロゴの親 `M_00_Portal_Monkey` も同じく推定、開くときと鍵をかけるときの粒子 `PPP_PortalAppear`・`_Lock` は作っていない（PyroParticlePack の親 `PPP_Particles_lit`・`_fogged` の式が cook で消えている。部品はテンプレートなし）。本家での確かめ方: 旧版のホテルの出口のポータルが欠片の後に開く場面（`01_Hotel` の `Collect Ring Piece` の後の `Lock/Unlock(False, False)`）と舞踏会場のポータル、`cooked_shaders.py "PyroParticlePack/Materials/PPP_Particles_lit."` のベースパス
   - 2026-09-19（項目 8）: 除細動器の放電 `P_06_Defib` の稲妻の見え方 — 今は描かれる唯一のエミッタ `thander` の材質 `M_ky_spark02_4x4` を焼き込みのシェーダーの式で組んだ（`MI_ky_spark02_4x5`: 稲妻の形 × 粒子の色 + 赤い火花。実装記録 08）。本家での確かめ方: 本家の最新版の病院 Zone 1・2 の除細動器に近づいて放電を撮り、色・明るさ・稲妻の長さを見比べる。
   - 2026-09-19（項目 10）: 特殊シャードの結晶の材質 `m_crystal`（オーブ `m_crystal_Inst3`・赤いシャード `m_crystal_Inst`）、出現点を移るときの閃光の材質 `M_ky_primitiveColor`・`M_ky_lensFlare02`、地図の印 `M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy` の見え方 — 今は結晶をコンパイル済みのシェーダーの式で組み（反射と屈折の向きを曲げる `distortion_normal` は外し、親のキューブの既定は `DefaultTextureCube`）、閃光の 2 つもシェーダーから推定（`useHilight` の不透明度の相手は不明で粒子の α）、印の色はシェーダーの定数 (1, 0.2903, 0)・(1, 0, 0) のまま（`M_Shard` は画面の実測で (0.70, 0.0071, 1.0) に合わせてあり、定数は (0.482, 0, 1)。実装記録 16）。本家での確かめ方: 最新版の病院で 155 s 待ってオーブと赤いシャードの出現・明滅・移動を寄って撮り、取ってタブレットの地図の印（オーブ・赤いシャード・敵の三角）を撮る
@@ -390,7 +407,7 @@
 - 完了の条件: レベル BP どおりに、タイトルカード `UMG_ChapterPortal`（ステージ OP。WebGL 版 10 記録の `stage-intro.ts`）、Bierce の台詞、救急車の到着・扉・エレベーターのシーケンス（`06_Hospital_Entrance_*`）、ナースの導入（`BP_06_NurseInteract_Intro` ×10・`BP_ReaperNurse_IntroAI`。ワサミのモーションで代用）、注射室（`01_NeedleRoomOverlap`、針 ×7）、レントゲン室のカウントダウン（`BP_06_Countdown`・`_XRay`・`_Spikes`、`UMG_06_Countdown`）、追走（`06_Hospital_Entrance_Escape_DuoNurses`、`BP_06_ReaperNurse_EscapeSpecial`）、扉の破壊 → `OpenLevel(06_Hospital_Zone_01)` まで通しで遊べる。本家のカットシーンのカメラのキーは `_sequences/06_Hospital_Entrance_*` から写す。
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital.txt`、`_sequences/06_Hospital_Entrance_*`、`Blueprints/06_Hospital/BP_06_Countdown*.txt`・`BP_06_Needles.txt`・`BP_06_NurseInteract_Intro.txt`、`Animation/06_Hospital/NurseIntro/*`。
 - 依存: 15、7、5。
-- 状態: **取りやめ（2026-09-18）**。項目 15 と同じ。
+- 状態: **取りやめ（2026-09-18）**。項目 15 と同じ。このうちタイトルカード `UMG_ChapterPortal`（ステージ OP）は、2026-09-20 の有人セッションの指摘で項目 30 として Zone 1 の始まりに移した。
 
 ## 未回答の要確認（ユーザー）
 
