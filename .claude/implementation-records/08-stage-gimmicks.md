@@ -184,7 +184,7 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 - エンジン: `UPostProcessComponent`・`UTimelineComponent`・`UCurveFloat`・`UBoxComponent`・`UStaticMeshComponent`・`FRichCurve`・`UGameplayStatics::PlaySoundAtLocation`・`SpawnEmitterAtLocation`・`FTimerManager`・`UPointLightComponent`・`UAudioComponent`、エンジンの素材 `/Engine/BasicShapes/Plane`（100 × 100 の板、厚さ 0 の箱の当たり）。
 
 ## 既知の制約・注意点
-- 祭壇の材質 `MM_00_Ballroom_Ring_Altar_Metal` は前処理が `metal` に振り分け、コンパイル済みのシェーダーの式で組んだ `M_DD_Metal` に載る（真鍮の定数色の金属。2026-09-20、作業一覧の項目 31。01 記録）。欠片の `M_ring_metal2` の親 `MM_Main_Substance_Fresnel` はまだ前処理のマスターの一覧に無いので、`substance` のマスターの推定で作られる（作業一覧の項目 31 のステップ 2 で作り直す）。欠片の `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。
+- 祭壇の材質 `MM_00_Ballroom_Ring_Altar_Metal` は前処理が `metal` に振り分け、コンパイル済みのシェーダーの式で組んだ `M_DD_Metal` に載る（真鍮の定数色の金属。2026-09-20、作業一覧の項目 31。01 記録）。欠片の `M_ring_metal2` の親 `MM_Main_Substance_Fresnel` は前処理が `fresnel` に振り分け、同じくシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（紫の縁の光。01 記録）。欠片の `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。
 - 扉は当たりを持ったまま掃引せずに回る（本家どおり）。開くときにプレイヤーが扉の振れる範囲（蝶番から 200 cm）にいると、扉がカプセルに食い込むことがある。
 - `Unlock`・`Lock` は前のイベントの相手で本家の処理を繰り返す（上）。流れは `On04DoorBreak` で `Unlock` を使わず `bLocked` を直に書く（本家どおり）。
 - 両方のタイムラインが同時に走ったときの勝ち方（閉じる側が後）は、本家では部品のティックの順で決まり、コードからは確定できない。

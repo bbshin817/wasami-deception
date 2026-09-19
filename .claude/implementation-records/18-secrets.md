@@ -108,7 +108,7 @@ updated: 2026-09-20
 - テストで画面の木を作るときは `TakeWidget()` の戻り値を持つ。リッチテキストはスレートの木と一緒に様式を放すので、持たないと `GetDefaultTextStyle` が ensure に当たる。
 - 書類はセーブへの書き込みを赤いシャードと同じくメモリの上だけで行い、ディスクへはチェックポイントの保存で書く（本家どおり）。チェックポイントの前に死んで開き直すと書類はまた出る。
 - テストのワールドのプレイヤーのコントローラーはローカルのプレイヤーを持たないので、書類と区域の画面は作られず `PlayerController_0` のエラーが出る（テストは `AddExpectedError` で受ける）。
-- `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `other` になり、M_DD_Substance に載る（縁の Fresnel の光は無い）。
+- `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `fresnel` になり、コンパイル済みのシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（`Fresnel Setting` (1, 1, 1) の白い縁の光。2026-09-20、作業一覧の項目 31。01 記録）。
 - おとりのエレベーターの `ActorSequence` は `ActorSequenceComponent` を使わずティックで写した（プラグイン `ActorSequence` をモジュールに足さず、キー 2 つの曲線は式で足りる）。変形のトラックが扉の相対の変形を丸ごと入れるので、扉の相対の変形を置き場で変えても使うと (±x, 0, 0) に戻る（本家も同じ。置いたものは変えていない）。
 - メモの `Plane` の当たりはエンジンの `Plane` の厚み 0 の箱（100 × 100 × 0）。エディタのワールドと PIE では見るトレースが止まるが、テストのワールドのトレースは静的メッシュの体を拾わないので、テストは `LineTraceComponent` で確かめる（症状索引）。
 - テストのワールドにはプレイヤーの画面が無いので、メモの画面が作られるかはテストで確かめられない（`GetLastNote` が null になることだけ）。画面の中身は `Wasami.Secrets.Widgets.MysteryNote`、PIE での読みは下の「確かめたこと」。

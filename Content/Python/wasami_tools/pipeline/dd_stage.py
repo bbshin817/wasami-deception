@@ -2,12 +2,13 @@
 (its PNG) and one material instance per material of the export, from the pipeline data written by
 Tools/dd/prepare_stage.py. Everything lands under /Game/DD, mirroring the original's own /Game tree.
 
-The original's master materials are rebuilt as four of ours (their graphs are cooked away; only the parameters and the
+The original's master materials are rebuilt as five of ours (their graphs are cooked away; only the parameters and the
 material settings survive, and for some the compiled shaders, Tools/dd/cooked_shaders.py):
   M_DD_Substance  MM_Main_Substance and its Emissive / AlphaColorMask / Translucent / Glass variants, and anything else
   M_DD_Decal      M_01_Hotel_Decals — a deferred decal material, which the level puts on plane meshes (mesh decals)
   M_DD_Unlit      MM_Lit — an unlit colour times a multiplier
   M_DD_Metal      MM_Main_Metal — the altar's brass, read back from its compiled shaders
+  M_DD_SubstanceFresnel  MM_Main_Substance_Fresnel — the ring pieces' and the secret file's rim, read back the same way
 """
 import os
 import struct
@@ -25,13 +26,15 @@ MASTER_VERSION = "1"
 VERSION_TAG = "WasamiGraphVersion"
 
 # Which of our masters each master of the export maps to (prepare_stage.py's `master`).
-MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT, "metal": paths.MASTER_METAL}
+MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT, "metal": paths.MASTER_METAL,
+             "fresnel": paths.MASTER_FRESNEL}
 # The export's texture kinds → our texture parameters, per master.
 TEX_PARAM = {
     paths.MASTER_SUBSTANCE: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed", "emissive": "Emissive"},
     paths.MASTER_DECAL: {"albedo": "Texture"},
     paths.MASTER_UNLIT: {},
     paths.MASTER_METAL: {"normal": "Normal"},
+    paths.MASTER_FRESNEL: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed"},
 }
 # The export's parameters we can carry over. The rest (Normal Flatness, RefractionDepthBias, Emissive Multiplier,
 # Fade Length (S) …) belong to graph parts that cook removed, so they are counted and skipped, not guessed.
@@ -40,12 +43,15 @@ SCALARS = {
     paths.MASTER_DECAL: (),
     paths.MASTER_UNLIT: ("Light Multiplier",),
     paths.MASTER_METAL: ("Roughness", "Normal Flatness", "Hover Intensity"),
+    paths.MASTER_FRESNEL: ("Roughness Power", "Metallic Power", "Normal Flatness", "Fresnel ExponentIn",
+                           "BaseReflectFractionIn"),
 }
 VECTORS = {
     paths.MASTER_SUBSTANCE: ("Emissive Color Multiplier", "Mask Color"),
     paths.MASTER_DECAL: ("Color Multiplier",),
     paths.MASTER_UNLIT: ("Light Color",),
     paths.MASTER_METAL: ("Hover Color",),
+    paths.MASTER_FRESNEL: ("Fresnel Setting",),
 }
 BLEND = {
     None: unreal.BlendMode.BLEND_OPAQUE,
@@ -141,7 +147,8 @@ def ensure_masters():
     out = {}
     _, packed_changed = ensure_default_packed()
     for asset_path, build in ((paths.MASTER_SUBSTANCE, _build_substance), (paths.MASTER_DECAL, _build_decal),
-                              (paths.MASTER_UNLIT, _build_unlit), (paths.MASTER_METAL, _build_metal)):
+                              (paths.MASTER_UNLIT, _build_unlit), (paths.MASTER_METAL, _build_metal),
+                              (paths.MASTER_FRESNEL, _build_substance_fresnel)):
         mat, needs_build = _material(asset_path)
         if needs_build:
             build(mat)
@@ -325,6 +332,39 @@ def _build_metal(mat):
     fresnel.set_editor_property("base_reflect_fraction", 0.001)
     rim = g.multiply(fresnel, "", g.scalar("Hover Intensity", 0.0, -1100, 550), "", -850, 450)
     rim = g.multiply(rim, "", g.vector("Hover Color", (1.0, 1.0, 1.0, 1.0), -1100, 650), "RGB", -600, 500)
+    g.out(rim, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+
+def _build_substance_fresnel(mat):
+    """MM_Main_Substance_Fresnel, as its cooked base pass pixel shader computes it (Tools/dd/cooked_shaders.py
+    "MasterMaterials/MM_Main_Substance_Fresnel."): the base colour is Albedo, roughness Packed.G ^ Roughness Power and
+    metallic Packed.B ^ Metallic Power (Packed.R, the occlusion, is not read), the default specular 0.5, the Normal
+    texture pulled towards (0, 0, 1) by Normal Flatness (0), and an emissive rim of Fresnel (exponent Fresnel ExponentIn
+    5, base reflect fraction BaseReflectFractionIn 0.04, over the mapped normal) × Fresnel Setting's RGB (black)."""
+    g = _Graph(mat, checked=True)
+    white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
+    flat = unreal.load_asset("/Engine/EngineMaterials/DefaultNormal")
+    packed_default, _ = ensure_default_packed()
+    tcs = unreal.MaterialSamplerType
+
+    albedo = g.texture("Albedo", white, tcs.SAMPLERTYPE_COLOR, -1100, -650)
+    g.out(albedo, "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
+
+    packed = g.texture("Packed", packed_default, tcs.SAMPLERTYPE_LINEAR_COLOR, -1400, -350)
+    rough = g.power(packed, "G", g.scalar("Roughness Power", 1.0, -1100, -300), "", -800, -350)
+    metal = g.power(packed, "B", g.scalar("Metallic Power", 1.0, -1100, -180), "", -800, -230)
+    g.out(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    g.out(metal, "", unreal.MaterialProperty.MP_METALLIC)
+
+    normal = g.texture("Normal", flat, tcs.SAMPLERTYPE_NORMAL, -1100, 0)
+    normal = g.lerp(normal, "RGB", g.const3((0.0, 0.0, 1.0, 1.0), -1100, 250), "",
+                    g.scalar("Normal Flatness", 0.0, -1100, 350), "", -600, 50)
+    g.out(normal, "", unreal.MaterialProperty.MP_NORMAL)
+
+    fresnel = g.node(unreal.MaterialExpressionFresnel, -800, 500)
+    g.link(g.scalar("Fresnel ExponentIn", 5.0, -1100, 480), "", fresnel, "ExponentIn")
+    g.link(g.scalar("BaseReflectFractionIn", 0.04, -1100, 600), "", fresnel, "BaseReflectFractionIn")
+    rim = g.multiply(fresnel, "", g.vector("Fresnel Setting", (0.0, 0.0, 0.0, 1.0), -1100, 720), "RGB", -600, 550)
     g.out(rim, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 
@@ -534,7 +574,7 @@ def refresh_settings():
     """Brings the already imported assets up to this module: rebuilds a master material whose graph version is old,
     re-applies each texture's settings and each mesh's lightmap settings, and recompiles every material instance (an instance with static switches keeps
     a failed shader map from an older master until it is updated). An instance on one of these masters that is no
-    longer the one its root maps to (a master added since, as M_DD_Metal) is remade in place on the right one; one
+    longer the one its root maps to (a master added since, as M_DD_Metal or M_DD_SubstanceFresnel) is remade in place on the right one; one
     another module has put on a master of its own is left alone."""
     stage = paths.load_dd_stage()
     rebuilt = 0
