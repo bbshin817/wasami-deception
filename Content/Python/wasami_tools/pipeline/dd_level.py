@@ -15,6 +15,10 @@ from wasami_tools.pipeline import dd_assets, paths, ue_props
 EAL = unreal.EditorAssetLibrary
 TAG = "dd"
 
+# The title's level (the original's TitleScreen) and the mode its World Settings set.
+TITLE_LEVEL = "/Game/Stage/Maps/L_Title"
+TITLE_GAME_MODE = "/Script/wasami_deception.WasamiTitleGameMode"
+
 LIGHT_CLASS = {
     "PointLightComponent": unreal.PointLight,
     "SpotLightComponent": unreal.SpotLight,
@@ -813,3 +817,29 @@ def build(zone="Zone1", map_path=""):
     counts["failed_settings"] = len(failures)
     _save_level(les, map_path or z["level"])
     return counts
+
+
+# ------------------------------------------------------------------------------------------------ the title
+def build_title(map_path=""):
+    """The title's level: the original's TitleScreen holds nothing but its level Blueprint (which shows UMG_TitleScreen),
+    so an empty level whose World Settings' GameMode Override is WasamiTitleGameMode, which does the Blueprint's part.
+    Made when missing, and saved; the level open before is opened again."""
+    path = map_path or TITLE_LEVEL
+    ues = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+    before = ues.get_editor_world().get_outermost().get_name()
+    created = not EAL.does_asset_exist(path)
+    les, eas = _open_level(path, clear=False)
+    world = ues.get_editor_world()
+    mode = unreal.load_class(None, TITLE_GAME_MODE)
+    if mode is None:
+        raise RuntimeError("no class " + TITLE_GAME_MODE + " (build the C++ module first)")
+    settings = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.WorldSettings)
+    if not settings:
+        raise RuntimeError("no World Settings in " + path)
+    settings[0].set_editor_property("default_game_mode", mode)
+    if not les.save_current_level():
+        raise RuntimeError("could not save " + path)
+    result = {"created": int(created), "actors": len(eas.get_all_level_actors()), "gameMode": 1}
+    if before != path and EAL.does_asset_exist(before):
+        les.load_level(before)
+    return result

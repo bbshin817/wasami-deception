@@ -57,6 +57,12 @@ public:
 
 	static constexpr int32 UserIndex = 0;
 
+	/**
+	 * BP_DD_GameMode's Erase Save Files: a new save (no progress, no warning) written to Slot in place of the one there.
+	 * Returns it.
+	 */
+	static UWasamiSaveGame* Erase(const FString& Slot);
+
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Save")
 	FWasamiLevelProgress Hospital;
 

@@ -7,6 +7,7 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Kismet/GameplayStatics.h"
+#include "../WasamiGameMode.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiTitleScreenWidget.h"
 
@@ -215,6 +216,113 @@ bool FWasamiTitleAnimationsTest::RunTest(const FString& Parameters)
 	RunUntil(Resuming, 8.f);
 	TestEqual(TEXT("black by 3.75 s"), Resuming->GetBlackOpacity(), 1.f, 1e-3f);
 	TestFalse(TEXT("no line"), Resuming->HasPlayedVoice());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiTitleWaysOutTest, "Wasami.Title.WaysOut",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiTitleWaysOutTest::RunTest(const FString& Parameters)
+{
+	using W = UWasamiTitleScreenWidget;
+	const FString Zone1(AWasamiGameMode::Zone1LevelName);
+	const FString Zone2(AWasamiGameMode::Zone2LevelName);
+	auto WriteCheckpoint = [](int32 Checkpoint)
+	{
+		UWasamiSaveGame* Save = NewObject<UWasamiSaveGame>();
+		Save->Hospital.LevelCheckpoint = Checkpoint;
+		Save->Hospital.Deaths = 3;
+		Save->bLastCheckpointWarning = true;
+		UGameplayStatics::SaveGameToSlot(Save, TitleTestSlotName, UWasamiSaveGame::UserIndex);
+	};
+	auto ReadSave = []()
+	{
+		return Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(TitleTestSlotName, UWasamiSaveGame::UserIndex));
+	};
+
+	// The entrance's Spawn: Zone 2 for 7 to 10, Zone 1 for the rest.
+	TestEqual(TEXT("0 goes to Zone 1"), FString(AWasamiGameMode::LevelForCheckpoint(0)), Zone1);
+	for (int32 Checkpoint = 4; Checkpoint <= 6; ++Checkpoint)
+	{
+		TestEqual(FString::Printf(TEXT("%d goes on in Zone 1"), Checkpoint), FString(AWasamiGameMode::LevelForCheckpoint(Checkpoint)), Zone1);
+	}
+	for (int32 Checkpoint = 7; Checkpoint <= 10; ++Checkpoint)
+	{
+		TestEqual(FString::Printf(TEXT("%d goes on in Zone 2"), Checkpoint), FString(AWasamiGameMode::LevelForCheckpoint(Checkpoint)), Zone2);
+	}
+	TestEqual(TEXT("the title's level"), FString(AWasamiGameMode::TitleLevelName), FString(TEXT("L_Title")));
+
+	// Erase Save Files: a new save in the slot.
+	WriteCheckpoint(9);
+	UWasamiSaveGame::Erase(TitleTestSlotName);
+	const UWasamiSaveGame* Erased = ReadSave();
+	TestTrue(TEXT("erased: no checkpoint, deaths or warning"), Erased && Erased->Hospital.LevelCheckpoint == 0 && Erased->Hospital.Deaths == 0
+		&& !Erased->bLastCheckpointWarning);
+
+	// NEW GAME without a game begun: no question; the save erased, FadeOut, and Zone 1 10 s later.
+	UGameplayStatics::DeleteGameInSlot(TitleTestSlotName, UWasamiSaveGame::UserIndex);
+	UWasamiTitleScreenWidget* Fresh = MakeScreen();
+	RunUntil(Fresh, 3.f);
+	Fresh->PressNewGame();
+	TestEqual(TEXT("NEW GAME goes to Zone 1"), Fresh->GetLevelToOpen(), Zone1);
+	TestEqual(TEXT("with FadeOut's start sound"), Fresh->GetStartVolume(), 0.6f, 1e-4f);
+	TestTrue(TEXT("and an empty save written"), UGameplayStatics::DoesSaveGameExist(TitleTestSlotName, UWasamiSaveGame::UserIndex));
+	RunUntil(Fresh, 12.95f);
+	TestFalse(TEXT("not before 10 s"), Fresh->HasLeft());
+	RunUntil(Fresh, 13.05f);
+	TestTrue(TEXT("Zone 1 at 10 s"), Fresh->HasLeft());
+	TestEqual(TEXT("black by then"), Fresh->GetBlackOpacity(), 1.f, 1e-3f);
+
+	// NEW GAME with a game begun asks first (nothing without a player to ask), and its YES goes on as above.
+	WriteCheckpoint(8);
+	UWasamiTitleScreenWidget* Asked = MakeScreen();
+	RunUntil(Asked, 3.f);
+	Asked->PressNewGame();
+	TestTrue(TEXT("nothing before the answer"), Asked->GetLevelToOpen().IsEmpty());
+	const UWasamiSaveGame* Kept = ReadSave();
+	TestTrue(TEXT("the save kept"), Kept && Kept->Hospital.LevelCheckpoint == 8);
+	Asked->NewGameEvent();
+	TestEqual(TEXT("YES goes to Zone 1"), Asked->GetLevelToOpen(), Zone1);
+	const UWasamiSaveGame* Restarted = ReadSave();
+	TestTrue(TEXT("and erases the save"), Restarted && Restarted->Hospital.LevelCheckpoint == 0 && !Restarted->bLastCheckpointWarning);
+	RunUntil(Asked, 13.05f);
+	TestTrue(TEXT("Zone 1 10 s after YES"), Asked->HasLeft());
+
+	// RESUME: FadeOut_0, and the zone of the checkpoint 5 s later; nothing else after it.
+	WriteCheckpoint(8);
+	UWasamiTitleScreenWidget* Resume = MakeScreen();
+	TestTrue(TEXT("RESUME is there"), Resume->HasResume());
+	RunUntil(Resume, 3.f);
+	Resume->PressResume();
+	TestEqual(TEXT("checkpoint 8 goes on in Zone 2"), Resume->GetLevelToOpen(), Zone2);
+	Resume->PressNewGame();
+	TestEqual(TEXT("NEW GAME after it changes nothing"), Resume->GetLevelToOpen(), Zone2);
+	const UWasamiSaveGame* Untouched = ReadSave();
+	TestTrue(TEXT("nor erases the save"), Untouched && Untouched->Hospital.LevelCheckpoint == 8);
+	RunUntil(Resume, 3.25f);
+	TestEqual(TEXT("no red"), Resume->GetRedOpacity(), 0.f, 1e-4f);
+	RunUntil(Resume, 7.95f);
+	TestFalse(TEXT("not before 5 s"), Resume->HasLeft());
+	RunUntil(Resume, 8.05f);
+	TestTrue(TEXT("Zone 2 at 5 s"), Resume->HasLeft());
+	TestEqual(TEXT("black by then"), Resume->GetBlackOpacity(), 1.f, 1e-3f);
+
+	WriteCheckpoint(5);
+	UWasamiTitleScreenWidget* ResumeZone1 = MakeScreen();
+	ResumeZone1->PressResume();
+	TestEqual(TEXT("checkpoint 5 goes on in Zone 1"), ResumeZone1->GetLevelToOpen(), Zone1);
+
+	// QUIT asks (nothing without a player); its YES quits. OPTIONS only sounds.
+	UWasamiTitleScreenWidget* Quit = MakeScreen();
+	Quit->PressQuit();
+	Quit->PressOptions();
+	TestFalse(TEXT("QUIT waits for its answer"), Quit->HasQuit());
+	TestTrue(TEXT("and nothing opens"), Quit->GetLevelToOpen().IsEmpty());
+	Quit->QuitEvent();
+	TestTrue(TEXT("YES quits"), Quit->HasQuit());
+	TestEqual(TEXT("the question"), FString(W::NewGameQuestion), FString(TEXT("STARTING A NEW GAME WILL RESET ALL PROGRESS.")));
+	TestEqual(TEXT("the pop-ups at Z 2"), W::PopUpZOrder, 2);
+	UGameplayStatics::DeleteGameInSlot(TitleTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;
 }
 

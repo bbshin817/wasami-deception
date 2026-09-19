@@ -4,6 +4,8 @@ sources:
   - Tools/dd/prepare_title.py
   - Source/wasami_deception/WasamiTitleScreenWidget.h
   - Source/wasami_deception/WasamiTitleScreenWidget.cpp
+  - Source/wasami_deception/WasamiTitleGameMode.h
+  - Source/wasami_deception/WasamiTitleGameMode.cpp
   - Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp
 updated: 2026-09-19
 ---
@@ -11,7 +13,7 @@ updated: 2026-09-19
 # タイトル画面
 
 ## 役割
-ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの）。いまは素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）と画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）まで。ボタンを押した後の道・タイトルのレベルはこれから（進捗記録 `20260919-title-screen`）。
+ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19）。メニューは RESUME / NEW GAME / OPTIONS / QUIT（本家の CHAPTERS・REPLAY・EXTRAS と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイ・おまけが無い。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）まで。死亡画面の QUIT TO TITLE とスコア画面の NEXT の後をタイトルへつなぐのはステップ 4（進捗記録 `20260919-title-screen`）。
 
 ## 公開インターフェース
 - `python Tools/dd/prepare_title.py [--out <dir>]` … 本作の顔とロゴのグローを作る（下の「作るアセット」）。PIL と numpy を使う（エディタの Python には無い）。
@@ -21,8 +23,11 @@ updated: 2026-09-19
   - `Show(WorldContextObject)`（BlueprintCallable）: 最初のプレイヤーに作って Z 1（`ViewportZOrder`）で足す（本家のレベル `TitleScreen` の BeginPlay）。PIE で画面だけを出すときはリモート実行で `unreal.WasamiTitleScreenWidget.show(<ゲームのワールド>)`。
   - `SaveSlotName`（既定は `UWasamiSaveGame::SlotName`。テストは別のスロット）、`HasProgress(Save)`（`Hospital.LevelCheckpoint` > 0）、`VersionText()`（`v` + プロジェクト設定の `ProjectVersion`）。
   - `Begin(bHasProgress)`（Construct の中身。`NativeConstruct` がセーブを読んで呼ぶ）、`Advance(DeltaSeconds)`（`NativeTick` から）、`PlayFadeOut()`（NEW GAME の暗転）、`PlayFadeOut0()`（RESUME の暗転）、`FadeOutMusic(Seconds)`。
-  - テスト用の読み出し: `GetElapsed`・`HasResume`・`GetCoverOpacity`（`Image_128`）・`GetBlackOpacity`（`Image_0`）・`GetRedOpacity`（`Image_2`）・`GetPulseScale`（`CanvasPanel_0`）・`GetStartVolume`・`HasPlayedVoice`。曲線の静的関数 `EvaluateSlideshow`・`EvaluateBlack`・`EvaluatePulse`・`EvaluateRed`・`EvaluateStartVolume` と定数（長さ・声の時刻・曲の値）。
-- テスト `Wasami.Title.Curves`・`Wasami.Title.Screen`・`Wasami.Title.Animations`（`Tests/WasamiTitleScreenTests.cpp`）。
+  - ボタンの道（下の「ボタンの道」）: `PressNewGame()`・`PressResume()`・`PressOptions()`・`PressQuit()`（ボタンのクリック〈RESUME は押下〉がこれを呼ぶ）、問いの YES の `NewGameEvent()`・`QuitEvent()`（UFUNCTION）。定数 `NewGameQuestion`・`PopUpZOrder`（2）・`NewGameDelay`（10）・`ResumeDelay`（5）・`NewGameMusicFadeOut`（1）・`ResumeMusicFadeOut`（4）。
+  - テスト用の読み出し: `GetElapsed`・`HasResume`・`GetCoverOpacity`（`Image_128`）・`GetBlackOpacity`（`Image_0`）・`GetRedOpacity`（`Image_2`）・`GetPulseScale`（`CanvasPanel_0`）・`GetStartVolume`・`HasPlayedVoice`・`GetLevelToOpen`（道が開くレベル。道の前は空）・`HasLeft`（遅延が切れてレベルを開いた）・`HasQuit`。曲線の静的関数 `EvaluateSlideshow`・`EvaluateBlack`・`EvaluatePulse`・`EvaluateRed`・`EvaluateStartVolume` と定数（長さ・声の時刻・曲の値）。
+- `AWasamiTitleGameMode`（`AGameModeBase`）… タイトルのレベルのゲームモード（下の「タイトルのレベル」）。ポーンなし（`PlayerCanRestart` が偽）。
+- タイトルのレベル `/Game/Stage/Maps/L_Title`（`Content/Stage` は git の外）: `WasamiStageTools.build_title_level(map_path="")`（`dd_level.build_title`）が作る。`Config/DefaultEngine.ini` の `GameDefaultMap`（パッケージの始まり）はこのレベル。エディタの開始のレベル `EditorStartupMap` は Zone 1 のまま。
+- テスト `Wasami.Title.Curves`・`Wasami.Title.Screen`・`Wasami.Title.Animations`・`Wasami.Title.WaysOut`（`Tests/WasamiTitleScreenTests.cpp`）。
 
 ## 内部構造と処理の流れ
 ### 前処理（`Tools/dd/prepare_title.py`）
@@ -50,7 +55,7 @@ WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/i
 8. `VerticalBox_160`: メニュー。左端の中央から (7.06, −93.09)、421.75 × 550.72。ボタンは上から `Resume`・`NewGame`・`Options`・`Quit`（本家の `Chapters`・`Replay`・`Extras` は作らない）。各ボタンの縦並びのスロットは下の余白 −10。
    - ボタンの様式は本家の `Setup Buttons` の後のもの: 押したときとホバーのブラシが `title_screen_selection_marker`（394 × 74、Image で描く＝ボタンいっぱいに引き伸ばす）、ふだんは同じブラシの Tint の α 0。余白は UE 4 の既定（ふだん 2、押したとき (2, 3, 2, 1)。UE 5 の既定の様式は違うので書く）。
    - 文字（`Resume_Text` など）: `helvetica-normal_Font` 30、灰 0.107、最小の幅 250、Margin 10。ボタンのスロットは書き出しの余白 (40, 3) と既定の右 4・下 2、既定の中央揃え（文字は 250 の箱の中で左寄せ、箱はボタンの中央。WebGL 版は左寄せで置いていた）。
-   - ホバー: 入ると文字が白、出ると `Unhovered Color`（0.107）。押したときの道は次のステップ。
+   - ホバー: 入ると文字が白、出ると `Unhovered Color`（0.107）。クリックは本家の結線どおり RESUME だけ `OnPressed`、ほかは `OnClicked`（下の「ボタンの道」）。
 9. `Image_0`（黒）・`Image_128`（黒。各辺から (−31.5, −80, −22, −57.5) はみ出す）・`Image_2`（赤 (0.266, 0, 0.002)）: どれも全面、不透明度 0、入力を取らない。
 10. `TextBlock_0`: 版の文字。右端の上から (−81.92, 12) に左寄せ（黒の上でも見える）。18、灰 0.107。
 
@@ -60,6 +65,24 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `Slideshow`（2.5 s）: `Image_128` の不透明度 1 → 0。
 - `FadeOut`（NEW GAME。長さは音の区間の 565580 tick = 9.43 s、絵は 3.75 s で終わる）: `Image_0` 0 → 1（3.5 s、接線 1/3.75）→ 1（3.75 s）。`CanvasPanel_0` の拡大 1（0.15 s）→ 1.05（0.25 s）→ 1（0.3 s）。`Image_2` 0（0.15 s）→ 0.5（0.25 s）→ 0.2（0.3 s）→ 0（3.75 s）。0.15 s からの区間は、その前も最初のキーの値が木の値と同じなので曲線のまま評価する。音: `Start_New_Game` を初めから `CreateSound2D` で鳴らし、音量を区間の曲線 0.6（0.45 s まで）→ 0.3（1.65 s から）で毎ティック動かす。`Bierce_Title_Modified_03` を 98999 tick（1.65 s）で `PlaySound2D`（音量 1）。WebGL 版 10 記録の `ANIM`・`SOUND` と値が一致。
 - `FadeOut_0`（RESUME。3.75 s）: `Image_0` だけ、`FadeOut` と同じキー。
+
+### ボタンの道
+本家の旧版の Ubergraph（`python Tools/dd/bp_flow.py pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt <番地>`）を写す。遅延（本家の `Delay`）はウィジェットのティックで、アニメの後に数える。クリックはティックの間に来るので、遅延はクリックの時の `Elapsed` から数える。
+- **NEW GAME**（@8532）: 本家は `SaveSlot` の `New Game?`（新しいゲームを始めるまで立つ）なら問わずに進む。本作のセーブにその印は無いので、**進み（`HasProgress`。クリックの時にセーブを読む）があれば問う**。問いは `UWasamiPopUpWidget`（`STARTING A NEW GAME WILL RESET ALL PROGRESS.`、Frame は既定の 0 = RESTART の枠、Z 2）と選択音 `UI_Select_V3`（1）。YES（`NewGameEvent`。本家の `New Game` @8743）は問いの `PressNo`（閉じて選択音 0.7）の後に、問わないときと同じ道へ。NO は問いが自分で閉じるだけ。
+  - その道（@1748）: 曲を 1 s で消す → 本家のゲームモードの `Erase Save Files`（本作は `UWasamiSaveGame::Erase`: 新しいセーブを書く。06 記録）→ `SetInputMode_GameOnly` → `FadeOut` → **10 s** 後に Zone 1 を開く（本家は最初の章の `00_TypeWriter`。空のセーブの Zone 1 はエレベーターの到着から）。
+- **RESUME**（@9272。押下）: 本家は章のチェックポイントが 0 より大きければ問い `UMG_PopUp_Resume`（チェックポイントから続けるか。NO でその章を最初から）を出すが、**作らない**（WebGL 版と同じく問わずに続きへ。NO は NEW GAME と重なり、YES の行き先は問わないときと同じ）。@115: 曲を 4 s で消す → `SetInputMode_GameOnly` → `FadeOut_0` → **5 s** 後にセーブのチェックポイントのゾーン（`AWasamiGameMode::LevelForCheckpoint`: 本家の病院の入口 `06_Hospital` の `Spawn` @81063 の振り分け。7〜10 は Zone 2、ほかは Zone 1。02 記録）を開く。本家は章の最初のレベル（`00_Ballroom`）を開き、その `Spawn` がチェックポイントから続ける。
+- **OPTIONS**（@8405）: 選択音（1）だけ。本家の `UMG_Options` を Z 10 で開くのは作業一覧の項目 18（`TODO(項目 18)`）。
+- **QUIT**（@8527 → @1004）: `UWasamiPopUpWidget`（Frame 1 = `quit_window_frame`。文は空で、枠の絵が問う。Z 2）と選択音（1）。YES（`QuitEvent`。@8705）は `QuitGame(Self, None, Quit, False)`（問いは出たまま）。PIE では PIE が止まる。
+- 道が 1 つ始まると（`GetLevelToOpen` が空でない）ほかのボタンは何もしない。本家は入力をゲームへ渡す（`SetInputMode_GameOnly`: ビューポートがマウスを捕まえる）のでメニューがクリックを受けないのを、プレイヤーの居ないテストでも同じになるように書いたもの。
+- レベルを開くのは `UGameplayStatics::OpenLevel(<名前>, true)`。ワールドが無いとき（テスト）は `HasLeft` を立てるだけ。
+- 暗転の後の時間（10 s・5 s）は本家のコードの `Delay`。WebGL 版は 3.75 s で始めていたが、ブラウザのユーザー操作の有効期間に収めるための都合（WebGL 版 01 記録）で、UE には無いので採らない（2026-09-19）。
+
+### タイトルのレベル（`L_Title` と `AWasamiTitleGameMode`）
+本家のタイトルは別のレベル `TitleScreen`（中身は 2D のウィジェットだけ。3D の背景は無い）で、そのレベル BP の `ReceiveBeginPlay`（`pak_reference/_bytecode/DDeception/Content/TitleScreen.txt` @4390）が画面を出す。本作は空のレベル `L_Title` の World Settings の GameMode Override を `AWasamiTitleGameMode` にし、ゲームモードの `BeginPlay` がレベル BP の受け持ちをする:
+- ゲームインスタンスの `Used Hard Respawn?`・`Hard Check Point`（入口のもの。本作に無い）は写さない。ゲームモードの `Reset Game Instance(True)`（本家の `BP_DD_GameMode` @38662）→ 本作は回収の記憶を空に・ライフ 3（06 記録）。
+- `Create(UMG_TitleScreen)` → `AddToViewport(1)`（`UWasamiTitleScreenWidget::Show`）。`SaveSlot` を読んで章と実績を決める所は写さない（画面が自分でセーブを読む）。
+- ポーンは出さない（`PlayerCanRestart` が偽。プレイヤーの開始の場所が無くても警告が出ない）。ゾーンのゲームモード `AWasamiGameMode`（02 記録）は BeginPlay でゾーンの準備（チェックポイント・開始の場所・ゾーンの流れ・黒からの明け）をするので、タイトルでは使わない。
+- `dd_level.build_title`: `LevelEditorSubsystem.new_level` で空のレベルを作り（あれば開くだけ）、World Settings（`GameplayStatics.get_all_actors_of_class(world, WorldSettings)` の最初）の `default_game_mode` を `/Script/wasami_deception.WasamiTitleGameMode` にして保存し、前に開いていたレベルを開き直す。C++ のモジュールがビルドされていないとクラスが無いので例外。
 
 ## 作るアセット
 `dd_ui.import_title()`:
@@ -81,15 +104,20 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 
 ## 依存関係
 - `dd_ui.py`・`dd_assets.py`・`dd_stage.py`（01 記録の取り込みの仕組み）
-- 画面: `UWasamiSaveGame`（06 記録）、`WasamiWidgetAnimation.h`（09 記録）、`WasamiAssets.h`
-- 使う側: タイトルのレベルとゲームモード（これから）
+- 画面: `UWasamiSaveGame`（`Erase` を含む。06 記録）、`UWasamiPopUpWidget`・`WasamiWidgetAnimation.h`（09 記録）、`AWasamiGameMode::Zone1LevelName`・`LevelForCheckpoint`（02 記録）、`WasamiAssets.h`
+- ゲームモード: `UWasamiGameInstance`（06 記録）、`UWasamiTitleScreenWidget`
+- レベルの道具: `dd_level.py` の `_open_level`（01 記録）
+- 使う側: `L_Title`（`GameDefaultMap`。00 記録）。死亡画面の QUIT TO TITLE とスコア画面の NEXT の後（ステップ 4 でつなぐ）
 - エンジン: `MaterialExpressionPanner`・`MaterialExpressionDesaturation`・`TextureFactory`・`SoundFactory`、`UGeneralProjectSettings`（`EngineSettings`）
 
 ## 既知の制約・注意点
 - 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は仮の 0.1.0（要確認。進捗記録）。
+- NEW GAME が問うかどうかは本家の `New Game?` の代わりに進みで決める（上の「ボタンの道」）。本家は一度でも新しいゲームを始めた後は、進みが無くても問う。
+- `L_Title` は git の外（`Content/Stage`）。作り直すときは C++ をビルドしてから `WasamiStageTools.build_title_level`。エディタで遊んで確かめるときは `L_Title` を開いて PIE（エディタの開始のレベルは Zone 1）。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も焦点を持てない画面を渡しているので、そのままにしている（死亡画面も同じ）。
 - 顔とロゴのグローは WebGL 版の CSS の見た目を焼いたもの（本家に無い本作の素材）。直すときは `prepare_title.py` の定数を変えて前処理と `import_dd_ui` をやり直す。
 
 ## 変更履歴
 - 2026-09-19: 初版。前処理 `Tools/dd/prepare_title.py`（顔に WebGL 版のフィルタとマスク、ロゴのグロー）と `dd_ui.import_title`（本家のテクスチャ 3・音 3、焼き込みのシェーダーから組んだ `MM_TitleScreen_Mask_Grey`、本作のテクスチャ 3）を足した（作業一覧の項目 17 のステップ 1）
 - 2026-09-19: 画面 `UWasamiTitleScreenWidget` を足した: 本家の旧版の木をスロットのまま（作らない部品を除く）、Setup Buttons の後の様式とホバー、Construct（進みが無ければ RESUME を外す・Slideshow・入力・曲）、FadeOut（黒・脈動・赤と開始の音と声）と FadeOut_0、テスト `Wasami.Title.*`（作業一覧の項目 17 のステップ 2）
+- 2026-09-19: ボタンの道（NEW GAME〈進みがあれば問う・セーブを消す・10 s で Zone 1〉・RESUME〈5 s でチェックポイントのゾーン〉・OPTIONS〈選択音だけ〉・QUIT〈問うて閉じる〉）とタイトルのレベル `L_Title`・`AWasamiTitleGameMode`・`build_title_level`、`GameDefaultMap` をタイトルに、テスト `Wasami.Title.WaysOut`（作業一覧の項目 17 のステップ 3）

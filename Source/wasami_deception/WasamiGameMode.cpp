@@ -189,6 +189,7 @@ namespace
 
 const TCHAR* AWasamiGameMode::Zone1LevelName = TEXT("L_Hospital_Zone1");
 const TCHAR* AWasamiGameMode::Zone2LevelName = TEXT("L_Hospital_Zone2");
+const TCHAR* AWasamiGameMode::TitleLevelName = TEXT("L_Title");
 
 AWasamiGameMode::AWasamiGameMode()
 {
@@ -562,6 +563,13 @@ int32 AWasamiGameMode::ZoneOf(const FString& LevelName)
 		return 2;
 	}
 	return 0;
+}
+
+const TCHAR* AWasamiGameMode::LevelForCheckpoint(int32 Checkpoint)
+{
+	// 06_Hospital's Spawn (@81063): 4 to 6 open Zone 1, 7 to 10 Zone 2 (11 and 12 the boss, which this game does not
+	// have); at 0 the entrance goes on to Zone 1 itself.
+	return Checkpoint >= 7 && Checkpoint <= 10 ? Zone2LevelName : Zone1LevelName;
 }
 
 FName AWasamiGameMode::PlayerStartTagFor(int32 Zone, int32 Checkpoint)

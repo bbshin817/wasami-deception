@@ -15,6 +15,7 @@ class USoundBase;
 class UTextBlock;
 class UTexture2D;
 class UVerticalBox;
+class UWasamiPopUpWidget;
 class UWasamiSaveGame;
 
 /**
@@ -23,8 +24,9 @@ class UWasamiSaveGame;
  * the logo with its glow, the notice, the menu (RESUME / NEW GAME / OPTIONS / QUIT, the red brush under the one
  * hovered), and over them the black cover Slideshow lifts, the black and red FadeOut plays with and the version. The
  * tree is built here slot for slot, without the hidden video and slideshow and the chapters, replays and extras this
- * game has none of. Construct (the cover, the input, the music) runs from NativeConstruct; the animations and their
- * sounds are ticked by the widget.
+ * game has none of. Construct (the cover, the input, the music) runs from NativeConstruct; the animations, their
+ * sounds and the Delays before a level opens are ticked by the widget. NEW GAME and QUIT ask first with a
+ * UWasamiPopUpWidget (NEW GAME only once a game was begun).
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiTitleScreenWidget : public UUserWidget
@@ -75,6 +77,53 @@ public:
 
 	/** Music.FadeOut(Seconds). */
 	void FadeOutMusic(float Seconds);
+
+	/**
+	 * NEW GAME's click: once a game was begun (the save's progress, read now), asks STARTING A NEW GAME WILL RESET ALL
+	 * PROGRESS. (Frame 0, Z 2) with the select sound, and its YES is NewGameEvent; otherwise the new game begins at once.
+	 */
+	void PressNewGame();
+
+	/**
+	 * RESUME's press: the music out over 4 s, the input to the game, FadeOut_0, and after ResumeDelay the zone of the
+	 * save's checkpoint (AWasamiGameMode::LevelForCheckpoint). The original's question UMG_PopUp_Resume is not made.
+	 */
+	void PressResume();
+
+	/** OPTIONS' click: the select sound (the options screen is item 18's). */
+	void PressOptions();
+
+	/** QUIT's click: asks with the quit frame (Z 2) and the select sound; its YES is QuitEvent. */
+	void PressQuit();
+
+	/** NEW GAME's YES: the question closed (its Press No), then the new game. */
+	UFUNCTION()
+	void NewGameEvent();
+
+	/** QUIT's YES: QuitGame. */
+	UFUNCTION()
+	void QuitEvent();
+
+	/** The level a way out opens when its Delay runs out (empty until one began), and whether it was asked to open. */
+	const FString& GetLevelToOpen() const { return LevelToOpen; }
+	bool HasLeft() const { return bLeft; }
+
+	/** Whether QUIT's YES asked the game to quit. */
+	bool HasQuit() const { return bQuit; }
+
+	/** The question NEW GAME asks. */
+	static const TCHAR* const NewGameQuestion;
+
+	/** The pop-ups' Z order (AddToViewport(2)). */
+	static constexpr int32 PopUpZOrder = 2;
+
+	/** The Delays after the input goes to the game before the level opens: NEW GAME's and RESUME's. */
+	static constexpr float NewGameDelay = 10.f;
+	static constexpr float ResumeDelay = 5.f;
+
+	/** How long the music takes to go: NEW GAME's and RESUME's Music.FadeOut. */
+	static constexpr float NewGameMusicFadeOut = 1.f;
+	static constexpr float ResumeMusicFadeOut = 4.f;
 
 	/** Seconds since Begin. */
 	float GetElapsed() const { return Elapsed; }
@@ -156,9 +205,40 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<USoundBase> VoiceSound;
 
+	/** UI_Select_V3: the questions and OPTIONS. */
+	UPROPERTY(EditAnywhere, Category = "Title|Assets")
+	TSoftObjectPtr<USoundBase> SelectSound;
+
 private:
 	void BuildScreen(UCanvasPanel* Root);
 	void ApplyAnimations();
+
+	/** New Game past the question: the music out over 1 s, the save erased, the input to the game, FadeOut, Zone 1 after NewGameDelay. */
+	void BeginNewGame();
+
+	/**
+	 * A way out: SetInputMode_GameOnly, and LevelName after Delay. The input gone to the game, the menu takes no other
+	 * click, so the first way out is the only one.
+	 */
+	void Leave(const TCHAR* LevelName, float Delay);
+
+	/** OpenLevel(LevelToOpen) (with no world, only marks the screen left). */
+	void OpenLevel();
+
+	void PlaySelect() const;
+
+	// The buttons' clicks (RESUME's press), as the original binds them.
+	UFUNCTION()
+	void OnResumePressed();
+
+	UFUNCTION()
+	void OnNewGameClicked();
+
+	UFUNCTION()
+	void OnOptionsClicked();
+
+	UFUNCTION()
+	void OnQuitClicked();
 
 	// The buttons' hover: the text white, and back to Unhovered Color.
 	UFUNCTION()
@@ -234,6 +314,16 @@ private:
 	/** FadeOut's Start_New_Game, whose volume the section's curve moves. */
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> StartAudio;
+
+	/** NEW GAME's question, which its YES closes. */
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiPopUpWidget> NewGamePopUp;
+
+	/** The way out's level and when its Delay runs out (Elapsed; negative before a way out). */
+	FString LevelToOpen;
+	float LeaveAt = -1.f;
+	bool bLeft = false;
+	bool bQuit = false;
 
 	float Elapsed = 0.f;
 	/** Construct's DoOnce. */

@@ -157,6 +157,21 @@ class WasamiStageTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def build_title_level(map_path: str = "") -> dict[str, int]:
+        """Makes the title's level (the original's TitleScreen, which the game opens first: the project's
+        GameDefaultMap): an empty level whose World Settings' GameMode Override is WasamiTitleGameMode, which shows the
+        title screen when play begins, and saves it. The level open before is opened again.
+
+        Args:
+            map_path: Package path of the level; '/Game/Stage/Maps/L_Title' when empty. Made when missing.
+
+        Returns:
+            'created' 1 when the level was made, 'actors' in it, and 'gameMode' 1 once its mode is set.
+        """
+        return _module("dd_level").build_title(map_path)
+
+    @toolset_registry.tool_call
+    @staticmethod
     def build_navigation(map_path: str = "") -> dict[str, int]:
         """Builds the navigation (the enemies' paths) of the level open in the editor and saves the level. Call it, in a
         call of its own, after any build_dd_stage_level / place_dd_* call: those open the level and save it in the same

@@ -19,9 +19,12 @@
 #include "GameFramework/PlayerController.h"
 #include "GeneralProjectSettings.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Materials/MaterialInterface.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiGameMode.h"
+#include "WasamiPopUpWidget.h"
 #include "WasamiSaveGame.h"
 #include "WasamiWidgetAnimation.h"
 
@@ -101,7 +104,15 @@ namespace
 			Text->SetColorAndOpacity(FSlateColor(Colour));
 		}
 	}
+
+	const UWasamiSaveGame* ReadSave(const FString& Slot)
+	{
+		return UGameplayStatics::DoesSaveGameExist(Slot, UWasamiSaveGame::UserIndex)
+			? Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(Slot, UWasamiSaveGame::UserIndex)) : nullptr;
+	}
 }
+
+const TCHAR* const UWasamiTitleScreenWidget::NewGameQuestion = TEXT("STARTING A NEW GAME WILL RESET ALL PROGRESS.");
 
 UWasamiTitleScreenWidget::UWasamiTitleScreenWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -117,6 +128,7 @@ UWasamiTitleScreenWidget::UWasamiTitleScreenWidget(const FObjectInitializer& Obj
 	MusicSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Pause_Sound_v1")));
 	StartSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Start_New_Game")));
 	VoiceSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Titlescreen/Bierce_Title_Modified_03")));
+	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
 }
 
 UWasamiTitleScreenWidget* UWasamiTitleScreenWidget::Show(const UObject* WorldContextObject)
@@ -241,7 +253,11 @@ void UWasamiTitleScreenWidget::BuildScreen(UCanvasPanel* Root)
 	NewGameButton = MakeButton(TEXT("NewGame"), TEXT("NewGame_Text"), TEXT("NEW GAME"), NewGameText);
 	OptionsButton = MakeButton(TEXT("Options"), TEXT("Options_Text"), TEXT("OPTIONS"), OptionsText);
 	QuitButton = MakeButton(TEXT("Quit"), TEXT("Quit_Text"), TEXT("QUIT"), QuitText);
-	// The original's ComponentDelegateBinding: each button's hover (the clicks come with the ways out).
+	// The original's ComponentDelegateBinding: RESUME on its press, the others on their click, and each one's hover.
+	ResumeButton->OnPressed.AddDynamic(this, &UWasamiTitleScreenWidget::OnResumePressed);
+	NewGameButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnNewGameClicked);
+	OptionsButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnOptionsClicked);
+	QuitButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnQuitClicked);
 	ResumeButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnResumeHovered);
 	ResumeButton->OnUnhovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnResumeUnhovered);
 	NewGameButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnNewGameHovered);
@@ -289,9 +305,7 @@ void UWasamiTitleScreenWidget::NativeConstruct()
 		return;
 	}
 	bConstructed = true;
-	const UWasamiSaveGame* Save = UGameplayStatics::DoesSaveGameExist(SaveSlotName, UWasamiSaveGame::UserIndex)
-		? Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(SaveSlotName, UWasamiSaveGame::UserIndex)) : nullptr;
-	Begin(HasProgress(Save));
+	Begin(HasProgress(ReadSave(SaveSlotName)));
 }
 
 void UWasamiTitleScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -306,6 +320,9 @@ void UWasamiTitleScreenWidget::Begin(bool bInHasProgress)
 	SlideshowTime = 0.f;
 	FadeOutTime = FadeOut0Time = -1.f;
 	bVoicePlayed = false;
+	LevelToOpen.Reset();
+	LeaveAt = -1.f;
+	bLeft = bQuit = false;
 	if (!bInHasProgress && ResumeButton)
 	{
 		ResumeButton->RemoveFromParent();
@@ -362,6 +379,13 @@ void UWasamiTitleScreenWidget::Advance(float DeltaSeconds)
 
 	ApplyAnimations();
 
+	// The way out's Delay, after the animations as a user widget ticks them.
+	if (LeaveAt >= 0.f && Elapsed >= LeaveAt)
+	{
+		LeaveAt = -1.f;
+		OpenLevel();
+	}
+
 	// An animation that reached its end keeps its last values (KeepState).
 	for (const TPair<float*, float>& Each : {TPair<float*, float>(&SlideshowTime, SlideshowLength),
 		TPair<float*, float>(&FadeOutTime, FadeOutLength), TPair<float*, float>(&FadeOut0Time, FadeOut0Length)})
@@ -404,6 +428,149 @@ void UWasamiTitleScreenWidget::FadeOutMusic(float Seconds)
 	{
 		Music->FadeOut(Seconds, 0.f);
 	}
+}
+
+void UWasamiTitleScreenWidget::PressNewGame()
+{
+	// @8532: SaveSlot's New Game? (set until a new game begins) lets it go without asking. This game's save has no such
+	// flag; a game begun and not ended (RESUME's progress) is what the question warns about.
+	if (!LevelToOpen.IsEmpty())
+	{
+		return;
+	}
+	if (!HasProgress(ReadSave(SaveSlotName)))
+	{
+		BeginNewGame();
+		return;
+	}
+	// @1333: Create(UMG_PopUp) with the question (Frame left at 0), AddToViewport(2), YesClick bound to New Game, and
+	// the select sound.
+	NewGamePopUp = UWasamiPopUpWidget::Show(this, FText::FromString(NewGameQuestion), UWasamiPopUpWidget::RestartFrame, PopUpZOrder);
+	if (NewGamePopUp)
+	{
+		NewGamePopUp->OnYesClick.AddDynamic(this, &UWasamiTitleScreenWidget::NewGameEvent);
+	}
+	PlaySelect();
+}
+
+void UWasamiTitleScreenWidget::NewGameEvent()
+{
+	// New Game (@8743 → @1712): the pop-up's Press No, then as without the question.
+	if (NewGamePopUp)
+	{
+		NewGamePopUp->PressNo();
+	}
+	BeginNewGame();
+}
+
+void UWasamiTitleScreenWidget::BeginNewGame()
+{
+	// @1748: Music.FadeOut(1), the game mode's Erase Save Files (and New Game? off, written), SetInputMode_GameOnly,
+	// PlayAnimation(FadeOut), Delay(10), OpenLevel. The original opens 00_TypeWriter, the first chapter's; this game's is
+	// Zone 1 (whose empty save starts at the lift's arrival).
+	if (!LevelToOpen.IsEmpty())
+	{
+		return;
+	}
+	FadeOutMusic(NewGameMusicFadeOut);
+	UWasamiSaveGame::Erase(SaveSlotName);
+	Leave(AWasamiGameMode::Zone1LevelName, NewGameDelay);
+	PlayFadeOut();
+}
+
+void UWasamiTitleScreenWidget::PressResume()
+{
+	// @9272 → @115 (the checkpoint's question left out): Music.FadeOut(4), SetInputMode_GameOnly,
+	// PlayAnimation(FadeOut_0), Delay(5), OpenLevel. The original opens the chapter's first level (00_Ballroom), whose
+	// Spawn goes on at the checkpoint; the hospital's entrance picks the zone, which here is picked now.
+	if (!LevelToOpen.IsEmpty())
+	{
+		return;
+	}
+	const UWasamiSaveGame* Save = ReadSave(SaveSlotName);
+	FadeOutMusic(ResumeMusicFadeOut);
+	Leave(AWasamiGameMode::LevelForCheckpoint(Save ? Save->Hospital.LevelCheckpoint : 0), ResumeDelay);
+	PlayFadeOut0();
+}
+
+void UWasamiTitleScreenWidget::PressOptions()
+{
+	// @8405: CreateAndAddWidget(UMG_Options, Z 10) and the select sound.
+	// TODO(項目 18): the options screen at Z 10.
+	PlaySelect();
+}
+
+void UWasamiTitleScreenWidget::PressQuit()
+{
+	// @1004: Create(UMG_PopUp) with Frame 1 (no text: the quit frame asks), AddToViewport(2), YesClick bound to QuitGame,
+	// and the select sound.
+	if (UWasamiPopUpWidget* PopUp = UWasamiPopUpWidget::Show(this, FText::GetEmpty(), UWasamiPopUpWidget::QuitFrame, PopUpZOrder))
+	{
+		PopUp->OnYesClick.AddDynamic(this, &UWasamiTitleScreenWidget::QuitEvent);
+	}
+	PlaySelect();
+}
+
+void UWasamiTitleScreenWidget::QuitEvent()
+{
+	// @8705: QuitGame(Self, None, Quit, False). The question stays on the screen.
+	bQuit = true;
+	if (GetWorld())
+	{
+		UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, false);
+	}
+}
+
+void UWasamiTitleScreenWidget::Leave(const TCHAR* LevelName, float Delay)
+{
+	LevelToOpen = LevelName;
+	// A click comes between ticks: its Delay counts from now.
+	LeaveAt = Elapsed + Delay;
+	if (APlayerController* Controller = GetOwningPlayer())
+	{
+		UWidgetBlueprintLibrary::SetInputMode_GameOnly(Controller);
+	}
+}
+
+void UWasamiTitleScreenWidget::OpenLevel()
+{
+	bLeft = true;
+	if (GetWorld())
+	{
+		UGameplayStatics::OpenLevel(this, FName(LevelToOpen), true);
+	}
+}
+
+void UWasamiTitleScreenWidget::PlaySelect() const
+{
+	// PlaySound2D(UI_Select_V3, 1, 1): a UI sound.
+	if (GetWorld())
+	{
+		if (USoundBase* Loaded = SelectSound.LoadSynchronous())
+		{
+			UGameplayStatics::PlaySound2D(this, Loaded, 1.f, 1.f);
+		}
+	}
+}
+
+void UWasamiTitleScreenWidget::OnResumePressed()
+{
+	PressResume();
+}
+
+void UWasamiTitleScreenWidget::OnNewGameClicked()
+{
+	PressNewGame();
+}
+
+void UWasamiTitleScreenWidget::OnOptionsClicked()
+{
+	PressOptions();
+}
+
+void UWasamiTitleScreenWidget::OnQuitClicked()
+{
+	PressQuit();
 }
 
 void UWasamiTitleScreenWidget::ApplyAnimations()
