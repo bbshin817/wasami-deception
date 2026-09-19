@@ -246,7 +246,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_PowerOrb.txt`・`BP_BonusShard.txt`、`_assets/**/BP_PowerOrbSpawnPoint*`・`BP_BonusShardSpawnPoint*`、`.claude/references/dark-deception/04-mechanics-items.md`（原作データの値）、WebGL 版 08 記録。
 - 依存: 7、9（気絶のモーションと敵の印）。
 - 規模: 2
-- 状態: 未着手。
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-special-shards`）。計画の段階で、最初の出現の時刻は病院のレベル BP でなくアクタのコード（150 s のタイマー + 5 s の明滅 = 155 s）から取り、ゲームインスタンスの `Used Stun Orbs?`（実績だけに使う）は写さず、赤いシャードは本家の `soul_shard` × 20 と `m_crystal_Inst`（WebGL 版の餅にしない）と決めた。素材 → 画面 `UMG_VignetteSides` → オーブと取得の演出 → 赤いシャードと取得の演出・地図の敵の印 → 両ゾーンに置く → PIE と通し → 閉じる、の 7 ステップ。
 
 ### 11. Zone 2 の Matron（大きい敵ワサミ。視界コーンの中ボス）
 
