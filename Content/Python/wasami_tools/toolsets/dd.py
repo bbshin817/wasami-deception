@@ -195,6 +195,23 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_secrets() -> dict[str, int]:
+        """Imports (or re-imports) what the secrets show and play: the secret files' (WasamiCollectable) pickup sound
+        and the secret file's material on its mesh, UMG_Collectables' icons and frame, Zone 2's mysterious room's
+        (WasamiSecretRoomZone) whispers, sting and picture and its glitch (M_GlitchHLSL, estimated off its compiled
+        shader as M_DD_ChameleonGlitch), the secret wall's (WasamiSecretWall) sliding sound and the lore note's sound
+        (WasamiMysteryNoteWidget). After prepare_stage and import_dd_stage_assets (the secret file's and the wall's
+        meshes and the notes' materials come with the stage's assets), import_dd_tablet and import_dd_ui.
+
+        Returns:
+            How many assets of each kind were made ('sounds', 'textures', 'meshes', 'materials').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_secrets").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_wasami_enemy() -> dict[str, int]:
         """Imports (or re-imports) the enemy Wasami (WasamiEnemy) from this game's model in SourceArt: its skeletal
         mesh, skeleton and physics asset, its textures and material, and its animations named A_WasamiEnemy_<role>

@@ -12,10 +12,11 @@ from wasami_tools.pipeline import dd_assets, paths, ue_props
 EAL = unreal.EditorAssetLibrary
 VERSION = 2   # the hospital is only in the latest version
 
-# The zones' level sequence actors the flow plays. The levels' other ones belong to the cut scenes (work list item 25)
-# and the secret elevator.
+# The zones' level sequence actors the flow and the secret elevators (AWasamiFakeUseSequencePlayer, after
+# BP_FakeUseActor_SequencePlayer) play. The levels' other ones belong to the cut scenes (work list item 25).
 SEQUENCE_ACTORS = {
-    "Zone1": ("06_Hospital_Zone01_ElevatorArrive", "06_Hospital_Zone1_AmbulanceTakeOff"),
+    "Zone1": ("06_Hospital_Zone01_ElevatorArrive", "06_Hospital_Zone1_AmbulanceTakeOff",
+              "06_Hospital_Zone1_SecretElevator", "06_Hospital_Zone1_SecretElevator1_2"),
     "Zone2": ("06_Hospital_Zone2_Spikes", "06_Hospital_Zone2_Cell_DoorPicked"),
 }
 # Sequences without bindings, which the game plays through a player it makes (BP_DD_Functions' Basic DD Fade Out plays
