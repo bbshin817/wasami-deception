@@ -209,8 +209,8 @@
 - 完了の条件: WebGL 版 10 記録（`level-clear.ts`）と 04 記録（`results.ts`）の値どおりに動き、NEXT でタイトルへ戻る（セーブは消す）。ランクの規則は本家のレベル BP が `UMG_LevelClear` に入れる値。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt`、`01_Hotel.txt`（値の計算）、WebGL 版 04・10 記録。
 - 依存: 13。
-- 規模: 1
-- 状態: 未着手。
+- 規模: 2（2026-09-19 に 1 から。SHARD STREAK の行の元になるシャードの連続回収〈本家 `BP_DD_GameMode` の `Check Streak` と `UMG_ShardStreak`。200・500 でライフ +1〉がどの項目にも無かったので、この項目に入れた）
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-level-clear`）。計画の段階で、リザルトの値は病院のレベル BP `pak_reference_2/…/06_Hospital.txt` の `Escape` から取ると決めた（上の根拠のホテルとは値が違う）。
 
 ### 17. タイトル画面（NEW GAME / RESUME / OPTIONS / QUIT、ポップアップ。WebGL 版と同じ）
 
