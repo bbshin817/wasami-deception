@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/level-clear
 base: a3e64ad
 started: 2026-09-19 09:10
-updated: 2026-09-19 10:00
+updated: 2026-09-19 10:55
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -19,12 +19,7 @@ updated: 2026-09-19 10:00
 
 - [x] 0. 本家のコードを読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」。
 - [x] 1. リザルトの規則（病院の値）とセーブの欄 … 2026-09-19 完了。`FWasamiLevelResults`（`WasamiLevelResults.*`）・セーブの `BonusShards`・`Secrets`・テスト `Wasami.LevelClear.Results`。実装記録は新しい **13-level-clear**（画面・連続回収もここへ書き足す）。
-- [ ] 2. シャードの連続回収（本家 `BP_DD_GameMode` の `Check Streak` と `UMG_ShardStreak`）
-  - SHARD STREAK の行の元。今は数えていない（06 記録「連続回収の判定 `Check Streak` はまだ無い」。作業一覧のどの項目にも無いので、この項目に入れる。下の決定事項）。
-  - 本家（最新版 `Blueprints/Main/BP_DD_GameMode.txt` の `Check Streak` @35674 から）: 回収ごとにセーブの `CurrentStreak` を +1、節目（WebGL 版: 20・50・100・150・200・250・350・500・700・1000）ちょうどで `UMG_ShardStreak`（`Streak` 1..10）を `AddToPlayerScreen`、音（`Shard_Streak_Milestone_V1A`〜`V4`、0.7）、`BP_CameraShake_Streak`、200・500 でライフ +1（0..6）、セーブの `Streak`（enum）を最高に。死亡のときの `ShardStreak` = max と `CurrentStreak` = 0 は済んでいる（06 記録の `DeathEvent`）。最新版の値で読み直し、WebGL 版 10 記録の `streak.ts` と違えば最新版を採って要確認に書く（ゲームの規則なので）。
-  - 画面 `UWasamiShardStreakWidget`（`_assets/…/UI/Menu/Streaks/UMG_ShardStreak.json` の木と `Anim` 1.5 s、2 s で外す）と素材（`shard_streak_<数>` 10 枚・`T_Vignette`・`life` の絵・音 4 つ・揺れ）の取り込み（`dd_ui.py`）。
-  - テスト（節目で画面と音、200 でライフ +1、死亡で 0 に戻り最高が残る）。
-  - 変更予定: `WasamiGameMode.*`、`WasamiShardStreakWidget.*`（新）、`WasamiShard.*`（回収から呼ぶなら）、`Tests/WasamiLevelClearTests.cpp`、`dd_ui.py`、`/Game/DD/UI/Menu/Streaks/…`・`/Game/DD/Audio/UI/Shard_Streak_Milestone_*`、実装記録 06・13・01
+- [x] 2. シャードの連続回収 … 2026-09-19 完了。ゲームモードの `CheckStreak`（`Check Shards` から毎回）・`Wasami.Streak N`、節目の画面 `UWasamiShardStreakWidget`、`dd_ui.import_shard_streak`、テスト `Wasami.LevelClear.ShardStreak`。中身は 13 記録。WebGL 版と値の違いは無かった（ライフ +1 は `Check Streak` でなく画面の Construct）。
 - [ ] 3. スコア画面の素材と、ウィジェットの木と ClearAnimation
   - 取り込み `dd_ui.import_level_clear()`: `UI/Menu/you_escaped`・`results_window`、レベルの題字 `UI/Menu/TitleCards/chapter_ui_title_tormenttherapy`（下の要確認）、白いビネット（`T_Vignette`。ステップ 2 と共有）、フォント（ウィジェットが使うものを JSON から。今あるのは `helvetica-normal`）、音 `Audio/UI/UI_YouEscaped`・`Level_Clear_Grade_Stamp_v1`・`_v2`・`UI_XP_Bar_Fill_V2A_0617`。
   - `UWasamiLevelClearWidget`: 死亡画面（09 記録の `UWasamiDeathScreenWidget`）と同じく、本家の木をスロットのまま C++ で組み、アニメを書き出しのキーから `WasamiWidgetAnimation.h` の曲線で作ってウィジェットのティックで進める（ゲームは止まっているので、実時間で進む）。このステップは `ClearAnimation`（4.39 s: 全体・You Escaped! の回転と拡大・赤・揺れ・白い閃光・EASY MODE）、0.75 s の `UI_YouEscaped`、3.25 s の `ShowResults` の口まで。値は `Setup(FWasamiLevelResults, bEasy)` で受ける（本家はレベル BP が変数に入れ、バインド関数が出す）。EASY MODE は難易度の設定（項目 18）が無いので出さない（本家の Construct の `RemoveFromParent` の道）。
@@ -45,7 +40,7 @@ updated: 2026-09-19 10:00
 
 ## 次にやること
 
-ステップ 2（シャードの連続回収）を始める。最新版 `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_GameMode.txt` の `Check Streak` を `python Tools/dd/bp_flow.py <file> "Check Streak"` で読む（節目の値は 20..1000 → `Streak` 1..10 と確かめ済み。音・揺れ・ライフ +1 の節目・`AddToPlayerScreen` の Z を読む）。`UI/Menu/Streaks/UMG_ShardStreak.json`（木と `Anim`）と WebGL 版の `<WEBGL>/src/game/streak.ts`（`<WEBGL>` = `C:/Users/User/Downloads/wasami-deseption`）を比べる。回収の通知は `AWasamiGameMode` の `OnCollectShard`（06 記録の「シャードの確かめ」）。
+ステップ 3（スコア画面の素材と、ウィジェットの木と `ClearAnimation`）を始める。旧版 `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_LevelClear.json` の木（スロット）と `ClearAnimation` のキーを、連続回収のときと同じ書き出し方（`exports` の `CanvasPanelSlot`・`MovieScene*Section`。`WidgetArchetype` の側は重複なので飛ばす）で読み、`Construct` を `python Tools/dd/bp_flow.py pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt Construct` で読む。組み方は `UWasamiShardStreakWidget`（13 記録。`Begin`・`Advance`・`Evaluate*`・`Place`）と死亡画面（09 記録）に倣う。WebGL 版 `C:/Users/User/Downloads/wasami-deseption/src/hud/level-clear.ts` の `TIMING` と見比べる。
 
 ## 本家の流れ（読んだもの）
 
@@ -71,12 +66,13 @@ updated: 2026-09-19 10:00
 
 ## 再開時の注意
 
-- エディタは起きていて（ステップ 1 のビルドで開き直した）、Zone 1（`L_Hospital_Zone1`）を開いている。PIE なし（2026-09-19 10:00）。
-- テストは MCP の `AutomationTestToolset.AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter`（`StartsWith:Wasami.LevelClear` など）で回す。
+- エディタは起きていて（ステップ 2 のビルドで開き直した）、Zone 1（`L_Hospital_Zone1`）を開いている。PIE なし（2026-09-19 10:55）。メッセージログの窓は PIE の収録のために最小化した（ビューポートに重なっていた）。
+- テストは MCP の `AutomationTestToolset.AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter`（`StartsWith:Wasami.LevelClear` など）で回す。エディタを開き直すと MCP のセッションが切れるので、`ToolSearch` で `+unreal-mcp call_tool` を引き直す。
 - 取り込んだアセットは `/Game/DD/...`（原作から作り直せるので git の外）。取り込みは `dd_ui.py` に足し、`WasamiDDTools` から呼ぶ（01 記録）。
+- PIE の収録はビューポートの範囲 `1822 206 2862 858`（`Tools/playthrough.py` の `VIEWPORT`）を `desktop.py record --grab gdi --region …` で撮り、`video_probe.py sheet` でグリッドにする。
 
 ## 検証
 
-- check_records: OK（ステップ 1、2026-09-19）
-- C++ ビルド: 成功（ステップ 1）。テスト `Wasami.LevelClear.Results` と `Wasami.GameFlow.*` 8 件が通った
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（ステップ 2、2026-09-19）
+- C++ ビルド: 成功（ステップ 2）。テスト `Wasami.LevelClear.*` 2 件・`Wasami.GameFlow.*` 7 件・シャード・ゾーンの流れ・矢印・死亡画面の 15 件が通った
+- PIE（ステップ 2）: `Wasami.Streak 200` で札・ビネット・EXTRA LIFE ! が出てライフ 3 → 4（13 記録の「確かめたこと」）

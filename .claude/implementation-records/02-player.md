@@ -15,7 +15,7 @@ updated: 2026-09-19
 
 ## 公開インターフェース
 
-- `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定は空 = 本家の `BP_DD_GameMode` の `Current Objective` の既定）はタブレットの帯に出す目的。ゾーンの流れ（11 記録）が区間ごとに入れる。ほかにゲームの流れの受け持ち（BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）と、シャードの `Check Shards`（全回収の通知）、開始時にゾーンの流れ（`AWasamiZoneFlow`、11 記録）を出すことを持つ。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」「シャードの確かめ（`Check Shards`）」。
+- `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定は空 = 本家の `BP_DD_GameMode` の `Current Objective` の既定）はタブレットの帯に出す目的。ゾーンの流れ（11 記録）が区間ごとに入れる。ほかにゲームの流れの受け持ち（BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）と、シャードの `Check Shards`（全回収の通知）と `Check Streak`（連続回収。13 記録）、開始時にゾーンの流れ（`AWasamiZoneFlow`、11 記録）を出すことを持つ。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」「シャードの確かめ（`Check Shards`）」。
 - `AWasamiPlayerCharacter : ACharacter`
   - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `PutDownTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。`PutDownTablet` は本家の `Put Down Tablet`〈@31904〉: 上げていれば判定なしで下ろす〈woosh とカーブ〉。捕獲〈07 記録〉が呼ぶ。2 つの速さを書いて使う方を当てる。スピードブーストが使う。`StopSprinting()` は本家の `Sprinting?` を偽にするところ〈`BP_00_Teleport` の入り方〉: 押しと切り替えの両方の走りを消して歩きの速さを当てる。Zone 2 の脱出〈11 記録〉が呼ぶ）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetPowers()`。
   - `IsMapZoomedOut()`（Z で地図を引いているか。本家の `mapZoomedOut?`）、`GetCamera()`、`GetArrowPointer()`（地図の矢印。子のアクタができてから。03 記録）。
@@ -97,6 +97,7 @@ updated: 2026-09-19
 - 2026-09-19: 見て使う仕組みを足した: ティックの最初に手のマークの出し入れ（`UpdateInteractWidget`）、`BeginPlay` で手のマークのウィジェットを作る、左クリックの押しで `ConfirmTeleport` に続けて `InteractSecondaryPressed`、離しで `InteractSecondaryReleased`（05 記録。作業一覧の項目 13 のステップ 1）
 - 2026-09-19: `PutDownTablet`（本家の `Put Down Tablet`）を足し、ビューターゲットがプレイヤーでない間はタブレットを自分のカメラに置くようにした（捕獲の別室。07 記録）
 - 2026-09-18: 地図の矢印の子のアクタ `ArrowPointer`（`GetArrowPointer`）と、矢印が読む `IsMapZoomedOut`・`GetCamera` を足し、地図のキャプチャに矢印を写すようにした（03 記録。作業一覧の項目 6 のステップ 6）
+- 2026-09-19: ゲームモードに連続回収 `CheckStreak`（`Check Shards` から毎回）・`Wasami.Streak N` を足した。中身は 13 記録（作業一覧の項目 14 のステップ 2）
 - 2026-09-18: F（`IA_Interact`）と `OnInteract`・`InteractPressed`、ゲームモードのデバッグのコマンド `Wasami.Interact [N]`（F を N 回）を足した（扉の破壊が聞く。作業一覧の項目 6 のステップ 3b）
 - 2026-09-18: 目的の既定を空にし（本家の既定。ゾーンの流れが入れる）、ゲームモードに `Check Shards` とゾーンの流れの生成を足した。中身は 06・11 記録（作業一覧の項目 6 のステップ 1）
 - 2026-09-18: ゲームモードに本家の Zone のレベル BP の受け持ち（開始の場所・死亡画面・SAVING PROGRESS・黒からの明け・デバッグのコンソールコマンド）を足した。中身は 06 記録（作業一覧の項目 5 のステップ 5）

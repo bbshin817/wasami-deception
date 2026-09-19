@@ -1,12 +1,20 @@
 #include "Misc/AutomationTest.h"
 
+#include "../WasamiGameMode.h"
 #include "../WasamiLevelResults.h"
 #include "../WasamiSaveGame.h"
+#include "../WasamiShardStreakWidget.h"
+#include "Engine/Texture2D.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
+#include "Tests/AutomationCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	const FString StreakSlotName(TEXT("WasamiTest_Streak"));
+
 	FWasamiLevelProgress Progress(float Time, int32 Bonus, int32 Secrets, int32 Deaths, uint8 Streak)
 	{
 		FWasamiLevelProgress Result;
@@ -118,6 +126,126 @@ bool FWasamiLevelClearResultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("S is gold"), R::RankColor(4).Equals(FLinearColor(0.9387f, 0.6156f, 0.169f, 1.f)));
 	TestTrue(TEXT("A is dark red"), R::RankColor(3).Equals(FLinearColor(0.533f, 0.f, 0.f, 1.f)));
 	TestEqual(TEXT("0 is clear"), R::RankColor(0).A, 0.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiLevelClearShardStreakTest, "Wasami.LevelClear.ShardStreak",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiLevelClearShardStreakTest::RunTest(const FString& Parameters)
+{
+	using M = AWasamiGameMode;
+	using W = UWasamiShardStreakWidget;
+
+	// Check Streak's milestones: exactly 20, 50, 100, 150, 200, 250, 350, 500, 700 and 1000 in a row.
+	const int32 Milestones[] = {20, 50, 100, 150, 200, 250, 350, 500, 700, 1000};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Milestones); ++Index)
+	{
+		TestEqual(FString::Printf(TEXT("%d in a row"), Milestones[Index]), M::StreakMilestoneFor(Milestones[Index]), uint8(Index + 1));
+		TestEqual(FString::Printf(TEXT("one past %d"), Milestones[Index]), M::StreakMilestoneFor(Milestones[Index] + 1), uint8(0));
+		TestEqual(FString::Printf(TEXT("the milestone's display name for %d"), Milestones[Index]),
+			FWasamiLevelResults::StreakMilestone(uint8(Index + 1)), Milestones[Index]);
+	}
+	TestEqual(TEXT("none at 0"), M::StreakMilestoneFor(0), uint8(0));
+	TestEqual(TEXT("none at 19"), M::StreakMilestoneFor(19), uint8(0));
+	TestEqual(TEXT("none past 1000"), M::StreakMilestoneFor(2000), uint8(0));
+	const int32 Sounds[] = {INDEX_NONE, 0, 0, 1, 1, 1, 2, 2, 3, 3, 3, INDEX_NONE};
+	for (int32 Milestone = 0; Milestone < UE_ARRAY_COUNT(Sounds); ++Milestone)
+	{
+		TestEqual(FString::Printf(TEXT("the sound for milestone %d"), Milestone), M::StreakSoundIndex(uint8(Milestone)), Sounds[Milestone]);
+	}
+	for (uint8 Milestone = 0; Milestone <= 10; ++Milestone)
+	{
+		TestEqual(FString::Printf(TEXT("an extra life at milestone %d"), Milestone), W::GivesExtraLife(Milestone), Milestone == 5 || Milestone == 8);
+	}
+
+	// UMG_ShardStreak's Construct and Anim.
+	W* Widget = NewObject<W>();
+	Widget->Begin(5);
+	TestTrue(TEXT("EXTRA LIFE ! at 200"), Widget->IsExtraLifeShown());
+	if (const UTexture2D* Card = Widget->GetStreakTexture())
+	{
+		TestEqual(TEXT("the 200's card"), Card->GetName(), FString(TEXT("shard_streak_200")));
+	}
+	else
+	{
+		AddError(TEXT("shard_streak_200 is missing: run WasamiDDTools.import_dd_ui"));
+	}
+	Widget->Begin(1);
+	TestFalse(TEXT("none at 20"), Widget->IsExtraLifeShown());
+	Widget->Begin(0);
+	TestNull(TEXT("no card for 0 (the Select's default)"), Widget->GetStreakTexture());
+	Widget->Begin(10);
+	for (int32 Frame = 0; Frame < 119; ++Frame)
+	{
+		Widget->Advance(1.f / 60.f);
+	}
+	TestFalse(TEXT("up until 2 s"), Widget->IsFinished());
+	Widget->Advance(2.f / 60.f);
+	TestTrue(TEXT("off at 2 s"), Widget->IsFinished());
+	TestEqual(TEXT("the card starts at twice its size"), W::EvaluateCardScale(0.f), 2.f, 1e-4f);
+	TestEqual(TEXT("and clear"), W::EvaluateCardAlpha(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("its size at 0.15 s"), W::EvaluateCardScale(0.15f), 1.f, 1e-4f);
+	TestEqual(TEXT("opaque at 0.15 s"), W::EvaluateCardAlpha(0.15f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.1 at 0.25 s"), W::EvaluateCardScale(0.25f), 1.1f, 1e-4f);
+	TestEqual(TEXT("1.2 at the end"), W::EvaluateCardScale(1.5f), 1.2f, 1e-4f);
+	TestEqual(TEXT("clear at the end"), W::EvaluateCardAlpha(1.5f), 0.f, 1e-4f);
+	TestEqual(TEXT("the vignette at 1 until 0.9 s"), W::EvaluateVignetteScale(0.5f), 1.f, 1e-4f);
+	TestEqual(TEXT("the vignette at 2 at the end"), W::EvaluateVignetteScale(1.5f), 2.f, 1e-4f);
+	TestEqual(TEXT("the vignette flashes at 0.15 s"), W::EvaluateVignetteAlpha(0.15f), 1.f, 1e-4f);
+	TestEqual(TEXT("half at 0.25 s"), W::EvaluateVignetteAlpha(0.25f), 0.5f, 1e-4f);
+	TestEqual(TEXT("a quarter at 0.9 s"), W::EvaluateVignetteAlpha(0.9f), 0.25f, 1e-4f);
+	TestEqual(TEXT("EXTRA LIFE ! unseen before 0.2 s"), W::EvaluateLifeOpacity(0.1f), 0.f, 1e-4f);
+	TestEqual(TEXT("at its own 1.1 before 0.2 s"), W::EvaluateLifeScale(0.1f), 1.1f, 1e-4f);
+	TestEqual(TEXT("1.25 at 0.2 s"), W::EvaluateLifeScale(0.2f), 1.25f, 1e-4f);
+	TestEqual(TEXT("seen at 0.35 s"), W::EvaluateLifeOpacity(0.35f), 1.f, 1e-4f);
+	TestEqual(TEXT("0.95 at 0.35 s"), W::EvaluateLifeScale(0.35f), 0.95f, 1e-4f);
+	TestEqual(TEXT("gone at the end"), W::EvaluateLifeOpacity(1.5f), 0.f, 1e-4f);
+
+	// The game mode's Check Streak on the save, and Check Shards running it.
+	UGameplayStatics::DeleteGameInSlot(StreakSlotName, UWasamiSaveGame::UserIndex);
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	M* Mode = World->SpawnActorDeferred<M>(M::StaticClass(), FTransform::Identity);
+	if (!TestNotNull(TEXT("the game mode"), Mode))
+	{
+		return false;
+	}
+	Mode->SaveSlotName = StreakSlotName;
+	Mode->FinishSpawning(FTransform::Identity);
+	if (!TestNotNull(TEXT("a save"), Mode->GetSave()))
+	{
+		return false;
+	}
+	FWasamiLevelProgress& Hospital = Mode->GetSave()->Hospital;
+	Hospital.CurrentStreak = 18;
+	TestEqual(TEXT("19 is no milestone"), Mode->CheckStreak(), uint8(0));
+	TestEqual(TEXT("the streak counted"), Hospital.CurrentStreak, 19);
+	TestEqual(TEXT("the game mode's streak follows"), Mode->GetShardStreak(), 19);
+	TestEqual(TEXT("no milestone yet"), Hospital.Streak, uint8(0));
+	TestEqual(TEXT("20 is the first"), Mode->CheckStreak(), uint8(1));
+	TestEqual(TEXT("the save's best milestone"), Hospital.Streak, uint8(1));
+	Hospital.CurrentStreak = 199;
+	TestEqual(TEXT("200"), Mode->CheckStreak(), uint8(5));
+	TestEqual(TEXT("raised to 200"), Hospital.Streak, uint8(5));
+	TestEqual(TEXT("the longest streak"), Mode->GetShardStreak(), 200);
+	Hospital.CurrentStreak = 19;
+	TestEqual(TEXT("20 again"), Mode->CheckStreak(), uint8(1));
+	TestEqual(TEXT("the best milestone kept"), Hospital.Streak, uint8(5));
+	TestEqual(TEXT("the longest streak kept"), Mode->GetShardStreak(), 200);
+	Mode->DeathEvent(nullptr);
+	TestEqual(TEXT("a death ends the streak"), Hospital.CurrentStreak, 0);
+	TestEqual(TEXT("and keeps the longest"), Mode->GetShardStreak(), 200);
+	Mode->CheckShards();
+	Mode->CheckShards();
+	TestEqual(TEXT("Check Shards counts each shard, waiting or not"), Hospital.CurrentStreak, 2);
+
+	UGameplayStatics::DeleteGameInSlot(StreakSlotName, UWasamiSaveGame::UserIndex);
 	return true;
 }
 
