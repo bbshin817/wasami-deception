@@ -187,6 +187,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Game")
 	int32 GetStartCheckpoint() const { return StartCheckpoint; }
 
+	/**
+	 * Whether the level opened as the hospital's start: Zone 1 with no checkpoint saved, whose 0 is written as 4 (the
+	 * entrance's Spawn calls its 00_Initial Start only at 0). NEW GAME, RESTART and a finished level open it so; a
+	 * death's reopening and RESUME find 4 or on.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Game")
+	bool IsNewStart() const { return bNewStart; }
+
 	/** The hospital's zone a level name is (1 for 'L_Hospital_Zone1', 2 for 'L_Hospital_Zone2'), or 0. */
 	static int32 ZoneOf(const FString& LevelName);
 
@@ -225,6 +233,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Game")
 	FString SaveSlotName;
 
+	/** The level the mode tells the zones by; left empty, the world's current one (the tests set it). */
+	FString LevelName;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -238,8 +249,11 @@ private:
 	/** Check Shards' count, 0.05 s after the shard. */
 	void CountShardsLeft();
 
-	/** Reads the save and settles StartCheckpoint, once (the player is placed before BeginPlay). */
+	/** Reads the save and settles StartCheckpoint and bNewStart, once (the player is placed before BeginPlay). */
 	void PrepareStart();
+
+	/** The hospital's zone of LevelName, or of the world's current level when it is empty. */
+	int32 CurrentZone() const;
 
 	/** The zone's DeathEvent: the death screen for the cause, the game paused. */
 	void ShowDeathScreen(AActor* Cause);
@@ -268,6 +282,7 @@ private:
 	int32 TotalShards = 0;
 	int32 ShardStreak = 0;
 	int32 StartCheckpoint = 0;
+	bool bNewStart = false;
 	bool bStartPrepared = false;
 	FTimerHandle ShardRemovalTimer;
 	FTimerHandle CheckShardsTimer;
