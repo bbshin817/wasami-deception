@@ -128,8 +128,8 @@ private:
 	void OnPostmazeTriggerGarage();
 
 	/**
-	 * The hotel's EndTrigger, by the portal: the escape (the player stopped, the screen black, the enemies gone). The
-	 * hotel then puts up its score screen, UMG_LevelClear (item 14).
+	 * The hotel's EndTrigger, by the portal: the escape (the player stopped, the screen black, the enemies gone), then
+	 * the game mode's Escape (the game paused, the save, the score screen).
 	 */
 	UFUNCTION()
 	void OnEndTrigger();

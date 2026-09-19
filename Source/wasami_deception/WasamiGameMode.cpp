@@ -1,5 +1,7 @@
 #include "WasamiGameMode.h"
 
+#include "Camera/CameraShakeBase.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Engine/PlayerStartPIE.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
@@ -9,11 +11,15 @@
 #include "WasamiBlackFadeWidget.h"
 #include "WasamiCapture.h"
 #include "WasamiDeathScreenWidget.h"
+#include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
+#include "WasamiLevelClearWidget.h"
+#include "WasamiLevelResults.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiSaveGame.h"
 #include "WasamiSavingWidget.h"
 #include "WasamiShard.h"
+#include "WasamiShardStreakWidget.h"
 #include "WasamiTriggerBox.h"
 #include "WasamiZoneFlow.h"
 
@@ -27,6 +33,9 @@ namespace
 
 	// Zone 1's first checkpoint, the lift's arrival (the entrance's 03_ElevatorEnter saves it).
 	constexpr int32 Zone1Arrival = 4;
+
+	// Check Streak's milestones (@30697 …): the current streak each Enum_ShardStreaks value 1..10 is shown at.
+	constexpr int32 StreakMilestones[] = {20, 50, 100, 150, 200, 250, 350, 500, 700, 1000};
 
 	int32 CountShards(UWorld* World)
 	{
@@ -73,6 +82,16 @@ namespace
 			}
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs EscapeCommand(TEXT("Wasami.Escape"),
+		TEXT("The hospital's Escape where the player stands: the game paused, checkpoint 0 saved with the time, the level clear screen; its NEXT empties the save and opens Zone 1 from the start."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (AWasamiGameMode* Mode = WasamiModeOf(World))
+			{
+				Mode->Escape();
+			}
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs ResetSaveCommand(TEXT("Wasami.ResetSave"),
 		TEXT("Starts the save over (no checkpoint, deaths, time or streaks, no warning) with 3 lives and no shards remembered; open the level again to begin anew."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -105,6 +124,19 @@ namespace
 			{
 				Shards[Index]->Collect(false);
 			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs StreakCommand(TEXT("Wasami.Streak"),
+		TEXT("Wasami.Streak N: the save's current streak set to N - 1, then Check Streak (as if the Nth shard in a row were collected: 20, 50 … 1000 show their card, 200 and 500 add a life)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AWasamiGameMode* Mode = WasamiModeOf(World);
+			if (!Mode || !Mode->GetSave() || Args.Num() == 0)
+			{
+				return;
+			}
+			Mode->GetSave()->Hospital.CurrentStreak = FMath::Max(0, FCString::Atoi(*Args[0]) - 1);
+			Mode->CheckStreak();
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs TriggerCommand(TEXT("Wasami.Trigger"),
@@ -163,12 +195,24 @@ AWasamiGameMode::AWasamiGameMode()
 	PrimaryActorTick.bCanEverTick = true;
 	DefaultPawnClass = AWasamiPlayerCharacter::StaticClass();
 	SaveSlotName = UWasamiSaveGame::SlotName;
+	for (const TCHAR* Path : {TEXT("/Game/DD/Audio/UI/Shard_Streak_Milestone_V1A"), TEXT("/Game/DD/Audio/UI/Shard_Streak_Milestone_V2"),
+			 TEXT("/Game/DD/Audio/UI/Shard_Streak_Milestone_V3A"), TEXT("/Game/DD/Audio/UI/Shard_Streak_Milestone_V4")})
+	{
+		StreakSounds.Add(TSoftObjectPtr<USoundBase>(WasamiAssets::Path(Path)));
+	}
+	StreakShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak")));
 }
 
 void AWasamiGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	PrepareStart();
+	LoadedStreakSounds.Reset();
+	for (const TSoftObjectPtr<USoundBase>& Sound : StreakSounds)
+	{
+		LoadedStreakSounds.Add(Sound.LoadSynchronous());
+	}
+	LoadedStreakShake = StreakShakeClass.LoadSynchronous();
 	// The original also sets the tablet's count to the level's shards here; the player's tablet refresh (every 0.1 s)
 	// counts what is left.
 	GetWorldTimerManager().SetTimer(ShardRemovalTimer, this, &AWasamiGameMode::RemoveShardsToBeRemoved, ShardRemovalDelay, false);
@@ -321,6 +365,54 @@ void AWasamiGameMode::SaveCheckpoint(int32 Checkpoint)
 	WriteSave();
 }
 
+UWasamiLevelClearWidget* AWasamiGameMode::Escape()
+{
+	// @55455: SetGamePaused(True), then as a checkpoint's save with 0 (UMG_Saving at Z 0 first, the time added, Reset
+	// Time Counter, written). Not copied: SaveSlot's read for the achievements.
+	UGameplayStatics::SetGamePaused(this, true);
+	SaveCheckpoint(0);
+	// The time's rank and the rows (@57305 → @38874), Create(UMG_LevelClear), Finished bound to Finished Level,
+	// AddToViewport(6). EASY comes with the difficulty (item 18).
+	UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(this,
+		FWasamiLevelResults::ForHospital(StructSave ? StructSave->Hospital : FWasamiLevelProgress(), false));
+	if (Screen)
+	{
+		Screen->OnFinished.AddDynamic(this, &AWasamiGameMode::FinishedLevel);
+	}
+	return Screen;
+}
+
+void AWasamiGameMode::FinishedLevel()
+{
+	// @75934: SaveSlot's Progress and Level Ranks (the level select's) are not copied. Then a DoOnce, SetGamePaused(False)
+	// and Delay(1).
+	if (bLevelFinished)
+	{
+		return;
+	}
+	bLevelFinished = true;
+	UGameplayStatics::SetGamePaused(this, false);
+	GetWorldTimerManager().SetTimer(FinishedLevelTimer, this, &AWasamiGameMode::LeaveFinishedLevel, FinishedLevelDelay, false);
+}
+
+void AWasamiGameMode::LeaveFinishedLevel()
+{
+	// @17537: levelStruct[the level] = levelStruct[10] (an empty entry), written; Hard Check Point = 0 (the entrance's,
+	// which this game does not have); Reset Game Instance(False), which forgets the shards collected and resets the
+	// lives; then the next level.
+	if (StructSave)
+	{
+		StructSave->Hospital = FWasamiLevelProgress();
+		WriteSave();
+	}
+	if (UWasamiGameInstance* Instance = GetWasamiGameInstance())
+	{
+		Instance->ForgetCollectedShards();
+		Instance->ResetLives();
+	}
+	UGameplayStatics::OpenLevel(this, Zone1LevelName, true);
+}
+
 UWasamiGameInstance* AWasamiGameMode::GetWasamiGameInstance() const
 {
 	return GetGameInstance<UWasamiGameInstance>();
@@ -342,12 +434,92 @@ void AWasamiGameMode::RemoveShardsToBeRemoved()
 
 void AWasamiGameMode::CheckShards()
 {
-	// @34491: Collect Shard, then (not yet) Check Streak — the streak of shards and its UMG_ShardStreak.
+	// @34491: Collect Shard, then a sequence: the Delay (a waiting one is not put back), and Check Streak each time.
 	OnCollectShard.Broadcast();
 	if (!GetWorldTimerManager().IsTimerActive(CheckShardsTimer))
 	{
 		GetWorldTimerManager().SetTimer(CheckShardsTimer, this, &AWasamiGameMode::CountShardsLeft, CheckShardsDelay, false);
 	}
+	CheckStreak();
+}
+
+uint8 AWasamiGameMode::CheckStreak()
+{
+	// @35674: the level's CurrentStreak + 1, and Shard Streak raised to it.
+	if (!StructSave)
+	{
+		return 0;
+	}
+	FWasamiLevelProgress& Hospital = StructSave->Hospital;
+	++Hospital.CurrentStreak;
+	if (Hospital.CurrentStreak > ShardStreak)
+	{
+		ShardStreak = Hospital.CurrentStreak;
+	}
+	const uint8 Milestone = StreakMilestoneFor(Hospital.CurrentStreak);
+	if (Milestone == 0)
+	{
+		return 0;
+	}
+	// The milestone's branch (@30741 for 20 …): Create(UMG_ShardStreak) with Streak, AddToPlayerScreen(2); then
+	// (@6871 …) PlayCameraShake(BP_CameraShake_Streak, 1, CameraLocal), PlaySound2D(the milestone's sound, 1, 1), and the
+	// level's Streak set to the milestone where its display name's number is below the milestone's. The 100's branch
+	// also caches Steam's achievements for the ballroom (Level 0), which the hospital is not.
+	UWasamiShardStreakWidget::Show(this, Milestone);
+	if (LoadedStreakShake)
+	{
+		if (APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			if (Controller->PlayerCameraManager)
+			{
+				Controller->PlayerCameraManager->StartCameraShake(LoadedStreakShake, 1.f, ECameraShakePlaySpace::CameraLocal);
+			}
+		}
+	}
+	const int32 SoundIndex = StreakSoundIndex(Milestone);
+	if (LoadedStreakSounds.IsValidIndex(SoundIndex) && LoadedStreakSounds[SoundIndex])
+	{
+		UGameplayStatics::PlaySound2D(this, LoadedStreakSounds[SoundIndex], 1.f, 1.f);
+	}
+	if (FWasamiLevelResults::StreakMilestone(Hospital.Streak) < FWasamiLevelResults::StreakMilestone(Milestone))
+	{
+		Hospital.Streak = Milestone;
+	}
+	return Milestone;
+}
+
+uint8 AWasamiGameMode::StreakMilestoneFor(int32 CurrentStreak)
+{
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(StreakMilestones); ++Index)
+	{
+		if (StreakMilestones[Index] == CurrentStreak)
+		{
+			return static_cast<uint8>(Index + 1);
+		}
+	}
+	return 0;
+}
+
+int32 AWasamiGameMode::StreakSoundIndex(uint8 Milestone)
+{
+	// V1A (@6972, @8946), V2 (@10925, @13210, @17692), V3A (@19984, @21958), V4 (@23933, @25907, @27881).
+	if (Milestone >= 1 && Milestone <= 2)
+	{
+		return 0;
+	}
+	if (Milestone >= 3 && Milestone <= 5)
+	{
+		return 1;
+	}
+	if (Milestone >= 6 && Milestone <= 7)
+	{
+		return 2;
+	}
+	if (Milestone >= 8 && Milestone <= 10)
+	{
+		return 3;
+	}
+	return INDEX_NONE;
 }
 
 void AWasamiGameMode::CountShardsLeft()

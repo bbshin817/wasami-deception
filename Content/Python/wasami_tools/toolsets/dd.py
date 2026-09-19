@@ -62,12 +62,15 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         hospital's emblem (WasamiLoadingWidget, which Zone 1 shows as it opens Zone 2; the emblem is composed first by
         python Tools/dd/prepare_loader.py outside the editor). And the hand's icon (WasamiInteractWidget, shown while
         the player looks at something it can use), and the ring piece's picture and pickup sound (WasamiRingPieceWidget,
-        which Zone 2's altar puts up).
+        which Zone 2's altar puts up). And the shard streak's ten cards and four milestone sounds
+        (WasamiShardStreakWidget and the game mode's Check Streak). And the level clear screen's (WasamiLevelClearWidget)
+        You Escaped!, rules and hospital title, and its sounds (You Escaped!, the grade stamps, the counters' fill).
 
         Returns:
             How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
             '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems',
-            'interact_textures', 'ring_piece_textures' and 'ring_piece_sounds').
+            'interact_textures', 'ring_piece_textures', 'ring_piece_sounds', 'streak_textures', 'streak_sounds',
+            'level_clear_textures' and 'level_clear_sounds').
         """
         _module("dd_stage")
         _module("dd_assets")

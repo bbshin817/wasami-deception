@@ -340,7 +340,7 @@ void AWasamiZone2Flow::OnEndTrigger()
 	// BP_00_Teleport's way in (ReceiveActorBeginOverlap @2187): DisableInput on the player, Sprinting? false, the fade at
 	// Z 5 and the portal's Sound (which neither the class nor the hotel's exit sets). Its UMG_BlackFade flashes the
 	// screen over 0.5 s and moves the player at its peak, 0.25 s on; here the fade goes black in those 0.25 s and stays
-	// until the score screen (item 14) comes over it.
+	// under the score screen, which comes over it in the same 0.25 s.
 	APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0);
 	if (AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
 	{
@@ -352,8 +352,13 @@ void AWasamiZone2Flow::OnEndTrigger()
 		Fade->bHold = true;
 	}
 	// Then as the original's ride to the boss fight ends (Postmaze_Trigger_Ambulance @1511, with the loading screen):
-	// 21-Ballroom_portal_V2 and Remove All Enemies. Nothing is saved; the hotel's EndTrigger adds the level's time to the
-	// save and puts up UMG_LevelClear (item 14).
+	// 21-Ballroom_portal_V2 and Remove All Enemies.
 	UGameplayStatics::PlaySound2D(this, EscapeSound.LoadSynchronous());
 	RemoveAllEnemies(GetWorld());
+	// And the hospital's own portal: its Trigger_Escape calls Escape at once (06_Hospital @66935), which pauses the game,
+	// saves and puts up the score screen, as the hotel's EndTrigger does.
+	if (AWasamiGameMode* GameMode = GetMode())
+	{
+		GameMode->Escape();
+	}
 }

@@ -5,7 +5,10 @@
 #include "WasamiGameMode.generated.h"
 
 class AWasamiZoneFlow;
+class UCameraShakeBase;
+class USoundBase;
 class UWasamiGameInstance;
+class UWasamiLevelClearWidget;
 class UWasamiSaveGame;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiDeathSignature, AActor*, Cause);
@@ -64,12 +67,36 @@ public:
 	FWasamiAllShardsAlreadyCollectedSignature OnAllShardsAlreadyCollected;
 
 	/**
-	 * Check Shards: a shard was collected (the shard calls it; the zones call it once a second after the shards are
-	 * wanted). Broadcasts Collect Shard at once and, 0.05 s later, counts the level's shards: none left broadcasts All
-	 * Shards Collected. A check already waiting is not put back (the original's Delay).
+	 * Check Shards: a shard was collected (the shard calls it; Zone 1 calls it once a second after the shards are
+	 * wanted). Broadcasts Collect Shard, Check Streak at once and, 0.05 s later, counts the level's shards: none left
+	 * broadcasts All Shards Collected. A check already waiting is not put back (the original's Delay); Check Streak runs
+	 * on every call.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void CheckShards();
+
+	/**
+	 * Check Streak: the save's current streak + 1 (the game mode's Shard Streak follows it up); where it reaches a
+	 * milestone (StreakMilestoneFor), UMG_ShardStreak for it on the player's screen (Z 2; 200 and 500 add a life),
+	 * BP_CameraShake_Streak at 1, the milestone's sound, and the save's Streak raised to it. Returns the milestone, or 0.
+	 * Not written to the slot here (the checkpoints and the death screen write it).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	uint8 CheckStreak();
+
+	/** The Enum_ShardStreaks value Check Streak shows at a current streak: 1..10 at 20, 50, 100, 150, 200, 250, 350, 500, 700, 1000; else 0. */
+	static uint8 StreakMilestoneFor(int32 CurrentStreak);
+
+	/** Check Streak's sound by milestone, as an index into StreakSounds: V1A for 1 and 2, V2 for 3 to 5, V3A for 6 and 7, V4 for 8 to 10. */
+	static int32 StreakSoundIndex(uint8 Milestone);
+
+	/** Shard_Streak_Milestone_V1A, _V2, _V3A and _V4 (PlaySound2D at 1). */
+	UPROPERTY(EditDefaultsOnly, Category = "Game|Assets")
+	TArray<TSoftObjectPtr<USoundBase>> StreakSounds;
+
+	/** BP_CameraShake_Streak (PlayCameraShake at 1, camera-local). */
+	UPROPERTY(EditDefaultsOnly, Category = "Game|Assets")
+	TSoftClassPtr<UCameraShakeBase> StreakShakeClass;
 
 	/** Collect Shard. */
 	UPROPERTY(BlueprintAssignable, Category = "Game")
@@ -104,6 +131,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void SaveCheckpoint(int32 Checkpoint);
 
+	/**
+	 * The hospital's Escape (06_Hospital @55455, which its portal's Trigger_Escape calls): the game paused, the save as
+	 * at a checkpoint with checkpoint 0 (SAVING PROGRESS, the time added, the counter back to 0, written), and the level
+	 * clear screen with the save's results at Z 6, its Finished bound to FinishedLevel. Returns the screen, or null where
+	 * there is no player to show it to.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	UWasamiLevelClearWidget* Escape();
+
+	/**
+	 * Finished Level (@75934), once: the game unpaused, and FinishedLevelDelay on the hospital's save entry emptied and
+	 * written, the game instance reset (the shards collected forgotten, 3 lives) and Zone 1 opened from the start (the
+	 * original opens 06_Cinematic, or TitleScreen when replaying; this game's title is item 17).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void FinishedLevel();
+
+	/** Finished Level's Delay before the save is emptied and the level opens. */
+	static constexpr float FinishedLevelDelay = 1.f;
+
+	/** Whether Finished Level ran (its DoOnce closed). */
+	bool HasFinishedLevel() const { return bLevelFinished; }
+
 	/** The save read or made when play began (Struct Save). */
 	UFUNCTION(BlueprintPure, Category = "Game")
 	UWasamiSaveGame* GetSave() const { return StructSave; }
@@ -117,7 +167,7 @@ public:
 	/** Total Shards: the level's shards 0.2 s after play began, before the collected ones were taken out. */
 	int32 GetTotalShards() const { return TotalShards; }
 
-	/** Shard Streak: the best streak a death has cut short. */
+	/** Shard Streak: the longest streak this level (Check Streak raises it as the streak grows, DeathEvent as one ends). */
 	int32 GetShardStreak() const { return ShardStreak; }
 
 	/**
@@ -182,20 +232,33 @@ private:
 	/** The zone's DeathEvent: the death screen for the cause, the game paused. */
 	void ShowDeathScreen(AActor* Cause);
 
+	/** Finished Level after its Delay: the save entry emptied, the game instance reset, Zone 1 opened. */
+	void LeaveFinishedLevel();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UWasamiSaveGame> StructSave;
+
+	/** StreakSounds and StreakShakeClass, loaded when play begins. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USoundBase>> LoadedStreakSounds;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UCameraShakeBase> LoadedStreakShake;
 
 	float Time = 0.f;
 	/** The time counter's gate, open from the start. */
 	bool bTimeCounting = true;
 	/** DeathEvent's DoOnce. */
 	bool bDeathClosed = false;
+	/** Finished Level's DoOnce. */
+	bool bLevelFinished = false;
 	int32 TotalShards = 0;
 	int32 ShardStreak = 0;
 	int32 StartCheckpoint = 0;
 	bool bStartPrepared = false;
 	FTimerHandle ShardRemovalTimer;
 	FTimerHandle CheckShardsTimer;
+	FTimerHandle FinishedLevelTimer;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiZoneFlow> ZoneFlow;

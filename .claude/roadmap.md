@@ -207,15 +207,15 @@
 
 - 目標: You Escaped! からリザルト（TIME・SOUL SHARDS・BONUS SHARDS・SECRETS・DEATHS・STREAK のランクと FINAL RANK）まで、WebGL 版が原作から写した時間・アニメ・音・ランクの規則で出す。
 - 完了の条件: WebGL 版 10 記録（`level-clear.ts`）と 04 記録（`results.ts`）の値どおりに動き、NEXT でタイトルへ戻る（セーブは消す）。ランクの規則は本家のレベル BP が `UMG_LevelClear` に入れる値。
-- 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt`、`01_Hotel.txt`（値の計算）、WebGL 版 04・10 記録。
+- 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt`、`pak_reference_2/_bytecode/DDeception/Content/06_Hospital.txt`（病院の `Escape` と `Finished Level`。値の計算。2026-09-19 にホテルの `01_Hotel.txt` から直した）、`Blueprints/Main/BP_DD_GameMode.txt`（`Check Streak`）・`UI/Menu/Streaks/UMG_ShardStreak.txt`、WebGL 版 04・10 記録。
 - 依存: 13。
 - 規模: 2（2026-09-19 に 1 から。SHARD STREAK の行の元になるシャードの連続回収〈本家 `BP_DD_GameMode` の `Check Streak` と `UMG_ShardStreak`。200・500 でライフ +1〉がどの項目にも無かったので、この項目に入れた）
-- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-level-clear`）。計画の段階で、リザルトの値は病院のレベル BP `pak_reference_2/…/06_Hospital.txt` の `Escape` から取ると決めた（上の根拠のホテルとは値が違う）。
+- 状態: **完了（2026-09-19）**。リザルトの規則 `FWasamiLevelResults`（病院の `Escape` が入れる 6 行のランクと加算、TOTAL SHARDS・FINAL RANK）、シャードの連続回収（ゲームモードの `CheckStreak` と節目の画面。200・500 で EXTRA LIFE !）、スコア画面 `UWasamiLevelClearWidget`（旧版 `UMG_LevelClear` の木・`ClearAnimation`・`ShowResults` の Delay の連鎖・行のアニメと判の音・数え上げ・NEXT）、ゲームモードの `Escape`（一時停止・チェックポイント 0 の保存・スコア画面）と `FinishedLevel`（1 s 後にセーブの病院の欄を空に・回収の記憶とライフを戻して Zone 1）ができた（実装記録 13）。PIE で Zone 2 のポータル → You Escaped! → リザルト（TIME 3 : 07 S・TOTAL SHARDS 1,483・FINAL RANK B）→ NEXT → Zone 1 の到着まで通した（台本 `z2_escape`。13 記録の「確かめたこと」）。テストは `Wasami.LevelClear.*` 4 件ほか。**完了の条件の読み替え**: (1) ランクの規則と値は、ホテルでなく本作のステージの病院のレベル BP `06_Hospital` の `Escape` から取った（時間の境目 2700 / 3600 / 4200 s、シャード 679 など）。木・アニメ・音・時間は WebGL 版と同じ旧版の `UMG_LevelClear`。(2) NEXT の行き先は、タイトル（項目 17）ができるまで Zone 1 の最初（死亡画面の QUIT TO TITLE と同じ代わりの道）。セーブは本家どおり病院の欄だけを空にする。(3) XP の箱（レベルアップ）と DIARY UNLOCKED! は作らない（本作のパワーは Lv5 固定で、日記も無い。WebGL 版も同じ）。BONUS SHARDS・SECRETS は項目 10・12 まで 0、EASY MODE は項目 18 まで出さない。TOTAL SHARDS が 679 を 2 回数えることと病院の題字は下の「未回答の要確認」。
 
 ### 17. タイトル画面（NEW GAME / RESUME / OPTIONS / QUIT、ポップアップ。WebGL 版と同じ）
 
 - 目標: WebGL 版が原作 `UMG_TitleScreen` から写したタイトル画面（配置・アニメ・音・NEW GAME の確認・開始の演出）を UMG で作る。ロゴとワサミの顔は本作の素材（`<WEBGL>/public/title/logo.webp`・`wasami-face.webp` ほか）。
-- 完了の条件: WebGL 版 10 記録（`title.ts`）の曲線・時間・音量どおりに動き、NEW GAME で Zone 1（エレベーターの到着から。項目 6）へ、RESUME でセーブの地点へ。
+- 完了の条件: WebGL 版 10 記録（`title.ts`）の曲線・時間・音量どおりに動き、NEW GAME で Zone 1（エレベーターの到着から。項目 6）へ、RESUME でセーブの地点へ。死亡画面の QUIT TO TITLE（09 記録）とスコア画面の NEXT の後（13 記録の `FinishedLevel`）の行き先を、今の代わりの道（Zone 1 の最初）からタイトルに替える（2026-09-19 に項目 14 から足した）。
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`・`UMG_PopUp.txt`、`_assets/**/UMG_TitleScreen.json`、WebGL 版 10 記録、`<WEBGL>/public/title/`。
 - 依存: 5（セーブ）。
 - 規模: 2
@@ -382,6 +382,11 @@
 ## 未回答の要確認（ユーザー）
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
+
+### 項目 14（スコア画面、2026-09-19 に閉じた記録 `20260919-level-clear`）
+
+- 2026-09-19: TOTAL SHARDS は本家のコードどおり **679 を 2 回数える**（病院のレベル BP が `Shards_Shards` にも 679 を入れ、画面の合計は `Shards_Shards` と `Shards_Var` の文字の両方を足す。新しいセーブで 1483、全部 S で 1558）。本家の書き誤りらしいが、ゲームの規則の値なのでコードに従った。1 回にしたいときは `FWasamiLevelResults::GetTotalShards` を直す。場所: 実装記録 13。
+- 2026-09-19: スコア画面の上のレベルの題字 — 仮に本家の病院の題字 `chapter_ui_title_tormenttherapy`（「Torment Therapy」の飾り文字。本家どおり赤く染める）を使った。理由: 本作のステージは本家の病院そのもので、題字はロゴでもキャラクターでもない UI の文字（WebGL 版の `you-escaped` と同じ扱い）。WebGL 版はステージが違ったので、ユーザーの題字「Stinky Gachimi」を使っていた。場所: 実装記録 13（`LevelNameTexture`）。
 
 ### 項目 13（脱出、2026-09-19 に閉じた記録 `20260919-escape`）
 

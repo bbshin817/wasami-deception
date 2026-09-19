@@ -158,6 +158,7 @@
 
 - 症状: リモート実行から `LaunchCharacter` などで動かしても速さが出ない。Automation テストも進まない（テストの道具は前面で 10 fps を超えるまで、背面なら最大 600 秒待つ）。`UWidgetComponent` の画面（タブレットの地図）も描き直されない（`bTickWhenOffscreen` が偽）。
 - 原因: `Use Less CPU when in Background`。
+- 2026-09-19: **ウィジェットのティック（`NativeTick` の `InDeltaTime`）も遅れる**。Slate は 1 コマの時間を 1/8 s で打ち切る（`FSlateApplication::TickTime`）ので、約 3 fps だとスコア画面の `ClearAnimation` も連続回収の画面（2 s で消える）も約半分の速さになった。ゲームの時間（`get_time_seconds`）は実時間どおり進むので気づきにくい。画面の時刻を収録で測る前に、エディタを前面にして 8 fps を超えているか（`unreal.SystemLibrary.get_frame_count()` の進み）を見る。
 - 対処: `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe`（タイトルバーの空き。エディタの窓が今の位置のとき。撮った画面でクリックの位置がエディタの上であることを先に見る）でエディタを前面にする。PIE を始めてもエディタは前面に来ない。
 - 確かめ方: `stat fps`、またはリモート実行で `unreal.GameplayStatics.get_time_seconds` の進み。
 - 出典: `.claude/guides/verification.md` の「動きの確認」（2026-09-16）、03 記録。「試して駄目だった案」も参照。
