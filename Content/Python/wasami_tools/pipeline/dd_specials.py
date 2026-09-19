@@ -3,7 +3,8 @@ red shard (AWasamiBonusShard, after BP_BonusShard), and what they show and play.
 
   the bodies     power_orb (the orb) and soul_shard (the red shard, scaled up 20 times), with the original's crystal
                  instances m_crystal_Inst3 (orange, the orb's) and m_crystal_Inst (red) of m_crystal, whose graph the
-                 cook took away: estimated off its compiled shaders (M_DD_Crystal)
+                 cook took away: estimated off its compiled shaders (M_DD_Crystal). Its third instance, m_crystal_Inst2
+                 (purple), is the stage's altar's orb
   the map marks  M_PowerOrb (a plane of one colour, an instance of the shards' M_DD_MapMark) and M_Bonus_Shard and
                  M_Enemy (the enemies' marks while a red shard reveals them): planes cut to T_EnemyTriangle, instances of
                  M_DD_MapMarkMasked. The colours are the constants the compiled shaders keep
@@ -44,7 +45,9 @@ MESHES = (ORB_MESH, "Meshes/Ring_Assets/soul_shard")
 CRYSTAL = "Materials/Fords_Materials/m_crystal"
 CRYSTAL_MASTER = dd_assets.PIPELINE_MATERIALS + "M_DD_Crystal"
 ORB_CRYSTAL = "Materials/Fords_Materials/m_crystal_Inst3"
-CRYSTAL_INSTANCES = (ORB_CRYSTAL, "Materials/Fords_Materials/m_crystal_Inst")
+# m_crystal_Inst2 is the altar's orb (ring_statue_orb, purple): the stage import has this module make it.
+CRYSTAL_INSTANCES = (ORB_CRYSTAL, "Materials/Fords_Materials/m_crystal_Inst",
+                     "Materials/Fords_Materials/m_crystal_Inst2")
 # The parameters of m_crystal the estimate does without: distortion_normal only bends the vectors the reflection and the
 # refraction are read along (see _build_crystal).
 CRYSTAL_LEFT_OUT = ("distortion_normal",)
@@ -176,8 +179,9 @@ def _crystal_parameters(rel):
 
 
 def make_crystal():
-    """M_DD_Crystal, m_crystal (an instance of it with the original's defaults) and the orb's and the red shard's
-    instances of that (saved). Returns the assets."""
+    """M_DD_Crystal, m_crystal (an instance of it with the original's defaults) and the orb's, the red shard's and the
+    altar's orb's instances of that (saved; one that exists is put on it in place, without the base property overrides
+    the stage gave it before). Returns the assets."""
     scalars, vectors = dd_assets.parameter_defaults(CRYSTAL, VERSION)
     defaults = dict(scalars, **vectors)
     master = dd_assets.material(CRYSTAL_MASTER, lambda mat: _build_crystal(mat, defaults))
@@ -192,8 +196,11 @@ def make_crystal():
         unknown = (set(c_scalars) | set(c_vectors) | set(c_textures)) - known
         if unknown:
             raise RuntimeError("%s sets %s, which the estimate of m_crystal does not have" % (rel, sorted(unknown)))
-        made.append(dd_assets.material_instance(dd_assets.asset_path(rel), base, scalars=c_scalars,
-                                                vectors=c_vectors, textures=c_textures))
+        mic = dd_assets.material_instance(dd_assets.asset_path(rel), base, scalars=c_scalars, vectors=c_vectors,
+                                          textures=c_textures)
+        mic.set_editor_property("base_property_overrides", unreal.MaterialInstanceBasePropertyOverrides())
+        MEL.update_material_instance(mic)
+        made.append(mic)
     for asset in made:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     return made

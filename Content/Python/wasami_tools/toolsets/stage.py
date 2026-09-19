@@ -39,10 +39,11 @@ class WasamiStageTools(unreal.ToolsetDefinition):
     def refresh_dd_stage_assets() -> dict[str, int]:
         """Brings the already imported stage assets up to the current pipeline: rebuilds a master material whose graph
         changed, re-applies each texture's compression, sRGB and LOD group and each mesh's lightmap resolution and UV
-        channel, and recompiles the material instances.
+        channel, and recompiles the material instances; one whose master no longer matches its root's (a master added
+        since) is remade in place, so what the levels placed keeps it.
 
         Returns:
-            'masters_rebuilt', 'textures_updated', 'lightmaps_updated' and 'materials_updated'.
+            'masters_rebuilt', 'textures_updated', 'lightmaps_updated', 'materials_updated' and 'materials_remade'.
         """
         return _module("dd_stage").refresh_settings()
 
