@@ -121,9 +121,9 @@
     "Source/wasami_deception/WasamiSaveGame.h": "35913c78865564063b7c87af8ed5b0a87f5955e6",
     "Source/wasami_deception/WasamiSaveGame.cpp": "abf2736da33de268769df998e5543f796ccf1510",
     "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "55ee3968afb4b81cdd6d0830778ed86a6fc352db",
-    "Source/wasami_deception/WasamiShard.h": "0b43bdf52476def7cf59f10bb75451c0f25d01c7",
-    "Source/wasami_deception/WasamiShard.cpp": "e48adbe822ad916d5bffffe428834aecd6cf3df5",
-    "Source/wasami_deception/Tests/WasamiShardTests.cpp": "e18e67325c09043ae35c9b91998709f236359548",
+    "Source/wasami_deception/WasamiShard.h": "1e09a256cd2ae8dd65ef7eb94f4e7398ab5476fc",
+    "Source/wasami_deception/WasamiShard.cpp": "03a81434ce50ac0c53e70e239cb45a8fa5400b8b",
+    "Source/wasami_deception/Tests/WasamiShardTests.cpp": "0ad77b94a28c7b5a88e87b3858052e8c23c5075b",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "SourceArt/Wasami/wasami_mochi.glb": "f78bb3fc65c4fbc2fc02dd0cd09e86d08941fe51"
   },

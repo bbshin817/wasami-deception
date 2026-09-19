@@ -163,6 +163,10 @@ void AWasamiShard::BeginPlay()
 	LoadedCollectShake = CollectShake.LoadSynchronous();
 	LoadedCollectFlash = CollectFlash.LoadSynchronous();
 	SpinRate = FMath::FRandRange(MinSpinRate, MaxSpinRate);
+	// The original's crystals all start their animation at 0; this game's mochi start at a yaw of their own, so that
+	// their faces do not all turn together (the user's ask, 2026-09-19).
+	SpinAngle = FMath::FRandRange(0.f, 360.f);
+	Mochi->SetRelativeRotation(FRotator(0., SpinAngle, 0.));
 	PreviousLocation = GetActorLocation();
 }
 

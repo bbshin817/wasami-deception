@@ -27,7 +27,7 @@ updated: 2026-09-19
 - `AWasamiShard`（`AActor`、`IWasamiTelekinesisInterface` を実装）
   - `Collect(bool bNoSound)` … 本家の `Collect(NoSound?)`。1 回だけ（DoOnce）。下の「回収」。
   - `Activate`（インターフェース）… 本家の `Activate`。下の「引き寄せ」。
-  - `IsPulling()`・`GetPullRate()`・`GetSpinRate()` … 確認用。
+  - `IsPulling()`・`GetPullRate()`・`GetSpinRate()`・`GetSpinAngle()`（餅の今のヨー）… 確認用。
   - 静的関数: `EvaluatePullAlpha(Seconds)`（`Shard Pull` の `Alpha`）、`PullLocation(From, Player, Alpha)`（ExpoIn で水平だけ寄せた位置）、`SpinSpeed(PlayRate)`（餅の回る速さ °/s）。定数 `PullLength` = 1。
   - 部品: `DefaultSceneRoot`、`Body`（本家の `SkeletalMesh` の位置と拡縮だけを持つ `USceneComponent`）、その子の `Mochi`（`UStaticMeshComponent`）・`PointLight`・`Capsule`、ルートの子の `Plane`（ミニマップの印）。`GetPlane()` が印を返す（Zone 2 の階ごとの地図が、プレイヤーの階のシャードの印だけを見せる。03 記録）。
   - 値: `LightIntensity` 175（本家の `Light Intensity`）、`MinimapPlaneHeight` 2000（`Minimap Plane Height`）。
@@ -54,7 +54,7 @@ updated: 2026-09-19
 - `Plane`: ルートの子、`/Engine/BasicShapes/Plane`、材質 `M_Shard`、拡縮 (1.5, 1.5, 10)、当たりなし・影なし。構築時に相対位置を (0, 0, `MinimapPlaneHeight`) にする（本家の構築スクリプトの `MakeVector(0, 0, Minimap Plane Height)`）。上向きの片面なので下からは見えず、プレイヤーのシーンキャプチャ（真上から、`ShowOnlyActors` にシャードが入る。02・03 記録）にだけ写る。地図の板（`dd_minimap`）はゾーンの床より下にあるので、20 m 上の印は地図の上に写る。
 
 ### BeginPlay
-回収の音・同時発音・シェイク・閃光を読み込んで持つ。餅の再生速度 `SpinRate` を `RandomFloatInRange(0.05, 0.15)`（本家の結晶の `SetPlayRate`）、`PreviousLocation` を今の位置にする。
+回収の音・同時発音・シェイク・閃光を読み込んで持つ。餅の再生速度 `SpinRate` を `RandomFloatInRange(0.05, 0.15)`（本家の結晶の `SetPlayRate`）、**開始のヨー `SpinAngle` を 0〜360° の乱数**にして `Mochi` にすぐ当て、`PreviousLocation` を今の位置にする。開始のヨーは本家に無い本作の差（本家の結晶はどれもアニメの 0 から回り始める）で、2026-09-19 のユーザーの指摘（「すべてのワサミ餅が同じオフセットから回転を開始しているのが気になります。回転速度は一律で良いですが、開始度数は千差万別に」）による。回る速さは本家の乱数のまま変えていない。
 
 ### 餅の回転（ティック）
 本家の結晶はスケルタルのループアニメ `soul_shard_skeletal_anim_loop`（長さ 1.6667 s・`RateScale` 0.5・`OnlyTickPoseWhenRendered`）で回る。餅はスタティックメッシュなので、アクタのティックで `Mochi` のヨーを `SpinSpeed(SpinRate)` = 720 / 1.6667 × 0.5 × 再生速度（10.8〜32.4 °/s）ずつ増やす。スキンのメッシュと同じく、**最近 1 秒以内に描かれたときだけ**回す（`WasRecentlyRendered(1)`。UE 5.8 の `USkinnedMeshComponent` の `bRecentlyRendered` と同じ幅）。本家の `BP_Shard` 自身はティックを使わない（`bStartWithTickEnabled` 偽）ので、これは餅にしたための差。
@@ -172,7 +172,7 @@ updated: 2026-09-19
 ## 既知の制約・注意点
 - **自動テストも本物のセーブに触れる**: `FTestWorldWrapper::BeginPlayInTestWorld` は既定のゲームモード（`AWasamiGameMode`）を作るので、ワールドを遊ばせるテストはどれも `structSlot` を読み、無ければ空のセーブを書く（`Saved/SaveGames/structSlot.sav`）。空のセーブはセーブが無いのと同じ中身（チェックポイント 0）。ゲームモードのテストは `SaveSlotName` を `WasamiTest_structSlot` にして、終わりに消す。
 - セーブを消してやり直すときは、PIE で `Wasami.ResetSave` の後にレベルを開き直す（`open L_Hospital_Zone1`）か、PIE の外で `Saved/SaveGames/structSlot.sav` を消す。消した直後の読み込みは `LogStreaming: Warning: Failed to read file '…/structSlot.sav'` を 1 行出す（無いときの `LoadGameFromSlot`。害は無い）。
-- **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光を足したもの。大きさだけはユーザーの依頼で原作の 1.5 倍。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。2026-09-17 のユーザーの回答に従い、**紫の明滅を外して餅を 1.5 倍（0.825 m）にした**（作業一覧の項目 22）。2026-09-18 に**モデルをユーザーの `wasami_mochi_v3` に替えた**（同じ項目。下の「餅のモデル」）。**回り方は本家の結晶と同じ撮り方で見比べたうえで、直さないと決めた**（2026-09-18。下の「餅の回り方」）。回収の閃光の値（`FLASH_GAMMA` 0.5・`FLASH_STRENGTH` 0.8）は同じ回答で確定した。
+- **見た目は原作と違う**（ユーザーの決定。`.claude/guides/original-fidelity.md`）。大きさ・位置・回転の速さ・灯は原作の値に合わせ、材質は餅のテクスチャ（推定なし）に WebGL 版の自己発光を足したもの。大きさだけはユーザーの依頼で原作の 1.5 倍。回り始めの向きも、ユーザーの指摘で個体ごとの乱数にした（2026-09-19。上の「BeginPlay」）。回る速さは個体ごとの乱数で、最新版の実機で撮った 1 つ（21.0 秒で 1 周 = 17.1 °/s）は本作の範囲（10.8〜32.4 °/s）に入った（パワーの作業のステップ 11a・11b1。`observations/README.md`）。2026-09-17 のユーザーの回答に従い、**紫の明滅を外して餅を 1.5 倍（0.825 m）にした**（作業一覧の項目 22）。2026-09-18 に**モデルをユーザーの `wasami_mochi_v3` に替えた**（同じ項目。下の「餅のモデル」）。**回り方は本家の結晶と同じ撮り方で見比べたうえで、直さないと決めた**（2026-09-18。下の「餅の回り方」）。回収の閃光の値（`FLASH_GAMMA` 0.5・`FLASH_STRENGTH` 0.8）は同じ回答で確定した。
 - 原作の結晶の `Material`（`m_crystal_Inst1`）は、餅がメッシュの材質を持つので使わない。
 
 ### 餅のモデル（`wasami_mochi_v3`、2026-09-18）
@@ -233,11 +233,12 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 
 ## テスト（`Tests/WasamiShardTests.cpp`）
 - `Wasami.Shard.PullCurve` … `Alpha` の値（0 / 0.375 / 0.75 / 1 秒）、ExpoIn の位置（Alpha 0 で元の位置、0.5 で 1/32、0.9 で 1/2、1 でプレイヤーの X・Y、高さは元のまま）、回る速さ（0.05 で 10.8、0.15 で 32.4 °/s）。
-- `Wasami.Shard.Actor` … 一時的なゲームのワールドに置いて、閃光の既定のパス（`CollectFlash`）、カプセル（半径と半高さ 49.57、高さ約 100 cm、`WorldStatic`・`Custom`・QueryOnly・Pawn とワールドへ Overlap・重なりのイベントあり）、灯（位置・強さ 175・単位なし・半径 200・色・影なし・Movable）、餅（0.825 m・97.085 cm・描画距離 3000・カスタム プリミティブ データなし）、印（20 m 上・拡縮・当たりなし）、再生速度の範囲。`Activate` でその場の位置の更新、再生速度の範囲、0.45 の時点でわずかにしか寄らないこと、終わりに原点へ着いて止まること、プレイヤーがいないので破棄されないこと。
+- `Wasami.Shard.Actor` … 一時的なゲームのワールドに置いて、閃光の既定のパス（`CollectFlash`）、カプセル（半径と半高さ 49.57、高さ約 100 cm、`WorldStatic`・`Custom`・QueryOnly・Pawn とワールドへ Overlap・重なりのイベントあり）、灯（位置・強さ 175・単位なし・半径 200・色・影なし・Movable）、餅（0.825 m・97.085 cm・描画距離 3000・カスタム プリミティブ データなし）、印（20 m 上・拡縮・当たりなし）、再生速度の範囲、開始のヨーの範囲（0〜360）と餅へすぐ当たること、あと 4 つ置いて開始のヨーが揃わないこと。`Activate` でその場の位置の更新、再生速度の範囲、0.45 の時点でわずかにしか寄らないこと、終わりに原点へ着いて止まること、プレイヤーがいないので破棄されないこと。
 - `Wasami.Tablet.CountShake`（03 記録）。
 - `Tests/WasamiGameFlowTests.cpp`: `Wasami.GameFlow.Lives`（3 で始まり、0..6 に Clamp、`ResetLives` で 3。`ShardKey` の 0 の方への切り捨て、同じ整数の位置は 1 つ、`ForgetCollectedShards`）、`Wasami.GameFlow.Save`（スロット名 `structSlot`、全欄のメモリ上の往復）、`Wasami.GameFlow.RemoveShards`（3 つ置いて、切り捨てて一致する 2 つが消え、残り 1 を返す）、`Wasami.GameFlow.GameMode`（テスト用のスロットで BeginPlay がセーブを作って書く、1 秒の時間・止めている間は数えない、`SaveCheckpoint(5)` がスロットに書いて時間を足し 0 に戻す、`DeathEvent` の DoOnce と `ResetDeath`・連続回収の最高、作り直したゲームモードがスロットを読む、Zone でないワールドの `GetStartCheckpoint` はセーブの値のまま）、`Wasami.GameFlow.Checkpoints`（`ZoneOf`、`PlayerStartTagFor` の 7 つと表に無い値、`DeathScreenLevelFor` の 4 通り）、`Wasami.GameFlow.Saving`（09 記録の SAVING PROGRESS の `init` の値と 3 s で外れること、黒のフェードの両端と速さ 10 で 0.5 s）、`Wasami.GameFlow.Loading`（09 記録の読み込み画面の `FadeIn` の値・2.5 s からの逆再生・3.5 s で外れること・紋章は 7 番の `loader_wasami` だけ）。
 
 ## 変更履歴
+- 2026-09-19: 餅の開始のヨーを個体ごとの乱数（0〜360°）にした（有人セッションの指摘。上の「BeginPlay」。`GetSpinAngle()` とテストを足した。PIE の Zone 1 で 337 個のヨーが 30° ごとの 12 区間に 13〜37 個ずつ散らばり、見えている 3 つが別々の向きからそれぞれの速さで回るのを確かめた）
 - 2026-09-19: `CheckSettingsSave` の `SetBaseSoundMix`、`IsEasy`、`Wasami.Settings` の音量の表示を足した（作業一覧の項目 18 のステップ 2。15 記録）
 - 2026-09-19: ゲームインスタンスに設定の持ち主（`CheckSettingsSave`・`GetSettings`・`SaveSettings`・`SettingsSlotName`、エディタの表示ガンマを戻す `Init` / `Shutdown`）とデバッグ `Wasami.Settings`・`Wasami.ResetSettings` を足した。中身は 15 記録（作業一覧の項目 18 のステップ 1）
 - 2026-09-19: デバッグの `Wasami.Title` を足し、`Wasami.Escape` の NEXT の後がタイトルへ行くようにした（作業一覧の項目 17 のステップ 4）

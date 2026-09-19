@@ -54,6 +54,9 @@ public:
 	/** The mochi's play rate, the original's SetPlayRate on its crystal's animation. */
 	float GetSpinRate() const { return SpinRate; }
 
+	/** The mochi's yaw (°), which starts at a random angle of each shard's own. */
+	float GetSpinAngle() const { return SpinAngle; }
+
 	/** The minimap's mark (Plane), which Zone 2's map shows only for the shards on the player's floor. */
 	UStaticMeshComponent* GetPlane() const { return Plane; }
 
