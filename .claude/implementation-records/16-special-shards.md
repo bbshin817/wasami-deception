@@ -24,7 +24,7 @@ updated: 2026-09-19
 # 特殊シャード（スタンオーブと赤いシャード）
 
 ## 役割
-本家の特殊シャード 2 種（最新版 `pak_reference_2` の `Blueprints/Main/BP_PowerOrb` = スタンオーブ、`BP_BonusShard` = 赤いシャード）。1 体ずつ置かれ、150 s ごとに 5 s 明滅して出現点を移る。オーブを取ると全敵が気絶し、赤いシャードを取ると 60 s 敵がタブレットの地図に出る（作業一覧の項目 10）。**作っている途中**: いまあるのは素材の取り込み、取得の画面 `UWasamiVignetteSidesWidget`、共通の基底 `AWasamiSpecialShard`、オーブ `AWasamiPowerOrb` と赤いシャード `AWasamiBonusShard`、それぞれの取得の演出 `AWasamiStunCollectEffect`・`AWasamiBonusShardCollectEffect`、出現点 2 種、プレイヤーの `AddToMap`・`RemoveFromMap`（02 記録）と敵の地図の印（07 記録）（両ゾーンへの配置は進捗記録 `20260919-special-shards` のステップ 5）。
+本家の特殊シャード 2 種（最新版 `pak_reference_2` の `Blueprints/Main/BP_PowerOrb` = スタンオーブ、`BP_BonusShard` = 赤いシャード）。1 体ずつ置かれ、150 s ごとに 5 s 明滅して出現点を移る。オーブを取ると全敵が気絶し、赤いシャードを取ると 60 s 敵がタブレットの地図に出る（作業一覧の項目 10）。**作っている途中**: いまあるのは素材の取り込み、取得の画面 `UWasamiVignetteSidesWidget`、共通の基底 `AWasamiSpecialShard`、オーブ `AWasamiPowerOrb` と赤いシャード `AWasamiBonusShard`、それぞれの取得の演出 `AWasamiStunCollectEffect`・`AWasamiBonusShardCollectEffect`、出現点 2 種、プレイヤーの `AddToMap`・`RemoveFromMap`（02 記録）と敵の地図の印（07 記録）。両ゾーンに置いてある（組み立ての `dd_level._flow`。01 記録）。PIE での確かめは進捗記録 `20260919-special-shards` のステップ 6。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_specials()`（素材。`import_dd_shards` と `import_dd_gimmicks` の後。地図の印のマスターと粒子の材質を共有する）。
@@ -72,6 +72,9 @@ updated: 2026-09-19
 
 ### 出現点
 本家の 2 つとも、ルートの `MaterialBillboard`（32 × 32 cm・ワールド空間・ゲーム中は隠れる）だけ。材質はオーブの点が `m_crystal_Inst3`、赤いシャードの点がエンジンの `VertexColorViewMode_RedOnly`（`OnConstruction` で入れる）。本体は点のアクタの位置を読む。
+
+### 配置
+ステージの組み立て（`dd_level._flow`。01 記録の「特殊シャード」）が、本家のレベルの置き場所に本体を 1 つずつ（Zone 1 のオーブは地図の外の z 5725、赤いシャードは y 189375・z −11995。Zone 2 は (30699, 36877, 548) と (36563, 59764, −1905)。最初の明滅までは見えない所にいる）と出現点（Zone 1 に 11・10、Zone 2 に 10・10）を置く。本家の置いたものの `Spawn Points` はそのゾーンの同じ種類の点の全部なので、本作は `SpawnPoints` を空にしてクラスで集めさせる。置いたものの値は Zone 2 の赤いシャードの `ID` 1 だけ（Zone 1 は既定の 0。セーブの `BonusShards` はゾーンをまたいで 1 つなので、2 つの ID が違う）。
 
 ### 取得の画面 `UWasamiVignetteSidesWidget`
 - 木（`RebuildWidget` が本家のスロットどおりに組む。連続回収の画面 `UWasamiShardStreakWidget` と同じ作り。13 記録）: ルート `CanvasPanel_0`（`HitTestInvisible`、平常の角度 −0.158°）→ `Image_161`（`T_VignetteNew` を 1024² のブラシで、アンカー全面・オフセット 0.96 / 0.54・整列 (0.5, 0.5)・自動の大きさ、`ColorAndOpacity` (1, 0.2308, 0, 0.4177)、平常の拡大 2）→ `TextBlock_47`（アンカー下中央、左 −72.96・上 −233.08、151 × 40、中央揃え。白 α 0.8、helvetica-neue-bold 35、縁取り 1 の黒 α 0.638〈影にも〉、平常の `RenderOpacity` 0。既定の文は本家の「ENEMIES STUNNED FOR 30 SECONDS」で、本家の拾い物はどれも上書きする）。
@@ -140,11 +143,13 @@ updated: 2026-09-19
 
 ## 既知の制約・注意点
 - 結晶と閃光の材質・地図の印の色は推定で、本家と見比べていない（大目標 1・2 の決め方。作業一覧の項目 28 の後回しの一覧）。
+- 赤いシャードは本家の結晶（`soul_shard` × 20・`m_crystal_Inst`）で、通常のシャードのワサミ餅には替えない（WebGL 版は餅にしたが、最終目標の「本家と同一の見た目にする」が優先。2026-09-19）。
 - 地図の印（特殊シャードの 20 m 上、敵の 10 m 上の板）は本家と違って当たりを持たない（上の「共通の作り」）。
 - 地図に敵を足すのはクラスごと（本家の `Add To Map(GetObjectClass)`）なので、サブクラスも含めてそのクラスの敵がみな載る。赤いシャードの 60 s の間は、敵の骨格メッシュも地図のキャプチャに写る（印が 10 m 上から覆う。本家も同じ）。
 - Zone 2 の `m_crystal_Inst2`（ステージの小物）はステージの組み立てが汎用の `M_DD_Substance` のインスタンスで作っていて、ここの `m_crystal` とは別。
 
 ## 変更履歴
+- 2026-09-19: 両ゾーンに本体と出現点を置いた（`dd_level._flow`。上の「配置」。ステップ 5）
 - 2026-09-19: 赤いシャード `AWasamiBonusShard`（本家 `BP_BonusShard`）と取得の演出 `AWasamiBonusShardCollectEffect`、デバッグのコマンド `Wasami.BonusShard`、テスト `Wasami.BonusShard.*` を足した。オーブと同じ部品と周期を基底 `AWasamiSpecialShard` に移し（`SpawnPowerOrb` は `SpawnSpecialShard` に）、印の当たりを外した。ユニティビルドの塊が変わり、`WasamiStunCollectEffect.cpp`（Primal とぶつかった曲線のキーを `Stun*` に）と `WasamiVignetteSidesWidget.cpp`（連続回収の画面とぶつかった名前を `Sides*` に）の無名名前空間の名前を改めた（ステップ 4）
 - 2026-09-19: オーブ `AWasamiPowerOrb`（本家 `BP_PowerOrb`）、取得の演出 `AWasamiStunCollectEffect`（`BP_StunCollectEffect`。Primal Fear と共有する球の基底 `AWasamiSphereBurst` を 04 記録に）、出現点 2 種、デバッグのコマンド `Wasami.PowerOrb`、テスト `Wasami.PowerOrb.*` を足した（ステップ 3）
 - 2026-09-19: 初版（素材の取り込み `dd_specials.py` と `WasamiDDTools.import_dd_specials`。作業一覧の項目 10 のステップ 1）
