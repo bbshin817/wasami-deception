@@ -8,7 +8,9 @@
 #include "Particles/ParticleLODLevel.h"
 #include "Particles/ParticleModule.h"
 #include "Particles/ParticleModuleRequired.h"
+#include "ParticleEmitterInstances.h"
 #include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "Particles/Spawn/ParticleModuleSpawn.h"
 #include "Particles/TypeData/ParticleModuleTypeDataBase.h"
 #include "UObject/Package.h"
@@ -588,5 +590,37 @@ UObject* UWasamiCascadeLibrary::GetLODTypeDataModule(UObject* LODLevel)
 {
 	const UParticleLODLevel* Level = Cast<UParticleLODLevel>(LODLevel);
 	return Level ? Level->TypeDataModule.Get() : nullptr;
+}
+
+FString UWasamiCascadeLibrary::DescribeEmitterInstances(UParticleSystemComponent* Component)
+{
+	if (!Component)
+	{
+		return FString();
+	}
+	FString Out;
+	for (FParticleEmitterInstance* Instance : Component->EmitterInstances)
+	{
+		if (!Instance || !Instance->SpriteTemplate)
+		{
+			Out += TEXT("(no instance)\n");
+			continue;
+		}
+		const UParticleLODLevel* Level = Instance->SpriteTemplate->GetCurrentLODLevel(Instance);
+		Out += FString::Printf(TEXT("%s enabled=%d lod=%d lodEnabled=%d spawnModules=%d updateModules=%d receivers=%d generator=%d active=%d max=%d time=%.3f"),
+			*Instance->SpriteTemplate->EmitterName.ToString(), Instance->bEnabled ? 1 : 0, Instance->CurrentLODLevelIndex,
+			Level ? (Level->bEnabled ? 1 : 0) : -1, Level ? Level->SpawnModules.Num() : -1, Level ? Level->UpdateModules.Num() : -1,
+			Level ? Level->EventReceiverModules.Num() : -1, Level && Level->EventGenerator ? 1 : 0, Instance->ActiveParticles,
+			Instance->MaxActiveParticles, Instance->EmitterTime);
+		if (Instance->ActiveParticles > 0 && Instance->ParticleData && Instance->ParticleIndices)
+		{
+			const FBaseParticle* Particle = reinterpret_cast<const FBaseParticle*>(
+				Instance->ParticleData + Instance->ParticleStride * Instance->ParticleIndices[0]);
+			Out += FString::Printf(TEXT(" first: relativeTime=%.3f oneOverMaxLifetime=%.3f"), Particle->RelativeTime,
+				Particle->OneOverMaxLifetime);
+		}
+		Out += TEXT("\n");
+	}
+	return Out;
 }
 #endif

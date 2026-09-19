@@ -526,6 +526,14 @@
 - 対処: `dd_particles._number` は指数の形を使わず、`decimal` で正確な小数で書く（2026-09-18）。組んだ粒子の表の長さは、エディタで `Values` の数と `EntryCount × EntryStride` を比べて確かめる（2026-09-18 に /Game/DD・/Game/Pipeline の 6 つを確かめ、短かったのは `Fracture_concrete_3` だけ）。
 - 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
 
+### 粒子の事象で出るはずのエミッタが 1 つも出ない（`EventReceiverSpawn`。除細動器の稲妻）/ 組み直したエミッタの名前に引用符が付く（`"thander"`）
+
+- 症状: 除細動器の放電で、揺れと音は出るのに稲妻が見えない。`ParticleSystemComponent.get_num_active_particles()` で数えると `born` を配る `subE1`〜`3` だけが出て、受ける `thander` は 0。`generate_particle_event('born', …)` を送っても出ない。受け手のモジュールの一覧（`EventReceiverModules`）も、生成の `EventGenerator` も揃っている。
+- 原因: `dd_particles._text` が名前（`FName`）と文字列を引用符つきで書いていた。プロパティそのもののテキストの取り込み（`ImportText_Direct(…, PPF_None)`）は、`FNameProperty`・`FStrProperty` が残りの文字をすべて値にするので、名前が `"born"`（引用符ごと）になる。構造体の中（生成の `Events` の `CustomName`）は区切りつきで読まれて `born` になるので、合わない。`EmitterName` も同じく `"thander"` になっていた（`DescribeEmitterInstances` の出力で気づいた）。
+- 対処: 名前と文字列は引用符なしで書き（列挙は字句として読むので引用符つきのまま）、`dd_particles` で組むシステムをすべて組み直す。
+- 確かめ方: `UWasamiCascadeLibrary::DescribeEmitterInstances(部品)`（エミッタの実体ごとの一覧の数と粒子の数）を PIE の中で毎フレーム読む。エディタが背面だと PIE が約 3 fps で、寿命 0.1 s の粒子は数えられない（上の「エディタが背面にあると…」）。
+- 出典: 01 記録の「Cascade のパーティクル」、08 記録の「確かめたこと」。2026-09-19、作業一覧の項目 8 のステップ 4（C++ の道具を足すためにエディタを 1 回開き直した）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている

@@ -322,7 +322,10 @@ class _Build:
         if cpp in ("FName", "FString") or cpp.startswith("TEnumAsByte<") or cpp.startswith("E"):
             if not isinstance(value, str):
                 raise ValueError("%s.%s: a %s from %r" % (obj.get_name(), key, cpp, value))
-            return _quoted(value)
+            # A property's own text (PPF_None) takes a name or string whole, quotes and all, so those go bare; an enum
+            # reads a token, quoted or not. (Built before 2026-09-19, every EmitterName and a receiver's EventName kept
+            # the quotes, and P_06_Defib's lightning never took its emitters' 'born'.)
+            return value if cpp in ("FName", "FString") else _quoted(value)
         if cpp in ("TArray", "TArray<float>") and all(isinstance(v, (int, float)) for v in value):
             return "(%s)" % ",".join(_number(v) for v in value)
         if cpp in ("TArray", "TArray<FParticleSystemLOD>") and all(v == {} for v in value):
