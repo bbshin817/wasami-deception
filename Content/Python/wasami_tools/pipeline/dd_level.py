@@ -63,11 +63,10 @@ SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
 TRIGGER_CLASS = "BP_TriggerBox_Base_C"
 # The door breaks (BP_06_Hospital_DoorBreak → AWasamiDoorBreak), with their Progress Speed.
 DOOR_BREAK_CLASS = "BP_06_Hospital_DoorBreak_C"
-# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors) the flow names: Zone 1's lift doors and the tunnel's, and
-# Zone 2's one, locked until the ring piece is taken (the way to the garage). Zone 1's other 60 come with the work
-# list's item 8.
+# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors), all of them: Zone 1's 62 and Zone 2's one. The flow names
+# three by their tags: Zone 1's lift doors and the tunnel's, and Zone 2's, locked until the ring piece is taken (the way
+# to the garage).
 DOUBLE_DOORS_CLASS = "BP_06_DoubleDoors_C"
-FLOW_DOUBLE_DOORS = ("BP_06_DoubleDoors11", "BP_06_DoubleDoors33_36", "BP_06_DoubleDoors2")
 # The class's door components and their meshes (BP_06_DoubleDoors' SCS templates), which the C++ class leaves unset (it
 # loads nothing from /Game/DD in its constructor); each takes its mesh's own materials, as in the original.
 DOUBLE_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_entrance_walkway_doubledoor2",
@@ -609,14 +608,14 @@ def set_emitter(actor, zone, name, level):
 
 
 def _flow(eas, stage, zone, counts, failures):
-    """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
+    """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar and
     the ring piece, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS)."""
     placed = []
     level = {}
     for a in zone["actors"]:
-        doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
+        doors = a["class"] == DOUBLE_DOORS_CLASS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
                                                  TARGET_POINT_CLASS, SENTRY_CLASS, STATUE_CLASS, RING_PIECE_CLASS)

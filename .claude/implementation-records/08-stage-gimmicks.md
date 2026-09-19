@@ -26,7 +26,7 @@ updated: 2026-09-19
 # ステージの仕掛け（両開き扉・ゾーンの障壁・打たれた閃き・祭壇と欠片・ガレージのポータル）
 
 ## 役割
-病院のステージで動く仕掛け。いまは本家の両開き扉と、打たれたときの画面の閃き `BP_HitFX`（`Blueprints/Shared`）を写した `AWasamiHitFX`（画面全体が赤く滲んで 0.35 s で晴れ、カメラが揺れる。独房の棘が届いたときに流れが出す。作業一覧の項目 6 のステップ 7a。罠とナースも使う）と、ゾーンの障壁 `BP_ZoneBarrier`（`Blueprints/Main`）を写した `AWasamiZoneBarrier`（全回収まで道をふさぐ光る壁。流れが `Destroy` で壊す。見て左クリックすると拒否の音と文を出す。作業一覧の項目 6 のステップ 4a、拒否は項目 13 のステップ 2）。両開き扉は本家の `BP_06_DoubleDoors`（`pak_reference_2` の `Blueprints/06_Hospital`）を写した `AWasamiDoubleDoors`: 幅 400 cm の出入口の両端に蝶番のある扉 2 枚で、キャラクター（プレイヤーかナース）が前の箱に入ると奥へ、後ろの箱に入ると手前へ、音とともに 1 s で 90° 開き、両側を覆う `Leave` の箱からキャラクターが出て、プレイヤーが中に残っていなければ閉じる。閉ざされている（`bLocked`）と、入ってもガタつく音（2 s に 1 回まで）だけ。ゾーンの流れ（11 記録）が名指しする扉を `Lock`・`Unlock`・`Open Front`・`Force Close` で閉ざし・開ける。作業一覧の項目 6（ゾーンの進行）のステップ 3c で、流れが名指しする Zone 1 の 2 枚のために作った（残りの 60 枚を置くのは項目 8。Zone 2 のガレージへの 1 枚は項目 13 のステップ 3 で置いた）。Zone 2 の迷路の後の部屋の祭壇 `BP_01_Statue`（`Blueprints/01_Hotel`）を写した `AWasamiRingStatue`（見て左クリックすると、全回収の前は拒否の音と文、全回収の後は `Interact All Shards` を流す）と、その上の欠片 `BP_08_RingPiece_NoPickup`（`Blueprints/08_BearHouse`）を写した `AWasamiRingPiece`（見せるだけ。光の粒子と桃色の灯）もここ（作業一覧の項目 13 のステップ 3。流れに結ぶのはステップ 4）。Zone 2 のガレージの奥のポータル（本家の舞踏会場とホテルの出口の `BP_00_Teleport`〈`Blueprints/00_Ballroom`、最新版〉を写した `AWasamiPortal`。病院には無く、本作は救急車とボス戦の代わりにこれで脱出する）もここ（作業一覧の項目 13 のステップ 5a。開けるのと脱出はステップ 5b）。
+病院のステージで動く仕掛け。いまは本家の両開き扉と、打たれたときの画面の閃き `BP_HitFX`（`Blueprints/Shared`）を写した `AWasamiHitFX`（画面全体が赤く滲んで 0.35 s で晴れ、カメラが揺れる。独房の棘が届いたときに流れが出す。作業一覧の項目 6 のステップ 7a。罠とナースも使う）と、ゾーンの障壁 `BP_ZoneBarrier`（`Blueprints/Main`）を写した `AWasamiZoneBarrier`（全回収まで道をふさぐ光る壁。流れが `Destroy` で壊す。見て左クリックすると拒否の音と文を出す。作業一覧の項目 6 のステップ 4a、拒否は項目 13 のステップ 2）。両開き扉は本家の `BP_06_DoubleDoors`（`pak_reference_2` の `Blueprints/06_Hospital`）を写した `AWasamiDoubleDoors`: 幅 400 cm の出入口の両端に蝶番のある扉 2 枚で、キャラクター（プレイヤーかナース）が前の箱に入ると奥へ、後ろの箱に入ると手前へ、音とともに 1 s で 90° 開き、両側を覆う `Leave` の箱からキャラクターが出て、プレイヤーが中に残っていなければ閉じる。閉ざされている（`bLocked`）と、入ってもガタつく音（2 s に 1 回まで）だけ。ゾーンの流れ（11 記録）が名指しする扉を `Lock`・`Unlock`・`Open Front`・`Force Close` で閉ざし・開ける。作業一覧の項目 6（ゾーンの進行）のステップ 3c で、流れが名指しする Zone 1 の 2 枚のために作った（Zone 2 のガレージへの 1 枚は項目 13 のステップ 3 で、Zone 1 の残りの 60 枚は項目 8 のステップ 1 で置いた。どれも同じクラスで、ナースも開けて通る）。Zone 2 の迷路の後の部屋の祭壇 `BP_01_Statue`（`Blueprints/01_Hotel`）を写した `AWasamiRingStatue`（見て左クリックすると、全回収の前は拒否の音と文、全回収の後は `Interact All Shards` を流す）と、その上の欠片 `BP_08_RingPiece_NoPickup`（`Blueprints/08_BearHouse`）を写した `AWasamiRingPiece`（見せるだけ。光の粒子と桃色の灯）もここ（作業一覧の項目 13 のステップ 3。流れに結ぶのはステップ 4）。Zone 2 のガレージの奥のポータル（本家の舞踏会場とホテルの出口の `BP_00_Teleport`〈`Blueprints/00_Ballroom`、最新版〉を写した `AWasamiPortal`。病院には無く、本作は救急車とボス戦の代わりにこれで脱出する）もここ（作業一覧の項目 13 のステップ 5a。開けるのと脱出はステップ 5b）。
 
 ## 公開インターフェース
 - `AWasamiDoubleDoors`（`AActor`）
@@ -128,7 +128,6 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 - エンジン: `UPostProcessComponent`・`UTimelineComponent`・`UCurveFloat`・`UBoxComponent`・`UStaticMeshComponent`・`FRichCurve`・`UGameplayStatics::PlaySoundAtLocation`・`SpawnEmitterAtLocation`・`FTimerManager`・`UPointLightComponent`・`UAudioComponent`、エンジンの素材 `/Engine/BasicShapes/Plane`（100 × 100 の板、厚さ 0 の箱の当たり）。
 
 ## 既知の制約・注意点
-- 置いてあるのは流れが名指しする Zone 1 の 2 枚（`BP_06_DoubleDoors11`・`BP_06_DoubleDoors33_36`）と Zone 2 のガレージへの 1 枚（`BP_06_DoubleDoors2`、閉ざされている）だけ。Zone 1 のほかの出入口は扉が無く、通り抜けられる（項目 8）。
 - 祭壇の材質 `MM_00_Ballroom_Ring_Altar_Metal` の親 `MM_Main_Metal` と欠片の `M_ring_metal2` の親 `MM_Main_Substance_Fresnel` は前処理のマスターの一覧に無いので、`substance` のマスターの推定で作られる（祭壇は法線だけで色のテクスチャが無く、青みの白に見える。作業一覧の項目 28 の後回しの一覧）。欠片の `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。
 - 扉は当たりを持ったまま掃引せずに回る（本家どおり）。開くときにプレイヤーが扉の振れる範囲（蝶番から 200 cm）にいると、扉がカプセルに食い込むことがある。
 - `Unlock`・`Lock` は前のイベントの相手で本家の処理を繰り返す（上）。流れは `On04DoorBreak` で `Unlock` を使わず `bLocked` を直に書く（本家どおり）。
@@ -147,6 +146,7 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 
 ## 確かめたこと（2026-09-18、PIE）
 Zone 1 の 04: エレベーターの前の `BP_06_DoubleDoors11` は赤い 2 枚扉で閉じている → 鍵が外れると手前へ 1 s で開き、少し行き過ぎて戻る → `Leave` の外へ出ると閉じる（11 記録の「確かめたこと」）。
+Zone 1 の迷路（2026-09-19、62 枚を置いた後）: 巡回するナースが前の箱に入ると扉が 90° 開き、通り過ぎると閉じる（50 s で 9 枚。扉はナビゲーションに入らないので道はそのまま）。プレイヤーが `(0, −2150)` から歩いて `BP_06_DoubleDoors12` に入ると奥へ開いて通れ、`Leave` の外へ出ると閉じる。台本 `Tools/playthrough.py` の `z1_arrive` から `z1_ambulance` までがそのまま通る（ナースに捕まりに行く `z1_maze` の道も扉を通る）。
 
 障壁（項目 6 のステップ 4a）: Zone 1 の 05 で `(0, −18450)` から −Y を向くと、エレベーターホールの先の出入口を紫の網目の障壁がふさいでいる → `Wasami.CollectShards` で全回収すると、紫の閃光と放射する線（`P_ky_impact3`）が出て障壁が消え、奥の廊下が見える（収録 `Intermediate/DesktopAgent/shots/barrier_break.mkv`、git の外）。デバッグの全回収は 337 個を一度に消すので、閃光の直後に約 0.6 s 止まる。
 
@@ -161,6 +161,7 @@ Zone 1 の 04: エレベーターの前の `BP_06_DoubleDoors11` は赤い 2 枚
 ガレージのポータル（項目 13 のステップ 5a、2026-09-19）: Zone 2 の PIE で `(−10347, −7150)` から南を向くと、トンネルの口に鍵のかかったポータル（黒い円盤に灰色の文字の輪と鍵の絵）が立っている。`LockUnlock(false, true)` を呼ぶと、画面が揺れ、鍵が消えて赤い輪とワサミの印が出て、赤い光が明滅する（収録 `Intermediate/DesktopAgent/shots/portal_open.mkv`、git の外。グリッド `Intermediate/Overnight/portal_open.png`）。
 
 ## 変更履歴
+- 2026-09-19: Zone 1 の残りの両開き扉 60 枚も組み立てが置くようにした（01 記録。作業一覧の項目 8 のステップ 1）
 - 2026-09-19: 本家の `BP_00_Teleport`（最新版）を `AWasamiPortal` に写し（灯 `BP_00_StrobingLight` は部品に、くぐって移るのと舞踏会場の灯は写さない）、`dd_gimmicks.import_portal`（`Mat_ParameterCol`・シェーダーから組んだ `M_00_Portal_Vortex` とインスタンス 8・推定のロゴの親と鍵・本作のロゴ・音・揺れ）と `Tools/dd/prepare_portal_logo.py` を足した。組み立てが Zone 2 のガレージの奥に鍵をかけて置く（01 記録）。テスト `Wasami.Portal.Actor`・`.Lock`（作業一覧の項目 13 のステップ 5a）
 - 2026-09-19: 本家の `BP_01_Statue` を `AWasamiRingStatue` に、`BP_08_RingPiece_NoPickup` を `AWasamiRingPiece` に写し、`dd_gimmicks.import_ring_statue`（欠片の粒子と材質）を足した。組み立てが Zone 2 に祭壇・欠片・ガレージへの両開き扉を置く（01 記録）。テスト `Wasami.RingStatue.Actor`・`.Interact`（作業一覧の項目 13 のステップ 3）
 - 2026-09-19: 見て左クリックの拒否（`InteractWithObject`: `DD_RingBarrierDenied_louder` と文の枠、5 s に 1 回）を足し、取り込みに拒否の音と `DialogueAttenuation` を足した。テスト `Wasami.ZoneBarrier.Interact`（作業一覧の項目 13 のステップ 2）
