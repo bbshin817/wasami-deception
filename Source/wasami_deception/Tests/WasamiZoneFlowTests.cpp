@@ -475,8 +475,8 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 		return false;
 	}
 	UWorld* World = Wrapper.GetTestWorld();
-	SpawnTriggers(World, {TEXT("Trigger_Cell_Spikes"), TEXT("BP_MiniBoss_Trigger"), TEXT("Miniboss_BierceTalk"),
-		TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
+	SpawnTriggers(World, {TEXT("Trigger_Arrive_CaptureScene"), TEXT("Trigger_Cell_Spikes"), TEXT("BP_MiniBoss_Trigger"),
+		TEXT("Miniboss_BierceTalk"), TEXT("Trigger_MazeStart"), TEXT("Trigger_Miniboss_BehindMatron")});
 	SpawnZone2NursePlaces(World);
 	AActor* Orb = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity);
 	Orb->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("ring_statue_orb_5")));
@@ -485,15 +485,18 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	const FTransform FileAt(FRotator(0., -90., 0.), FVector(0., 3000., -40000.));
 	ATargetPoint* FilePoint = World->SpawnActor<ATargetPoint>(FileAt.GetLocation(), FileAt.Rotator());
 	FilePoint->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::PostmazeFilePoint));
+	// The scenes' lengths, as _sequences has them: the ambulance's arrival and the capture.
+	const float ArrivalSeconds = 6.7667f;
+	const float CaptureSeconds = 26.2333f;
+	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone2_AmbulanceArrive1_2"), ArrivalSeconds);
+	const ALevelSequenceActor* Capture = SpawnSequence(World, TEXT("06_Hospital_Zone2_Capture"), CaptureSeconds);
 	const ALevelSequenceActor* Spikes = SpawnSequence(World, TEXT("06_Hospital_Zone2_Spikes"), 70.);
 	const ALevelSequenceActor* DoorPicked = SpawnSequence(World, TEXT("06_Hospital_Zone2_Cell_DoorPicked"), 4.2667);
 	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
 	DoorBreak->ProgressSpeed = 3.f;
 	DoorBreak->FinishSpawning(FTransform::Identity);
 	DoorBreak->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_Hospital_DoorBreak_2")));
-	// What the left-out scenes move, where the level has it.
-	const FRotator AmbulanceFacing(0., -90.000684, 0.);
-	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), FVector(-22442.7148, -5025.0068, 800.), AmbulanceFacing);
+	// The blocker the arrival's end destroys, and what the left-out cell's scene moves, where the level has it.
 	const TWeakObjectPtr<ABlockingVolume> Blocker(SpawnBlocker(World, TEXT("Ambulance_Arrive_Blockers4"), ECollisionEnabled::QueryAndPhysics));
 	AStaticMeshActor* Ceiling = SpawnStatic(World, TEXT("hospital_zone_02_holdingCell_01_false_ceiling_11"), FVector(-0.0371, 0., 0.), FRotator::ZeroRotator);
 	Ceiling->GetRootComponent()->SetMobility(EComponentMobility::Movable);
@@ -526,10 +529,28 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("7: out of the cell's scene"), Flow->GetSection(), FName(TEXT("Cell Cutscene Finished")));
-	TestTrue(TEXT("the ambulance arrived"), Ambulance->GetActorLocation().Equals(AWasamiZone2Flow::AmbulanceArrived, 0.01)
-		&& Ambulance->GetActorRotation().Equals(AmbulanceFacing, 1e-3));
+	// Arrive Event: the ambulance drives in 0.3 s on, with the player left to walk about (the arrival takes neither the
+	// view nor the input), and its end takes the blocker at its front away.
+	TestEqual(TEXT("7: the ambulance's arrival"), Flow->GetSection(), FName(TEXT("Arrive Event")));
+	TestFalse(TEXT("which waits its 0.3 s"), Arrival->GetSequencePlayer() && Arrival->GetSequencePlayer()->IsPlaying());
+	Advance(Wrapper, AWasamiZone2Flow::ArriveSequenceDelay + 0.05f);
+	TestTrue(TEXT("then drives in"), Arrival->GetSequencePlayer() && Arrival->GetSequencePlayer()->IsPlaying());
+	TestTrue(TEXT("its front blocker still there"), Blocker.IsValid() && !Blocker->IsActorBeingDestroyed());
+	Advance(Wrapper, ArrivalSeconds);
+	TestEqual(TEXT("arrived: Escape_AmbulanceArrive"), Flow->GetSection(), FName(TEXT("Escape_AmbulanceArrive")));
 	TestTrue(TEXT("its front blocker gone"), !Blocker.IsValid() || Blocker->IsActorBeingDestroyed());
+
+	// The capture, walked into: the player's input goes and the scene plays. Its view of CineCameraActor_2 and its skip
+	// screen want a local player controller, which a test world cannot make (a bare one sends the engine's SetViewTarget
+	// into an endless ClientSetViewTarget: .claude/references/troubleshooting.md), so they are for the PIE run to see.
+	Walk(World, TEXT("Trigger_Arrive_CaptureScene"));
+	TestEqual(TEXT("caught"), Flow->GetSection(), FName(TEXT("Arrive_CaptureCutscene")));
+	TestTrue(TEXT("the capture plays"), Capture->GetSequencePlayer() && Capture->GetSequencePlayer()->IsPlaying());
+	Advance(Wrapper, CaptureSeconds);
+
+	// The cell's scene, still left out (item 25's step 5): what it leaves moved is put there, the player goes to its
+	// player start and it ends at once.
+	TestEqual(TEXT("out of the cell's scene"), Flow->GetSection(), FName(TEXT("Cell Cutscene Finished")));
 	TestTrue(TEXT("the false ceiling open"), Ceiling->GetActorLocation().Equals(AWasamiZone2Flow::FalseCeilingOpen, 0.01));
 	TestTrue(TEXT("the switch thrown"), Switch->GetActorLocation().Equals(SwitchAt, 0.01)
 		&& Switch->GetActorRotation().Equals(AWasamiZone2Flow::WallSwitchThrown, 1e-3));
@@ -869,8 +890,6 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 	SpawnZone2NursePlaces(World);
 	SpawnRingStatue(World);
 	TestNull(TEXT("no flow outside the zones"), AWasamiZoneFlow::SpawnFor(SpawnMode(World, 4), 0));
-	const FVector InTunnel(-22442.7148, -5025.0068, 800.);
-	const AStaticMeshActor* Ambulance = SpawnStatic(World, TEXT("hospital_ambulance_new_arrive"), InTunnel, FRotator::ZeroRotator);
 
 	// Each checkpoint's section, as a zone reopened there starts it.
 	struct FCase
@@ -894,8 +913,6 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 		TestEqual(*What, Flow ? Flow->GetSection() : NAME_None, FName(Case.Section));
 		TestEqual(*(What + TEXT(": the objective")), Objective(Mode), FString(Case.Objective));
 	}
-	TestTrue(TEXT("past 7, the ambulance never arrived (the original plays its scene only at 7)"),
-		Ambulance->GetActorLocation().Equals(InTunnel, 0.01));
 	AWasamiGameMode* Mode = SpawnMode(World, 10);
 	const AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
 	TestEqual(TEXT("zone 2 at 10"), Flow ? Flow->GetSection() : NAME_None, FName(TEXT("Postmaze Transition")));

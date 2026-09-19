@@ -247,11 +247,22 @@ void AWasamiZoneFlow::SaveCheckpoint(int32 Checkpoint)
 	}
 }
 
-void AWasamiZoneFlow::PlaySequence(FName Source)
+void AWasamiZoneFlow::PlaySequence(FName Source, FName Finished)
 {
 	if (ULevelSequencePlayer* Player = SequencePlayer(Source))
 	{
 		Player->Play();
+		BindSequenceFinished(Player, Finished);
+	}
+}
+
+void AWasamiZoneFlow::BindSequenceFinished(ULevelSequencePlayer* Player, FName Finished)
+{
+	if (Player && !Finished.IsNone())
+	{
+		FScriptDelegate Delegate;
+		Delegate.BindUFunction(this, Finished);
+		Player->OnFinished.AddUnique(Delegate);
 	}
 }
 
@@ -281,12 +292,7 @@ void AWasamiZoneFlow::PlayCutscene(FName Source, FName Finished, FName Camera, b
 	// event comes after it.
 	UWasamiCutsceneWidget::Show(this, Player, bSmoothTransition);
 	Player->Play();
-	if (!Finished.IsNone())
-	{
-		FScriptDelegate Delegate;
-		Delegate.BindUFunction(this, Finished);
-		Player->OnFinished.AddUnique(Delegate);
-	}
+	BindSequenceFinished(Player, Finished);
 }
 
 void AWasamiZoneFlow::SetPlayerViewTarget(AActor* Target, float BlendTime)

@@ -391,6 +391,7 @@
   - 2026-09-20（項目 25）: 場面のナースの演技（本家の専用のアニメ 10 種）— 今は敵ワサミのクリップへの読み替え（`dd_sequence.NURSE_ANIMS`: 構えは `Idle_Alert`、跳躍は `Chase_VaultRoll` → `Run`、殴るは `Chase_Charge`、待機と台詞の演技は `Idle`、後ずさりは `Walk` の逆再生、透明化は `Walk` で去る。`.claude/references/enemy-wasami-motions.md` の「場面の代用」）で、区間が余る所は繰り返し。本家での確かめ方: 最新版の病院の Zone 1 の途中の出来事・Zone 2 の捕まる場面と独房（ナースの動きの尺と歩幅）。
   - 2026-09-20（項目 25）: 独房でナースが消えるときの材質の動き（`MovieSceneComponentMaterialTrack` の `Efficiency` 0 → 1）— 今はトラックを本家どおり組むが、敵ワサミの `BakedMaterial` にそのパラメータが無いので何も起きない（代わりに歩いて去る）。本家での確かめ方: 最新版の独房の場面の 23.9〜24.9 s。
   - 2026-09-20（項目 25）: 場面のシネカメラ（`06_CineCamera`・`CineCameraActor_2`）の画角 — 今は UE 5.8 の `ACineCameraActor` の既定のまま（本家の置いたものは値を何も上書きしないので UE 4.24 の既定。焦点距離・絞り・焦点はシーケンスが動かす）。本家での確かめ方: 最新版の場面の画角とぼけ方。
+  - 2026-09-20（項目 25）: 捕まる場面のカメラアニメ `CameraAnim_Nurse_01`（本家は 20.53〜25.27 s の `MovieSceneCameraAnimTrack` でシネカメラに重ねる）— 今は流さない（UE 5.8 に camera anim のトラックが無く、この CameraAnim は Matinee の Move トラックだけで、`UWasamiCameraAnim` は位置と回転のトラックを持たないため。同じ区間に本家のカメラの揺れ `MovieSceneCameraShakeTrack` は入っている）。本家での確かめ方: 最新版の Zone 2 の捕まる場面の 20.5〜25.3 s（ナースに殴られる所）のカメラの揺れ方
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3

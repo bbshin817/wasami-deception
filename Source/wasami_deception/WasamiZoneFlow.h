@@ -122,9 +122,12 @@ protected:
 
 	/**
 	 * GetSequencePlayer → Play on the LevelSequenceActor placed from the original's actor of that name
-	 * ('06_Hospital_Zone01_ElevatorArrive'); the level build places them with their sequences (dd_sequence).
+	 * ('06_Hospital_Zone01_ElevatorArrive'); the level build places them with their sequences (dd_sequence). With
+	 * Finished given, the flow's event of that name is bound to the player's OnFinished, as the original binds it: how
+	 * a sequence that is no cut scene ends, taking neither the view nor the input (Zone 2's ambulance arrival, which
+	 * drives in while the player walks about).
 	 */
-	void PlaySequence(FName Source);
+	void PlaySequence(FName Source, FName Finished = NAME_None);
 
 	/** GetSequencePlayer on the LevelSequenceActor placed from the original's actor of that name, or null with a warning. */
 	ULevelSequencePlayer* SequencePlayer(FName Source) const;
@@ -200,6 +203,9 @@ protected:
 	TObjectPtr<AWasamiGameMode> Mode;
 
 private:
+	/** The flow's event of that name bound to the sequence player's OnFinished (BindDelegate + AddMulticastDelegate). */
+	void BindSequenceFinished(ULevelSequencePlayer* Player, FName Finished);
+
 	FName Section;
 	bool bArrowShards = true;
 	TOptional<FLinearColor> ArrowColor;
