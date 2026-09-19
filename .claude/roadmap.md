@@ -292,7 +292,7 @@
 - 根拠: `pak_reference_2/_assets/DDeception/Content/UI/Main/TitleScreen/UMG_Extras*.json`・`Extras_*.json`、`pak_reference*/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_Extras*.txt`、`Blueprints/Main/BP_Collectable.txt`（`Unlock`）、`Blueprints/Enums/Enum_Collectables`・`UI/Main/Collectables/Struct_Collectable`、本家のセーブ `SaveSlot` の型、レベルの書類の `Collectables` の値（`_levels/06_Hospital_Zone_0*.full.json`）。実装記録 18（書類）・14（タイトル画面）。
 - 依存: 12、17。
 - 規模: 3
-- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-extras`）。計画の段階で、EXTRAS の画面は最新版の木を写し（病院の書類が解放する Art 19〜22・Sound 5 は最新版にだけある）、タイトルの入口は旧版の並び（NEW GAME と OPTIONS の間）、解放は本作の 1 つのセーブに足す（NEW GAME の消去で消えるのは本家の `Erase Save Files` と同じ）、と決めた。
+- 状態: **完了（2026-09-20）**。セーブ `UWasamiSaveGame` に `ExtrasArt`・`ExtrasSFX` と `Unlock`、書類 `AWasamiCollectable` に `Collectables` と `Unlock`（読んだ写しに足してすぐ書き、ゲームモードの写しにも足す。両ゾーンの書類に本家の値を入れた）、素材の取り込み `dd_ui.import_extras`（絵 5・音 1・焼き込みのシェーダーから組んだ背景の材質）、最新版の `UMG_Extras` と部品（絵・動画・大きく見る画面・音のボタン・再生バー）を木と流れのまま C++ で組んだ画面、タイトル画面の EXTRAS（旧版の並びで NEW GAME と OPTIONS の間。押すと曲が消え、BACK で戻る）を作った（実装記録 06・18・09・19・14・01）。テストは `Wasami.Extras.*` 5 件と `Wasami.Secrets.Collectable.Unlock`。PIE で Zone 1 の秘密のエレベーターの書類（ID 1）を取り、タイトルの EXTRAS で Art Gallery の 19・20 だけが解放されて大きく見られるのを確かめた（19 記録の「確かめたこと」）。**完了の条件の読み替え**: (1) 画面は最新版の木（病院の書類が解放する Art 19〜22・Sound 5 は最新版にだけある）、入口の位置と押したときの流れは旧版のタイトル画面。(2) 本家は EXTRAS を別のセーブ `SaveSlot` に持つが、本作は 1 つのセーブに持ち、消えるのは NEW GAME の消去だけ（本家の `Erase Save Files` と同じ。死亡・RESTART では消えない）。(3) 日記の解放は本家の `Level Ranks` の判定のままで、本作ではいつも ID 0〜8 が解放。動画はいつも鍵で MOVIES の区分は本家どおり隠れる。中身は仮（絵 19〜22 は本作の絵、日記と曲は空、クレジットは本作の数行。`TODO(仮)`）で、何を並べるかは「未回答の要確認」。
 
 ### 24. 捕獲のカメラの動き（本家ホテルの捕獲の体）
 
@@ -417,3 +417,7 @@
 ### 項目 4（敵ワサミの素体、2026-09-18 に閉じた記録 `20260917-enemy-wasami-body`）
 
 - 2026-09-18（2026-09-20 のユーザーの回答: 保留）: 敵の足の運びに合わせた再生の速さ（2026-09-19 に巡回が 200・追跡が 430 になり、`Walk` は 1.11・`Run` は 0.70 で上限・下限に当たらない。下の歩きの滑りは 350 のときの話） — 仮に `Walk` = 速さ / 133 を 0.5〜2 倍、`Run` = 速さ / 450・`Run_Nightmare` = 速さ / 500 を 0.6〜1.8 倍にした。PIE では追跡の走りはほぼ滑らない（1 %）が、巡回 350 cm/s の歩きは上限 2 倍で足が速さの 24 % 滑る（上限を 2.6 にすれば滑らないが、1 秒に約 5 歩のせかせかした歩きになる）。理由: 本家はスケートで速さ 1、範囲は WebGL 版の値、分母は PIE で測った足の速さ。場所: `WasamiEnemyAnimInstance.h` の `TODO(仮): the play rate follows the speed`。
+
+### 項目 29（EXTRAS、2026-09-20 に閉じた記録 `20260920-extras`）
+
+- 2026-09-20: EXTRAS に並べる中身を仮にした（枠組みだけ先に作るというユーザーの回答どおり）。病院の書類が解放する絵 19〜22 は本作の絵（タイトルの顔・ポーズの 2 枚・ポータルのワサミ）、日記 10 と曲 10 は音も名前も空（押せるが鳴らない。曲 5〈本家は Zone 1 の曲 Cold Hearted〉も空）、クレジットは本作の数行（WASAMI DECEPTION / A DARK DECEPTION FAN GAME / ORIGINAL GAME / DARK DECEPTION / GLOWSTICK ENTERTAINMENT）。何を並べるかを決めてほしい（`UWasamiExtrasWidget` の `ArtTextures`・部品の値・`CreditsText` を差し替えるだけ。19 記録）。

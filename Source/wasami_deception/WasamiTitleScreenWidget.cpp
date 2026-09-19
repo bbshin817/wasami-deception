@@ -23,6 +23,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiExtrasWidget.h"
 #include "WasamiGameMode.h"
 #include "WasamiOptionsWidget.h"
 #include "WasamiPopUpWidget.h"
@@ -220,7 +221,8 @@ void UWasamiTitleScreenWidget::BuildScreen(UCanvasPanel* Root)
 	SetTextColour(Notice, UnhoveredColour);
 	Place(Root, Notice, FAnchors(0.f, 1.f), FMargin(48.f, -81.0810546875f, 151.f, 40.f), true);
 
-	// VerticalBox_160: the menu, 421.75 wide from the left edge's middle. Each button is the original's after Setup
+	// VerticalBox_160: the menu, 421.75 wide from the left edge's middle (Chapters and Replay, between NEW GAME and
+	// EXTRAS, are not made). Each button is the original's after Setup
 	// Buttons: its brush title_screen_selection_marker, invisible until hovered or pressed, and UE 4's default button
 	// paddings (UE 5's default style differs).
 	Menu = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox_160"));
@@ -252,17 +254,21 @@ void UWasamiTitleScreenWidget::BuildScreen(UCanvasPanel* Root)
 	};
 	ResumeButton = MakeButton(TEXT("Resume"), TEXT("Resume_Text"), TEXT("RESUME"), ResumeText);
 	NewGameButton = MakeButton(TEXT("NewGame"), TEXT("NewGame_Text"), TEXT("NEW GAME"), NewGameText);
+	ExtrasButton = MakeButton(TEXT("Extras"), TEXT("Extras_Text"), TEXT("EXTRAS"), ExtrasText);
 	OptionsButton = MakeButton(TEXT("Options"), TEXT("Options_Text"), TEXT("OPTIONS"), OptionsText);
 	QuitButton = MakeButton(TEXT("Quit"), TEXT("Quit_Text"), TEXT("QUIT"), QuitText);
 	// The original's ComponentDelegateBinding: RESUME on its press, the others on their click, and each one's hover.
 	ResumeButton->OnPressed.AddDynamic(this, &UWasamiTitleScreenWidget::OnResumePressed);
 	NewGameButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnNewGameClicked);
+	ExtrasButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnExtrasClicked);
 	OptionsButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnOptionsClicked);
 	QuitButton->OnClicked.AddDynamic(this, &UWasamiTitleScreenWidget::OnQuitClicked);
 	ResumeButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnResumeHovered);
 	ResumeButton->OnUnhovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnResumeUnhovered);
 	NewGameButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnNewGameHovered);
 	NewGameButton->OnUnhovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnNewGameUnhovered);
+	ExtrasButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnExtrasHovered);
+	ExtrasButton->OnUnhovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnExtrasUnhovered);
 	OptionsButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnOptionsHovered);
 	OptionsButton->OnUnhovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnOptionsUnhovered);
 	QuitButton->OnHovered.AddDynamic(this, &UWasamiTitleScreenWidget::OnQuitHovered);
@@ -336,6 +342,11 @@ void UWasamiTitleScreenWidget::Begin(bool bInHasProgress)
 		UWidgetBlueprintLibrary::SetInputMode_UIOnlyEx(Controller, this, EMouseLockMode::DoNotLock);
 		Controller->SetShowMouseCursor(true);
 	}
+	FadeInMusic();
+}
+
+void UWasamiTitleScreenWidget::FadeInMusic()
+{
 	// CreateSound2D makes a UI sound (it goes on while the game is paused).
 	if (GetWorld())
 	{
@@ -494,6 +505,19 @@ void UWasamiTitleScreenWidget::PressResume()
 	PlayFadeOut0();
 }
 
+void UWasamiTitleScreenWidget::PressExtras()
+{
+	// @2293: Create(UMG_Extras), AddToViewport(2), its FadeMusic bound to FadeInMusic, the select sound, and
+	// Music.FadeOut(1).
+	Extras = UWasamiExtrasWidget::Show(this);
+	if (Extras)
+	{
+		Extras->OnFadeMusic.AddUObject(this, &UWasamiTitleScreenWidget::FadeInMusic);
+	}
+	PlaySelect();
+	FadeOutMusic(ExtrasMusicFadeOut);
+}
+
 void UWasamiTitleScreenWidget::PressOptions()
 {
 	// @8405: CreateAndAddWidget(UMG_Options, Z 10) and the select sound.
@@ -564,6 +588,11 @@ void UWasamiTitleScreenWidget::OnNewGameClicked()
 	PressNewGame();
 }
 
+void UWasamiTitleScreenWidget::OnExtrasClicked()
+{
+	PressExtras();
+}
+
 void UWasamiTitleScreenWidget::OnOptionsClicked()
 {
 	PressOptions();
@@ -632,6 +661,16 @@ void UWasamiTitleScreenWidget::OnNewGameHovered()
 void UWasamiTitleScreenWidget::OnNewGameUnhovered()
 {
 	SetTextColour(NewGameText, UnhoveredColour);
+}
+
+void UWasamiTitleScreenWidget::OnExtrasHovered()
+{
+	SetTextColour(ExtrasText, FLinearColor::White);
+}
+
+void UWasamiTitleScreenWidget::OnExtrasUnhovered()
+{
+	SetTextColour(ExtrasText, UnhoveredColour);
 }
 
 void UWasamiTitleScreenWidget::OnOptionsHovered()

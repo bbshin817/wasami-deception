@@ -596,6 +596,119 @@ bool FWasamiSecretsCollectableSaveTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+namespace
+{
+	const FString UnlockTestSlotName(TEXT("WasamiTest_Extras"));
+
+	FWasamiCollectableEntry UnlockEntry(EWasamiCollectableType Type, int32 ID)
+	{
+		FWasamiCollectableEntry Entry;
+		Entry.Type = Type;
+		Entry.ID = ID;
+		return Entry;
+	}
+
+	UWasamiSaveGame* ReadUnlockTestSave()
+	{
+		return Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(UnlockTestSlotName, UWasamiSaveGame::UserIndex));
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsCollectableUnlockTest, "Wasami.Secrets.Collectable.Unlock",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsCollectableUnlockTest::RunTest(const FString& Parameters)
+{
+	using E = EWasamiCollectableType;
+
+	// Unlock's switch: Art Gallery into Extras_Art, Sound into Extras_SFX, once each; Diary and Movie nowhere.
+	UWasamiSaveGame* Lists = NewObject<UWasamiSaveGame>();
+	TestTrue(TEXT("nothing unlocked in a new save"), Lists->ExtrasArt.IsEmpty() && Lists->ExtrasSFX.IsEmpty());
+	TestTrue(TEXT("an Art Gallery one goes in"), Lists->Unlock(UnlockEntry(E::ArtGallery, 19)));
+	TestTrue(TEXT("and again"), Lists->Unlock(UnlockEntry(E::ArtGallery, 19)));
+	TestTrue(TEXT("a Sound one goes in"), Lists->Unlock(UnlockEntry(E::Sound, 5)));
+	TestFalse(TEXT("a Diary one goes nowhere"), Lists->Unlock(UnlockEntry(E::Diary, 0)));
+	TestFalse(TEXT("nor a Movie one"), Lists->Unlock(UnlockEntry(E::Movie, 0)));
+	TestEqual(TEXT("Extras_Art has 19 once"), Lists->ExtrasArt, TArray<int32>{19});
+	TestEqual(TEXT("Extras_SFX has 5"), Lists->ExtrasSFX, TArray<int32>{5});
+	TestTrue(TEXT("Art Gallery 19 unlocked"), Lists->IsUnlocked(UnlockEntry(E::ArtGallery, 19)));
+	TestFalse(TEXT("not Art Gallery 5"), Lists->IsUnlocked(UnlockEntry(E::ArtGallery, 5)));
+	TestTrue(TEXT("Sound 5 unlocked"), Lists->IsUnlocked(UnlockEntry(E::Sound, 5)));
+	TestFalse(TEXT("never a Diary"), Lists->IsUnlocked(UnlockEntry(E::Diary, 0)));
+
+	// No player: the files are taken by Collect, and NEW EXTRAS UNLOCKED! has no screen to go on.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	AWasamiGameMode* Mode = World->GetAuthGameMode<AWasamiGameMode>();
+	UWasamiSaveGame* Held = SecretsSave(*this, World);
+	if (!Held)
+	{
+		return false;
+	}
+	FSecretsSaveGuard Guard(Held->Hospital.Secrets);
+	Held->ExtrasArt.Reset();
+	Held->ExtrasSFX.Reset();
+	Mode->SaveSlotName = UnlockTestSlotName;
+
+	// The written save's progress is the last checkpoint's; the game mode's copy has gone on since.
+	UWasamiSaveGame* Written = NewObject<UWasamiSaveGame>();
+	Written->Hospital.LevelCheckpoint = 5;
+	UGameplayStatics::SaveGameToSlot(Written, UnlockTestSlotName, UWasamiSaveGame::UserIndex);
+	Held->Hospital.LevelCheckpoint = 6;
+
+	// Zone 1's file behind the secret elevator: ID 1, Art Gallery 19 and 20 (a Diary entry added to see it skipped).
+	AWasamiCollectable* File = SpawnCollectable(World, 1, FVector::ZeroVector);
+	if (!TestNotNull(TEXT("the file"), File))
+	{
+		return false;
+	}
+	File->Collectables = {UnlockEntry(E::ArtGallery, 19), UnlockEntry(E::ArtGallery, 20), UnlockEntry(E::Diary, 3)};
+	File->Collect();
+	UWasamiSaveGame* Read = ReadUnlockTestSave();
+	if (!TestNotNull(TEXT("the save written"), Read))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Art Gallery 19 and 20 written there and then"), Read->ExtrasArt, TArray<int32>({19, 20}));
+	TestTrue(TEXT("no sound"), Read->ExtrasSFX.IsEmpty());
+	TestEqual(TEXT("the written progress kept (the last checkpoint's)"), Read->Hospital.LevelCheckpoint, 5);
+	TestTrue(TEXT("the ID not written until a checkpoint's save"), Read->Hospital.Secrets.IsEmpty());
+	TestEqual(TEXT("the game mode's copy has the extras too"), Held->ExtrasArt, TArray<int32>({19, 20}));
+	TestEqual(TEXT("and the ID in its Secrets"), Held->Hospital.Secrets, TArray<int32>{1});
+
+	// Zone 1's other file: ID 0, Sound 5 (and 19 again, to see it kept once).
+	AWasamiCollectable* Other = SpawnCollectable(World, 0, FVector(0., 2000., 0.));
+	if (!TestNotNull(TEXT("the other file"), Other))
+	{
+		return false;
+	}
+	Other->Collectables = {UnlockEntry(E::Sound, 5), UnlockEntry(E::ArtGallery, 19)};
+	Other->Collect();
+	Read = ReadUnlockTestSave();
+	TestEqual(TEXT("Sound 5 written"), Read ? Read->ExtrasSFX : TArray<int32>(), TArray<int32>{5});
+	TestEqual(TEXT("Art Gallery as it was"), Read ? Read->ExtrasArt : TArray<int32>(), TArray<int32>({19, 20}));
+	TestEqual(TEXT("both IDs held"), Held->Hospital.Secrets, TArray<int32>({1, 0}));
+
+	// With no save in the slot the original's loop reads nothing and goes on: nothing written, nothing unlocked.
+	UGameplayStatics::DeleteGameInSlot(UnlockTestSlotName, UWasamiSaveGame::UserIndex);
+	AWasamiCollectable* Unsaved = SpawnCollectable(World, 2, FVector(0., 4000., 0.));
+	if (!TestNotNull(TEXT("Zone 2's file"), Unsaved))
+	{
+		return false;
+	}
+	Unsaved->Collectables = {UnlockEntry(E::ArtGallery, 21), UnlockEntry(E::ArtGallery, 22)};
+	Unsaved->Collect();
+	TestFalse(TEXT("no save written"), UGameplayStatics::DoesSaveGameExist(UnlockTestSlotName, UWasamiSaveGame::UserIndex));
+	TestEqual(TEXT("nothing unlocked"), Held->ExtrasArt, TArray<int32>({19, 20}));
+	TestEqual(TEXT("the ID held all the same"), Held->Hospital.Secrets, TArray<int32>({1, 0, 2}));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsRoomZoneTest, "Wasami.Secrets.SecretRoomZone",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 

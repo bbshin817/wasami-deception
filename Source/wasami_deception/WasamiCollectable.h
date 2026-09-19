@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "WasamiSaveGame.h"
 #include "WasamiCollectable.generated.h"
 
 class UBoxComponent;
@@ -15,11 +16,10 @@ class UStaticMeshComponent;
  * bobbing and turning over a small light, taken by walking into its box. BeginPlay plays Bounce (its 5 s loop at 3
  * times its speed: the folder between 35 and 40 cm up and turned 0 to 7°), and 0.2 s on removes the file if the save
  * already has its ID among the level's Secrets. The player's touch takes it once: the pickup voice (2D, at 0.85), NEW
- * EXTRAS UNLOCKED! on the player's screen (UWasamiCollectablesWidget), its ID into the save's Secrets (written at the next
- * checkpoint's save; the score's SECRETS counts them), and the file gone with its light.
- * TODO(item 29): Unlock's extras (the ones its Collectables list names, into the original's other save's Extras_Art
- * and Extras_SFX) are left out, with the list, until the extras screen is made (the user's answer of 2026-09-20: made,
- * and opened from the title screen; the work list's item 29).
+ * EXTRAS UNLOCKED! on the player's screen (UWasamiCollectablesWidget), Unlock, and the file gone with its light. Unlock
+ * puts the extras its Collectables list names into the save's ExtrasArt and ExtrasSFX, written there and then (the
+ * extras screen off the title screen shows them), and its ID into the save's Secrets (written at the next checkpoint's
+ * save; the score's SECRETS counts them).
  *
  * Secret? (true on every file) only adds to the game state's Secrets Amount, which nothing reads, and starts the hotel's
  * achievement, so it is left out: the ID goes into the save's Secrets either way (Unlock's end). So are the Audio
@@ -43,8 +43,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collectable")
 	int32 ID = 0;
 
+	/**
+	 * Collectables: the extras it unlocks (the level's values: Zone 1's file 1 Art Gallery 19 and 20, its file 0 Sound
+	 * 5, Zone 2's file 2 Art Gallery 21 and 22; the one after the maze none).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collectable")
+	TArray<FWasamiCollectableEntry> Collectables;
+
 	/** Collect (the box's overlap with the player; the tests call it directly): the pickup, once. */
 	void Collect();
+
+	/**
+	 * Unlock: for each of Collectables, the save read from its slot (none: on to the next), the extra put into its list
+	 * (UWasamiSaveGame::Unlock) and the save written; then the ID into the game mode's save's Secrets. The original
+	 * writes the extras to its other save (SaveSlot) and leaves the game mode's copy of it alone; this game's one save
+	 * holds both, so the game mode's copy takes the extras as well, or the next checkpoint's save would write them out.
+	 */
+	void Unlock();
 
 	/** Whether it has been taken (the DoOnce is closed). */
 	bool IsTaken() const { return bTaken; }

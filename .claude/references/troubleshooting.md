@@ -256,6 +256,7 @@
 - `SkeletalMeshSocket` の `socket_name`・`bone_name`（読むだけ）: ソケットをメッシュを outer に作って `set_socket_parent(mesh, 骨)` で骨を決め、`mesh.add_socket(socket, True)`（UE 5.8 は `Socket` と名付けてメッシュの一覧に入れ、骨格に写しを足す）→ `mesh.rename_socket("Socket", 名前)`（両方の名前が変わる）。消すのは `remove_socket(名前)`（両方から消える）。`dd_skeletal.add_sockets`（01 記録。2026-09-19）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
 - `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
+- **ウィジェットを作る `Create`（`CreateWidget`）**: `unreal.WidgetLibrary.create` は無い（`type object 'WidgetLibrary' has no attribute 'create'`。K2 専用）。`unreal.new_object(cls, outer=pc)` → `add_to_viewport` は画面に載る（`is_in_viewport()` が True）が、**C++ で木を組むウィジェットは何も映らない**: 本作のウィジェットは `RebuildWidget` で `WidgetTree` があるときだけ木を組み、`WidgetTree` を作る `Initialize` は `CreateWidget` の中か、`Super::RebuildWidget` の中（木を組む判定の後）でしか呼ばれないので、空の木のまま載る。対処: そのウィジェットの BlueprintCallable の `Show(WorldContext)`（`CreateWidget` → `AddToViewport`。タイトル・オプション・EXTRAS の画面にある）を `unreal.WasamiExtrasWidget.show(world)` のように呼ぶ。無ければ足してビルドする（2026-09-20。エディタの開き直し 1 回。19 記録）。
 
 ### 毎フレームのコールバック（`register_slate_post_tick_callback`）が例外で黙って外れ、記録を失う
 
@@ -286,6 +287,7 @@
 - 2026-09-18: **エンジンのヘッダーの引数名ともぶつかる**（`error C4459: declaration of 'BoxExtent' hides global declaration`）。無名名前空間の名前はその翻訳単位では大域に見えるので、同じ塊に入った `Kismet/KismetMathLibrary.inl` の `BreakBoxSphereBounds(…, FVector& BoxExtent, …)` が `WasamiDoorBreak.cpp` の `BoxExtent` を隠すと言われた（`WasamiDoubleDoors.cpp` を足して塊が変わった）。`BoxExtent`・`ComponentScale` のような一般の名前は避け、ファイルの頭字を付ける（`DoorBreakBoxExtent`・`DoorsLeaveScale`）。
 - 2026-09-19: **未コミットのファイルは塊の外でコンパイルされるので、ビルドが通ってもコミットの後に落ちることがある**（UBT の適応ユニティビルドは、git で変更中のファイルをユニティの塊から外す）。項目 7 のステップ 5a で足した `WasamiViewcone.cpp` の `MinimapTag`・`OpacityName` が `WasamiPlayerCharacter.cpp`・`WasamiPrimalPower.cpp` とぶつかっていたのに、ステップ 5a のビルドは通り、コミットした後の次のビルドで落ちた。C++ のファイルを足したら、コミットの前に上の洗い出しをする（`python Tools/check_unity_names.py`。2026-09-19 から。引数の違う同じ名前の関数は多重定義として数えない）。落ちた後に直すときは、直しを先にコミットしてからビルドすると、塊が本来のまとまり方になって残りのぶつかりも出る。
 - 2026-09-19: 作業一覧の項目 10 のステップ 4 で、ステップ 2・3 でコミットした `WasamiVignetteSidesWidget.cpp`（`VignetteScaleKeys`・`SetScale` ほか。`WasamiShardStreakWidget.cpp` と）と `WasamiStunCollectEffect.cpp`（`GrowthKeys` ほか。`WasamiPrimalPower.cpp` と）が、ファイルを足した次のビルドで落ちた。同じ遅れの落ち方で、洗い出しを道具にした。
+- 2026-09-20: 作業一覧の項目 29 のステップ 5 で、ステップ 1 と 4 で足した名前（`WasamiCollectable.cpp` の `MakeBounceCurve` が `WasamiTabletWidget.cpp` と、`WasamiExtrasWidget.cpp` の `ExtrasPlace` が `WasamiExtrasItemWidget.cpp` と〈既定の引数の違う多重定義は呼び出しが曖昧になる〉）が、タイトル画面を変えた次のビルドで落ちた。どちらも洗い出しの道具なら拾えたが、走らせていなかった。**`Tools/editor_cycle.py` がビルドの前に `check_unity_names.py` を走らせ、ぶつかりがあればエディタを閉じずに止まる**ようにした（2026-09-20）。
 - `Tools/editor_cycle.py` はビルドに失敗するとエディタを閉じたままにする。直したら `python Tools/editor_cycle.py --no-quit` でビルドして開く。
 - 出典: 04 記録の「既知の制約」と「確かめたこと」（ステップ 7・8）、進捗記録 `20260917-enemy-wasami-body.md` のステップ 4、11 記録（作業一覧の項目 6 のステップ 1・3c）。
 

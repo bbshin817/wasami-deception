@@ -190,7 +190,8 @@ MATRON_CONE_CLASSES = {"BP_06_Miniboss_viewcone_Matron_Long_C": "WasamiViewconeM
                        "BP_06_Miniboss_viewcone_Matron_Short_C": "WasamiViewconeMatronShort"}
 ENEMY_FOLDER = "Hospital/Gameplay/Enemies"
 # The secrets (item 12): the secret files (BP_Collectable → AWasamiCollectable, with its ID: Zone 1's 0 and 1 behind the
-# secret elevators, Zone 2's 2 in the mysterious room; the 3rd is Zone 2's flow's, after the maze), Zone 2's mysterious
+# secret elevators, Zone 2's 2 in the mysterious room; the 3rd is Zone 2's flow's, after the maze; and the extras it
+# unlocks, its Collectables), Zone 2's mysterious
 # room (BP_SecretRoomZone → AWasamiSecretRoomZone, its Box moved and sized as the placed one's), the secret wall before
 # it (BP_07_Zone1_SecretWall → AWasamiSecretWall, its StaticMesh moved and given the placed one's material over
 # manor_fake_wall) and the room's three notes (BP_MysteryCollectable → AWasamiMysteryCollectable: its Texture, its Texts
@@ -206,6 +207,8 @@ SECRET_CLASSES = {"BP_Collectable_C": "WasamiCollectable", "BP_SecretRoomZone_C"
                   "BP_FakeUseActor_06_HospitalZone1_Elevator_C": "WasamiFakeUseElevator"}
 COLLECTABLE_CLASS = "BP_Collectable_C"
 SECRET_PROPS = {"ID": "id"}
+# A file's Collectables (the extras it unlocks; item 29): Enum_Collectables' numbers → EWasamiCollectableType.
+COLLECTABLE_TYPES = ("ART_GALLERY", "DIARY", "SOUND", "MOVIE")
 SECRET_PARTS = {"BP_SecretRoomZone_C": {"Box": "box"}, "BP_07_Zone1_SecretWall_C": {"StaticMesh": "static_mesh"},
                 "BP_MysteryCollectable_C": {"Plane": "plane"}}
 SECRET_WALL_MESH = "/Game/Meshes/03_Manor/manor_fake_wall"
@@ -749,13 +752,19 @@ def _note_texts(refs, strings):
 
 
 def set_secret(actor, stage, zone, a, level, strings):
-    """A secret placed from the original's (a: its stage entry): its ID, its parts moved as the placed one's
-    (SECRET_PARTS), the wall's mesh and material, a note's texture, texts and paper, a decoy's doors. Returns the names
-    of its own values that are not written."""
+    """A secret placed from the original's (a: its stage entry): its ID, a file's Collectables, its parts moved as the
+    placed one's (SECRET_PARTS), the wall's mesh and material, a note's texture, texts and paper, a decoy's doors.
+    Returns the names of its own values that are not written."""
     for key, name in SECRET_PROPS.items():
         if key in a["props"]:
             actor.set_editor_property(name, a["props"][key])
     written = set(SECRET_PROPS)
+    if a["class"] == COLLECTABLE_CLASS:
+        actor.set_editor_property("collectables", [
+            unreal.WasamiCollectableEntry(type=getattr(unreal.WasamiCollectableType, COLLECTABLE_TYPES[c["Type"]]),
+                                          id=c["ID"])
+            for c in a["props"].get("Collectables", [])])
+        written |= {"Collectables"}
     parts = {part: _level_props(zone, "%s.%s" % (a["name"], part), level) for part in SECRET_PARTS.get(a["class"], {})}
     for part, prop in SECRET_PARTS.get(a["class"], {}).items():
         _set_part(actor.get_editor_property(prop), parts[part])

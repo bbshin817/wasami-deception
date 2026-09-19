@@ -23,7 +23,7 @@ updated: 2026-09-20
 # 秘密と収集物
 
 ## 役割
-本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）。PIE で確かめた（下の「確かめたこと」）。書類が本家の別のセーブに足す EXTRAS は作業一覧の項目 29。
+本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）。PIE で確かめた（下の「確かめたこと」）。書類が解放する EXTRAS（`Unlock`。本家の別のセーブ `SaveSlot` の `Extras_Art`・`Extras_SFX`）はセーブに足して保存する（2026-09-20、作業一覧の項目 29。画面は 19 記録）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_secrets()`（素材。前処理 `Tools/dd/prepare_stage.py` と `WasamiStageTools.import_dd_stage_assets` を残りが 0 になるまで、`import_dd_tablet`・`import_dd_ui` の後に）。戻り値 `sounds` 5 / `textures` 6 / `meshes` 1 / `materials` 1。
@@ -31,12 +31,12 @@ updated: 2026-09-20
 - `UWasamiCollectablesWidget`（本家 `UMG_Collectables`）: `Show(WorldContext)`（`AddToPlayerScreen(0)`。最初のプレイヤーのコントローラーで作り、無ければ null）・`LoadAssets`・`Begin`（Construct）/`Advance`（ティック）・`GetIconIndex`・`EvaluateScale`/`EvaluateOpacity`/`EvaluateFlashOpacity`。
 - `UWasamiCollectablesSecretWidget`（`UMG_Collectables_Secret`。上の派生）: `Show`（`AddToViewport(1)`）・`LoadAssets`。
 - `UWasamiMysteryNoteWidget`（`UMG_MysteryNote`）: `Show(WorldContext, Texture, Texts, bLoreNote)`（`AddToViewport(2)`）・`Begin`/`Advance`・`PressNextPage`・`PressClose`・`GetCurrentText`・`GetPageText`・`Evaluate*`。
-- `AWasamiCollectable`（本家 `BP_Collectable`）: `ID`（セーブの `Secrets` の番号）・`FileMesh`（`secret_file` のソフト参照）・`Collect()`（取る。DoOnce）・`IsTaken`・`GetBouncePosition`・`EvaluateBounce`/`BounceHeight`/`BounceYaw`・部品の取得。
+- `AWasamiCollectable`（本家 `BP_Collectable`）: `ID`（セーブの `Secrets` の番号）・`Collectables`（解放する EXTRAS。`FWasamiCollectableEntry` の配列、06 記録）・`FileMesh`（`secret_file` のソフト参照）・`Collect()`（取る。DoOnce）・`Unlock()`・`IsTaken`・`GetBouncePosition`・`EvaluateBounce`/`BounceHeight`/`BounceYaw`・部品の取得。
 - `AWasamiSecretRoomZone`（`BP_SecretRoomZone`）: `NotifyPlayerOverlap(bBegin)`（箱の重なりがプレイヤーのときだけ呼ぶ）・`GetGlitchOpacity`・`HasShownBanner`・`GetWhispers`・`GetGlitch`/`GetGlitchMaterial`。
 - `AWasamiSecretWall`（`BP_03_SecretWall1` と子 `BP_07_Zone1_SecretWall` の既定値）: `IWasamiInteractable`（05 記録）・`Height`（275）・`IsUsed`/`IsMoving`/`GetMoveUpPosition`/`GetOGHeight`/`GetInterpHeight`・`EvaluateMoveUp`。
 - `AWasamiMysteryCollectable`（`BP_MysteryCollectable`）: `IWasamiInteractable`・`Texture`（ソフト参照）・`Texts`・`bLoreNote`（`Lore Note`）・`GetLastNote`・`GetPlane`。
 - `AWasamiFakeUseActor`（`BP_FakeUseActor`）: `IWasamiInteractable`・`bInactive`・`OnUsed`（`Used`）・`Activate()`・`IsUsed`・`GetBox`。派生 `AWasamiFakeUseSequencePlayer`（`_SequencePlayer`）: `Sequence`（レベルの `ALevelSequenceActor`）。派生 `AWasamiFakeUseElevator`（`BP_FakeUseActor_06_HospitalZone1_Elevator`）: `EvaluateDoors`・`DoorsStart`/`DoorsEnd`/`SequenceLength`/`DoorTravel`・`IsPlaying`/`GetSequencePosition`・部品の取得（`GetRightDoor` = `StaticMesh`・`GetLeftDoor` = `StaticMesh1`）。
-- テスト `Wasami.Secrets.Widgets.Collectables`・`.Secret`・`.MysteryNote`、`Wasami.Secrets.Collectable.Parts`・`.Collect`・`.Save`、`Wasami.Secrets.SecretRoomZone`、`Wasami.Secrets.SecretWall`、`Wasami.Secrets.MysteryCollectable`、`Wasami.Secrets.FakeUse.Actor`・`.SequencePlayer`・`.Elevator`。
+- テスト `Wasami.Secrets.Widgets.Collectables`・`.Secret`・`.MysteryNote`、`Wasami.Secrets.Collectable.Parts`・`.Collect`・`.Save`・`.Unlock`、`Wasami.Secrets.SecretRoomZone`、`Wasami.Secrets.SecretWall`、`Wasami.Secrets.MysteryCollectable`、`Wasami.Secrets.FakeUse.Actor`・`.SequencePlayer`・`.Elevator`。
 
 ## 内部構造と処理の流れ
 - `import_all`: 先にステージとタブレット・UI が作るもの（`STAGE_MADE`・`NEEDS`）があるかを確かめ、無ければ何を先に走らせるかを書いて止まる。音 5・絵 6 を取り込み（`dd_assets.sound`・`texture`。書き出しの音量・ループ・音のクラス、絵の圧縮・sRGB・LOD の群）、書類のメッシュに材質を入れ、グリッチの材質を組み、`/Game/DD` と `/Game/Pipeline` を保存する。
@@ -57,8 +57,9 @@ updated: 2026-09-20
 - 書類 `AWasamiCollectable`: 部品は `DefaultSceneRoot` → `Box`（z 36.44・拡縮 (1.23, 1.30, 1)。UE の重なりの箱、道の外）・`StaticMesh`（z 36.44・60 倍・当たりなし。メッシュは `OnConstruction` が `FileMesh` を読み込んで入れる〈特殊シャードと同じ作り。レベルの組み立てが置くものも、迷路の後に流れが出すものも同じ〉）・`PointLight`（根の上 z 35.77、1000〈単位なし〉・250 cm・`SoftSourceRadius` 2000・影なし・Movable）。
   - BeginPlay: 取るときの声と画面の素材を読み込み、`Bounce` を 0 から、0.2 s のタイマーでセーブの確かめ（ゲームモードのセーブの `Hospital.Secrets` が `ID` を含めば `Destroy`）。
   - ティック（`Bounce`。5 s のループを 3 倍の速さ、位置は 5 で回る）: `NewTrack_0`（0・1・0 を 0・2.5・5 s、3 次で接線は 0）の値 v で、メッシュの相対位置 (0, 0, Lerp(35, 40, v))・ヨー Lerp(0, 7, v)。
-  - 箱の重なり → 相手が `GetPlayerCharacter(0)` なら `Collect`: DoOnce → `CreateSound2D(Bierce_Secret_Files_Pickup, 0.85, 1)`・`Play`（ワールドの音なので書類が消えても鳴り続ける）→ `UWasamiCollectablesWidget::Show` → セーブの `Hospital.Secrets` に `AddUnique(ID)` → `Destroy`（灯も一緒に消える）。
-  - 写さないもの: `Unlock` の EXTRAS（`Collectables` の型で本家の別のセーブ `SaveSlot` の `Extras_Art`・`Extras_SFX` に足して保存。作業一覧の項目 29 で作る。`TODO(item 29)`）と `Collectables` の変数、`Secret?`（真なら、ゲームステートの `Secrets Amount`〈どこも読まない〉を足し、レベルがホテルなら実績。セーブの `Secrets` への `AddUnique` は `Unlock` の終わりで `Secret?` に関わらず行う）、使われない `Audio` の部品、`Bounce` が待つ `DD_GameState` への cast。
+  - 箱の重なり → 相手が `GetPlayerCharacter(0)` なら `Collect`: DoOnce → `CreateSound2D(Bierce_Secret_Files_Pickup, 0.85, 1)`・`Play`（ワールドの音なので書類が消えても鳴り続ける）→ `UWasamiCollectablesWidget::Show` → `Unlock` → `Destroy`（灯も一緒に消える）。
+  - `Unlock`（本家 @3481）: `Collectables` を順に、セーブをスロット（ゲームモードの `SaveSlotName`。無ければ `structSlot`）から読み（読めなければ次へ）、`UWasamiSaveGame::Unlock` で型の欄に足し、Art Gallery・Sound のときはすぐ書く。本家はゲームモードの写し（`Global Save Instance`）に足さないが、本作のセーブは 1 つでチェックポイントの保存がゲームモードの写しを書くので、ゲームモードの写しにも同じものを足す（足さないと次のチェックポイントで消える）。ディスクには読んだ写しを書くので、病院の進み（`Hospital`）は前のチェックポイントのまま。本家のループの終わりの `SaveGameToSlot`（最後に読んだものを変えずにもう一度書く）は省く。終わりにゲームモードのセーブの `Hospital.Secrets` に `AddUnique(ID)`。
+  - 写さないもの: `Secret?`（真なら、ゲームステートの `Secrets Amount`〈どこも読まない〉を足し、レベルがホテルなら実績。セーブの `Secrets` への `AddUnique` は `Unlock` の終わりで `Secret?` に関わらず行う）、使われない `Audio` の部品、`Bounce` が待つ `DD_GameState` への cast。
 - 秘密の部屋の区域 `AWasamiSecretRoomZone`: 部品は `DefaultSceneRoot` → `Box`（z 20・拡縮 (5, 2, 1.5)。Zone 2 の置き方は自分の大きさを持つ）・`Glitch`（本家の子のアクタ `Chameleon` の `InternalPP` の代わりの後処理。`bUnbound`・`BlendRadius` 0）。
   - BeginPlay: 画面の素材を読み込み、`CreateSound2D(67-Dark_Whispers_SFX_0704, 1, 1, 0, None, False, False)` を持つ（自動で消えない UI の音。テストのワールドでは作られない）。グリッチ `M_DD_ChameleonGlitch` の MID を作り、Chameleon の `Glitch Func` が入れる値（`Amount` 0.5〈`Glitch Blocking`〉・`Speed` 10・`Density` 30〈`Glitch Lines`〉・`GridDistortionPower` 0.001・`Size` 10・`Speed` 1〈Chameleon の既定〉）を入れて `AddOrUpdateBlendable(MID, 1)`、`BlendingOpacity` 0。
   - 箱の重なり（プレイヤーだけ）→ 入る: 囁き `FadeIn(1, 1, 0)`・`BlendingOpacity` 1・DoOnce で `UWasamiCollectablesSecretWidget::Show`。出る: `FadeOut(1, 0)`・`BlendingOpacity` 0。
@@ -76,7 +77,7 @@ updated: 2026-09-20
   - `AWasamiFakeUseSequencePlayer`: `UsedEvent` → `Sequence->GetSequencePlayer()->Play()`（無ければ警告だけ）。Zone 1 の秘密のエレベーター 2 つ（`BP_FakeUseActor_2` → `06_Hospital_Zone1_SecretElevator`、`BP_FakeUseActor5` → `…SecretElevator1_2`）。
   - `AWasamiFakeUseElevator`: 部品は `Scene`（根の下、相対 (305, 70, −145)）→ `StaticMesh`（右の扉）・`StaticMesh1`（左の扉）・`Audio1`（相対 (0, 0, 160)・自動で鳴らない。BeginPlay で `DD_TT_Elevator_Doors_Open` と `01_Lobby_Attenuation` を入れる）。扉は UE の `BlockAllDynamic`・道の外、メッシュはレベルの組み立てが入れる（`hospital_elevator_doors_R_elevator_door`・`…_L_elevator_door_`）。
     - `UsedEvent` → `ActorSequence` を頭から（ティックで進める）→ `Audio1.Play(0)`（音は使った時に、扉は 2.23 s から）。本家の `ActorSequence`（5 s = 120000 ÷ 24000）は `StaticMesh1` の x を 0 → 145、`StaticMesh` の x を 0 → −145 を 53600〜119200（2.23〜4.97 s）で動かす 2 本の変形のトラック（キー 2 つの 3 次・自動の接線は両端で 0 = `3t² − 2t³`。回転 0・拡縮 1 もキー）で、区間は `KeepState`・範囲は無限。ティックは相対の変形ごと (±x, 0, 0) に入れ、5 s で止めて開いたまま。
-- 置き方（レベルの組み立て `dd_level._flow`。01 記録。`place_dd_flow` で置き直す）: 本家のクラス → C++ の表 `SECRET_CLASSES`、`set_secret` が置いたものの値を入れる。書類は `ID`（Zone 1 の `BP_Collectable_2` は既定の 0・`BP_Collectable2_5` は 1、Zone 2 の `BP_Collectable_2` は 2）。区域は `Box` の相対の変形（Zone 2: (−95, 0, 20)・拡縮 (13.83, 16.22, 1.5)）。壁は `StaticMesh` の相対 (18.53, 0, 0) と `manor_fake_wall` に置いたものの材質 `M_06_Hospital_Brick_01`（根の拡縮 2.146 はアクタの拡縮）。メモは根の変形（回転・拡縮も）、`Texture`（`/Game/DD/Textures/06_Hospital/…`）、`Texts`（書き出しの文字列表の参照 `06_Hospital_Note_00`〜`02` を本家の `Blueprints/Main/Strings/Strings` の本文にした文字列。文字列表は取り込まない）、`Plane` の相対の変形（0 に戻す）と材質（`M_06_Hospital_MysteryRoom_Note_01`〜`03`）。おとりのエレベーターは扉 2 枚のメッシュ（右 `StaticMesh` = `hospital_elevator_doors_R_elevator_door`、左 `StaticMesh1` = `…_L_elevator_door_`、材質はメッシュのもの）。秘密のエレベーターの `Sequence` は `link_sequence_players` が書き出しの `Sequence` の名前（`06_Hospital_Zone1_SecretElevator`・`…SecretElevator1_2`）のタグ `src:` の `LevelSequenceActor` に結ぶ。シーケンスのアクタは `dd_sequence` が流れのアクタの後に置き直すので、`place_flow` の後と `dd_sequence.place_all` の終わりの両方で結ぶ。フォルダは `Hospital/Gameplay/Secrets`。書類の灯は書類の部品なので、前処理が書類の下に挙げる灯は置かない（`_lights` が飛ばし、`place_flow` が前の組み立てのもの〈`Hospital/Lights/BP_Collectable_C`〉を消す。どれも Movable で焼いた光に入っていない）。
+- 置き方（レベルの組み立て `dd_level._flow`。01 記録。`place_dd_flow` で置き直す）: 本家のクラス → C++ の表 `SECRET_CLASSES`、`set_secret` が置いたものの値を入れる。書類は `ID`（Zone 1 の `BP_Collectable_2` は既定の 0・`BP_Collectable2_5` は 1、Zone 2 の `BP_Collectable_2` は 2）と `Collectables`（Zone 1 の ID 1 = Art Gallery 19・20、ID 0 = Sound 5、Zone 2 の ID 2 = Art Gallery 21・22。`pak_reference_2/_levels/06_Hospital_Zone_0*.full.json`。迷路の後の ID 3 は流れが `ID` だけ入れるので無し）。区域は `Box` の相対の変形（Zone 2: (−95, 0, 20)・拡縮 (13.83, 16.22, 1.5)）。壁は `StaticMesh` の相対 (18.53, 0, 0) と `manor_fake_wall` に置いたものの材質 `M_06_Hospital_Brick_01`（根の拡縮 2.146 はアクタの拡縮）。メモは根の変形（回転・拡縮も）、`Texture`（`/Game/DD/Textures/06_Hospital/…`）、`Texts`（書き出しの文字列表の参照 `06_Hospital_Note_00`〜`02` を本家の `Blueprints/Main/Strings/Strings` の本文にした文字列。文字列表は取り込まない）、`Plane` の相対の変形（0 に戻す）と材質（`M_06_Hospital_MysteryRoom_Note_01`〜`03`）。おとりのエレベーターは扉 2 枚のメッシュ（右 `StaticMesh` = `hospital_elevator_doors_R_elevator_door`、左 `StaticMesh1` = `…_L_elevator_door_`、材質はメッシュのもの）。秘密のエレベーターの `Sequence` は `link_sequence_players` が書き出しの `Sequence` の名前（`06_Hospital_Zone1_SecretElevator`・`…SecretElevator1_2`）のタグ `src:` の `LevelSequenceActor` に結ぶ。シーケンスのアクタは `dd_sequence` が流れのアクタの後に置き直すので、`place_flow` の後と `dd_sequence.place_all` の終わりの両方で結ぶ。フォルダは `Hospital/Gameplay/Secrets`。書類の灯は書類の部品なので、前処理が書類の下に挙げる灯は置かない（`_lights` が飛ばし、`place_flow` が前の組み立てのもの〈`Hospital/Lights/BP_Collectable_C`〉を消す。どれも Movable で焼いた光に入っていない）。
 - 迷路の後の書類（11 記録の `Postmaze Transition`）: `AWasamiZone2Flow::PostmazeTransition` が目印 `collec` の変形に `AWasamiCollectable` を `ID` 3 で出す（本家 `BeginDeferredActorSpawnFromClass(BP_Collectable, …, 2)` = `AdjustIfPossibleButAlwaysSpawn`・`SetIntPropertyByName(ID, 3)`）。チェックポイント 10 から始め直すたびに出て、セーブに 3 があれば 0.2 s 後に消える。
 - ウィジェットのアニメの区間が途中で終わった後は、区間の最後の値が残る: 本家の BaseEngine.ini は `WidgetAnimation` の `DefaultCompletionMode` を設定せず、既定は 0 = `KeepState`（区間は `ProjectDefault` でそれに従う）。メモのぼかしは `Open` の後も 3（木の 2 に戻らない）。
 
@@ -103,10 +104,10 @@ updated: 2026-09-20
 
 ## 既知の制約・注意点
 - グリッチは推定（大目標 1・2 の決め方。本家の画面とは見比べていない）。本家の絵と並べて詰めるのは作業一覧の項目 28。
-- 書類の画面は本家どおり出すが、EXTRAS（本家の別のセーブの `Extras_Art`・`Extras_SFX`）はまだ無いので、引いた絵は何にも残らない（`TODO(item 29)`）。2026-09-20 のユーザーの回答で、EXTRAS は作ってタイトル画面から見られる形にする（中身は枠組みだけ先に作る）。作業一覧の項目 29。
+- 書類の画面が引く絵は乱数で、何を解放したかとは関わらない（本家どおり）。解放した EXTRAS を見る画面はタイトル画面の EXTRAS（2026-09-20 のユーザーの回答。作業一覧の項目 29）。
 - メモの画面の木の既定の紙 `sewer_note_01`（下水道のメモ）は取り込まない（Construct が `Texture` を入れる）。本家の `Virtual Cursor`（ゲームパッド）はほかの画面と同じく写さない（09 記録）。`SetInputMode_UIOnlyEx` に画面を渡すと焦点を持てない警告が出るのは本家どおり（15 記録）。
 - テストで画面の木を作るときは `TakeWidget()` の戻り値を持つ。リッチテキストはスレートの木と一緒に様式を放すので、持たないと `GetDefaultTextStyle` が ensure に当たる。
-- 書類はセーブへの書き込みを赤いシャードと同じくメモリの上だけで行い、ディスクへはチェックポイントの保存で書く（本家どおり）。チェックポイントの前に死んで開き直すと書類はまた出る。
+- 書類はセーブの `Secrets` への書き込みを赤いシャードと同じくメモリの上だけで行い、ディスクへはチェックポイントの保存で書く（本家どおり）。チェックポイントの前に死んで開き直すと書類はまた出る。EXTRAS の解放は取った時にディスクへ書くので、取り直しても同じ番号が 1 つ残るだけ。
 - テストのワールドのプレイヤーのコントローラーはローカルのプレイヤーを持たないので、書類と区域の画面は作られず `PlayerController_0` のエラーが出る（テストは `AddExpectedError` で受ける）。
 - `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `fresnel` になり、コンパイル済みのシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（`Fresnel Setting` (1, 1, 1) の白い縁の光。2026-09-20、作業一覧の項目 31。01 記録）。
 - おとりのエレベーターの `ActorSequence` は `ActorSequenceComponent` を使わずティックで写した（プラグイン `ActorSequence` をモジュールに足さず、キー 2 つの曲線は式で足りる）。変形のトラックが扉の相対の変形を丸ごと入れるので、扉の相対の変形を置き場で変えても使うと (±x, 0, 0) に戻る（本家も同じ。置いたものは変えていない）。
@@ -121,9 +122,12 @@ updated: 2026-09-20
 - Zone 2: 壁は 1 クリックで上がり（約 4.3 s）、部屋に入ると `YOU FOUND A MYSTERIOUS ROOM`・囁き・グリッチ。出ると囁きが止み、グリッチの `BlendingOpacity` が 0。メモ 3 枚はどれも 1 ページ（1/1）で、開くとゲームが止まってカーソルが出て、CLOSE で戻る。書類は宙に浮く紙挟み（灯つき）。
 - 書類はメモリの上のセーブに足すだけで、チェックポイントの保存（`Wasami.Checkpoint`）の後に死ぬと開き直しても戻らない（迷路の後の ID 3 も出た直後に消える）。
 - 4 つそろえて脱出（`Wasami.Escape`）すると、スコア画面が `SECRETS 4/4`（S・+35）。
+- 書類の `Unlock`（2026-09-20、項目 29 のステップ 6）: Zone 1 の ID 1 を取ると、ゲームモードのセーブとディスクの `ExtrasArt` が [19, 20] になり、タイトルの EXTRAS にその 2 枚が出る（19 記録の「確かめたこと」）。ディスクの `Secrets` は空のまま（チェックポイントまでは書かない）。
 - 画面の操作の注意: PIE でクリックの位置を変えるとカーソルの移動が視点を回すので、見て使う物を狙うときは、狙いを入れてから前のクリックと同じ位置を押す。
 
 ## 変更履歴
+- 2026-09-20: 書類が EXTRAS を解放するところを PIE で確かめた（「確かめたこと」。作業一覧の項目 29 のステップ 6）
+- 2026-09-20: 書類の `Unlock` の EXTRAS を写した（`Collectables`・`Unlock`、セーブの `ExtrasArt`・`ExtrasSFX`〈06 記録〉、テスト `Wasami.Secrets.Collectable.Unlock`）。両ゾーンの書類に `Collectables` を入れた（01 記録。作業一覧の項目 29 のステップ 1）
 - 2026-09-20: 作業一覧の項目 12 を閉じた（役割の「作っている途中」を外した）
 - 2026-09-20: 書類の EXTRAS の要確認に回答が出た（EXTRAS を作り、タイトル画面から見られる形に。中身は枠組みだけ先に）。`TODO(仮)` を作業一覧の項目 29 を指す `TODO(item 29)` にした
 - 2026-09-20: PIE で両ゾーンの秘密を確かめた（「確かめたこと」。作業一覧の項目 12 のステップ 6）

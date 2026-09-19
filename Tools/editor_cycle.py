@@ -9,8 +9,10 @@ again and waits until it answers.
 Quitting goes through Python remote execution (Tools/ue_remote.py). Starting has to happen on the interactive desktop:
 when this script runs in Windows' session 0 (where Claude Code lives), a directly launched editor dies at once with
 DXGI_ERROR_NOT_CURRENTLY_AVAILABLE because that session has no display outputs — so the editor is started through a
-one-off scheduled task that runs as the logged-on user with an interactive token. Exit code 0 on success; 1 when the
-build fails (the editor is then left closed); 2 when the editor does not quit or does not come up in time.
+one-off scheduled task that runs as the logged-on user with an interactive token. Before quitting for a build, the
+unity build's name clashes are looked for (Tools/check_unity_names.py) and the editor is left running when there are any.
+Exit code 0 on success; 1 when the build fails (the editor is then left closed) or the names clash (the editor is left
+as it was); 2 when the editor does not quit or does not come up in time.
 """
 import argparse
 import ctypes
@@ -142,6 +144,12 @@ def main():
     ap.add_argument("--no-quit", action="store_true")
     ap.add_argument("--no-build", action="store_true")
     args = ap.parse_args()
+    # A clash in the anonymous namespaces fails the build only after the editor has gone: look for one first.
+    if not args.no_build and not args.quit_only:
+        checker = os.path.join(ROOT, "Tools", "check_unity_names.py")
+        if subprocess.run([sys.executable, checker]).returncode != 0:
+            print("build: not started (rename the clashing names first)", file=sys.stderr)
+            return 1
     if not args.no_quit and not quit_editor():
         return 2
     if args.quit_only:

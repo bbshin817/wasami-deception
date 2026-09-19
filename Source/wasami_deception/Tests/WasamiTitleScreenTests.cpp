@@ -116,7 +116,7 @@ bool FWasamiTitleScreenTreeTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("%s draws after the one before"), Name), Index != INDEX_NONE && Index > Last);
 		Last = Index;
 	}
-	for (const TCHAR* Name : {TEXT("Chapters"), TEXT("Replay"), TEXT("Extras"), TEXT("Image_1"), TEXT("Slideshow_img"), TEXT("CanvasPanel_1")})
+	for (const TCHAR* Name : {TEXT("Chapters"), TEXT("Replay"), TEXT("Image_1"), TEXT("Slideshow_img"), TEXT("CanvasPanel_1")})
 	{
 		TestNull(FString::Printf(TEXT("no %s"), Name), Tree->FindWidget(Name));
 	}
@@ -131,10 +131,18 @@ bool FWasamiTitleScreenTreeTest::RunTest(const FString& Parameters)
 	const UTextBlock* Version = Cast<UTextBlock>(Tree->FindWidget(TEXT("TextBlock_0")));
 	TestTrue(TEXT("the version top right"), Version && Version->GetText().EqualTo(UWasamiTitleScreenWidget::VersionText()));
 
-	// The menu: NEW GAME, OPTIONS, QUIT without progress.
+	// The menu: NEW GAME, EXTRAS, OPTIONS, QUIT without progress (the original's order without Chapters and Replay).
 	const UVerticalBox* Menu = Cast<UVerticalBox>(Tree->FindWidget(TEXT("VerticalBox_160")));
 	TestFalse(TEXT("no RESUME without a save"), Screen->HasResume());
-	TestTrue(TEXT("RESUME is off the menu"), Menu && Menu->GetChildrenCount() == 3 && Menu->GetChildAt(0)->GetFName() == TEXT("NewGame"));
+	TestTrue(TEXT("RESUME is off the menu"), Menu && Menu->GetChildrenCount() == 4);
+	if (Menu && Menu->GetChildrenCount() == 4)
+	{
+		int32 Index = 0;
+		for (const TCHAR* Name : {TEXT("NewGame"), TEXT("Extras"), TEXT("Options"), TEXT("Quit")})
+		{
+			TestEqual(FString::Printf(TEXT("%s in its place"), Name), Menu->GetChildAt(Index++)->GetFName(), FName(Name));
+		}
+	}
 
 	// Setup Buttons' style: the marker when hovered or pressed, invisible otherwise, UE 4's paddings.
 	UButton* NewGame = Cast<UButton>(Tree->FindWidget(TEXT("NewGame")));
@@ -155,6 +163,20 @@ bool FWasamiTitleScreenTreeTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("grey again"), Text && FMath::IsNearlyEqual(Text->GetColorAndOpacity().GetSpecifiedColor().R, 0.107023f, 1e-5f));
 	}
 
+	// EXTRAS: the same style, text and hover.
+	UButton* ExtrasButton = Cast<UButton>(Tree->FindWidget(TEXT("Extras")));
+	const UTextBlock* ExtrasText = Cast<UTextBlock>(Tree->FindWidget(TEXT("Extras_Text")));
+	if (TestNotNull(TEXT("EXTRAS"), ExtrasButton) && TestNotNull(TEXT("its text"), ExtrasText))
+	{
+		TestTrue(TEXT("EXTRAS' text"), ExtrasText->GetText().ToString() == TEXT("EXTRAS"));
+		TestTrue(TEXT("the marker when hovered"), NewGame && ExtrasButton->GetStyle().Hovered.GetResourceObject() == NewGame->GetStyle().Hovered.GetResourceObject());
+		TestEqual(TEXT("unmarked until hovered"), ExtrasButton->GetStyle().Normal.TintColor.GetSpecifiedColor().A, 0.f);
+		ExtrasButton->OnHovered.Broadcast();
+		TestTrue(TEXT("EXTRAS white when hovered"), ExtrasText->GetColorAndOpacity().GetSpecifiedColor().Equals(FLinearColor::White));
+		ExtrasButton->OnUnhovered.Broadcast();
+		TestTrue(TEXT("and grey again"), FMath::IsNearlyEqual(ExtrasText->GetColorAndOpacity().GetSpecifiedColor().R, 0.107023f, 1e-5f));
+	}
+
 	// With a game begun, RESUME stays on top.
 	UWasamiSaveGame* Save = NewObject<UWasamiSaveGame>();
 	Save->Hospital.LevelCheckpoint = 8;
@@ -162,7 +184,7 @@ bool FWasamiTitleScreenTreeTest::RunTest(const FString& Parameters)
 	UWasamiTitleScreenWidget* Resumable = MakeScreen();
 	const UVerticalBox* ResumableMenu = Cast<UVerticalBox>(Resumable->WidgetTree->FindWidget(TEXT("VerticalBox_160")));
 	TestTrue(TEXT("RESUME with progress"), Resumable->HasResume());
-	TestTrue(TEXT("first of four"), ResumableMenu && ResumableMenu->GetChildrenCount() == 4 && ResumableMenu->GetChildAt(0)->GetFName() == TEXT("Resume"));
+	TestTrue(TEXT("first of five"), ResumableMenu && ResumableMenu->GetChildrenCount() == 5 && ResumableMenu->GetChildAt(0)->GetFName() == TEXT("Resume"));
 	UGameplayStatics::DeleteGameInSlot(TitleTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;
 }
@@ -312,12 +334,16 @@ bool FWasamiTitleWaysOutTest::RunTest(const FString& Parameters)
 	ResumeZone1->PressResume();
 	TestEqual(TEXT("checkpoint 5 goes on in Zone 1"), ResumeZone1->GetLevelToOpen(), Zone1);
 
-	// QUIT asks (nothing without a player); its YES quits. OPTIONS opens nothing without a player either.
+	// QUIT asks (nothing without a player); its YES quits. OPTIONS and EXTRAS open nothing without a player either,
+	// and EXTRAS is no way out.
 	UWasamiTitleScreenWidget* Quit = MakeScreen();
 	Quit->PressQuit();
 	Quit->PressOptions();
+	Quit->PressExtras();
+	TestNull(TEXT("no extras screen without a player"), Quit->GetExtras());
 	TestFalse(TEXT("QUIT waits for its answer"), Quit->HasQuit());
 	TestTrue(TEXT("and nothing opens"), Quit->GetLevelToOpen().IsEmpty());
+	TestEqual(TEXT("EXTRAS takes the music out over 1 s"), W::ExtrasMusicFadeOut, 1.f);
 	Quit->QuitEvent();
 	TestTrue(TEXT("YES quits"), Quit->HasQuit());
 	TestEqual(TEXT("the question"), FString(W::NewGameQuestion), FString(TEXT("STARTING A NEW GAME WILL RESET ALL PROGRESS.")));

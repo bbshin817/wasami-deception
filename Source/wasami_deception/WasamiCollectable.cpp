@@ -39,7 +39,7 @@ namespace
 	constexpr float BounceMaxYaw = 7.f;
 
 	/** Bounce's NewTrack_0 (CurveFloat_0): 0, 1, 0 at 0, 2.5 and 5 s, cubic, with the flat tangents UE worked out. */
-	FRichCurve MakeBounceCurve()
+	FRichCurve MakeCollectableBounceCurve()
 	{
 		FRichCurve Curve;
 		for (const FVector2f& Each : {FVector2f(0.f, 0.f), FVector2f(2.5f, 1.f), FVector2f(5.f, 0.f)})
@@ -101,7 +101,7 @@ void AWasamiCollectable::OnConstruction(const FTransform& Transform)
 
 float AWasamiCollectable::EvaluateBounce(float Seconds)
 {
-	static const FRichCurve Curve = MakeBounceCurve();
+	static const FRichCurve Curve = MakeCollectableBounceCurve();
 	return Curve.Eval(FMath::Clamp(Seconds, 0.f, BounceLength));
 }
 
@@ -179,13 +179,37 @@ void AWasamiCollectable::Collect()
 	}
 	// Create(Self, UMG_Collectables_C, None).AddToPlayerScreen(0).
 	UWasamiCollectablesWidget::Show(this);
-	// Unlock's end: Array_AddUnique(the Struct Save's entry for the level's Secrets, ID).
-	if (AWasamiGameMode* Mode = GetWorld()->GetAuthGameMode<AWasamiGameMode>())
+	Unlock();
+	Destroy();
+}
+
+void AWasamiCollectable::Unlock()
+{
+	AWasamiGameMode* Mode = GetWorld()->GetAuthGameMode<AWasamiGameMode>();
+	UWasamiSaveGame* Held = Mode ? Mode->GetSave() : nullptr;
+	const FString& Slot = Mode ? Mode->SaveSlotName : UWasamiSaveGame::SlotName;
+	// ForEachLoop over Collectables: LoadGameFromSlot('SaveSlot') cast to BP_DD_SaveGame (failing: the loop's next),
+	// the SwitchEnum on Type (UWasamiSaveGame::Unlock) and SaveGameToSlot after Art Gallery's and Sound's. The loop's
+	// end writes the last one read again, as it is, and is left out.
+	for (const FWasamiCollectableEntry& Entry : Collectables)
 	{
-		if (UWasamiSaveGame* Save = Mode->GetSave())
+		UWasamiSaveGame* Stored = Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(Slot, UWasamiSaveGame::UserIndex));
+		if (!Stored)
 		{
-			Save->Hospital.Secrets.AddUnique(ID);
+			continue;
+		}
+		if (Stored->Unlock(Entry))
+		{
+			UGameplayStatics::SaveGameToSlot(Stored, Slot, UWasamiSaveGame::UserIndex);
+		}
+		if (Held)
+		{
+			Held->Unlock(Entry);
 		}
 	}
-	Destroy();
+	// Array_AddUnique(the Struct Save's entry for the level's Secrets, ID).
+	if (Held)
+	{
+		Held->Hospital.Secrets.AddUnique(ID);
+	}
 }
