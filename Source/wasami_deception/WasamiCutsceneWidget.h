@@ -52,7 +52,8 @@ public:
 	static const FName BarsParameter;
 
 	/**
-	 * Initialize Cutscene Widget: creates the screen for the first player over Sequence and adds it to the viewport.
+	 * Initialize Cutscene Widget: creates the screen for the first player over Sequence and adds it to the viewport
+	 * (where the world has one).
 	 * Smooth transition? slides the bars in; without it they are in from the first frame. Returns it (null without a
 	 * player controller).
 	 */

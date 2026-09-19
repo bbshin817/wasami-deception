@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/cutscenes
 base: 4ef89d6
 started: 2026-09-20 06:50
-updated: 2026-09-20 07:55
+updated: 2026-09-20 08:25
 ---
 
 # ゲームの途中の場面（作業一覧の項目 25）
@@ -22,9 +22,7 @@ updated: 2026-09-20 07:55
 
 - [x] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）— 骨のアニメ・可視・揺れ・スローモーション・部品の材質を足し（CameraAnim は UE 5.8 に無いので落とす）、3 つの場面と救急車の到着を `SEQUENCE_ACTORS` に足して両ゾーンを組み直した。ナース 4 体は `AWasamiCutsceneNurse`（新しい C++）で置き、本家のアニメを `NURSE_ANIMS` で敵ワサミのクリップに読み替える。実装記録 01・08・11（コミット `3221644`）
 - [x] 2. **場面を流す土台** — スキップの画面 `UWasamiCutsceneWidget`（本家の `UMG_CutsceneWidget`。帯・PRESS P TO SKIP・暗転で終わりへ飛ばす。入力はプレイヤーコントローラーの `InputComponent`）と、`AWasamiZoneFlow` の `PlayCutscene`・`SequencePlayer`・`SetPlayerViewTarget`・`DisablePlayerInput`・`EnablePlayerInput`。実装記録 09・11・`_index`（コミット `da86730`）
-- [ ] 3. **Zone 1 の途中の出来事**（`06_Hospital_Zone1_06Event`）
-  - いまの `On05ParkingLotCutscene` は場面を飛ばして `Transition06` を直に呼んでいる（実装記録 11）。本家 @17019 どおり場面を流し、`OnFinished` → `06_Transition` → `Transition06` にする。
-  - 変更予定: `Source/wasami_deception/WasamiZone1Flow.{h,cpp}`、Zone 1 のレベル
+- [x] 3. **Zone 1 の途中の出来事** — `On05ParkingLotCutscene` が `PlayCutscene("06_Hospital_Zone1_06Event", On06Transition, "06_CineCamera")` で場面を流し、`On06Transition` → `Transition06`（視点をプレイヤーへ戻す所も足した）。実装記録 11・09（コミット `<step3>`）
 - [ ] 4. **Zone 2 の到着と捕まる場面**（`AmbulanceArrive1` → `Capture`）
   - 本家の `Arrive Event` @24359: 配布版なら `PlayerStart_1` へ移して 0.3 s 後に `AmbulanceArrive1` を流し（`OnFinished` → `Escape_AmbulanceArrive`）、`Trigger_Arrive_CaptureScene` → `Arrive_CaptureCutscene`（`Disable Player Input` → 視点を `CineCameraActor_2` へ 0.5 s → `Capture` を流す → `OnFinished` → `Cell Cutscene Start`）。本作はパッケージするので配布版の道を写す（エディタの道は到着と捕まる場面を飛ばす）。
   - 変更予定: `Source/wasami_deception/WasamiZone2Flow.{h,cpp}`、Zone 2 のレベル
@@ -36,7 +34,7 @@ updated: 2026-09-20 07:55
 
 ## 次にやること
 
-ステップ 3（Zone 1 の途中の出来事 `06_Hospital_Zone1_06Event`）。本家 `06_Hospital_Zone_01.txt` の `05_ParkingLotCutscene`（@17159）は、`SetViewTargetWithBlend(06_CineCamera, 0.5, Cubic, 0, false)` → `Initialize Cutscene Widget(場面, True)` → `Play` → `OnFinished` → `06_Transition` → 曲の `bFadeOut` 真、の順。いまの `AWasamiZone1Flow::On05ParkingLotCutscene` は場面を飛ばして `Transition06` を直に呼んでいるので、`PlayCutscene(TEXT("06_Hospital_Zone1_06Event"), TEXT("Transition06"), TEXT("06_CineCamera"))` に置き換える（`Transition06` の中の「場面を飛ばすので視点は戻さなくてよい」というコメントと、視点をプレイヤーへ戻す `SetPlayerViewTarget` の要否を本家 `06_Transition` @16861 で確かめ直す）。変更予定: `Source/wasami_deception/WasamiZone1Flow.{h,cpp}`、実装記録 11。
+ステップ 4（Zone 2 の到着と捕まる場面）。本家 `06_Hospital_Zone_02.txt` の `Arrive Event` @24359 は `IsPackagedForDistribution()` で分岐し、配布版の道（本作が写す方）は `PlayerStart_1` へ移して 0.3 s 後に `06_Hospital_Zone2_AmbulanceArrive1_2` を流し、`OnFinished` → `Escape_AmbulanceArrive`。その後 `Trigger_Arrive_CaptureScene` → `Arrive_CaptureCutscene`（`Disable Player Input` → 視点を `CineCameraActor_2` へ 0.5 s → `06_Hospital_Zone2_Capture` を流す → `OnFinished` → `Cell Cutscene Start`）。Zone 1 と同じく `PlayCutscene(場面, 終わりのイベント, カメラ)` で書ける（捕まる場面だけ先に `DisablePlayerInput`）。いまの `AWasamiZone2Flow` は項目 6 でこの始まりを飛ばしているので、そこを置き換える。変更予定: `Source/wasami_deception/WasamiZone2Flow.{h,cpp}`、`Tests/WasamiZoneFlowTests.cpp`、実装記録 11。
 
 ## 決定事項
 - 2026-09-20: **スキップの入力はプレイヤーコントローラーの `InputComponent` に足す** — 本家も `DD_PlayerController` が `AnyKey` と `Skip Cutscene`（P・Gamepad_Special_Right）を取る。本作のキー割り当てはプレイヤーキャラクターの Enhanced Input にあるが、場面の間は `DisableInput` でそれが止まるので、そこには置けない。画面が外れるときに自分の結び付けを外す。
@@ -52,6 +50,7 @@ updated: 2026-09-20 07:55
 
 ## 再開時の注意
 
+- **テストの世界に素の `APlayerController` を置かない**（ステップ 4・5 も同じ）: `PlayCutscene` の `SetViewTargetWithBlend` の後にもう一度視点を変えると、local でないコントローラーではエンジンが `ClientSetViewTarget` に無限に潜ってエディタが落ちる（`.claude/references/troubleshooting.md` の「テストの世界で `SetViewTargetWithBlend` を 2 回呼ぶと…」）。視点・スキップの画面・入力の停止はステップ 6 の PIE で見る。落ちる所は `UE_LOG(LogTemp, Display, …)` の印を置いて `Saved/Logs/wasami_deception.log` で読む。
 - 作業ブランチ `feature/cutscenes`（`main` から。ステップ 1 をコミット済み）。
 - 3 つの場面は組み上がってレベルに置いてある（`/Game/DD/Animation/06_Hospital/06_Hospital_Zone1_06Event`・`_Zone2_AmbulanceArrive1`・`_Zone2_Capture`・`_Zone2_Cell` と、同じ名前の `LevelSequenceActor`。流すのは `AWasamiZoneFlow::PlaySequence(名前)`）。ナース 4 体・シネカメラ 2 台も置いてある（タグ `src:<本家の名前>`）。
 - **`dd_sequence` を直したら** `python Tools/ue_remote.py <script>` から `dd_sequence.place("Zone1")` / `("Zone2")` で組み直し、**そのつど `dd_level.build_navigation()` を呼ぶ**（保存でレベルの道が空になる。Zone を切り替えるときは「開くだけの呼び出し」→「焼く呼び出し」の 2 回）。確かめ方は `skipped_tracks` が CameraAnim と `Ballroom_Event_Fade` のイベントだけ・`missing` と `missing_particles` が空。

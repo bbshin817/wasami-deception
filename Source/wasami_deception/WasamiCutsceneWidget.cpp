@@ -83,7 +83,10 @@ UWasamiCutsceneWidget* UWasamiCutsceneWidget::Show(const UObject* WorldContextOb
 	{
 		Widget->Sequence = Sequence;
 		Widget->bSmoothTransition = bInSmoothTransition;
-		Widget->AddToViewport(ViewportZOrder);
+		if (Controller->GetWorld() && Controller->GetWorld()->GetGameViewport())
+		{
+			Widget->AddToViewport(ViewportZOrder);
+		}
 	}
 	return Widget;
 }

@@ -89,8 +89,9 @@ updated: 2026-09-20
 - `On05Transition`（`05_Transition`）: `SaveCheckpoint(5)` → `Persistent05`。
 - `Persistent05`（`05_Persistent`）: 目的 `COLLECT ALL SHARDS`、全回収 → `On05AllShardsCollected`、1 s 後にゲームモードの `CheckShards`（開き直したときにシャードが残っていなければ、これで全回収に進む）。`SpawnNurses`（本家の `Spawn Nurses`: `AWasamiEnemy` を `NurseSpawn_3`・`_1`・`_2` に。その後の `Setup Nurse Bierce Quips`〈発見のたびの Bierce の台詞〉は項目 20）・曲の `bFadeOut` 偽（項目 19）。
 - `On05AllShardsCollected`（`05 All Shards Collected`）: `RemoveAllEnemies`、矢印 `Shards?` 偽・色 (1, 0.8002, 0, 1)・的 `06_CutsceneStart`、目的 `REACH THE PARKING LOT`、`06_CutsceneStart` → `On05ParkingLotCutscene`、`BP_ZoneBarrier_2`（駐車場への出入口の障壁）の `DestroyBarrier`（本家 @16409）。曲（項目 19）。本家のレベル BP が障壁を呼ぶのはここだけなので、6 で開き直しても障壁は残る（プレイヤーはその先から始まる）。
-- `On05ParkingLotCutscene`（`05_ParkingLotCutscene`）: 場面 `06_Hospital_Zone1_06Event`（項目 25）を飛ばし、その終わりの `06_Transition` = `Transition06` をすぐ呼ぶ。
-- `Transition06`（`06 Transition`）: `DestroyAllShards`、`PlayFadeOut(2)`（本家の `Basic DD Fade Out(2)`: 1 s 黒、1.5 s で晴れる。その前の `SetViewTargetWithBlend(プレイヤー)` は、場面を飛ばすので視点がプレイヤーから離れず要らない）、`TeleportPlayerTo("06_Start")`、`Start06`。本家の `Spawn` の 6 は `Start06` と同じ所から（フェードは無い）。
+- `On05ParkingLotCutscene`（`05_ParkingLotCutscene`）: `PlayCutscene("06_Hospital_Zone1_06Event", On06Transition, "06_CineCamera")` = 本家の `SetViewTargetWithBlend(06_CineCamera, 0.5, Cubic)` → `Initialize Cutscene Widget`（スキップの画面）→ `Play` → `OnFinished` に `06_Transition`。この場面は入力を切らない（本家も切らず、プレイヤーはその場で見ている）。
+- `On06Transition`（本家の `06_Transition`。シーケンスの `OnFinished`）: `Transition06`（本家の `06 Transition`）。
+- `Transition06`（`06 Transition`）: `DestroyAllShards`、`SetPlayerViewTarget(プレイヤー, 0)`（本家の `SetViewTargetWithBlend(プレイヤー, 0, 0, 0, 偽)`: 場面がシネカメラに置いた視点を、混ぜずにその場で戻す）、`PlayFadeOut(2)`（本家の `Basic DD Fade Out(2)`: 1 s 黒、1.5 s で晴れる）、`TeleportPlayerTo("06_Start")`、`Start06`。本家の `Spawn` の 6 は `Start06` と同じ所から（フェードは無い）。
 - `Start06`（`06_Start`。本家は `Spawn` の 6 と `06 Transition` の後半が同じ所）: `06_DoorsLock` → `On06DoorsLock`、`TriggerBox_06_AmbulanceTop` → `On06ReachAmbulance`、矢印 偽・(1, 0.8317, 0, 1)・的 `06_TunnelEnter`、目的 `REACH THE TUNNEL`、`06_TunnelEnter` → `On06TunnelEnter`。始めに `SpawnNurses06`（本家の `Spawn Nurses_06`: `AWasamiEnemy06Chase`〈07 記録〉を `06_NurseSpawn`・`06_NurseSpawn2` に、`DoorLocation` にレベルの `DoorLocation` を入れて出し、`Nurses06`〈本家の `06 Nurses`。弱い参照〉に足す。2 体は 06_Start の約 22 m 西に出て、毎ティック追ってくる）。
 - 駐車場のガレージリフト（`hospital_garage_lift_anim_Anim_2` = `AWasamiGarageLiftZone1Special`、救急車の後ろ。12 記録）の `bNurseNear`（本家の `NurseNear`）: 本家のレベル BP は `TriggerVolume_1` にナース（`BP_06_ReaperNurse`）が入ると真にし（戻さない）、`Check Lift Nurses`（`06_Trigger_NurseLift` に `BP_06_ReaperNurse_06_Chase` がいるかを書く）はどこからも呼ばれない。本作は `StartAt` の始め（どの区間でも）に `TriggerVolume_1` の `OnActorBeginOverlap` を `OnNurseLiftTrigger` に結び、`AWasamiEnemy` なら真にする（戻さない。箱が無ければ警告）。`TriggerVolume_1` は救急車とリフトの間の床（(10452, −21616, 0)、200 × 650 × 200 cm）。
 - `On06TunnelEnter`: 矢印 偽・(1, 0.8317, 0, 1)・的 `TriggerBox_06_AmbulanceTop`、目的 `GET ON TOP OF THE AMBULANCE`。
@@ -185,6 +186,7 @@ updated: 2026-09-20
 
 ## 変更履歴
 - 2026-09-20: 場面を流す土台を足した（`PlayCutscene`・`SequencePlayer`・`SetPlayerViewTarget`・`DisablePlayerInput`・`EnablePlayerInput`。スキップの画面は 09 記録の `UWasamiCutsceneWidget`）。まだどの区間も呼んでいない（作業一覧の項目 25 のステップ 2）
+- 2026-09-20: Zone 1 の途中の出来事 `06_Hospital_Zone1_06Event` を流すようにした（`On05ParkingLotCutscene` → `PlayCutscene` → `On06Transition` → `Transition06`。視点をプレイヤーへ戻す所も本家どおりに足した）。テストの世界には local なプレイヤーコントローラーが作れないので、視点とスキップの画面は PIE で見る（`.claude/references/troubleshooting.md` の「テストの世界で `SetViewTargetWithBlend` を 2 回呼ぶと…」）（作業一覧の項目 25 のステップ 3）
 - 2026-09-20: 場面のナースの代役 `AWasamiCutsceneNurse`（根の下に `SkeletalMesh`。取り込みが 4 体を置く）とテスト `Wasami.Cutscene.Nurse` を足した（作業一覧の項目 25 のステップ 1。01 記録）
 - 2026-09-20: ステージ OP をタイトルの NEW GAME から通しで確かめた（「確かめたこと」の「ステージ OP の通し」。ソースの変更なし。作業一覧の項目 30 のステップ 4）
 - 2026-09-20: Zone 1 の新しい始まり（ゲームモードの `IsNewStart`）で本家の入口の `00_Initial Start` の `InitialStart`（次のティックにステージ OP、プレイヤーを 10 s 止める）を足した。テスト `Wasami.ZoneFlow.NewStart`（作業一覧の項目 30 のステップ 3）

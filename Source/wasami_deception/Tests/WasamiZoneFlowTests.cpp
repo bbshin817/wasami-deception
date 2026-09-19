@@ -24,6 +24,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/BrushComponent.h"
 #include "Components/LightComponent.h"
+#include "Camera/CameraActor.h"
 #include "Engine/BlockingVolume.h"
 #include "Engine/PointLight.h"
 #include "Engine/StaticMeshActor.h"
@@ -277,6 +278,10 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	AWasamiShard* Shard = World->SpawnActor<AWasamiShard>(FVector(0., 0., -90000.), FRotator::ZeroRotator);
 	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone01_ElevatorArrive"), 14.1);
 	const ALevelSequenceActor* TakeOff = SpawnSequence(World, TEXT("06_Hospital_Zone1_AmbulanceTakeOff"), 13.9);
+	const ALevelSequenceActor* Event06 = SpawnSequence(World, TEXT("06_Hospital_Zone1_06Event"), 10.53);
+	// 06_CineCamera, the parking lot scene's camera (a plain one here: the flow only makes it the view target).
+	AActor* CineCamera = World->SpawnActor<ACameraActor>(FVector(0., 0., -30000.), FRotator::ZeroRotator);
+	CineCamera->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("06_CineCamera")));
 	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
 	DoorBreak->ProgressSpeed = 1.5f;
 	DoorBreak->FinishSpawning(FTransform::Identity);
@@ -371,9 +376,20 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8002f, 0.f, 1.f), 1e-4f));
 	TestTrue(TEXT("at the parking lot's trigger"), Flow->GetArrowTarget() && Flow->GetArrowTarget() == AWasamiZoneFlow::FindSource(World, TEXT("06_CutsceneStart")));
 
-	// The parking lot's scene is left out: straight to 06, under the fade (Ballroom_Event_Fade at twice its rate).
+	// The parking lot's scene: 06_Hospital_Zone1_06Event plays and nothing of 06 comes until it is over. The view over
+	// to 06_CineCamera and the skip screen want a local player controller, which a test world cannot make (a bare one
+	// sends the engine's SetViewTarget into an endless ClientSetViewTarget: .claude/references/troubleshooting.md), so
+	// they are for the PIE run to see.
 	TestNull(TEXT("no fade yet"), MadePlayer(World, TEXT("Ballroom_Event_Fade")));
 	Walk(World, TEXT("06_CutsceneStart"));
+	TestEqual(TEXT("the parking lot's scene"), Flow->GetSection(), FName(TEXT("05_ParkingLotCutscene")));
+	TestTrue(TEXT("it plays"), Event06->GetSequencePlayer() && Event06->GetSequencePlayer()->IsPlaying());
+	TestNull(TEXT("no fade while it runs"), MadePlayer(World, TEXT("Ballroom_Event_Fade")));
+	TestEqual(TEXT("and no nurse of 06"), Alive<AWasamiEnemy06Chase>(World, true).Num(), 0);
+
+	// 06_Transition, when it is over: 06, under the fade (Ballroom_Event_Fade at twice its rate).
+	Advance(Wrapper, 10.53f + 0.2f);
+	TestFalse(TEXT("the scene over"), Event06->GetSequencePlayer() && Event06->GetSequencePlayer()->IsPlaying());
 	TestEqual(TEXT("06"), Flow->GetSection(), FName(TEXT("06_Start")));
 	const ULevelSequencePlayer* Fade = MadePlayer(World, TEXT("Ballroom_Event_Fade"));
 	TestTrue(TEXT("the fade plays"), Fade && Fade->IsPlaying());

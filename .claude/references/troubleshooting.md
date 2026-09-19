@@ -348,6 +348,14 @@
 - 確かめ方: PIE で `pie.py place` の後に `look --dx 1000 --allow UnrealEditor.exe` → `pie.py state` のヨーの差が 175°（0.175°/カウント、FOV 90）。実行中に試すなら `unreal.ObjectIterator(unreal.InputModifier)` で `/Engine/Transient` の写しを探して書き換える。
 - 出典: 02 記録、`observations/README.md` の「視点の速さと集中線」（2026-09-17。直した後の PIE で dx 100 → 17.5°、dx 2057 → 359.94°）。
 
+### テストの世界で `SetViewTargetWithBlend` を 2 回呼ぶとエディタが落ちる（EXCEPTION_STACK_OVERFLOW）
+
+- 症状: Automation テストが途中で止まり、8 秒後にエディタが `Unhandled Exception: EXCEPTION_STACK_OVERFLOW` で落ちる。呼び出し履歴は `UnrealEditor-Engine.dll` と `UnrealEditor-CoreUObject.dll` だけの 7 フレームの繰り返しで、こちらのモジュールが 1 つも出ない。場面の再生（`PlayCutscene` が `SetPlayerViewTarget(シネカメラ, 0.5)`）の後に、終わりで視点をプレイヤーへ戻す（`SetPlayerViewTarget(プレイヤー, 0)`）と起きる。
+- 原因: `World->SpawnActor<APlayerController>()` で作ったコントローラーは `ULocalPlayer` を持たないので `IsLocalPlayerController()` が偽。すると `APlayerCameraManager::AssignViewTarget` が `PCOwner->ClientSetViewTarget(...)` を呼び（UE 5.8 `PlayerCameraManager.cpp`）、ネットが無いので同じプロセスで `SetViewTarget` に戻る。混ざりかけ（`PendingViewTarget.Target` が残っている）のところへ同じ視点を入れ直すと、`SetViewTarget` の else の枝がまた `ClientSetViewTarget` を呼び、`PendingViewTarget.Target = NULL` はその後なので、無限に潜る。実機・PIE・パッケージではコントローラーが local なのでこの枝に入らない。
+- 対処: テストの世界に素の `APlayerController` を置いたまま、視点を混ぜる game のコードを走らせない。視点とスキップの画面（`CreateWidget` も local なコントローラーを要る。`PIE: Error: ローカルプレイヤーコントローラーのみを…` が出る）は PIE で見る。
+- 確かめ方: 落ちる所は `UE_LOG(LogTemp, Display, …)` の印を疑う行の前後に置いて `Saved/Logs/wasami_deception.log` で読む（自動化のログは落ちる直前まで残る）。
+- 出典: 作業一覧の項目 25 のステップ 3（2026-09-20）。
+
 ## 取り込み・レベル・描画
 
 ### 組み立てが置いた BP のアクタが本家と違う向き・位置になる（のこぎりの罠の刃が床に寝た円盤に見える）
