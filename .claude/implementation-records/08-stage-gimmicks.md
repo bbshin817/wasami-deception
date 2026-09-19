@@ -184,7 +184,7 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 - エンジン: `UPostProcessComponent`・`UTimelineComponent`・`UCurveFloat`・`UBoxComponent`・`UStaticMeshComponent`・`FRichCurve`・`UGameplayStatics::PlaySoundAtLocation`・`SpawnEmitterAtLocation`・`FTimerManager`・`UPointLightComponent`・`UAudioComponent`、エンジンの素材 `/Engine/BasicShapes/Plane`（100 × 100 の板、厚さ 0 の箱の当たり）。
 
 ## 既知の制約・注意点
-- 祭壇の材質 `MM_00_Ballroom_Ring_Altar_Metal` は前処理が `metal` に振り分け、コンパイル済みのシェーダーの式で組んだ `M_DD_Metal` に載る（真鍮の定数色の金属。2026-09-20、作業一覧の項目 31。01 記録）。欠片の `M_ring_metal2` の親 `MM_Main_Substance_Fresnel` は前処理が `fresnel` に振り分け、同じくシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（紫の縁の光。01 記録）。欠片の `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。
+- 祭壇の材質 `MM_00_Ballroom_Ring_Altar_Metal` は前処理が `metal` に振り分け、コンパイル済みのシェーダーの式で組んだ `M_DD_Metal` に載る（真鍮の定数色の金属。2026-09-20、作業一覧の項目 31。01 記録）。欠片の `M_ring_metal2` の親 `MM_Main_Substance_Fresnel` は前処理が `fresnel` に振り分け、同じくシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（紫の縁の光。01 記録）。祭壇の上の球 `ring_statue_orb` の `m_crystal_Inst2` は前処理が `crystal` に振り分け、ステージの取り込みが `dd_specials` に作らせて特殊シャードの推定 `M_DD_Crystal` の子になる（紫の渦の光。16 記録）。欠片の `P_08_RingPiece` の材質も推定の `M_ky_primitive` の子。
 - 扉は当たりを持ったまま掃引せずに回る（本家どおり）。開くときにプレイヤーが扉の振れる範囲（蝶番から 200 cm）にいると、扉がカプセルに食い込むことがある。
 - `Unlock`・`Lock` は前のイベントの相手で本家の処理を繰り返す（上）。流れは `On04DoorBreak` で `Unlock` を使わず `bLocked` を直に書く（本家どおり）。
 - 両方のタイムラインが同時に走ったときの勝ち方（閉じる側が後）は、本家では部品のティックの順で決まり、コードからは確定できない。
@@ -233,6 +233,7 @@ Zone 1 の迷路（2026-09-19、62 枚を置いた後）: 巡回するナース�
 罠を置いた後の通し（項目 8 のステップ 10、2026-09-19）: `python Tools/playthrough.py run --from z1_arrive --to z2_escape --setup --record traps_through6.mkv --shots`（`Wasami.ResetSave` から、1 回の PIE）で 11 区間がすべて終わりに着いた（終了コード 0、270 s）。扉の破壊は Zone 1 のエレベーターの前（F 70 回）と Zone 2 の独房（F 40 回）の 2 つとも外れて流れが進んだ。除細動器は台本の見張り（01 記録の `Traps`）が `z1_maze` で `BP_06_Defib4`・`Defib2`・`Defib23`、`z1_shards` で `Defib4` の手前で放電を待ち、赤い稲妻が消えてから台の間を抜けた（死は捕獲の 1 回だけ）。見張りの無い 1 回目は、`z1_maze` の 2 つ目のシャードの 2 m 先の `BP_06_Defib4` の放電で死んだ（本家どおりの罠）。スピードバリアはどの区間の道にも無い。のこぎりの罠もどの区間の道にも無いとしていたが、Zone 2 の 1 階で迷路と見張りの廊下をつなぐ唯一の北の通路（y 約 1400）に `short01` の `hospital_sawTrap_short_01_anim_Anim27` (−4804, 1400) があり、`z2_corridor` と `z2_altar` の道が必ず渡る（このときは刃の沈んでいる間に渡れていた。2026-09-20 の通しで `z2_altar` で捕まり、台本の見張りに足した〈01 記録の `Traps`〉。見張りを足した後の通し〈`Wasami.ResetSave` から `run --setup`〉は 11 区間が通り、行きと帰りでこののこぎりの刃が沈むのを待って渡った）。収録 `Intermediate/DesktopAgent/shots/traps_through6.mkv`（git の外。75.6〜78.9 s が `Defib4` の前で待って抜ける所）。各種 1 つずつの収録は、両開き扉 `door_walk.mkv`（ステップ 1）・除細動器 `pie-defib-fire2.mkv`・`pie-defib-hit.mkv`（ステップ 4）・スピードバリア `sb_break.mkv`（ステップ 6）・のこぎり `saw_catch.mkv`（ステップ 9）、扉の破壊は `traps_through6.mkv`。
 
 ## 変更履歴
+- 2026-09-20: 祭壇の金属・欠片・祭壇の球の材質を推定のマスターに載せ替えた（置き直しなし。01・16 記録。作業一覧の項目 31）
 - 2026-09-20: 罠を置いた後の通しの「のこぎりの罠はどの区間の道にも無い」を訂正した（Zone 2 の迷路と廊下をつなぐ通路の `short01`。台本の見張りは 01 記録。作業一覧の項目 12 のステップ 6b）
 - 2026-09-19: `Tests/WasamiSpeedBarrierTests.cpp` の無名名前空間の関数を `SpeedBarrierSameTurn` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiDefibTests.cpp` の `SameTurn` とぶつかった。作業一覧の項目 10 のステップ 3）
 - 2026-09-19: 罠を置いた後の通しを確かめた（検証の「罠を置いた後の通し」。作業一覧の項目 8 のステップ 10）

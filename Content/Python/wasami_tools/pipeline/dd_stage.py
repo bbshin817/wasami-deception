@@ -9,6 +9,7 @@ material settings survive, and for some the compiled shaders, Tools/dd/cooked_sh
   M_DD_Unlit      MM_Lit — an unlit colour times a multiplier
   M_DD_Metal      MM_Main_Metal — the altar's brass, read back from its compiled shaders
   M_DD_SubstanceFresnel  MM_Main_Substance_Fresnel — the ring pieces' and the secret file's rim, read back the same way
+An instance of m_crystal (the altar's orb) is not one of ours: dd_specials makes it with the special shards' crystals.
 """
 import os
 import struct
@@ -479,9 +480,21 @@ def master_of(material):
     return MASTER_OF.get(material["master"], paths.MASTER_SUBSTANCE)
 
 
+def _make_crystal(m):
+    """An instance of m_crystal: dd_specials' estimate of it makes the crystals (it rebuilds its master), this one among
+    them, in place."""
+    from wasami_tools.pipeline import dd_specials   # it imports this module
+    made = {a.get_path_name().split(".")[0] for a in dd_specials.make_crystal()}
+    if m["asset"] not in made:
+        raise RuntimeError("%s is not in dd_specials.CRYSTAL_INSTANCES" % m["source"])
+    return unreal.load_asset(m["asset"])
+
+
 def make_material(m, textures, skipped=None):
     """One material instance of the export → a MaterialInstanceConstant of our matching master. One that exists is
     remade in place (its parameters cleared, then set again): what the levels placed keeps pointing at the same asset."""
+    if m["master"] == "crystal":
+        return _make_crystal(m)
     master_path = master_of(m)
     masters = ensure_masters()
     if EAL.does_asset_exist(m["asset"]):
@@ -574,8 +587,8 @@ def refresh_settings():
     """Brings the already imported assets up to this module: rebuilds a master material whose graph version is old,
     re-applies each texture's settings and each mesh's lightmap settings, and recompiles every material instance (an instance with static switches keeps
     a failed shader map from an older master until it is updated). An instance on one of these masters that is no
-    longer the one its root maps to (a master added since, as M_DD_Metal or M_DD_SubstanceFresnel) is remade in place on the right one; one
-    another module has put on a master of its own is left alone."""
+    longer the one its root maps to (a master added since, as M_DD_Metal or M_DD_SubstanceFresnel) is remade in place on the right one, and
+    one of m_crystal by dd_specials; one another module has put on a master of its own is left alone."""
     stage = paths.load_dd_stage()
     rebuilt = 0
     for asset_path in TEX_PARAM:
@@ -606,7 +619,8 @@ def refresh_settings():
                 continue
             parent = mic.get_editor_property("parent")
             parent = parent.get_path_name() if parent else ""
-            if parent in (paths.object_path(p) for p in masters) and parent != paths.object_path(master_of(m)):
+            ours = parent in (paths.object_path(p) for p in masters)
+            if ours and (m["master"] == "crystal" or parent != paths.object_path(master_of(m))):
                 make_material(m, stage["textures"])
                 remade += 1
             else:

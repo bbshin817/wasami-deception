@@ -50,6 +50,7 @@ MASTERS = {
     "/Game/Materials/MasterMaterials/MM_Lit": "lit",
     "/Game/Materials/MasterMaterials/MM_Main_Metal": "metal",
     "/Game/Materials/MasterMaterials/MM_Main_Substance_Fresnel": "fresnel",
+    "/Game/Materials/Fords_Materials/m_crystal": "crystal",   # the altar's orb: dd_specials' estimate makes it
 }
 # Which texture parameter feeds which input of our rebuilt master materials.
 TEX_KIND = {

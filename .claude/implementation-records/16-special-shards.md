@@ -18,7 +18,7 @@ sources:
   - Source/wasami_deception/WasamiSpecialSpawnPoint.h
   - Source/wasami_deception/WasamiSpecialSpawnPoint.cpp
   - Source/wasami_deception/Tests/WasamiSpecialShardTests.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # 特殊シャード（スタンオーブと赤いシャード）
@@ -89,7 +89,7 @@ updated: 2026-09-19
 | `/Game/DD/Meshes/Shared/power_orb` | オーブの本体（半径 約 44 cm の球。スロット 1 に `m_crystal_Inst3`〈本家の既定〉）。`dd_assets.static_mesh`（Nanite なし） |
 | `/Game/DD/Meshes/Ring_Assets/soul_shard` | 赤いシャードの本体（2.2 × 1.8 × 8.6 cm。本家は 20 倍で置く）。スロットの本家の既定 `m_crystal_Inst1` は作らない（赤いシャードが `m_crystal_Inst` を当てる） |
 | `/Game/Pipeline/Materials/M_DD_Crystal` | 本家の `m_crystal` の推定（下の「結晶の材質」） |
-| `/Game/DD/Materials/Fords_Materials/m_crystal`・`m_crystal_Inst3`・`m_crystal_Inst` | 原作のパスの推定のインスタンスと、その子のオーブ用（橙: `color1` (0.526, 0.094, 0.047)・`emissive_col` (0.896, 0.226, 0)・`Fresnel Setting` (5, 0.592, 0)・`emissive_entensity` 29.9・`env_cubemap` `DefaultTextureCube`）と赤いシャード用（赤: `color1` (0.531, 0.009, 0)・`emissive_col` (0.156, 0, 0.013)・`emissive_entensity` 29.9）。`color2` はどちらも黒 |
+| `/Game/DD/Materials/Fords_Materials/m_crystal`・`m_crystal_Inst3`・`m_crystal_Inst`・`m_crystal_Inst2` | 原作のパスの推定のインスタンスと、その子のオーブ用（橙: `color1` (0.526, 0.094, 0.047)・`emissive_col` (0.896, 0.226, 0)・`Fresnel Setting` (5, 0.592, 0)・`emissive_entensity` 29.9・`env_cubemap` `DefaultTextureCube`）と赤いシャード用（赤: `color1` (0.531, 0.009, 0)・`emissive_col` (0.156, 0, 0.013)・`emissive_entensity` 29.9）と Zone 2 の祭壇の球用（紫: `color1` (0.010, 0, 0.078)・`emissive_col` (0.133, 0, 0.391)・`emissive_entensity` 29・`emissive_speed` 0.15・`roughness` 0.01・`env_cubemap` `DefaultTextureCube`。ステージの取り込み `dd_stage` が `make_material` からここの `make_crystal` を呼んで作らせる。2026-09-20）。`color2` はどれも黒。既にあるインスタンスは同じパスのまま親を付け替え、ステージが入れていた `base_property_overrides` を外す |
 | `/Game/DD/Materials/Shared/M_PowerOrb` | オーブの地図の印。`dd_shards` の `M_DD_MapMark` のインスタンス、`Color` (1, 0.2903, 0) |
 | `/Game/Pipeline/Materials/M_DD_MapMarkMasked` | 形で切り抜く地図の印の推定のマスター: `Color` をベースカラーと自己発光に、`Mask`（`T_EnemyTriangle`）の R をマスクに（Masked、しきい 0.3333） |
 | `/Game/DD/Materials/Shared/M_Bonus_Shard`・`M_Enemy` | 赤いシャードと、赤いシャードが地図に出す敵の印。`M_DD_MapMarkMasked` のインスタンス、`Color` (1, 0, 0) |
@@ -155,9 +155,10 @@ updated: 2026-09-19
 - 地図の印（特殊シャードの 20 m 上、敵の 10 m 上の板）は本家と違って当たりを持たない（上の「共通の作り」）。
 - 地図に敵を足すのはクラスごと（本家の `Add To Map(GetObjectClass)`）なので、サブクラスも含めてそのクラスの敵がみな載る。赤いシャードの 60 s の間は、敵の骨格メッシュも地図のキャプチャに写る（印が 10 m 上から覆う。本家も同じ）。
 - 取得の画面のルートを区間（0.467 s）の後に平常の値（角度 −0.158°）へ戻す読みは、UE の既定と食い違う: ウィジェットのアニメは区間の後も最後の値（角度 0°・拡縮 1）を保つ（`KeepState`。18 記録の「内部構造」。2026-09-20 に分かった）。差は 0.16° で見た目は変わらないので直していない。直すなら `EvaluateCanvasAngle`・`EvaluateCanvasScale` の区間の後を区間の終わりの値にし、テスト `Wasami.VignetteSides.Anim` の「its own tilt after the section」を 0 にする。
-- Zone 2 の `m_crystal_Inst2`（ステージの小物）はステージの組み立てが汎用の `M_DD_Substance` のインスタンスで作っていて、ここの `m_crystal` とは別。
+- Zone 2 の祭壇の球 `m_crystal_Inst2` もここで作る（`CRYSTAL_INSTANCES`）。前処理が根 `m_crystal` を `crystal` に振り分け、ステージの取り込みは自分で作らずに `make_crystal` を呼ぶ（01 記録。2026-09-20、作業一覧の項目 31。それまではステージが汎用の `M_DD_Substance` で作り、白っぽかった）。`make_crystal` はマスター `M_DD_Crystal` から作り直すので、ステージの取り込みが結晶のインスタンスに当たるたびに走る（今は 1 つ）。
 
 ## 変更履歴
+- 2026-09-20: `CRYSTAL_INSTANCES` に Zone 2 の祭壇の球 `m_crystal_Inst2` を足し、`make_crystal` が既にあるインスタンスの `base_property_overrides` を外すようにした（ステージの取り込みが呼ぶ。作業一覧の項目 31 のステップ 3）
 - 2026-09-19: PIE で両ゾーンを確かめ、台本の通しを流した（上の「PIE での確かめ」。ステップ 6）
 - 2026-09-19: 両ゾーンに本体と出現点を置いた（`dd_level._flow`。上の「配置」。ステップ 5）
 - 2026-09-19: 赤いシャード `AWasamiBonusShard`（本家 `BP_BonusShard`）と取得の演出 `AWasamiBonusShardCollectEffect`、デバッグのコマンド `Wasami.BonusShard`、テスト `Wasami.BonusShard.*` を足した。オーブと同じ部品と周期を基底 `AWasamiSpecialShard` に移し（`SpawnPowerOrb` は `SpawnSpecialShard` に）、印の当たりを外した。ユニティビルドの塊が変わり、`WasamiStunCollectEffect.cpp`（Primal とぶつかった曲線のキーを `Stun*` に）と `WasamiVignetteSidesWidget.cpp`（連続回収の画面とぶつかった名前を `Sides*` に）の無名名前空間の名前を改めた（ステップ 4）
