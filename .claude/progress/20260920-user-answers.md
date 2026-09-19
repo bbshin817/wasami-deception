@@ -1,7 +1,7 @@
 ---
 title: 要確認への回答の反映（2026-09-20）
 status: 進行中
-branch: feature/secrets
+branch: main
 base: acb1ee3
 started: 2026-09-20 10:00
 updated: 2026-09-20 11:40

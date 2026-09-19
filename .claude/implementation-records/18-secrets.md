@@ -23,7 +23,7 @@ updated: 2026-09-20
 # 秘密と収集物
 
 ## 役割
-本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: 素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）まである。PIE で確かめた（下の「確かめたこと」）。
+本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）。PIE で確かめた（下の「確かめたこと」）。書類が本家の別のセーブに足す EXTRAS は作業一覧の項目 29。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_secrets()`（素材。前処理 `Tools/dd/prepare_stage.py` と `WasamiStageTools.import_dd_stage_assets` を残りが 0 になるまで、`import_dd_tablet`・`import_dd_ui` の後に）。戻り値 `sounds` 5 / `textures` 6 / `meshes` 1 / `materials` 1。
@@ -124,6 +124,7 @@ updated: 2026-09-20
 - 画面の操作の注意: PIE でクリックの位置を変えるとカーソルの移動が視点を回すので、見て使う物を狙うときは、狙いを入れてから前のクリックと同じ位置を押す。
 
 ## 変更履歴
+- 2026-09-20: 作業一覧の項目 12 を閉じた（役割の「作っている途中」を外した）
 - 2026-09-20: 書類の EXTRAS の要確認に回答が出た（EXTRAS を作り、タイトル画面から見られる形に。中身は枠組みだけ先に）。`TODO(仮)` を作業一覧の項目 29 を指す `TODO(item 29)` にした
 - 2026-09-20: PIE で両ゾーンの秘密を確かめた（「確かめたこと」。作業一覧の項目 12 のステップ 6）
 - 2026-09-20: 両ゾーンに置いた（`dd_level` の `SECRET_CLASSES`・`set_secret`・`link_sequence_players`）。書類のメッシュを `OnConstruction` で入れるようにし、迷路の後の書類 ID 3 を Zone 2 の流れが出す（作業一覧の項目 12 のステップ 5）
