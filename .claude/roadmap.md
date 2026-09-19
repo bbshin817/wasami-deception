@@ -274,7 +274,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital.txt`（`00_Initial Start` → @19290。`python Tools/dd/bp_flow.py … "00_Initial Start"`）、`pak_reference_2/_bytecode/DDeception/Content/UI/Menu/UMG_ChapterPortal.txt`・`_assets/DDeception/Content/UI/Menu/UMG_ChapterPortal.json`（木とアニメ `loop`）、`UI/Main/chapter_ui_portal_outer` ほかのテクスチャ、WebGL 版 10 記録の「stage-intro.ts」と 04 記録の「ステージ OP」、実装記録 09（UI）・11（Zone 1 の開始）・15（ポーズの頭）・13（題字）。
 - 依存: 6、17。
 - 規模: 2
-- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-stage-op`）。計画の段階で、出すのは Zone 1 を開いたときセーブのチェックポイントが 0 だったとき（本家の入口の `Spawn` が 0 でだけ `00_Initial Start` を呼ぶ）、時機は本家どおり次のティックに出して `CanMove?` を 10 s 偽（エレベーターの扉は 11.3 s に開くので流れは変えない）、WebGL 版の推定の黒は写さない、と決めた。
+- 状態: **完了（2026-09-20）**。本家の `UMG_ChapterPortal` の木（ぼかし・薄い赤の幕・帯 2 本・輪とルーンと頭の `Icon`・題字 `TitleCard`）をスロットのまま C++ で組んだ `UWasamiChapterPortalWidget` と、その素材（`dd_ui.import_chapter_portal`: 輪・ルーン・帯 2 枚）、アニメ `loop`（10 本のトラックを書き出しのキーと接線で）と Construct（0.8 s から 1 回・11 s で外れる）を作った（09 記録）。出すのは本家の入口の `Spawn` どおり Zone 1 をセーブのチェックポイント 0 で開いたとき（ゲームモードの `PrepareStart` が 0 を 4 に書き直したときの `IsNewStart`。NEW GAME・RESTART・脱出の後）で、`00_Initial Start` どおり次のティックに出してプレイヤーの `bCanMove` を 10 s 偽にする（11・06 記録）。エレベーターの扉は 11.3 s に開くので流れは変えず、WebGL 版の推定の黒は写さない。テストは `Wasami.ChapterPortal.*` 2 件と `Wasami.ZoneFlow.NewStart`。PIE でタイトルの NEW GAME → 暗転 → Zone 1 のエレベーターの中で OP が出て約 9 s で消え、10 s で動け、約 11 s に扉が開くことと、`Wasami.Kill` → 開き直しでは出ないことを収録で確かめた（11 記録の「確かめたこと」の「ステージ OP の通し」）。
 
 ### 31. 祭壇の見た目（祭壇の金属・水晶の球・欠片の材質をコンパイル済みのシェーダーから）
 
