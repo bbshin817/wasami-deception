@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/level-clear
 base: a3e64ad
 started: 2026-09-19 09:10
-updated: 2026-09-19 11:50
+updated: 2026-09-19 13:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -20,11 +20,8 @@ updated: 2026-09-19 11:50
 - [x] 0. 本家のコードを読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」。
 - [x] 1. リザルトの規則（病院の値）とセーブの欄 … 2026-09-19 完了。`FWasamiLevelResults`（`WasamiLevelResults.*`）・セーブの `BonusShards`・`Secrets`・テスト `Wasami.LevelClear.Results`。実装記録は新しい **13-level-clear**（画面・連続回収もここへ書き足す）。
 - [x] 2. シャードの連続回収 … 2026-09-19 完了。ゲームモードの `CheckStreak`（`Check Shards` から毎回）・`Wasami.Streak N`、節目の画面 `UWasamiShardStreakWidget`、`dd_ui.import_shard_streak`、テスト `Wasami.LevelClear.ShardStreak`。中身は 13 記録。WebGL 版と値の違いは無かった（ライフ +1 は `Check Streak` でなく画面の Construct）。
-- [x] 3. スコア画面の素材と、ウィジェットの木と ClearAnimation … 2026-09-19 完了。`UWasamiLevelClearWidget`（旧版の木と `ClearAnimation`・0.75 s の音・3.25 s の `ShowResults` の口。今は空）・デバッグ `Wasami.LevelClear`・`dd_ui.import_level_clear`・テスト `Wasami.LevelClear.Screen`。中身は 13 記録。XP の箱と DIARY UNLOCKED!（`FinalRankText`）は作らなかった。
-- [ ] 4. リザルトの出方と NEXT
-  - `ShowResults`（Delay の連鎖: 行 0・0.25・0.5・0.75・1.0・1.25 s、TOTAL 1.75 s、FINAL RANK 2.75 s、UI 入力とカーソル 3.75 s）、行ごとのアニメ（1 s。値・ランク・加算の順に 0.25 s ずつ）と判の音（`Grade_Stamp_v2`）、数え上げ（`*Counter`: `xp_fill` のループ、`Delay(span / n)` ごとに +1。WebGL 版の `Counter`）、`Total Shards Animation`、`Final Rank Animation`（`Grade_Stamp_v1` とルートの揺れ）。NEXT のホバーの色、押すと DoOnce → `Fade Out`（1 s）・ゲームだけの入力・カーソルを消す → 4 s → `Finished`。XP の箱（`XP Box Animation`・`Level Up`）は作らない（下の決定事項）。
-  - テスト（時刻の連鎖・数え上げの歩み・NEXT の DoOnce と 4 s の `Finished`）。
-  - 変更予定: `WasamiLevelClearWidget.*`、`Tests/WasamiLevelClearTests.cpp`、実装記録 13
+- [x] 3. スコア画面の素材と、ウィジェットの木と ClearAnimation … 2026-09-19 完了。`UWasamiLevelClearWidget`（旧版の木と `ClearAnimation`・0.75 s の音・3.25 s の `ShowResults` の口）・デバッグ `Wasami.LevelClear`・`dd_ui.import_level_clear`・テスト `Wasami.LevelClear.Screen`。中身は 13 記録。XP の箱と DIARY UNLOCKED!（`FinalRankText`）は作らなかった。
+- [x] 4. リザルトの出方と NEXT … 2026-09-19 完了。`ShowResults` の Delay の連鎖・行と TOTAL・FINAL RANK のアニメと判の音・数え上げ・NEXT（Fade Out → 4 s で `OnFinished`、回収の記憶を空に）、テスト `Wasami.LevelClear.ShowResults`。中身は 13 記録。
 - [ ] 5. 脱出からスコア画面へ、NEXT からタイトル（の代わり）へ
   - `AWasamiZone2Flow::OnEndTrigger`（11 記録。今は暗転して止まる）の後に、病院の `Escape`（下）: `SetGamePaused(true)`、セーブの `Time += ゲームモードの Time`・`LevelCheckpoint = 0`・`ResetTimeCounter`・書く、ステップ 1 の規則で値を作ってスコア画面を Z 6 で出す。暗転からスコア画面までの間は本家のホテルの `EndTrigger` どおり（すぐ）か、黒のフェードが黒になるのを待つかを、今の `OnEndTrigger` の順で決める。
   - `Finished` → 病院の `Finished Level`（下）: `SetGamePaused(false)` → 1 s → セーブの病院の欄を空にして書く → ゲームインスタンスを戻す（ライフ 3・回収の記憶を空に。死亡画面の QUIT TO TITLE と同じ）→ タイトル（項目 17）ができるまでは Zone 1 を開く（09 記録の QUIT TO TITLE の代わりの道と同じ。項目 17 で `TitleScreen` に替える）。本家の `SaveSlot` の `Level Ranks`・`Progress`（レベル選択用）と実績は写さない。
@@ -36,7 +33,7 @@ updated: 2026-09-19 11:50
 
 ## 次にやること
 
-ステップ 4（リザルトの出方と NEXT）を始める。`UWasamiLevelClearWidget::ShowResults`（今は空）に本家の Delay の連鎖を写す。読むもの: `python Tools/dd/bp_flow.py pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt ShowResults`、`TimeCounter` ほかの `*Counter`、NEXT のホバー 2 つと押す 1 つ（`--list` の `BndEvt__NextButton_*`）。行のアニメ（`Time Animation` ほか 6 つ・`Total Shards Animation`・`Final Rank Animation`・`Fade Out`）のキーは `python tmp/umg_anim.py pak_reference/_assets/DDeception/Content/UI/Menu/UMG_LevelClear.json "Time Animation"`（ステップ 3 で書いた読み出し。`tmp/` は git の外なので、無ければ書き直す: 13 記録の「原作データの根拠」のパスを読む）。WebGL 版 `C:/Users/User/Downloads/wasami-deseption/src/hud/level-clear.ts` の `ROW`・`TIMING`・`COUNT_SPAN` と見比べる。
+ステップ 5（脱出からスコア画面へ、NEXT から Zone 1 へ）を始める。読むもの: 11 記録の `AWasamiZone2Flow::OnEndTrigger`（今は暗転して止まる）、06 記録のセーブ（`FWasamiLevelProgress`・`ResetTimeCounter` の有無）と死亡画面の QUIT TO TITLE の代わりの道（09 記録。ライフ 3・セーブの病院の欄を空にして Zone 1 を開く）、上の「本家の流れ」の `Escape` と `Finished Level`。スコア画面は `UWasamiLevelClearWidget::Show(World, FWasamiLevelResults::ForHospital(...))` で出し、`OnFinished` に `Finished Level` を結ぶ（13 記録）。
 
 ## 本家の流れ（読んだもの）
 
@@ -63,14 +60,14 @@ updated: 2026-09-19 11:50
 
 ## 再開時の注意
 
-- エディタは起きていて（ステップ 3 のビルドで開き直した）、Zone 1（`L_Hospital_Zone1`）を開いている。PIE なし（2026-09-19 11:50）。エディタは前面、メッセージログの窓は最小化した。
+- エディタは起きていて（ステップ 4 のビルドで開き直した）、Zone 1（`L_Hospital_Zone1`）を開いている。PIE なし（2026-09-19 13:20）。エディタは前面。テストを回すとテストの結果の窓がビューポートの左に重なるので、撮る前に最小化する（窓の最小化のボタン）。
 - テストは MCP の `AutomationTestToolset.AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter`（引数 `filterExpression`: `StartsWith:Wasami.LevelClear` など）で回す。エディタを開き直すと MCP のセッションが切れるので、`ToolSearch` で `+unreal-mcp call_tool` を引き直す。
 - 取り込んだアセットは `/Game/DD/...`（原作から作り直せるので git の外）。取り込みは `dd_ui.py` に足し、`WasamiDDTools` から呼ぶ（01 記録）。
-- PIE の収録: **エディタを前面にしてから**（端末が前面だとエディタが約 3 fps に落ち、Slate の 1/8 s の打ち切りで画面が半分の速さになる。症状索引）。前面にするのは `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe --allow WindowsTerminal.exe`（タイトルバーの空き）。`python Tools/pie.py cmd "t.MaxFPS 60"` → `desktop.py record --grab gdi --region 1822 206 2862 858 --fps 60` → `pie.py cmd "Wasami.LevelClear"` → `video_probe.py sheet`。終わったら `t.MaxFPS 0` と `pie.py stop`。`Wasami.LevelClear` の画面は NEXT ができるまで PIE を止めるまで残る。
+- PIE の収録: **エディタを前面にしてから**（端末が前面だとエディタが約 3 fps に落ち、Slate の 1/8 s の打ち切りで画面が半分の速さになる。症状索引）。前面にするのは `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe --allow WindowsTerminal.exe`（タイトルバーの空き）。`python Tools/pie.py cmd "t.MaxFPS 60"` → `desktop.py record --grab gdi --region 1822 206 2862 858 --fps 60` → `pie.py cmd "Wasami.LevelClear"` → `video_probe.py sheet`。終わったら `t.MaxFPS 0` と `pie.py stop`。`Wasami.LevelClear` の画面は 7 s 後に NEXT（ビューポート 1040 × 652 のとき画面の (2810, 824)）で押せ、4 s 後に外れる。
 - C++ のファイルを足したら、コミットの前に無名名前空間の名前の重複を洗う（症状索引の「ファイルを足したらビルドが落ちた」）。ステップ 3 で `tmp/anon_dupes.py` を書いた（git の外）。
 
 ## 検証
 
-- check_records: OK（ステップ 3、2026-09-19）
-- C++ ビルド: 成功（ステップ 3。1 回目は `WasamiLevelResults.cpp` と `WasamiGameMode.cpp` の `StreakMilestones` がユニティでぶつかって落ちた。直してから重複を洗った）。テスト `Wasami.LevelClear.*` 3 件が通った
-- PIE（ステップ 3）: `Wasami.LevelClear` で赤 → You Escaped! → 閃光 → RESULTS の画面が曲線どおりの時刻で出た（13 記録の「確かめたこと」）
+- check_records: OK（ステップ 4、2026-09-19）
+- C++ ビルド: 成功（ステップ 4）。テスト `Wasami.LevelClear.*` 4 件が通った
+- PIE（ステップ 4）: `Wasami.LevelClear` で行・TOTAL SHARDS・FINAL RANK が連鎖どおりの時刻に出て、NEXT で暗転して 4 s で外れた（13 記録の「確かめたこと」）

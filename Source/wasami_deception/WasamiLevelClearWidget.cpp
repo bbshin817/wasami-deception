@@ -1,7 +1,9 @@
 #include "WasamiLevelClearWidget.h"
 
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateColorBrush.h"
+#include "Components/AudioComponent.h"
 #include "Components/Button.h"
 #include "Components/ButtonSlot.h"
 #include "Components/CanvasPanel.h"
@@ -20,6 +22,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiSaveGame.h"
 #include "WasamiWidgetAnimation.h"
@@ -66,6 +69,41 @@ namespace
 	constexpr double EasyStart = 165000.;
 	const FAnimKey EasyOpacityKeys[] = {{165000., 0.f, 0., 0.}, {180000., 0.f, 3.333333370392211e-05, 3.333333370392211e-05},
 		{195000., 1.f, 0., 0.}};
+
+	// A row's animation (Time Animation … Shard Streak Animation, pak_reference's, all alike). The value: RenderOpacity
+	// in over 0.25 s, its scale from 1.5 past 1.05. Total Shards Animation plays the same two on TotalShardAmount.
+	const FAnimKey RowValueOpacityKeys[] = {{0., 0.f, 0., 0.}, {15000., 1.f, 0., 0.}};
+	const FAnimKey RowValueScaleKeys[] = {{0., 1.5f, 0., 0.}, {15000., 1.f, -2.500000482541509e-05, -2.500000482541509e-05},
+		{17999., 1.0499999523162842f, 0., -1.6666668670950457e-05}, {29999., 1.f, 0., 3.333333370392211e-05}};
+	// The rank: in from 0.25 s to 0.5 s, its scale (a section from 15000) likewise.
+	const FAnimKey RowRankOpacityKeys[] = {{0., 0.f, 0., 0.}, {15000., 0.f, 3.333333370392211e-05, 3.333333370392211e-05},
+		{30000., 1.f, 0., 0.}};
+	constexpr double RowRankScaleStart = 15000.;
+	const FAnimKey RowRankScaleKeys[] = {{15000., 1.5f, 0., 0.}, {30000., 1.f, -2.5000003006425686e-05, -2.5000003006425686e-05},
+		{33000., 1.0499999523162842f, 0., -1.5151516890909988e-05}, {44999., 1.f, 0., 3.333333370392211e-05}};
+	// The "+N": in from 0.5 s to 0.75 s, its scale (a section from 30000) likewise.
+	const FAnimKey RowShardsOpacityKeys[] = {{0., 0.f, 0., 0.}, {30000., 0.f, 2.2222217012313195e-05, 2.2222217012313195e-05},
+		{45000., 1.f, 0., 0.}};
+	constexpr double RowShardsScaleStart = 30000.;
+	const FAnimKey RowShardsScaleKeys[] = {{30000., 1.5f, 0., 0.}, {45000., 1.f, -2.5000003006425686e-05, -2.5000003006425686e-05},
+		{48000., 1.0499999523162842f, 0., -1.5151516890909988e-05}, {59999., 1.f, 0., 3.333333370392211e-05}};
+	// Final Rank Animation: FinalRank in over 0.25 s from 1.5 times its size past 1.15 (after it, 1: the section's last
+	// key over the tree's 1.15), and CanvasPanel_0's translation (a section from 9000) jolted as the stamp lands.
+	const FAnimKey FinalOpacityKeys[] = {{0., 0.f, 0., 0.}, {15000., 1.f, 0., 0.}};
+	const FAnimKey FinalScaleKeys[] = {{0., 1.5f, 0., 0.}, {6000., 1.f, -3.888889114023186e-05, -3.888889114023186e-05},
+		{9000., 1.149999976158142f, 0., 0.}, {29999., 1.f, 0., 3.333333370392211e-05}};
+	constexpr double FinalJoltStart = 9000.;
+	const FAnimKey FinalJoltXKeys[] = {{9000., 0.f, 0., 0.}, {12000., 4.f, -0.0003333333588670939, -0.0003333333588670939},
+		{15000., -2.f, -0.00044444447848945856, -0.00044444447848945856}, {20999., 0.f, 0., 0.}};
+	const FAnimKey FinalJoltYKeys[] = {{9000., 0.f, 0., 0.}, {12000., -7.f, 0.0005000000237487257, 0.0005000000237487257},
+		{15000., 3.f, 0.000777777808252722, 0.000777777808252722}, {20999., 0.f, 0., 0.}};
+	// Fade Out: FadeOut's RenderOpacity in over 1 s.
+	const FAnimKey FadeOpacityKeys[] = {{0., 0.f, 0., 0.}, {60000., 1.f, 0., 0.}};
+	// The rows' audio tracks (Level_Clear_Grade_Stamp_v2), in ticks.
+	constexpr double RowStampTicks[] = {24000., 23999., 23999., 27000., 27000., 27000.};
+	// The rows' counters' spans (the 0.25 in Delay(0.25 / n)); SOUL SHARDS' event does nothing.
+	constexpr float RowCountSpans[] = {0.25f, 0.f, 0.25f, 0.05f, 0.25f, 0.5f};
+	constexpr int32 SoulShardsRow = 1;
 
 	// The tree's colours.
 	constexpr float HeadingGrey = 0.140625f;
@@ -180,7 +218,8 @@ namespace
 
 	// A debug command: the screen as Escape shows it, with the save's results.
 	FAutoConsoleCommandWithWorldAndArgs LevelClearCommand(TEXT("Wasami.LevelClear"),
-		TEXT("Shows the level clear screen with the save's results (the time counter added), without Escape's pause or save."),
+		TEXT("Shows the level clear screen with the save's results (the time counter added), without Escape's pause or save; ")
+		TEXT("NEXT takes it off at Finished."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			AWasamiGameMode* Mode = World ? World->GetAuthGameMode<AWasamiGameMode>() : nullptr;
@@ -188,7 +227,10 @@ namespace
 			{
 				FWasamiLevelProgress Progress = Mode->GetSave()->Hospital;
 				Progress.Time += Mode->GetTime();
-				UWasamiLevelClearWidget::Show(World, FWasamiLevelResults::ForHospital(Progress, false));
+				if (UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(World, FWasamiLevelResults::ForHospital(Progress, false)))
+				{
+					Screen->bRemoveWhenFinished = true;
+				}
 			}
 		}));
 }
@@ -202,6 +244,9 @@ UWasamiLevelClearWidget::UWasamiLevelClearWidget(const FObjectInitializer& Objec
 	VignetteTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Menu/Streaks/T_Vignette")));
 	TextFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/UI/Fonts/helvetica-neue-bold_Font")));
 	EscapedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_YouEscaped")));
+	RowStampSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Level_Clear_Grade_Stamp_v2")));
+	FinalStampSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Level_Clear_Grade_Stamp_v1")));
+	FillSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_XP_Bar_Fill_V2A_0617")));
 }
 
 UWasamiLevelClearWidget* UWasamiLevelClearWidget::Show(const UObject* WorldContextObject, const FWasamiLevelResults& InResults)
@@ -227,6 +272,7 @@ TSharedRef<SWidget> UWasamiLevelClearWidget::RebuildWidget()
 		UCanvasPanel* Root = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("CanvasPanel_0"));
 		Root->SetVisibility(ESlateVisibility::Visible);
 		WidgetTree->RootWidget = Root;
+		RootPanel = Root;
 		BuildScreen(Root);
 	}
 	return Super::RebuildWidget();
@@ -370,6 +416,9 @@ void UWasamiLevelClearWidget::BuildScreen(UCanvasPanel* Root)
 		NextSlot->SetVerticalAlignment(VAlign_Bottom);
 	}
 	LevelClearPlace(Root, NextButton, FAnchors(1.f, 1.f), FMargin(-163.37745666503906f, -89.0810546875f, 100.f, 30.f), FVector2D::ZeroVector, true);
+	NextButton->OnClicked.AddDynamic(this, &UWasamiLevelClearWidget::OnNextClicked);
+	NextButton->OnHovered.AddDynamic(this, &UWasamiLevelClearWidget::OnNextHovered);
+	NextButton->OnUnhovered.AddDynamic(this, &UWasamiLevelClearWidget::OnNextUnhovered);
 
 	// ClearLevel: the red past every edge (Image_5) and You Escaped! (Image_216, 1141 × 276 at the middle), over the
 	// results until it leaves.
@@ -424,22 +473,68 @@ void UWasamiLevelClearWidget::Begin()
 	Elapsed = 0.f;
 	bEscapedSoundPlayed = false;
 	bResultsShown = false;
+	ResultsStep = 0;
+	for (int32 Row = 0; Row < 6; ++Row)
+	{
+		RowTimes[Row] = -1.f;
+		bRowStamped[Row] = false;
+		bRowCounted[Row] = false;
+	}
+	TotalTime = -1.f;
+	bTotalCounted = false;
+	FinalTime = -1.f;
+	bFinalStamped = false;
+	for (FCounter& Counter : Counters)
+	{
+		Counter = FCounter();
+	}
+	FadeTime = -1.f;
+	FinishRemaining = 0.f;
+	bFinished = false;
 	ApplyAnimation();
+}
+
+void UWasamiLevelClearWidget::NativeDestruct()
+{
+	// The fill sounds loop until their counters stop them; the level opening after Finished ends them in the original.
+	for (FCounter& Counter : Counters)
+	{
+		if (UAudioComponent* Sound = Counter.Sound.Get())
+		{
+			Sound->Stop();
+		}
+		Counter.bDelaying = false;
+	}
+	Super::NativeDestruct();
 }
 
 void UWasamiLevelClearWidget::Advance(float DeltaSeconds)
 {
+	// As UUserWidget's tick: the playing animations move on, the latent actions (the Delays) count down, then the
+	// animations' events. What starts in this tick counts from the next.
 	Elapsed += DeltaSeconds;
-	ApplyAnimation();
-	// The audio track's section starts at 0.75 s: the sound from where the animation is in it. PlaySound2D plays a UI
-	// sound, which goes on while the game is paused.
+	for (float& Time : RowTimes)
+	{
+		if (Time >= 0.f)
+		{
+			Time += DeltaSeconds;
+		}
+	}
+	for (float* Time : {&TotalTime, &FinalTime, &FadeTime})
+	{
+		if (*Time >= 0.f)
+		{
+			*Time += DeltaSeconds;
+		}
+	}
+	TickDelays(DeltaSeconds);
+	// The audio track's section starts at 0.75 s: the sound from where the animation is in it.
 	if (!bEscapedSoundPlayed && Elapsed >= EscapedSoundTime)
 	{
 		bEscapedSoundPlayed = true;
-		USoundBase* Sound = GetWorld() && Elapsed < ClearLength ? EscapedSound.LoadSynchronous() : nullptr;
-		if (Sound)
+		if (Elapsed < ClearLength)
 		{
-			UGameplayStatics::PlaySound2D(this, Sound, 1.f, 1.f, Elapsed - EscapedSoundTime);
+			PlayUISound(EscapedSound, Elapsed - EscapedSoundTime);
 		}
 	}
 	if (!bResultsShown && Elapsed >= ShowResultsTime)
@@ -447,11 +542,235 @@ void UWasamiLevelClearWidget::Advance(float DeltaSeconds)
 		bResultsShown = true;
 		ShowResults();
 	}
+	TickResultsEvents();
+	ApplyAnimation();
 }
 
 void UWasamiLevelClearWidget::ShowResults()
 {
-	// The rows' Delay chain, TOTAL SHARDS and FINAL RANK are not played yet: the results stay clear.
+	// PlayAnimation(Time Animation) and the Delay to the next.
+	ResultsStep = 0;
+	RunResultsStep();
+}
+
+void UWasamiLevelClearWidget::TickDelays(float DeltaSeconds)
+{
+	// Each Delay as UE's: the time left less the tick's, done at 0 or below.
+	if (ResultsStep > 0 && ResultsStep < ResultsSteps)
+	{
+		ResultsDelayRemaining -= DeltaSeconds;
+		if (ResultsDelayRemaining <= 0.f)
+		{
+			RunResultsStep();
+		}
+	}
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(Counters)); ++Index)
+	{
+		FCounter& Counter = Counters[Index];
+		if (Counter.bDelaying)
+		{
+			Counter.DelayRemaining -= DeltaSeconds;
+			if (Counter.DelayRemaining <= 0.f)
+			{
+				StepCounter(Index);
+			}
+		}
+	}
+	if (FadeTime >= 0.f && !bFinished)
+	{
+		FinishRemaining -= DeltaSeconds;
+		if (FinishRemaining <= 0.f)
+		{
+			Finish();
+		}
+	}
+}
+
+void UWasamiLevelClearWidget::RunResultsStep()
+{
+	if (ResultsStep < 6)
+	{
+		RowTimes[ResultsStep] = 0.f;
+	}
+	else if (ResultsStep == 6)
+	{
+		TotalTime = 0.f;
+	}
+	else if (ResultsStep == 7)
+	{
+		FinalTime = 0.f;
+	}
+	else if (APlayerController* Controller = GetOwningPlayer())
+	{
+		// SetInputMode_UIOnlyEx and the mouse cursor: NEXT takes clicks from here.
+		UWidgetBlueprintLibrary::SetInputMode_UIOnlyEx(Controller, this, EMouseLockMode::DoNotLock);
+		Controller->SetShowMouseCursor(true);
+	}
+	++ResultsStep;
+	if (ResultsStep < ResultsSteps)
+	{
+		ResultsDelayRemaining = ResultsDelays[ResultsStep - 1];
+	}
+}
+
+void UWasamiLevelClearWidget::TickResultsEvents()
+{
+	// The rows' audio tracks (the stamp, from where the animation is in it) and event tracks (the counters at 0.5 s).
+	const TArray<const FWasamiResultRow*, TFixedAllocator<6>> Rows = Results.GetRows();
+	for (int32 Row = 0; Row < 6; ++Row)
+	{
+		if (RowTimes[Row] < 0.f)
+		{
+			continue;
+		}
+		const float Time = RowTimes[Row];
+		if (!bRowStamped[Row] && Time >= RowStampTime(Row))
+		{
+			bRowStamped[Row] = true;
+			PlayUISound(RowStampSound, Time - RowStampTime(Row));
+		}
+		if (!bRowCounted[Row] && Time >= RowCounterTime)
+		{
+			bRowCounted[Row] = true;
+			if (Row != SoulShardsRow && Rows.IsValidIndex(Row))
+			{
+				StartCounter(Row, Rows[Row]->Shards, RowCountSpan(Row));
+			}
+		}
+	}
+	// Total Shards Animation's event at its start: TotalShardsCounter over the total.
+	if (TotalTime >= 0.f && !bTotalCounted)
+	{
+		bTotalCounted = true;
+		StartCounter(TotalCounter, Results.GetTotalShards(), TotalCountSpan);
+	}
+	if (FinalTime >= 0.f && !bFinalStamped && FinalTime >= FinalStampTime)
+	{
+		bFinalStamped = true;
+		PlayUISound(FinalStampSound, FinalTime - FinalStampTime);
+	}
+}
+
+void UWasamiLevelClearWidget::StartCounter(int32 Index, int32 Number, float Span)
+{
+	// CreateSound2D(UI_XP_Bar_Fill_V2A_0617, 1, 1, 0, None, False, True) → Play, then the loop's first pass at once.
+	FCounter& Counter = Counters[Index];
+	Counter = FCounter();
+	Counter.Number = Number;
+	Counter.Span = Span;
+	USoundBase* Sound = GetWorld() ? FillSound.LoadSynchronous() : nullptr;
+	if (UAudioComponent* Component = Sound ? UGameplayStatics::CreateSound2D(this, Sound, 1.f, 1.f, 0.f, nullptr, false, true) : nullptr)
+	{
+		Component->Play(0.f);
+		Counter.Sound = Component;
+	}
+	StepCounter(Index);
+}
+
+void UWasamiLevelClearWidget::StepCounter(int32 Index)
+{
+	// +1; below n: "+count" and Delay(span / n); at n: "+n" and the sound stops. TOTAL SHARDS' text is bound to the
+	// total (Get_TotalShardAmount_Text_0), so its counter's SetText shows nothing: only its sound tells.
+	FCounter& Counter = Counters[Index];
+	UTextBlock* Text = ShardsTexts.IsValidIndex(Index) ? ShardsTexts[Index].Get() : nullptr;
+	++Counter.Count;
+	if (Counter.Count < Counter.Number)
+	{
+		if (Text)
+		{
+			Text->SetText(FText::FromString(FString::Printf(TEXT("+%d"), Counter.Count)));
+		}
+		Counter.DelayRemaining = Counter.Span / static_cast<float>(Counter.Number);
+		Counter.bDelaying = true;
+		return;
+	}
+	if (Text)
+	{
+		Text->SetText(FText::FromString(FString::Printf(TEXT("+%d"), Counter.Number)));
+	}
+	if (UAudioComponent* Sound = Counter.Sound.Get())
+	{
+		Sound->Stop();
+	}
+	Counter.bDelaying = false;
+}
+
+void UWasamiLevelClearWidget::PlayUISound(const TSoftObjectPtr<USoundBase>& Sound, float StartTime)
+{
+	// PlaySound2D plays a UI sound, which goes on while the game is paused.
+	if (USoundBase* Loaded = GetWorld() ? Sound.LoadSynchronous() : nullptr)
+	{
+		UGameplayStatics::PlaySound2D(this, Loaded, 1.f, 1.f, StartTime);
+	}
+}
+
+void UWasamiLevelClearWidget::PressNext()
+{
+	// NEXT when replaying (the XP box's count is left out): DoOnce → PlayAnimation(Fade Out), SetInputMode_GameOnly, no
+	// cursor, Delay 4. A click comes between ticks: its Delay and the fade count from now.
+	if (FadeTime >= 0.f)
+	{
+		return;
+	}
+	FadeTime = 0.f;
+	FinishRemaining = FinishDelay;
+	if (APlayerController* Controller = GetOwningPlayer())
+	{
+		UWidgetBlueprintLibrary::SetInputMode_GameOnly(Controller);
+		Controller->SetShowMouseCursor(false);
+	}
+	ApplyAnimation();
+}
+
+void UWasamiLevelClearWidget::Finish()
+{
+	// Finished, then the game mode's Reset Game Instance(False): the game instance forgets the shards it collected.
+	bFinished = true;
+	OnFinished.Broadcast();
+	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+	{
+		Instance->ForgetCollectedShards();
+	}
+	if (bRemoveWhenFinished)
+	{
+		RemoveFromParent();
+	}
+}
+
+void UWasamiLevelClearWidget::OnNextClicked()
+{
+	PressNext();
+}
+
+void UWasamiLevelClearWidget::OnNextHovered()
+{
+	NextButton->SetColorAndOpacity(FLinearColor::White);
+}
+
+void UWasamiLevelClearWidget::OnNextUnhovered()
+{
+	// Unhovered Color, the tree's grey.
+	NextButton->SetColorAndOpacity(FLinearColor(NextGrey, NextGrey, NextGrey, 1.f));
+}
+
+bool UWasamiLevelClearWidget::IsCounting(int32 Counter) const
+{
+	return Counter >= 0 && Counter < static_cast<int32>(UE_ARRAY_COUNT(Counters)) && Counters[Counter].bDelaying;
+}
+
+FText UWasamiLevelClearWidget::GetShardsText(int32 Row) const
+{
+	return ShardsTexts.IsValidIndex(Row) ? ShardsTexts[Row]->GetText() : FText::GetEmpty();
+}
+
+float UWasamiLevelClearWidget::RowStampTime(int32 Row)
+{
+	return Row >= 0 && Row < 6 ? static_cast<float>(RowStampTicks[Row] / TicksPerSecond) : 0.f;
+}
+
+float UWasamiLevelClearWidget::RowCountSpan(int32 Row)
+{
+	return Row >= 0 && Row < 6 ? RowCountSpans[Row] : 0.f;
 }
 
 void UWasamiLevelClearWidget::ApplyResults()
@@ -510,6 +829,42 @@ void UWasamiLevelClearWidget::ApplyAnimation()
 	if (EasyMode && EasyMode->GetParent())
 	{
 		EasyMode->SetRenderOpacity(EvaluateEasyOpacity(Elapsed));
+	}
+
+	// The rows', TOTAL SHARDS' and FINAL RANK's animations from when they started (untouched before), Fade Out from NEXT.
+	for (int32 Row = 0; Row < 6; ++Row)
+	{
+		if (RowTimes[Row] < 0.f || !ValueTexts.IsValidIndex(Row) || !RankTexts.IsValidIndex(Row) || !ShardsTexts.IsValidIndex(Row))
+		{
+			continue;
+		}
+		const float Time = RowTimes[Row];
+		ValueTexts[Row]->SetRenderOpacity(EvaluateRowValueOpacity(Time));
+		LevelClearScale(ValueTexts[Row], EvaluateRowValueScale(Time));
+		RankTexts[Row]->SetRenderOpacity(EvaluateRowRankOpacity(Time));
+		LevelClearScale(RankTexts[Row], EvaluateRowRankScale(Time));
+		ShardsTexts[Row]->SetRenderOpacity(EvaluateRowShardsOpacity(Time));
+		LevelClearScale(ShardsTexts[Row], EvaluateRowShardsScale(Time));
+	}
+	if (TotalTime >= 0.f && TotalShardAmount)
+	{
+		const float Time = FMath::Min(TotalTime, TotalLength);
+		TotalShardAmount->SetRenderOpacity(EvaluateRowValueOpacity(Time));
+		LevelClearScale(TotalShardAmount, EvaluateRowValueScale(Time));
+	}
+	if (FinalTime >= 0.f && FinalRank)
+	{
+		const float Time = FinalTime;
+		FinalRank->SetRenderOpacity(EvaluateFinalOpacity(Time));
+		LevelClearScale(FinalRank, EvaluateFinalScale(Time));
+		if (RootPanel)
+		{
+			RootPanel->SetRenderTranslation(EvaluateFinalJolt(Time));
+		}
+	}
+	if (FadeTime >= 0.f && FadeOut)
+	{
+		FadeOut->SetRenderOpacity(EvaluateFadeOpacity(FadeTime));
 	}
 }
 
@@ -607,4 +962,66 @@ float UWasamiLevelClearWidget::EvaluateEasyOpacity(float Seconds)
 {
 	static const FRichCurve Curve = MakeCurve(EasyOpacityKeys);
 	return LevelClearEvalFrom(Curve, Seconds, EasyStart, 0.f);
+}
+
+float UWasamiLevelClearWidget::EvaluateRowValueOpacity(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(RowValueOpacityKeys);
+	return Eval(Curve, Seconds, RowLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateRowValueScale(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(RowValueScaleKeys);
+	return Eval(Curve, Seconds, RowLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateRowRankOpacity(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(RowRankOpacityKeys);
+	return Eval(Curve, Seconds, RowLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateRowRankScale(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(RowRankScaleKeys);
+	return Seconds < RowRankScaleStart / TicksPerSecond ? 1.f : Eval(Curve, Seconds, RowLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateRowShardsOpacity(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(RowShardsOpacityKeys);
+	return Eval(Curve, Seconds, RowLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateRowShardsScale(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(RowShardsScaleKeys);
+	return Seconds < RowShardsScaleStart / TicksPerSecond ? 1.f : Eval(Curve, Seconds, RowLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateFinalOpacity(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(FinalOpacityKeys);
+	return Eval(Curve, Seconds, FinalLength);
+}
+
+float UWasamiLevelClearWidget::EvaluateFinalScale(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(FinalScaleKeys);
+	return Eval(Curve, Seconds, FinalLength);
+}
+
+FVector2D UWasamiLevelClearWidget::EvaluateFinalJolt(float Seconds)
+{
+	static const FRichCurve X = MakeCurve(FinalJoltXKeys);
+	static const FRichCurve Y = MakeCurve(FinalJoltYKeys);
+	const float Time = FMath::Min(Seconds, FinalLength);
+	return Time < FinalJoltStart / TicksPerSecond ? FVector2D::ZeroVector : FVector2D(Eval(X, Time, FinalLength), Eval(Y, Time, FinalLength));
+}
+
+float UWasamiLevelClearWidget::EvaluateFadeOpacity(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(FadeOpacityKeys);
+	return Eval(Curve, Seconds, FadeLength);
 }

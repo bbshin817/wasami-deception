@@ -231,8 +231,8 @@
     "Source/wasami_deception/WasamiLevelResults.cpp": "7b1d6f95fa9cde426f240d50f6b86ea2321b2978",
     "Source/wasami_deception/WasamiShardStreakWidget.h": "16fdafa93de48badfb32b58bb2e52f7243ba69cc",
     "Source/wasami_deception/WasamiShardStreakWidget.cpp": "639a0e869b2d8b3a9e68d9da1f5faf5e8d4b148b",
-    "Source/wasami_deception/WasamiLevelClearWidget.h": "18716c4fa1c5b1c3460364009a00ca5723f34488",
-    "Source/wasami_deception/WasamiLevelClearWidget.cpp": "332d8670879b6d30a9ff70e0e991d47022ca2e87",
-    "Source/wasami_deception/Tests/WasamiLevelClearTests.cpp": "9f09ed7ec70038b9154bf28bf06f92c5ea02aad2"
+    "Source/wasami_deception/WasamiLevelClearWidget.h": "c4e61454724dcd81e95cf9c6841bf48d2f35ccdd",
+    "Source/wasami_deception/WasamiLevelClearWidget.cpp": "35f67510c7391ea4c4573048f46c3c4afc2f55c3",
+    "Source/wasami_deception/Tests/WasamiLevelClearTests.cpp": "e4f85a22d7b79f3f478f5258fd10a19bdbe6a6ae"
   }
 }

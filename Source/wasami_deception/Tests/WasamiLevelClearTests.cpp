@@ -6,11 +6,13 @@
 #include "../WasamiSaveGame.h"
 #include "../WasamiShardStreakWidget.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/Widget.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundWave.h"
 #include "Tests/AutomationCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -373,6 +375,188 @@ bool FWasamiLevelClearScreenTest::RunTest(const FString& Parameters)
 	Easy->Initialize();
 	Easy->TakeWidget();
 	TestTrue(TEXT("easymode stays on EASY"), Easy->IsEasyModeShown());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiLevelClearShowResultsTest, "Wasami.LevelClear.ShowResults",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiLevelClearShowResultsTest::RunTest(const FString& Parameters)
+{
+	using W = UWasamiLevelClearWidget;
+	using R = FWasamiLevelResults;
+
+	// The timings: the Delay chain, the rows' stamps and counters, the others.
+	const float Delays[] = {0.25f, 0.25f, 0.25f, 0.25f, 0.25f, 0.5f, 1.f, 1.f};
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(Delays)); ++Index)
+	{
+		TestEqual(FString::Printf(TEXT("Delay %d"), Index), W::ResultsDelays[Index], Delays[Index]);
+	}
+	TestEqual(TEXT("Time's stamp at 0.4 s"), W::RowStampTime(0), 0.4f, 1e-6f);
+	TestEqual(TEXT("Bonus Shards' at 23999 ticks"), W::RowStampTime(2), 23999.f / 60000.f, 1e-6f);
+	TestEqual(TEXT("Secrets' at 0.45 s"), W::RowStampTime(3), 0.45f, 1e-6f);
+	TestEqual(TEXT("Shard Streak's at 0.45 s"), W::RowStampTime(5), 0.45f, 1e-6f);
+	const float Spans[] = {0.25f, 0.f, 0.25f, 0.05f, 0.25f, 0.5f};
+	for (int32 Row = 0; Row < 6; ++Row)
+	{
+		TestEqual(FString::Printf(TEXT("row %d's counter's span"), Row), W::RowCountSpan(Row), Spans[Row]);
+	}
+	TestEqual(TEXT("TOTAL SHARDS' span"), W::TotalCountSpan, 0.5f);
+	TestEqual(TEXT("FINAL RANK's stamp at 7200 ticks"), W::FinalStampTime, 0.12f);
+	TestEqual(TEXT("Finished 4 s after NEXT"), W::FinishDelay, 4.f);
+
+	// The curves.
+	TestEqual(TEXT("a value clear at first"), W::EvaluateRowValueOpacity(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("in at 0.25 s"), W::EvaluateRowValueOpacity(0.25f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.5 times its size at first"), W::EvaluateRowValueScale(0.f), 1.5f, 1e-4f);
+	TestEqual(TEXT("its size at 0.25 s"), W::EvaluateRowValueScale(0.25f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.05 at 0.3 s"), W::EvaluateRowValueScale(17999.f / 60000.f), 1.05f, 1e-4f);
+	TestEqual(TEXT("its size after 0.5 s"), W::EvaluateRowValueScale(0.9f), 1.f, 1e-4f);
+	TestEqual(TEXT("the rank clear at 0.25 s"), W::EvaluateRowRankOpacity(0.25f), 0.f, 1e-4f);
+	TestEqual(TEXT("in at 0.5 s"), W::EvaluateRowRankOpacity(0.5f), 1.f, 1e-4f);
+	TestEqual(TEXT("at its own size before its section"), W::EvaluateRowRankScale(0.2f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.5 at 0.25 s"), W::EvaluateRowRankScale(0.25f), 1.5f, 1e-4f);
+	TestEqual(TEXT("1.05 at 0.55 s"), W::EvaluateRowRankScale(0.55f), 1.05f, 1e-4f);
+	TestEqual(TEXT("the +N clear at 0.5 s"), W::EvaluateRowShardsOpacity(0.5f), 0.f, 1e-4f);
+	TestEqual(TEXT("in at 0.75 s"), W::EvaluateRowShardsOpacity(0.75f), 1.f, 1e-4f);
+	TestEqual(TEXT("at its own size before its section"), W::EvaluateRowShardsScale(0.4f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.5 at 0.5 s"), W::EvaluateRowShardsScale(0.5f), 1.5f, 1e-4f);
+	TestEqual(TEXT("1.05 at 0.8 s"), W::EvaluateRowShardsScale(0.8f), 1.05f, 1e-4f);
+	TestEqual(TEXT("its size at 1 s"), W::EvaluateRowShardsScale(1.f), 1.f, 1e-4f);
+	TestEqual(TEXT("FINAL RANK in at 0.25 s"), W::EvaluateFinalOpacity(0.25f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.5 times its size at first"), W::EvaluateFinalScale(0.f), 1.5f, 1e-4f);
+	TestEqual(TEXT("its size at 0.1 s"), W::EvaluateFinalScale(0.1f), 1.f, 1e-4f);
+	TestEqual(TEXT("1.15 at 0.15 s"), W::EvaluateFinalScale(0.15f), 1.15f, 1e-4f);
+	TestEqual(TEXT("1 after 0.5 s"), W::EvaluateFinalScale(0.75f), 1.f, 1e-4f);
+	TestTrue(TEXT("no jolt before 0.15 s"), W::EvaluateFinalJolt(0.1f).IsZero());
+	TestTrue(TEXT("the jolt at 0.2 s"), W::EvaluateFinalJolt(0.2f).Equals(FVector2D(4., -7.), 1e-3));
+	TestTrue(TEXT("and back at 0.25 s"), W::EvaluateFinalJolt(0.25f).Equals(FVector2D(-2., 3.), 1e-3));
+	TestTrue(TEXT("still after 0.35 s"), W::EvaluateFinalJolt(0.6f).Equals(FVector2D::ZeroVector, 1e-3));
+	TestEqual(TEXT("the fade clear at first"), W::EvaluateFadeOpacity(0.f), 0.f, 1e-4f);
+	TestEqual(TEXT("halfway at 0.5 s"), W::EvaluateFadeOpacity(0.5f), 0.5f, 1e-3f);
+	TestEqual(TEXT("black at 1 s"), W::EvaluateFadeOpacity(1.f), 1.f, 1e-3f);
+
+	// The sounds: the stamps and the fill, which loops.
+	const TCHAR* const Sounds[] = {TEXT("/Game/DD/Audio/UI/Level_Clear_Grade_Stamp_v1.Level_Clear_Grade_Stamp_v1"),
+		TEXT("/Game/DD/Audio/UI/Level_Clear_Grade_Stamp_v2.Level_Clear_Grade_Stamp_v2")};
+	for (const TCHAR* Path : Sounds)
+	{
+		if (!LoadObject<USoundBase>(nullptr, Path))
+		{
+			AddError(FString::Printf(TEXT("%s is missing: run WasamiDDTools.import_dd_ui"), Path));
+		}
+	}
+	const USoundWave* Fill = LoadObject<USoundWave>(nullptr, TEXT("/Game/DD/Audio/UI/UI_XP_Bar_Fill_V2A_0617.UI_XP_Bar_Fill_V2A_0617"));
+	if (TestNotNull(TEXT("the fill sound"), Fill))
+	{
+		TestTrue(TEXT("it loops"), Fill->bLooping);
+	}
+
+	// A new save's results, frame by frame at 60 fps: TIME +70, SOUL SHARDS none, BONUS SHARDS and SECRETS +0,
+	// LIVES LOST +40, SHARD STREAK +15.
+	W* Screen = NewObject<W>();
+	Screen->Results = R::ForHospital(FWasamiLevelProgress(), false);
+	Screen->Initialize();
+	Screen->TakeWidget();
+	UWidgetTree* Tree = Screen->WidgetTree;
+	if (!TestNotNull(TEXT("the tree"), Tree))
+	{
+		return false;
+	}
+	float Seconds = 0.f;
+	auto RunTo = [&](float Until)
+	{
+		while (Seconds + 1e-4f < Until)
+		{
+			Screen->Advance(1.f / 60.f);
+			Seconds += 1.f / 60.f;
+		}
+	};
+	const UWidget* TimeValue = Tree->FindWidget(TEXT("Time"));
+	const UWidget* TimeRank = Tree->FindWidget(TEXT("TimeRank"));
+	const UWidget* TimeShards = Tree->FindWidget(TEXT("TimeShards"));
+	const UWidget* LivesValue = Tree->FindWidget(TEXT("LivesLost"));
+	const UWidget* Total = Tree->FindWidget(TEXT("TotalShardAmount"));
+	const UWidget* Final = Tree->FindWidget(TEXT("FinalRank"));
+	const UWidget* Fade = Tree->FindWidget(TEXT("FadeOut"));
+	if (!TestTrue(TEXT("the rows and the rest are in the tree"), TimeValue && TimeRank && TimeShards && LivesValue && Total && Final && Fade))
+	{
+		return false;
+	}
+	RunTo(3.2f);
+	TestEqual(TEXT("no row before ShowResults"), Screen->GetResultsStep(), 0);
+	TestEqual(TEXT("the values clear"), TimeValue->GetRenderOpacity(), 0.f);
+	RunTo(3.3f);
+	TestEqual(TEXT("TIME's row at 3.25 s"), Screen->GetResultsStep(), 1);
+	TestTrue(TEXT("its value coming in"), TimeValue->GetRenderOpacity() > 0.f && TimeValue->GetRenderOpacity() < 1.f);
+	// The rank's curve dips a little below 0 before 0.25 s (the key there arrives with a tangent), as UE's does.
+	TestTrue(TEXT("its rank still clear"), TimeRank->GetRenderOpacity() <= 0.f);
+	// The rows 0.25 s apart, TOTAL SHARDS 0.5 s after SHARD STREAK, FINAL RANK 1 s on, the input 1 s after that. Never
+	// early; a Delay's float countdown can take a frame more than its length (0.25 s at 1/60 s is 16 frames, as UE's).
+	const float StepTimes[] = {3.5f, 3.75f, 4.f, 4.25f, 4.5f, 5.f, 6.f, 7.f};
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(StepTimes)); ++Index)
+	{
+		RunTo(StepTimes[Index] - 0.03f);
+		TestEqual(FString::Printf(TEXT("step %d not before %.2f s"), Index + 2, StepTimes[Index]), Screen->GetResultsStep(), Index + 1);
+		RunTo(StepTimes[Index] + static_cast<float>(Index + 2) / 60.f + 0.01f);
+		TestEqual(FString::Printf(TEXT("step %d at %.2f s"), Index + 2, StepTimes[Index]), Screen->GetResultsStep(), Index + 2);
+		if (Index == 2)
+		{
+			// TIME's counter began at 3.75 s: +1 a frame (Delay(0.25 / 70) is shorter than a frame).
+			TestTrue(TEXT("TIME is counting"), Screen->IsCounting(0));
+			const FString Before = Screen->GetShardsText(0).ToString();
+			RunTo(Seconds + 1.f / 60.f);
+			const FString After = Screen->GetShardsText(0).ToString();
+			TestTrue(TEXT("one a frame"), Before.StartsWith(TEXT("+")) && FCString::Atoi(*After.RightChop(1)) == FCString::Atoi(*Before.RightChop(1)) + 1);
+		}
+		if (Index == 1)
+		{
+			TestEqual(TEXT("TIME's value in"), TimeValue->GetRenderOpacity(), 1.f, 1e-4f);
+			TestEqual(TEXT("at its size (the animation's last key over the tree's 1.05)"), TimeValue->GetRenderTransform().Scale.X, 1., 1e-4);
+			TestEqual(TEXT("TIME's rank in"), TimeRank->GetRenderOpacity(), 1.f, 1e-4f);
+		}
+	}
+	TestEqual(TEXT("TIME counted to +70"), Screen->GetShardsText(0).ToString(), FString(TEXT("+70")));
+	TestFalse(TEXT("and stopped"), Screen->IsCounting(0));
+	TestEqual(TEXT("SOUL SHARDS' +N stays blank"), Screen->GetShardsText(1).ToString(), FString());
+	TestEqual(TEXT("BONUS SHARDS +0"), Screen->GetShardsText(2).ToString(), FString(TEXT("+0")));
+	TestEqual(TEXT("SECRETS +0"), Screen->GetShardsText(3).ToString(), FString(TEXT("+0")));
+	TestEqual(TEXT("LIVES LOST +40"), Screen->GetShardsText(4).ToString(), FString(TEXT("+40")));
+	TestEqual(TEXT("SHARD STREAK +15"), Screen->GetShardsText(5).ToString(), FString(TEXT("+15")));
+	TestEqual(TEXT("TOTAL SHARDS in"), Total->GetRenderOpacity(), 1.f, 1e-4f);
+	TestEqual(TEXT("its text still the bound total"), Screen->GetTotalText().ToString(), FString(TEXT("1,483")));
+	TestTrue(TEXT("its counter still going (one a frame to 1483)"), Screen->IsCounting(W::TotalCounter));
+	TestEqual(TEXT("FINAL RANK in"), Final->GetRenderOpacity(), 1.f, 1e-4f);
+	TestEqual(TEXT("at its size"), Final->GetRenderTransform().Scale.X, 1., 1e-4);
+	TestEqual(TEXT("the screen still"), Tree->RootWidget->GetRenderTransform().Translation.Size(), 0., 1e-3);
+
+	// NEXT's hover and unhover colours.
+	UButton* Next = Cast<UButton>(Tree->FindWidget(TEXT("NextButton")));
+	if (TestNotNull(TEXT("NEXT"), Next))
+	{
+		Next->OnHovered.Broadcast();
+		TestTrue(TEXT("white while hovered"), Next->GetColorAndOpacity().Equals(FLinearColor::White));
+		Next->OnUnhovered.Broadcast();
+		TestTrue(TEXT("grey again"), Next->GetColorAndOpacity().Equals(FLinearColor(0.114583f, 0.114583f, 0.114583f, 1.f), 1e-4f));
+	}
+
+	// NEXT: a DoOnce, Fade Out over 1 s and Finished 4 s on.
+	Screen->PressNext();
+	TestTrue(TEXT("NEXT pressed"), Screen->IsNextPressed());
+	const float Pressed = Seconds;
+	RunTo(Pressed + 0.5f);
+	Screen->PressNext();
+	TestEqual(TEXT("fading"), Fade->GetRenderOpacity(), 0.5f, 0.05f);
+	RunTo(Pressed + 1.1f);
+	TestEqual(TEXT("black after 1 s (a second NEXT does nothing)"), Fade->GetRenderOpacity(), 1.f, 1e-3f);
+	RunTo(Pressed + 3.95f);
+	TestFalse(TEXT("not finished before 4 s"), Screen->IsFinished());
+	RunTo(Pressed + 4.05f);
+	TestTrue(TEXT("Finished at 4 s"), Screen->IsFinished());
+
+	// TOTAL SHARDS' counter, left alone, steps one a frame to its number.
+	RunTo(5.f + 1482.f / 60.f + 0.5f);
+	TestFalse(TEXT("TOTAL SHARDS' counter done after 1482 frames"), Screen->IsCounting(W::TotalCounter));
 	return true;
 }
 
