@@ -31,6 +31,10 @@ SCOPE_EXT = re.compile(r"\.(cpp|h|cs|py|ini|uproject|json)$")
 def git_blob_hash(path):
     with open(path, "rb") as f:
         data = f.read()
+    # 行末は LF で比べる。.gitattributes の eol=lf で git が入れるのは LF の中身なので、作業コピーが
+    # CRLF（Windows の編集の道具や open(p, 'w') が書く）でも同じハッシュになる。NUL を含む中身は git と同じく変えない
+    if b"\0" not in data:
+        data = data.replace(b"\r\n", b"\n")
     h = hashlib.sha1()
     h.update(b"blob %d\0" % len(data))
     h.update(data)
