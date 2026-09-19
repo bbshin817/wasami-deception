@@ -22,6 +22,7 @@
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiBlackFadeWidget.h"
+#include "WasamiDeathScreenWidget.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiOptionsWidget.h"
@@ -429,9 +430,10 @@ void UWasamiPauseWidget::Advance(float DeltaSeconds)
 		ResumeElapsed += DeltaSeconds;
 		if (ResumeElapsed >= ResumeDelay)
 		{
-			// @15: SetGamePaused(False), RemoveFromParent.
+			// @15: SetGamePaused(False), RemoveFromParent. Over the death screen EASY holds (which only this game opens the
+			// menu over) the game stays paused under the screen.
 			bFinished = true;
-			if (GetWorld())
+			if (GetWorld() && !UWasamiDeathScreenWidget::FindHoldingOnEasy(this))
 			{
 				UGameplayStatics::SetGamePaused(this, false);
 			}

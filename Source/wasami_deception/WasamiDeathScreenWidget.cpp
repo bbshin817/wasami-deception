@@ -284,10 +284,12 @@ void UWasamiDeathScreenWidget::NativeConstruct()
 
 	// Decrement Lives; then the level's deaths + 1 and its streak back to 0, written at once.
 	int32 Lives = 0;
+	bool bEasyMode = false;
 	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
 	{
 		Instance->DecrementLives();
 		Lives = Instance->GetLives();
+		bEasyMode = Instance->IsEasy();
 	}
 	bool bCheckpoint = false;
 	if (AWasamiGameMode* Mode = GameModeOf(this))
@@ -311,7 +313,22 @@ void UWasamiDeathScreenWidget::NativeConstruct()
 	const TConstArrayView<float> Voices = VoiceLengths(Level);
 	const float Voice = Voices.Num() > 0 ? Voices[FMath::RandRange(0, Voices.Num() - 1)] : 0.f;
 
-	Begin(Lives, Voice, bCheckpoint);
+	Begin(Lives, Voice, bCheckpoint, bEasyMode);
+}
+
+UWasamiDeathScreenWidget* UWasamiDeathScreenWidget::FindHoldingOnEasy(const UObject* WorldContextObject)
+{
+	TArray<UUserWidget*> Found;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(WorldContextObject, Found, StaticClass(), true);
+	for (UUserWidget* Each : Found)
+	{
+		UWasamiDeathScreenWidget* Screen = Cast<UWasamiDeathScreenWidget>(Each);
+		if (Screen && Screen->IsHoldingOnEasy())
+		{
+			return Screen;
+		}
+	}
+	return nullptr;
 }
 
 void UWasamiDeathScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -320,15 +337,16 @@ void UWasamiDeathScreenWidget::NativeTick(const FGeometry& MyGeometry, float InD
 	Advance(InDeltaTime);
 }
 
-void UWasamiDeathScreenWidget::Begin(int32 LivesLeft, float VoiceSeconds, bool bInHasCheckpoint)
+void UWasamiDeathScreenWidget::Begin(int32 LivesLeft, float VoiceSeconds, bool bInHasCheckpoint, bool bInEasy)
 {
 	LocalLives = LivesLeft;
 	VoiceLength = FMath::Max(VoiceSeconds, 0.f);
 	bHasCheckpoint = bInHasCheckpoint;
+	bEasy = bInEasy;
 	Pending.Reset();
 	Elapsed = 0.f;
 	StepTime = 0.f;
-	bProceeded = bGameOver = bButtonsShown = bRespawned = false;
+	bEasyHold = bProceeded = bGameOver = bButtonsShown = bRespawned = false;
 	bRestartClosed = bLastCheckpointClosed = bQuitClosed = bLeft = false;
 	Choice = EChoice::None;
 	FadeInTime = FadeOutTime = ShakeTime = DeathTime = -1.f;
@@ -420,6 +438,15 @@ void UWasamiDeathScreenWidget::RunStep(EStep Step)
 			Schedule(EStep::Proceed, VoiceLength);
 			LifeAnimation();
 			Schedule(EStep::Proceed, VoiceLimit);
+			break;
+		}
+		if (bEasy)
+		{
+			// No lives left on EASY (the latest version's @2539 → @2639, the settings' Difficulty 0): Life Animation only,
+			// the heading and the tip left up. The 6 s DoOnce stops at Get Lives > 0 and Proceed is bound only with
+			// lives left, so nothing more comes: no game over, no input to the screen, no respawn.
+			bEasyHold = true;
+			LifeAnimation();
 			break;
 		}
 		// No lives left: without a checkpoint LAST CHECKPOINT goes; the row, the heading and the tip hide.

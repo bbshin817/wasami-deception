@@ -251,6 +251,7 @@
 - `decal_blend_mode`（UE 5.8 で非推奨、読めない）: いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつなぐ（01 記録）。
 - `MaterialExpressionIf` の `ConstAGreaterThanB` など: 扇形のマスクは `ceil(saturate(…))` で作る（03 記録）。
 - `SlateBlueprintLibrary`（画面上の大きさ）: ウィジェットのパス（`get_user_widget_object()` のパス + `.WidgetTree.<名前>`）を `find_object` して `render_transform` と `get_render_opacity()` を読む（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
+- **ウィジェットの画面上の位置（`get_cached_geometry()` / `get_tick_space_geometry()` / `get_paint_space_geometry()`）**: Python の名前は `unreal.SlateLibrary` で関数はあるが、Python が受け取る `Geometry` は空の写し（反映されたフィールドが無い）で、`SlateLibrary.get_local_size` は 0、`local_to_viewport` はビューポートの左上を返す。C++ の `unreal.WasamiWidgetProbe.viewport_fraction(widget, unreal.Vector2D(0.5, 0.5))`（ビューポートの大きさに対する割合。描かれていなければ (-1, -1)。09 記録）で読む。`Tools/playthrough.py` の `click_part` がこれで画面のボタン・スライダーを押す（2026-09-19。エディタの開き直し 1 回）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
 - `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
 

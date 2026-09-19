@@ -70,7 +70,7 @@ public:
 
 	/**
 	 * RESUME (@3654): UI_Select_V3, FadeIn backwards from its end, the input to the game without the cursor, and 0.5 s
-	 * later the game unpaused and the menu off the screen.
+	 * later the game unpaused (not over the death screen EASY holds) and the menu off the screen.
 	 */
 	void PressResume();
 
