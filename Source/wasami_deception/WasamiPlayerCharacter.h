@@ -190,6 +190,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TSubclassOf<AActor> ShardActorClass;
 
+	/**
+	 * The classes whose every actor the minimap always shows besides the map plane, the arrow and the shards (the
+	 * original's list also has BP_PowerOrb and BP_BonusShard): AWasamiPowerOrb.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
+	TArray<TSubclassOf<AActor>> MinimapActorClasses;
+
 	/** FOV Multiplier: the camera's FOV (°, horizontal) at FOVSpeedRange.X cm/s and below, rising linearly to FastFOV. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Camera")
 	float BaseFOV = 90.f;

@@ -233,6 +233,7 @@ Zone 1 の迷路（2026-09-19、62 枚を置いた後）: 巡回するナース�
 罠を置いた後の通し（項目 8 のステップ 10、2026-09-19）: `python Tools/playthrough.py run --from z1_arrive --to z2_escape --setup --record traps_through6.mkv --shots`（`Wasami.ResetSave` から、1 回の PIE）で 11 区間がすべて終わりに着いた（終了コード 0、270 s）。扉の破壊は Zone 1 のエレベーターの前（F 70 回）と Zone 2 の独房（F 40 回）の 2 つとも外れて流れが進んだ。除細動器は台本の見張り（01 記録の `Traps`）が `z1_maze` で `BP_06_Defib4`・`Defib2`・`Defib23`、`z1_shards` で `Defib4` の手前で放電を待ち、赤い稲妻が消えてから台の間を抜けた（死は捕獲の 1 回だけ）。見張りの無い 1 回目は、`z1_maze` の 2 つ目のシャードの 2 m 先の `BP_06_Defib4` の放電で死んだ（本家どおりの罠）。のこぎりの罠とスピードバリアはどの区間の道にも無い。収録 `Intermediate/DesktopAgent/shots/traps_through6.mkv`（git の外。75.6〜78.9 s が `Defib4` の前で待って抜ける所）。各種 1 つずつの収録は、両開き扉 `door_walk.mkv`（ステップ 1）・除細動器 `pie-defib-fire2.mkv`・`pie-defib-hit.mkv`（ステップ 4）・スピードバリア `sb_break.mkv`（ステップ 6）・のこぎり `saw_catch.mkv`（ステップ 9）、扉の破壊は `traps_through6.mkv`。
 
 ## 変更履歴
+- 2026-09-19: `Tests/WasamiSpeedBarrierTests.cpp` の無名名前空間の関数を `SpeedBarrierSameTurn` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiDefibTests.cpp` の `SameTurn` とぶつかった。作業一覧の項目 10 のステップ 3）
 - 2026-09-19: 罠を置いた後の通しを確かめた（検証の「罠を置いた後の通し」。作業一覧の項目 8 のステップ 10）
 - 2026-09-19: 除細動器の `IsFiring` を BlueprintPure にし、次の放電までの秒 `GetTimeToFire` を足した（台本 `Tools/playthrough.py` の罠の見張りが読む。01 記録。テスト `Wasami.Defib.Charge` に確かめを足した。作業一覧の項目 8 のステップ 10）
 - 2026-09-19: Zone 2 ののこぎりの罠 74 を置いた（組み立てと前処理のアクタの向きの直しは 01 記録。作業一覧の項目 8 のステップ 9）

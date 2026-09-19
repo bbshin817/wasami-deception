@@ -1,19 +1,8 @@
 #include "WasamiPrimalPower.h"
 
-#include "Camera/CameraShakeBase.h"
 #include "Components/PostProcessComponent.h"
-#include "Components/StaticMeshComponent.h"
-#include "Engine/CollisionProfile.h"
-#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/PlayerController.h"
-#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Materials/MaterialInstanceDynamic.h"
-#include "Materials/MaterialInterface.h"
-#include "Sound/SoundBase.h"
-#include "WasamiAssets.h"
 #include "WasamiEnemyInterface.h"
 
 namespace
@@ -21,16 +10,6 @@ namespace
 	// BP_PrimalPower (pak_reference_2). PostProcess: saturation 0 under this gain, a red screen; PostProcess1's fringe.
 	const FVector4 PrimalTintGain(1.6100000143051147, 0.12956300377845764, 0., 1.);
 	constexpr float PrimalFlashFringe = 50.f;
-	// The sphere's scale is Lerp(0, Range, float) / this (the engine sphere's radius).
-	constexpr float SphereMeshRadius = 50.f;
-	// ClientPlayCameraShake(01_Hotel_Lobby_ElevatorShakeStop, Scale, CameraLocal).
-	constexpr float ShakeScale = 25.f;
-	// PlaySoundAtLocation(Stun_Wave_Attack_New_04) at the origin (the wave has no attenuation, so it is not placed).
-	constexpr float WaveVolume = 1.f;
-	constexpr float WavePitch = 1.f;
-	// M_05_Primal's parameters the timeline drives.
-	const FName DesaturationName(TEXT("Desaturation"));
-	const FName OpacityName(TEXT("Opacity"));
 
 	// The timeline's tracks (CurveFloat_0 to _3), key for key.
 	const FWasamiCurveKey GrowthKeys[] = {
@@ -83,26 +62,15 @@ AWasamiPrimalPower::AWasamiPrimalPower()
 	PostProcess->Settings.ColorGain = PrimalTintGain;
 	PostProcess1->Settings.SceneFringeIntensity = PrimalFlashFringe;
 	FadeCurve = PrimalFadeCurve();
-
-	// At the root's origin, unscaled until the timeline's first update; no collision at all.
-	Sphere = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Sphere"));
-	Sphere->SetupAttachment(SceneRoot);
-	Sphere->SetMobility(EComponentMobility::Movable);
-	Sphere->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
-
-	SphereMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Sphere")));
-	SphereMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/05_Circus/M_05_Primal")));
-	WaveSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/Stun_Wave_Attack_New_04")));
-	ShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/01_Hotel/01_Hotel_Lobby_ElevatorShakeStop")));
+	GrowthTrack = GrowthCurve();
+	DesaturationTrack = DesaturationCurve();
+	OpacityTrack = OpacityCurve();
+	// The wave at pitch 1; M_05_Primal's own red.
 }
 
 void AWasamiPrimalPower::LoadAssets(TArray<TObjectPtr<UObject>>& Out)
 {
-	const AWasamiPrimalPower* Defaults = GetDefault<AWasamiPrimalPower>();
-	Out.Add(Defaults->SphereMesh.LoadSynchronous());
-	Out.Add(Defaults->SphereMaterial.LoadSynchronous());
-	Out.Add(Defaults->WaveSound.LoadSynchronous());
-	Out.Add(Defaults->ShakeClass.LoadSynchronous());
+	GetDefault<AWasamiPrimalPower>()->LoadDefaultAssets(Out);
 }
 
 int32 AWasamiPrimalPower::StunEnemies(const UObject* WorldContextObject, FVector Center, float Radius)
@@ -126,30 +94,7 @@ int32 AWasamiPrimalPower::StunEnemies(const UObject* WorldContextObject, FVector
 
 void AWasamiPrimalPower::StartPower()
 {
-	Sphere->SetStaticMesh(SphereMesh.LoadSynchronous());
-	MaterialInstance = Sphere->CreateDynamicMaterialInstance(0, SphereMaterial.LoadSynchronous());
-
-	// From the spawn 50 m down onto the player's capsule centre, where it stays.
-	const ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0);
-	const FVector Center = Player ? Player->GetActorLocation() : GetActorLocation();
-	SetActorLocation(Center);
-	UGameplayStatics::PlaySoundAtLocation(this, WaveSound.LoadSynchronous(), FVector::ZeroVector, WaveVolume, WavePitch);
-
-	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-	{
-		PC->ClientStartCameraShake(ShakeClass.LoadSynchronous(), ShakeScale, ECameraShakePlaySpace::CameraLocal);
-	}
-	StunEnemies(this, Center, Range);
-}
-
-void AWasamiPrimalPower::UpdateTimeline(float Position)
-{
-	// The sphere's radius is Range × float; the volumes fade by float2; the material by desaturation and opacity.
-	Sphere->SetWorldScale3D(FVector(FMath::Lerp(0.f, Range, GrowthCurve().Eval(Position)) / SphereMeshRadius));
-	Super::UpdateTimeline(Position);
-	if (MaterialInstance)
-	{
-		MaterialInstance->SetScalarParameterValue(DesaturationName, DesaturationCurve().Eval(Position));
-		MaterialInstance->SetScalarParameterValue(OpacityName, OpacityCurve().Eval(Position));
-	}
+	// The stun comes after the shake, around the player's capsule centre (where the burst now is).
+	Super::StartPower();
+	StunEnemies(this, GetActorLocation(), Range);
 }

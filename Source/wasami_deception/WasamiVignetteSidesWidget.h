@@ -36,6 +36,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Special Shards", meta = (WorldContext = "WorldContextObject"))
 	static UWasamiVignetteSidesWidget* Show(const UObject* WorldContextObject, FLinearColor InColor, bool bInText, FText InTextToDisplay);
 
+	/** Loads what the widget draws with into Out, so that a pickup waits on nothing. */
+	static void LoadAssets(TArray<TObjectPtr<UObject>>& Out);
+
 	/** Color: the whole widget's tint (Construct's SetColorAndOpacity on itself). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Special Shards")
 	FLinearColor Color = FLinearColor(1.f, 0.39522600173950195f, 0.f, 1.f);

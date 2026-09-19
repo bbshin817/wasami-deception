@@ -1,15 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "WasamiPowerBurst.h"
+#include "WasamiSphereBurst.h"
 #include "WasamiPrimalPower.generated.h"
-
-class UCameraShakeBase;
-class UMaterialInstanceDynamic;
-class UMaterialInterface;
-class USoundBase;
-class UStaticMesh;
-class UStaticMeshComponent;
 
 /**
  * Primal Fear, after Dark Deception's BP_PrimalPower (pak_reference_2). The power spawns it 50 m under the player with
@@ -18,7 +11,7 @@ class UStaticMeshComponent;
  * fades while the screen flashes white and red.
  */
 UCLASS()
-class WASAMI_DECEPTION_API AWasamiPrimalPower : public AWasamiPowerBurst
+class WASAMI_DECEPTION_API AWasamiPrimalPower : public AWasamiSphereBurst
 {
 	GENERATED_BODY()
 
@@ -41,38 +34,7 @@ public:
 	static const FRichCurve& OpacityCurve();
 	static const FRichCurve& PrimalFadeCurve();
 
-	UStaticMeshComponent* GetSphere() const { return Sphere; }
-	UMaterialInstanceDynamic* GetMaterialInstance() const { return MaterialInstance; }
-
-	/** Range (cm): the power sets it by the upgrade level before the spawn finishes. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Primal Fear", meta = (ExposeOnSpawn = "true"))
-	float Range = 1500.f;
-
-	/** /Engine/BasicShapes/Sphere (50 cm across its radius). */
-	UPROPERTY(EditAnywhere, Category = "Primal Fear|Assets")
-	TSoftObjectPtr<UStaticMesh> SphereMesh;
-
-	/** M_05_Primal: the sphere's red, with the Desaturation and Opacity the timeline drives (its graph is an estimate). */
-	UPROPERTY(EditAnywhere, Category = "Primal Fear|Assets")
-	TSoftObjectPtr<UMaterialInterface> SphereMaterial;
-
-	/** Stun_Wave_Attack_New_04. */
-	UPROPERTY(EditAnywhere, Category = "Primal Fear|Assets")
-	TSoftObjectPtr<USoundBase> WaveSound;
-
-	/** 01_Hotel_Lobby_ElevatorShakeStop, played at a scale of 25. */
-	UPROPERTY(EditAnywhere, Category = "Primal Fear|Assets")
-	TSoftClassPtr<UCameraShakeBase> ShakeClass;
-
 protected:
+	/** The sphere burst's start, then the stun of every enemy within Range. */
 	virtual void StartPower() override;
-	virtual void UpdateTimeline(float Position) override;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Primal Fear")
-	TObjectPtr<UStaticMeshComponent> Sphere;
-
-private:
-	/** Material Instance: the sphere's dynamic instance of M_05_Primal. */
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> MaterialInstance;
 };

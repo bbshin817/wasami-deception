@@ -48,7 +48,7 @@ namespace
 		}
 	}
 
-	bool SameTurn(const FRotator& A, const FRotator& B)
+	bool SpeedBarrierSameTurn(const FRotator& A, const FRotator& B)
 	{
 		return A.Quaternion().AngularDistance(B.Quaternion()) < 1e-4;
 	}
@@ -79,7 +79,7 @@ bool FWasamiSpeedBarrierActorTest::RunTest(const FString& Parameters)
 	const UStaticMeshComponent* Back = Barrier->GetStaticMesh();
 	TestTrue(TEXT("the engine's Plane"), Front->GetStaticMesh() && Front->GetStaticMesh()->GetName() == TEXT("Plane")
 		&& Back->GetStaticMesh() == Front->GetStaticMesh());
-	TestTrue(TEXT("the front standing up"), SameTurn(Front->GetRelativeRotation(), FRotator(0., 90., -90.)));
+	TestTrue(TEXT("the front standing up"), SpeedBarrierSameTurn(Front->GetRelativeRotation(), FRotator(0., 90., -90.)));
 	TestTrue(TEXT("the back 3.04 behind, 1.071 times"), Back->GetRelativeLocation().Equals(FVector(-3.0358, 0., 0.), 1e-3)
 		&& Back->GetRelativeScale3D().Equals(FVector(1.0710336, 1.0710336, 1.), 1e-5));
 	TestTrue(TEXT("no collision"), Front->GetCollisionEnabled() == ECollisionEnabled::NoCollision

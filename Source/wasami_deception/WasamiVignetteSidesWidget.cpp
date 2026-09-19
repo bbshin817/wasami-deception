@@ -110,6 +110,13 @@ UWasamiVignetteSidesWidget* UWasamiVignetteSidesWidget::Show(const UObject* Worl
 	return Widget;
 }
 
+void UWasamiVignetteSidesWidget::LoadAssets(TArray<TObjectPtr<UObject>>& Out)
+{
+	const UWasamiVignetteSidesWidget* Defaults = GetDefault<UWasamiVignetteSidesWidget>();
+	Out.Add(Defaults->VignetteTexture.LoadSynchronous());
+	Out.Add(Defaults->TextFont.LoadSynchronous());
+}
+
 TSharedRef<SWidget> UWasamiVignetteSidesWidget::RebuildWidget()
 {
 	if (WidgetTree && !WidgetTree->RootWidget)
