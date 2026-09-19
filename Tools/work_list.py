@@ -6,8 +6,8 @@ whose head has a `- 状態:` line (未着手 / 進行中 / 達成（日付）) a
 without one, ユーザーの指示); the items are `### N. <title>` blocks with `- 規模:` and `- 状態:` lines, under a goal
 section or under another section (the items finished before the goals, the items called off). Only one goal is 進行中 at
 a time; the unattended work takes items of that goal only. When all of them are 完了 it goes on to the next goal if that
-goal's 始め方 is 自動 (the user's instruction of 2026-09-19 for goal 2) and stops otherwise: only the user makes such a
-goal 進行中 (.claude/guides/autonomy.md「何を作業するか」).
+goal's 始め方 is 自動 (goals 2 and 3, the user's instructions of 2026-09-19 and 2026-09-20) and stops otherwise: only
+the user makes such a goal 進行中 (.claude/guides/autonomy.md「何を作業するか」).
 
 A progress record (.claude/progress/, not _template.md) belongs to item N when its "# " title names 「項目 N」; its
 share is the checked top-level steps (`- [x]`) of its 計画 over all of them.

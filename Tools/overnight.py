@@ -19,8 +19,9 @@ After each run the driver reads Intermediate/Overnight/status.json (Claude write
 "pending": [...], "shots": {"caption": ..., "files": [...]}}) and compares HEAD before and after. It stops on "stop",
 when the big goal in progress has been reached (every item of it 完了 in .claude/roadmap.md, read by
 Tools/work_list.py; the unattended work never goes past a goal, the user's instruction of 2026-09-18) unless the next
-goal's 始め方 is 自動 (then it goes on to that goal and posts so: goal 2, the user's instruction of 2026-09-19), when
-HEAD did not move in two runs in a row, at --until, after --max-iterations, or when the budget says so. It does not
+goal's 始め方 is 自動 (then it goes on to that goal and posts so: goals 2 and 3, the user's instructions of 2026-09-19
+and 2026-09-20), when HEAD did not move in two runs in a row, at --until, after --max-iterations, or when the budget
+says so. It does not
 start when no goal is 進行中 or the goal in progress is already reached, unless the goal after the one reached starts
 by itself (自動); otherwise only the user makes the next goal 進行中.
 Everything Claude printed goes to Intermediate/Overnight/<YYYYMMDD-HHMM>.log with a header and footer per run, and a
