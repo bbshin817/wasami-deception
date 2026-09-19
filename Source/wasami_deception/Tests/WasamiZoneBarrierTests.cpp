@@ -11,6 +11,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
+#include "UObject/StrongObjectPtr.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -50,7 +51,7 @@ bool FWasamiZoneBarrierTest::RunTest(const FString& Parameters)
 		&& Back->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Block);
 	TestFalse(TEXT("and are not in the navigation"), Front->CanEverAffectNavigation());
 	const UPointLightComponent* Light = Barrier->GetPointLight();
-	TestTrue(TEXT("a magenta light"), Light->LightColor == FColor(255, 0, 188, 255) && Light->Intensity == 2500.f
+	TestTrue(TEXT("a violet light"), Light->LightColor == FColor(188, 0, 255, 255) && Light->Intensity == 2500.f
 		&& Light->AttenuationRadius == 400.f && Light->IntensityUnits == ELightUnits::Unitless);
 	const UAudioComponent* Audio = Barrier->GetAudio();
 	TestTrue(TEXT("the loop at 0.5, pitch 0.8"), Audio->VolumeMultiplier == 0.5f && Audio->PitchMultiplier == 0.8f);
@@ -117,6 +118,9 @@ bool FWasamiZoneBarrierInteractTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// Held, so that a garbage collection in the ticks (the test world has no viewport to keep it) cannot take it away
+	// from the barrier's weak pointer, nor give its memory to the second.
+	const TStrongObjectPtr<UWasamiTextPromptWidget> HeldFirst(First);
 	TestEqual(TEXT("saying to collect the zone's shards"), First->Text.ToString(),
 		FString(TEXT("Collect all soul shards in this zone to break the barrier.")));
 

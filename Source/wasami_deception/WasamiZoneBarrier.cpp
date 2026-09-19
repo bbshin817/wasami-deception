@@ -24,12 +24,13 @@ namespace
 	const FVector ZoneBarrierBackScale(1.0710335969924927, 1.0710335969924927, 1.);
 	const FName ZoneBarrierInteractTag(TEXT("interact"));
 
-	// PointLight_GEN_VARIABLE (UE 4.24's point light defaults otherwise; its intensity is unitless).
+	// PointLight_GEN_VARIABLE (UE 4.24's point light defaults otherwise; its intensity is unitless). Its colour is
+	// the export's [B, G, R, A] turned round (troubleshooting.md).
 	constexpr float ZoneBarrierLightSourceRadius = 214.3380126953125f;
 	constexpr float ZoneBarrierLightSoftSourceRadius = 1000.f;
 	constexpr float ZoneBarrierLightAttenuationRadius = 400.f;
 	constexpr float ZoneBarrierLightIntensity = 2500.f;
-	const FColor ZoneBarrierLightColor(255, 0, 188, 255);
+	const FColor ZoneBarrierLightColor(188, 0, 255, 255);
 
 	// Audio_GEN_VARIABLE: Barrier_Loop and its attenuation overrides (the rest at FSoundAttenuationSettings' defaults).
 	constexpr float ZoneBarrierLoopVolume = 0.5f;

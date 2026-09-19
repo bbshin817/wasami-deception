@@ -101,7 +101,8 @@ public:
 	/** JumpscareCam's field of view (the CameraComponent's default; the Matinee's FOVAngle track has no keys). */
 	static constexpr float FieldOfView = 90.f;
 
-	/** ceilinglights_80: 1500 (Unitless), radius 500, source radius 24.715, colour (142, 236, 255). */
+	/** ceilinglights_80: 1500 (Unitless), radius 500, source radius 24.715, colour (255, 236, 142), the export's
+	 *  [B, G, R, A] turned round. */
 	static constexpr float LightIntensity = 1500.f;
 	static constexpr float LightRadius = 500.f;
 	static constexpr float LightSourceRadius = 24.715225219726562f;

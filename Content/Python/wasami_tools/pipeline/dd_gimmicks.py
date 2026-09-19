@@ -6,7 +6,8 @@ build puts them on the placed doors (dd_level). The zone barrier (AWasamiZoneBar
 Blueprints/Main/BP_ZoneBarrier): its hum and shatter, the sound it turns the player away with and that sound's
 attenuation, its planes' materials (MM_SpeedBarrier, whose graph the cook took away, rebuilt from its compiled shader,
 and the barrier's two instances of it) and the burst it breaks with (P_ky_impact3); the level build puts the materials
-on the placed barriers. The tunnel's doors broken in (the zone flow, AWasamiZone1Flow): their crash
+on the placed barriers. The speed barriers (AWasamiSpeedBarrier, after Blueprints/Main/Traps/BP_SpeedBarrier): their
+planes' red instances of MM_SpeedBarrier, the burst they shatter with (P_ky_impact2) and the camera shake then. The tunnel's doors broken in (the zone flow, AWasamiZone1Flow): their crash
 (DD_TT_Door_BustedOpen_02) and the burst of concrete the level's emitter Fracture_concrete_5 plays (BallisticsVFX's
 Fracture_concrete_3, whose materials' graphs the cook took away: estimated, as the particle packs' others are). Zone 2's
 cell: the needles' stab as its spikes reach the player (DD_Needle_Trap_R1_V3, AWasamiZone2Flow), and the particles its
@@ -83,6 +84,14 @@ FLARE01 = KY + "Materials/M_ky_flare01_primitive"
 IMPACT_MATERIALS = (KY + "Materials/MI_ky_flare14R",)
 IMPACT_NEEDS = (FLARE01, KY + "Materials/MI_ky_primitive2_trs")
 IMPACT = KY + "Particles/P_ky_impact3"
+# The speed barriers (AWasamiSpeedBarrier, after Blueprints/Main/Traps/BP_SpeedBarrier), which only the speed boost breaks:
+# their planes' red instances of MM_SpeedBarrier (MM_SpeedBarrier_Inst, the brighter, in front, and _Inst2), the burst
+# they shatter with (P_ky_impact2, of P_ky_impact3's two materials) and the camera shake then (BP_01_DoorExplode_CameraShake).
+# Their hum and shatter are the zone barrier's. The original bursts PPP_PortalAppear too, which is not made (as the
+# portal's: its materials' graphs were cooked away).
+SPEED_BARRIER_MATERIALS = ("Materials/Shared/MM_SpeedBarrier_Inst", "Materials/Shared/MM_SpeedBarrier_Inst2")
+SPEED_BARRIER_IMPACT = KY + "Particles/P_ky_impact2"
+SPEED_BARRIER_CAMERA_SHAKE = "Blueprints/Main/BP_01_DoorExplode_CameraShake"
 
 
 BVFX = "ThirdParty/BallisticsVFX/Particles/"
@@ -715,6 +724,22 @@ def _defib_undrawn(exports):
         exports[module]["props"]["Material"] = None
 
 
+def _instances(parent, children):
+    """The original's instances of parent at their paths, with their values of the parent's scalars (the rest are not
+    in its estimate), vectors, textures and static parameters, and their overrides (not saved)."""
+    known = {str(n) for n in unreal.MaterialEditingLibrary.get_scalar_parameter_names(parent)}
+    made = []
+    for rel in children:
+        scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(rel, VERSION)
+        mic = dd_assets.material_instance(dd_assets.asset_path(rel), parent,
+                                          scalars={k: v for k, v in scalars.items() if k in known},
+                                          vectors=vectors, textures=textures, static_masks=masks,
+                                          static_switches=switches)
+        dd_assets.base_property_overrides(mic, rel, VERSION)
+        made.append(mic)
+    return made
+
+
 def make_zone_barrier_materials():
     """MM_SpeedBarrier and the barrier's instances of it (with their own values and overrides), and P_ky_impact3's
     MI_ky_flare14R, at the original's paths (saved)."""
@@ -723,18 +748,8 @@ def make_zone_barrier_materials():
     # bEnableSeparateTranslucency false: drawn before the depth of field (UE 5's translucency pass).
     speed_barrier.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
     unreal.MaterialEditingLibrary.recompile_material(speed_barrier)
-    made = [speed_barrier]
-    for parent, children in ((speed_barrier, ZONE_BARRIER_MATERIALS),
-                             (unreal.load_asset(dd_assets.asset_path(FLARE01)), IMPACT_MATERIALS)):
-        known = {str(n) for n in unreal.MaterialEditingLibrary.get_scalar_parameter_names(parent)}
-        for rel in children:
-            scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(rel, VERSION)
-            mic = dd_assets.material_instance(dd_assets.asset_path(rel), parent,
-                                              scalars={k: v for k, v in scalars.items() if k in known},
-                                              vectors=vectors, textures=textures, static_masks=masks,
-                                              static_switches=switches)
-            dd_assets.base_property_overrides(mic, rel, VERSION)
-            made.append(mic)
+    made = [speed_barrier] + _instances(speed_barrier, ZONE_BARRIER_MATERIALS)
+    made += _instances(unreal.load_asset(dd_assets.asset_path(FLARE01)), IMPACT_MATERIALS)
     for asset in made:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     return [a.get_path_name() for a in made]
@@ -753,6 +768,21 @@ def import_zone_barrier():
     dd_particles.particle_system(IMPACT, VERSION)
     result["particle_systems"] = 1
     return result
+
+
+def import_speed_barrier():
+    """The speed barriers' materials, burst and camera shake (saved). The zone barrier's (import_zone_barrier), which
+    make their master material, sounds and the burst's materials, have to have been imported. Returns how many of each."""
+    needs = (SPEED_BARRIER,) + IMPACT_MATERIALS + IMPACT_NEEDS + ZONE_BARRIER_SOUNDS[:2]
+    missing = [rel for rel in needs if not EAL.does_asset_exist(dd_assets.asset_path(rel))]
+    if missing:
+        raise RuntimeError("missing %s: run import_zone_barrier first" % ", ".join(missing))
+    made = _instances(unreal.load_asset(dd_assets.asset_path(SPEED_BARRIER)), SPEED_BARRIER_MATERIALS)
+    for asset in made:
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    dd_particles.particle_system(SPEED_BARRIER_IMPACT, VERSION)
+    dd_assets.camera_shake(SPEED_BARRIER_CAMERA_SHAKE, VERSION)
+    return {"materials": len(made), "particle_systems": 1, "camera_shakes": 1}
 
 
 def import_doors_busted():
@@ -882,11 +912,12 @@ def import_garage_lift():
 
 
 def import_all():
-    """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the
-    nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's, the portal's and the defibrillators'),
+    """Imports the gimmicks' assets (the double doors', the zone barrier's, the speed barriers', the doors broken in,
+    the cell's, the nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's, the portal's and the defibrillators'),
     then saves /Game/DD and /Game/Pipeline."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
+    result.update({"speed_barrier_" + key: count for key, count in import_speed_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
     result.update({"cell_" + key: count for key, count in import_cell().items()})
     result.update({"nurse_door_hit_" + key: count for key, count in import_nurse_door_hit().items()})

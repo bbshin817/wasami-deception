@@ -15,7 +15,7 @@ class UWasamiTextPromptWidget;
 
 /**
  * Dark Deception's BP_ZoneBarrier (pak_reference_2's Blueprints/Main), the glowing wall that closes a zone's way on until
- * its shards are collected: two planes 3 cm apart with pulsing materials (the brighter Layer 1 in front), a magenta
+ * its shards are collected: two planes 3 cm apart with pulsing materials (the brighter Layer 1 in front), a violet
  * light and a humming loop. The zone's flow breaks it with Destroy (DestroyBarrier here): a burst of P_ky_impact3 and
  * the shatter sound, and the actor is gone. The hospital places one in each zone (Zone 1's in the way to the parking
  * lot, Zone 2's in the way to the garage).

@@ -101,7 +101,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
         sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
         hum and shatter, the sound it turns the player away with and its attenuation, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
-        after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
+        after import_dd_shards, which makes the burst's other materials); the speed barriers' (WasamiSpeedBarrier) planes'
+        instances of MM_SpeedBarrier, their burst (P_ky_impact2) and camera shake (BP_01_DoorExplode_CameraShake); the tunnel's doors broken in (the zone flow):
         their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
         the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
         Fracture_dark_slow, Concrete_impact_large, their textures and estimated materials); the parking lot's nurses
@@ -118,6 +119,7 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         Returns:
             How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues',
             'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
+            'speed_barrier_materials', '_particle_systems', '_camera_shakes',
             'doors_busted_sounds', '_textures', '_materials', '_particle_systems', 'cell_sounds', '_textures',
             '_materials', '_particle_systems', 'nurse_door_hit_sounds', '_sound_cues', '_materials',
             '_particle_systems', 'lift_attenuations', '_sounds', 'garage_lift_skeletal_meshes',
