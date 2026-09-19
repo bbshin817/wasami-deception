@@ -5,6 +5,7 @@
 #include "WasamiCascadeLibrary.generated.h"
 
 class UParticleSystem;
+class UParticleSystemComponent;
 
 /**
  * Builds Cascade particle systems (UParticleSystem) for the pipeline, which writes the original's exported values into
@@ -91,5 +92,14 @@ public:
 	/** LODLevel's type data module (None for a sprite emitter's). */
 	UFUNCTION(BlueprintCallable, Category = "Wasami|Cascade")
 	static UObject* GetLODTypeDataModule(UObject* LODLevel);
+
+	/**
+	 * A running system's emitter instances, one line each (for checking a rebuild in play): the emitter's name, whether
+	 * the instance runs, its LOD level (enabled or not) and the lists UpdateModuleLists made of its modules (spawn,
+	 * update, event receivers, the event generator), its particles (active / allocated), and its first particle's
+	 * relative time and 1 / lifetime.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Wasami|Cascade")
+	static FString DescribeEmitterInstances(UParticleSystemComponent* Component);
 #endif
 };

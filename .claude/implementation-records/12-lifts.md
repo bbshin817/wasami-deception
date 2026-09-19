@@ -92,8 +92,10 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 - ガレージリフト（ステップ 8b2）: Zone 1 の `hospital_garage_lift_anim_Anim_2` は、遊び始めると台が下（`Box` Z 9.3）。台に乗ると 2.5 s ほどで台が 316.4 cm、プレイヤーが Z 415.7 まで上がり、救急車の屋根の高さから見下ろす（グリッド `Intermediate/Overnight/garage_lift_grid.png`、収録 `Intermediate/DesktopAgent/shots/garage_lift_ride.mkv`、git の外）。降りると `DD_TT_GarageLift_Down` が鳴り（`Up` は止まる）台が下り、乗り直すと `DD_TT_GarageLift_Up` が鳴った。台から救急車へ走ると床に落ちた（上の「既知の制約」）。Zone 2 の 2 台は置いただけ（PIE で乗っていない）。
 
 ## 変更履歴
+- 2026-09-19: `dd_skeletal` の取り込みが本家の骨格のソケットを足すようにした（`add_sockets`。のこぎりの罠のため。01・08 記録）。ガレージリフトの骨格にソケットは無く、何も変わらない
 - 2026-09-18: 初版。本家の `BP_06_LiftBase`・`BP_06_Lift`（`_03`・`_04`）・`BP_06_LiftBase_Corner` を `AWasamiLiftBase`・`AWasamiLift`・`AWasamiCornerLift` に写し、組み立てが Zone 2 に 15 台置くようにした（作業一覧の項目 6 のステップ 8a）
 - 2026-09-18: ガレージリフトの骨入りのメッシュとアニメを取り込んだ（`dd_skeletal`。作業一覧の項目 6 のステップ 8b1）
 - 2026-09-18: ガレージリフトのアクタ `AWasamiGarageLift`・`AWasamiGarageLiftZone1Special` と本家の ABP の写し `UWasamiGarageLiftAnimInstance`、テスト `Wasami.GarageLift.Actor` を足し、組み立てが両ゾーンに 3 台置くようにした（作業一覧の項目 6 のステップ 8b2）
 - 2026-09-19: `AWasamiGarageLiftZone1Special` の `bNurseNear` を Zone 1 の流れが書くようになった（コメントだけ直した。作業一覧の項目 7 のステップ 3）
 - 2026-09-19: `MoveLocation` を Zone 2 の迷路のナースが読むようになった（コメントだけ直した。作業一覧の項目 7 のステップ 4）
+- 2026-09-19: `dd_skeletal` が根以外の骨の回転のキーも運ぶようにした（のこぎりの罠のため。01・08 記録）。ガレージリフトの骨は回らないので、`prepare` の出力は変わらない（取り込み直していない）

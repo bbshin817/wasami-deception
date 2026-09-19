@@ -101,7 +101,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         """Imports (or re-imports) what the stage's moving parts play: the double doors' (WasamiDoubleDoors) swing
         sounds, the locked rattle's SoundCue and its waves, and their attenuations; the zone barrier's (WasamiZoneBarrier)
         hum and shatter, the sound it turns the player away with and its attenuation, its planes' materials (MM_SpeedBarrier and its two instances) and its burst (P_ky_impact3,
-        after import_dd_shards, which makes the burst's other materials); the tunnel's doors broken in (the zone flow):
+        after import_dd_shards, which makes the burst's other materials); the speed barriers' (WasamiSpeedBarrier) planes'
+        instances of MM_SpeedBarrier, their burst (P_ky_impact2) and camera shake (BP_01_DoorExplode_CameraShake); the tunnel's doors broken in (the zone flow):
         their crash and the burst of concrete (Fracture_concrete_3, its textures and estimated materials); Zone 2's cell:
         the needles' stab as its spikes reach the player, and the particles its sequences fire (P_06_NurseSparks,
         Fracture_dark_slow, Concrete_impact_large, their textures and estimated materials); the parking lot's nurses
@@ -109,17 +110,24 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         (P_06_NurseDoorHit and its additive material); Zone 2's lifts: the clunk,
         the movement loop and the garage lifts' rising sound; the garage lifts' skinned mesh and its animation (after
         import_dd_stage_assets, which makes its materials); Zone 2's ring piece over the altar (WasamiRingPiece): its
-        glow (P_08_RingPiece and its material, after import_dd_shards). The doors' and lifts' meshes and materials come with the
-        stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
+        glow (P_08_RingPiece and its material, after import_dd_shards); the garage's portal (WasamiPortal); the
+        defibrillators (WasamiDefib): the charge's hum, the crackle as the player is hit and the discharge (P_06_Defib,
+        its lightning's textures and estimated material, and the meshes of its undrawn mesh emitters); Zone 2's saw
+        traps: their whirring loop and their four skinned meshes with their animations (after import_dd_stage_assets,
+        which makes their materials). The doors',
+        lifts' and defibrillators' meshes and materials come with the stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
         systems on their emitters (place_dd_sequences those the sequences fire).
 
         Returns:
             How many assets of each kind were made ('double_door_attenuations', '_sounds', '_sound_cues',
             'zone_barrier_attenuations', '_sounds', '_textures', '_materials', '_particle_systems',
+            'speed_barrier_materials', '_particle_systems', '_camera_shakes',
             'doors_busted_sounds', '_textures', '_materials', '_particle_systems', 'cell_sounds', '_textures',
             '_materials', '_particle_systems', 'nurse_door_hit_sounds', '_sound_cues', '_materials',
             '_particle_systems', 'lift_attenuations', '_sounds', 'garage_lift_skeletal_meshes',
-            '_animations', and 'ring_piece_materials', '_particle_systems').
+            '_animations', 'ring_piece_materials', '_particle_systems', the portal's ('portal_…'), and
+            'defib_attenuations', '_sounds', '_textures', '_meshes', '_materials', '_particle_systems',
+            'saw_trap_sounds', '_skeletal_meshes', '_animations').
         """
         _module("dd_stage")
         _module("dd_assets")

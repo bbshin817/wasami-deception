@@ -239,6 +239,27 @@ for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiEnemySen
 print('JSON ' + json.dumps(out))
 """
 
+# The defibrillators' gaps between the stands (Box, 64 x 383 x 258 cm) as boxes along the axes (the bounds), and each
+# one's clock (Firing, and the seconds to its next fire or -1: AWasamiDefib::GetTimeToFire).
+DEFIBS = """
+w = _need_game()
+out = []
+for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiDefib):
+    o, e, _ = unreal.SystemLibrary.get_component_bounds(a.get_editor_property('box'))
+    out.append([a.get_actor_label(), [o.x - e.x, o.y - e.y, o.z - e.z], [o.x + e.x, o.y + e.y, o.z + e.z]])
+print('JSON ' + json.dumps(out))
+"""
+
+DEFIB_CLOCKS = """
+w = _need_game()
+names = set({names!r})
+out = {{}}
+for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiDefib):
+    if a.get_actor_label() in names:
+        out[a.get_actor_label()] = [a.is_firing(), a.get_time_to_fire()]
+print('JSON ' + json.dumps(out))
+"""
+
 NAV_PATH = """
 w = _need_game()
 player = unreal.GameplayStatics.get_player_character(w, 0)
@@ -356,6 +377,109 @@ class Cones:
         return self.holding
 
 
+class Traps:
+    """Keeps the player out of the defibrillators' sparks (08 record), as a player would: with the player within 10 m, a
+    defibrillator charges for 2.25 s, fires, sparks for 1 s and charges again 1.25 s after the fire; the player in the
+    gap between its stands (Box) at a fire, or walking in while it sparks, dies. The player stops before a gap on the
+    way that it would be in at a fire or while the sparks are up, and goes on as they end (the next fire 2.5 s on).
+    Every walk has it. The saw traps are not watched: no section's way passes one (Zone 2's are in the maze and the
+    corridor's side way at (-4804, 1400), and the maze's shards but the one by its box are collected by hand)."""
+    CHARGE, SPARKS, PERIOD = 2.25, 1.0, 3.5  # the charge, the sparks after a fire, fire to fire (AWasamiDefib)
+    RADIUS = 75.0               # the player's capsule (50) and a margin, round the gap's box
+    HALF = 88.0                 # the capsule's half height
+    STEP = 25.0                 # cm between the samples along the way
+    LOOK_AHEAD = 300.0          # stop when a gap begins this near (a sprint stops within about 90 cm)
+    FAST, SLOW = 650.0, 450.0   # cm/s: the soonest and the latest the player may be at a point of the way
+    SLACK = 0.4                 # s: a step's editor calls, the keys going down again, the sprint's start
+    CENTRE = 85.0               # the player's capsule centre over the navigation path
+
+    def __init__(self, g):
+        self.g = g
+        self.world = None
+        self.boxes = {}
+        self.samples, self.stretches, self.at_sample = [], [], 0
+        self.holding = False
+
+    def gaps(self, p):
+        names = []
+        for name, (lo, hi) in self.boxes.items():
+            if (lo[0] - self.RADIUS < p[0] < hi[0] + self.RADIUS and lo[1] - self.RADIUS < p[1] < hi[1] + self.RADIUS
+                    and lo[2] < p[2] + self.HALF and p[2] - self.HALF < hi[2]):
+                names.append(name)
+        return names
+
+    def prepare(self, path):
+        """Samples the way from the player along the path and finds the stretches in a gap between the stands."""
+        s = self.g.status()
+        if s.get("world") != self.world:
+            self.world = s.get("world")
+            self.boxes = {d[0]: (d[1], d[2]) for d in self.g.ed.json(DEFIBS)}
+        self.samples, self.stretches, self.at_sample = [], [], 0
+        if not self.boxes:
+            return
+        here = s["player"]
+        points = [[here[0], here[1], here[2] - self.CENTRE]] + path
+        arc = 0.0
+        for a, b in zip(points, points[1:]):
+            length = flat(a, b)
+            n = max(1, int(length // self.STEP))
+            for k in range(n):
+                t = k / n
+                p = [a[i] + (b[i] - a[i]) * t for i in range(3)]
+                p[2] += self.CENTRE
+                self.samples.append((arc + length * t, p[0], p[1], self.gaps(p)))
+            arc += length
+        end = points[-1]
+        self.samples.append((arc, end[0], end[1], self.gaps([end[0], end[1], end[2] + self.CENTRE])))
+        for at, _, _, names in self.samples:
+            if not names:
+                continue
+            if self.stretches and self.stretches[-1][1] >= at - 1.5 * self.STEP:
+                self.stretches[-1][1] = at
+                self.stretches[-1][2].update(names)
+            else:
+                self.stretches.append([at, at, set(names)])
+        if self.stretches:
+            self.g.log("defibrillators on the way: %s" % ", ".join(
+                "%.0f-%.0f cm %s" % (a, b, "/".join(sorted(n))) for a, b, n in self.stretches))
+
+    def fires(self, firing, to_fire, until):
+        """The sparks' spans (s from now) up to until: the next fires and, while sparking, the one going."""
+        if to_fire < 0:
+            to_fire = self.CHARGE  # none coming yet: the charge starts as the player comes within 10 m
+        spans = [(0.0, to_fire - (self.PERIOD - self.SPARKS))] if firing else []
+        k = 0
+        while to_fire + k * self.PERIOD < until:
+            spans.append((to_fire + k * self.PERIOD, to_fire + k * self.PERIOD + self.SPARKS))
+            k += 1
+        return spans
+
+    def hold(self, step):
+        if not self.stretches:
+            return False
+        window = range(self.at_sample, min(len(self.samples), self.at_sample + 40))
+        self.at_sample = min(window, key=lambda i: flat(self.samples[i][1:3], step["at"]))
+        here = self.samples[self.at_sample][0]
+        near = [(start, end, names) for start, end, names in self.stretches
+                if not (end < here or start <= here or start - here > self.LOOK_AHEAD)]  # not behind, inside or far
+        blocking = set()
+        if near:
+            clocks = self.g.ed.json(DEFIB_CLOCKS.format(names=sorted(set().union(*(n for _, _, n in near)))))
+            for start, end, names in near:
+                t_in = (start - here) / self.FAST
+                t_out = (end - here) / self.SLOW + self.SLACK
+                for name in names:
+                    if name not in clocks:
+                        continue
+                    firing, to_fire = clocks[name]
+                    if any(a < t_out and t_in < b for a, b in self.fires(firing, to_fire, t_out)):
+                        blocking.add(name)
+        if bool(blocking) != self.holding:
+            self.holding = bool(blocking)
+            self.g.log(("waiting for %s to spark" % "/".join(sorted(blocking))) if blocking else "going on")
+        return self.holding
+
+
 class Play:
     def __init__(self, editor, viewport, shots):
         self.ed = editor
@@ -363,6 +487,7 @@ class Play:
         self.shots = shots
         self.keys_down = []
         self.log_start = time.time()
+        self.traps = Traps(self)
 
     # --- reporting ---------------------------------------------------------------------------------------------------
     def log(self, text):
@@ -504,8 +629,9 @@ class Play:
              straight=False, snap=False, guard=None, escape=False):
         """Walks (Shift + W) along the navigation path to (x, y) until within reach, or until until(step) is true.
         Returns the last step. The view keeps the pitch unless one is given; snap turns it to the path at once. A guard
-        (Cones) stops the player, keys up, while guard.hold(step) is true; the time held does not count to the timeout.
-        escape: the step says whether the escape's black fade is up ('escaped'), for an until."""
+        (Cones) stops the player, keys up, while guard.hold(step) is true, and so does the defibrillators' (Traps, on every
+        walk); the time held does not count to the timeout. escape: the step says whether the escape's black fade is up
+        ('escaped'), for an until."""
         path = None if straight else self.nav_path(x, y, z)
         if not path:
             if not straight:
@@ -522,8 +648,9 @@ class Play:
 
         if snap:
             steer(0, 180.0)
-        if guard:
-            guard.prepare(path)
+        guards = [guard, self.traps] if guard else [self.traps]
+        for each in guards:
+            each.prepare(path)
         index, stuck_since, stuck_at, repaths, refocused = 0, None, None, 0, False
         deadline = time.time() + timeout
         started, first_at = time.time(), None
@@ -542,7 +669,7 @@ class Play:
                 if step["spotted"] and guard:
                     raise Failed("spotted by %s" % ", ".join(step["spotted"]))
                 at = step["at"]
-                if guard and guard.hold(step):
+                if any([each.hold(step) for each in guards]):  # every guard sees every step
                     if held_since is None:
                         self.up()
                         held_since = time.time()
@@ -574,8 +701,8 @@ class Play:
                         path = fresh[1:]
                         path[-1] = [x, y, path[-1][2]]
                         index = 0
-                        if guard:
-                            guard.prepare(path)
+                        for each in guards:
+                            each.prepare(path)
                     stuck_at, stuck_since = at, time.time()
                 if time.time() > deadline:
                     raise Failed("did not reach (%.0f, %.0f) within %.0f s (at (%.0f, %.0f))"
@@ -740,6 +867,9 @@ def pause(g):
     if s.get("checkpoint") != s0.get("checkpoint"):
         raise Failed("the title's RESUME did not open the checkpoint left (%s)" % g.brief(s))
     g.console("Wasami.ResetSettings")
+    # The level opened from the title's menu has the keys but not the mouse: its first click would only take the mouse
+    # (z1_ambulance's Teleportation did nothing), so give it one here as run does at its start.
+    g.focus()
 
 
 def z1_maze(g):
@@ -770,6 +900,8 @@ def z1_maze(g):
         s = g.status()
         if s.get("captured"):
             break
+        if s.get("paused"):
+            raise Failed("the game stopped without a capture: died on the way? (%s)" % g.brief(s))
         if time.time() > deadline:
             raise Failed("not caught within 90 s")
     g.log("caught: " + g.brief(s))

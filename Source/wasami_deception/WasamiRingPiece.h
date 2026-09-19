@@ -11,7 +11,7 @@ class UStaticMeshComponent;
 
 /**
  * Dark Deception's BP_08_RingPiece_NoPickup (pak_reference_2's Blueprints/08_BearHouse, a BP_08_RingPiece that cannot
- * be picked up): the ring piece shown over an altar, turned and scaled up, in a glow of particles and a pink light. It
+ * be picked up): the ring piece shown over an altar, turned and scaled up, in a glow of particles and a violet light. It
  * is only to be seen: its mesh collides with nothing and ignores the look's trace, and InteractWithObject does nothing
  * (the altar, AWasamiRingStatue, is what is clicked). The zone's flow destroys it once the piece is taken. Zone 2 of
  * the hospital has one (BP_08_RingPiece_NoPickup_5) over ring_statue_2.
@@ -44,7 +44,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Ring Piece")
 	TObjectPtr<UParticleSystemComponent> ParticleSystem;
 
-	/** PointLight: pink, 500 cm. */
+	/** PointLight: violet, 500 cm. */
 	UPROPERTY(VisibleAnywhere, Category = "Ring Piece")
 	TObjectPtr<UPointLightComponent> PointLight;
 };

@@ -209,11 +209,11 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the ceiling light's intensity"), Light->Intensity, 1500.f);
 	TestTrue(TEXT("unitless"), Light->IntensityUnits == ELightUnits::Unitless);
 	TestEqual(TEXT("its radius"), Light->AttenuationRadius, 500.f);
-	TestTrue(TEXT("its colour"), Light->LightColor == FColor(142, 236, 255, 255));
+	TestTrue(TEXT("its colour"), Light->LightColor == FColor(255, 236, 142, 255));
 	TestTrue(TEXT("above the Wasami"), Light->GetRelativeLocation().Z > AWasamiCapture::WasamiTop);
 	const UPointLightComponent* FaceLight = Room->GetFaceLight();
 	TestFalse(TEXT("the face's light casts no shadow"), FaceLight->CastShadows);
-	TestTrue(TEXT("the face's light in the ceiling light's colour"), FaceLight->LightColor == FColor(142, 236, 255, 255));
+	TestTrue(TEXT("the face's light in the ceiling light's colour"), FaceLight->LightColor == FColor(255, 236, 142, 255));
 
 	// Six black planes facing in, the camera and the slide's start inside them.
 	TestEqual(TEXT("six planes"), Room->GetWalls().Num(), 6);

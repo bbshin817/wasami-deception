@@ -57,6 +57,11 @@ BURST_DEFAULTS = (("Count", 0), ("CountLow", -1), ("Time", 0.0))
 DYNAMIC_PARAMETER_MEMBERS = (("ParamName", "text"), ("bUseEmitterTime", "bool"), ("bSpawnTimeOnly", "bool"),
                              ("ValueMethod", "text"), ("bScaleVelocityByParamValue", "bool"),
                              ("ParamValue", "distribution"))
+# FParticleEvent_GenerateInfo's members (an event generator module's Events), the same way. The events it would also send
+# to the game (ParticleModuleEventsToSendToGame, objects) are written only when there are none.
+EVENT_MEMBERS = (("Type", "text"), ("Frequency", "number"), ("ParticleFrequency", "number"), ("FirstTimeOnly", "bool"),
+                 ("LastTimeOnly", "bool"), ("UseReflectedImpactVector", "bool"), ("bUseOrbitOffset", "bool"),
+                 ("CustomName", "text"), ("ParticleModuleEventsToSendToGame", "none"))
 
 
 def _number(value):
@@ -218,7 +223,8 @@ class _Build:
     # ------------------------------------------------------------------------------------------ values
     def _object(self, value):
         """An exported object reference → its path here: an object of this package → the one made for it; an asset of
-        the original's /Game → the asset under /Game/DD (which has to exist)."""
+        the original's /Game → the asset under /Game/DD (which has to exist); an engine asset (/Engine/...) → the same
+        one, which this engine has to have."""
         if value is None:
             return "None"
         if value in self.made:
@@ -229,6 +235,10 @@ class _Build:
             if not EAL.does_asset_exist(ours):
                 raise RuntimeError("%s uses %s, which is not made yet (%s)" % (self.rel, value, ours))
             return _quoted("%s.%s" % (ours, name or paths.split(ours)[1]))
+        if value.startswith("/Engine/"):
+            if not EAL.does_asset_exist(value.partition(".")[0]):
+                raise RuntimeError("%s uses %s, which this engine does not have" % (self.rel, value))
+            return _quoted(value)
         raise ValueError("%s: a reference to %s, which is neither in the package nor an asset" % (self.rel, value))
 
     def _raw_distribution(self, raw, vector):
@@ -249,27 +259,38 @@ class _Build:
             raise ValueError("%s: a distribution with %s" % (self.rel, sorted(unknown)))
         return "(%s)" % ",".join(parts)
 
-    def _dynamic_parameter(self, value):
-        """An exported FEmitterDynamicParameter ({ParamName, ..., ParamValue}; its distribution a lookup table)."""
-        kinds = dict(DYNAMIC_PARAMETER_MEMBERS)
+    def _struct(self, value, members, what):
+        """An exported struct by its members' forms (DYNAMIC_PARAMETER_MEMBERS, EVENT_MEMBERS): text, number, bool, a
+        distribution (a lookup table) or none (an array that has to be empty)."""
+        kinds = dict(members)
         unknown = set(value) - set(kinds)
         if unknown:
-            raise ValueError("%s: a dynamic parameter with %s" % (self.rel, sorted(unknown)))
+            raise ValueError("%s: %s with %s" % (self.rel, what, sorted(unknown)))
         parts = []
-        for key, kind in DYNAMIC_PARAMETER_MEMBERS:
+        for key, kind in members:
             if key not in value:
                 continue
             v = value[key]
             if kind == "bool":
                 if not isinstance(v, bool):
-                    raise ValueError("%s: a dynamic parameter's %s of %r" % (self.rel, key, v))
+                    raise ValueError("%s: %s's %s of %r" % (self.rel, what, key, v))
                 text = "True" if v else "False"
             elif kind == "text":
                 text = _quoted(v)
+            elif kind == "number":
+                text = _number(v)
+            elif kind == "none":
+                if v:
+                    raise ValueError("%s: %s's %s of %r" % (self.rel, what, key, v))
+                text = "()"
             else:
                 text = self._raw_distribution(v, False)
             parts.append("%s=%s" % (key, text))
         return "(%s)" % ",".join(parts)
+
+    def _dynamic_parameter(self, value):
+        """An exported FEmitterDynamicParameter ({ParamName, ..., ParamValue}; its distribution a lookup table)."""
+        return self._struct(value, DYNAMIC_PARAMETER_MEMBERS, "a dynamic parameter")
 
     def _text(self, obj, key, value):
         cpp = LIB.get_property_type(obj, key)
@@ -301,7 +322,10 @@ class _Build:
         if cpp in ("FName", "FString") or cpp.startswith("TEnumAsByte<") or cpp.startswith("E"):
             if not isinstance(value, str):
                 raise ValueError("%s.%s: a %s from %r" % (obj.get_name(), key, cpp, value))
-            return _quoted(value)
+            # A property's own text (PPF_None) takes a name or string whole, quotes and all, so those go bare; an enum
+            # reads a token, quoted or not. (Built before 2026-09-19, every EmitterName and a receiver's EventName kept
+            # the quotes, and P_06_Defib's lightning never took its emitters' 'born'.)
+            return value if cpp in ("FName", "FString") else _quoted(value)
         if cpp in ("TArray", "TArray<float>") and all(isinstance(v, (int, float)) for v in value):
             return "(%s)" % ",".join(_number(v) for v in value)
         if cpp in ("TArray", "TArray<FParticleSystemLOD>") and all(v == {} for v in value):
@@ -311,6 +335,8 @@ class _Build:
             return "(%s)" % ",".join(_burst(v) for v in value)
         if cpp == "TArray<FEmitterDynamicParameter>" and all(isinstance(v, dict) for v in value):
             return "(%s)" % ",".join(self._dynamic_parameter(v) for v in value)
+        if cpp == "TArray<FParticleEvent_GenerateInfo>" and all(isinstance(v, dict) for v in value):
+            return "(%s)" % ",".join(self._struct(v, EVENT_MEMBERS, "an event") for v in value)
         raise ValueError("%s.%s: no text form for a %s (%r)" % (obj.get_name(), key, cpp, value))
 
     def _write(self, obj, props, skip=()):
@@ -388,11 +414,12 @@ class _Build:
             for lod_key in emitter_props["LODLevels"]:
                 lod = self._make(emitter, lod_key)
                 lod_props = self.exports[lod_key]["props"]
-                self._write(lod, lod_props, STRUCTURE["lod"])
                 required = self._module(lod_props["RequiredModule"])
                 spawn = self._module(lod_props["SpawnModule"])
                 modules = [self._module(k) for k in lod_props.get("Modules", ())]
                 type_data = self._module(lod_props["TypeDataModule"]) if lod_props.get("TypeDataModule") else None
+                # After its modules: a LOD level names one of them, its event generator (EventGenerator).
+                self._write(lod, lod_props, STRUCTURE["lod"])
                 if not LIB.add_lod_level(emitter, lod, required, spawn, modules, type_data):
                     raise RuntimeError("%s: %s was not added" % (self.rel, lod_key))
 

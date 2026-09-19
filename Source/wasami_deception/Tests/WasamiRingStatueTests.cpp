@@ -78,7 +78,7 @@ bool FWasamiRingStatueActorTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("the look goes through it"), LookFinds(World, Piece));
 	TestTrue(TEXT("its glow"), Piece->GetParticleSystem()->GetAttachParent() == Piece->GetRootComponent());
 	const UPointLightComponent* Light = Piece->GetPointLight();
-	TestTrue(TEXT("a pink light"), Light->LightColor == FColor(232, 78, 169, 255) && Light->Intensity == 500.f
+	TestTrue(TEXT("a violet light"), Light->LightColor == FColor(169, 78, 232, 255) && Light->Intensity == 500.f
 		&& Light->IntensityUnits == ELightUnits::Unitless && Light->AttenuationRadius == 500.f);
 	TestTrue(TEXT("drawn to 3000 cm, fading over 2000"), Light->MaxDrawDistance == 3000.f && Light->MaxDistanceFadeRange == 2000.f);
 	TestFalse(TEXT("casting no shadow"), Light->CastShadows);
@@ -116,6 +116,9 @@ bool FWasamiRingStatueInteractTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// Held, so that a garbage collection in the ticks (the test world has no viewport to keep it) cannot take it away
+	// from the statue's weak pointer (as the barrier's test).
+	const TStrongObjectPtr<UWasamiTextPromptWidget> HeldFirst(First);
 	TestEqual(TEXT("saying to collect the shards"), First->Text.ToString(),
 		FString(TEXT("Collect all soul shards to break the ring barrier.")));
 	TestEqual(TEXT("not Interact All Shards"), Listener->Count, 0);

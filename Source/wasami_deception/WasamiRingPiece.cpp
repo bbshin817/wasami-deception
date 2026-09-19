@@ -13,12 +13,13 @@ namespace
 	const FVector RingPieceMeshScale(20.);
 	const FName RingPieceInteractTag(TEXT("interact"));
 
-	// PointLight_GEN_VARIABLE (UE 4.24's point light defaults otherwise; its intensity is unitless).
+	// PointLight_GEN_VARIABLE (UE 4.24's point light defaults otherwise; its intensity is unitless). Its colour is
+	// the export's [B, G, R, A] turned round (troubleshooting.md).
 	constexpr float RingPieceLightAttenuationRadius = 500.f;
 	constexpr float RingPieceLightMaxDrawDistance = 3000.f;
 	constexpr float RingPieceLightMaxDistanceFadeRange = 2000.f;
 	constexpr float RingPieceLightIntensity = 500.f;
-	const FColor RingPieceLightColor(232, 78, 169, 255);
+	const FColor RingPieceLightColor(169, 78, 232, 255);
 }
 
 AWasamiRingPiece::AWasamiRingPiece()

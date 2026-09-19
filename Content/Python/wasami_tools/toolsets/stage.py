@@ -112,22 +112,28 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         sizes; after import_dd_stage_assets), sentries (WasamiEnemySentry, BP_06_ReaperNurse_Sentry, with their
         CanSpawn, Offset and Jump Down Spot), altar (WasamiRingStatue, BP_01_Statue, with its mesh and material) and
         ring piece (WasamiRingPiece, BP_08_RingPiece_NoPickup, with its mesh, materials and glow; after
-        import_dd_gimmicks), and this game's garage portal (WasamiPortal) with the trigger by it that the zone leaves
+        import_dd_gimmicks), the defibrillators (WasamiDefib, BP_06_Defib, with their stands' mesh), the speed barriers
+        (WasamiSpeedBarrier, BP_SpeedBarrier, with their planes' materials, places and sizes), the saw traps
+        (WasamiSawTrap and its subclasses, BP_06_sawTrap_medium / _short01 / _short02 / _long01, with the short01s'
+        lights turned down where the original does), and this game's garage portal (WasamiPortal) with the trigger by it that the zone leaves
         by, in again where the original places them, each tagged
         'src:<the original's name>' for the zone's flow and fixed to the ambulance or the spikes it moves with, taking
-        out what an earlier call placed, and saves the level. Nothing else changes, and the baked lighting stays valid
+        out what an earlier call placed (and the barrier, ring piece, speed barrier and saw trap lights an earlier build
+        placed on their own), and saves the level. Nothing else changes, and the baked lighting stays valid
         (none of them is in it).
 
         Args:
-            zone: 'Zone1' (6 trigger boxes, 9 volumes, 2 navigation volumes, 9 target points, 1 door break, 2 double
-                doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift) or 'Zone2' (9 trigger boxes with the portal's, 10
-                volumes, 59 navigation volumes, 10 target points, 1 door break, 1 double door, 1 barrier, 1 shard
-                checker, 15 lifts, 2 garage lifts, 6 sentries, 1 altar, 1 ring piece, 1 portal).
+            zone: 'Zone1' (6 trigger boxes, 9 volumes, 2 navigation volumes, 9 target points, 1 door break, 62 double
+                doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift, 23 defibrillators, 4 speed barriers) or 'Zone2' (9 trigger
+                boxes with the portal's, 10 volumes, 59 navigation volumes, 10 target points, 1 door break, 1 double door,
+                1 barrier, 1 shard checker, 15 lifts, 2 garage lifts, 6 sentries, 1 altar, 1 ring piece, 13
+                defibrillators, 74 saw traps, 1 portal).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
             'removed', 'removed_lights', 'triggers', 'volumes', 'navVolumes', 'targetPoints', 'doorBreaks', 'doubleDoors', 'emitters',
-            'zoneBarriers', 'shardCheckers', 'lifts', 'garageLifts', 'sentries', 'ringStatues', 'ringPieces', 'attached' and
+            'zoneBarriers', 'shardCheckers', 'lifts', 'garageLifts', 'sentries', 'ringStatues', 'ringPieces', 'defibs',
+            'speedBarriers', 'sawTraps', 'portals', 'attached' and
             'failed_settings' (listed in the output log).
         """
         return _module("dd_level").place_flow(zone, map_path)

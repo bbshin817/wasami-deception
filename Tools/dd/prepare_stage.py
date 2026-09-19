@@ -86,20 +86,26 @@ TELEPORT_ZONE_COMPONENT = "Cube"
 # Meshes the level build puts on Blueprint actors it places itself (the class leaves them unset, and the level export
 # leaves the component's mesh out, as the class's own): Zone 2's lifts' LiftMesh (BP_06_LiftBase_Corner's and
 # BP_06_Lift_03's / _04's), and Zone 2's altar (BP_01_Statue's StaticMeshComponent0) and the ring piece on it
-# (BP_08_RingPiece's StaticMesh). They come into `meshes` with their own materials.
+# (BP_08_RingPiece's StaticMesh), and the defibrillators' two stands (BP_06_Defib's hospital_defibrillator_01 and _02, the
+# same mesh). They come into `meshes` with their own materials.
 CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospital_zone_02_lifts_lift_01",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_03.hospital_zone_02_lifts_lift_03",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_04.hospital_zone_02_lifts_lift_04",
                 "/Game/Meshes/00_Ballroom/ring_statue.ring_statue",
-                "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06.ring_piece06")
+                "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06.ring_piece06",
+                "/Game/Meshes/06_Hospital/hospital_defibrillator_01.hospital_defibrillator_01")
 # Materials of meshes that are not the stage's static meshes: the garage lifts' skinned mesh (hospital_garage_lift_anim,
-# its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name), and the ones the
-# altar's and the ring piece's components put over their meshes' own (OverrideMaterials: the placed altar's, and
+# its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name) and the saw traps'
+# (hospital_sawTrap_*_anim: the blade, the stained metal, and short_01's diamond plate), and the ones the altar's and the
+# ring piece's components put over their meshes' own (OverrideMaterials: the placed altar's, and
 # BP_08_RingPiece's StaticMesh_GEN_VARIABLE's).
 CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06_Hospital_MetalPanel_04",
                    "/Game/Materials/06_Hospital/M_06_Hospital_Concrete_06_Painted1.M_06_Hospital_Concrete_06_Painted1",
                    "/Game/Materials/06_Hospital/M_06_Hospital_MetalBrushed_02.M_06_Hospital_MetalBrushed_02",
                    "/Game/Materials/07_FunPlace/M_07_TP_DiamondPlate.M_07_TP_DiamondPlate",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_SawBlade.M_06_Hospital_SawBlade",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MetalStained.M_06_Hospital_MetalStained",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_Metal_DiamondPlate.M_06_Hospital_Metal_DiamondPlate",
                    "/Game/Materials/00_Ballroom/MM_00_Ballroom_Ring_Altar_Metal.MM_00_Ballroom_Ring_Altar_Metal",
                    "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal.M_ring_metal",
                    "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal2.M_ring_metal2")
@@ -545,7 +551,15 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
             rest = p[len(prefix):]
             if "." not in rest:
                 actor_class[rest] = e.get("class")
-    for e in full:                                   # an actor's transform lives on its root component
+    # An actor's transform lives on its root component (its RootComponent). Not the first component with a world: a
+    # Blueprint's may come first and be turned from the root (the saw traps' Audio, on the blade, is rolled 90°).
+    for e in full:
+        p = e.get("path") or ""
+        if p.startswith(prefix) and "." not in p[len(prefix):]:
+            root = by_path.get((e.get("props") or {}).get("RootComponent") or "")
+            if root and root.get("world"):
+                actor_world[p[len(prefix):]] = world_of(root)
+    for e in full:                                   # else the first component with a world
         p = e.get("path") or ""
         if p.startswith(prefix) and e.get("world"):
             actor = p[len(prefix):].split(".")[0]

@@ -121,14 +121,16 @@ def name_table(data):
 
 
 # The fields each uniform expression class serializes after its class name (UE 4.24's MaterialUniformExpressions.h),
-# as a format: e expression, n FName, i int32, b int8, f float, c FLinearColor, a an association (int8).
+# as a format: e expression, n FName, i int32, b int8, f float, c FLinearColor, a an association (int8). FoldedMath is
+# A, B, Op (uint8), ValueType (uint32); TrigMath X, Y (X again for one-input ops), Op.
 FIELDS = {
     "Constant": "cb", "VectorParameter": "nai" + "c", "ScalarParameter": "naif", "ComponentSwizzle": "ebbbbb",
     "AppendVector": "eei", "Max": "ee", "Min": "ee", "Clamp": "eee", "Saturate": "e", "Abs": "e", "Floor": "e",
     "Ceil": "e", "Frac": "e", "Periodic": "e", "SquareRoot": "e", "Logarithm2": "e", "Logarithm10": "e",
-    "Fmod": "ee", "Sine": "ei", "Length": "ei", "FoldedMath": "eeib", "Time": "", "RealTime": "",
+    "Fmod": "ee", "Sine": "ei", "Length": "ei", "FoldedMath": "eebi", "TrigMath": "eeb", "Time": "", "RealTime": "",
 }
 FOLDED = {0: "+", 1: "-", 2: "*", 3: "/", 4: "dot", 5: "cross"}
+TRIG = {0: "sin", 1: "cos", 2: "tan", 3: "asin", 4: "acos", 5: "atan", 6: "atan2"}
 
 
 def uniform_slots(data):
@@ -175,7 +177,10 @@ def uniform_slots(data):
         if kind == "ComponentSwizzle":
             return "%s.%s" % (parts[0], "".join("rgba"[k] for k in parts[1:1 + parts[5]])), at
         if kind == "FoldedMath":
-            return "(%s %s %s)" % (parts[0], FOLDED.get(parts[3], "?"), parts[1]), at
+            return "(%s %s %s)" % (parts[0], FOLDED.get(parts[2], "?"), parts[1]), at
+        if kind == "TrigMath":
+            op = TRIG.get(parts[2], "?")
+            return ("%s(%s, %s)" % (op, parts[0], parts[1]) if op == "atan2" else "%s(%s)" % (op, parts[0])), at
         return "%s(%s)" % (kind, ", ".join(str(p) for p in parts if isinstance(p, str))), at
 
     def listing(at):

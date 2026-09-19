@@ -40,7 +40,8 @@
 - 対処: `.gitattributes` に `* text=auto eol=lf`（2026-09-16、コミット 511ac5c。LFS の 2 行は `-text` 付きで後に置いてあるので影響しない）。作業ツリーを取り込み直して追跡ファイルを LF にし、`--update` でハッシュを取り直した（e5a428c）。
 - 確かめ方: `git ls-files --eol | grep w/crlf` が空。ずれたときは `git diff` が空であることを見てから `--update`。
 - もう 1 つの原因（2026-09-17）: Python の `open(p, 'w')` で書き戻すと、Windows では行末が CRLF になる（`git diff` が「CRLF will be replaced by LF」と警告する）。書き戻すときは `open(p, 'w', encoding='utf-8', newline='\n')` にする。
-- もう 1 つの経路（2026-09-19）: 作業ブランチで CRLF のまま書かれた C++ のハッシュを `--update` で取ると、main への切り替えとマージで git が LF に書き直した後にずれる（Stop hook が止める。項目 9 のマージの後に 02・06・07 で起きた）。マージの後にも `check_records.py` を走らせ、保存されたハッシュが今のファイルの CRLF 版と一致する（行末だけの差）ことを見てから `--update` してコミットする。
+- もう 1 つの経路（2026-09-19）: 作業ブランチで CRLF のまま書かれた C++ のハッシュを `--update` で取ると、main への切り替えとマージで git が LF に書き直した後にずれる（Stop hook が止める。項目 9 のマージの後に 02・06・07 で起きた）。
+- 根本の対処（2026-09-19）: 上の 2 つの経路で、ハッシュを LF で取り直すだけのコミットが 9-17 から 11 回続いた。`check_records.py` の `git_blob_hash` が、NUL を含まない中身の `\r\n` を `\n` に揃えてからハッシュを取るようにした（git が `eol=lf` で入れる中身と同じ。LF のファイルのハッシュは変わらない）。作業コピーの行末ではもうずれないので、LF に戻して取り直すコミットは要らない。それでもずれたら、中身が本当に変わっている。
 - 出典: コミット 511ac5c・d4c2006・e5a428c（2026-09-16）。
 
 ### `Tools/editor_cycle.py` がビルドの失敗を報告する途中で `UnicodeEncodeError` で落ちる
@@ -252,6 +253,7 @@
 - `MaterialExpressionIf` の `ConstAGreaterThanB` など: 扇形のマスクは `ceil(saturate(…))` で作る（03 記録）。
 - `SlateBlueprintLibrary`（画面上の大きさ）: ウィジェットのパス（`get_user_widget_object()` のパス + `.WidgetTree.<名前>`）を `find_object` して `render_transform` と `get_render_opacity()` を読む（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
 - **ウィジェットの画面上の位置（`get_cached_geometry()` / `get_tick_space_geometry()` / `get_paint_space_geometry()`）**: Python の名前は `unreal.SlateLibrary` で関数はあるが、Python が受け取る `Geometry` は空の写し（反映されたフィールドが無い）で、`SlateLibrary.get_local_size` は 0、`local_to_viewport` はビューポートの左上を返す。C++ の `unreal.WasamiWidgetProbe.viewport_fraction(widget, unreal.Vector2D(0.5, 0.5))`（ビューポートの大きさに対する割合。描かれていなければ (-1, -1)。09 記録）で読む。`Tools/playthrough.py` の `click_part` がこれで画面のボタン・スライダーを押す（2026-09-19。エディタの開き直し 1 回）。
+- `SkeletalMeshSocket` の `socket_name`・`bone_name`（読むだけ）: ソケットをメッシュを outer に作って `set_socket_parent(mesh, 骨)` で骨を決め、`mesh.add_socket(socket, True)`（UE 5.8 は `Socket` と名付けてメッシュの一覧に入れ、骨格に写しを足す）→ `mesh.rename_socket("Socket", 名前)`（両方の名前が変わる）。消すのは `remove_socket(名前)`（両方から消える）。`dd_skeletal.add_sockets`（01 記録。2026-09-19）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
 - `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
 
@@ -308,6 +310,13 @@
 - 確かめ方: エンジンの `Engine/Source/Runtime/Engine/Private/TimerManager.cpp` の `Tick`（`InternalTime > Top->ExpireTime`、末尾の `PendingTimerSet` の `ExpireTime += InternalTime`）。
 - 出典: 07 記録の「エンジンのタイマーの刻み」、進捗記録 `20260917-enemy-wasami-body.md` のステップ 3（2026-09-18。期待の時刻を直すのにビルドを 1 回やり直した）。
 
+### Automation テストが、ほかと続けて流すときだけ落ちる（弱い参照で持った文の枠が消える）
+
+- 症状: `Wasami.ZoneBarrier.Interact`・`Wasami.RingStatue.Interact` が単独では通るのに、`Wasami.` を全部流すと `Expected 'nor at 4.8 s' to be true.` で落ちる（最初の文の枠と違うものが返る）。
+- 原因: 障壁・祭壇は出した文の枠を `TWeakObjectPtr` で持つ。テストのワールドにはビューポートが無く枠を持つものが無いので、ティックの途中の GC が枠を回収し、弱い参照が空になる（空いたメモリに次の枠が入ることもある）。GC が走るかは前に流したテストで決まる。
+- 対処: テストで最初の枠を `TStrongObjectPtr` で持つ（両方のテスト。実装は直さない: ゲームではビューポートが枠を持つ）。
+- 出典: 項目 8 のステップ 5（障壁、2026-09-19）とステップ 8（祭壇、同日）。
+
 ### ヘッダーや UCLASS / UPROPERTY の変更が Live Coding で効かない
 
 - 対処: `python Tools/editor_cycle.py`（保存 → 閉じる → UBT → 開き直す）。尋ねずに走らせる。Live Coding で直したファイルは次のフルビルドで取り込まれる。
@@ -331,6 +340,14 @@
 
 ## 取り込み・レベル・描画
 
+### 組み立てが置いた BP のアクタが本家と違う向き・位置になる（のこぎりの罠の刃が床に寝た円盤に見える）
+
+- 症状: `place_dd_flow` で置いたアクタの回転に、本家のレベルに無いロールやピッチが混じる（のこぎりの罠 74 が yaw 90・roll −90 などになり、縦の刃が床に寝て見え、刃の箱も水平）。`stage_ue.json` の `actors[].world` の回転が、`_levels/<map>.full.json` のルートの部品（`<名前>.root` など）の `RelativeRotation` と合わない。
+- 原因: 前処理 `Tools/dd/prepare_stage.py` の `read_zone` が、アクタの変換を `RootComponent` でなく「書き出しで最初に `world` を持つ部品」から取っていた。BP の部品がルートより先に並ぶアクタでは、ほかの部品（罠は刃に付く `Audio`、ロール 90°）の変換を拾う。
+- 対処: 2026-09-19 に `read_zone` をアクタの `RootComponent` の部品の `world` から取るように直した（無ければ最初の部品）。前処理を流し直し、置き直す（`place_dd_flow` → `build_navigation`）。
+- 確かめ方: `stage_ue.json` の新旧を比べ、変わるのがそのアクタの `world` だけか見る（2026-09-19 は罠 74 と、組み立てが置かない `BP_FakeUseActor_06_HospitalZone1_Elevator_C` 5・`BP_SecretRoomZone_C`・`BP_06_Matron_MiniBoss_C`・`wall_lamp_68_Blueprint_C`）。置いたアクタの `get_actor_rotation()` がルートの `RelativeRotation` と合うか。取り込んだ骨入りのメッシュを疑う前に、アクタの回転を数値で見る（参照の姿勢とアニメの最初のコマの骨を比べても違いは出ない）。
+- 出典: 作業一覧の項目 8 のステップ 9（2026-09-19。01・08 記録）。
+
 ### 原作の材質の式が書き出しに無い（`Expressions` がほとんど null）／推定の材質が本家の見え方と合わない
 
 - 症状: `pak_reference_2/_assets/**/M_*.json` に残るのは設定・パラメータ・いくつかの式だけで、つなぎ方が分からない。収録と見比べて推定を直しても、別の読み方が同じくらい当てはまる。
@@ -338,6 +355,13 @@
 - 対処: `python Tools/dd/cooked_shaders.py "<pak のパスの一部>."`（Steam の最新版の pak を読むだけ）。半透明のベースパスのピクセルシェーダー（`texture3d` と深度の `texture2d` を持つ `ps_5_0`）の前半が材質の式。静的スイッチを上書きするインスタンスは自分のシェーダーマップを持つ。読み方は 01 記録の「cook のシェーダーを読む」。
 - 確かめ方: 読んだ式で組んだ材質を PIE で撮り、形と色が収録と合うか見る。
 - 出典: 作業一覧の項目 23 のステップ 5d3（2026-09-18）。星屑の推定を収録から 2 回読み（5d1 で「四芒星」、5d2 でそれを作った）、どちらも外れていた。**粒子を寿命から見分けるときは、粒子系が出る時刻（BP の `Delay`）を足す**（5d1 は力場が閃光の 0.2 秒後に出ることを落とし、白飛びした幕の破片を星屑と取り違えた）。Zone 2 の `M_SharpenFilter_Inst` のマスター（未解決の節）も同じ方法で読める見込み。
+
+### `cooked_shaders.py` の `cb3` の表で、畳んだ演算がいつも `+`（`(A + B)`）と出る／回転（`Rotator`）を持つ材質で表が `cb3[0] = ?` だけになる
+
+- 原因: 2026-09-19 までの `FIELDS` が `FMaterialUniformExpressionFoldedMath` を A・B・値の型・演算の順で読んでいた（本当は A・B・演算〈uint8〉・値の型〈uint32〉。演算を値の型の上位バイト〈0 = `+`〉から読んでいた）。`TrigMath`（X・Y・演算）が無く、それを含む表は読めずに捨てていた。
+- 対処: 直した（01 記録の「cook のシェーダーを読む」）。**それより前の推定で表の `+` を根拠にした所**は、表を出し直して確かめる（ポータルの `Glow Multiplier + Base Glow` は直した後も `+`）。
+- 確かめ方: `python Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/MI_ky_polarC_two."` の表に `cos((noiseRot * 0.25))` と `(-1.0 * sin(…))` が出る。
+- 出典: 作業一覧の項目 8 のステップ 2（2026-09-19）。シェーダーを読んだサブエージェントが見つけた。
 
 ### 壁・床が灰色の市松（`DefaultMaterial`）で描かれる
 
@@ -350,7 +374,7 @@
 ### 灯の色の R と B が入れ替わる（天井灯が黄色、扉枠が青）
 
 - 原因: 書き出し（`pak_reference`・`pak_reference_2`）は `FColor` を `[B, G, R, A]` の配列で持つ（エンジンが uint32 のまま書き、書き出しの道具 `ue4.py` がファイル上の順で出す）。
-- 対処: `ue_props.value` が整数 4 つの配列の色だけを並べ替える。
+- 対処: `ue_props.value` が整数 4 つの配列の色だけを並べ替える。**C++ に手で写す `FColor` も `FColor(R, G, B)` = 配列の [2]・[1]・[0] の順にする**（捕獲の灯・欠片の灯・障壁の灯が配列の順のまま写されていて、2026-09-19 に直した）。
 - 確かめ方: Zone 1 の天井灯 294 個が (200, 251, 255)、扉枠の灯 234 個が (255, 57, 74)。
 - 出典: コミット c41a5c4（2026-09-16）。
 
@@ -519,6 +543,14 @@
 - 対処: `dd_particles._number` は指数の形を使わず、`decimal` で正確な小数で書く（2026-09-18）。組んだ粒子の表の長さは、エディタで `Values` の数と `EntryCount × EntryStride` を比べて確かめる（2026-09-18 に /Game/DD・/Game/Pipeline の 6 つを確かめ、短かったのは `Fracture_concrete_3` だけ）。
 - 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
 
+### 粒子の事象で出るはずのエミッタが 1 つも出ない（`EventReceiverSpawn`。除細動器の稲妻）/ 組み直したエミッタの名前に引用符が付く（`"thander"`）
+
+- 症状: 除細動器の放電で、揺れと音は出るのに稲妻が見えない。`ParticleSystemComponent.get_num_active_particles()` で数えると `born` を配る `subE1`〜`3` だけが出て、受ける `thander` は 0。`generate_particle_event('born', …)` を送っても出ない。受け手のモジュールの一覧（`EventReceiverModules`）も、生成の `EventGenerator` も揃っている。
+- 原因: `dd_particles._text` が名前（`FName`）と文字列を引用符つきで書いていた。プロパティそのもののテキストの取り込み（`ImportText_Direct(…, PPF_None)`）は、`FNameProperty`・`FStrProperty` が残りの文字をすべて値にするので、名前が `"born"`（引用符ごと）になる。構造体の中（生成の `Events` の `CustomName`）は区切りつきで読まれて `born` になるので、合わない。`EmitterName` も同じく `"thander"` になっていた（`DescribeEmitterInstances` の出力で気づいた）。
+- 対処: 名前と文字列は引用符なしで書き（列挙は字句として読むので引用符つきのまま）、`dd_particles` で組むシステムをすべて組み直す。
+- 確かめ方: `UWasamiCascadeLibrary::DescribeEmitterInstances(部品)`（エミッタの実体ごとの一覧の数と粒子の数）を PIE の中で毎フレーム読む。エディタが背面だと PIE が約 3 fps で、寿命 0.1 s の粒子は数えられない（上の「エディタが背面にあると…」）。
+- 出典: 01 記録の「Cascade のパーティクル」、08 記録の「確かめたこと」。2026-09-19、作業一覧の項目 8 のステップ 4（C++ の道具を足すためにエディタを 1 回開き直した）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている
@@ -532,6 +564,13 @@
 
 - 対処: 先にビューポートを 1 回クリックして焦点を渡す（PIE を始めただけでは届かない）。PIE でないときにビューポートをクリックするとアクタを選ぶ（選択だけならレベルは汚れない）。前面の小窓（メッセージログ・Automation のログ）は先に閉じる。
 - 出典: コミット 9264dac（2026-09-16）、`.claude/guides/verification.md`。
+
+### PIE でタイトルの RESUME から開いたレベルの最初のクリックが効かない（テレポートの照準で押しても移らない）
+
+- 症状: `Tools/playthrough.py` の `z1_ambulance` が `on the roof: GOOD LUCK (saved 7) did not happen within 5 s` で止まる。照準の輪は屋根に出ているのに、左クリックで移らない。同じ所でもう一度押すと移る。頭から通すときだけ起き、`z1_ambulance --setup` を単独で流すと通る。
+- 原因: `pause` の区間がタイトルへ戻り、タイトルの RESUME（画面のボタンのクリック）で Zone 1 を開いた後、キーは届くがビューポートがマウスを取っていないので、次の最初のクリックはマウスを取るのに使われてゲームに届かない（`run` の始めの `focus` のクリックに当たるものが無い）。カーソルがタブレットの上にあることとは関係しない（同じ位置の 2 回目で移った）。
+- 対処: `pause` の区間の最後に `g.focus()`（ビューポートの真ん中のクリック）を足した（2026-09-19）。ほかの台本・手の確かめでも、画面のボタンでレベルを開いた後は、ゲームのクリックの前にビューポートを 1 回押す。
+- 出典: 作業一覧の項目 8 のステップ 10（`traps_through5.mkv`。2026-09-19）。項目 8 のステップ 1 の「頭から通したときに 1 度だけ来なかった」も同じ。
 
 ### `desktop.py record` が終わらない（`record_status` が `running` のまま、動画も `.mkv.log` も空）
 
@@ -636,7 +675,7 @@
 
 ## 直さなくてよい既知の見え方
 
-- **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
+- **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。`Tools/editor_cycle.py` の開き直しの後に閉じ忘れると、`playthrough.py` の画面のボタンのクリックが小窓に当たり、`pause` の区間がタイトルの RESUME の後に `L_Hospital_Zone1 to open did not happen within 40 s` で止まる（2026-09-19。`desktop.py ping` の前面が `メッセージ ログ` になる。窓の右上の × を `--allow UnrealEditor.exe` で押す）。
 - **エンジンの起動時の `LogAutomationTest: Error: Condition failed` 19 件** — エンジン自身の自己テスト。毎回同じ数（04 記録の「確かめたこと」）。
 - **Automation テストの後に `get_dirty_map_packages()` が `/Temp/Untitled_1`・`/Temp/Untitled_3` を返す** — `Wasami.Powers.PrimalStun`・`VanishNotify` などが作った一時的なワールドのパッケージ。ガベージコレクションでも消えないが、`/Temp` なので保存されず、その後の `editor_cycle.py` の終了も妨げない（2026-09-17 の 3 つのセッションのログで確かめた）。「未保存なし」を確かめるときは `/Game` のものだけを見る。
 - **VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」2 件** — 前のセッションから出ているもの（04 記録）。

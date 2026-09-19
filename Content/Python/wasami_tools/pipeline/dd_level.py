@@ -2,7 +2,7 @@
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
 zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers,
-Zone 2's altar and ring piece), Zone 2's lifts and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps) and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
 import math
@@ -63,11 +63,10 @@ SHARD_LIGHT_FOLDER = "Hospital/Lights/" + SHARD_CLASS
 TRIGGER_CLASS = "BP_TriggerBox_Base_C"
 # The door breaks (BP_06_Hospital_DoorBreak → AWasamiDoorBreak), with their Progress Speed.
 DOOR_BREAK_CLASS = "BP_06_Hospital_DoorBreak_C"
-# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors) the flow names: Zone 1's lift doors and the tunnel's, and
-# Zone 2's one, locked until the ring piece is taken (the way to the garage). Zone 1's other 60 come with the work
-# list's item 8.
+# The double doors (BP_06_DoubleDoors → AWasamiDoubleDoors), all of them: Zone 1's 62 and Zone 2's one. The flow names
+# three by their tags: Zone 1's lift doors and the tunnel's, and Zone 2's, locked until the ring piece is taken (the way
+# to the garage).
 DOUBLE_DOORS_CLASS = "BP_06_DoubleDoors_C"
-FLOW_DOUBLE_DOORS = ("BP_06_DoubleDoors11", "BP_06_DoubleDoors33_36", "BP_06_DoubleDoors2")
 # The class's door components and their meshes (BP_06_DoubleDoors' SCS templates), which the C++ class leaves unset (it
 # loads nothing from /Game/DD in its constructor); each takes its mesh's own materials, as in the original.
 DOUBLE_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_entrance_walkway_doubledoor2",
@@ -82,6 +81,35 @@ BARRIER_CLASS = "BP_ZoneBarrier_C"
 BARRIER_MATERIALS = {"static_mesh1": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst1",
                      "static_mesh": "/Game/DD/Materials/Shared/MM_ZoneBarrier_Inst2"}
 BARRIER_LIGHT_FOLDER = "Hospital/Lights/" + BARRIER_CLASS
+# The defibrillators (BP_06_Defib → AWasamiDefib): Zone 1's 23 and Zone 2's 13, which the flow does not name. The class
+# leaves its two stands' mesh unset (hospital_defibrillator_01 on both, as BP_06_Defib's SCS templates, each with the
+# mesh's own material); it loads its sparks, sounds and shake when play begins, and no placed one has values of its own.
+DEFIB_CLASS = "BP_06_Defib_C"
+DEFIB_MESH = "/Game/Meshes/06_Hospital/hospital_defibrillator_01"
+DEFIB_STANDS = ("defibrillator01", "defibrillator02")
+# The speed barriers (BP_SpeedBarrier → AWasamiSpeedBarrier): Zone 1's four, which the flow does not name. The class
+# leaves its planes' materials unset (BP_SpeedBarrier's SCS templates' OverrideMaterials, as the zone barrier's). Three
+# of the four move, turn or scale their planes (SPEED_BARRIER_PLANES' RelativeLocation, RelativeRotation and
+# RelativeScale3D in the level export; the root's scale is the actor's). The light is a component of it, so the lights
+# the preprocessing lists under a speed barrier are not placed on their own (builds before 2026-09-19 did, into
+# SPEED_BARRIER_LIGHT_FOLDER; place_flow takes those out).
+SPEED_BARRIER_CLASS = "BP_SpeedBarrier_C"
+SPEED_BARRIER_MATERIALS = {"static_mesh1": "/Game/DD/Materials/Shared/MM_SpeedBarrier_Inst",
+                           "static_mesh": "/Game/DD/Materials/Shared/MM_SpeedBarrier_Inst2"}
+SPEED_BARRIER_PLANES = {"StaticMesh": "static_mesh", "StaticMesh1": "static_mesh1"}
+SPEED_BARRIER_LIGHT_FOLDER = "Hospital/Lights/" + SPEED_BARRIER_CLASS
+# The saw traps (BP_06_sawTrap_medium, _short01, _short02 and _long01 → AWasamiSawTrap and its subclasses): Zone 2's 74,
+# which the flow does not name. The classes load their meshes, animations and sound, and their construction puts the
+# box on the blade and picks the whine's pitch; the placed ones' only values of their own are five short01s' lights
+# turned down (SAW_TRAP_LIGHT's Intensity in the level export). The short01's light is a component of it, so the lights
+# the preprocessing lists under one are not placed on their own (builds before 2026-09-19 did, into
+# SAW_TRAP_LIGHT_FOLDER; place_flow takes those out).
+SAW_TRAP_CLASSES = {"BP_06_sawTrap_medium_C": "WasamiSawTrap", "BP_06_sawTrap_short01_C": "WasamiSawTrapShort01",
+                    "BP_06_sawTrap_short02_C": "WasamiSawTrapShort02", "BP_06_sawTrap_long01_C": "WasamiSawTrapLong01"}
+SAW_TRAP_LIGHT_CLASS = "BP_06_sawTrap_short01_C"
+SAW_TRAP_LIGHT = "PointLight"
+SAW_TRAP_LIGHT_FOLDER = "Hospital/Lights/" + SAW_TRAP_LIGHT_CLASS
+TRAP_FOLDER = "Hospital/Gameplay/Traps"
 # Zone 2's altar (BP_01_Statue → AWasamiRingStatue) and the ring piece over it (BP_08_RingPiece_NoPickup →
 # AWasamiRingPiece), with what their classes leave unset: the altar's mesh with the materials the placed one puts on it
 # (its StaticMeshComponent0's OverrideMaterials in the level export, else the class's), and the piece's mesh with
@@ -319,7 +347,8 @@ def _lights(eas, zone, counts, failures):
     with unreal.ScopedSlowTask(len(zone["lights"]), "Placing the hospital's lights") as task:
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
-            if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS, RING_PIECE_CLASS):
+            if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS, RING_PIECE_CLASS, SPEED_BARRIER_CLASS,
+                                    SAW_TRAP_LIGHT_CLASS):
                 continue
             cls = LIGHT_CLASS.get(lt["class"])
             if cls is None or not lt["world"]:
@@ -608,20 +637,49 @@ def set_emitter(actor, zone, name, level):
     return None
 
 
+def set_speed_barrier(actor, zone, name, level):
+    """A speed barrier placed from the original's of that name: its planes' materials (SPEED_BARRIER_MATERIALS) and
+    where the placed one moves, turns or scales them (SPEED_BARRIER_PLANES)."""
+    for prop, path in SPEED_BARRIER_MATERIALS.items():
+        material = unreal.load_asset(path)
+        if material is None:
+            raise RuntimeError("missing %s: run WasamiDDTools.import_dd_gimmicks" % path)
+        actor.get_editor_property(prop).set_material(0, material)
+    for part, prop in SPEED_BARRIER_PLANES.items():
+        over = _level_props(zone, "%s.%s" % (name, part), level)
+        plane = actor.get_editor_property(prop)
+        if "RelativeLocation" in over:
+            plane.set_editor_property("relative_location", _vec(over["RelativeLocation"]))
+        if "RelativeRotation" in over:
+            pitch, yaw, roll = (float(v) for v in over["RelativeRotation"])
+            plane.set_editor_property("relative_rotation", unreal.Rotator(roll=roll, pitch=pitch, yaw=yaw))
+        if "RelativeScale3D" in over:
+            plane.set_editor_property("relative_scale3d", _vec(over["RelativeScale3D"]))
+
+
+def set_saw_trap_light(actor, zone, name, level):
+    """A short01 saw trap placed from the original's of that name: its light's Intensity where the placed one sets it."""
+    intensity = _level_props(zone, "%s.%s" % (name, SAW_TRAP_LIGHT), level).get("Intensity")
+    if intensity is not None:
+        actor.get_editor_property("point_light").set_editor_property("intensity", float(intensity))
+
+
 def _flow(eas, stage, zone, counts, failures):
-    """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors and emitters
-    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar and
-    the ring piece, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
+    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar, the
+    ring piece, the defibrillators, the speed barriers and the saw traps, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS)."""
     placed = []
     level = {}
     for a in zone["actors"]:
-        doors = a["class"] == DOUBLE_DOORS_CLASS and a["name"] in FLOW_DOUBLE_DOORS
+        doors = a["class"] == DOUBLE_DOORS_CLASS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
-                                                 TARGET_POINT_CLASS, SENTRY_CLASS, STATUE_CLASS, RING_PIECE_CLASS)
+                                                 TARGET_POINT_CLASS, SENTRY_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
+                                                 DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
-                              and a["class"] not in GARAGE_LIFT_CLASSES and not doors and not emitter):
+                              and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
+                              and not doors and not emitter):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -703,6 +761,28 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["ringPieces"] += 1
+        elif a["class"] == DEFIB_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiDefib, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            for prop in DEFIB_STANDS:
+                _set_mesh(actor.get_editor_property(prop), stage, DEFIB_MESH)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["defibs"] += 1
+        elif a["class"] == SPEED_BARRIER_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiSpeedBarrier, _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            set_speed_barrier(actor, zone, a["name"], level)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["speedBarriers"] += 1
+        elif a["class"] in SAW_TRAP_CLASSES:
+            actor = eas.spawn_actor_from_class(getattr(unreal, SAW_TRAP_CLASSES[a["class"]]), _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            if a["class"] == SAW_TRAP_LIGHT_CLASS:
+                set_saw_trap_light(actor, zone, a["name"], level)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["sawTraps"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -720,7 +800,9 @@ def _flow(eas, stage, zone, counts, failures):
         actor.set_actor_scale3d(_vec(world["scale"]))
         lift = a["class"] in LIFT_CLASSES or a["class"] in GARAGE_LIFT_CLASSES
         folder = (LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES
-                  else ENEMY_FOLDER if a["class"] == SENTRY_CLASS else FLOW_FOLDER)
+                  else ENEMY_FOLDER if a["class"] == SENTRY_CLASS
+                  else TRAP_FOLDER if a["class"] in (DEFIB_CLASS, SPEED_BARRIER_CLASS) or a["class"] in SAW_TRAP_CLASSES
+                  else FLOW_FOLDER)
         _tag(actor, a["name"], folder, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
     portal = PORTALS.get(zone["map"])
@@ -757,9 +839,10 @@ def _flow(eas, stage, zone, counts, failures):
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers, lifts, garage lifts, sentries, altar and ring piece in again (and takes out the barrier and ring piece lights an earlier build
-    placed on their own), leaving the rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors,
-    the lifts, the altar and the barriers' and the piece's lights are movable), and saves the level."""
+    checkers, lifts, garage lifts, sentries, altar, ring piece, defibrillators, speed barriers and saw traps in again (and takes out the barrier,
+    ring piece, speed barrier and saw trap lights an earlier build placed on their own), leaving the rest of the level and its baked lighting as
+    they are (none of them is in the baked lighting: the doors, the lifts, the altar, the defibrillators' stands, the saw traps and the barriers',
+    the piece's and the traps' lights are movable), and saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
@@ -767,11 +850,13 @@ def place_flow(zone="Zone1", map_path=""):
     les, eas = _open_level(map_path or z["level"], clear=False)
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
     lights = [a for a in eas.get_all_level_actors()
-              if a.actor_has_tag(TAG) and str(a.get_folder_path()) in (BARRIER_LIGHT_FOLDER, RING_PIECE_LIGHT_FOLDER)]
+              if a.actor_has_tag(TAG) and str(a.get_folder_path()) in (BARRIER_LIGHT_FOLDER, RING_PIECE_LIGHT_FOLDER,
+                                                                  SPEED_BARRIER_LIGHT_FOLDER, SAW_TRAP_LIGHT_FOLDER)]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
-              "ringStatues": 0, "ringPieces": 0, "portals": 0, "attached": 0}
+              "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "portals": 0,
+              "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -794,8 +879,8 @@ def build(zone="Zone1", map_path=""):
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "portals",
-                             "attached")}
+                             "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "defibs",
+                             "speedBarriers", "sawTraps", "portals", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)

@@ -288,7 +288,7 @@ const FVector AWasamiCapture::CameraOffset(
 	AWasamiCapture::HotelCameraOffset.X * AWasamiCapture::FrameScale,
 	AWasamiCapture::HotelCameraOffset.Y * AWasamiCapture::FrameScale,
 	AWasamiCapture::WasamiTop / 2. + (AWasamiCapture::HotelCameraOffset.Z - AWasamiCapture::MonkeyHeadBase) * AWasamiCapture::FrameScale);
-const FColor AWasamiCapture::LightColor(142, 236, 255, 255);
+const FColor AWasamiCapture::LightColor(255, 236, 142, 255);
 const float AWasamiCapture::WatcherKill3Length = 1.0187135934829712f;
 
 AWasamiCapture::AWasamiCapture()
