@@ -83,7 +83,7 @@ updated: 2026-09-19
 | --- | --- |
 | `python Tools/dd/prepare_stage.py [--out <dir>]` | 病院の Zone 1・Zone 2 を `Intermediate/Pipeline/dd/stage_ue.json` にまとめる |
 | `python Tools/dd/prepare_loader.py [--out <file>]` | 読み込み画面の病院の紋章（本家の `loader_reapernurse` の魔法陣の中の印を、`SourceArt/Wasami/UI/wasami_symbol.png` に替えたもの）を `Intermediate/Pipeline/wasami/ui/loader_wasami.png` に作る。PIL と numpy を使う（エディタの Python には無い）。中身は 09 記録 |
-| `python Tools/dd/prepare_portal_logo.py [--out <file>]` | ガレージのポータルのロゴ（ユーザーの `SourceArt/Wasami/UI/wasami_symbol.png` の α を、本家の `portal_monkey` の印の高さ・箱の真ん中に、赤 (192, 0, 0) の上に描いた 1024²）を `Intermediate/Pipeline/wasami/fx/portal_wasami.png` に作る。PIL と numpy を使う。中身は 08 記録 |
+| `python Tools/dd/prepare_portal_logo.py [--out <file>]` | ガレージのポータルのロゴ（ユーザーの `SourceArt/Wasami/UI/wasami_symbol.png` の α を、本家の `portal_monkey` の印の高さで、箱をテクスチャの真ん中〈輪の中心〉に置き、白の上に描いた 1024²。色は材質の `Tint`）を `Intermediate/Pipeline/wasami/fx/portal_wasami.png` に作る。PIL と numpy を使う。中身は 08 記録 |
 | `python Tools/dd/prepare_title.py [--out <dir>]` | タイトル画面の本作の絵: ワサミの顔（`SourceArt/Wasami/UI/title_face.png` に WebGL 版の CSS のフィルタとマスクを焼いたもの）とロゴのグロー（`title_logo.png` の α をぼかしたもの）を `Intermediate/Pipeline/wasami/ui/title_face.png`・`title_logo_glow.png` に作る。PIL と numpy を使う。中身は 14 記録 |
 | `python Tools/ue_remote.py <file.py>` / `-c "<code>"` | 起動中のエディタで Python を実行する（PythonScriptPlugin のリモート実行）。終了コードは 0 成功 / 1 Python エラー / 2 エディタが応答しない |
 | `python Tools/editor_cycle.py [--quit-only] [--no-quit] [--no-build]` | 保存してエディタを閉じ、C++ をビルドし、**対話デスクトップで**開き直して、リモート実行が応答するまで待つ |

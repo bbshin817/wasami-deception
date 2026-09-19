@@ -158,6 +158,12 @@ PORTAL_LOCK = "Materials/00_Ballroom/M_00_Portal_Lock"
 # This game's logo (Tools/dd/prepare_portal_logo.py draws it) and its instance of the logo's master.
 PORTAL_LOGO_FILE = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "wasami", "fx", "portal_wasami.png")
 PORTAL_LOGO_TEXTURE = paths.WASAMI_ROOT + "/Portal/T_Portal_Wasami"
+# The logo's colour (its image is white; 2026-09-19, the user: the original colours white images in the game, and the
+# symbol's red stood out from the rings'): the rings' red (192 in their sRGB textures, 0.5271 linear) at the rings'
+# mean brightness against the logo's, (Glow Multiplier 0.05 + Base Glow 0.1) x 0.2 = 0.03 against 0.05 (the original's
+# M_00_Portal_Vortex_Outer_Inst and _Inner_Inst; their strobe, 0.1 x sin, averages 0). The original's monkey, red in
+# its image, shows at the rings' brightest.
+PORTAL_LOGO_TINT = (0.5271 * 0.03 / 0.05, 0.0, 0.0, 1.0)
 PORTAL_LOGO = paths.WASAMI_ROOT + "/Portal/MI_Portal_Wasami"
 # The monkey's texture settings (_textures.json: sRGB, default compression, the UI group).
 PORTAL_LOGO_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
@@ -293,7 +299,8 @@ def _build_portal_logo(mat):
     (Tools/dd/cooked_shaders.py "00_Ballroom/M_00_Portal_Monkey." --show 40): Albedo sampled at the UVs scaled about the
     middle by Scale (ScaleUVsByCenter), its RGB x 0.05 x (1 + Mat_ParameterCol's Portal Extra Brightness) the emissive
     colour and its alpha the opacity. Unlit, as the vortex (no base colour). Albedo defaults to the lock: the monkey is
-    the original's character, which this game does not show."""
+    the original's character, which this game does not show. This game adds Tint, multiplied into the RGB: white by
+    default (the lock as the original), the rings' red on this game's white logo (PORTAL_LOGO_TINT)."""
     scalars, _ = dd_assets.parameter_defaults(PORTAL_MONKEY, VERSION)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     mat.set_editor_property("used_with_static_lighting", True)
@@ -306,7 +313,8 @@ def _build_portal_logo(mat):
     g.link(scaled, "", albedo, "UVs")
     extra = dd_assets.add(g, _collection_parameter(g, "Portal Extra Brightness", -750, -300), "",
                           dd_assets.constant(g, 1.0, -750, -200), "", -550, -250)
-    colour = g.multiply(albedo, "RGB", dd_assets.constant(g, 0.05, -550, -100), "", -400, -50)
+    tinted = g.multiply(albedo, "RGB", g.vector("Tint", (1.0, 1.0, 1.0, 1.0), -750, 200), "RGB", -550, 50)
+    colour = g.multiply(tinted, "", dd_assets.constant(g, 0.05, -550, -100), "", -400, -50)
     g.out(g.multiply(colour, "", extra, "", -250, -150), "", MP.MP_EMISSIVE_COLOR)
     g.out(albedo, "A", MP.MP_OPACITY)
 
@@ -358,7 +366,8 @@ def make_portal_materials():
             mic = dd_assets.material_instance(dd_assets.asset_path(rel), parent, scalars=scalars, textures=textures)
             dd_assets.base_property_overrides(mic, rel, VERSION)
             made.append(mic)
-    made.append(dd_assets.material_instance(PORTAL_LOGO, logo, textures={"Albedo": PORTAL_LOGO_TEXTURE}))
+    made.append(dd_assets.material_instance(PORTAL_LOGO, logo, vectors={"Tint": PORTAL_LOGO_TINT},
+                                            textures={"Albedo": PORTAL_LOGO_TEXTURE}))
     for asset in made:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     return [a.get_path_name() for a in made]
