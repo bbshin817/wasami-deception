@@ -310,7 +310,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`、`_sequences/06_Hospital_Zone1_06Event.json`・`06_Hospital_Zone2_Capture.json`・`06_Hospital_Zone2_Cell.json`。
 - 依存: 6、7。
 - 規模: 2
-- 状態: 未着手。
+- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-cutscenes`）。計画の段階で、場面は既存の取り込み `dd_sequence` にトラック（SkeletalAnimation・Visibility・CameraShake・CameraAnim・Slomo・ComponentMaterial）を足して本家の LevelSequence として組み、Zone 2 の始まりは本家の配布版の道（救急車の到着 → 捕まる場面 → 独房）を写す、と決めた。
 
 ### 26. 追跡中のランダムの動き
 
