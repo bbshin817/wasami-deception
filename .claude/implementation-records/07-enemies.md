@@ -211,10 +211,10 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - **重なりの始まりだけを見る**: 気絶した敵に触れて重なったまま気絶が明けても捕まらない（本家も同じ。離れてまた触れると捕まる）。
 
 ### 取り込み
-1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。
+1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。引数 `source`・`prepared_dir`・`folder`・`prefix` で別のモデルのものを取り込める（ボスワサミの `dd_boss` が使う。17 記録）。
 2. `M_DD_WasamiGltf`（`dd_assets.material` + `_build_master`）: glTF の metallic-roughness の係数 1 の形。色 → Base Color、金属と粗さの B → Metallic、G → Roughness、法線 → Normal。片面、`used_with_skeletal_mesh`。`MI_WasamiEnemy` はそのインスタンスでテクスチャ 3 枚を入れる。
 3. `ensure_skeletal_pipeline`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を `PL_Wasami_Skeletal` に写し、種類ごとのフォルダなし、`use_source_name_for_asset` 偽・`asset_name` 空（こうするとメッシュは glTF のメッシュの節の名前〈節が無名なら `<ファイル>_node_<番号>`。2026-09-18 に `dd_skeletal` で分かった〉、スケルトンと物理アセットはその `_Skeleton`・`_PhysicsAsset`、アニメは glTF のアニメの名前そのままになる。Interchange の `ImplementUseSourceNameForAssetOption`）、材質とテクスチャの取り込みなし、スタティックメッシュなし、Nanite なし、物理アセットあり、モーフなし、アニメあり・30 Hz で焼く（引数 `pipeline`・`sample_rate` で別の管を別の速さで作れる。本家の骨入りのメッシュの `dd_skeletal` が `PL_DD_Skeletal` を 24 Hz で作る。01・12 記録）。
-4. `_import_model`: 前処理した glb（メッシュと節の名前を `SK_WasamiEnemy` にしてある）を `/Game/Wasami/Enemy` に置き換えで取り込み（既にあるアセットは同じオブジェクトに書き戻す。**ファイル名はどのアセットとも違う `WasamiEnemy.glb`**: UE 5.8 の `InterchangeManager.cpp` は、置き換えの取り込みでファイル名と同じ名前のアセットが行き先にあると、そのアセットだけの再取り込みに変える。2026-09-18 まで `SK_WasamiEnemy.glb` だったので、2 回目からはメッシュだけが置き換わりアニメは最初の取り込みのままだった）、スロット 1（`BakedMaterial`）に `MI_WasamiEnemy` を入れ、`ROLES` のアニメが全部あるかを確かめる。取り込みは呼び出しの中で終わる。
+4. `_import_model`: 前処理した glb（メッシュと節の名前を `SK_WasamiEnemy` にしてある）を `/Game/Wasami/Enemy` に置き換えで取り込み（既にあるアセットは同じオブジェクトに書き戻す。**ファイル名はどのアセットとも違う `WasamiEnemy.glb`**: UE 5.8 の `InterchangeManager.cpp` は、置き換えの取り込みでファイル名と同じ名前のアセットが行き先にあると、そのアセットだけの再取り込みに変える。2026-09-18 まで `SK_WasamiEnemy.glb` だったので、2 回目からはメッシュだけが置き換わりアニメは最初の取り込みのままだった）、スロット 1（`BakedMaterial`）に `MI_WasamiEnemy` を入れ、`ROLES` のアニメが全部あるかを確かめる。取り込みは呼び出しの中で終わる。引数 `prepared`・`folder`・`mesh_path`・`anim_prefix`・`roles` で別のモデルを取り込める（`dd_boss` が使う）。
 
 ## 作るアセット
 
@@ -287,6 +287,7 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
 ## 変更履歴
+- 2026-09-19: `_extract_textures`・`_import_model` を引数でモデルのパスと名前を受ける形にした（ボスワサミの取り込みが使う。17 記録）
 - 2026-09-19: 地図の印 `MapMark`（本家のナースの `StaticMesh`。`Plane`・`M_Enemy`・カプセルの中心から 10 m 上）を足した（作業一覧の項目 10 のステップ 4。16 記録）
 - 2026-09-18: 初版。敵ワサミの素材の取り込み（`dd_enemy.py`、原本 2 つ）を記録
 - 2026-09-18: アニメの再生 `UWasamiEnemyAnimInstance`（本家の ABP の木・気絶の位相合わせ・1 回再生の口）とテスト `Wasami.Enemy.Anim.*` を追加
