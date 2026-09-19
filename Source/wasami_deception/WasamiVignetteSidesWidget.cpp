@@ -26,9 +26,9 @@ namespace
 		{42000., 1.f, -1.190476177725941e-05, -1.190476177725941e-05}, {90000., 0.f, 0., 0.}};
 	// Image_161: its scale in a straight line from 1.4 to 1.25 at 0.35 s (the author's arrive tangent), held to 0.9 s,
 	// then out to 2; its ColorAndOpacity's alpha (the colour's other channels have no keys and keep the image's own).
-	const FAnimKey VignetteScaleKeys[] = {{0., 1.4f, 0., -7.142855793063063e-06, RCIM_Linear},
+	const FAnimKey SidesVignetteScaleKeys[] = {{0., 1.4f, 0., -7.142855793063063e-06, RCIM_Linear},
 		{21000., 1.25f, -7.142855793063063e-06, 0.}, {54000., 1.25f, 0., 0.}, {90000., 2.f, 0., 0.}};
-	const FAnimKey VignetteAlphaKeys[] = {{0., 0.f, 0., 0.}, {9000., 1.f, 3.333333370392211e-05, 3.333333370392211e-05},
+	const FAnimKey SidesVignetteAlphaKeys[] = {{0., 0.f, 0., 0.}, {9000., 1.f, 3.333333370392211e-05, 3.333333370392211e-05},
 		{15000., 0.5f, -1.6666666851961054e-05, -1.6666666851961054e-05},
 		{54000., 0.25f, -6.666666649834951e-06, -6.666666649834951e-06}, {90000., 0.f, 0., 0.}};
 	// CanvasPanel_0: RenderTransform's angle (degrees) and scale, in a section that ends at 28000 ticks (0.47 s).
@@ -44,10 +44,10 @@ namespace
 	constexpr float CanvasRestScale = 1.f;
 	// Image_161's ColorAndOpacity and scale at rest (Anim sets the alpha from 0 and the scale from 1.4).
 	const FLinearColor VignetteRestColor(1.f, 0.23077000677585602f, 0.f, 0.4176790118217468f);
-	constexpr float VignetteRestScale = 2.f;
+	constexpr float SidesVignetteRestScale = 2.f;
 	// TextBlock_47: white at 0.8 with a 1 px black outline at 0.638, unseen at rest (RenderOpacity 0).
 	const FLinearColor TextColor(1.f, 1.f, 1.f, 0.800000011920929f);
-	const FLinearColor TextOutline(0.f, 0.f, 0.f, 0.6380000114440918f);
+	const FLinearColor SidesTextOutline(0.f, 0.f, 0.f, 0.6380000114440918f);
 	constexpr float TextRestOpacity = 0.f;
 
 	UCanvasPanelSlot* SidesPlace(UCanvasPanel* Panel, UWidget* Child, const FAnchors& Anchors, const FMargin& Offsets,
@@ -63,7 +63,7 @@ namespace
 		return Slot;
 	}
 
-	void SetScale(UWidget* Widget, float Scale)
+	void SetSidesScale(UWidget* Widget, float Scale)
 	{
 		FWidgetTransform Transform = Widget->GetRenderTransform();
 		Transform.Scale = FVector2D(Scale, Scale);
@@ -136,7 +136,7 @@ TSharedRef<SWidget> UWasamiVignetteSidesWidget::RebuildWidget()
 		Brush.ImageSize = FVector2D(1024.f, 1024.f);
 		Vignette->SetBrush(Brush);
 		Vignette->SetColorAndOpacity(VignetteRestColor);
-		SetScale(Vignette, VignetteRestScale);
+		SetSidesScale(Vignette, SidesVignetteRestScale);
 		SidesPlace(Canvas, Vignette, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.9609375f, 0.54052734375f, 0.9609375f, 0.54052734375f),
 			FVector2D(0.5f, 0.5f), true);
 
@@ -150,7 +150,7 @@ TSharedRef<SWidget> UWasamiVignetteSidesWidget::RebuildWidget()
 		Font.TypefaceFontName = TEXT("Default");
 		Font.Size = 35.f;
 		Font.OutlineSettings.OutlineSize = 1;
-		Font.OutlineSettings.OutlineColor = TextOutline;
+		Font.OutlineSettings.OutlineColor = SidesTextOutline;
 		Font.OutlineSettings.bApplyOutlineToDropShadows = true;
 		TextBlock->SetFont(Font);
 		TextBlock->SetJustification(ETextJustify::Center);
@@ -220,14 +220,14 @@ void UWasamiVignetteSidesWidget::ApplyAnimation()
 	}
 	if (Vignette)
 	{
-		SetScale(Vignette, EvaluateVignetteScale(Elapsed));
+		SetSidesScale(Vignette, EvaluateVignetteScale(Elapsed));
 		FLinearColor Tint = VignetteRestColor;
 		Tint.A = EvaluateVignetteAlpha(Elapsed);
 		Vignette->SetColorAndOpacity(Tint);
 	}
 	if (TextBlock)
 	{
-		SetScale(TextBlock, EvaluateTextScale(Elapsed));
+		SetSidesScale(TextBlock, EvaluateTextScale(Elapsed));
 		TextBlock->SetRenderOpacity(EvaluateTextOpacity(Elapsed));
 	}
 }
@@ -246,13 +246,13 @@ float UWasamiVignetteSidesWidget::EvaluateTextOpacity(float Seconds)
 
 float UWasamiVignetteSidesWidget::EvaluateVignetteScale(float Seconds)
 {
-	static const FRichCurve Curve = MakeCurve(VignetteScaleKeys);
+	static const FRichCurve Curve = MakeCurve(SidesVignetteScaleKeys);
 	return Eval(Curve, Seconds, AnimLength);
 }
 
 float UWasamiVignetteSidesWidget::EvaluateVignetteAlpha(float Seconds)
 {
-	static const FRichCurve Curve = MakeCurve(VignetteAlphaKeys);
+	static const FRichCurve Curve = MakeCurve(SidesVignetteAlphaKeys);
 	return Eval(Curve, Seconds, AnimLength);
 }
 

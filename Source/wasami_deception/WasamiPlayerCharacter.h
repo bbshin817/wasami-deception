@@ -120,6 +120,20 @@ public:
 	/** Whether Z has the map zoomed out (the original's mapZoomedOut?). */
 	bool IsMapZoomedOut() const { return bMapZoomedOut; }
 
+	/**
+	 * Add To Map: every actor of ActorClass in the level now joins what the minimap shows, until Remove From Map (the
+	 * bonus shard's reveal adds the enemies' classes). An actor of the class that comes later needs another call.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
+	void AddToMap(TSubclassOf<AActor> ActorClass);
+
+	/** Remove From Map: every actor of ActorClass in the level now leaves what Add To Map put on the minimap. */
+	UFUNCTION(BlueprintCallable, Category = "Player|Tablet")
+	void RemoveFromMap(TSubclassOf<AActor> ActorClass);
+
+	/** Whether the minimap's capture shows Actor (as of its last refresh). */
+	bool IsOnMap(const AActor* Actor) const;
+
 	/** The screen on the tablet, once the widget component has made it. */
 	UWasamiTabletWidget* GetTabletScreen() const;
 
@@ -192,7 +206,7 @@ public:
 
 	/**
 	 * The classes whose every actor the minimap always shows besides the map plane, the arrow and the shards (the
-	 * original's list also has BP_PowerOrb and BP_BonusShard): AWasamiPowerOrb.
+	 * original's list also has BP_PowerOrb and BP_BonusShard): AWasamiPowerOrb and AWasamiBonusShard.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Tablet")
 	TArray<TSubclassOf<AActor>> MinimapActorClasses;
@@ -363,6 +377,9 @@ private:
 
 	/** The actor the last Interact (Secondary) press's trace hit (null if it hit nothing). */
 	TWeakObjectPtr<AActor> InteractHitActor;
+
+	/** What Add To Map put on the minimap (the original adds them to the capture's Show Only, which is remade here). */
+	TArray<TWeakObjectPtr<AActor>> MapAddedActors;
 
 	/** TabletInterp (0.5 s, raising) and Timeline_1 (0.3 s, lowering), built from the original's curves. */
 	FRichCurve TabletRaiseCurve;

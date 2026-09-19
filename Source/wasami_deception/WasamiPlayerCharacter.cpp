@@ -24,6 +24,7 @@
 #include "TimerManager.h"
 #include "WasamiArrowPointer.h"
 #include "WasamiAssets.h"
+#include "WasamiBonusShard.h"
 #include "WasamiChameleonComponent.h"
 #include "WasamiDeathScreenWidget.h"
 #include "WasamiGameInstance.h"
@@ -161,7 +162,7 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	TabletMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2")));
 	MinimapTarget = TSoftObjectPtr<UTextureRenderTarget2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Minimap/T_NewMap")));
 	ShardActorClass = AWasamiShard::StaticClass();
-	MinimapActorClasses = {AWasamiPowerOrb::StaticClass()};
+	MinimapActorClasses = {AWasamiPowerOrb::StaticClass(), AWasamiBonusShard::StaticClass()};
 	TabletUpSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1")));
 	TabletDownSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v1_1")));
 	ResizeMapSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
@@ -645,10 +646,37 @@ AWasamiArrowPointer* AWasamiPlayerCharacter::GetArrowPointer() const
 	return Cast<AWasamiArrowPointer>(ArrowPointer->GetChildActor());
 }
 
+void AWasamiPlayerCharacter::AddToMap(TSubclassOf<AActor> ActorClass)
+{
+	TArray<AActor*> OfClass;
+	UGameplayStatics::GetAllActorsOfClass(this, ActorClass, OfClass);
+	for (AActor* Actor : OfClass)
+	{
+		MapAddedActors.AddUnique(Actor);
+	}
+	RefreshMinimapContents();
+}
+
+void AWasamiPlayerCharacter::RemoveFromMap(TSubclassOf<AActor> ActorClass)
+{
+	TArray<AActor*> OfClass;
+	UGameplayStatics::GetAllActorsOfClass(this, ActorClass, OfClass);
+	for (AActor* Actor : OfClass)
+	{
+		MapAddedActors.Remove(Actor);
+	}
+	RefreshMinimapContents();
+}
+
+bool AWasamiPlayerCharacter::IsOnMap(const AActor* Actor) const
+{
+	return Actor && MinimapCapture->ShowOnlyActors.Contains(Actor);
+}
+
 void AWasamiPlayerCharacter::RefreshMinimapContents()
 {
-	// Show Only: the capture draws the level's map plane, the shards, the arrow and the classes it always shows, and
-	// nothing else of the world.
+	// Show Only: the capture draws the level's map plane, the shards, the arrow, the classes it always shows and what
+	// Add To Map added, and nothing else of the world.
 	TArray<AActor*> Shown;
 	UGameplayStatics::GetAllActorsWithTag(this, MinimapTag, Shown);
 	if (AWasamiArrowPointer* Arrow = GetArrowPointer())
@@ -660,6 +688,11 @@ void AWasamiPlayerCharacter::RefreshMinimapContents()
 		TArray<AActor*> OfClass;
 		UGameplayStatics::GetAllActorsOfClass(this, Class, OfClass);
 		Shown.Append(OfClass);
+	}
+	MapAddedActors.RemoveAll([](const TWeakObjectPtr<AActor>& Actor) { return !Actor.IsValid(); });
+	for (const TWeakObjectPtr<AActor>& Actor : MapAddedActors)
+	{
+		Shown.Add(Actor.Get());
 	}
 	ShardsLeft = 0;
 	if (ShardActorClass)

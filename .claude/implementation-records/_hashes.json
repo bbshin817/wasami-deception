@@ -30,6 +30,7 @@
     "Tools/overnight.py": "1664a8c51af36cc4e7ef1dd100fd15c6e8c8d809",
     "Tools/discord_notify.py": "0958652aca3c31dffe00dafea86fecd3817f1d8e",
     "Tools/work_list.py": "587d3ab13b171085344c6b5502267ef4bc405dc9",
+    "Tools/check_unity_names.py": "fafbef9181c59b5b1bc13cb2896274859da75bbc",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
@@ -64,8 +65,8 @@
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "3fe380a6e8ce2e5bc7155535010bb039ab7354ab",
     "Source/wasami_deception/WasamiGameMode.cpp": "dead96ad2726770b8dd3c477ec122f020222ccfd",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "e77ca55478d4a1a2efa346da6e1876babe642923",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "acddfee2e35cbfc0f69aede07b3a7829746522b4"
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "4964539a50d8f51b01fa2a7a8aeb7507e3037961",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "25dd84105ead6ef045e4f943d04a2cf9ce44ae62"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
@@ -132,8 +133,8 @@
   },
   "07-enemies.md": {
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
-    "Source/wasami_deception/WasamiEnemy.h": "6113e07a4a64ef478b5140d862427b282c014a08",
-    "Source/wasami_deception/WasamiEnemy.cpp": "8d0a5b91ac84a40ec87f5e1f9b4734b0f09012c1",
+    "Source/wasami_deception/WasamiEnemy.h": "7386af64871ab8b9de119252a51b456197de7508",
+    "Source/wasami_deception/WasamiEnemy.cpp": "8375dd72a2b6926a119836adfe899575fee28204",
     "Source/wasami_deception/WasamiEnemy06Chase.h": "f142ae1f8117bed6220567ace4a8fbbc2a2465ba",
     "Source/wasami_deception/WasamiEnemy06Chase.cpp": "a72bc5dfcb639b782064538a6022035f69739c49",
     "Source/wasami_deception/WasamiEnemyZone2.h": "23a5dfc24e420ce355699dc0c97e60218c733975",
@@ -273,14 +274,20 @@
   "16-special-shards.md": {
     "Content/Python/wasami_tools/pipeline/dd_specials.py": "858917d0b2c8b57c6e73887d559ad89cbc667d20",
     "Source/wasami_deception/WasamiVignetteSidesWidget.h": "4310b83d8fb4e19cd4901698b299b9af469ce8dc",
-    "Source/wasami_deception/WasamiVignetteSidesWidget.cpp": "266ca0811ee0200cdd24861cf27ccb9ba02b26a1",
+    "Source/wasami_deception/WasamiVignetteSidesWidget.cpp": "caf456ce4c67c7272640a8853fdb4e729df251ad",
     "Source/wasami_deception/Tests/WasamiVignetteSidesTests.cpp": "3b94ae0915c18fc82d6b5cb4041f2b338c2379df",
-    "Source/wasami_deception/WasamiPowerOrb.h": "f68843a35ba8db4eef3c6f2d2a58dfbecb87f623",
-    "Source/wasami_deception/WasamiPowerOrb.cpp": "10f166ac7fe386c331841764052de1e389a1e7eb",
+    "Source/wasami_deception/WasamiSpecialShard.h": "ce41ef44f208a9f28d408e79af998ce39d576a9a",
+    "Source/wasami_deception/WasamiSpecialShard.cpp": "71c9cfecde2559c29f03250c89451221a527607b",
+    "Source/wasami_deception/WasamiPowerOrb.h": "939bd50bda1a17fe4e14ba7d5dc1807418bf7d3a",
+    "Source/wasami_deception/WasamiPowerOrb.cpp": "2b8bac76779f655aba99854787160e9c50dfa53b",
+    "Source/wasami_deception/WasamiBonusShard.h": "259047cf112a962f7fcb70a082071167d9b612c7",
+    "Source/wasami_deception/WasamiBonusShard.cpp": "0bad8a539e185e6ad64f1e37c6b6f9f98d53cf09",
+    "Source/wasami_deception/WasamiBonusShardCollectEffect.h": "339c00741037b5399890a95fce5792e2886fc4d0",
+    "Source/wasami_deception/WasamiBonusShardCollectEffect.cpp": "c6aa4dc1c61dbcc89e5d336c34c7dd5b3d75029f",
     "Source/wasami_deception/WasamiStunCollectEffect.h": "0c7aae00f040eb775254011f8062de40e1775884",
-    "Source/wasami_deception/WasamiStunCollectEffect.cpp": "3b26750f6e026c0e4d5f314b694226cf20bfa283",
+    "Source/wasami_deception/WasamiStunCollectEffect.cpp": "4a0a7021dd2cb8fd967123cd4f6315ffe3e227fd",
     "Source/wasami_deception/WasamiSpecialSpawnPoint.h": "f8a16d5c4abd92106707b36207e4313a59e29d78",
     "Source/wasami_deception/WasamiSpecialSpawnPoint.cpp": "763cf394dd36b3aa0af4ad839b178f6a7168a34e",
-    "Source/wasami_deception/Tests/WasamiSpecialShardTests.cpp": "b7be9483f30e34dcd804474b7189ba3146b7fa01"
+    "Source/wasami_deception/Tests/WasamiSpecialShardTests.cpp": "1858bfebebd6181ba5c79793f693b161a1b6b583"
   }
 }

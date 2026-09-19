@@ -1,7 +1,12 @@
 #include "Misc/AutomationTest.h"
+#include "../WasamiBonusShard.h"
+#include "../WasamiBonusShardCollectEffect.h"
+#include "../WasamiEnemy.h"
+#include "../WasamiGameMode.h"
 #include "../WasamiPlayerCharacter.h"
 #include "../WasamiPowerOrb.h"
 #include "../WasamiPrimalPower.h"
+#include "../WasamiSaveGame.h"
 #include "../WasamiSpecialSpawnPoint.h"
 #include "../WasamiStunCollectEffect.h"
 #include "../WasamiTelekinesisInterface.h"
@@ -137,6 +142,7 @@ bool FWasamiPowerOrbPartsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the mark 20 m up"), Mark->GetComponentLocation().Z, 2000., 1e-3);
 	TestTrue(TEXT("the mark's scale"), Mark->GetComponentScale().Equals(FVector(1.5, 1.5, 10.), 1e-6));
 	TestFalse(TEXT("the mark casts no shadow"), Mark->CastShadow);
+	TestEqual(TEXT("the mark collides with nothing"), static_cast<int32>(Mark->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
 
 	TestEqual(TEXT("Shard Spawn Time"), Orb->ShardSpawnTime, 150.f);
 	TestFalse(TEXT("the telekinesis does not pull it"), Orb->Implements<UWasamiTelekinesisInterface>());
@@ -318,7 +324,7 @@ bool FWasamiPowerOrbCollectTest::RunTest(const FString& Parameters)
 	OrbTeleport(Other, OrbPlayerAway + FVector(0., 500., 0.));
 
 	// Flickered out, it is still there to be taken.
-	Orb->SpawnPowerOrb();
+	Orb->SpawnSpecialShard();
 	AdvanceOrb(Wrapper, OrbStep);
 	TestFalse(TEXT("flickered out"), Orb->GetRootComponent()->IsVisible());
 	OrbTeleport(Player, Orb->GetCapsule()->GetComponentLocation());
@@ -341,6 +347,244 @@ bool FWasamiPowerOrbCollectTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the effect is gone"), OrbActorsOf<AWasamiStunCollectEffect>(World).Num(), 0);
 	TestEqual(TEXT("once"), Near->SetStateCount, 1);
 	TestEqual(TEXT("StunAllEnemies counts the implementers"), AWasamiPowerOrb::StunAllEnemies(World), 2);
+	return true;
+}
+
+namespace
+{
+	/** The player as the bonus shard's reveal needs it: player 0's AWasamiPlayerCharacter, unpossessed (no widgets). */
+	AWasamiPlayerCharacter* SpawnBonusPlayer(UWorld* World)
+	{
+		AWasamiPlayerCharacter* Player = World->SpawnActor<AWasamiPlayerCharacter>(OrbPlayerAway, FRotator::ZeroRotator);
+		APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+		if (!Player || !Controller)
+		{
+			return nullptr;
+		}
+		Controller->SetPawn(Player);
+		Player->GetCharacterMovement()->DisableMovement();
+		return UGameplayStatics::GetPlayerCharacter(World, 0) == Player ? Player : nullptr;
+	}
+
+	AWasamiBonusShard* SpawnBonusShard(UWorld* World, int32 ID)
+	{
+		const FTransform Placed(OrbPlaced);
+		AWasamiBonusShard* Bonus = World->SpawnActorDeferred<AWasamiBonusShard>(AWasamiBonusShard::StaticClass(), Placed);
+		if (Bonus)
+		{
+			Bonus->ID = ID;
+			Bonus->FinishSpawning(Placed);
+		}
+		return Bonus;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiBonusShardPartsTest, "Wasami.BonusShard.Parts",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiBonusShardPartsTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	AWasamiBonusShard* Bonus = World->SpawnActor<AWasamiBonusShard>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the bonus shard"), Bonus))
+	{
+		return false;
+	}
+
+	// BP_BonusShard's crystal: soul_shard in m_crystal_Inst, 97.09 cm up at 20, touching nothing.
+	const UStaticMeshComponent* Crystal = Bonus->GetCrystal();
+	TestEqual(TEXT("the crystal's mesh"), Crystal->GetStaticMesh() ? Crystal->GetStaticMesh()->GetPathName() : FString(),
+		FString(TEXT("/Game/DD/Meshes/Ring_Assets/soul_shard.soul_shard")));
+	TestEqual(TEXT("the crystal's material"), Crystal->GetMaterial(0) ? Crystal->GetMaterial(0)->GetPathName() : FString(),
+		FString(TEXT("/Game/DD/Materials/Fords_Materials/m_crystal_Inst.m_crystal_Inst")));
+	TestEqual(TEXT("the crystal 97.09 cm up"), Crystal->GetComponentLocation().Z, 97.08537292480469, 1e-3);
+	TestEqual(TEXT("the crystal's scale"), Crystal->GetComponentScale().X, 20., 1e-6);
+	TestEqual(TEXT("the crystal collides with nothing"), static_cast<int32>(Crystal->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
+
+	// The capsule: 49.57 at 0.1 × 20, a ball of 99.14 cm; OverlapAllDynamic.
+	const UCapsuleComponent* Capsule = Bonus->GetCapsule();
+	TestEqual(TEXT("a ball of 99.14 cm"), Capsule->GetScaledCapsuleRadius(), 49.57180404663086f * 2.f, 1e-3f);
+	TestEqual(TEXT("its half height"), Capsule->GetScaledCapsuleHalfHeight(), 49.57180404663086f * 2.f, 1e-3f);
+	TestEqual(TEXT("its centre"), Capsule->GetComponentLocation().Z, 97.08537292480469 + 0.2914627194404602 * 20., 1e-3);
+	TestEqual(TEXT("OverlapAllDynamic"), Capsule->GetCollisionProfileName(), FName(TEXT("OverlapAllDynamic")));
+
+	// The light: red, 1000 without units, 200 cm, no shadows.
+	const UPointLightComponent* Light = Bonus->GetLight();
+	TestTrue(TEXT("the light's colour"), Light->LightColor == FColor(255, 31, 0, 255));
+	TestTrue(TEXT("1000 in no units"), Light->Intensity == 1000.f && Light->IntensityUnits == ELightUnits::Unitless);
+	TestEqual(TEXT("the light's radius"), Light->AttenuationRadius, 200.f);
+	TestFalse(TEXT("no shadows"), Light->CastShadows);
+
+	// The map's mark: the plane in M_Bonus_Shard 20 m up at (1.5, 1.5, 10), no shadow, no collision.
+	const UStaticMeshComponent* Mark = Bonus->GetMapMark();
+	TestEqual(TEXT("the mark's material"), Mark->GetMaterial(0) ? Mark->GetMaterial(0)->GetPathName() : FString(),
+		FString(TEXT("/Game/DD/Materials/Shared/M_Bonus_Shard.M_Bonus_Shard")));
+	TestEqual(TEXT("the mark 20 m up"), Mark->GetComponentLocation().Z, 2000., 1e-3);
+	TestTrue(TEXT("the mark's scale"), Mark->GetComponentScale().Equals(FVector(1.5, 1.5, 10.), 1e-6));
+	TestFalse(TEXT("the mark casts no shadow"), Mark->CastShadow);
+	TestEqual(TEXT("the mark collides with nothing"), static_cast<int32>(Mark->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
+
+	TestEqual(TEXT("ID 0 by default"), Bonus->ID, 0);
+	TestEqual(TEXT("Shard Spawn Time"), Bonus->ShardSpawnTime, 150.f);
+	TestFalse(TEXT("the telekinesis does not pull it"), Bonus->Implements<UWasamiTelekinesisInterface>());
+	TestTrue(TEXT("the minimap shows it"), GetDefault<AWasamiPlayerCharacter>()->MinimapActorClasses.Contains(AWasamiBonusShard::StaticClass()));
+
+	// BP_BonusShardCollectEffect: a red tint, Primal's flash and fade, the wave at 0.5 and pitch 1.5.
+	const AWasamiBonusShardCollectEffect* Effect = GetDefault<AWasamiBonusShardCollectEffect>();
+	const UPostProcessComponent* Tint = Effect->GetTint();
+	const UPostProcessComponent* Flash = Effect->GetFlash();
+	TestTrue(TEXT("the tint washes out the colour"), Tint->Settings.bOverride_ColorSaturation && Tint->Settings.ColorSaturation == FVector4(0., 0., 0., 1.));
+	TestTrue(TEXT("the tint's red gain"), Tint->Settings.bOverride_ColorGain && Tint->Settings.ColorGain.Equals(FVector4(1.61, 0., 0.447186, 1.), 1e-6));
+	TestTrue(TEXT("the flash's midtones"), Flash->Settings.bOverride_ColorGainMidtones && Flash->Settings.ColorGainMidtones == FVector4(100., 100., 100., 1.));
+	TestTrue(TEXT("the flash's fringe"), Flash->Settings.bOverride_SceneFringeIntensity && Flash->Settings.SceneFringeIntensity == 50.f);
+	TestTrue(TEXT("both start at weight 0"), Tint->BlendWeight == 0.f && Flash->BlendWeight == 0.f);
+	TestTrue(TEXT("the wave at 0.5 and pitch 1.5"), AWasamiBonusShardCollectEffect::WaveVolume == 0.5f && AWasamiBonusShardCollectEffect::WavePitch == 1.5f);
+
+	// The nurse's mark on an enemy: the plane in M_Enemy 10 m over the capsule's centre, 21.9 cm to the front of the
+	// nurse's mesh (+X), at (2.52, 2.52, 10); no shadow, no collision.
+	AWasamiEnemy* Enemy = AWasamiEnemy::SpawnEnemy(World, FVector(0., 0., 500.), 0.f);
+	if (TestNotNull(TEXT("an enemy"), Enemy))
+	{
+		const UStaticMeshComponent* EnemyMark = Enemy->GetMapMark();
+		TestTrue(TEXT("on the capsule"), EnemyMark->GetAttachParent() == Enemy->GetRootComponent());
+		TestTrue(TEXT("the engine's Plane"), EnemyMark->GetStaticMesh() && EnemyMark->GetStaticMesh()->GetPathName() == TEXT("/Engine/BasicShapes/Plane.Plane"));
+		TestEqual(TEXT("the enemy's mark's material"), EnemyMark->GetMaterial(0) ? EnemyMark->GetMaterial(0)->GetPathName() : FString(),
+			FString(TEXT("/Game/DD/Materials/Shared/M_Enemy.M_Enemy")));
+		const FVector Offset = EnemyMark->GetComponentLocation() - Enemy->GetActorLocation();
+		TestTrue(FString::Printf(TEXT("10 m up, 21.9 cm ahead (%s)"), *Offset.ToString()), Offset.Equals(FVector(21.884, 0., 1000.), 0.01));
+		TestTrue(TEXT("its scale"), EnemyMark->GetComponentScale().Equals(FVector(2.5238659381866455, 2.5238659381866455, 10.), 1e-4));
+		TestFalse(TEXT("no shadow"), EnemyMark->CastShadow);
+		TestEqual(TEXT("no collision"), static_cast<int32>(EnemyMark->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiBonusShardSaveTest, "Wasami.BonusShard.Save",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiBonusShardSaveTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	AWasamiGameMode* Mode = World->GetAuthGameMode<AWasamiGameMode>();
+	if (!TestNotNull(TEXT("the project's game mode"), Mode) || !TestNotNull(TEXT("its save"), Mode->GetSave()))
+	{
+		return false;
+	}
+	// Only in memory: nothing here writes the slot.
+	Mode->GetSave()->Hospital.BonusShards = {1};
+
+	// A frame after BeginPlay (the Delay 0) the one whose ID the save has is gone; the other waits its 150 s.
+	AWasamiBonusShard* Zone1 = SpawnBonusShard(World, 0);
+	AWasamiBonusShard* Zone2 = SpawnBonusShard(World, 1);
+	if (!TestNotNull(TEXT("ID 0"), Zone1) || !TestNotNull(TEXT("ID 1"), Zone2))
+	{
+		return false;
+	}
+	TestTrue(TEXT("both there at first"), IsValid(Zone1) && IsValid(Zone2));
+	TestEqual(TEXT("no spawn timer before the Delay 0"), Zone1->GetTimeToSpawn(), -1.f);
+	AdvanceOrb(Wrapper, OrbStep);
+	TestFalse(TEXT("the saved one is gone"), IsValid(Zone2));
+	TestTrue(TEXT("the other stays"), IsValid(Zone1));
+	TestTrue(FString::Printf(TEXT("150 s to its first flicker (%.3f)"), Zone1->GetTimeToSpawn()), FMath::IsNearlyEqual(Zone1->GetTimeToSpawn(), 150.f, 0.1f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiBonusShardCollectTest, "Wasami.BonusShard.Collect",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiBonusShardCollectTest::RunTest(const FString& Parameters)
+{
+	// The test world has no local player, so ENEMIES REVEALED is not put on a screen.
+	AddExpectedError(TEXT("PlayerController_0"), EAutomationExpectedErrorFlags::Contains, 0);
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	AWasamiGameMode* Mode = World->GetAuthGameMode<AWasamiGameMode>();
+	if (!TestNotNull(TEXT("the project's game mode"), Mode) || !TestNotNull(TEXT("its save"), Mode->GetSave()))
+	{
+		return false;
+	}
+	TArray<int32>& Saved = Mode->GetSave()->Hospital.BonusShards;
+	Saved.Reset();
+
+	World->SpawnActor<AWasamiBonusShardSpawnPoint>(OrbPoints[0], FRotator::ZeroRotator);
+	// An orb's point is not the bonus shard's.
+	World->SpawnActor<AWasamiPowerOrbSpawnPoint>(OrbPoints[1], FRotator::ZeroRotator);
+	AWasamiBonusShard* Bonus = SpawnBonusShard(World, 0);
+	AWasamiPlayerCharacter* Player = SpawnBonusPlayer(World);
+	if (!TestNotNull(TEXT("the bonus shard"), Bonus) || !TestNotNull(TEXT("the player"), Player))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the level's one bonus shard spawn point"), Bonus->GetSpawnPoints().Num(), 1);
+	// Enemies far from it, of two classes: a stand-in and a nurse.
+	AWasamiTestEnemy* Near = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(1500., 0., 100.));
+	AWasamiEnemy* Nurse = AWasamiEnemy::SpawnEnemy(World, FVector(-3000., 3000., 500.), 0.f);
+	if (!TestNotNull(TEXT("a stand-in enemy"), Near) || !TestNotNull(TEXT("a nurse"), Nurse))
+	{
+		return false;
+	}
+	AdvanceOrb(Wrapper, 0.2f);
+	TestTrue(TEXT("the map shows the shard"), Player->IsOnMap(Bonus));
+	TestFalse(TEXT("but no enemy"), Player->IsOnMap(Near) || Player->IsOnMap(Nurse));
+
+	// Taken while it flickers, at its spawn point.
+	Bonus->MoveToSpawnPoint(0);
+	Bonus->SpawnSpecialShard();
+	OrbTeleport(Player, Bonus->GetCapsule()->GetComponentLocation());
+	AdvanceOrb(Wrapper, OrbStep);
+	TestTrue(TEXT("taken"), Bonus->IsCollected());
+	TestTrue(TEXT("the actor stays"), IsValid(Bonus));
+	TestTrue(TEXT("its ID in the save's BonusShards"), Saved.Num() == 1 && Saved[0] == 0);
+	TestFalse(TEXT("the crystal is gone"), IsValid(Bonus->GetCrystal()));
+	TestFalse(TEXT("the mark is gone"), IsValid(Bonus->GetMapMark()));
+	TestFalse(TEXT("the light is gone"), IsValid(Bonus->GetLight()));
+	TestEqual(TEXT("one collect effect"), OrbActorsOf<AWasamiBonusShardCollectEffect>(World).Num(), 1);
+	TestTrue(TEXT("the reveal runs"), Bonus->IsRevealing());
+	TestTrue(FString::Printf(TEXT("for 60 s (%.3f)"), Bonus->GetRevealTimeLeft()), FMath::IsNearlyEqual(Bonus->GetRevealTimeLeft(), 60.f, 0.1f));
+	TestTrue(TEXT("the enemies on the map at once"), Player->IsOnMap(Near) && Player->IsOnMap(Nurse));
+	TestEqual(TEXT("no spawn timer"), Bonus->GetTimeToSpawn(), -1.f);
+
+	// The map's refreshes keep them; the flicker ends as it would have; the effect's 2 s end.
+	AdvanceOrb(Wrapper, 1.f);
+	TestTrue(TEXT("kept through the map's refreshes"), Player->IsOnMap(Near) && Player->IsOnMap(Nurse));
+	AdvanceOrb(Wrapper, AWasamiSpecialShard::FlickerLength);
+	TestFalse(TEXT("the flicker is over"), Bonus->IsFlickering());
+	TestEqual(TEXT("the effect is gone"), OrbActorsOf<AWasamiBonusShardCollectEffect>(World).Num(), 0);
+	TestTrue(TEXT("still revealing"), IsValid(Bonus) && Bonus->IsRevealing());
+
+	// An enemy that comes later is shown by the next round (1 to 2 s on).
+	AWasamiTestEnemy* Later = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(0., -1500., 100.));
+	AdvanceOrb(Wrapper, 2.1f);
+	TestTrue(TEXT("a later enemy shown within 2 s"), Player->IsOnMap(Later));
+
+	// 60 s from the pickup: every enemy off the map, and the shard gone.
+	const float Left = Bonus->GetRevealTimeLeft();
+	AdvanceOrb(Wrapper, Left - 0.2f);
+	TestTrue(TEXT("still there just before 60 s"), IsValid(Bonus) && Player->IsOnMap(Near));
+	AdvanceOrb(Wrapper, 0.4f);
+	TestFalse(TEXT("gone at 60 s"), IsValid(Bonus));
+	TestFalse(TEXT("the enemies off the map"), Player->IsOnMap(Near) || Player->IsOnMap(Nurse) || Player->IsOnMap(Later));
+	AdvanceOrb(Wrapper, 0.3f);
+	TestFalse(TEXT("and they stay off"), Player->IsOnMap(Near) || Player->IsOnMap(Nurse) || Player->IsOnMap(Later));
+	TestEqual(TEXT("the save keeps the ID"), Saved.Num(), 1);
+	Saved.Reset();
 	return true;
 }
 

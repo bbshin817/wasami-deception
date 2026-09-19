@@ -6,8 +6,11 @@
 #include "WasamiEnemyInterface.h"
 #include "WasamiEnemy.generated.h"
 
+class UMaterialInterface;
 class USkeletalMesh;
 class USphereComponent;
+class UStaticMesh;
+class UStaticMeshComponent;
 class UWasamiEnemyAnimInstance;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiEnemyCloseBy);
@@ -109,6 +112,9 @@ public:
 
 	/** The Sphere that catches the player. */
 	USphereComponent* GetSphere() const { return Sphere; }
+
+	/** The map's mark (the nurse's StaticMesh), which the minimap shows only while a bonus shard's reveal adds it. */
+	UStaticMeshComponent* GetMapMark() const { return MapMark; }
 
 	/** The base's CanSpawn: false destroys the enemy as it begins play. The level's script sets it on its spawns. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (ExposeOnSpawn = true))
@@ -230,8 +236,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TObjectPtr<USphereComponent> Sphere;
 
+	/**
+	 * StaticMesh: the engine's plane in M_Enemy, 10 m over the capsule's centre at (2.52, 2.52, 10), no shadow. The nurse
+	 * has it on its mesh; the Wasami mesh is scaled, so it is on the capsule where the nurse's mesh puts it.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	TObjectPtr<UStaticMeshComponent> MapMark;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<USkeletalMesh> MeshAsset;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
+	TSoftObjectPtr<UStaticMesh> MapMarkMesh;
+
+	/** M_Enemy. */
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
+	TSoftObjectPtr<UMaterialInterface> MapMarkMaterial;
 
 private:
 	FTimerHandle DecisionTimer;
