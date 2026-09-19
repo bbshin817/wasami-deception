@@ -14,7 +14,7 @@ updated: 2026-09-19
 # Zone 2 の Matron（ボスワサミ）
 
 ## 役割
-本家の Zone 2 の中ボス `BP_06_Matron_MiniBoss`（最新版 `pak_reference_2`）を、大きいボスワサミとして置く（作業一覧の項目 11）。**作っている途中**: いまあるのはボスワサミの素材の取り込みと、Matron のアクタ `AWasamiMatron`・ボスのアニメの再生 `UWasamiBossAnimInstance`・Matron の視界コーン 2 種（`WasamiViewcone.*`。07 記録）と、Zone 2 への配置（組み立ての `_flow`）・流れへの結び付け（`ActivateMinibossEnemies`）。PIE での確かめと通しはこれから（進捗記録 `20260919-matron`）。
+本家の Zone 2 の中ボス `BP_06_Matron_MiniBoss`（最新版 `pak_reference_2`）を、大きいボスワサミとして置く（作業一覧の項目 11。2026-09-19 に完了）。ボスワサミの素材の取り込み、Matron のアクタ `AWasamiMatron`・ボスのアニメの再生 `UWasamiBossAnimInstance`・Matron の視界コーン 2 種（`WasamiViewcone.*`。07 記録）、Zone 2 への配置（組み立ての `_flow`）・流れへの結び付け（`ActivateMinibossEnemies`）。本家の Matron は動かず（巡回路は無い）、見つけると見張り 6 体が追う。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_wasami_boss()`（01 記録）→ `dd_boss.import_all()`。戻り値 `textures` 3 / `materials` 1 / `meshes` 1 / `animations` 3、`idle_head_cm`（Idle の最初のコマの頭の骨の高さ。拡縮 1 で 128.2 cm）。
@@ -94,9 +94,11 @@ updated: 2026-09-19
 ## 既知の制約・注意点
 - 敵ワサミを取り込み直してマスター `M_DD_WasamiGltf` を作り直しても、`MI_WasamiBoss` はテクスチャを上書きしているので変わらない。
 - 本家の `Idle` ↔ `Alert` の間の切り替えのクリップ（各 0.8 s）に当たるものは原本に無い（1 回のクロスフェードで代える。上の「アニメの再生」）。
+- 発見の声（本家の Detected のモンタージュの 0.111 s の `AnimNotify_PlaySound` = `Matron_ReinforcementCall_01`）は鳴らさない。作業一覧の項目 20（敵の声は WebGL 版のワサミの声に替える）で足す。
 - LookAt の軸は部品の +Y（本家と同じ）なので、プレイヤーが真下に近いと上半身が大きく前へ倒れる（制限 90°）。見た目は PIE で見る。
 
 ## 変更履歴
+- 2026-09-19: 作業一覧の項目 11 を閉じた（ステップ 5）。発見の声 `Matron_ReinforcementCall_01`（本家のモンタージュの 0.111 s）は鳴らさず、項目 20（敵の声）へ回した
 - 2026-09-19: PIE で確かめた（大きさ・コーンの切り替え・見つかると 6 体が追う・隠れて渡れる道が無いこと）。コーンが壊れた持ち主・親へ送る呼び出しを `IsValid` で飛ばすようにし（07 記録）、テスト `Wasami.Matron.Removed` を足した（作業一覧の項目 11 のステップ 4）
 - 2026-09-19: Zone 2 に置いた（組み立ての `_flow` が Matron とコーン 2 つを本家の位置・部品の変形で置き、Matron のコーンの参照を入れる）。Zone 2 の `ActivateMinibossEnemies` が Matron の `Activate` を呼ぶ（作業一覧の項目 11 のステップ 3）
 - 2026-09-19: Matron のアクタ `AWasamiMatron`（部品・`Activate`・`Switch`・`Player Spotted`・1.0948 s の見張りへの知らせ）、ボスのアニメの再生 `UWasamiBossAnimInstance`（Idle ↔ Alert の 0.95 s のクロスフェード・Detected のスロット・`spine_02` の LookAt）、テスト `Wasami.Matron.*` 4 件を足した（作業一覧の項目 11 のステップ 2）。`Wasami.*` の 119 件が通った
