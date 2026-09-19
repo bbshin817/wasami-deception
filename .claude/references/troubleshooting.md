@@ -339,6 +339,14 @@
 
 ## 取り込み・レベル・描画
 
+### 組み立てが置いた BP のアクタが本家と違う向き・位置になる（のこぎりの罠の刃が床に寝た円盤に見える）
+
+- 症状: `place_dd_flow` で置いたアクタの回転に、本家のレベルに無いロールやピッチが混じる（のこぎりの罠 74 が yaw 90・roll −90 などになり、縦の刃が床に寝て見え、刃の箱も水平）。`stage_ue.json` の `actors[].world` の回転が、`_levels/<map>.full.json` のルートの部品（`<名前>.root` など）の `RelativeRotation` と合わない。
+- 原因: 前処理 `Tools/dd/prepare_stage.py` の `read_zone` が、アクタの変換を `RootComponent` でなく「書き出しで最初に `world` を持つ部品」から取っていた。BP の部品がルートより先に並ぶアクタでは、ほかの部品（罠は刃に付く `Audio`、ロール 90°）の変換を拾う。
+- 対処: 2026-09-19 に `read_zone` をアクタの `RootComponent` の部品の `world` から取るように直した（無ければ最初の部品）。前処理を流し直し、置き直す（`place_dd_flow` → `build_navigation`）。
+- 確かめ方: `stage_ue.json` の新旧を比べ、変わるのがそのアクタの `world` だけか見る（2026-09-19 は罠 74 と、組み立てが置かない `BP_FakeUseActor_06_HospitalZone1_Elevator_C` 5・`BP_SecretRoomZone_C`・`BP_06_Matron_MiniBoss_C`・`wall_lamp_68_Blueprint_C`）。置いたアクタの `get_actor_rotation()` がルートの `RelativeRotation` と合うか。取り込んだ骨入りのメッシュを疑う前に、アクタの回転を数値で見る（参照の姿勢とアニメの最初のコマの骨を比べても違いは出ない）。
+- 出典: 作業一覧の項目 8 のステップ 9（2026-09-19。01・08 記録）。
+
 ### 原作の材質の式が書き出しに無い（`Expressions` がほとんど null）／推定の材質が本家の見え方と合わない
 
 - 症状: `pak_reference_2/_assets/**/M_*.json` に残るのは設定・パラメータ・いくつかの式だけで、つなぎ方が分からない。収録と見比べて推定を直しても、別の読み方が同じくらい当てはまる。

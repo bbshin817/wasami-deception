@@ -551,7 +551,15 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
             rest = p[len(prefix):]
             if "." not in rest:
                 actor_class[rest] = e.get("class")
-    for e in full:                                   # an actor's transform lives on its root component
+    # An actor's transform lives on its root component (its RootComponent). Not the first component with a world: a
+    # Blueprint's may come first and be turned from the root (the saw traps' Audio, on the blade, is rolled 90°).
+    for e in full:
+        p = e.get("path") or ""
+        if p.startswith(prefix) and "." not in p[len(prefix):]:
+            root = by_path.get((e.get("props") or {}).get("RootComponent") or "")
+            if root and root.get("world"):
+                actor_world[p[len(prefix):]] = world_of(root)
+    for e in full:                                   # else the first component with a world
         p = e.get("path") or ""
         if p.startswith(prefix) and e.get("world"):
             actor = p[len(prefix):].split(".")[0]
