@@ -228,7 +228,7 @@
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Main/UMG_Options.txt`、`UI/Menu/Pause/UMG_Pause.txt`、`Blueprints/Save/BP_DD_Settings_SaveGame`、WebGL 版 04・10 記録。
 - 依存: 17。
 - 規模: 2
-- 状態: 未着手。
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-options-pause`）。計画の段階で、オプション画面は旧版の `UMG_Options` を写し（最新版は AutoSettings プラグインの `SettingsUI` に替わり、`UMG_Options` が無い）、ポーズ画面の木・アニメ・音は旧版（WebGL 版と同じ）、ボタンの道の規則は両版を比べて違えば最新版を仮に採ると決めた。設定のセーブと適用 → 音量の SoundClass と難易度の効き先 → オプション画面の木 → 操作とタイトルの OPTIONS → ポーズ画面 → ポーズのボタンの道と通しの確かめ → 閉じる、の 7 ステップ。
 
 ### 8. 動く部品と罠（両開き扉・除細動器・スピードバリア・のこぎりの罠・扉の破壊）
 
