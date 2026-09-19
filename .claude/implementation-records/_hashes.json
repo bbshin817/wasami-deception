@@ -118,7 +118,7 @@
   "06-game-flow-save.md": {
     "Source/wasami_deception/WasamiGameInstance.h": "05e0294e517e0aec2a634a4faa02807869dd2445",
     "Source/wasami_deception/WasamiGameInstance.cpp": "3cb01e0396c2fb0c0a419bef67d5e59725b50eb2",
-    "Source/wasami_deception/WasamiSaveGame.h": "0e6806937279e417e24073ed7229080379bc5dcb",
+    "Source/wasami_deception/WasamiSaveGame.h": "37b87231f82900736cb1056dc16d9d17de255cce",
     "Source/wasami_deception/WasamiSaveGame.cpp": "a5b2be3db8c60ff95639a8c79c1c25693dc9e98c",
     "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "55ee3968afb4b81cdd6d0830778ed86a6fc352db",
     "Source/wasami_deception/WasamiShard.h": "0b43bdf52476def7cf59f10bb75451c0f25d01c7",
@@ -225,5 +225,10 @@
     "Source/wasami_deception/Tests/WasamiInteractTests.cpp": "e6dd93aac3a19e99a245fda13a28c148ef79f959",
     "Source/wasami_deception/Tests/WasamiTestInteractable.h": "fb37adca3f72863f8e71a14cc98a5bc2adc9a1eb",
     "Source/wasami_deception/Tests/WasamiTestInteractable.cpp": "328dd96989bb371ced9cba2b5940051cb8acd774"
+  },
+  "13-level-clear.md": {
+    "Source/wasami_deception/WasamiLevelResults.h": "9aa4fe8abee3123b6cb6a9b6ebdc242422d81d4a",
+    "Source/wasami_deception/WasamiLevelResults.cpp": "a4dc8858d344a67cfaef3ad3b9dd22d909c91e50",
+    "Source/wasami_deception/Tests/WasamiLevelClearTests.cpp": "fcb8b21effe75d45980e8d1c56efadc983553871"
   }
 }

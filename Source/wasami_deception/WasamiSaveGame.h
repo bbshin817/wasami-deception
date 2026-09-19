@@ -29,9 +29,17 @@ struct FWasamiLevelProgress
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Save")
 	int32 CurrentStreak = 0;
 
-	/** The streak's rank (the original's byte enum). */
+	/** The best streak milestone reached, as an Enum_ShardStreaks value: 0 none, 1..10 for 20..1000 in a row. */
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Save")
 	uint8 Streak = 0;
+
+	/** The red shards taken (the level clear screen shows only how many, of 2). */
+	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Save")
+	TArray<int32> BonusShards;
+
+	/** The secrets found (the level clear screen shows only how many, of 4). */
+	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Save")
+	TArray<int32> Secrets;
 };
 
 /**
