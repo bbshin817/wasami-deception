@@ -112,15 +112,17 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         sizes; after import_dd_stage_assets), sentries (WasamiEnemySentry, BP_06_ReaperNurse_Sentry, with their
         CanSpawn, Offset and Jump Down Spot), altar (WasamiRingStatue, BP_01_Statue, with its mesh and material) and
         ring piece (WasamiRingPiece, BP_08_RingPiece_NoPickup, with its mesh, materials and glow; after
-        import_dd_gimmicks), the defibrillators (WasamiDefib, BP_06_Defib, with their stands' mesh), and this game's garage portal (WasamiPortal) with the trigger by it that the zone leaves
+        import_dd_gimmicks), the defibrillators (WasamiDefib, BP_06_Defib, with their stands' mesh), the speed barriers
+        (WasamiSpeedBarrier, BP_SpeedBarrier, with their planes' materials, places and sizes), and this game's garage portal (WasamiPortal) with the trigger by it that the zone leaves
         by, in again where the original places them, each tagged
         'src:<the original's name>' for the zone's flow and fixed to the ambulance or the spikes it moves with, taking
-        out what an earlier call placed, and saves the level. Nothing else changes, and the baked lighting stays valid
+        out what an earlier call placed (and the barrier, ring piece and speed barrier lights an earlier build placed on
+        their own), and saves the level. Nothing else changes, and the baked lighting stays valid
         (none of them is in it).
 
         Args:
             zone: 'Zone1' (6 trigger boxes, 9 volumes, 2 navigation volumes, 9 target points, 1 door break, 62 double
-                doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift, 23 defibrillators) or 'Zone2' (9 trigger
+                doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift, 23 defibrillators, 4 speed barriers) or 'Zone2' (9 trigger
                 boxes with the portal's, 10 volumes, 59 navigation volumes, 10 target points, 1 door break, 1 double door,
                 1 barrier, 1 shard checker, 15 lifts, 2 garage lifts, 6 sentries, 1 altar, 1 ring piece, 13
                 defibrillators, 1 portal).
@@ -129,7 +131,7 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         Returns:
             'removed', 'removed_lights', 'triggers', 'volumes', 'navVolumes', 'targetPoints', 'doorBreaks', 'doubleDoors', 'emitters',
             'zoneBarriers', 'shardCheckers', 'lifts', 'garageLifts', 'sentries', 'ringStatues', 'ringPieces', 'defibs',
-            'portals', 'attached' and
+            'speedBarriers', 'portals', 'attached' and
             'failed_settings' (listed in the output log).
         """
         return _module("dd_level").place_flow(zone, map_path)
