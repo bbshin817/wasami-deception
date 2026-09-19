@@ -120,12 +120,12 @@ bool FWasamiEnemyAnimLocomotionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("standing, it idles"), State.GetClipWeight(WasamiEnemyClip::Idle), 1.f);
 	TestEqual(TEXT("the idle moves on"), State.GetClipTime(WasamiEnemyClip::Idle), 0.1f);
 
-	// The patrol's 350 cm/s: Idle → Moving over 0.5 s (Sinusoidal), and a walk.
-	Inputs.Speed = 350.f;
+	// The patrol's 200 cm/s: Idle → Moving over 0.5 s (Sinusoidal), and a walk.
+	Inputs.Speed = 200.f;
 	State.Update(Inputs, 0.25f);
 	TestEqual(TEXT("half way into moving"), State.GetClipWeight(WasamiEnemyClip::Walk), 0.5f, 1e-5f);
 	TestEqual(TEXT("half the idle left"), State.GetClipWeight(WasamiEnemyClip::Idle), 0.5f, 1e-5f);
-	const float WalkRate = 350.f / (133.f * Grown);
+	const float WalkRate = 200.f / (133.f * Grown);
 	TestEqual(TEXT("the walk's rate follows the speed and the grown stride"), State.GetClipRate(WasamiEnemyClip::Walk), WalkRate);
 	TestEqual(TEXT("the walk started from 0"), State.GetClipTime(WasamiEnemyClip::Walk), 0.25f * WalkRate, 1e-5f);
 	TestEqual(TEXT("the idle moves on while it blends out"), State.GetClipTime(WasamiEnemyClip::Idle), 0.35f);
@@ -133,12 +133,12 @@ bool FWasamiEnemyAnimLocomotionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("walking"), State.GetClipWeight(WasamiEnemyClip::Walk), 1.f);
 	TestEqual(TEXT("the idle stops once it has no weight"), State.GetClipTime(WasamiEnemyClip::Idle), 0.35f);
 
-	// The chase's 800 cm/s: above 400 the run blends in over 0.25 s.
-	Inputs.Speed = 800.f;
+	// The chase's 430 cm/s: above 400 the run blends in over 0.25 s.
+	Inputs.Speed = 430.f;
 	State.Update(Inputs, 0.125f);
 	TestEqual(TEXT("half walk"), State.GetClipWeight(WasamiEnemyClip::Walk), 0.5f);
 	TestEqual(TEXT("half run"), State.GetClipWeight(WasamiEnemyClip::Run), 0.5f);
-	const float ChaseRate = 800.f / (450.f * Grown);
+	const float ChaseRate = 430.f / (450.f * Grown);
 	TestEqual(TEXT("the run's rate follows the speed"), State.GetClipRate(WasamiEnemyClip::Run), ChaseRate);
 	TestEqual(TEXT("the run starts where it was left (0)"), State.GetClipTime(WasamiEnemyClip::Run), 0.125f * ChaseRate, 1e-5f);
 	State.Update(Inputs, 0.125f);
@@ -474,8 +474,8 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("the controller does not turn it"), Enemy->bUseControllerRotationYaw);
 	TestFalse(TEXT("CanSpawn is off"), Enemy->bCanSpawn);
 	TestFalse(TEXT("not a sentry"), Enemy->bAggressiveIdle);
-	TestEqual(TEXT("Normal Speed"), Enemy->NormalSpeed, 350.f);
-	TestEqual(TEXT("Skate Speed"), Enemy->SkateSpeed, 800.f);
+	TestEqual(TEXT("Normal Speed"), Enemy->NormalSpeed, 200.f);
+	TestEqual(TEXT("Skate Speed"), Enemy->SkateSpeed, 430.f);
 
 	const UCapsuleComponent* Capsule = Enemy->GetCapsuleComponent();
 	TestEqual(TEXT("the capsule's radius"), Capsule->GetUnscaledCapsuleRadius(), 34.f);
@@ -507,7 +507,7 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	}
 
 	const UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
-	TestEqual(TEXT("the top speed"), Movement->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("the top speed"), Movement->MaxWalkSpeed, 430.f);
 	TestTrue(TEXT("the turn rate"), Movement->RotationRate.Equals(FRotator(0., 300., 0.)));
 	TestTrue(TEXT("it turns to the controller's wish"), Movement->bUseControllerDesiredRotation);
 	TestTrue(TEXT("and to its movement"), Movement->bOrientRotationToMovement);
@@ -610,13 +610,13 @@ bool FWasamiEnemyActorChoiceTest::RunTest(const FString& Parameters)
 	// to the random point, then Can See Player sets Seen Player Recently.
 	TickTo(0.625f);
 	TestTrue(TEXT("it saw the player"), Enemy->IsChasing());
-	TestEqual(TEXT("walking to the random point"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestEqual(TEXT("walking to the random point"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 200.f);
 	TestEqual(TEXT("not chased yet"), HeardCount(), 0);
 	TestTrue(TEXT("no Point Of Interest"), Enemy->PointOfInterest.IsZero());
 
 	// The next chases: runs to the player, keeps where it is, CloseBy once.
 	TickTo(1.125f);
-	TestEqual(TEXT("the chase runs"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("the chase runs"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 	TestTrue(TEXT("the Point Of Interest is the player"), Enemy->PointOfInterest.Equals(InFront));
 	TestEqual(TEXT("CloseBy"), HeardCount(), 1);
 	TickTo(1.625f);
@@ -629,13 +629,13 @@ bool FWasamiEnemyActorChoiceTest::RunTest(const FString& Parameters)
 	TickTo(6.125f);
 	TestTrue(TEXT("still chasing"), Enemy->IsChasing());
 	TestTrue(TEXT("to where the player is"), Enemy->PointOfInterest.Equals(Behind));
-	TestEqual(TEXT("running"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("running"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 
 	// Player Vanish: the next decision walks to the Point Of Interest, whose failed move clears it 0.1 s later.
 	IWasamiEnemyInterface::Execute_PlayerVanish(Enemy);
 	TestFalse(TEXT("Vanish: not chasing"), Enemy->IsChasing());
 	TickTo(6.625f);
-	TestEqual(TEXT("walking"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestEqual(TEXT("walking"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 200.f);
 	TestTrue(TEXT("to the Point Of Interest"), Enemy->PointOfInterest.Equals(Behind));
 	TickTo(6.75f);
 	TestTrue(TEXT("which the failed move clears"), Enemy->PointOfInterest.IsZero());
@@ -714,9 +714,9 @@ bool FWasamiEnemyActorStunTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Get State reads Patrol"), IWasamiEnemyInterface::Execute_GetState(Enemy) == EWasamiEnemyState::Patrol);
 	TestFalse(TEXT("it shows in the telepathy"), IWasamiEnemyInterface::Execute_NoTelepathy(Enemy));
 	Enemy->SetWalkState(true);
-	TestEqual(TEXT("the walk's speed"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestEqual(TEXT("the walk's speed"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 200.f);
 	Enemy->SetWalkState(false);
-	TestEqual(TEXT("the skate's speed"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("the skate's speed"), Enemy->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 
 	// It floats and keeps the speed it is given. A timer set outside a tick counts from the end of the next one and
 	// fires on the first tick past its time: the decision set at the spawn is due at 0.5625 s and comes on the ticks at
@@ -1140,10 +1140,10 @@ bool FWasamiEnemyActorSentryTest::RunTest(const FString& Parameters)
 		Cone->GetPlane()->GetRelativeLocation().Equals(AWasamiViewconeNurse::NursePlaneLocation + AWasamiViewcone::PlaneLift));
 	TestTrue(TEXT("with the dot"), Cone->GetDot()->GetRelativeLocation().Equals(AWasamiViewcone::DotLocation));
 
-	// Its BeginPlay is empty: it does not decide (Not Seeing Player would walk at 350).
+	// Its BeginPlay is empty: it does not decide (Not Seeing Player would walk at 200).
 	TickTo(1.f);
 	TestFalse(TEXT("not looking before Activate"), Cone->IsInitialized());
-	TestEqual(TEXT("not deciding"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("not deciding"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 
 	// Activate at 1 s: the first Update Sight (0.3 to 0.5 s on) waits the 2 s Offset, then turns the cone on, which sees
 	// a second later and fades in over 0.5 s.
@@ -1221,11 +1221,11 @@ bool FWasamiEnemyActorSentryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("chasing"), Sentry->IsChasing());
 	TickTo(Spotted + 2.f * Step);
 	TestTrue(TEXT("leaping 400 cm/s toward the spot and 500 up"), Sentry->GetCharacterMovement()->Velocity.Equals(FVector(400., 0., 500.), 1.));
-	TestEqual(TEXT("not deciding yet"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("not deciding yet"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 	TickTo(Spotted + AWasamiEnemy::DecisionInterval + 2.f * Step);
-	TestEqual(TEXT("its first decision walks"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 350.f);
+	TestEqual(TEXT("its first decision walks"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 200.f);
 	TickTo(Spotted + 2.f * AWasamiEnemy::DecisionInterval + 2.f * Step);
-	TestEqual(TEXT("the next chases"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 800.f);
+	TestEqual(TEXT("the next chases"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 	IWasamiEnemyInterface::Execute_PlayerVanish(Sentry);
 	TestTrue(TEXT("Chasing is its own, whatever the nurse forgets"), Sentry->IsChasing());
 	return true;
