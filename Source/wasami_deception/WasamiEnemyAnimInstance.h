@@ -7,6 +7,16 @@
 #include "WasamiEnemyAnimInstance.generated.h"
 
 class UAnimSequence;
+struct FPoseContext;
+
+/** A clip's pose at a time and weight: one of the poses an anim instance's proxy blends on the worker thread. */
+struct FWasamiPoseSample
+{
+	const UAnimSequence* Sequence = nullptr;
+	float Time = 0.f;
+	float Weight = 0.f;
+	bool bLoop = false;
+};
 
 /**
  * The enemy's clips, by index into the lengths FWasamiEnemyAnimState is given: the locomotion's and the stun's first,
@@ -66,6 +76,12 @@ namespace WasamiEnemyAnim
 	 * floor are kept: both lie on the floor.
 	 */
 	WASAMI_DECEPTION_API FTransform MeasureGetUpMove(const UAnimSequence& Fall, const UAnimSequence& GetUp);
+
+	/**
+	 * Output: the samples' poses blended by their weights, or the reference pose when there are none. A clip without a
+	 * skeleton is passed over, as the engine's sequence player does. On the worker thread (a proxy's Evaluate).
+	 */
+	WASAMI_DECEPTION_API void BlendPoses(TConstArrayView<FWasamiPoseSample> Samples, FPoseContext& Output);
 
 	// The original's nurse_idle1_Skeleton_AnimBlueprint (pak_reference_2): the root's Blend Poses by bool on bStunned,
 	// the Idle ↔ Skating crossfades on Speed = VSize(GetVelocity()), Skating's run above 400 and the idle's alert pose.
@@ -258,15 +274,7 @@ protected:
 	virtual bool Evaluate(FPoseContext& Output) override;
 
 private:
-	struct FSample
-	{
-		const UAnimSequence* Sequence = nullptr;
-		float Time = 0.f;
-		float Weight = 0.f;
-		bool bLoop = false;
-	};
-
-	TArray<FSample, TInlineAllocator<8>> Samples;
+	TArray<FWasamiPoseSample, TInlineAllocator<8>> Samples;
 };
 
 /**

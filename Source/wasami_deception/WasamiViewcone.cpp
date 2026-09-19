@@ -289,3 +289,27 @@ void AWasamiViewconeNurse::Turn()
 		TurnOn();
 	}
 }
+
+namespace
+{
+	/** The Matron's cones' class: Plane and Plane1 at 0, Plane1 hidden, and not turned on by initializing. */
+	void MakeMatronCone(AWasamiViewcone& Cone, float Length, float Angle)
+	{
+		Cone.Length = Length;
+		Cone.Angle = Angle;
+		Cone.bAutoOn = false;
+		Cone.GetPlane()->SetRelativeLocation(FVector::ZeroVector);
+		Cone.GetDot()->SetRelativeLocation(FVector::ZeroVector);
+		Cone.GetDot()->SetVisibility(false);
+	}
+}
+
+AWasamiViewconeMatronLong::AWasamiViewconeMatronLong()
+{
+	MakeMatronCone(*this, 3000.f, 35.f);
+}
+
+AWasamiViewconeMatronShort::AWasamiViewconeMatronShort()
+{
+	MakeMatronCone(*this, 1350.f, 35.f);
+}

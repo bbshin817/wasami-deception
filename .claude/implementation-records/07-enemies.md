@@ -109,7 +109,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 
 1. **`FWasamiEnemyAnimState`**（エンジンを使わない純粋な状態。テストの対象）: どのクリップを、どの時刻・重みで混ぜるかを決める。`Update(Inputs, DeltaSeconds)` → `GetSamples(OutSamples)`（重みの和は 1。欠けたクリップの分は正規化で埋める）。
 2. **`UWasamiEnemyAnimInstance`**: `NativeInitializeAnimation` でクリップを読み（**ゲームのワールドのときだけ**。エディタのレベルでは参照姿勢のまま。`WasamiAssets.h` の起動時の読み込みを避けるため）、長さを状態に渡す。`NativeUpdateAnimation`（ゲームスレッド）で持ち主の速さとフラグから状態を進め、標本の一覧 `FrameSamples` を作る。
-3. **`FWasamiEnemyAnimInstanceProxy`**: `PreEvaluateAnimation`（ゲームスレッド。更新の後・評価の前に必ず呼ばれる。`PreUpdate` は `NativeUpdateAnimation` より前なので使わない）で標本を写し、`Evaluate`（ワーカースレッド）で各クリップの姿勢を `UAnimSequence::GetAnimationPose` で取り出して `FAnimationRuntime::BlendPosesTogether` で混ぜる。スケルトンの無いクリップは飛ばし（エンジンのシーケンスプレーヤーと同じ判定）、標本が無ければ参照姿勢。ルートモーションは取り出さない。
+3. **`FWasamiEnemyAnimInstanceProxy`**: `PreEvaluateAnimation`（ゲームスレッド。更新の後・評価の前に必ず呼ばれる。`PreUpdate` は `NativeUpdateAnimation` より前なので使わない）で標本（`FWasamiPoseSample`）を写し、`Evaluate`（ワーカースレッド）で `WasamiEnemyAnim::BlendPoses` が各クリップの姿勢を `UAnimSequence::GetAnimationPose` で取り出して `FAnimationRuntime::BlendPosesTogether` で混ぜる（ボスの代理も使う。17 記録）。スケルトンの無いクリップは飛ばし（エンジンのシーケンスプレーヤーと同じ判定）、標本が無ければ参照姿勢。ルートモーションは取り出さない。
 
 木（重みは上から掛け合わせる）:
 
@@ -186,6 +186,7 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - **`Start Looking`・`Stop Looking`**: `bVarIdle` を偽・真に（本家のナースの変数。ABP の Alert の 2 本目の組が読むが、本作のアニメは Alert 1 本なので読まない）。
 - **地図の印**: コーンの `Scene` の下の `Plane`（エンジンの `Plane`、`map_enemy_search_Mat`。`_Nurse` は (837.8, 0, 0)・拡縮 (17.006, 9.620, 28) でコーンに沿う扇）と `Plane1`（`0_DotCircle_Mat`、(0, 0, 1000)）。`BeginPlay` で隠しを解き（本家の CDO は `bHidden`）、次のティックで `Plane` の `Opacity` を 0 にして `AddLocalOffset(0, 0, 1000)`。両方ともコーンの 1000 上（ピッチ −20 の座標なので水平にも前へずれる）にあり、本家はプレイヤーの地図のキャプチャの `Show Only` が `BP_06_Miniboss_viewcone` を全部足す。本作はコーンにタグ `dd_minimap` を付け、プレイヤーの `RefreshMinimapContents`（02 記録）が拾う。本家は天井の上に置いて本編から見えなくしているが、本作は地図の板と同じく `bVisibleInSceneCaptureOnly`。影なし・当たりなし・ナビに効かない。材質はソフト参照（`/Game/DD/Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat`・`/Game/DD/ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat`）で `BeginPlay` に読む。材質は `import_dd_tablet` が作る（03 記録の `make_viewcone_materials`。本家の Unlit・半透明を、キャプチャの `SCS_BaseColor` に写る Default Lit・Masked にした推定）。
 - **見つける前の気絶**: 判断が動いていないので、Primal Fear で State が Stun になると気絶の姿勢のまま 17 s の DoOnce が始まらない（本家も同じ。見つけて判断が始まると 17 s で明ける）。コーンは見続ける。
+- **Matron のコーン**（`AWasamiViewconeMatronLong`・`_Short`。本家の `BP_06_Miniboss_viewcone_Matron_Long` / `_Short`。グラフなし）: 長さ 3000・1350、角度 35、`bAutoOn` 偽（Matron の `Switch` が点けて消す。17 記録）。クラスの `Plane`・`Plane1` の位置は 0 で、`Plane1`（点）は隠す。扇の位置と拡縮はレベルが置く。子のアクタでなくレベルに置かれ、持ち主（`SetOwner`）が Matron なので、`Player Spotted` は持ち主だけに届き、`Start/Stop Looking` はどこにも届かない（本家も親が無い）。テストは `Wasami.Matron.Cones`。
 - **PIE で確かめたこと**（2026-09-19、Zone 2 をチェックポイント 8〈`Miniboss Transition `〉で）: 6 体が本家の位置の棚の上（床の Z 311〜334）に立ち、コーンは `Offset` 0 の 3 体と 10 の 3 体が 10 s ずつ交互に点く・消える。点いているコーンでも角度の外（`Alert3` から 1029 cm・35° 横）のプレイヤーは見つけない。消えているコーンの中に立ったプレイヤーを、`Alert_5` がコーンが点いた直後に見つけ、コーンを消して跳び（Z 564 まで上がって）`Jump Down Spot` の側へ降り、追ってプレイヤーの 90 cm まで来た（接触の先は項目 9）。6 体の `Jump Down Spot` の下の床はどれも NavMesh の上で、プレイヤーの出発点への道がつながる。地図の印は 03 記録の「確かめたこと」。
 
 ### 捕獲の演出（`AWasamiCapture`。本家ホテルの `Death Event` と館の `BP_03_Watcher`）
@@ -287,6 +288,7 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
 ## 変更履歴
+- 2026-09-19: Matron の視界コーン 2 種 `AWasamiViewconeMatronLong`・`_Short` を足し、クリップの姿勢を混ぜる所を `WasamiEnemyAnim::BlendPoses`（標本 `FWasamiPoseSample`）に出してボスのアニメと共用にした（作業一覧の項目 11 のステップ 2。17 記録）
 - 2026-09-19: `_extract_textures`・`_import_model` を引数でモデルのパスと名前を受ける形にした（ボスワサミの取り込みが使う。17 記録）
 - 2026-09-19: 地図の印 `MapMark`（本家のナースの `StaticMesh`。`Plane`・`M_Enemy`・カプセルの中心から 10 m 上）を足した（作業一覧の項目 10 のステップ 4。16 記録）
 - 2026-09-18: 初版。敵ワサミの素材の取り込み（`dd_enemy.py`、原本 2 つ）を記録

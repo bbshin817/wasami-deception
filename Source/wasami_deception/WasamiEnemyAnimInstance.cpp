@@ -78,6 +78,61 @@ namespace WasamiEnemyAnim
 		const FVector Along = Move.GetTranslation();
 		return FTransform(FRotator(0., FMath::RadiansToDegrees(FMath::Atan2(Forward.Y, Forward.X)), 0.), FVector(Along.X, Along.Y, 0.));
 	}
+
+	void BlendPoses(TConstArrayView<FWasamiPoseSample> Samples, FPoseContext& Output)
+	{
+		auto Extract = [](const FWasamiPoseSample& Sample, FPoseContext& Pose)
+		{
+			FAnimationPoseData PoseData(Pose);
+			Sample.Sequence->GetAnimationPose(PoseData, FAnimExtractContext(static_cast<double>(Sample.Time), false, FDeltaTimeRecord(), Sample.bLoop));
+		};
+
+		TArray<const FWasamiPoseSample*, TInlineAllocator<8>> Usable;
+		for (const FWasamiPoseSample& Sample : Samples)
+		{
+			if (Sample.Sequence && Sample.Sequence->GetSkeleton())
+			{
+				Usable.Add(&Sample);
+			}
+		}
+
+		if (Usable.IsEmpty())
+		{
+			Output.ResetToRefPose();
+			return;
+		}
+		if (Usable.Num() == 1)
+		{
+			Extract(*Usable[0], Output);
+			return;
+		}
+
+		TArray<FCompactPose, TInlineAllocator<8>> Poses;
+		TArray<FBlendedCurve, TInlineAllocator<8>> Curves;
+		TArray<UE::Anim::FStackAttributeContainer, TInlineAllocator<8>> Attributes;
+		TArray<float, TInlineAllocator<8>> Weights;
+		Poses.SetNum(Usable.Num());
+		Curves.SetNum(Usable.Num());
+		Attributes.SetNum(Usable.Num());
+		float WeightSum = 0.f;
+		for (int32 Index = 0; Index < Usable.Num(); ++Index)
+		{
+			FPoseContext Pose(Output);
+			Extract(*Usable[Index], Pose);
+			Poses[Index].MoveBonesFrom(Pose.Pose);
+			Curves[Index].MoveFrom(Pose.Curve);
+			Attributes[Index].MoveFrom(Pose.CustomAttributes);
+			Weights.Add(Usable[Index]->Weight);
+			WeightSum += Usable[Index]->Weight;
+		}
+		for (float& Weight : Weights)
+		{
+			Weight /= WeightSum;
+		}
+
+		FAnimationPoseData OutPoseData(Output);
+		FAnimationRuntime::BlendPosesTogether(Poses, Curves, Attributes, Weights, OutPoseData);
+	}
 }
 
 void FWasamiBoolBlend::Update(bool bNewValue, float BlendTime, float DeltaSeconds)
@@ -417,57 +472,7 @@ void FWasamiEnemyAnimInstanceProxy::PreEvaluateAnimation(UAnimInstance* InAnimIn
 
 bool FWasamiEnemyAnimInstanceProxy::Evaluate(FPoseContext& Output)
 {
-	auto Extract = [](const FSample& Sample, FPoseContext& Pose)
-	{
-		FAnimationPoseData PoseData(Pose);
-		Sample.Sequence->GetAnimationPose(PoseData, FAnimExtractContext(static_cast<double>(Sample.Time), false, FDeltaTimeRecord(), Sample.bLoop));
-	};
-
-	TArray<const FSample*, TInlineAllocator<8>> Usable;
-	for (const FSample& Sample : Samples)
-	{
-		if (Sample.Sequence->GetSkeleton())
-		{
-			Usable.Add(&Sample);
-		}
-	}
-
-	if (Usable.IsEmpty())
-	{
-		Output.ResetToRefPose();
-		return true;
-	}
-	if (Usable.Num() == 1)
-	{
-		Extract(*Usable[0], Output);
-		return true;
-	}
-
-	TArray<FCompactPose, TInlineAllocator<8>> Poses;
-	TArray<FBlendedCurve, TInlineAllocator<8>> Curves;
-	TArray<UE::Anim::FStackAttributeContainer, TInlineAllocator<8>> Attributes;
-	TArray<float, TInlineAllocator<8>> Weights;
-	Poses.SetNum(Usable.Num());
-	Curves.SetNum(Usable.Num());
-	Attributes.SetNum(Usable.Num());
-	float WeightSum = 0.f;
-	for (int32 Index = 0; Index < Usable.Num(); ++Index)
-	{
-		FPoseContext Pose(Output);
-		Extract(*Usable[Index], Pose);
-		Poses[Index].MoveBonesFrom(Pose.Pose);
-		Curves[Index].MoveFrom(Pose.Curve);
-		Attributes[Index].MoveFrom(Pose.CustomAttributes);
-		Weights.Add(Usable[Index]->Weight);
-		WeightSum += Usable[Index]->Weight;
-	}
-	for (float& Weight : Weights)
-	{
-		Weight /= WeightSum;
-	}
-
-	FAnimationPoseData OutPoseData(Output);
-	FAnimationRuntime::BlendPosesTogether(Poses, Curves, Attributes, Weights, OutPoseData);
+	WasamiEnemyAnim::BlendPoses(Samples, Output);
 	return true;
 }
 

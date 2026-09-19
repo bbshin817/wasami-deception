@@ -9,7 +9,7 @@
     "Config/DefaultEditorPerProjectUserSettings.ini": "d8862707d73e7faf99ca9c07d761499418a11371",
     "Source/wasami_deception.Target.cs": "afe6f0d5169b2cb6491d7de438ab465dadbe6d35",
     "Source/wasami_deceptionEditor.Target.cs": "096e1e8454e881aebc9d2cfe365add216de13167",
-    "Source/wasami_deception/wasami_deception.Build.cs": "8dc85d1c9a59c0a1756c788512428964bed4518b",
+    "Source/wasami_deception/wasami_deception.Build.cs": "40e9337519fcf78136d298b83934ee768993b208",
     "Source/wasami_deception/wasami_deception.cpp": "2107f18ca549210efe63277f953523bbc45df68f",
     "Source/wasami_deception/wasami_deception.h": "677c8e25baf2999c23674260b43a50272cad2594",
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
@@ -142,10 +142,10 @@
     "Source/wasami_deception/WasamiEnemyZone2.cpp": "6c74c53a9b358534f88f8fd51ba6484aa53ae454",
     "Source/wasami_deception/WasamiEnemySentry.h": "98e1f706b6edf4fd2179b36fbaca891a18ab7fb5",
     "Source/wasami_deception/WasamiEnemySentry.cpp": "a64c16bc237eba464429a7cecb56cdb50ff42257",
-    "Source/wasami_deception/WasamiViewcone.h": "93bb069fbeaf85c3c0d61a92eed4210f4bebe2ef",
-    "Source/wasami_deception/WasamiViewcone.cpp": "9a8fd478a859b30d442c1efb24ec09b89a97cd2b",
-    "Source/wasami_deception/WasamiEnemyAnimInstance.h": "717fcf9bb265cd18e2f6511919353094aa80acae",
-    "Source/wasami_deception/WasamiEnemyAnimInstance.cpp": "8562cc4b40d0d2c740eb647f0e373decdacaf32a",
+    "Source/wasami_deception/WasamiViewcone.h": "4f3566bc632a0ce2981d075db9c6d0fd3d45fd64",
+    "Source/wasami_deception/WasamiViewcone.cpp": "897f604fa8cdd2f4533a6767714a4d5436230d79",
+    "Source/wasami_deception/WasamiEnemyAnimInstance.h": "83c4cc42a483937b7acf96d09f9cd114d9f90285",
+    "Source/wasami_deception/WasamiEnemyAnimInstance.cpp": "8ec51cd2160ce3f75a604e7a53e5cf7f99771089",
     "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "ce59d268eb151b9ccdc9f1d3170d1f69b6b4fe05",
     "Source/wasami_deception/Tests/WasamiTestListener.h": "1d0a05da143bdeda21999960ec9ccb1001db2708",
     "Source/wasami_deception/WasamiCapture.h": "a7f5bfd9aee84a855855d81aed241552213f36e5",
@@ -293,6 +293,11 @@
   },
   "17-matron.md": {
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "8658eb38a0c8d4d5b102630e7b0562f9a0d36cd8",
-    "SourceArt/Wasami/boss_wasami.glb": "2811ba93549fa9b6c4d4f4345a5d78445dae4afa"
+    "SourceArt/Wasami/boss_wasami.glb": "2811ba93549fa9b6c4d4f4345a5d78445dae4afa",
+    "Source/wasami_deception/WasamiMatron.h": "9b9bc077b1a1955c1db1fc47d161aa8bb199098a",
+    "Source/wasami_deception/WasamiMatron.cpp": "4f70477e48f8d6b64d475f0a721d7064796f2b09",
+    "Source/wasami_deception/WasamiBossAnimInstance.h": "db9d263976bb94238a2b061288721e36e5448e67",
+    "Source/wasami_deception/WasamiBossAnimInstance.cpp": "5559d751235f33f801e5b0f9541c599cb554327b",
+    "Source/wasami_deception/Tests/WasamiMatronTests.cpp": "0180be2160797cac7b30c05a9dd8a7dfc4d74e0c"
   }
 }
