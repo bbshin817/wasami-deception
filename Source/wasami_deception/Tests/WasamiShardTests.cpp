@@ -108,6 +108,16 @@ bool FWasamiShardActorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the mark does not collide"), static_cast<int32>(Plane->GetCollisionEnabled()), static_cast<int32>(ECollisionEnabled::NoCollision));
 
 	TestTrue(TEXT("a play rate from 0.05 to 0.15"), Shard->GetSpinRate() >= 0.05f && Shard->GetSpinRate() <= 0.15f);
+	TestTrue(TEXT("a start yaw from 0 to 360"), Shard->GetSpinAngle() >= 0.f && Shard->GetSpinAngle() <= 360.f);
+	TestTrue(TEXT("the mochi turned to it at once"), Mochi->GetRelativeRotation().Equals(FRotator(0., Shard->GetSpinAngle(), 0.), 1e-3));
+	// Each shard draws its own: a few more are not all at the first one's yaw.
+	bool bAnyOtherYaw = false;
+	for (int32 Index = 1; Index <= 4; ++Index)
+	{
+		const AWasamiShard* Other = World->SpawnActor<AWasamiShard>(Placed + FVector(0., 300. * Index, 0.), FRotator::ZeroRotator);
+		bAnyOtherYaw |= Other && !FMath::IsNearlyEqual(Other->GetSpinAngle(), Shard->GetSpinAngle(), 1e-3f);
+	}
+	TestTrue(TEXT("the start yaws differ"), bAnyOtherYaw);
 	TestEqual(TEXT("the mochi keeps no custom primitive data"), Mochi->GetCustomPrimitiveData().Data.Num(), 0);
 	const FSoftObjectProperty* FlashProperty = FindFProperty<FSoftObjectProperty>(AWasamiShard::StaticClass(), TEXT("CollectFlash"));
 	TestTrue(TEXT("the collect flash is P_WasamiShardFlash"), FlashProperty && FlashProperty->GetPropertyValue_InContainer(Shard).ToSoftObjectPath()

@@ -312,7 +312,7 @@ bool FWasamiTitleWaysOutTest::RunTest(const FString& Parameters)
 	ResumeZone1->PressResume();
 	TestEqual(TEXT("checkpoint 5 goes on in Zone 1"), ResumeZone1->GetLevelToOpen(), Zone1);
 
-	// QUIT asks (nothing without a player); its YES quits. OPTIONS only sounds.
+	// QUIT asks (nothing without a player); its YES quits. OPTIONS opens nothing without a player either.
 	UWasamiTitleScreenWidget* Quit = MakeScreen();
 	Quit->PressQuit();
 	Quit->PressOptions();

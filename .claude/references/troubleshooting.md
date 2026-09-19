@@ -160,6 +160,7 @@
 - 原因: `Use Less CPU when in Background`。
 - 2026-09-19: **ウィジェットのティック（`NativeTick` の `InDeltaTime`）も遅れる**。Slate は 1 コマの時間を 1/8 s で打ち切る（`FSlateApplication::TickTime`）ので、約 3 fps だとスコア画面の `ClearAnimation` も連続回収の画面（2 s で消える）も約半分の速さになった。ゲームの時間（`get_time_seconds`）は実時間どおり進むので気づきにくい。画面の時刻を収録で測る前に、エディタを前面にして 8 fps を超えているか（`unreal.SystemLibrary.get_frame_count()` の進み）を見る。
 - 対処: `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe`（タイトルバーの空き。エディタの窓が今の位置のとき。撮った画面でクリックの位置がエディタの上であることを先に見る）でエディタを前面にする。PIE を始めてもエディタは前面に来ない。
+- 対処（前面に出せないとき。2026-09-19）: ユーザーのターミナルが前面だと `desktop.py` はクリックを断り（前面が許した窓でない）、MCP の `SlateInspectorToolset.Windows` の `select` も Windows に前面の切り替えを止められる。そのときはリモート実行で `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)` にする（クラスは Python の型として出ていないが、CDO は `find_object` で取れて書ける。メモリ上だけなので開き直すと戻る）。背面のまま PIE とテストが前面と同じ速さで進み、`desktop.py record` で約 58 fps で収録できた。終わったら `True` に戻す。前面の小窓（メッセージログ）は `SlateInspectorToolset.Windows` の `list` → `close`（番号）で閉じられる。
 - 確かめ方: `stat fps`、またはリモート実行で `unreal.GameplayStatics.get_time_seconds` の進み。
 - 出典: `.claude/guides/verification.md` の「動きの確認」（2026-09-16）、03 記録。「試して駄目だった案」も参照。
 
@@ -169,6 +170,13 @@
 - 原因: エンジンの仕様（テストの開始で PIE を止める）。
 - 対処: テストと PIE の確認は続けて行い、同時に走らせない。テストの後に出る Automation のログの小窓は PIE の前に閉じる。
 - 出典: `.claude/guides/verification.md`。
+
+### PIE で Esc を押すとポーズ画面が出ずに遊びが止まる
+
+- 症状: PIE のビューポートで Esc を押すと、ゲームのポーズ画面（`UWasamiPauseWidget`）が出ずに PIE が終わる。
+- 原因: エディタのキー割り当て（`PlayWorld.StopPlaySession` の既定が Esc）が、ゲームより先にキーを取る。パッケージや `-game` では起きない。割り当てはユーザーのエディタの設定なので変えない。
+- 対処: ポーズ画面は `python Tools/pie.py cmd "Wasami.Pause"` で開く（プレイヤーの `EscapePressed` と同じ道。止まっている間は開かない）。ボタンは `Tools/desktop.py click` で押す。
+- 出典: 2026-09-19 の作業一覧の項目 18 のステップ 5（15 記録）。
 
 ### Zone 1 の PIE（や死亡の後の開き直し）で、始まる場所が毎回違う（`04_Start`・`05_Start`・`PlayerStart_1` など）
 
@@ -243,6 +251,7 @@
 - `decal_blend_mode`（UE 5.8 で非推奨、読めない）: いまの UE はつないだ出力で DBuffer のチャンネルが決まるので、基本色と不透明度だけをつなぐ（01 記録）。
 - `MaterialExpressionIf` の `ConstAGreaterThanB` など: 扇形のマスクは `ceil(saturate(…))` で作る（03 記録）。
 - `SlateBlueprintLibrary`（画面上の大きさ）: ウィジェットのパス（`get_user_widget_object()` のパス + `.WidgetTree.<名前>`）を `find_object` して `render_transform` と `get_render_opacity()` を読む（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
+- **ウィジェットの画面上の位置（`get_cached_geometry()` / `get_tick_space_geometry()` / `get_paint_space_geometry()`）**: Python の名前は `unreal.SlateLibrary` で関数はあるが、Python が受け取る `Geometry` は空の写し（反映されたフィールドが無い）で、`SlateLibrary.get_local_size` は 0、`local_to_viewport` はビューポートの左上を返す。C++ の `unreal.WasamiWidgetProbe.viewport_fraction(widget, unreal.Vector2D(0.5, 0.5))`（ビューポートの大きさに対する割合。描かれていなければ (-1, -1)。09 記録）で読む。`Tools/playthrough.py` の `click_part` がこれで画面のボタン・スライダーを押す（2026-09-19。エディタの開き直し 1 回）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
 - `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
 
@@ -645,7 +654,7 @@
 
 ## 試して駄目だった案
 
-- **背面のエディタの 3 fps を設定で直す**: コンソールの `set EditorPerformanceSettings bThrottleCPUWhenNotForeground False` は効かず、設定は Python から見えない → エディタを前面にする（2026-09-16、`.claude/guides/verification.md`）。
+- **背面のエディタの 3 fps を設定で直す**: コンソールの `set EditorPerformanceSettings bThrottleCPUWhenNotForeground False` は効かず、設定は Python の型としては見えない → エディタを前面にする（2026-09-16、`.claude/guides/verification.md`）。2026-09-19: CDO を `unreal.find_object` で取れば Python から書ける（上の「エディタが背面にあると…」の対処）。
 - **`UPostProcessComponent` / `ULegacyCameraShake` を C++ で継ぐ** → MinimalAPI でリンクできない（上の C++ の節）。
 - **Lumen で間接光を出す** → 距離フィールドが潰れてゼロ。焼き込みに切り替えた（コミット 89611ee）。
 - **ライトマップの解像度を表面積から決め（1 テクセル 20 cm）、UV の無い結合メッシュに UE の UV を作らせる** → 実機の 2 倍明るい。原作の値を写す（コミット 81d3e7e）。

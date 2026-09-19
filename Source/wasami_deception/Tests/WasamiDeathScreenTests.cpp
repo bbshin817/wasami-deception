@@ -117,6 +117,42 @@ bool FWasamiDeathScreenGameOverTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiDeathScreenEasyTest, "Wasami.DeathScreen.Easy",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiDeathScreenEasyTest::RunTest(const FString& Parameters)
+{
+	// EASY with no lives left: Fade In and the last life's shake, then the screen holds (no game over, no buttons, no
+	// respawn) for as long as it is up.
+	UWasamiDeathScreenWidget* Screen = NewObject<UWasamiDeathScreenWidget>();
+	Screen->Begin(0, 3.f, true, true);
+	RunUntil(Screen, 0.45f);
+	TestFalse(TEXT("not held before the reveal"), Screen->IsHoldingOnEasy());
+	RunUntil(Screen, 1.3f);
+	TestTrue(TEXT("held from the reveal"), Screen->IsHoldingOnEasy());
+	TestTrue(TEXT("Fade In is over"), Screen->GetCoverAlpha() < 0.01f);
+	TestEqual(TEXT("the row keeps the one being lost"), Screen->GetShownLives(), 1);
+	RunUntil(Screen, 1.65f);
+	TestEqual(TEXT("Shake's Update Life takes it"), Screen->GetShownLives(), 0);
+	RunUntil(Screen, 30.f);
+	TestFalse(TEXT("no game over"), Screen->IsGameOver());
+	TestFalse(TEXT("no buttons"), Screen->AreButtonsShown());
+	TestFalse(TEXT("no respawn"), Screen->HasRespawned());
+	TestTrue(TEXT("the cover stays clear"), Screen->GetCoverAlpha() < 0.01f);
+	TestTrue(TEXT("still held"), Screen->IsHoldingOnEasy());
+
+	// EASY with lives left goes on as NORMAL, and NORMAL with none is never held.
+	UWasamiDeathScreenWidget* Lives = NewObject<UWasamiDeathScreenWidget>();
+	Lives->Begin(1, 3.f, true, true);
+	RunUntil(Lives, 6.05f);
+	TestTrue(TEXT("EASY with a life: the respawn"), Lives->HasRespawned() && !Lives->IsHoldingOnEasy());
+	UWasamiDeathScreenWidget* Normal = NewObject<UWasamiDeathScreenWidget>();
+	Normal->Begin(0, 3.f, true, false);
+	RunUntil(Normal, 3.f);
+	TestTrue(TEXT("NORMAL with none: the game over"), Normal->IsGameOver() && Normal->AreButtonsShown() && !Normal->IsHoldingOnEasy());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiDeathScreenButtonsTest, "Wasami.DeathScreen.Buttons",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 

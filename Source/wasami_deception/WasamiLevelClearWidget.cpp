@@ -227,7 +227,8 @@ namespace
 			{
 				FWasamiLevelProgress Progress = Mode->GetSave()->Hospital;
 				Progress.Time += Mode->GetTime();
-				if (UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(World, FWasamiLevelResults::ForHospital(Progress, false)))
+				UWasamiGameInstance* Instance = Mode->GetWasamiGameInstance();
+				if (UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(World, FWasamiLevelResults::ForHospital(Progress, Instance && Instance->IsEasy())))
 				{
 					Screen->bRemoveWhenFinished = true;
 				}

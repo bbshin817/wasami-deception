@@ -21,6 +21,7 @@ class UTextureRenderTarget2D;
 class UWasamiChameleonComponent;
 class UWasamiInteractWidget;
 class UWasamiPowerComponent;
+class UWasamiSettingsSaveGame;
 class UWasamiTabletWidget;
 class UWidgetComponent;
 struct FInputActionValue;
@@ -69,6 +70,14 @@ public:
 
 	/** Fires OnInteract (F calls it; the debug command and the tests call it directly). */
 	void InteractPressed();
+
+	/**
+	 * Esc pressed (the old version's InpActEvt_Escape, @7758): CreateAndAddWidget(UMG_Pause, 5), unless the game is
+	 * paused (the original's key binding does not execute then) and not by the death screen EASY holds (this game's
+	 * exception; see UWasamiDeathScreenWidget::FindHoldingOnEasy); the menu's UI-only input keeps Esc from coming again.
+	 * Wasami.Pause calls it (Esc stops a play session in the editor).
+	 */
+	void EscapePressed();
 
 	/** How far ahead of the camera the player looks for something to use (the original's 200 cm traces). */
 	static constexpr float InteractDistance = 200.f;
@@ -132,11 +141,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
 	float SprintingSpeed = 600.f;
 
+	/**
+	 * Takes the OPTIONS' TOGGLE SPRINT, MOUSE SENSITIVITY (UWasamiSettingsSaveGame::PlayerSensitivityFor), INVERTED Y
+	 * AXIS and HEAD BOBBING, which the original reads from the game mode's settings each time it uses them: at BeginPlay
+	 * and when the OPTIONS are saved.
+	 */
+	void ApplySettings(const UWasamiSettingsSaveGame& Settings);
+
+	/**
+	 * Set Up Mouse Smoothing: the spring arm's rotation lag from MOUSE SMOOTHING. Only the OPTIONS' SAVE & EXIT calls it
+	 * (the level starts at the spring arm's own 20, as in the original).
+	 */
+	void SetUpMouseSmoothing(const UWasamiSettingsSaveGame& Settings);
+
 	/** The OPTIONS' TOGGLE SPRINT. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Options")
 	bool bToggleSprint = false;
 
-	/** The OPTIONS' MOUSE SENSITIVITY: a multiplier on the mouse axes. */
+	/** The OPTIONS' MOUSE SENSITIVITY: a multiplier on the mouse axes (1 for the setting's default of 0.5). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Options")
 	float MouseSensitivity = 1.f;
 
@@ -305,6 +327,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> MouseWheelAction;
+
+	/** Esc, which opens the pause menu. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> EscapeAction;
 
 	/** The sounds and shakes above, loaded at BeginPlay. */
 	UPROPERTY(Transient)

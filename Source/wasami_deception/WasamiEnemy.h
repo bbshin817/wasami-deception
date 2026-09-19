@@ -36,10 +36,10 @@ class WASAMI_DECEPTION_API AWasamiEnemy : public ACharacter, public IWasamiEnemy
 public:
 	AWasamiEnemy();
 
-	// The nurse's CDO and its components'.
+	// The nurse's CDO and its components', but the speeds (below).
 	static constexpr float CapsuleRadius = 34.f;
 	static constexpr float CapsuleHalfHeight = 118.05821990966797f;
-	static constexpr float MaxSpeed = 800.f;
+	static constexpr float MaxSpeed = 430.f;
 	static constexpr float TurnRate = 300.f;
 	static constexpr double MeshX = -6.216194742592052e-05;
 	static constexpr double MeshY = -0.00021553380065597594;
@@ -122,12 +122,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
 	bool bNightmare = false;
 
-	/** Set Walk State's speeds (cm/s). */
+	/**
+	 * Set Walk State's speeds (cm/s). Not the nurse's 350 and 800 (2026-09-19, the user: the enemy was too fast): the
+	 * Murder Monkey's (BP_Monkey's Walk Speed 200 and Run Speed 430), as the WebGL version, so the player's walk (300) is
+	 * caught and the sprint (600) gets away. MaxSpeed (the CDO's MaxWalkSpeed) is the chase's.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
-	float NormalSpeed = 350.f;
+	float NormalSpeed = 200.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
-	float SkateSpeed = 800.f;
+	float SkateSpeed = 430.f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Enemy")
 	bool bNormalWalk = false;

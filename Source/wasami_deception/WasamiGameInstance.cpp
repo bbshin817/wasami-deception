@@ -1,7 +1,141 @@
 #include "WasamiGameInstance.h"
 
+#include "AudioDevice.h"
+#include "Engine/Engine.h"
+#include "HAL/IConsoleManager.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Sound/SoundClass.h"
+#include "UObject/UnrealType.h"
 #include "WasamiCapture.h"
+#include "WasamiPlayerCharacter.h"
+#include "WasamiSettingsSaveGame.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogWasamiSettings, Log, All);
+
+namespace
+{
+	FAutoConsoleCommandWithWorldAndArgs SettingsCommand(TEXT("Wasami.Settings"),
+		TEXT("Wasami.Settings [Name Value]: prints the settings (the OPTIONS' save) and the volumes the audio device has for the Music, SFX and Dialogue classes; with one of their names (Quality, MouseSensitivity, bInvertedYAxis, Difficulty, ...) and a value, sets it and saves as SAVE & EXIT does."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UWasamiGameInstance* Instance = World ? World->GetGameInstance<UWasamiGameInstance>() : nullptr;
+			UWasamiSettingsSaveGame* Settings = Instance ? Instance->GetSettings() : nullptr;
+			if (!Settings)
+			{
+				return;
+			}
+			if (Args.Num() >= 2)
+			{
+				FProperty* Property = FindFProperty<FProperty>(UWasamiSettingsSaveGame::StaticClass(), FName(*Args[0]));
+				if (!Property || !Property->ImportText_Direct(*Args[1], Property->ContainerPtrToValuePtr<void>(Settings), Settings, PPF_None))
+				{
+					UE_LOG(LogWasamiSettings, Warning, TEXT("Wasami.Settings: cannot set '%s' to '%s'."), *Args[0], *Args[1]);
+					return;
+				}
+				Instance->SaveSettings();
+			}
+			for (TFieldIterator<FProperty> It(UWasamiSettingsSaveGame::StaticClass(), EFieldIteratorFlags::ExcludeSuper); It; ++It)
+			{
+				FString Value;
+				It->ExportTextItem_Direct(Value, It->ContainerPtrToValuePtr<void>(Settings), nullptr, Settings, PPF_None);
+				UE_LOG(LogWasamiSettings, Display, TEXT("%s = %s"), *It->GetName(), *Value);
+			}
+			// The volumes the audio device works out for the sliders' classes (they reach them over the overrides' 1 s).
+			if (FAudioDevice* Device = World->GetAudioDeviceRaw())
+			{
+				for (USoundClass* Class : {UWasamiSettingsSaveGame::LoadMusicClass(), UWasamiSettingsSaveGame::LoadSFXClass(), UWasamiSettingsSaveGame::LoadDialogueClass()})
+				{
+					if (const FSoundClassProperties* Properties = Class ? Device->GetSoundClassCurrentProperties(Class) : nullptr)
+					{
+						UE_LOG(LogWasamiSettings, Display, TEXT("%s volume now %.3f"), *Class->GetName(), Properties->Volume);
+					}
+				}
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs ResetSettingsCommand(TEXT("Wasami.ResetSettings"),
+		TEXT("Starts the settings over at their defaults and saves them as SAVE & EXIT does."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UWasamiGameInstance* Instance = World ? World->GetGameInstance<UWasamiGameInstance>() : nullptr;
+			UWasamiSettingsSaveGame* Settings = Instance ? Instance->GetSettings() : nullptr;
+			if (Settings)
+			{
+				for (TFieldIterator<FProperty> It(UWasamiSettingsSaveGame::StaticClass(), EFieldIteratorFlags::ExcludeSuper); It; ++It)
+				{
+					It->CopyCompleteValue_InContainer(Settings, GetDefault<UWasamiSettingsSaveGame>());
+				}
+				Instance->SaveSettings();
+			}
+		}));
+}
+
+void UWasamiGameInstance::Init()
+{
+	Super::Init();
+	if (GIsEditor && GEngine)
+	{
+		EditorDisplayGamma = GEngine->DisplayGamma;
+	}
+}
+
+void UWasamiGameInstance::Shutdown()
+{
+	if (GIsEditor && GEngine && EditorDisplayGamma > 0.f)
+	{
+		GEngine->DisplayGamma = EditorDisplayGamma;
+	}
+	Super::Shutdown();
+}
+
+UWasamiSettingsSaveGame* UWasamiGameInstance::CheckSettingsSave()
+{
+	Settings = UWasamiSettingsSaveGame::Check(GetSettingsSlot());
+	if (Settings)
+	{
+		Settings->Apply(this);
+	}
+	// BeginPlay goes on to SetBaseSoundMix(DD_SoundMix) (@27511), which the classes' volumes are overrides of.
+	if (GetWorld())
+	{
+		UGameplayStatics::SetBaseSoundMix(this, UWasamiSettingsSaveGame::LoadSoundMix());
+	}
+	return Settings;
+}
+
+void UWasamiGameInstance::SaveSettings()
+{
+	UWasamiSettingsSaveGame* Current = GetSettings();
+	if (!Current)
+	{
+		return;
+	}
+	Current->Apply(this);
+	UGameplayStatics::SaveGameToSlot(Current, GetSettingsSlot(), UWasamiSettingsSaveGame::UserIndex);
+	UWorld* World = GetWorld();
+	if (AWasamiPlayerCharacter* Player = World ? Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0)) : nullptr)
+	{
+		Player->ApplySettings(*Current);
+		Player->SetUpMouseSmoothing(*Current);
+	}
+}
+
+UWasamiSettingsSaveGame* UWasamiGameInstance::GetSettings()
+{
+	return Settings ? Settings.Get() : CheckSettingsSave();
+}
+
+bool UWasamiGameInstance::IsEasy()
+{
+	const UWasamiSettingsSaveGame* Current = GetSettings();
+	return Current && Current->Difficulty == EWasamiDifficulty::Easy;
+}
+
+FString UWasamiGameInstance::GetSettingsSlot() const
+{
+	return SettingsSlotName.IsEmpty() ? UWasamiSettingsSaveGame::SlotName : SettingsSlotName;
+}
 
 void UWasamiGameInstance::DecrementLives()
 {

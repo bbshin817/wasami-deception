@@ -4,6 +4,8 @@
 #include "Engine/GameInstance.h"
 #include "WasamiGameInstance.generated.h"
 
+class UWasamiSettingsSaveGame;
+
 /**
  * What outlives reopening a level and is never written to disk, after Dark Deception's BP_DD_GameInstance
  * (pak_reference_2): the lives, and the shards collected since the last fresh start (Shards To Be Removed), which the
@@ -17,6 +19,38 @@ class WASAMI_DECEPTION_API UWasamiGameInstance : public UGameInstance
 	GENERATED_BODY()
 
 public:
+	virtual void Init() override;
+	virtual void Shutdown() override;
+
+	/**
+	 * BP_DD_GameMode's Check Settings Save and Set Settings, which both game modes run when play begins: the settings
+	 * read from SettingsSlotName (or made and written there) and applied. Returns them.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UWasamiSettingsSaveGame* CheckSettingsSave();
+
+	/** Global Settings Save Instance: the settings read last (read and applied first when none were yet). */
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	UWasamiSettingsSaveGame* GetSettings();
+
+	/**
+	 * What the OPTIONS' SAVE & EXIT does with the settings once changed: applied (Set Settings), written to the slot, and
+	 * given to the player if there is one (the values it reads, and Set Up Mouse Smoothing).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void SaveSettings();
+
+	/**
+	 * Whether the settings' Difficulty is EASY (the original's `Global Settings Save Instance.Difficulty == 0`, which the
+	 * level clear screen and the pause read).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	bool IsEasy();
+
+	/** The settings' slot; empty for the original's Settings (the tests use their own). */
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	FString SettingsSlotName;
+
 	/** Lives when the game starts and after Reset Lives: the original's 3 for a player level of 0 to 4 (this game has
 	 * no player levels). */
 	static constexpr int32 StartingLives = 3;
@@ -62,8 +96,16 @@ public:
 	static int32 TakeNoRepeat(TArray<int32>& Remaining, bool& bStarted, int32 Min, int32 Max, const FRandomStream& Stream);
 
 private:
+	FString GetSettingsSlot() const;
+
 	UPROPERTY(VisibleAnywhere, Category = "Game")
 	int32 Lives = StartingLives;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiSettingsSaveGame> Settings;
+
+	/** The editor's display gamma when play began, given back when it ends (Set Settings changes the engine's). */
+	float EditorDisplayGamma = 0.f;
 
 	UPROPERTY(VisibleAnywhere, Category = "Game")
 	TArray<FVector> ShardsToBeRemoved;

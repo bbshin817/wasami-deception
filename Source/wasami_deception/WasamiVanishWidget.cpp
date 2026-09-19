@@ -16,7 +16,7 @@ namespace
 
 	// The animation Vanish: one RenderOpacity track, cubic keys at ticks 0 / 6000 / 54000 / 60000 (60000 a second) with
 	// the tangents saved per tick, here per second.
-	constexpr float TicksPerSecond = 60000.f;
+	constexpr float VanishTicksPerSecond = 60000.f;
 	FRichCurve MakeOpacityCurve()
 	{
 		struct FKey
@@ -34,10 +34,10 @@ namespace
 		FRichCurve Curve;
 		for (const FKey& Each : Keys)
 		{
-			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(static_cast<float>(Each.Ticks / TicksPerSecond), Each.Value));
+			FRichCurveKey& Key = Curve.GetKey(Curve.AddKey(static_cast<float>(Each.Ticks / VanishTicksPerSecond), Each.Value));
 			Key.InterpMode = RCIM_Cubic;
 			Key.TangentMode = RCTM_User;
-			Key.ArriveTangent = static_cast<float>(Each.TangentPerTick * TicksPerSecond);
+			Key.ArriveTangent = static_cast<float>(Each.TangentPerTick * VanishTicksPerSecond);
 			Key.LeaveTangent = Key.ArriveTangent;
 		}
 		return Curve;

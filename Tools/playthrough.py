@@ -104,9 +104,12 @@ if w is not None:
     resume = unreal.find_object(None, titles[0].get_path_name() + '.WidgetTree.Resume') if titles else None
     s['resume'] = resume is not None and resume.get_parent() is not None  # Construct takes it out without a game begun
     s['popup'] = len(unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiPopUpWidget, False)) > 0
+    s['pause'] = len(unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiPauseWidget, True)) > 0
+    s['options'] = len(unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiOptionsWidget, True)) > 0
     instance = unreal.GameplayStatics.get_game_instance(w)
     if isinstance(instance, unreal.WasamiGameInstance):
         s['lives'] = instance.get_lives()
+        s['sensitivity'] = instance.get_settings().get_editor_property('mouse_sensitivity')
     s['shards'] = len(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiShard))
     s['captured'] = len(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiCapture)) > 0
     s['clear'] = len(unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiLevelClearWidget, False)) > 0
@@ -163,6 +166,23 @@ elif found and {cls!r} == 'WasamiDeathScreenWidget':
             break
         top += tall + 20.0
 print('JSON ' + json.dumps([at[0] / width, at[1] / height] if at else None))
+"""
+
+# A point of a widget of a screen's tree (found by the screen's class and the widget's name) as fractions of the
+# viewport, from the widget's last painted box with the render transforms (UWasamiWidgetProbe; Python cannot read an
+# FGeometry), so a screen's animation should be over first. (fx, fy) is the point inside the widget, (0.5, 0.5) its
+# middle.
+PART_AT = """
+w = _need_game()
+found = unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.{cls}, True)
+part = unreal.find_object(None, found[-1].get_path_name() + '.WidgetTree.' + {name!r}) if found else None
+at = unreal.WasamiWidgetProbe.viewport_fraction(part, unreal.Vector2D({fx!r}, {fy!r})) if part is not None else None
+print('JSON ' + json.dumps([at.x, at.y] if at is not None and at.x >= 0 else None))
+"""
+
+YAW = """
+w = _need_game()
+print('JSON ' + json.dumps(unreal.GameplayStatics.get_player_controller(w, 0).get_control_rotation().yaw))
 """
 
 MARK_WORLD = """
@@ -396,6 +416,21 @@ class Play:
             raise Failed("no %s button %s on the screen" % (cls, name))
         self.log("click %s.%s at (%.3f, %.3f) of the viewport" % (cls, name, at[0], at[1]))
         self.click_at(*at)
+
+    def click_part(self, cls, name, fx=0.5, fy=0.5):
+        """Clicks a point of a widget of a screen's tree (PART_AT), e.g. the pause menu's buttons or a slider's end."""
+        at = self.ed.json(PART_AT.format(cls=cls, name=name, fx=fx, fy=fy))
+        if not at:
+            raise Failed("no %s widget %s on the screen" % (cls, name))
+        self.log("click %s.%s at (%.3f, %.3f) of the viewport" % (cls, name, at[0], at[1]))
+        self.click_at(*at)
+
+    def turn(self, dx=400):
+        """Degrees of yaw a mouse movement of dx counts turns the view by (the look input, not the lagging camera)."""
+        before = self.ed.json(YAW)
+        self.send("look", dx=dx, dy=0, steps=20, burst=4)
+        time.sleep(0.3)
+        return (self.ed.json(YAW) - before + 180.0) % 360.0 - 180.0
 
     def key(self, *names, gap_ms=80):
         self.send("key", keys=list(names), gap_ms=gap_ms)
@@ -658,6 +693,55 @@ print('JSON ' + json.dumps(doors[0].get_editor_property('locked') if doors else 
     g.shot("z1_arrive_maze")
 
 
+# The pause menu's FadeIn (0.5 s), the options screen's (0.5 s) and a pop-up's (0.5 s), and a little over.
+SCREEN_IN = 0.7
+
+
+def pause(g):
+    """05: the pause menu (Esc; Wasami.Pause here, as Esc ends the play session in the editor). OPTIONS: the mouse
+    sensitivity slider to its end (1) and SAVE & EXIT; RESUME, and the same mouse movement turns the view twice as far.
+    The menu again, QUIT, GIVING UP?'s QUIT TO TITLE, and the title's RESUME opens 05 again. The settings go back to
+    their defaults after."""
+    s0 = g.status()
+    before = g.turn()
+    g.log("the view turned %.1f degrees at sensitivity %.3f" % (before, s0["sensitivity"]))
+    g.console("Wasami.Pause")
+    g.expect("the pause menu, the game paused", lambda s: s.get("pause") and s.get("paused"))
+    time.sleep(SCREEN_IN)
+    g.shot("pause")
+    g.click_part("WasamiPauseWidget", "OPTIONS")
+    g.expect("the options screen over it", lambda s: s.get("options"))
+    time.sleep(SCREEN_IN)
+    g.click_part("WasamiOptionsWidget", "MouseSensitivitySlider", fx=0.98)
+    time.sleep(0.3)
+    g.shot("pause_options")
+    g.click_part("WasamiOptionsWidget", "ApplyButton")
+    g.expect("SAVE & EXIT: sensitivity 1", lambda s: not s.get("options") and abs(s.get("sensitivity", 0) - 1.0) < 1e-3, 3)
+    g.click_part("WasamiPauseWidget", "RESUME")
+    g.expect("RESUME: the game goes on", lambda s: not s.get("pause") and not s.get("paused"), 3)
+    after = g.turn()
+    g.log("the view turned %.1f degrees at sensitivity 1" % after)
+    if not (1.6 < after / before < 2.4 if before else False):
+        raise Failed("the view did not turn about twice as far (%.1f then %.1f degrees)" % (before, after))
+    g.console("Wasami.Pause")
+    g.expect("the pause menu again", lambda s: s.get("pause") and s.get("paused"))
+    time.sleep(SCREEN_IN)
+    g.click_part("WasamiPauseWidget", "QUIT")
+    time.sleep(SCREEN_IN)
+    g.shot("pause_giving_up")
+    g.mark_world()
+    g.click_part("WasamiPauseWidget", "QuitToTitleButton")
+    s = g.wait_new_world(TITLE, mark=False)
+    if not s.get("resume") or s.get("checkpoint") != s0.get("checkpoint"):
+        raise Failed("the title did not offer RESUME at the checkpoint left (%s)" % g.brief(s))
+    g.mark_world()
+    g.click_widget("WasamiTitleScreenWidget", "Resume")
+    s = g.wait_new_world(ZONE1, mark=False, timeout=40)
+    if s.get("checkpoint") != s0.get("checkpoint"):
+        raise Failed("the title's RESUME did not open the checkpoint left (%s)" % g.brief(s))
+    g.console("Wasami.ResetSettings")
+
+
 def z1_maze(g):
     """05: pick up a few shards on foot, then walk into an enemy: caught, the death screen, 05 opened again."""
     s = g.status()
@@ -897,7 +981,7 @@ def z2_escape(g):
         raise Failed("the title did not open with the save emptied and 3 lives (%s)" % g.brief(s))
 
 
-SECTIONS = [title, z1_arrive, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
+SECTIONS = [title, z1_arrive, pause, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
 
 # How a section run alone begins: the save's checkpoint (None: the save started over; KEEP: as it is) and the level
 # opened again, then console commands.
@@ -905,6 +989,7 @@ KEEP = "keep"
 SETUPS = {
     "title": (KEEP, TITLE, []),
     "z1_arrive": (None, ZONE1, []),
+    "pause": (5, ZONE1, []),
     "z1_maze": (5, ZONE1, []),
     "z1_shards": (5, ZONE1, []),
     "z1_parking": (5, ZONE1, ["Wasami.CollectShards"]),

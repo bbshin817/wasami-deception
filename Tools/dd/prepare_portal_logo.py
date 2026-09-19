@@ -5,8 +5,10 @@
 The original's portals (Blueprints/00_Ballroom/BP_00_Teleport) show a character's face on the plane Logo, a texture of
 1024 x 1024 that is all the marks' red (192, 0, 0) with the face in its alpha (Textures/00_Ballroom/portal_monkey and
 the others). This game shows no character of the original (.claude/guides/original-fidelity.md), so the garage's portal
-shows the user's symbol (SourceArt/Wasami/UI/wasami_symbol.png) instead, drawn the same way: its alpha scaled to the
-monkey's height and centred where the monkey's box is, over the same red. It writes
+shows the user's symbol (SourceArt/Wasami/UI/wasami_symbol.png, white with the symbol in its alpha) instead: its alpha
+scaled to the monkey's height, its box centred on the texture's middle (the rings' centre; the monkey's box sits 38 px
+lower, which put the symbol low in the rings), over white. The logo's material instance gives it its colour (Tint,
+dd_gimmicks.PORTAL_LOGO_TINT), so it can be matched to the rings. It writes
 Intermediate/Pipeline/wasami/fx/portal_wasami.png for dd_gimmicks.import_portal (/Game/Wasami/Portal/T_Portal_Wasami).
 
 Env: PAK_REF2 — the export (default <repo>/pak_reference_2).
@@ -25,7 +27,9 @@ SYMBOL = os.path.join(ROOT, "SourceArt", "Wasami", "UI", "wasami_symbol.png")
 OUT = os.path.join(ROOT, "Intermediate", "Pipeline", "wasami", "fx", "portal_wasami.png")
 
 SIZE = 1024
-RED = (192, 0, 0)
+# White: the material instance tints it (2026-09-19, the user: the original's convention is a white image coloured in
+# the game, and the symbol's red did not match the rings').
+WHITE = (255, 255, 255)
 
 
 def _box(alpha):
@@ -40,8 +44,9 @@ def compose(monkey_path=MONKEY, symbol_path=SYMBOL):
     monkey = np.array(Image.open(monkey_path).convert("RGBA"))
     if monkey.shape[:2] != (SIZE, SIZE):
         raise ValueError("%s is %s, not %d x %d" % (monkey_path, monkey.shape[:2], SIZE, SIZE))
-    left, right, top, bottom = _box(monkey[..., 3])
-    centre = ((left + right) / 2, (top + bottom) / 2)
+    _, _, top, bottom = _box(monkey[..., 3])
+    # The rings' centre (2026-09-19, the user: the symbol a little higher in the magic circle).
+    centre = (SIZE / 2, SIZE / 2)
     alpha = np.array(Image.open(symbol_path).convert("RGBA"))[..., 3]
     s_left, s_right, s_top, s_bottom = _box(alpha)
     crop = Image.fromarray(alpha[s_top:s_bottom, s_left:s_right])
@@ -49,7 +54,7 @@ def compose(monkey_path=MONKEY, symbol_path=SYMBOL):
     width, height = round(crop.width * scale), round(crop.height * scale)
     x, y = round(centre[0] - width / 2), round(centre[1] - height / 2)
     logo = np.zeros((SIZE, SIZE, 4), np.uint8)
-    logo[..., :3] = RED
+    logo[..., :3] = WHITE
     logo[y:y + height, x:x + width, 3] = np.array(crop.resize((width, height), Image.LANCZOS))
     return logo, (x, y, width, height)
 

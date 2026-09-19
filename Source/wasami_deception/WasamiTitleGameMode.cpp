@@ -16,6 +16,11 @@ bool AWasamiTitleGameMode::PlayerCanRestart_Implementation(APlayerController* Pl
 void AWasamiTitleGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	// The title's mode is BP_DD_GameMode too, whose BeginPlay reads and applies the settings (Check Settings Save).
+	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+	{
+		Instance->CheckSettingsSave();
+	}
 	// Used Hard Respawn? and Hard Check Point belong to the entrance, which this game does not have. Then the game
 	// mode's Reset Game Instance(True): the shards collected forgotten and the lives reset (the rest of what it empties
 	// is not in this game).

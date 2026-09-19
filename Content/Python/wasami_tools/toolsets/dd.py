@@ -53,6 +53,20 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_sound_classes() -> dict[str, int]:
+        """Makes (or rewrites) the original's sound mix DD_SoundMix and its sound classes (Music, SFX with its children
+        SFX_UI and SFX_Movies, Dialogue) under /Game/DD/Audio/SoundMix, and gives every SoundWave and SoundCue already
+        under /Game/DD the class its export names (none where it names none), without importing the sounds again.
+        Sounds imported after this get their class as they are imported.
+
+        Returns:
+            How many sounds went to each class ('DD_SoundClass_SFX' …, 'None') and how many changed ('changed').
+        """
+        _module("dd_stage")
+        return _module("dd_assets").sound_classes()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_dd_ui() -> dict[str, int]:
         """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
@@ -67,14 +81,15 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         You Escaped!, rules and hospital title, and its sounds (You Escaped!, the grade stamps, the counters' fill).
         And the title screen's (WasamiTitleScreenWidget) smoky mask, the strokes and their panning material, the hover
         smear, the music and NEW GAME's sound and voice, and this game's logo, its glow and Wasami's face (the glow and
-        the face are baked first by python Tools/dd/prepare_title.py outside the editor).
+        the face are baked first by python Tools/dd/prepare_title.py outside the editor). And the options screen's
+        (WasamiOptionsWidget) frame, value boxes, arrows, slider thumb and check boxes.
 
         Returns:
             How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
             '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems',
             'interact_textures', 'ring_piece_textures', 'ring_piece_sounds', 'streak_textures', 'streak_sounds',
-            'level_clear_textures', 'level_clear_sounds', 'title_textures', 'title_sounds', 'title_materials' and
-            'title_wasami_textures').
+            'level_clear_textures', 'level_clear_sounds', 'title_textures', 'title_sounds', 'title_materials',
+            'title_wasami_textures' and 'options_textures').
         """
         _module("dd_stage")
         _module("dd_assets")

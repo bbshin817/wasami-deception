@@ -20,7 +20,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiRespawnSignature);
 /**
  * The death screen, after Dark Deception's Blueprints/UMG/UMG_DeathScreen (pak_reference_2): black, the row of lives
  * that loses one with a red shake, REMAINING LIVES and a tip, over which a black cover fades in and out; with no lives
- * left, YOU ARE DEAD and the three buttons instead (RESTART and LAST CHECKPOINT ask first with a UWasamiPopUpWidget).
+ * left, YOU ARE DEAD and the three buttons instead (RESTART and LAST CHECKPOINT ask first with a UWasamiPopUpWidget),
+ * or on EASY the last life's shake and nothing more.
  * The tree is built here as in the original, slot for slot; its Construct (lose a life, count the death in the save,
  * then the delays and the four animations) runs from NativeConstruct and is ticked by the widget, so it goes on while
  * the game is paused under it.
@@ -104,10 +105,11 @@ public:
 	static constexpr float UpdateLifeTime = 0.1f;
 
 	/**
-	 * Construct's run from its start, with the lives left after the one lost, how long the death line lasts, and
-	 * whether LAST CHECKPOINT may show; NativeConstruct calls it after the game's side (the tests call it alone).
+	 * Construct's run from its start, with the lives left after the one lost, how long the death line lasts, whether
+	 * LAST CHECKPOINT may show, and whether the settings' difficulty is EASY; NativeConstruct calls it after the game's
+	 * side (the tests call it alone).
 	 */
-	void Begin(int32 LivesLeft, float VoiceSeconds, bool bHasCheckpoint);
+	void Begin(int32 LivesLeft, float VoiceSeconds, bool bHasCheckpoint, bool bEasy = false);
 
 	/** Moves the delays and the animations on by DeltaSeconds. */
 	void Advance(float DeltaSeconds);
@@ -129,6 +131,19 @@ public:
 
 	/** Whether the screen is done and asked for the respawn. */
 	bool HasRespawned() const { return bRespawned; }
+
+	/**
+	 * Whether EASY with no lives left holds the screen (the latest version's @2639): Life Animation only, then nothing
+	 * more (no game over, no buttons, no respawn) with the game paused under it; the pause menu is the way out.
+	 */
+	bool IsHoldingOnEasy() const { return bEasyHold; }
+
+	/**
+	 * The death screen on the screen that EASY holds, or null. The player's Esc opens the pause menu over it although
+	 * the game is paused (this game's exception: in the original that screen is a dead end), and the menu's RESUME
+	 * leaves the game paused under it.
+	 */
+	static UWasamiDeathScreenWidget* FindHoldingOnEasy(const UObject* WorldContextObject);
 
 	/**
 	 * RESTART's click: asks ARE YOU SURE YOU WANT TO RESTART? (Frame 0, Z 5); its YES is RestartEvent. LAST
@@ -333,6 +348,8 @@ private:
 	int32 LocalLives = 0;
 	float VoiceLength = 0.f;
 	bool bHasCheckpoint = false;
+	bool bEasy = false;
+	bool bEasyHold = false;
 	bool bProceeded = false;
 	bool bGameOver = false;
 	bool bButtonsShown = false;

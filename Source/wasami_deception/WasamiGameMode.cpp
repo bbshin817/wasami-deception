@@ -65,7 +65,7 @@ namespace
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CaptureCommand(TEXT("Wasami.Capture"),
-		TEXT("Wasami.Capture [N]: the player is caught (the black room, the clip, the death screen 3.5 s on); N 0 to 2 picks Capture_1 to Capture_3, none takes the next from the bag."),
+		TEXT("Wasami.Capture [N]: the player is caught (the black room, the clip, the death screen 3.5 s on); N 0 to 2 picks Capture_1 to Capture_3, 3 the face (the death screen 1.15 s on), none takes the next from the bag."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			AWasamiCapture::StartCapture(World, nullptr, Args.Num() > 0 ? FCString::Atoi(*Args[0]) : INDEX_NONE);
@@ -217,6 +217,11 @@ AWasamiGameMode::AWasamiGameMode()
 void AWasamiGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	// Check Settings Save → Set Settings (@27445).
+	if (UWasamiGameInstance* Instance = GetWasamiGameInstance())
+	{
+		Instance->CheckSettingsSave();
+	}
 	PrepareStart();
 	LoadedStreakSounds.Reset();
 	for (const TSoftObjectPtr<USoundBase>& Sound : StreakSounds)
@@ -383,9 +388,10 @@ UWasamiLevelClearWidget* AWasamiGameMode::Escape()
 	UGameplayStatics::SetGamePaused(this, true);
 	SaveCheckpoint(0);
 	// The time's rank and the rows (@57305 → @38874), Create(UMG_LevelClear), Finished bound to Finished Level,
-	// AddToViewport(6). EASY comes with the difficulty (item 18).
+	// AddToViewport(6). EASY is the settings' difficulty, which the screen's Construct and Final Rank read.
+	UWasamiGameInstance* Instance = GetWasamiGameInstance();
 	UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(this,
-		FWasamiLevelResults::ForHospital(StructSave ? StructSave->Hospital : FWasamiLevelProgress(), false));
+		FWasamiLevelResults::ForHospital(StructSave ? StructSave->Hospital : FWasamiLevelProgress(), Instance && Instance->IsEasy()));
 	if (Screen)
 	{
 		Screen->OnFinished.AddDynamic(this, &AWasamiGameMode::FinishedLevel);
