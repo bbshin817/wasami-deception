@@ -65,7 +65,7 @@ updated: 2026-09-20
 
 ## 依存関係
 - `UWasamiSaveGame`（`IsUnlocked`・`SlotName`・`UserIndex`。06 記録）、`WasamiWidgetAnimation.h`（09 記録）、`WasamiAssets.h`
-- 使う側: 画面本体 `UWasamiExtrasWidget` が部品を置く。画面本体を使うのはタイトル画面の EXTRAS（項目 29 の次のステップ）
+- 使う側: 画面本体 `UWasamiExtrasWidget` が部品を置く。画面本体を使うのはタイトル画面の EXTRAS（`UWasamiTitleScreenWidget::PressExtras`。14 記録）
 - エンジン: `UUserWidget`・`UWidgetTree`・`UVerticalBox`・`UWidgetSwitcher`・`UWrapBox`・`UHorizontalBox`・`URichTextBlock`（`FRichTextStyleRow` の `UDataTable`）・`USlider`・`UButton`・`UCanvasPanel`・`UScaleBox`・`UImage`・`UTextBlock`・`UProgressBar`・`UBackgroundBlur`・`UAudioComponent`（`OnAudioPlaybackPercent`）・`UGameplayStatics`（`CreateSound2D`・`PlaySound2D`・`LoadGameFromSlot`）
 
 ## 既知の制約・注意点
@@ -79,6 +79,13 @@ updated: 2026-09-20
 - `Slider_0` は飾りだが本家どおり操作できる（値が変わるだけ）。
 - C++ で木を組むので、Python の `unreal.new_object` で作って `add_to_viewport` しても木が組まれず何も映らない。`Show` で出す（症状索引）。
 
+## 確かめたこと（2026-09-20、PIE）
+
+- Zone 1 で `Wasami.ResetSave`（EXTRAS は消さない）の後、秘密のエレベーターの奥の書類（ID 1。`Collectables` は Art Gallery 19・20）を取ると `NEW EXTRAS UNLOCKED!` が出て、ゲームモードのセーブの `ExtrasArt` が [19, 20]・`Hospital.Secrets` が [1]、ディスクのスロット `structSlot` は `ExtrasArt` [19, 20]・`Secrets` []（書類の `Unlock` は読んだ写しに足して書くので、病院の進みは前のチェックポイントのまま。18 記録）。
+- 続けて `Wasami.Title` でタイトルへ移ると、EXTRAS の Art Gallery で 35 枚のうち ID 19・20 の 2 枚だけが絵になり（残りは鍵）、ID 19 を押すと大きく見る画面が出た。日記と曲は仮のまま（鍵ではなく、押しても鳴らない）。
+- 収録のグリッド: `Intermediate/DesktopAgent/shots/extras_step6_{doors,collect,title,maximize}.png`（git の外）。
+
 ## 変更履歴
+- 2026-09-20: 作業一覧の項目 29 を閉じた（PIE で書類 → タイトルの EXTRAS まで通して確かめた。上の「確かめたこと」。ステップ 6）
 - 2026-09-20: 画面本体 `UWasamiExtrasWidget`（本家 `UMG_Extras`: 区分 5 つ・スイッチャーの頁 5 つ・`FadeIn`・`Credits_Scroll`・`Check If Playing`・BACK と `FadeMusic`、クレジットの様式の表、仮の中身）と `Show`、テスト `Wasami.Extras.Screen` を足した（作業一覧の項目 29 のステップ 4）
 - 2026-09-20: 初版。並べる部品（絵・動画・音のボタン・再生バー）と大きく見る画面を足した（作業一覧の項目 29 のステップ 3）
