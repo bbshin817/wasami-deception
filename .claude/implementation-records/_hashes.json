@@ -33,7 +33,7 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "33c5dced794a54e6707018b4fef1126ea10a6cdc",
+    "Content/Python/wasami_tools/toolsets/dd.py": "36ce3cf23116a94158bb27dbbe539b481b529cb0",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "71890ae43dcdd10751919b7df5f358ffbb08d557",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
@@ -52,6 +52,7 @@
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "5a6d5f8716c774423cd5082a305305a9d7936a25",
+    "Content/Python/wasami_tools/pipeline/dd_specials.py": "858917d0b2c8b57c6e73887d559ad89cbc667d20",
     "Source/wasami_deception/WasamiCascadeLibrary.h": "061975e535e2e5ffc14ec2a9cec97595a4513615",
     "Source/wasami_deception/WasamiCascadeLibrary.cpp": "b00106cf75a40b11b8c39de777ff8b3bbd269d72",
     "Source/wasami_deception/WasamiSoundCueLibrary.h": "757eee1e4f2a54dfc722240af2906af9b4820539",
@@ -266,5 +267,8 @@
     "Source/wasami_deception/WasamiPauseWidget.h": "8045680d60b0831598f091597047b5d137919026",
     "Source/wasami_deception/WasamiPauseWidget.cpp": "b7390ffb2fa43e37f2bbec639574093431dcd056",
     "Source/wasami_deception/Tests/WasamiPauseTests.cpp": "84bbbb23572ba8b41749022060cc76d1706dae50"
+  },
+  "16-special-shards.md": {
+    "Content/Python/wasami_tools/pipeline/dd_specials.py": "858917d0b2c8b57c6e73887d559ad89cbc667d20"
   }
 }
