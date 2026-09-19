@@ -1,21 +1,38 @@
 #include "Misc/AutomationTest.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/AudioComponent.h"
 #include "Components/BackgroundBlur.h"
+#include "Components/BoxComponent.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/PointLightComponent.h"
+#include "Components/PostProcessComponent.h"
 #include "Components/RichTextBlock.h"
 #include "Components/ScaleBox.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/TextBlock.h"
+#include "Engine/CollisionProfile.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Tests/AutomationCommon.h"
 #include "../WasamiAssets.h"
+#include "../WasamiCollectable.h"
 #include "../WasamiCollectablesWidget.h"
+#include "../WasamiGameMode.h"
+#include "../WasamiInteractable.h"
 #include "../WasamiMysteryNoteWidget.h"
+#include "../WasamiSaveGame.h"
+#include "../WasamiSecretRoomZone.h"
+#include "../WasamiSecretWall.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -324,6 +341,402 @@ bool FWasamiSecretsMysteryNoteWidgetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestNull(TEXT("nothing without a player"), W::Show(Wrapper.GetTestWorld(), Picture, Note->Texts, true));
+	return true;
+}
+
+namespace
+{
+	/** The ticks' length. */
+	constexpr float SecretsStep = 0.05f;
+
+	const FVector SecretsPlayerAway(8000., 8000., 100.);
+
+	void AdvanceSecrets(FTestWorldWrapper& Wrapper, float Seconds)
+	{
+		for (float Left = Seconds; Left > 1e-4f; Left -= SecretsStep)
+		{
+			Wrapper.TickTestWorld(FMath::Min(Left, SecretsStep));
+		}
+	}
+
+	/** The player: possessed by the first player controller (not a local player's: no screens), held where it is put. */
+	ACharacter* SpawnSecretsPlayer(UWorld* World)
+	{
+		ACharacter* Player = World->SpawnActor<ACharacter>(SecretsPlayerAway, FRotator::ZeroRotator);
+		APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+		if (!Player || !Controller)
+		{
+			return nullptr;
+		}
+		Controller->Possess(Player);
+		Player->GetCharacterMovement()->DisableMovement();
+		return UGameplayStatics::GetPlayerCharacter(World, 0) == Player ? Player : nullptr;
+	}
+
+	void SecretsTeleport(AActor* Actor, const FVector& Where)
+	{
+		Actor->SetActorLocation(Where, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+
+	AWasamiCollectable* SpawnCollectable(UWorld* World, int32 ID, const FVector& Where)
+	{
+		const FTransform Placed(Where);
+		AWasamiCollectable* File = World->SpawnActorDeferred<AWasamiCollectable>(AWasamiCollectable::StaticClass(), Placed);
+		if (File)
+		{
+			File->ID = ID;
+			File->FinishSpawning(Placed);
+		}
+		return File;
+	}
+
+	/** The game mode's save's Secrets, emptied for a test and put back by the guard. */
+	struct FSecretsSaveGuard
+	{
+		explicit FSecretsSaveGuard(TArray<int32>& InSecrets) : Secrets(InSecrets), Kept(InSecrets) { Secrets.Reset(); }
+		~FSecretsSaveGuard() { Secrets = Kept; }
+		TArray<int32>& Secrets;
+		TArray<int32> Kept;
+	};
+
+	UWasamiSaveGame* SecretsSave(FAutomationTestBase& Test, UWorld* World)
+	{
+		AWasamiGameMode* Mode = World->GetAuthGameMode<AWasamiGameMode>();
+		if (!Test.TestNotNull(TEXT("the project's game mode"), Mode))
+		{
+			return nullptr;
+		}
+		UWasamiSaveGame* Save = Mode->GetSave();
+		Test.TestNotNull(TEXT("its save"), Save);
+		return Save;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsCollectablePartsTest, "Wasami.Secrets.Collectable.Parts",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsCollectablePartsTest::RunTest(const FString& Parameters)
+{
+	using A = AWasamiCollectable;
+
+	// Bounce: 0, 1, 0 at 0, 2.5 and 5 s with flat tangents, looping at 3 times its speed; the folder 35 to 40 cm up and
+	// turned 0 to 7°. The Delay before the save's check, and the voice's volume.
+	TestEqual(TEXT("low at 0"), A::EvaluateBounce(0.f), 0.f, 1e-5f);
+	TestEqual(TEXT("half way at 1.25 s"), A::EvaluateBounce(1.25f), 0.5f, 1e-5f);
+	TestEqual(TEXT("high at 2.5 s"), A::EvaluateBounce(2.5f), 1.f, 1e-5f);
+	TestEqual(TEXT("half way down at 3.75 s"), A::EvaluateBounce(3.75f), 0.5f, 1e-5f);
+	TestEqual(TEXT("low at 5 s"), A::EvaluateBounce(5.f), 0.f, 1e-5f);
+	TestTrue(TEXT("eased: under a quarter a quarter of the way up"), A::EvaluateBounce(0.625f) < 0.25f);
+	TestEqual(TEXT("35 cm at the bottom"), A::BounceHeight(0.f), 35.f);
+	TestEqual(TEXT("40 cm at the top"), A::BounceHeight(1.f), 40.f);
+	TestEqual(TEXT("turned 7° at the top"), A::BounceYaw(1.f), 7.f);
+	TestEqual(TEXT("5 s long"), A::BounceLength, 5.f);
+	TestEqual(TEXT("at 3 times its speed"), A::BouncePlayRate, 3.f);
+	TestEqual(TEXT("the save's check 0.2 s on"), A::SaveCheckDelay, 0.2f);
+	TestEqual(TEXT("the voice at 0.85"), A::PickupVolume, 0.85f);
+	TestEqual(TEXT("the voice"), GetDefault<A>()->PickupSound.ToSoftObjectPath().GetAssetName(), FString(TEXT("Bierce_Secret_Files_Pickup")));
+	TestEqual(TEXT("ID 0 by default"), GetDefault<A>()->ID, 0);
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	A* File = World->SpawnActor<A>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the file"), File))
+	{
+		return false;
+	}
+
+	// The box: 36 cm up, 1.23 × 1.30 × 1 of UE's 32 cm, overlapping, out of the navigation.
+	const UBoxComponent* Box = File->GetBox();
+	TestEqual(TEXT("the box 36 cm up"), Box->GetRelativeLocation(), FVector(0., 0., 36.43724060058594));
+	TestEqual(TEXT("its scale"), Box->GetRelativeScale3D(), FVector(1.2296168804168701, 1.2997432947158813, 1.));
+	TestEqual(TEXT("UE's 32 cm"), Box->GetUnscaledBoxExtent(), FVector(32.));
+	TestTrue(TEXT("it overlaps pawns"), Box->GetGenerateOverlapEvents() && Box->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Overlap);
+	TestFalse(TEXT("out of the navigation"), Box->CanEverAffectNavigation());
+
+	// The folder: at 60, touching nothing, moved by Bounce.
+	const UStaticMeshComponent* Mesh = File->GetStaticMesh();
+	TestEqual(TEXT("the folder at 60"), Mesh->GetRelativeScale3D(), FVector(60.));
+	TestEqual(TEXT("touching nothing"), Mesh->GetCollisionProfileName(), UCollisionProfile::NoCollision_ProfileName);
+	TestTrue(TEXT("movable"), Mesh->Mobility == EComponentMobility::Movable);
+
+	// The light: 1000 unitless, 250 cm, a soft source of 2000, no shadows, 35.8 cm up on the root.
+	const UPointLightComponent* Light = File->GetPointLight();
+	TestEqual(TEXT("the light 35.8 cm up"), Light->GetRelativeLocation(), FVector(0., 0., 35.76698303222656));
+	TestTrue(TEXT("unitless"), Light->IntensityUnits == ELightUnits::Unitless);
+	TestEqual(TEXT("at 1000"), Light->Intensity, 1000.f);
+	TestEqual(TEXT("250 cm"), Light->AttenuationRadius, 250.f);
+	TestEqual(TEXT("a soft source of 2000"), Light->SoftSourceRadius, 2000.f);
+	TestFalse(TEXT("no shadows"), static_cast<bool>(Light->CastShadows));
+	TestTrue(TEXT("on the root, not the folder"), Light->GetAttachParent() == File->GetRootComponent());
+
+	// Bounce moves the folder at the timeline's position, and loops.
+	AdvanceSecrets(Wrapper, 0.3f);
+	float Value = A::EvaluateBounce(File->GetBouncePosition());
+	TestEqual(TEXT("3 times as fast"), File->GetBouncePosition(), 0.9f, 1e-3f);
+	TestEqual(TEXT("the folder's height on the curve"), static_cast<float>(Mesh->GetRelativeLocation().Z), A::BounceHeight(Value), 1e-3f);
+	TestEqual(TEXT("its turn on the curve"), static_cast<float>(Mesh->GetRelativeRotation().Yaw), A::BounceYaw(Value), 1e-3f);
+	AdvanceSecrets(Wrapper, 1.5f);
+	TestEqual(TEXT("round again after 5 s of it (1.8 s)"), File->GetBouncePosition(), 0.4f, 1e-3f);
+	Value = A::EvaluateBounce(File->GetBouncePosition());
+	TestEqual(TEXT("low again"), static_cast<float>(Mesh->GetRelativeLocation().Z), A::BounceHeight(Value), 1e-3f);
+	TestTrue(TEXT("still there with nothing in the save"), IsValid(File));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsCollectableCollectTest, "Wasami.Secrets.Collectable.Collect",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsCollectableCollectTest::RunTest(const FString& Parameters)
+{
+	// The test world has no local player, so NEW EXTRAS UNLOCKED! is not put on a screen.
+	AddExpectedError(TEXT("PlayerController_0"), EAutomationExpectedErrorFlags::Contains, 0);
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	UWasamiSaveGame* Save = SecretsSave(*this, World);
+	if (!Save)
+	{
+		return false;
+	}
+	FSecretsSaveGuard Guard(Save->Hospital.Secrets);
+
+	AWasamiCollectable* File = SpawnCollectable(World, 2, FVector::ZeroVector);
+	ACharacter* Player = SpawnSecretsPlayer(World);
+	const FVector OtherAway = SecretsPlayerAway + FVector(0., 500., 0.);
+	ACharacter* Other = World->SpawnActor<ACharacter>(OtherAway, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the file"), File) || !TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("another character"), Other))
+	{
+		return false;
+	}
+	Other->GetCharacterMovement()->DisableMovement();
+	AdvanceSecrets(Wrapper, 0.3f);
+	TestTrue(TEXT("there after the save's check"), IsValid(File));
+
+	// Only the player takes it.
+	const FVector Inside = File->GetBox()->GetComponentLocation();
+	SecretsTeleport(Other, Inside);
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestTrue(TEXT("not taken by another character"), IsValid(File) && !File->IsTaken());
+	TestEqual(TEXT("nothing in the save"), Save->Hospital.Secrets.Num(), 0);
+	SecretsTeleport(Other, OtherAway);
+
+	SecretsTeleport(Player, Inside);
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestFalse(TEXT("taken and gone"), IsValid(File));
+	TestTrue(TEXT("its ID in the save's Secrets"), Save->Hospital.Secrets.Num() == 1 && Save->Hospital.Secrets[0] == 2);
+
+	// Another file of the same ID (the level opened again before a checkpoint's save) adds it once only.
+	SecretsTeleport(Player, SecretsPlayerAway);
+	AWasamiCollectable* Again = SpawnCollectable(World, 2, FVector(0., 2000., 0.));
+	if (!TestNotNull(TEXT("another file"), Again))
+	{
+		return false;
+	}
+	Again->Collect();
+	TestTrue(TEXT("taken"), Again->IsTaken());
+	Again->Collect();
+	TestEqual(TEXT("the ID in the save once"), Save->Hospital.Secrets.Num(), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsCollectableSaveTest, "Wasami.Secrets.Collectable.Save",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsCollectableSaveTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	UWasamiSaveGame* Save = SecretsSave(*this, World);
+	if (!Save)
+	{
+		return false;
+	}
+	FSecretsSaveGuard Guard(Save->Hospital.Secrets);
+	Save->Hospital.Secrets = {1};
+
+	// 0.2 s after BeginPlay the one whose ID the save has is gone; the other stays. (A timer set outside a tick starts
+	// counting at the end of the next one, so it runs out in the sixth tick of 0.05 s.)
+	AWasamiCollectable* First = SpawnCollectable(World, 0, FVector::ZeroVector);
+	AWasamiCollectable* Second = SpawnCollectable(World, 1, FVector(0., 2000., 0.));
+	if (!TestNotNull(TEXT("file 0"), First) || !TestNotNull(TEXT("file 1"), Second))
+	{
+		return false;
+	}
+	AdvanceSecrets(Wrapper, 0.15f);
+	TestTrue(TEXT("both there before 0.2 s"), IsValid(First) && IsValid(Second));
+	AdvanceSecrets(Wrapper, 0.15f);
+	TestTrue(TEXT("file 0 stays"), IsValid(First));
+	TestFalse(TEXT("file 1, in the save, is gone"), IsValid(Second));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsRoomZoneTest, "Wasami.Secrets.SecretRoomZone",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsRoomZoneTest::RunTest(const FString& Parameters)
+{
+	using A = AWasamiSecretRoomZone;
+
+	// The test world has no local player, so YOU FOUND A MYSTERIOUS ROOM is not put on a screen.
+	AddExpectedError(TEXT("PlayerController_0"), EAutomationExpectedErrorFlags::Contains, 0);
+	TestEqual(TEXT("the whispers fade over 1 s"), A::WhispersFadeSeconds, 1.f);
+	TestEqual(TEXT("the whispers"), GetDefault<A>()->WhispersSound.ToSoftObjectPath().GetAssetName(), FString(TEXT("67-Dark_Whispers_SFX_0704")));
+	TestEqual(TEXT("the glitch"), GetDefault<A>()->GlitchBase.ToSoftObjectPath().GetAssetName(), FString(TEXT("M_DD_ChameleonGlitch")));
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	A* Zone = World->SpawnActor<A>(FVector::ZeroVector, FRotator::ZeroRotator);
+	ACharacter* Player = SpawnSecretsPlayer(World);
+	const FVector OtherAway = SecretsPlayerAway + FVector(0., 500., 0.);
+	ACharacter* Other = World->SpawnActor<ACharacter>(OtherAway, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the zone"), Zone) || !TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("another character"), Other))
+	{
+		return false;
+	}
+	Other->GetCharacterMovement()->DisableMovement();
+
+	// The box: 20 cm up, 5 × 2 × 1.5 of UE's 32 cm, out of the navigation.
+	const UBoxComponent* Box = Zone->GetBox();
+	TestEqual(TEXT("the box 20 cm up"), Box->GetRelativeLocation(), FVector(0., 0., 20.));
+	TestEqual(TEXT("its scale"), Box->GetRelativeScale3D(), FVector(5., 2., 1.5));
+	TestFalse(TEXT("out of the navigation"), Box->CanEverAffectNavigation());
+
+	// The Chameleon's post process: unbound, the glitch its one blendable at 1, with the zone's values, off.
+	const UPostProcessComponent* Glitch = Zone->GetGlitch();
+	UMaterialInstanceDynamic* Material = Zone->GetGlitchMaterial();
+	TestTrue(TEXT("unbound"), static_cast<bool>(Glitch->bUnbound));
+	if (!TestNotNull(TEXT("the glitch's material"), Material))
+	{
+		return false;
+	}
+	const TArray<FWeightedBlendable>& Blendables = Glitch->Settings.WeightedBlendables.Array;
+	TestTrue(TEXT("its one blendable at 1"), Blendables.Num() == 1 && Blendables[0].Object == Material && Blendables[0].Weight == 1.f);
+	TestEqual(TEXT("Glitch Speed 10"), Material->K2_GetScalarParameterValue(TEXT("Speed")), 10.f);
+	TestEqual(TEXT("Glitch Lines 30"), Material->K2_GetScalarParameterValue(TEXT("Density")), 30.f);
+	TestEqual(TEXT("Glitch Blocking 0.5"), Material->K2_GetScalarParameterValue(TEXT("Amount")), 0.5f);
+	TestEqual(TEXT("the grid's distortion 0.001"), Material->K2_GetScalarParameterValue(TEXT("GridDistortionPower")), 0.001f, 1e-6f);
+	TestEqual(TEXT("its size 10"), Material->K2_GetScalarParameterValue(TEXT("GridDistortionSize")), 10.f);
+	TestEqual(TEXT("its speed 1"), Material->K2_GetScalarParameterValue(TEXT("GridDistortionSpeed")), 1.f);
+	TestEqual(TEXT("off"), Material->K2_GetScalarParameterValue(TEXT("BlendingOpacity")), 0.f);
+	TestFalse(TEXT("no banner yet"), Zone->HasShownBanner());
+
+	// Another character walking in does nothing.
+	const FVector Inside = Box->GetComponentLocation();
+	SecretsTeleport(Other, Inside);
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestEqual(TEXT("not for another character"), Zone->GetGlitchOpacity(), 0.f);
+	TestFalse(TEXT("nor its banner"), Zone->HasShownBanner());
+	SecretsTeleport(Other, OtherAway);
+	AdvanceSecrets(Wrapper, SecretsStep);
+
+	// The player in: the glitch on, the whispers fading in, the banner.
+	SecretsTeleport(Player, Inside);
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestEqual(TEXT("the glitch on"), Zone->GetGlitchOpacity(), 1.f);
+	TestEqual(TEXT("on in the material"), Material->K2_GetScalarParameterValue(TEXT("BlendingOpacity")), 1.f);
+	TestTrue(TEXT("the banner"), Zone->HasShownBanner());
+	if (UAudioComponent* Whispers = Zone->GetWhispers())
+	{
+		TestTrue(TEXT("the whispers playing"), Whispers->IsPlaying());
+	}
+
+	// Out: off; in again: on, with no second banner (the DoOnce).
+	SecretsTeleport(Player, SecretsPlayerAway);
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestEqual(TEXT("the glitch off"), Zone->GetGlitchOpacity(), 0.f);
+	TestEqual(TEXT("off in the material"), Material->K2_GetScalarParameterValue(TEXT("BlendingOpacity")), 0.f);
+	SecretsTeleport(Player, Inside);
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestEqual(TEXT("on again"), Zone->GetGlitchOpacity(), 1.f);
+	TestTrue(TEXT("the banner put up once"), Zone->HasShownBanner());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsWallTest, "Wasami.Secrets.SecretWall",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsWallTest::RunTest(const FString& Parameters)
+{
+	using A = AWasamiSecretWall;
+
+	// Move Up: 0 to 1 over 3 s, linear, in a 5 s timeline played at 0.7; Sliding_Wall at 0.65 with 01_Lobby_Attenuation.
+	TestEqual(TEXT("down at 0"), A::EvaluateMoveUp(0.f), 0.f);
+	TestEqual(TEXT("half way at 1.5 s"), A::EvaluateMoveUp(1.5f), 0.5f, 1e-5f);
+	TestEqual(TEXT("up at 3 s"), A::EvaluateMoveUp(3.f), 1.f);
+	TestEqual(TEXT("and after"), A::EvaluateMoveUp(5.f), 1.f);
+	TestEqual(TEXT("played at 0.7"), A::MoveUpPlayRate, 0.7f);
+	TestEqual(TEXT("the slide at 0.65"), A::SlideVolume, 0.65f);
+	TestEqual(TEXT("275 cm up"), GetDefault<A>()->Height, 275.f);
+	TestEqual(TEXT("the slide"), GetDefault<A>()->SlideSound.ToSoftObjectPath().GetAssetName(), FString(TEXT("Sliding_Wall")));
+	TestEqual(TEXT("its attenuation"), GetDefault<A>()->SlideAttenuation.ToSoftObjectPath().GetAssetName(), FString(TEXT("01_Lobby_Attenuation")));
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	A* Wall = World->SpawnActor<A>(FVector(0., 0., 100.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the wall"), Wall))
+	{
+		return false;
+	}
+
+	// The wall: at 100, blocking, tagged interact (the hand), generating no overlaps, out of the navigation.
+	const UStaticMeshComponent* Mesh = Wall->GetStaticMesh();
+	TestEqual(TEXT("at 100"), Mesh->GetRelativeScale3D(), FVector(100.));
+	TestTrue(TEXT("tagged interact"), Mesh->ComponentHasTag(TEXT("interact")));
+	TestEqual(TEXT("blocking"), Mesh->GetCollisionProfileName(), UCollisionProfile::BlockAllDynamic_ProfileName);
+	TestFalse(TEXT("no overlaps"), Mesh->GetGenerateOverlapEvents());
+	TestFalse(TEXT("out of the navigation"), Mesh->CanEverAffectNavigation());
+	TestEqual(TEXT("OG Height"), Wall->GetOGHeight(), 100.f);
+	TestEqual(TEXT("InterpHeight"), Wall->GetInterpHeight(), 375.f);
+	TestTrue(TEXT("usable by the look"), Wall->Implements<UWasamiInteractable>());
+
+	// Used: the tag off, Move Up from its start.
+	IWasamiInteractable::Execute_InteractWithObject(Wall, nullptr);
+	TestTrue(TEXT("used"), Wall->IsUsed());
+	TestFalse(TEXT("the tag off"), Mesh->ComponentHasTag(TEXT("interact")));
+	TestTrue(TEXT("moving"), Wall->IsMoving());
+	TestEqual(TEXT("from where it was"), Wall->GetActorLocation().Z, 100., 1e-3);
+
+	// Half way at 1.5 s of the curve (2.14 s); up at 3 s (4.29 s); the timeline on to its 5 s (7.14 s).
+	AdvanceSecrets(Wrapper, 1.5f / A::MoveUpPlayRate);
+	TestEqual(TEXT("on its way at the timeline's position"), Wall->GetActorLocation().Z,
+		static_cast<double>(FMath::Lerp(100.f, 375.f, A::EvaluateMoveUp(Wall->GetMoveUpPosition()))), 1e-2);
+	TestEqual(TEXT("about half way"), Wall->GetActorLocation().Z, 237.5, 3.);
+	AdvanceSecrets(Wrapper, 1.5f / A::MoveUpPlayRate + 0.1f);
+	TestEqual(TEXT("275 cm up"), Wall->GetActorLocation().Z, 375., 1e-3);
+	TestTrue(TEXT("the timeline still running"), Wall->IsMoving());
+
+	// A second use does nothing.
+	const float Position = Wall->GetMoveUpPosition();
+	IWasamiInteractable::Execute_InteractWithObject(Wall, nullptr);
+	TestTrue(TEXT("not started again"), Wall->GetMoveUpPosition() == Position && Wall->GetActorLocation().Z > 374.);
+	AdvanceSecrets(Wrapper, 3.f);
+	TestFalse(TEXT("stopped at its end"), Wall->IsMoving());
+	TestEqual(TEXT("at 5 s"), Wall->GetMoveUpPosition(), A::MoveUpLength);
+	TestEqual(TEXT("and up"), Wall->GetActorLocation().Z, 375., 1e-3);
 	return true;
 }
 
