@@ -2,17 +2,26 @@
 title: 秘密と収集物
 sources:
   - Content/Python/wasami_tools/pipeline/dd_secrets.py
+  - Source/wasami_deception/WasamiCollectablesWidget.h
+  - Source/wasami_deception/WasamiCollectablesWidget.cpp
+  - Source/wasami_deception/WasamiMysteryNoteWidget.h
+  - Source/wasami_deception/WasamiMysteryNoteWidget.cpp
+  - Source/wasami_deception/Tests/WasamiSecretsTests.cpp
 updated: 2026-09-20
 ---
 
 # 秘密と収集物
 
 ## 役割
-本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: いまあるのは素材の取り込み（`dd_secrets.py`）と、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）。アクタと画面はこれから（進捗記録 `20260919-secrets`）。
+本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: いまあるのは素材の取り込み（`dd_secrets.py`）と、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）と、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）。アクタはこれから（進捗記録 `20260919-secrets`）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_secrets()`（素材。前処理 `Tools/dd/prepare_stage.py` と `WasamiStageTools.import_dd_stage_assets` を残りが 0 になるまで、`import_dd_tablet`・`import_dd_ui` の後に）。戻り値 `sounds` 5 / `textures` 6 / `meshes` 1 / `materials` 1。
 - `dd_secrets.import_all()`・`make_glitch()`・`dress_secret_file()`。
+- `UWasamiCollectablesWidget`（本家 `UMG_Collectables`）: `Show(WorldContext)`（`AddToPlayerScreen(0)`。最初のプレイヤーのコントローラーで作り、無ければ null）・`LoadAssets`・`Begin`（Construct）/`Advance`（ティック）・`GetIconIndex`・`EvaluateScale`/`EvaluateOpacity`/`EvaluateFlashOpacity`。
+- `UWasamiCollectablesSecretWidget`（`UMG_Collectables_Secret`。上の派生）: `Show`（`AddToViewport(1)`）・`LoadAssets`。
+- `UWasamiMysteryNoteWidget`（`UMG_MysteryNote`）: `Show(WorldContext, Texture, Texts, bLoreNote)`（`AddToViewport(2)`）・`Begin`/`Advance`・`PressNextPage`・`PressClose`・`GetCurrentText`・`GetPageText`・`Evaluate*`。
+- テスト `Wasami.Secrets.Widgets.Collectables`・`.Secret`・`.MysteryNote`。
 
 ## 内部構造と処理の流れ
 - `import_all`: 先にステージとタブレット・UI が作るもの（`STAGE_MADE`・`NEEDS`）があるかを確かめ、無ければ何を先に走らせるかを書いて止まる。音 5・絵 6 を取り込み（`dd_assets.sound`・`texture`。書き出しの音量・ループ・音のクラス、絵の圧縮・sRGB・LOD の群）、書類のメッシュに材質を入れ、グリッチの材質を組み、`/Game/DD` と `/Game/Pipeline` を保存する。
@@ -24,6 +33,13 @@ updated: 2026-09-20
     - 格子のずれ: `ty = T × GridDistortionSpeed`。格子の数 `GridDistortionSize` と `round(frac(sin(ty × 2π)) × GridDistortionSize / 2)` の 2 つで `(UV, ty)` を切り、セルの番号を 32 bit の整数の乱数（`× 1664525 + 1013904223` の後に 3 成分を掛け合わせて足すのを 2 巡、上 16 bit ÷ 65536）にする。2 つの `min` の明るさ（0.3, 0.59, 0.11）を丸めてどちらの xy を使うかを選び、`× GridDistortionPower` だけ UV をずらす（`BlockUV`）。混ぜる量は 2 つの `max` の明るさ（`BlockWeight`）。
   - 場面 `PostProcessInput0` を 5 か所（そのまま・緑・青・行ずらし・格子）で読み、`GLITCH_MIX`: 赤はそのまま・緑と青は横から、を行ずらしと半々、それを格子の読みと `BlockWeight` で混ぜ、変わった分の `BlendingOpacity` 倍を場面に足す（0 未満は 0）。
   - 写さない枝: 混ぜ方 0 以外（`BlendMode` の switch の 1〜20）、マスクの絵（Chameleon は白 `T_base_white_d`）、距離の混ぜ（Chameleon の `BlendDistance` 0 では全体）、ステンシルとカスタム深度（`isStencil`・`isCD` 0）、選択の色（`SelectionColor` の a 0）。シェーダーはずらしを場面の絵の UV、乱数をビューポートの UV で読むが、推定は両方ビューポートの UV（ビューが絵を満たすときは同じ）。
+- 画面（木は本家の順に C++ で組み、アニメと `Delay` は画面のティックで進める。16 記録の `UMG_VignetteSides` と同じ作り）:
+  - 書類の画面: `CanvasPanel_0`（1.2 倍・不透明度 0・当たりなし）→ `Image_297`（`WhiteSquareTexture` を赤に。画面の縁から少しはみ出す全面、不透明度 0）・`Image_89`（`extras_unlock_bg` 696×204 を中央に）・`Image_249`（絵 159×145 を中央の左 185 に）・`TextBlock_150`（helvetica-neue-bold 20、中央の左 90 から右へ）。`NewAnimation_1`（2.2 s）: 全体の拡縮 0 → 1.1（0.25 s）→ 1（0.4 s）、不透明度 0 → 1（0.25 s）…1（1.75 s）→ 0（2 s）、赤の閃き 0（0.15 s）→ 0.2（0.25 s）→ 0（0.6 s）。Construct: アニメ・`NEW EXTRAS UNLOCKED!`・乱数 0〜3 で `art_icon`・`diary_icon`・`sound_icon`・`movie_icon`（`SetBrushFromTexture(…, False)` で 159×145 のまま）・2 s で外す。
+  - 秘密の部屋の画面: 木とアニメは同じで、絵が `T_MysteryRoom`、文字が 18 で中央の左 129・上 4。Construct: `DD_LVL2_15_V1_Secret_Mystery_Room_120818` を 0.5 で・`YOU FOUND A MYSTERIOUS ROOM`・2 s で外す。
+  - メモの画面: `SizeBox_1`（1727×955）→ `ScaleBox_91` → `paper`（絵の大きさ。枠に収まるよう縮む）、`BackgroundBlur_0`（2）、`Image_0`（黒 0.798、当たりなし）、`SizeBox_0`（1547×724）→ `ScaleBox_0`（縮めるだけ）→ `RichTextBlock_0`（1400 で折り返し。本家の `MysteryText` の様式を画面が持つ表で: Default は helvetica-normal 18・黒の縁 2・(0.965, 0.965, 0.965)、Player は同じで (1, 0.900, 0.432)）、`Close`（背景が透明のボタンに `CLOSE`〈helvetica-neue-bold 36、白 0.5〉。右下の左 236・上 104）、`TextBlock_256`（ページ「n/N」= 本家 `GetText_0` の結び付け。helvetica-neue-bold 30・縁 4・幅 200 以上、下の中央の上 150）、`NextPage`（`selection_bar_arrow_hover` 21×32、普段は 0.703 の灰、中央の右 76・下 420）。`Open`（0.75 s）: 紙が下 1052 から −50（0.15 s）を経て 0（0.35 s）、角度 1.75° → −0.75° → 0、紙・黒・CLOSE・文・矢印の不透明度 0 → 1（0.35 s）、ページは 0.15 s から、ぼかし 0 → 3。`SwitchPage`（0.25 s）: 文の不透明度 0 → 1。
+    - Construct（@183）: 紙に `Texture`（絵の大きさで）、UI だけの入力（この画面・`DoNotLock`）とカーソル、`Open`、ゲームを止める、`Update Text`（@1256: `Texts[currentText]`）、1 ページなら `NextPage` を外す、`E Note` なら `DD_LoreNote_01` を `CreateSound2D` で作って 0.5 s で上げる。
+    - 矢印（@917）: `SwitchPage` を頭から、最後のページなら 0 へ・それ以外は次へ、`Update Text`。CLOSE（@823）: ゲームを動かし、ゲームだけの入力、カーソルを隠し、`Open` を逆に（UE の逆再生は `StartAtTime` を終わりから数えるので 0.4 s から 0 へ。0.05 s はそのまま）、0.5 s 後に外す（待っている間の 2 回目の `Delay` は効かない）。Destruct（@1361）: 音を 0.5 s で下げる。
+- ウィジェットのアニメの区間が途中で終わった後は、区間の最後の値が残る: 本家の BaseEngine.ini は `WidgetAnimation` の `DefaultCompletionMode` を設定せず、既定は 0 = `KeepState`（区間は `ProjectDefault` でそれに従う）。メモのぼかしは `Open` の後も 3（木の 2 に戻らない）。
 
 ## 作るアセット
 - 音（`/Game/DD/Audio/…`）: `SharedGameplay/Bierce_Secret_Files_Pickup`（書類を取る）・`SharedGameplay/67-Dark_Whispers_SFX_0704`（秘密の部屋の囁き）・`SharedGameplay/DD_LVL2_15_V1_Secret_Mystery_Room_120818`（`UMG_Collectables_Secret` の曲）・`02_School/Sliding_Wall`（秘密の壁）・`Misc/DD_LoreNote_01`（`E Note` のメモ）。
@@ -35,16 +51,22 @@ updated: 2026-09-20
 
 ## 原作データの根拠
 - 部品と音・絵: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/BP_Collectable.json`（`StaticMesh` の `secret_file`・`Audio` の `Bierce_Secret_Files_Pickup`）、`Blueprints/Shared/BP_SecretRoomZone.json`（子のアクタ `Chameleon` の値 `Glitch` 真・`Glitch Speed` 10・`Glitch Lines` 30・`Glitch Blocking` 0.5・`BlendingOpacity` 0）、`Blueprints/02_School/BP_03_SecretWall1.json`（`manor_fake_wall`）、`Blueprints/Main/BP_MysteryCollectable.json`（`Plane` はエンジンの `Plane`）、`UI/Main/UMG_Collectables.json`・`UMG_Collectables_Secret.json`・`Blueprints/UMG/UMG_MysteryNote.json` の参照。
+- 画面: `_assets/DDeception/Content/UI/Main/UMG_Collectables.json`・`UMG_Collectables_Secret.json`・`Blueprints/UMG/UMG_MysteryNote.json`（木は `…_C.WidgetTree` の側、アニメは `MovieScene` の区間と `AnimationBindings`〈`Image_92` の結び付けは `Image_0`、`TextBlock_1` は `RichTextBlock_0`〉、`GetText_0` の結び付けはクラスの `Bindings`）と `Blueprints/UMG/MysteryText.json`（`rows`）。流れは `_bytecode/…/UMG_Collectables.txt`・`UMG_Collectables_Secret.txt`・`UMG_MysteryNote.txt`（`python Tools/dd/bp_flow.py <file> Construct` ほか。`Update Text` と `GetText_0` は関数の本体を読む）。Z 順は `Blueprints/Main/BP_Collectable.txt`（`AddToPlayerScreen(0)`）・`Blueprints/Shared/BP_SecretRoomZone.txt`（`CreateAndAddWidget(…, None, 1)`）・`Blueprints/Main/BP_MysteryCollectable.txt`（`AddToViewport(2)`）。逆再生の始まりは UE の `UMG/Private/Animation/WidgetAnimationState.cpp`、区間の後の値は `MovieScene/Public/Evaluation/MovieSceneCompletionMode.h` と各区間の `EnableAndSetCompletionMode`。
 - グリッチ: `ThirdParty/Chameleon/Materials/M_GlitchHLSL.json`（パラメータの既定）と最新版の pak のコンパイル済みシェーダー（上）。Chameleon の既定（`ThirdParty/Chameleon/Chameleon.json`）は `Glitch Grid Distortion Power` 0.001・`Size` 10・`Speed` 1。Chameleon の `Glitch Func`（`_bytecode/…/Chameleon.txt`）が `Amount` ← `Glitch Blocking`・`Speed` ← `Glitch Speed`・`Density` ← `Glitch Lines`・`GridDistortion*` ← 同名の値を入れる。
 
 ## 依存関係
 - `dd_assets`（音・絵・材質・パラメータの既定）、`dd_stage._Graph`、`paths`。
+- 画面: `WasamiWidgetAnimation.h`（キーから曲線）、`WasamiAssets.h`。書体 `helvetica-neue-bold_Font`（`import_dd_tablet`）・`helvetica-normal_Font`（`dd_ui`）、矢印 `selection_bar_arrow_hover`（`import_dd_ui`）、メモの絵（ステージの素材）。
 - ステージの素材（`Tools/dd/prepare_stage.py` → `import_dd_stage_assets`）、`import_dd_tablet`（書体 `helvetica-neue-bold_Font`）、`import_dd_ui`（矢印 `selection_bar_arrow_hover`）。
 - 使う側: これから作る書類・秘密の部屋・壁・メモのアクタと画面。
 
 ## 既知の制約・注意点
 - グリッチは推定（大目標 1・2 の決め方。本家の画面とは見比べていない）。本家の絵と並べて詰めるのは作業一覧の項目 28。
+- 書類の画面は本家どおり出すが、EXTRAS（本家の別のセーブの `Extras_Art`・`Extras_SFX`）は作らないので、引いた絵は何にも残らない（`TODO(仮)`。進捗記録の要確認）。
+- メモの画面の木の既定の紙 `sewer_note_01`（下水道のメモ）は取り込まない（Construct が `Texture` を入れる）。本家の `Virtual Cursor`（ゲームパッド）はほかの画面と同じく写さない（09 記録）。`SetInputMode_UIOnlyEx` に画面を渡すと焦点を持てない警告が出るのは本家どおり（15 記録）。
+- テストで画面の木を作るときは `TakeWidget()` の戻り値を持つ。リッチテキストはスレートの木と一緒に様式を放すので、持たないと `GetDefaultTextStyle` が ensure に当たる。
 - `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `other` になり、M_DD_Substance に載る（縁の Fresnel の光は無い）。
 
 ## 変更履歴
+- 2026-09-20: 画面 3 つ（`UWasamiCollectablesWidget`・`UWasamiCollectablesSecretWidget`・`UWasamiMysteryNoteWidget`）とテスト `Wasami.Secrets.Widgets.*` を足した（作業一覧の項目 12 のステップ 2）
 - 2026-09-20: 初版。素材の取り込み `dd_secrets.py` と Zone 1 の秘密のエレベーターのシーケンス 2 本（作業一覧の項目 12 のステップ 1）
