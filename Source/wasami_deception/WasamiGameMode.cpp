@@ -217,6 +217,11 @@ AWasamiGameMode::AWasamiGameMode()
 void AWasamiGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+	// Check Settings Save → Set Settings (@27445).
+	if (UWasamiGameInstance* Instance = GetWasamiGameInstance())
+	{
+		Instance->CheckSettingsSave();
+	}
 	PrepareStart();
 	LoadedStreakSounds.Reset();
 	for (const TSoftObjectPtr<USoundBase>& Sound : StreakSounds)

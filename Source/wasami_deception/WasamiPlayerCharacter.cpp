@@ -25,10 +25,12 @@
 #include "WasamiArrowPointer.h"
 #include "WasamiAssets.h"
 #include "WasamiChameleonComponent.h"
+#include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiInteractWidget.h"
 #include "WasamiInteractable.h"
 #include "WasamiPowerComponent.h"
+#include "WasamiSettingsSaveGame.h"
 #include "WasamiShard.h"
 #include "WasamiTabletWidget.h"
 
@@ -189,6 +191,13 @@ void AWasamiPlayerCharacter::BeginPlay()
 	ApplySpeed();
 	ApplyTabletInterp(0.f);
 	WasamiGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AWasamiGameMode>() : nullptr;
+	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+	{
+		if (const UWasamiSettingsSaveGame* Settings = Instance->GetSettings())
+		{
+			ApplySettings(*Settings);
+		}
+	}
 	UpdateTabletScreen();
 	// UMG_Interact, added at 0 and collapsed until the player looks at something to use.
 	InteractWidget = CreateWidget<UWasamiInteractWidget>(GetWorld(), UWasamiInteractWidget::StaticClass());
@@ -210,6 +219,20 @@ void AWasamiPlayerCharacter::Tick(float DeltaSeconds)
 	UpdateInteractWidget();
 	UpdateTablet(DeltaSeconds);
 	UpdateHeadBob();
+}
+
+void AWasamiPlayerCharacter::ApplySettings(const UWasamiSettingsSaveGame& Settings)
+{
+	bToggleSprint = Settings.bToggleSprint;
+	MouseSensitivity = UWasamiSettingsSaveGame::PlayerSensitivityFor(Settings.MouseSensitivity);
+	bInvertY = Settings.bInvertedYAxis;
+	bHeadBob = Settings.bHeadBobbing;
+	ApplySpeed();
+}
+
+void AWasamiPlayerCharacter::SetUpMouseSmoothing(const UWasamiSettingsSaveGame& Settings)
+{
+	SpringArm->CameraRotationLagSpeed = UWasamiSettingsSaveGame::RotationLagSpeedFor(Settings.bMouseSmoothing);
 }
 
 void AWasamiPlayerCharacter::SetMoveSpeeds(float Walking, float Sprinting)

@@ -79,6 +79,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 
 ### タイトルのレベル（`L_Title` と `AWasamiTitleGameMode`）
 本家のタイトルは別のレベル `TitleScreen`（中身は 2D のウィジェットだけ。3D の背景は無い）で、そのレベル BP の `ReceiveBeginPlay`（`pak_reference/_bytecode/DDeception/Content/TitleScreen.txt` @4390）が画面を出す。本作は空のレベル `L_Title` の World Settings の GameMode Override を `AWasamiTitleGameMode` にし、ゲームモードの `BeginPlay` がレベル BP の受け持ちをする:
+- 本家のタイトルのゲームモードも `BP_DD_GameMode`（レベル BP がそれに Cast する）なので、その BeginPlay の `Check Settings Save` → `Set Settings` を `BeginPlay` の頭で通す（ゲームインスタンスの `CheckSettingsSave`。15 記録）。
 - ゲームインスタンスの `Used Hard Respawn?`・`Hard Check Point`（入口のもの。本作に無い）は写さない。ゲームモードの `Reset Game Instance(True)`（本家の `BP_DD_GameMode` @38662）→ 本作は回収の記憶を空に・ライフ 3（06 記録）。
 - `Create(UMG_TitleScreen)` → `AddToViewport(1)`（`UWasamiTitleScreenWidget::Show`）。`SaveSlot` を読んで章と実績を決める所は写さない（画面が自分でセーブを読む）。
 - ポーンは出さない（`PlayerCanRestart` が偽。プレイヤーの開始の場所が無くても警告が出ない）。ゾーンのゲームモード `AWasamiGameMode`（02 記録）は BeginPlay でゾーンの準備（チェックポイント・開始の場所・ゾーンの流れ・黒からの明け）をするので、タイトルでは使わない。
@@ -123,6 +124,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
 
 ## 変更履歴
+- 2026-09-19: タイトルのゲームモードの `BeginPlay` の頭で設定を読んで当てるようにした（15 記録。作業一覧の項目 18 のステップ 1）
 - 2026-09-19: 死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先をタイトルにし、デバッグ `Wasami.Title` と台本の区間 `title` を足して、通しで確かめた（作業一覧の項目 17 のステップ 4）
 - 2026-09-19: 初版。前処理 `Tools/dd/prepare_title.py`（顔に WebGL 版のフィルタとマスク、ロゴのグロー）と `dd_ui.import_title`（本家のテクスチャ 3・音 3、焼き込みのシェーダーから組んだ `MM_TitleScreen_Mask_Grey`、本作のテクスチャ 3）を足した（作業一覧の項目 17 のステップ 1）
 - 2026-09-19: 画面 `UWasamiTitleScreenWidget` を足した: 本家の旧版の木をスロットのまま（作らない部品を除く）、Setup Buttons の後の様式とホバー、Construct（進みが無ければ RESUME を外す・Slideshow・入力・曲）、FadeOut（黒・脈動・赤と開始の音と声）と FadeOut_0、テスト `Wasami.Title.*`（作業一覧の項目 17 のステップ 2）

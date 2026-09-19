@@ -62,9 +62,9 @@
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "3fe380a6e8ce2e5bc7155535010bb039ab7354ab",
-    "Source/wasami_deception/WasamiGameMode.cpp": "9296db7f4721445946854c22fac5fface288c9f3",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "90877f29d8fab486886009613d39d47d7eaa784d",
-    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "1bf377fb789782c4db87bcb2bc5d401aef57d20e"
+    "Source/wasami_deception/WasamiGameMode.cpp": "f25b2236e5932b5e6bdbb5f74845d47f01f8220d",
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "2bc8a561d20b056c17fb376e8c6d4c855f1108cf",
+    "Source/wasami_deception/WasamiPlayerCharacter.cpp": "6734481b9587619faa48f70f18dfcd7f954a565c"
   },
   "03-tablet.md": {
     "Source/wasami_deception/WasamiTabletWidget.h": "6e7fd5cbbf9052e46f8806d230f8f12404527361",
@@ -103,7 +103,7 @@
     "Source/wasami_deception/WasamiVanishPower.h": "b5241b6a3d5f14cf421bbe83337aa26f5e27dae9",
     "Source/wasami_deception/WasamiVanishPower.cpp": "8c2e2c4f5cbf97ac49b03bda03888de02ef23d74",
     "Source/wasami_deception/WasamiVanishWidget.h": "edb71baed3dc8a6398fe1ab10dacffb22c7eef06",
-    "Source/wasami_deception/WasamiVanishWidget.cpp": "37e2dc33c17f6b507f6be227d77db2f52eee6b4e",
+    "Source/wasami_deception/WasamiVanishWidget.cpp": "62e56461e053c65edb143fb812f82cca22a7259e",
     "Source/wasami_deception/WasamiTelepathyPower.h": "e61d8893a77ac257df60e1327d465adf8d0ce45c",
     "Source/wasami_deception/WasamiTelepathyPower.cpp": "db5fa9467aaf55e99b5b661c38b6ade55ae00676",
     "Source/wasami_deception/WasamiTelepathyTracker.h": "3b35e692b833abf16c6dcaf37afecf691f702cae",
@@ -116,8 +116,8 @@
     "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "956a79e018c51e07c01b0937d1cf1788c9d22f86"
   },
   "06-game-flow-save.md": {
-    "Source/wasami_deception/WasamiGameInstance.h": "05e0294e517e0aec2a634a4faa02807869dd2445",
-    "Source/wasami_deception/WasamiGameInstance.cpp": "3cb01e0396c2fb0c0a419bef67d5e59725b50eb2",
+    "Source/wasami_deception/WasamiGameInstance.h": "3b494534fe07a970626407d5c701d3a21f580938",
+    "Source/wasami_deception/WasamiGameInstance.cpp": "f8d6c9a1a5fc086f6e594373ea1ac51db25928e3",
     "Source/wasami_deception/WasamiSaveGame.h": "35913c78865564063b7c87af8ed5b0a87f5955e6",
     "Source/wasami_deception/WasamiSaveGame.cpp": "abf2736da33de268769df998e5543f796ccf1510",
     "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "55ee3968afb4b81cdd6d0830778ed86a6fc352db",
@@ -240,7 +240,12 @@
     "Source/wasami_deception/WasamiTitleScreenWidget.h": "143dfcb9ab2af5256f39fa61155799141c23699c",
     "Source/wasami_deception/WasamiTitleScreenWidget.cpp": "e93ec4c2fd26748819443771e9529f0d71e4ebbd",
     "Source/wasami_deception/WasamiTitleGameMode.h": "c11abe29e83187d6cc692272de05005522c542d9",
-    "Source/wasami_deception/WasamiTitleGameMode.cpp": "a23ea9fb8a40bac7432ac4a8c1d5e8b928b11581",
+    "Source/wasami_deception/WasamiTitleGameMode.cpp": "071a4b7e5e912561eaf6bd574b1cba4b72691029",
     "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "dcf22c9a76e5a8671a9b53de652c4561694ba2d0"
+  },
+  "15-options-pause.md": {
+    "Source/wasami_deception/WasamiSettingsSaveGame.h": "0d0389e2907c3241451d1f4d2305a674ded9f449",
+    "Source/wasami_deception/WasamiSettingsSaveGame.cpp": "3d1246bcb5e201c0d2ef81e375ad06cecefab421",
+    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "1567a49b8cb3088f453449eb3adb01b78c149f21"
   }
 }

@@ -1,10 +1,10 @@
 ---
 title: オプション画面とポーズ画面（作業一覧の項目 18）
 status: 進行中
-branch: main
+branch: feature/options-pause
 base: d7ae8be
 started: 2026-09-19 12:03
-updated: 2026-09-19 12:03
+updated: 2026-09-19 12:35
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -18,13 +18,7 @@ updated: 2026-09-19 12:03
 ## 計画
 
 - [x] 0. 本家のコードと WebGL 版の記録を読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」。
-- [ ] 1. 設定のセーブと適用（音量と難易度の効き先を除く）
-  - 作業ブランチ `feature/options-pause` を main から作る。
-  - `UWasamiSettingsSaveGame`（本家の `BP_DD_Settings_SaveGame`。項目と既定値は下の「本家の流れ」の CDO。スロット `Settings`）と、その規則の関数（WebGL 版 04 記録の `settings.ts` の `stepValue`・`snap`〈`GridSnap_Float` 1/9〉・`sliderText`・`QUALITY_TEXT`・`DIFFICULTY_TEXT`〈矢印の Clamp は 0..1〉・`gamma` = `MapRangeClamped(b, 0, 1, 1.8, 2.2)`）。置き場はゲームインスタンスか静的な関数（ゲームモードはレベルごとに作り直されるので、本家の `Global Settings Save Instance` はゲームインスタンスに持つのがよい。ステップの中で決める）。
-  - 本家の `Check Settings Save`（読めなければ新しく作って書く）→ `Set Settings`（旧版 `BP_DD_GameMode` @33342: `SetOverallScalabilityLevel(Quality)`・`SetResolutionScaleValueEx(× 100)`・`SetViewDistanceQuality(3)`・`SetSubtitlesEnabled`・`SetPostProcessingQuality`〈0..2 → 2、3 → 3〉・`ApplySettings(False)`・`gamma X`）を、ゲームモードとタイトルのゲームモードの BeginPlay で。**エディタ（PIE）ではスケーラビリティと解像度を当てない**かを `.claude/guides/performance.md` に照らして決める（`sg.*` はエディタにも効き、開発用の軽い設定を上書きする）。
-  - プレイヤーへの適用: `MouseSensitivity`（下の決定事項の「感度の換算」）・`bInvertY`・`bHeadBob`・`bToggleSprint`、マウスのスムージング（本家の `BP_DD_PlayerCharacter` の `Set Up Mouse Smoothing` を読む。WebGL 版は SpringArm の `CameraRotationLagSpeed` をあり 12.5 / なし 50、BeginPlay では呼ばれず既定 20 のまま）。今は `AWasamiPlayerCharacter` の既定値（感度 1.0 ほか）で動いている。
-  - デバッグ（`Wasami.Settings` で今の値を出す、`Wasami.ResetSettings`）とテスト `Wasami.Settings.*`（既定値・吸着と文字・保存と読み直し・プレイヤーへの適用）。
-  - 変更予定: `Source/wasami_deception/WasamiSettingsSaveGame.*`（新）、`WasamiGameInstance.*`、`WasamiGameMode.*`、`WasamiTitleGameMode.*`、`WasamiPlayerCharacter.*`、`Tests/WasamiSettingsTests.cpp`（新）、実装記録 06・02（か新しい記録 15）・`_index.md`
+- [x] 1. 設定のセーブと適用 … 2026-09-19 完了。`UWasamiSettingsSaveGame`（項目・既定値・規則）、ゲームインスタンスが持つ（`CheckSettingsSave`・`GetSettings`・`SaveSettings`）、両ゲームモードの BeginPlay で読んで当てる（スケーラビリティはパッケージだけ）、プレイヤーの `ApplySettings`・`SetUpMouseSmoothing`、`Wasami.Settings`・`Wasami.ResetSettings`、テスト `Wasami.Settings.*` 4 件。中身は実装記録 15。
 - [ ] 2. 音量の SoundClass と SoundMix、難易度の効き先
   - 本家の `Audio/SoundMix/DD_SoundMix`・`DD_SoundClass_Music`・`_SFX`・`_Dialogue`（と `_SFX_UI`・`_SFX_Movies`。親子を JSON で確かめる）を取り込み、取り込み済みの音（`dd_assets.py` は今 `SoundClassObject` を書かない。18 行目のコメント）に本家の SoundClass を付ける（SoundWave と SoundCue の JSON の `SoundClassObject` から。既存の音は取り込み直さずに付け直す道具を足す）。`Set Settings` と SAVE & EXIT で `SetSoundMixClassOverride(DD_SoundMix, 各 Class, 値, 1, 1, False)`（`PushSoundMixModifier` が要るかは UE 5.8 の挙動で確かめる）。
   - 難易度（本家の旧版のメニューで選べるのは EASY / NORMAL。HARD は Clamp で届かない）: スコア画面の `easymode` と FINAL RANK の A 止め（13 記録。今は出さない）、死亡画面の Easy の分岐（`pak_reference_2/.../UMG_DeathScreen.txt` の 694 行あたり。09 記録・`.claude/references/game-flow/README.md` の 78 行は「本作は作らない」としていた）を本家のコードどおりにつなぐ。病院の敵（ナース）は難易度を読まない（`pak_reference_2` で Difficulty を読むのは `BP_Monkey`・`BP_Monkey_Chef`・`BP_03_Watcher`・`BP_Agatha1`・死亡画面・スコア画面・ポーズ・ゲームインスタンスだけ）ので、敵の速さは変えない。
@@ -55,7 +49,7 @@ updated: 2026-09-19 12:03
 
 ## 次にやること
 
-ステップ 1 を始める。`git switch -c feature/options-pause`。`.claude/guides/performance.md` の「大原則」と、`UWasamiSaveGame`・`UWasamiGameInstance`（06 記録）・`AWasamiPlayerCharacter` の BeginPlay と SpringArm（02 記録）を読み、本家の旧版 `BP_DD_PlayerCharacter.txt` の `Set Up Mouse Smoothing` を `python Tools/dd/bp_flow.py` で読んでから `UWasamiSettingsSaveGame` を書く。
+ステップ 2 を始める（ブランチ `feature/options-pause`）。本家の `Audio/SoundMix/DD_SoundMix` と `DD_SoundClass_*` の JSON（`pak_reference/_assets/DDeception/Content/Audio/SoundMix/`）で親子と値を読み、`Content/Python/wasami_tools/pipeline/dd_assets.py`（18 行目のコメント: 今は `SoundClassObject` を書かない）と `dd_audio` の取り込みを読んでから、SoundClass・SoundMix を取り込み、取り込み済みの音に本家の SoundClass を付け直す道具を足す。`UWasamiSettingsSaveGame::Apply` に `SetSoundMixClassOverride` を足す（`// The sound mix's classes ... are not in yet.` の所）。
 
 ## 本家の流れ（読んだもの）
 
@@ -71,19 +65,18 @@ updated: 2026-09-19 12:03
 
 - 2026-09-19: **オプション画面は旧版（v1.6.1）の `UMG_Options` を写す** — 最新版に `UMG_Options` は無く、AutoSettings プラグイン（第三者のコード。無人運転では組み込まない）の `SettingsUI` に替わった。作業一覧の項目 18 の完了の条件（WebGL 版 04・10 記録どおり）も旧版を写したもの。タイトル（項目 17）も旧版。設定のセーブの項目は両版で同じ（最新版の `VSync`・`Motion Blur` は旧版のメニューに無いので持たない）。
 - 2026-09-19: **ポーズ画面の木・アニメ・音は旧版（WebGL 版と同じ）、ボタンの道の規則は両版を比べ、違えば最新版を仮に採って要確認に書く**（`.claude/guides/autonomy.md` の「決め方」）— 完了の条件が WebGL 版 10 記録の配置・アニメ・音。ただし頭と のぞく頭はキャラクターなので本作のワサミ（WebGL 版と同じ）。
-- 2026-09-19: **感度の換算は、ステップ 1 で「`MouseSensitivity` = 設定の値 ÷ 0.5」（WebGL 版の `lookScale`）を第一の案にする**（要確認に書く）— 旧版の既定 0.5 をそのまま掛けると、項目 2 で本家の最新版の実機（感度 1、0.175°/カウント。`observations/README.md` の「視点の速さ」）に合わせた今の速さが半分になる。
+- 2026-09-19: **オプション画面（ステップ 3・4）は、読んだ設定（`UWasamiGameInstance::GetSettings()`）を画面の値で書き換えてから `SaveSettings()` を呼ぶ**（本家の SAVE & EXIT = 適用 → `Save Values`。ステップ 1 で作った道）。CANCEL は書き換えない（画面は値を自分で持ち、SAVE & EXIT のときだけ設定へ写す）。
 - 2026-09-19: **エディタで動く確かめ（PIE）はポーズを Esc でなく `Wasami.Pause` で開く**ことを第一の案にする — PIE の Esc はエディタの「プレイを止める」。ステップ 5 でキー割り当てを見て決める。
 
 ## 要確認（ユーザー）
 
-（なし。ステップ 1 で感度の換算を書く）
+- マウス感度の換算（2026-09-19、ステップ 1）: 本家の旧版はマウスの軸に設定の値（既定 0.5）をそのまま掛けるが、本作の視点の速さは項目 2 で最新版の実機を感度 1 で測って合わせてある。そのまま掛けると既定で今の半分の速さになるので、**設定 ÷ 0.5 を掛ける**（既定で今の速さ、最大 1 で 2 倍。WebGL 版の `lookScale` と同じ）と仮に決めた。本家どおり設定の値そのものを掛ける（既定で今の半分）方がよければ直す。
 
 ## 再開時の注意
 
-- エディタ・PIE・バックグラウンドの処理は、この計画の反復では触っていない。
+- 開発用の設定のセーブ `Saved/SaveGames/Settings.sav` は既定値（ステップ 1 の確かめの後に書き直した）。`Wasami.Settings` で値を変えたら `Wasami.ResetSettings` で戻す。
+- テストをリモート実行で走らせるときは、エディタを前面にする（`python Tools/desktop.py click <タイトルバーの空き> --allow WindowsTerminal.exe --allow UnrealEditor.exe`。2026-09-19 はエディタが右半分にあり (2780, 80)）。
 
 ## 検証
 
-- check_records: 未実行（ソースは変えていない）
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- ステップ 1: check_records OK。C++ ビルド OK（`WasamiVanishWidget.cpp` の定数がユニティの塊でぶつかったので `VanishTicksPerSecond` に改め、無名名前空間の名前の重複を洗い出した〈多重定義の `Place` だけ〉）。テスト `Wasami.Settings`・`Title`・`GameFlow`・`Capture` の 18 件が通った。PIE（Zone 1）で `Settings.sav` が作られ、プレイヤーは感度 1.0・ラグ 20 で始まり、`Wasami.Settings MouseSensitivity 1` で 2.0、`bMouseSmoothing False` でラグ 50、`Brightness 0.5` で画面の平均の明るさが 56.5 → 48.9 になり、PIE を止めるとエディタの明るさが戻った（`gamma` の前後で同じ）。
