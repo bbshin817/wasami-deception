@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "WasamiBlackFadeWidget.h"
 #include "WasamiCapture.h"
+#include "WasamiChapterPortalWidget.h"
 #include "WasamiDeathScreenWidget.h"
 #include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
@@ -194,6 +195,13 @@ namespace
 			{
 				Instance->IncrementLives();
 			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs ChapterPortalCommand(TEXT("Wasami.ChapterPortal"),
+		TEXT("Puts up the stage's title card (UMG_ChapterPortal) as Zone 1's new start does, without stopping the player."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UWasamiChapterPortalWidget::Show(World);
 		}));
 }
 
