@@ -2,19 +2,28 @@
 title: 特殊シャード（スタンオーブと赤いシャード）
 sources:
   - Content/Python/wasami_tools/pipeline/dd_specials.py
+  - Source/wasami_deception/WasamiVignetteSidesWidget.h
+  - Source/wasami_deception/WasamiVignetteSidesWidget.cpp
+  - Source/wasami_deception/Tests/WasamiVignetteSidesTests.cpp
 updated: 2026-09-19
 ---
 
 # 特殊シャード（スタンオーブと赤いシャード）
 
 ## 役割
-本家の特殊シャード 2 種（最新版 `pak_reference_2` の `Blueprints/Main/BP_PowerOrb` = スタンオーブ、`BP_BonusShard` = 赤いシャード）。1 体ずつ置かれ、150 s ごとに 5 s 明滅して出現点を移る。オーブを取ると全敵が気絶し、赤いシャードを取ると 60 s 敵がタブレットの地図に出る（作業一覧の項目 10）。**作っている途中**: いまあるのは素材の取り込みだけ（本体・演出・配置は進捗記録 `20260919-special-shards` のステップ 2〜5）。
+本家の特殊シャード 2 種（最新版 `pak_reference_2` の `Blueprints/Main/BP_PowerOrb` = スタンオーブ、`BP_BonusShard` = 赤いシャード）。1 体ずつ置かれ、150 s ごとに 5 s 明滅して出現点を移る。オーブを取ると全敵が気絶し、赤いシャードを取ると 60 s 敵がタブレットの地図に出る（作業一覧の項目 10）。**作っている途中**: いまあるのは素材の取り込みと取得の画面 `UWasamiVignetteSidesWidget` だけ（本体・演出・配置は進捗記録 `20260919-special-shards` のステップ 3〜5）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_specials()`（素材。`import_dd_shards` と `import_dd_gimmicks` の後。地図の印のマスターと粒子の材質を共有する）。
+- `UWasamiVignetteSidesWidget`（`UUserWidget`）… 取得の画面（本家 `UI/Menu/Streaks/UMG_VignetteSides`）。`Show(WorldContext, Color, bText, TextToDisplay)`（本家の拾い物の `Create(Self, UMG_VignetteSides_C, None)` → 名前で `Color`・`Text?`・`TextToDisplay` → `AddToPlayerScreen(5)`。プレイヤーのコントローラが無いと出さない）・`Color`（既定 (1, 0.3952, 0)）・`bText`（`Text?`、既定 偽）・`TextToDisplay`・定数 `StunnedColor` (1, 0.4654, 0)・`RevealedColor` (1, 0, 0.0167)・`StunnedText()`「ENEMIES STUNNED」・`RevealedText()`「ENEMIES REVEALED」（オーブと赤いシャードが入れる値）・`AnimLength`（90001 / 60000 s）・`RemoveDelay` 2 s・`ZOrder` 5・`Begin()`（Construct の頭から。テストが単独で呼ぶ）・`Advance(DeltaSeconds)`・`IsFinished()`・`GetTextBlock()`・`GetVignette()`・`Evaluate*`（`Anim` の 6 本の曲線）・素材の `VignetteTexture`（`T_VignetteNew`。`import_dd_powers` が取り込む）・`TextFont`。
 
 ## 内部構造と処理の流れ
 （本体のクラスはこれから）
+
+### 取得の画面 `UWasamiVignetteSidesWidget`
+- 木（`RebuildWidget` が本家のスロットどおりに組む。連続回収の画面 `UWasamiShardStreakWidget` と同じ作り。13 記録）: ルート `CanvasPanel_0`（`HitTestInvisible`、平常の角度 −0.158°）→ `Image_161`（`T_VignetteNew` を 1024² のブラシで、アンカー全面・オフセット 0.96 / 0.54・整列 (0.5, 0.5)・自動の大きさ、`ColorAndOpacity` (1, 0.2308, 0, 0.4177)、平常の拡大 2）→ `TextBlock_47`（アンカー下中央、左 −72.96・上 −233.08、151 × 40、中央揃え。白 α 0.8、helvetica-neue-bold 35、縁取り 1 の黒 α 0.638〈影にも〉、平常の `RenderOpacity` 0。既定の文は本家の「ENEMIES STUNNED FOR 30 SECONDS」で、本家の拾い物はどれも上書きする）。
+- `NativeConstruct` → `Begin`: `Text?` なら `TextBlock_47` に `TextToDisplay`、偽なら `Hidden`。続けて**ウィジェット全体**の `SetColorAndOpacity(Color)`（本家のバイトコードは対象なしの `SetColorAndOpacity` = `UUserWidget` のもの。文字と縁の色の両方に掛かる: オーブは橙の縁と橙の文字、赤いシャードは赤）。`Anim` を 0 から、2 s で `RemoveFromParent`。`NativeTick` → `Advance` が経過を進めて曲線を当てる（UMG のアニメは使わない。スレートの実時間で進むので `slomo` の影響を受けない）。
+- `Anim`（1.5 s。キーは書き出しの値、接線は書き出しの自動の値を `WasamiWidgetAnimation` で）: 文字の拡大 4 → 0.1 s で 1 → 0.15 s で 1.1 → 0.25 s で 1、文字の不透明 0 → 0.1 s で 1 → 0.7 s で 1 → 1.5 s で 0（キーの間で自動の接線が 1 を少し越える。本家も同じ）、縁の拡大 1.4 から 0.35 s の 1.25 まで直線 → 0.9 s まで 1.25 → 1.5 s で 2、縁の α 0 → 0.15 s で 1 → 0.25 s で 0.5 → 0.9 s で 0.25 → 1.5 s で 0（色のほかのチャンネルにキーは無く、画像の (1, 0.2308, 0) のまま）、ルートの角度 0 → 0.1 s で 0.5° → 0.133 s で 0.5° → 0.15 s で −2° → 0.25 s で 0 と拡大 1 → 0.133 s で 1.05 → 0.467 s で 1。ルートの区間は 28000 ティック（0.467 s）で終わり、その後はルートの平常の値（WebGL 版と同じ読み）。アニメの後（1.5〜2 s）は最後の値のまま（UMG_ShardStreak と同じ。平常の値に戻さない）。
 
 ## 作るアセット
 `WasamiDDTools.import_dd_specials`（`pipeline/dd_specials.py` の `import_all`）が作る。すべて `pak_reference_2` から。
@@ -57,11 +66,13 @@ updated: 2026-09-19
 - 本体・部品・流れ: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/BP_PowerOrb.json`・`BP_BonusShard.json`、`_bytecode/.../BP_PowerOrb.txt`・`BP_BonusShard.txt`（`python Tools/dd/bp_flow.py`）。取得の演出は `Blueprints/Main/Powers/BP_StunCollectEffect`・`BP_BonusShardCollectEffect`。
 - メッシュ: `_meshes.json` の `/Game/Meshes/Shared/power_orb`・`/Game/Meshes/Ring_Assets/soul_shard`。
 - 材質: `_assets/.../Materials/Fords_Materials/m_crystal*.json`、`Materials/Shared/M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy`・`M_Shard.json`、`ThirdParty/AdvancedMagicFX13/Materials/*.json` と、それぞれのコンパイル済みシェーダー（`Tools/dd/cooked_shaders.py`）。
+- 取得の画面: `_assets/DDeception/Content/UI/Menu/Streaks/UMG_VignetteSides.json`（木・`Anim` のキー・区間）と `_bytecode/.../UMG_VignetteSides.txt`（Construct）。オーブと赤いシャードが入れる値は `BP_PowerOrb.txt` @1811〜・`BP_BonusShard.txt` @3341〜。
 - WebGL 版: `.claude/references/webgl/implementation-records/08`（特殊シャード）・`10`（`UMG_VignetteSides`）・`11`（地図の印）。
 
 ## 依存関係
 - `dd_assets`（音・テクスチャ・メッシュ・材質・インスタンス・推定の材質）、`dd_particles`（Cascade の粒子）、`dd_stage._Graph`（01 記録）
 - `dd_shards` の `M_DD_MapMark` と閃光の材質（06 記録）、`dd_gimmicks` の `MI_ky_flare14R`（08 記録）
+- 取得の画面: `WasamiWidgetAnimation.h`（曲線）、`WasamiAssets.h`、`import_dd_powers` の `T_VignetteNew`（04 記録）と `import_dd_tablet` の書体 `helvetica-neue-bold_Font`（03 記録）
 - エンジン: `MaterialExpressionNoise`・`MaterialExpressionCustom`・`MaterialExpressionFresnel`・`MaterialExpressionRotator`
 
 ## 既知の制約・注意点
@@ -70,3 +81,4 @@ updated: 2026-09-19
 
 ## 変更履歴
 - 2026-09-19: 初版（素材の取り込み `dd_specials.py` と `WasamiDDTools.import_dd_specials`。作業一覧の項目 10 のステップ 1）
+- 2026-09-19: 取得の画面 `UWasamiVignetteSidesWidget`（本家 `UMG_VignetteSides`）とテスト `Wasami.VignetteSides.*` を足した（ステップ 2）

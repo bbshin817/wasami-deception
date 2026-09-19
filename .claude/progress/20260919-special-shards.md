@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/special-shards
 base: ae0762c
 started: 2026-09-19 20:19
-updated: 2026-09-19 20:35
+updated: 2026-09-19 20:52
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -19,10 +19,7 @@ updated: 2026-09-19 20:35
 
 - [x] 0. 本家のコードと今の実装を読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」と「今の実装」。
 - [x] 1. 素材の取り込み … 2026-09-19 完了。`dd_specials.py`（新）と `WasamiDDTools.import_dd_specials`（`import_dd_shards`・`import_dd_gimmicks` の後）。作ったものと推定は実装記録 16。本体の各部品が読むパス: メッシュ `/Game/DD/Meshes/Shared/power_orb`・`/Game/DD/Meshes/Ring_Assets/soul_shard`、材質 `/Game/DD/Materials/Fords_Materials/m_crystal_Inst3`・`m_crystal_Inst`、印 `/Game/DD/Materials/Shared/M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy`、粒子 `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_flash_{PowerOrb,BonusOrb}_{Appear,Disappear}`・`P_ky_impact`・`P_ky_impact1`、音 `/Game/DD/Audio/SharedGameplay/8-Dark_power_ball_countdown_`・`Bonus_Shard_Pickup_v1`・`Stun_Wave_Attack_New_04`。
-- [ ] 2. 画面 `UWasamiVignetteSidesWidget`（本家 `UMG_VignetteSides`）とテスト
-  - 木をスロットのまま C++ で組み（`UWasamiShardStreakWidget` と同じ作り。13 記録）、`Color`・`Text?`・`TextToDisplay` を受け、Construct で文字と色、`Anim`（1.5 s。キーは書き出しの値。WebGL 版 10 記録の `VSIDES_ANIM` が同じ値を写している）を 1 回、2 s で `RemoveFromParent`。`Text?` 偽なら文字を隠す。Z 5 で出す。
-  - テスト `Wasami.VignetteSides.*`（文字・色、2 s で消える、アニメの値）。
-  - 変更予定: `Source/wasami_deception/WasamiVignetteSidesWidget.*`（新）、`Tests/WasamiVignetteSidesTests.cpp`（新）、実装記録 16（画面は 09 にも一言）・`_index.md`
+- [x] 2. 画面 `UWasamiVignetteSidesWidget`（本家 `UMG_VignetteSides`）とテスト … 2026-09-19 完了。`Show(World, Color, bText, Text)` と定数 `StunnedColor`・`RevealedColor`・`StunnedText()`・`RevealedText()`（オーブと赤いシャードが入れる値）。テスト `Wasami.VignetteSides.Anim`・`.Screen`。作りは実装記録 16。
 - [ ] 3. オーブ `AWasamiPowerOrb` と取得の演出 `AWasamiStunCollectEffect`、テスト
   - 部品と流れは下の「本家の流れ」。出現点は置いた点を配列で持つ（点を専用の小さなクラスで置くか、組み立てが位置の配列を書くかは、ステップ 5 の組み立ての手間で決める）。
   - `AWasamiStunCollectEffect` は `AWasamiPowerBurst`（04 記録。PostProcess・PostProcess1 と 2 s のタイムライン）の派生にし、球（`M_05_Primal`、`Color` (0.258, 0.0737, 0)、半径 = Lerp(0, Range, float) / 50 の拡縮、`Desaturation`・`Opacity`）をプレイヤーの位置に。`Range` と PP の値・曲線は `_assets/…/Powers/BP_StunCollectEffect.json` から。Primal Fear（`AWasamiPrimalPower`）の球と同じ作りなら共有する。
@@ -47,7 +44,7 @@ updated: 2026-09-19 20:35
 
 ## 次にやること
 
-ステップ 2 を始める（作業ブランチ `feature/special-shards` の上）。`UWasamiShardStreakWidget`（13 記録）の木の組み方を読み、`_assets/DDeception/Content/UI/Menu/Streaks/UMG_VignetteSides.json` の木と `Anim` のキーから `UWasamiVignetteSidesWidget` を C++ で組む。WebGL 版 10 記録の `VSIDES_ANIM`・`VSIDES` が同じ値を写している（照らし合わせに使う）。
+ステップ 3 を始める（作業ブランチ `feature/special-shards` の上）。`AWasamiPowerBurst`・`AWasamiPrimalPower`（04 記録）の作りと `_assets/…/Blueprints/Main/Powers/BP_StunCollectEffect.json` を読み、`AWasamiPowerOrb` と `AWasamiStunCollectEffect` を C++ で作る。取得の画面は `UWasamiVignetteSidesWidget::Show(this, StunnedColor, true, StunnedText())`。
 
 ## 決定事項
 
@@ -85,10 +82,11 @@ updated: 2026-09-19 20:35
 
 ## 再開時の注意
 
-- エディタは開いたまま（PIE なし）。新しいツール `WasamiDDTools.import_dd_specials` はエディタを開き直すまで MCP に出ない（ステップ 2 の C++ のビルドの開き直しで出る）。
+- エディタは開いたまま（PIE なし）。ステップ 2 のビルドで開き直したので `WasamiDDTools.import_dd_specials` も MCP に出ている。
 
 ## 検証
 
-- check_records: OK（2026-09-19 20:33、16 件）
-- C++ ビルド: 未実行
-- エディタでの確認: ステップ 1 の取り込みが通り（音 3・テクスチャ 4・結晶の材質 4・メッシュ 2・印 4・粒子の材質 7・粒子 6）、推定のマスター 4 つがコンパイルされ、インスタンスの値と `useHilight` 真・`power_orb` のスロットが本家どおりと確かめた。見え方は PIE（ステップ 6）で
+- check_records: OK（2026-09-19 20:52、16 件）
+- C++ ビルド: 成功（2026-09-19、ステップ 2）
+- 自動テスト: `Wasami.VignetteSides.Anim`・`.Screen` 成功
+- エディタでの確認: ステップ 1 の素材（音・テクスチャ・結晶の材質・メッシュ・印・粒子）が取り込まれ、推定のマスターがコンパイルされた。ステップ 2 の画面を PIE で `Show` して収録し、橙の ENEMIES STUNNED・赤の ENEMIES REVEALED・縁の閃き・文字の叩きつけと 2 s で消えるのを見た（`Intermediate/Overnight/shots-vsides-*.png`）。本体の見え方は PIE（ステップ 6）で
