@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "WasamiBlackFadeWidget.h"
 #include "WasamiCapture.h"
+#include "WasamiChapterPortalWidget.h"
 #include "WasamiDeathScreenWidget.h"
 #include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
@@ -195,6 +196,13 @@ namespace
 				Instance->IncrementLives();
 			}
 		}));
+
+	FAutoConsoleCommandWithWorldAndArgs ChapterPortalCommand(TEXT("Wasami.ChapterPortal"),
+		TEXT("Puts up the stage's title card (UMG_ChapterPortal) as Zone 1's new start does, without stopping the player."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UWasamiChapterPortalWidget::Show(World);
+		}));
 }
 
 const TCHAR* AWasamiGameMode::Zone1LevelName = TEXT("L_Hospital_Zone1");
@@ -236,7 +244,7 @@ void AWasamiGameMode::BeginPlay()
 	UWasamiBlackFadeWidget::Show(this, false, OpeningFadeSpeed, OpeningFadeZOrder);
 
 	// A zone's Spawn opens the entrance when the save has no checkpoint; here Zone 2 opens Zone 1 (whose 0 reads as 4).
-	const int32 Zone = ZoneOf(UGameplayStatics::GetCurrentLevelName(this, true));
+	const int32 Zone = CurrentZone();
 	if (Zone == 2 && StartCheckpoint == 0)
 	{
 		UGameplayStatics::OpenLevel(this, Zone1LevelName, true);
@@ -258,12 +266,18 @@ void AWasamiGameMode::PrepareStart()
 	{
 		return;
 	}
-	if (ZoneOf(UGameplayStatics::GetCurrentLevelName(this, true)) == 1 && StructSave->Hospital.LevelCheckpoint == 0)
+	if (CurrentZone() == 1 && StructSave->Hospital.LevelCheckpoint == 0)
 	{
 		StructSave->Hospital.LevelCheckpoint = Zone1Arrival;
 		WriteSave();
+		bNewStart = true;
 	}
 	StartCheckpoint = StructSave->Hospital.LevelCheckpoint;
+}
+
+int32 AWasamiGameMode::CurrentZone() const
+{
+	return ZoneOf(LevelName.IsEmpty() ? UGameplayStatics::GetCurrentLevelName(this, true) : LevelName);
 }
 
 AActor* AWasamiGameMode::ChoosePlayerStart_Implementation(AController* Player)
@@ -277,7 +291,7 @@ AActor* AWasamiGameMode::ChoosePlayerStart_Implementation(AController* Player)
 	{
 		return Super::ChoosePlayerStart_Implementation(Player);
 	}
-	const FName Tag = PlayerStartTagFor(ZoneOf(UGameplayStatics::GetCurrentLevelName(this, true)), StartCheckpoint);
+	const FName Tag = PlayerStartTagFor(CurrentZone(), StartCheckpoint);
 	if (!Tag.IsNone())
 	{
 		for (TActorIterator<APlayerStart> It(World); It; ++It)
@@ -348,7 +362,7 @@ void AWasamiGameMode::ShowDeathScreen(AActor* Cause)
 	// game paused. Its Respawn Event goes to the zone's Respawn (off the screen, unpaused, Reset Death, Spawn), which
 	// the screen follows at once by opening the level again, so nothing listens to it here.
 	const bool bCausedByPlayer = Cause && Cause->IsA<AWasamiPlayerCharacter>();
-	UWasamiDeathScreenWidget::Show(this, DeathScreenLevelFor(ZoneOf(UGameplayStatics::GetCurrentLevelName(this, true)), bCausedByPlayer));
+	UWasamiDeathScreenWidget::Show(this, DeathScreenLevelFor(CurrentZone(), bCausedByPlayer));
 }
 
 void AWasamiGameMode::PauseTimeCounter()

@@ -51,6 +51,11 @@ tablet. In place of the original's heads (the level's monster above the menu and
 game's Wasami, white to be tinted red by the widget (SourceArt/Wasami/UI/pause_head.png and pause_peek.png, the WebGL
 version's pause-head.webp and pause-peek.webp as they were) under /Game/Wasami/UI/Pause.
 
+The stage's title card (UWasamiChapterPortalWidget, after UI/Menu/UMG_ChapterPortal, the same tree in both versions) as
+the game begins in Zone 1: the portal's outer ring (UI/Main/chapter_ui_portal_outer), its runes
+(chapter_title_portal_inner) and the two banners behind the title (chapter_ui_banner_bg_01 and _02). The head in the
+ring is the pause menu's Wasami and the title the level clear screen's.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -140,6 +145,14 @@ PAUSE_WASAMI_ROOT = paths.WASAMI_ROOT + "/UI/Pause"
 PAUSE_WASAMI = (
     (os.path.join(paths.PROJECT, "SourceArt", "Wasami", "UI", "pause_head.png"), PAUSE_WASAMI_ROOT + "/T_PauseHead"),
     (os.path.join(paths.PROJECT, "SourceArt", "Wasami", "UI", "pause_peek.png"), PAUSE_WASAMI_ROOT + "/T_PausePeek"),
+)
+
+# ------------------------------------------------------------------------------------------------ the stage's title card
+CHAPTER_PORTAL_TEXTURES = (
+    "UI/Main/chapter_ui_portal_outer",
+    "UI/Menu/TitleCards/chapter_title_portal_inner",
+    "UI/Menu/TitleCards/chapter_ui_banner_bg_01",
+    "UI/Menu/TitleCards/chapter_ui_banner_bg_02",
 )
 
 # ------------------------------------------------------------------------------------------------ the title screen
@@ -349,10 +362,15 @@ def import_pause():
     return result
 
 
+def import_chapter_portal():
+    """The stage's title card's ring, runes and banners. Returns how many."""
+    return {"textures": len([dd_assets.texture(rel, VERSION) for rel in CHAPTER_PORTAL_TEXTURES])}
+
+
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
     screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's, the title screen's, the
-    options screen's and the pause menu's, then saves /Game/DD."""
+    options screen's, the pause menu's and the stage's title card's, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -374,5 +392,7 @@ def import_all():
         result["options_" + key] = count
     for key, count in import_pause().items():
         result["pause_" + key] = count
+    for key, count in import_chapter_portal().items():
+        result["chapter_portal_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

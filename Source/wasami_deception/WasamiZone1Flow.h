@@ -7,7 +7,8 @@
 class AWasamiEnemy06Chase;
 
 /**
- * Zone 1's level Blueprint (pak_reference_2's 06_Hospital_Zone_01): the lift arrives (checkpoint 4), the lift's door is
+ * Zone 1's level Blueprint (pak_reference_2's 06_Hospital_Zone_01): the lift arrives (checkpoint 4; on a new start
+ * with the entrance's title card, UMG_ChapterPortal, over the first 10 s, the player held), the lift's door is
  * broken open, the maze past it saves 5 and wants all the shards; with the last one the barrier breaks and the parking
  * lot is next, then the tunnel, the doors the nurses break in 25 s, and the ambulance's roof, which saves 7 and opens
  * Zone 2. The events keep the original's names in their comments and in GetSection.
@@ -25,6 +26,8 @@ class WASAMI_DECEPTION_API AWasamiZone1Flow : public AWasamiZoneFlow
 public:
 	AWasamiZone1Flow();
 
+	/** 00_Initial Start's Delay before the player's CanMove? is back, the title card up meanwhile (@19451). */
+	static constexpr float InitialHoldSeconds = 10.f;
 	/** How long the lift shakes before the intercom and the door's lock can be used (Spawn at 4, @14643). */
 	static constexpr float ArrivalShakeSeconds = 7.f;
 	/** 05_Persistent's wait before it checks the shards (so a zone reopened with none left moves on). */
@@ -72,6 +75,8 @@ protected:
 	TSoftObjectPtr<USoundBase> PortalSound;
 
 private:
+	/** The entrance's 00_Initial Start, for a new start: the stage's title card, the player held meanwhile. */
+	void InitialStart();
 	/** Spawn at 4: the lift's arrival. */
 	void Start04();
 	/** 05_Persistent: the maze's shards wanted. */

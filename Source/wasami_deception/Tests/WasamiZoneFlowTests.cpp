@@ -10,6 +10,7 @@
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
 #include "../WasamiMatron.h"
+#include "../WasamiPlayerCharacter.h"
 #include "../WasamiPortal.h"
 #include "../WasamiRingPiece.h"
 #include "../WasamiRingPieceWidget.h"
@@ -29,6 +30,8 @@
 #include "Engine/TargetPoint.h"
 #include "Engine/TriggerVolume.h"
 #include "Engine/World.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "LevelSequence.h"
 #include "LevelSequenceActor.h"
@@ -149,14 +152,21 @@ namespace
 		}
 	}
 
-	/** A game mode (writing to the test slot) that opens at Checkpoint. */
-	AWasamiGameMode* SpawnMode(UWorld* World, int32 Checkpoint)
+	/**
+	 * A game mode (writing to the test slot) that opens at Checkpoint. Given a zone's level name, the mode takes the
+	 * world for it and spawns the zone's flow as it begins play.
+	 */
+	AWasamiGameMode* SpawnMode(UWorld* World, int32 Checkpoint, const TCHAR* LevelName = nullptr)
 	{
 		UWasamiSaveGame* Save = NewObject<UWasamiSaveGame>();
 		Save->Hospital.LevelCheckpoint = Checkpoint;
 		UGameplayStatics::SaveGameToSlot(Save, FlowTestSlotName, UWasamiSaveGame::UserIndex);
 		AWasamiGameMode* Mode = World->SpawnActorDeferred<AWasamiGameMode>(AWasamiGameMode::StaticClass(), FTransform::Identity);
 		Mode->SaveSlotName = FlowTestSlotName;
+		if (LevelName)
+		{
+			Mode->LevelName = LevelName;
+		}
 		Mode->FinishSpawning(FTransform::Identity);
 		return Mode;
 	}
@@ -758,6 +768,68 @@ bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the entry emptied at 1 s"), SavedEntry().Deaths, 0);
 	TestEqual(TEXT("its time too"), SavedEntry().Time, 0.f);
 	TestEqual(TEXT("then the title"), Mode->GetLevelToOpen(), FString(AWasamiGameMode::TitleLevelName));
+
+	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiZoneFlowNewStartTest, "Wasami.ZoneFlow.NewStart",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiZoneFlowNewStartTest::RunTest(const FString& Parameters)
+{
+	// Each case in a world of its own, Zone 1's flow spawned by the game mode as play begins. The test world has no
+	// local player, so the title card is not made: CreateWidget reports the controller, for the new start only.
+	AddExpectedError(TEXT("PlayerController_0"), EAutomationExpectedErrorFlags::Contains, 1);
+	struct FCase
+	{
+		const TCHAR* What;
+		int32 Saved;
+		bool bNewStart;
+	};
+	const FCase Cases[] = {
+		{TEXT("NEW GAME (0 saved): "), 0, true},
+		{TEXT("reopened at 4 (a death, RESUME): "), 4, false},
+	};
+	for (const FCase& Case : Cases)
+	{
+		const FString What = Case.What;
+		FTestWorldWrapper Wrapper;
+		if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+		{
+			Wrapper.ForwardErrorMessages(this);
+			return false;
+		}
+		UWorld* World = Wrapper.GetTestWorld();
+		SpawnTriggers(World, {TEXT("04_Intercom")});
+		SpawnSequence(World, TEXT("06_Hospital_Zone01_ElevatorArrive"), 14.1);
+		AWasamiDoubleDoors* LiftDoors = World->SpawnActor<AWasamiDoubleDoors>(FVector(0., 0., -80000.), FRotator::ZeroRotator);
+		LiftDoors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors11")));
+		AWasamiDoorBreak* DoorBreak = World->SpawnActor<AWasamiDoorBreak>(FVector(0., 0., -90000.), FRotator::ZeroRotator);
+		DoorBreak->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_Hospital_DoorBreak_2")));
+		SpawnZone1NursePlaces(World);
+
+		AWasamiGameMode* Mode = SpawnMode(World, Case.Saved, AWasamiGameMode::Zone1LevelName);
+		const AWasamiZoneFlow* Flow = Mode->GetZoneFlow();
+		TestEqual(What + TEXT("a new start"), Mode->IsNewStart(), Case.bNewStart);
+		TestEqual(What + TEXT("the lift arrives"), Flow ? Flow->GetSection() : NAME_None, FName(TEXT("04_Start")));
+		TestEqual(What + TEXT("4 saved"), SavedCheckpoint(), 4);
+		// The player: player 0's character without being possessed (so it makes no widgets), not falling.
+		AWasamiPlayerCharacter* Player = World->SpawnActor<AWasamiPlayerCharacter>(FVector(0., 0., 50000.), FRotator::ZeroRotator);
+		APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+		if (!TestNotNull(*(What + TEXT("the player")), Player) || !TestNotNull(*(What + TEXT("its controller")), Controller))
+		{
+			return false;
+		}
+		Controller->SetPawn(Player);
+		Player->GetCharacterMovement()->DisableMovement();
+		Advance(Wrapper, 0.05f);
+		TestEqual(What + TEXT("held from the next tick"), Player->bCanMove, !Case.bNewStart);
+		Advance(Wrapper, AWasamiZone1Flow::InitialHoldSeconds - 0.3f);
+		TestEqual(What + TEXT("still held"), Player->bCanMove, !Case.bNewStart);
+		Advance(Wrapper, 0.4f);
+		TestTrue(What + TEXT("free 10 s on"), Player->bCanMove);
+	}
 
 	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;

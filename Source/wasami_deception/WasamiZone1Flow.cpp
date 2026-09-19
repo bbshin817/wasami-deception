@@ -5,12 +5,14 @@
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiChapterPortalWidget.h"
 #include "WasamiDoubleDoors.h"
 #include "WasamiEnemy.h"
 #include "WasamiEnemy06Chase.h"
 #include "WasamiGameMode.h"
 #include "WasamiGarageLift.h"
 #include "WasamiLoadingWidget.h"
+#include "WasamiPlayerCharacter.h"
 #include "WasamiZoneBarrier.h"
 
 namespace
@@ -42,8 +44,12 @@ void AWasamiZone1Flow::StartAt(int32 Checkpoint)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s: no TriggerVolume_1 for the garage lift's NurseNear"), *GetClass()->GetName());
 	}
-	// Spawn (@13483): Load Progress By Level(7, 5). 0 opens the entrance (the game mode writes 4 instead); 7 and on are
-	// Zone 2's, for which Zone 1 does nothing.
+	// Spawn (@13483): Load Progress By Level(7, 5). 0 opens the entrance (the game mode writes 4 instead, and the
+	// entrance's part is played here); 7 and on are Zone 2's, for which Zone 1 does nothing.
+	if (Mode && Mode->IsNewStart())
+	{
+		InitialStart();
+	}
 	switch (Checkpoint)
 	{
 	case 4: Start04(); break;
@@ -51,6 +57,30 @@ void AWasamiZone1Flow::StartAt(int32 Checkpoint)
 	case 6: Start06(); break;
 	default: break;
 	}
+}
+
+void AWasamiZone1Flow::InitialStart()
+{
+	// The entrance's Spawn at 0 → 00_Initial Start (@19176), from its Delay 0: its ambience, 00_Start and the trigger
+	// 00_CutsceneStart are the entrance's own, and Zone 1's lift arrives meanwhile.
+	After(0.f, [this]()
+	{
+		UWasamiChapterPortalWidget::Show(this);
+		AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
+		if (!Player)
+		{
+			return;
+		}
+		Player->bCanMove = false;
+		After(InitialHoldSeconds, [Player = TWeakObjectPtr<AWasamiPlayerCharacter>(Player)]()
+		{
+			if (Player.IsValid())
+			{
+				Player->bCanMove = true;
+			}
+			// Bierce's Bierce_TormentTherapy_Event_01 1 s on (item 20).
+		});
+	});
 }
 
 void AWasamiZone1Flow::Start04()
