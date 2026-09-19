@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/cutscenes
 base: 4ef89d6
 started: 2026-09-20 06:50
-updated: 2026-09-20 07:35
+updated: 2026-09-20 07:55
 ---
 
 # ゲームの途中の場面（作業一覧の項目 25）
@@ -21,9 +21,7 @@ updated: 2026-09-20 07:35
 ## 計画
 
 - [x] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）— 骨のアニメ・可視・揺れ・スローモーション・部品の材質を足し（CameraAnim は UE 5.8 に無いので落とす）、3 つの場面と救急車の到着を `SEQUENCE_ACTORS` に足して両ゾーンを組み直した。ナース 4 体は `AWasamiCutsceneNurse`（新しい C++）で置き、本家のアニメを `NURSE_ANIMS` で敵ワサミのクリップに読み替える。実装記録 01・08・11（コミット `3221644`）
-- [ ] 2. **場面を流す土台**（`AWasamiZoneFlow`）
-  - 本家の `Initialize Cutscene Widget(player, bCanSkip, ...)`（`BP_DD_Functions`。スキップの画面 `UMG_Cutscene`）と、場面の間のプレイヤーの入力（`Disable Player Input`）・視点（`SetViewTargetWithBlend(CineCameraActor, 0.5)`）・`OnFinished` の結びを 1 つにまとめた `PlayCutscene` を作る。
-  - 変更予定: `Source/wasami_deception/WasamiZoneFlow.{h,cpp}`、新しい `WasamiCutsceneWidget.{h,cpp}`
+- [x] 2. **場面を流す土台** — スキップの画面 `UWasamiCutsceneWidget`（本家の `UMG_CutsceneWidget`。帯・PRESS P TO SKIP・暗転で終わりへ飛ばす。入力はプレイヤーコントローラーの `InputComponent`）と、`AWasamiZoneFlow` の `PlayCutscene`・`SequencePlayer`・`SetPlayerViewTarget`・`DisablePlayerInput`・`EnablePlayerInput`。実装記録 09・11・`_index`（コミット ↓）
 - [ ] 3. **Zone 1 の途中の出来事**（`06_Hospital_Zone1_06Event`）
   - いまの `On05ParkingLotCutscene` は場面を飛ばして `Transition06` を直に呼んでいる（実装記録 11）。本家 @17019 どおり場面を流し、`OnFinished` → `06_Transition` → `Transition06` にする。
   - 変更予定: `Source/wasami_deception/WasamiZone1Flow.{h,cpp}`、Zone 1 のレベル
@@ -38,10 +36,11 @@ updated: 2026-09-20 07:35
 
 ## 次にやること
 
-ステップ 2（場面を流す土台）。本家 `BP_DD_Functions` の `Initialize Cutscene Widget` と、`AWasamiZoneFlow` の `PlaySequence` を包む `PlayCutscene`（入力の停止・視点をシネカメラへ 0.5 s・`OnFinished` の結び・スキップの画面）を作る。読むのは `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_Functions.txt` の `Initialize Cutscene Widget`（`python Tools/dd/bp_flow.py … "Initialize Cutscene Widget"`）と、`06_Hospital_Zone_02.txt` の `Arrive_CaptureCutscene`（@…）。シネカメラはレベルにタグ `src:06_CineCamera`（Zone 1）・`src:CineCameraActor_2`（Zone 2）で置いてある。
+ステップ 3（Zone 1 の途中の出来事 `06_Hospital_Zone1_06Event`）。本家 `06_Hospital_Zone_01.txt` の `05_ParkingLotCutscene`（@17159）は、`SetViewTargetWithBlend(06_CineCamera, 0.5, Cubic, 0, false)` → `Initialize Cutscene Widget(場面, True)` → `Play` → `OnFinished` → `06_Transition` → 曲の `bFadeOut` 真、の順。いまの `AWasamiZone1Flow::On05ParkingLotCutscene` は場面を飛ばして `Transition06` を直に呼んでいるので、`PlayCutscene(TEXT("06_Hospital_Zone1_06Event"), TEXT("Transition06"), TEXT("06_CineCamera"))` に置き換える（`Transition06` の中の「場面を飛ばすので視点は戻さなくてよい」というコメントと、視点をプレイヤーへ戻す `SetPlayerViewTarget` の要否を本家 `06_Transition` @16861 で確かめ直す）。変更予定: `Source/wasami_deception/WasamiZone1Flow.{h,cpp}`、実装記録 11。
 
 ## 決定事項
-
+- 2026-09-20: **スキップの入力はプレイヤーコントローラーの `InputComponent` に足す** — 本家も `DD_PlayerController` が `AnyKey` と `Skip Cutscene`（P・Gamepad_Special_Right）を取る。本作のキー割り当てはプレイヤーキャラクターの Enhanced Input にあるが、場面の間は `DisableInput` でそれが止まるので、そこには置けない。画面が外れるときに自分の結び付けを外す。
+- 2026-09-20: **`PlayCutscene` は入力を切らない** — 本家は場面ごとに違う（Zone 1 の出来事は入力を切らずに見せ、Zone 2 の捕まる場面は先に `Disable Player Input`、独房はすでに切れている）。切るのは呼ぶ側（ステップ 3〜5）。
 - 2026-09-20: **既存の `dd_sequence` を広げる**（場面ごとの手書きの再生機を作らない） — シーケンスは `AWasamiZoneFlow::PlaySequence`（`GetSequencePlayer()->Play()`）で既に流れている。ステップ 1 で 3 つの場面が組めるようになったので、残りは流す所を作るだけ。
 - 2026-09-20: **Zone 2 の始まりは配布版の道を写す** — 本家の `Arrive Event` は `IsPackagedForDistribution()` で分岐し、配布版だけ救急車の到着 `AmbulanceArrive1` を流す。本作はパッケージして遊ぶので配布版の道が本家の姿（ステップ 4）。
 - 2026-09-20: **捕まる場面の CameraAnim は流れが流す** — UE 5.8 に `MovieSceneCameraAnimTrack` が無い（`skipped_tracks` に出る）。`CameraAnim_Nurse_01` は `/Game/DD/…` に `UWasamiCameraAnim` として取り込めるので、ステップ 4 で `UWasamiCameraAnimModifier::Play` を場面の 20.53 s（区間 492800〜606400 刻み、4.73 s）に合わせて呼ぶ。
@@ -56,13 +55,14 @@ updated: 2026-09-20 07:35
 - 作業ブランチ `feature/cutscenes`（`main` から。ステップ 1 をコミット済み）。
 - 3 つの場面は組み上がってレベルに置いてある（`/Game/DD/Animation/06_Hospital/06_Hospital_Zone1_06Event`・`_Zone2_AmbulanceArrive1`・`_Zone2_Capture`・`_Zone2_Cell` と、同じ名前の `LevelSequenceActor`。流すのは `AWasamiZoneFlow::PlaySequence(名前)`）。ナース 4 体・シネカメラ 2 台も置いてある（タグ `src:<本家の名前>`）。
 - **`dd_sequence` を直したら** `python Tools/ue_remote.py <script>` から `dd_sequence.place("Zone1")` / `("Zone2")` で組み直し、**そのつど `dd_level.build_navigation()` を呼ぶ**（保存でレベルの道が空になる。Zone を切り替えるときは「開くだけの呼び出し」→「焼く呼び出し」の 2 回）。確かめ方は `skipped_tracks` が CameraAnim と `Ballroom_Event_Fade` のイベントだけ・`missing` と `missing_particles` が空。
-- Automation テストは、エディタが背面だと 3 fps で進まない。`python Tools/desktop.py start` → `click 2752 81 --allow WindowsTerminal.exe --allow UnrealEditor.exe`（エディタのタイトルバー）で前面にしてから走らせ、終わったら `stop`。
+- Automation テストは、エディタが背面だと 3 fps で進まない。`python Tools/desktop.py start` → `ping` で前面の窓を見て（2026-09-20 はエディタが前面のままだった。座標 2752, 81 のクリックは別の窓に当たる）、背面なら `click <エディタのタイトルバー> --allow UnrealEditor.exe` で前面にしてから走らせ、終わったら `stop`。走らせるのは `python Tools/ue_remote.py -c "…execute_console_command(None, 'Automation RunTests Wasami')"`、結果は `Saved/Logs/wasami_deception.log` の `Test Completed` を数える。
+- **スキップの飛ばしは PIE で確かめること**: UE4 の `JumpToSeconds(1e7)` を UE 5.8 の `SetPlaybackPosition(1e7, Jump)` に置き換えた。場面の範囲に丸められて `OnFinished` が流れるはずだが、実際に流れるかはステップ 6 の PIE で見る（流れなければ `PlayTo` か、終わりの直前へ飛ばして再生を続ける形にする）。
 - 3 つの場面の尺と作り: `06Event` 10.53 s（ナース 2 体、シネカメラと `06_CameraTarget`、スポットライト 4、粒子と音）、`Capture` 26.23 s（シネカメラ、`camera look`、両開き扉 2、`nurse_idle1`）+ master 11 音・Slomo・Fade、`Cell` 74.07 s（シネカメラ、`nurse_idle2`、牢の扉・壁のスイッチ・偽の天井・棘ほか）+ master 14 音・Slomo。どれも tick 24000・表示 30 fps。
 - `pak_reference_2/_sequences/*.csv` は同じ中身を 30 fps で標本化した表で、PIE の収録と数字で見比べるのに使える。
 
 ## 検証
 
-- check_records: OK（19 件。記録 01・08・11 を直した）
-- C++ ビルド: OK（`Tools/editor_cycle.py`。`WasamiCutsceneNurse` を足した）
-- テスト: `Wasami.Cutscene.Nurse` = Success
-- エディタでの確認: 両ゾーンを `dd_sequence.place` で組み直し（Zone 1 は 6 本・結び付け 32・トラック 39・区間 57・キー 213、Zone 2 は 6 本・29・55・117・526。`missing` と `missing_particles` は空）、道を焼き直した。組み上がった 3 つの場面の中身（アニメの読み替え・可視の反転・揺れのクラスと強さ・Slomo のキー・材質の `Efficiency` 6 キー）と、置いたナース 4 体（メッシュ・拡縮 1.359・Zone 1 は −117.84 / −90°・隠して置く）を読み出して確かめた。
+- check_records: OK（19 件。記録 09・11 と `_index` を直した）
+- C++ ビルド: OK（`Tools/editor_cycle.py`。`WasamiCutsceneWidget` を足した）
+- テスト: `Automation RunTests Wasami` 145 件すべて Success（新しい `Wasami.Cutscene.Widget.Tree`・`.Animation` を含む）
+- エディタでの確認: ステップ 1 で両ゾーンを組み直し、3 つの場面とナース 4 体・シネカメラ 2 台が置いてあることを確かめてある（ステップ 3 以降はこれを流す）
