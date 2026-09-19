@@ -7,6 +7,7 @@
 class AWasamiPlayerCharacter;
 class UAudioComponent;
 class UCameraShakeBase;
+class UCapsuleComponent;
 class UDecalComponent;
 class UMaterialInterface;
 class UParticleSystem;
@@ -24,7 +25,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiTeleportUsedSignature);
  * hit, and the decal on the arm (with the slashes and sparks over it) trails after it once the arm's lag comes on.
  * The mouse wheel sets the distance and a
  * left click confirms, playing CameraAnim_Teleport: 0.12 s later the player is swept to the decal's spot, and the aim
- * reports Used and goes away.
+ * reports Used and goes away. Unlike the original, the move stops in front of a door or an elevator's doors on the way
+ * (StopAtGates).
  * The player forwards the wheel and the click (the original's actor takes them itself, without consuming them).
  */
 UCLASS()
@@ -53,6 +55,15 @@ public:
 
 	/** Alpha after a wheel's AxisValue: Clamp(Alpha + AxisValue / 10, 0, 1). */
 	static float StepAlpha(float Alpha, float AxisValue);
+
+	/**
+	 * Where a move of Capsule from From to To stops short of a gate: the capsule's centre where its sweep first meets a
+	 * world-dynamic component that blocks the capsule's object type (a door, an elevator's doors), or To when none is
+	 * in the way. The actor the capsule would stand on at To (the first thing under it that blocks the Pawn channel)
+	 * is left out when it is world-dynamic, so a move onto an ambulance's roof still goes through its body, and so is
+	 * what the capsule already touches at From. Not the original's: its move passes every world-dynamic thing.
+	 */
+	static FVector StopAtGates(const UCapsuleComponent* Capsule, const FVector& From, const FVector& To);
 
 	/** Loads what the aim uses into Out, so that a spawn waits on nothing. */
 	static void LoadAssets(TArray<TObjectPtr<UObject>>& Out);

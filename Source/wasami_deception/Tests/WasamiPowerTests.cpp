@@ -18,6 +18,7 @@
 #include "Components/Image.h"
 #include "Components/WidgetComponent.h"
 #include "Engine/CollisionProfile.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Tests/AutomationCommon.h"
@@ -153,6 +154,77 @@ bool FWasamiTeleportDistanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("two notches down in a frame"), AWasamiTeleportAim::StepAlpha(0.6f, -2.f), 0.4f, 1e-5f);
 	TestEqual(TEXT("clamped at 1"), AWasamiTeleportAim::StepAlpha(0.95f, 1.f), 1.f, 1e-5f);
 	TestEqual(TEXT("clamped at 0"), AWasamiTeleportAim::StepAlpha(0.05f, -1.f), 0.f, 1e-5f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiTeleportGatesTest, "Wasami.Powers.TeleportGates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiTeleportGatesTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+	if (!TestNotNull(TEXT("a cube"), Cube))
+	{
+		return false;
+	}
+	// The engine's 100 cm cube, scaled, with a collision profile.
+	auto Block = [World, Cube](const FVector& Centre, const FVector& Size, FName Profile)
+	{
+		AActor* Actor = World->SpawnActor<AActor>();
+		UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(Actor);
+		Mesh->SetMobility(EComponentMobility::Movable);
+		Mesh->SetStaticMesh(Cube);
+		Mesh->SetCollisionProfileName(Profile);
+		Actor->SetRootComponent(Mesh);
+		Mesh->RegisterComponent();
+		Actor->SetActorLocation(Centre);
+		Actor->SetActorScale3D(Size / 100.);
+	};
+	// The engine's profile of the doors' trigger boxes: world-dynamic, overlapping everything.
+	const FName OverlapAllDynamic(TEXT("OverlapAllDynamic"));
+	// The player's stand-in: a capsule of the Pawn profile, away from the lanes.
+	AActor* Player = World->SpawnActor<AActor>();
+	UCapsuleComponent* Capsule = NewObject<UCapsuleComponent>(Player);
+	Capsule->InitCapsuleSize(42.f, 88.f);
+	Capsule->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+	Player->SetRootComponent(Capsule);
+	Capsule->RegisterComponent();
+	Player->SetActorLocation(FVector(0., -5000., 90.));
+
+	// A door (world-dynamic, blocking pawns) 10 cm thick with its face at x 495, behind an overlap-only box (the doors'
+	// FrontEnter): the move stops with the capsule touching the door.
+	Block(FVector(300., 0., 150.), FVector(50., 400., 300.), OverlapAllDynamic);
+	Block(FVector(500., 0., 150.), FVector(10., 400., 300.), UCollisionProfile::BlockAllDynamic_ProfileName);
+	const FVector Stopped = AWasamiTeleportAim::StopAtGates(Capsule, FVector(0., 0., 90.), FVector(1000., 0., 90.));
+	TestEqual(TEXT("the move stops with the capsule (radius 42) touching the door"), Stopped.X, 453., 1.);
+	TestEqual(TEXT("on the line of the move"), Stopped.Y, 0., 1e-3);
+	TestEqual(TEXT("at its height"), Stopped.Z, 90., 1e-3);
+
+	// Overlap-only boxes and world-static walls are no gates (the move's own sweep stops at the walls).
+	Block(FVector(300., 2000., 150.), FVector(50., 400., 300.), OverlapAllDynamic);
+	Block(FVector(600., 2000., 150.), FVector(10., 400., 300.), UCollisionProfile::BlockAll_ProfileName);
+	const FVector Through(1000., 2000., 90.);
+	TestEqual(TEXT("no gate on the way"), AWasamiTeleportAim::StopAtGates(Capsule, FVector(0., 2000., 90.), Through), Through);
+
+	// An ambulance (world-dynamic, 600 x 400 x 335 cm): a move onto its roof goes through its body; a move past it
+	// stops at its side.
+	Block(FVector(1000., 4000., 167.5), FVector(600., 400., 335.), UCollisionProfile::BlockAllDynamic_ProfileName);
+	const FVector Roof(1000., 4000., 460.);
+	TestEqual(TEXT("onto the roof"), AWasamiTeleportAim::StopAtGates(Capsule, FVector(0., 4000., 90.), Roof), Roof);
+	const FVector Past = AWasamiTeleportAim::StopAtGates(Capsule, FVector(0., 4000., 90.), FVector(1600., 4000., 90.));
+	TestEqual(TEXT("past it the move stops at its side"), Past.X, 658., 1.);
+
+	// A door the capsule stands in at the start does not hold it.
+	Block(FVector(0., 6000., 150.), FVector(10., 400., 300.), UCollisionProfile::BlockAllDynamic_ProfileName);
+	const FVector Out(1000., 6000., 90.);
+	TestEqual(TEXT("out of a door it stands in"), AWasamiTeleportAim::StopAtGates(Capsule, FVector(0., 6000., 90.), Out), Out);
 	return true;
 }
 

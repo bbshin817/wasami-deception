@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/secrets
 base: 5736007
 started: 2026-09-20 10:30
-updated: 2026-09-20 10:30
+updated: 2026-09-20 12:10
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -22,14 +22,12 @@ updated: 2026-09-20 10:30
 ## 計画
 
 - [x] 1. 作業一覧に項目を足す … 2026-09-20 完了。大目標 2 の項目 12 の後に項目 30（ステージ OP、規模 2）・31（祭壇の材質、規模 1）。項目 28 の祭壇の行を 31 へ移し、取りやめた 16 に OP を 30 へ移したと書いた
-- [ ] 2. テレポートの移動が、道の途中の WorldDynamic の壁（Pawn を止める物。扉・エレベーターの扉）の手前で止まるようにする（`AWasamiTeleportAim::Commit`）。行き先の真下の WorldDynamic の物（救急車の屋根）は除く。テスト、ビルド、PIE で Zone 1 の開始のエレベーターと `BP_06_DoubleDoors11` を確かめる。実装記録 04 と症状索引
-  ← 作業中
-  - 変更予定: `Source/wasami_deception/WasamiTeleportAim.*`、`Source/wasami_deception/Tests/WasamiPowerTests.cpp`、`.claude/implementation-records/04-powers.md`
-- [ ] 3. コミットを main へ cherry-pick し、feature/secrets へ main をマージする（不具合は main で直す決まり。エディタが feature/secrets の C++ で開いているので、直しは feature/secrets で作って確かめてから main へ移す）
+- [x] 2. テレポートの移動が道の途中の扉・エレベーターの扉の手前で止まるようにした … 2026-09-20 完了。`AWasamiTeleportAim::StopAtGates`、テスト `Wasami.Powers.TeleportGates`、PIE で開始のエレベーター・`BP_06_DoubleDoors11`・救急車の屋根を確かめた（実装記録 04、症状索引）。無人運転の決まりに「項目を取りやめるときは要るものを移す」を足した（autonomy.md）
+- [ ] 3. テレポートの直し（C++・テスト・実装記録 04・症状索引）を main にも入れ、feature/secrets へ main をマージする。作業一覧と autonomy.md の変更は feature/secrets だけに置く（main と作業一覧が 76 行違い、cherry-pick がぶつかる。項目 12 を閉じるマージで main へ入る） ← 作業中
 
 ## 次にやること
 
-ステップ 2: `AWasamiTeleportAim::Commit` の移動の前に、プレイヤーのカプセルで行き先までを WorldDynamic の物にスイープし、Pawn を止める部品（行き先の真下の物を除く）に当たればその手前を行き先にする。テスト `Wasami.Powers.TeleportGates` を足して `Tools/editor_cycle.py` でビルドする。
+ステップ 3: `git checkout main` → `git checkout feature/secrets -- Source/wasami_deception/WasamiTeleportAim.cpp Source/wasami_deception/WasamiTeleportAim.h Source/wasami_deception/Tests/WasamiPowerTests.cpp .claude/implementation-records/04-powers.md`（どれも main と同じ中身からの変更）→ 症状索引は直前のコミットの差分を `git apply` → `python .claude/scripts/check_records.py --update` → main でコミット → `git checkout feature/secrets` → `git merge main` → この記録を消してコミット。
 
 ## 決定事項
 
@@ -47,6 +45,6 @@ updated: 2026-09-20 10:30
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（18 件）
+- エディタでの確認: PIE（`L_Hospital_Zone1`）でエレベーターの中から y 3548.7 で止まる・扉 11 の手前 y 955.1 で止まる・リフトの上から救急車の屋根 z 402.2 に乗れる。PIE は止めた。
+- C++ ビルド: 成功（`Tools/editor_cycle.py`）。`Wasami.Powers.*` 14 件が通る（`TeleportGates` は扉の手前 453 cm・救急車の屋根へは通り抜け・横からは 658 cm で止まる・重なった扉からは出られる）

@@ -37,7 +37,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiTestEnemy.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
   - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # タブレットのパワー
@@ -66,7 +66,7 @@ updated: 2026-09-19
 - `AdjustDistance(AxisValue)`・`Confirm()`（BlueprintCallable。ホイールと左クリック）。
 - `OnUsed`（BlueprintAssignable、引数なし）… 本家の `Used`。プレイヤーを動かした直後、自分を消す直前に出す。
 - `MaxDistance`（既定 1000。`ExposeOnSpawn`。パワーが出すときに強化段階の値を入れる）、読み出し用の `Distance`（既定 1000）・`Alpha`（既定 0.6）・`Location`（移動先）。
-- static: `DistanceFor(Alpha, MaxDistance)` = `Lerp(250, MaxDistance, Alpha)`、`StepAlpha(Alpha, AxisValue)` = `Clamp(AxisValue / 10 + Alpha, 0, 1)`、`LoadAssets(Out)`。
+- static: `DistanceFor(Alpha, MaxDistance)` = `Lerp(250, MaxDistance, Alpha)`、`StepAlpha(Alpha, AxisValue)` = `Clamp(AxisValue / 10 + Alpha, 0, 1)`、`LoadAssets(Out)`、`StopAtGates(Capsule, From, To)`（**本作だけ**。カプセルで From から To までを WorldDynamic の物にスイープし、カプセルの種類〈Pawn〉を Block する部品に最初に当たった所のカプセルの中心を返す。無ければ To。To の真下で Pawn のチャンネルを最初に止める物が WorldDynamic ならそのアクタは除き、From で既に重なっている部品〈`bStartPenetrating`〉も除く）。
 - 素材（ソフト参照。`BeginPlay` で読む）: `AimingLoopSound` `/Game/DD/Audio/03_Manor/DD_LVL2_07_Teleport_Aiming_Loop_1227`、`CommittedSound` `/Game/DD/_Engine/VREditor/Sounds/UI/Teleport_Committed`、`CommittedShakeClass` `/Game/DD/UI/Menu/Streaks/BP_CameraShake_Streak`（`_C`）、`ConfirmCameraAnim` `/Game/DD/Animation/Camera/CameraAnim_Teleport`、`DecalMaterial` `/Game/DD/Blueprints/Main/Powers/M_Decal_Teleport`、`AimParticles` `/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_cutter2`（`UParticleSystem`）。
 - コンポーネント（本家と同じ木）: `DefaultSceneRoot` → `SpringArm`（`TargetArmLength` 0 だけ変える。ほかは UE の既定＝位置ラグの速さ 10・サブステップあり）→ `Decal`（`DecalSize` (3, 100, 100)、相対回転 (P −90, Y 0, R 5.46e-5)、拡縮 (3.3264, 1, 1)。ソケット名なしでアームに付くので、アームの先〈ラグで遅れる位置〉に付いていく）、`Decal` → `ParticleSystem`（`UParticleSystemComponent`。相対位置 (−4.13494, −0.000263, 2.3e-6)・回転 (P 90, Y 0.91133, R −359.08875)・拡縮 0.2。UE の既定の `bAutoActivate` のまま）、`DefaultSceneRoot` → `Audio`（音量 0.65、減衰なし）。本家の `Arrow`（エディタの表示用）は置いていない。`GetSpringArm()`・`GetDecal()`・`GetParticleSystem()`（C++ だけ）。
 - 見た目: `BeginPlay` でデカールに `DecalMaterial` を入れ、パーティクルに `AimParticles` を `SetTemplate` する（登録済みで `bAutoActivate` なので、その場で動き出す。本家はコンポーネントのテンプレートとして持ち、スポーンで自動で始まる）。合成したワールド変換は調査 02 §2.1 どおり（PIE で読み戻し: 粒子の原点は当たった点の 13.754 cm 上、拡縮 (0.665276, 0.2, 0.2)、回転 ≈ 0）。
@@ -228,7 +228,7 @@ updated: 2026-09-19
   - ラグ: 最初の 0.5 秒はアームの先が当たった点に即座に付き、以後は UE の SpringArm の `VInterpTo`（速さ 10、1/60 秒ずつのサブステップ）で遅れて付いていく。**0.5 秒より後に初めて床を捉えたときは、スポーン位置（50 m 下）から追ってくる**（本家どおり。テレポートのフラグではラグは戻らない）。
   - ホイール（`AdjustDistance`）: `Alpha = StepAlpha(Alpha, 値)`、`Distance = DistanceFor(Alpha, MaxDistance)`。照準のたびに 0.6 から。1 目盛りは Lv5 で 125 cm、範囲は 250〜1500 cm。
   - 左クリック（`Confirm`）: `Location = デカールのワールド位置 + (0, 0, 125)` を**先に**書き、DoOnce（`bConfirmed`）を通ったら、プレイヤーのカプセルの `WorldDynamic` と `Pawn` の応答を Ignore にし、0.12 秒後に移動（`Commit`）。移動の前の 2 回目のクリックは移動先だけを変える。DoOnce を通った瞬間に、`GetPlayerCameraManager(0)` の `UWasamiCameraAnimModifier` で `CameraAnim_Teleport` を `Play(…, Rate 1, Scale 1, BlendIn 0, BlendOut 0, ループなし, Duration 0)` する（本家の @641。再生空間 CameraLocal は移動のトラックが原点だけなので扱わない）。0.5 秒で自然に終わり、取り消し・照準の破棄・死亡のリセットでは止めない（本家もカメラマネージャが持ち続ける）。
-  - 移動（`Commit`）: `BP_CameraShake_Streak` を倍率 1・`CameraLocal` → `Teleport_Committed` を `PlaySound2D`（音量 1）→ `SetActorLocation(Location, スイープあり, TeleportPhysics)`（壁などで止まる。カプセルの中心を床 + 125 cm に置くので、立ち姿の 88 cm まで約 37 cm 落ちる）→ カプセルの `Pawn` と `WorldDynamic` を Block に戻す → `OnUsed` → 自分を消す。
+  - 移動（`Commit`）: `BP_CameraShake_Streak` を倍率 1・`CameraLocal` → `Teleport_Committed` を `PlaySound2D`（音量 1）→ **`Location = StopAtGates(カプセル, プレイヤーの位置, Location)`（本作だけ。道の途中の扉・エレベーターの扉の手前で止める。下の「既知の制約」）** → `SetActorLocation(Location, スイープあり, TeleportPhysics)`（壁などで止まる。カプセルの中心を床 + 125 cm に置くので、立ち姿の 88 cm まで約 37 cm 落ちる）→ カプセルの `Pawn` と `WorldDynamic` を Block に戻す → `OnUsed` → 自分を消す。
   - 見た目（`BeginPlay`。下の「作るアセット」）: 2 m 四方のデカールに、1 秒周期で明滅する縁の鋭い赤い円（半径約 70 cm）を加算で出す。デカールの子のパーティクル `P_ky_cutter2` が、回る斬撃（大きさ 199.6 cm の正方形のスプライトが寿命 1 秒で 2 倍に広がり、4 × 4 のコマを進める）と上へ昇る赤い火花（毎秒 30、寿命 2 秒）を出す。粒子はローカル空間なので、アームのラグと一緒に動く。
   - `EndPlay` で 2 つのタイマー（ラグの有効化・移動）を止める（UE 5.8 のアクタは消えるときに自分のタイマーを消さない。本家の Delay はアクタと一緒に消える）。
 - 移動の後（`UsedTeleport`。本家の @30854）: 使った側の `bCanCycle*` を真 → `Active Powers` から外す → ゲージの `SetDelay(5)`（アイコンが 0 → 1 を 5 秒）→ Gate が開いていれば `Delay(5)` の後に `RefillTeleport`。再使用は段階によらず 5 秒（本家の `00_Ballroom` だけの 1 秒は病院に無い）。
@@ -425,6 +425,7 @@ updated: 2026-09-19
 - `Wasami.Powers.Tuning` … Lv5 の値、段階の丸め、Lv0 のテレキネシス半径、Lv1 のブーストの再使用 9.5。
 - `Wasami.Powers.SocketBounce` … 弾みのキーの値と、キーの間の値（0.1 秒で 1.19028）。
 - `Wasami.Powers.TeleportDistance` … Lv5 の最初の距離 1000（強化なしなら 700）、`Alpha` 0 / 1 の端、1 目盛りで +0.1（Lv5 で +125 cm）、1 フレームに 2 目盛り、0 と 1 での切り詰め。
+- `Wasami.Powers.TeleportGates` … `StopAtGates`: 厚さ 10 cm の WorldDynamic の扉（`BlockAllDynamic`、面が x 495）の手前で、半径 42 のカプセルの中心が x 453（±1）・線の上・同じ高さで止まる（前の重なりだけの箱〈`OverlapAllDynamic`、扉の `FrontEnter` の代わり〉では止まらない）。重なりだけの箱と WorldStatic の壁（`BlockAll`）だけなら To のまま。WorldDynamic の救急車（600 × 400 × 335 cm）の屋根へは体を通り抜けて To、屋根の先へは横腹の x 658（±1）で止まる。立っている位置で重なっている扉からは出られる。
 - `Wasami.Powers.PrimalTimeline` … `BP_PrimalPower` の 4 本のトラックの値（0〜2 秒の 9 点。書き出しの接線で計算した値と 1e-5 以内）、重みの式（位置 0 で 1.000698 と 1、0.2 秒で 0.8675 と 0.5585、0.3 秒で閃光 0、0.5 秒で色 0）、クラスの既定（範囲なし、重み 0、各上書きと値、球の当たりなし、`Range` 1500）。
 - `Wasami.Powers.PrimalStun` … 一時的なゲームのワールドに仮の的を並べ、`StunEnemies(原点, 3500)` が近く・端（3450）・真上 30 m の 3 体にだけ `SetState(Stun, false)` を 1 回ずつ送ること。遠く（3600）・体が Pawn でない的・`Enemy` タグだけで実装の無いアクタには送らないこと。
 - `Wasami.Powers.TelekinesisTimeline` … `BP_TelekinesisPower` の `float2`（Primal と同じキー。0〜2 秒の 7 点）と重み、クラスの既定（範囲なし・重み 0、青のゲイン (0, 0.421727, 1.61)、中間調 100、色収差 50、ガンマの上書き、`Range` 1500、音とシェイクと粒子のパス、`LoadAssets` が 3 つとも読めること〈取り込みの後〉、0.2 秒と拡縮 2）。
@@ -464,6 +465,11 @@ updated: 2026-09-19
 - 右の枠も Teleport にして左から照準を出し、E を押しても取り消されない（無音）。Q で取り消すと即座に使える・ゲージ 1・照準が消えた。
 - 照準中に `ResetPowers` を呼ぶと、照準が消えて使える・ゲージ 1。クリックの直後（移動の前）に `ResetPowers` を呼ぶと、移動は起きずカプセルが Ignore のまま残り（本家どおり）、次のテレポートの移動で Block に戻った。
 - PIE の間、この仕組みの警告やエラーは無かった（VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」2 件は前のセッションのログにも出ていたもの）。音はユーザーのスピーカーで確かめていない（照準ループが再生中であることは読んだ）。
+
+### テレポートの扉の手前での止まり（2026-09-20、PIE、`L_Hospital_Zone1`。タブレットを上げて左の枠を Teleport にし、`UsePower`・`AdjustTeleportDistance`・`ConfirmTeleport` をリモート実行で呼んだ）
+- 開始のエレベーターの中 (−25, 3735)・南向きから 10 m 先の廊下 (−25, 2735) を狙うと、閉じた扉（y 3487）の手前の y 3548.7 で止まり、エレベーターの中に残った。
+- (0, 1700)・南向きから閉じた `BP_06_DoubleDoors11`（y 900。このチェックポイントでは閉ざされていない）の向こう (0, 700) を狙うと、扉の手前の y 955.1 で止まり、その後に扉が開いた。
+- ガレージリフトの上（z 415.7）から 1 目盛り先の救急車の屋根 (11249, −20125) を狙うと、屋根の上（z 402.2）に乗れた。
 
 ### テレポートのカメラアニメ（2026-09-16）
 - **旧版の実機で観察**（Deadly Decadence の入口の噴水、テレポート 2 回を `Tools/desktop.py record` で 60 fps 収録。`observations/classic/`）: クリックの直後に画面が広がり、1 フレームだけ全面が (234, 245, 244) の白になり、赤く暗いフレームを経て戻る。閃光の後（アニメの 0.24〜0.40 秒）のフレームはアニメの後に対して拡大率 1.26 → 1.30 → 1.14 → 1.06（画角 ≈ 103° → 93°）、アニメの後は 0.98 のまま跳ばない。→ FOV の基準は開始時のキー（90）。`BaseFOV` 137.24 が基準なら 43〜51° に狭まり、終わりで跳ぶはず。
@@ -538,6 +544,7 @@ updated: 2026-09-19
 - `M_DD_Telepathy` はエラーなくコンパイルされた（ノード 17、TexCoord の繰り返し 0.6）。`MM_Telepathy_Inst` の `Gain` は 0.4。PIE を止め、`t.MaxFPS` と PIE の別窓の設定（1280 × 720・中央に置かない）を戻し、未保存なし。C++ は変えていない。
 
 ## 既知の制約・注意点
+- **テレポートの移動は、道の途中の扉・エレベーターの扉の手前で止まる（本家から外れる本作の直し。2026-09-20 の有人セッションのユーザーの指摘「エレベータ、Fロックドアなどがテレポーテーションによってすり抜けられます」）**。本家の移動はカプセルが WorldDynamic と Pawn を無視するので、WorldDynamic の両開き扉（`BP_06_DoubleDoors` の 2 枚）とエレベーターの扉（レベルの `hospital_elevator_doors_*`、`BP_FakeUseActor_06_HospitalZone1_Elevator` の 2 枚）を抜ける。テレポートの床（`hospital_zone_01_teleport`）はエレベーターの中を覆わないが、すぐ外の廊下と扉の両側の廊下を覆うので、Zone 1 の開始のエレベーターの中から閉じた扉越しに外へ出られ、F で破る扉 `BP_06_DoubleDoors11` も越えられた（本家のデータでも同じ）。本作は移動の前に `StopAtGates` で手前を行き先にする。Pawn を Block しない部品（扉の `FrontEnter`・`BackEnter`・`Leave`、`BP_FakeUseActor` の `Box`）と WorldStatic の物（ゾーンの障壁・スピードバリアの板、壁。もともと移動のスイープが止まる）は変わらない。行き先の真下の WorldDynamic の物（救急車）は除くので、ガレージリフトの上から救急車の屋根へは今までどおり乗れる。止まった後にその扉が閉ざされていなければ、近づいた扱いで開く。0.12 秒の待ちの間はカプセルが本家どおり WorldDynamic を無視する。
 - **倍率 25 のシェイク（Primal Fear・テレキネシス）の間、下げたタブレットが視界を横切って黒いフレームが出る**（2026-09-17、テレキネシスの収録で見つけた）。シェイクは視点だけを最大 50 / 50 / 75 cm 動かし、カメラの子のタブレット（下げた状態で視点の前 35 cm・下 40 cm・右 22 cm。02 記録。本家の値で、本家も隠さない）は動かないため。仕組みも値も本家の写しなので直していない。**ステップ 11a・11b1（2026-09-17）の測定では、本家にも本作にも見えなかった**（`video_probe.py series --dark 8` の下半分の暗い画素の割合: 本家 primal-a 0.045 → 0.099・telekinesis-a 0.044 → 0.045、本作 primal-a 0.030 → 0.042・telekinesis-a / b 0.030 のまま。本作は 1 秒約 48 枚 × slomo 0.25 で撮った。`observations/README.md`）。10a で見えた黒は、その後の変更で出なくなったか、刻みの違いによる。見直しは要らないと決めた。
 - **テレキネシスの力場の粒子の材質 4 つは原作のシェーダーの式どおり**（2026-09-17 のユーザーの回答で詰めた。作業一覧の項目 23。星屑 5d3・幕 5e・オーラ 5f・地面の輪 5g。白飛びした終わりの破片はオーラの欠片）。**地面の輪は本家と見比べていない**（本家の連写 3 件のどこにも写らず、プレイヤーの視点からは幕と光に隠れて見えない。式どおりにした後の収録で、形と画面の平均が前の推定と変わらないことだけを見た）。**幕が画面を横切る速さも合わせる対象から外した**（球の幾何と、発動ごとに変わる球の回転とカメラの揺れで決まり、材質では決まらない）。敵はテレキネシスの対象ではない（本家どおり）。
   - **原作の材質の式は cook のシェーダーから読める**（2026-09-18、5d3。01 記録の「cook のシェーダーを読む」）。力場の 4 つはそれで式どおりにした。Telepathy の印も同じ方法で置き換えられる見込み（進捗記録 20260918-power-look-tuning のステップ 6）。cb3 のどこがどのパラメータかは、同じ道具が uexp の式の木から印字する（5f で足した）。
@@ -575,6 +582,7 @@ updated: 2026-09-19
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-20: テレポートの移動が道の途中の扉・エレベーターの扉（WorldDynamic で Pawn を止める物。行き先の真下の物を除く）の手前で止まるようにした（`AWasamiTeleportAim::StopAtGates`。本家から外れる本作の直し。有人セッションのユーザーの指摘）。テスト `Wasami.Powers.TeleportGates`
 - 2026-09-19: Primal Fear の球の作りを基底 `AWasamiSphereBurst` に切り出した（特殊シャードの `AWasamiStunCollectEffect` と共有する。16 記録）。値と振る舞いは変えていない
 - 2026-09-19: `WasamiVanishWidget.cpp` の無名名前空間の定数を `VanishTicksPerSecond` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiLevelClearWidget.cpp` の `using WasamiWidgetAnimation::TicksPerSecond` とぶつかった。作業一覧の項目 18 のステップ 1）
 - 2026-09-18: `WasamiTelepathyTrackerWidget.cpp` の無名名前空間のキーの型を `FTrackerAnimKey` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiWidgetAnimation::FAnimKey` の `using` とぶつかった。作業一覧の項目 6 のステップ 1）
