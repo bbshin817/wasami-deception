@@ -26,6 +26,11 @@ The shard streak's milestones (UWasamiShardStreakWidget, after UI/Menu/Streaks/U
 Check Streak): the ten cards and the four milestone sounds. The vignette and EXTRA LIFE !'s font come with the tablet,
 the life icon with the death screen, and the camera shake with the powers (dd_powers).
 
+The level clear screen (UWasamiLevelClearWidget, after UI/Menu/UMG_LevelClear) as the player escapes: You Escaped!,
+the rules above and under the rows, the hospital's title (Torment Therapy, which the widget tints red), You Escaped!'s
+sound, the rows' and FINAL RANK's grade stamps and the counters' fill. The white vignette and the font come with the
+tablet.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -80,6 +85,18 @@ RING_PIECE_SOUNDS = ("Audio/RingStatue/Ring_Piece_Pickup_v1",)
 # ------------------------------------------------------------------------------------------------ the shard streak
 STREAK_TEXTURES = tuple("UI/Menu/Streaks/shard_streak_%d" % n for n in (20, 50, 100, 150, 200, 250, 350, 500, 700, 1000))
 STREAK_SOUNDS = tuple("Audio/UI/Shard_Streak_Milestone_%s" % v for v in ("V1A", "V2", "V3A", "V4"))
+# ------------------------------------------------------------------------------------------------ the level clear screen
+LEVEL_CLEAR_TEXTURES = (
+    "UI/Menu/you_escaped",
+    "UI/Menu/results_window",
+    "UI/Menu/TitleCards/chapter_ui_title_tormenttherapy",
+)
+LEVEL_CLEAR_SOUNDS = (
+    "Audio/UI/UI_YouEscaped",
+    "Audio/UI/Level_Clear_Grade_Stamp_v1",
+    "Audio/UI/Level_Clear_Grade_Stamp_v2",
+    "Audio/UI/UI_XP_Bar_Fill_V2A_0617",
+)
 
 # The original emblems' settings (UI/Main/Loaders/loader_reapernurse in _textures.json: sRGB, default compression, UI).
 LOADING_EMBLEM_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
@@ -190,9 +207,16 @@ def import_shard_streak():
             "sounds": len([dd_assets.sound(rel, VERSION) for rel in STREAK_SOUNDS])}
 
 
+def import_level_clear():
+    """The level clear screen's pictures and sounds. Returns how many of each."""
+    return {"textures": len([dd_assets.texture(rel, VERSION) for rel in LEVEL_CLEAR_TEXTURES]),
+            "sounds": len([dd_assets.sound(rel, VERSION) for rel in LEVEL_CLEAR_SOUNDS])}
+
+
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
-    screen's, the hand's, the ring piece screen's and the shard streak's, then saves /Game/DD."""
+    screen's, the hand's, the ring piece screen's, the shard streak's and the level clear screen's, then saves
+    /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -206,5 +230,7 @@ def import_all():
         result["ring_piece_" + key] = count
     for key, count in import_shard_streak().items():
         result["streak_" + key] = count
+    for key, count in import_level_clear().items():
+        result["level_clear_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

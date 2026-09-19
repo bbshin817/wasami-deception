@@ -23,7 +23,7 @@ namespace
 	/** By the Enum_ShardStreaks value. */
 	constexpr uint8 ShardStreakRank[] = {1, 1, 2, 2, 3, 4, 4, 4, 4, 4, 4};
 	constexpr int32 ShardStreakShards[] = {0, 15, 20, 25, 30};
-	constexpr int32 StreakMilestones[] = {0, 20, 50, 100, 150, 200, 250, 350, 500, 700, 1000};
+	constexpr int32 StreakDisplayNames[] = {0, 20, 50, 100, 150, 200, 250, 350, 500, 700, 1000};
 
 	FWasamiResultRow MakeRow(FText Value, uint8 Rank, int32 Shards)
 	{
@@ -113,7 +113,7 @@ FText FWasamiLevelResults::TimeText(float Seconds)
 
 int32 FWasamiLevelResults::StreakMilestone(uint8 Streak)
 {
-	return Pick(StreakMilestones, Streak);
+	return Pick(StreakDisplayNames, Streak);
 }
 
 FText FWasamiLevelResults::RankText(uint8 Rank)

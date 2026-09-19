@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/level-clear
 base: a3e64ad
 started: 2026-09-19 09:10
-updated: 2026-09-19 10:55
+updated: 2026-09-19 11:50
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -20,11 +20,7 @@ updated: 2026-09-19 10:55
 - [x] 0. 本家のコードを読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」。
 - [x] 1. リザルトの規則（病院の値）とセーブの欄 … 2026-09-19 完了。`FWasamiLevelResults`（`WasamiLevelResults.*`）・セーブの `BonusShards`・`Secrets`・テスト `Wasami.LevelClear.Results`。実装記録は新しい **13-level-clear**（画面・連続回収もここへ書き足す）。
 - [x] 2. シャードの連続回収 … 2026-09-19 完了。ゲームモードの `CheckStreak`（`Check Shards` から毎回）・`Wasami.Streak N`、節目の画面 `UWasamiShardStreakWidget`、`dd_ui.import_shard_streak`、テスト `Wasami.LevelClear.ShardStreak`。中身は 13 記録。WebGL 版と値の違いは無かった（ライフ +1 は `Check Streak` でなく画面の Construct）。
-- [ ] 3. スコア画面の素材と、ウィジェットの木と ClearAnimation
-  - 取り込み `dd_ui.import_level_clear()`: `UI/Menu/you_escaped`・`results_window`、レベルの題字 `UI/Menu/TitleCards/chapter_ui_title_tormenttherapy`（下の要確認）、白いビネット（`T_Vignette`。ステップ 2 と共有）、フォント（ウィジェットが使うものを JSON から。今あるのは `helvetica-normal`）、音 `Audio/UI/UI_YouEscaped`・`Level_Clear_Grade_Stamp_v1`・`_v2`・`UI_XP_Bar_Fill_V2A_0617`。
-  - `UWasamiLevelClearWidget`: 死亡画面（09 記録の `UWasamiDeathScreenWidget`）と同じく、本家の木をスロットのまま C++ で組み、アニメを書き出しのキーから `WasamiWidgetAnimation.h` の曲線で作ってウィジェットのティックで進める（ゲームは止まっているので、実時間で進む）。このステップは `ClearAnimation`（4.39 s: 全体・You Escaped! の回転と拡大・赤・揺れ・白い閃光・EASY MODE）、0.75 s の `UI_YouEscaped`、3.25 s の `ShowResults` の口まで。値は `Setup(FWasamiLevelResults, bEasy)` で受ける（本家はレベル BP が変数に入れ、バインド関数が出す）。EASY MODE は難易度の設定（項目 18）が無いので出さない（本家の Construct の `RemoveFromParent` の道）。
-  - テスト（木の部品・`ClearAnimation` のキー・音の時刻・`ShowResults` の時刻）。
-  - 変更予定: `WasamiLevelClearWidget.*`（新）、`Tests/WasamiLevelClearTests.cpp`、`dd_ui.py`、`/Game/DD/UI/Menu/…`・`/Game/DD/Audio/UI/…`、実装記録 13・01
+- [x] 3. スコア画面の素材と、ウィジェットの木と ClearAnimation … 2026-09-19 完了。`UWasamiLevelClearWidget`（旧版の木と `ClearAnimation`・0.75 s の音・3.25 s の `ShowResults` の口。今は空）・デバッグ `Wasami.LevelClear`・`dd_ui.import_level_clear`・テスト `Wasami.LevelClear.Screen`。中身は 13 記録。XP の箱と DIARY UNLOCKED!（`FinalRankText`）は作らなかった。
 - [ ] 4. リザルトの出方と NEXT
   - `ShowResults`（Delay の連鎖: 行 0・0.25・0.5・0.75・1.0・1.25 s、TOTAL 1.75 s、FINAL RANK 2.75 s、UI 入力とカーソル 3.75 s）、行ごとのアニメ（1 s。値・ランク・加算の順に 0.25 s ずつ）と判の音（`Grade_Stamp_v2`）、数え上げ（`*Counter`: `xp_fill` のループ、`Delay(span / n)` ごとに +1。WebGL 版の `Counter`）、`Total Shards Animation`、`Final Rank Animation`（`Grade_Stamp_v1` とルートの揺れ）。NEXT のホバーの色、押すと DoOnce → `Fade Out`（1 s）・ゲームだけの入力・カーソルを消す → 4 s → `Finished`。XP の箱（`XP Box Animation`・`Level Up`）は作らない（下の決定事項）。
   - テスト（時刻の連鎖・数え上げの歩み・NEXT の DoOnce と 4 s の `Finished`）。
@@ -40,7 +36,7 @@ updated: 2026-09-19 10:55
 
 ## 次にやること
 
-ステップ 3（スコア画面の素材と、ウィジェットの木と `ClearAnimation`）を始める。旧版 `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_LevelClear.json` の木（スロット）と `ClearAnimation` のキーを、連続回収のときと同じ書き出し方（`exports` の `CanvasPanelSlot`・`MovieScene*Section`。`WidgetArchetype` の側は重複なので飛ばす）で読み、`Construct` を `python Tools/dd/bp_flow.py pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt Construct` で読む。組み方は `UWasamiShardStreakWidget`（13 記録。`Begin`・`Advance`・`Evaluate*`・`Place`）と死亡画面（09 記録）に倣う。WebGL 版 `C:/Users/User/Downloads/wasami-deseption/src/hud/level-clear.ts` の `TIMING` と見比べる。
+ステップ 4（リザルトの出方と NEXT）を始める。`UWasamiLevelClearWidget::ShowResults`（今は空）に本家の Delay の連鎖を写す。読むもの: `python Tools/dd/bp_flow.py pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt ShowResults`、`TimeCounter` ほかの `*Counter`、NEXT のホバー 2 つと押す 1 つ（`--list` の `BndEvt__NextButton_*`）。行のアニメ（`Time Animation` ほか 6 つ・`Total Shards Animation`・`Final Rank Animation`・`Fade Out`）のキーは `python tmp/umg_anim.py pak_reference/_assets/DDeception/Content/UI/Menu/UMG_LevelClear.json "Time Animation"`（ステップ 3 で書いた読み出し。`tmp/` は git の外なので、無ければ書き直す: 13 記録の「原作データの根拠」のパスを読む）。WebGL 版 `C:/Users/User/Downloads/wasami-deseption/src/hud/level-clear.ts` の `ROW`・`TIMING`・`COUNT_SPAN` と見比べる。
 
 ## 本家の流れ（読んだもの）
 
@@ -58,21 +54,23 @@ updated: 2026-09-19 10:55
 - 2026-09-19: **シャードの連続回収（`Check Streak` と `UMG_ShardStreak`）をこの項目に入れる** — SHARD STREAK の行の値の元で、今は数えておらず（いつも 0 で C になる）、作業一覧のどの項目にも無い。200・500 でライフが増える規則でもある。作業一覧の項目 14 の規模を 1 → 2 にした。
 - 2026-09-19: **NEXT の行き先は、タイトル（項目 17）ができるまで Zone 1 の最初**（死亡画面の QUIT TO TITLE と同じ代わりの道。09 記録）。項目 17 で `TitleScreen` に替える。本家の `SaveSlot` の `Level Ranks`・`Progress`（レベル選択用）と実績は写さない（本作にレベル選択と実績が無い）。
 - 2026-09-19: BONUS SHARDS・SECRETS は、赤いシャード（項目 10）と秘密（項目 12）ができるまで 0 のまま（0/2・0/4、ランク C）。EASY MODE の文字は難易度（項目 18）ができるまで出さない。
+- 2026-09-19: **DIARY UNLOCKED!（`FinalRankText`。FINAL RANK が S のときだけ見える）は作らない** — 本作に日記が無く、WebGL 版も出さない。`Final Rank Animation` の `FinalRankText` のトラックも写さない。
 
 ## 要確認（ユーザー）
 
 - 2026-09-19: TOTAL SHARDS は本家のコードどおり **679 を 2 回数える**（病院のレベル BP が `Shards_Shards` にも 679 を入れ、画面の合計は `Shards_Shards` と `Shards_Var` の文字の両方を足す。新しいセーブで 1483、全部 S で 1558）。本家の書き誤りらしいが、ゲームの規則の値なのでコードに従った。1 回にしたいときは `FWasamiLevelResults::GetTotalShards` を直す。場所: 13 記録。
-- 2026-09-19: スコア画面の上のレベルの題字 — 仮に本家の病院の題字 `chapter_ui_title_tormenttherapy`（「Torment Therapy」の飾り文字。本家どおり赤く染める）を使う計画にした。理由: 本作のステージは本家の病院そのもので、題字はロゴでもキャラクターでもない UI の文字（WebGL 版の `you-escaped` と同じ扱い）。WebGL 版はステージが違ったので、ユーザーの題字「Stinky Gachimi」を使っていた。場所: ステップ 3 の取り込み。
+- 2026-09-19: スコア画面の上のレベルの題字 — 仮に本家の病院の題字 `chapter_ui_title_tormenttherapy`（「Torment Therapy」の飾り文字。本家どおり赤く染める）を使う計画にした。理由: 本作のステージは本家の病院そのもので、題字はロゴでもキャラクターでもない UI の文字（WebGL 版の `you-escaped` と同じ扱い）。WebGL 版はステージが違ったので、ユーザーの題字「Stinky Gachimi」を使っていた。場所: 13 記録（`LevelNameTexture`）。ステップ 3 でそのとおり作った。
 
 ## 再開時の注意
 
-- エディタは起きていて（ステップ 2 のビルドで開き直した）、Zone 1（`L_Hospital_Zone1`）を開いている。PIE なし（2026-09-19 10:55）。メッセージログの窓は PIE の収録のために最小化した（ビューポートに重なっていた）。
-- テストは MCP の `AutomationTestToolset.AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter`（`StartsWith:Wasami.LevelClear` など）で回す。エディタを開き直すと MCP のセッションが切れるので、`ToolSearch` で `+unreal-mcp call_tool` を引き直す。
+- エディタは起きていて（ステップ 3 のビルドで開き直した）、Zone 1（`L_Hospital_Zone1`）を開いている。PIE なし（2026-09-19 11:50）。エディタは前面、メッセージログの窓は最小化した。
+- テストは MCP の `AutomationTestToolset.AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter`（引数 `filterExpression`: `StartsWith:Wasami.LevelClear` など）で回す。エディタを開き直すと MCP のセッションが切れるので、`ToolSearch` で `+unreal-mcp call_tool` を引き直す。
 - 取り込んだアセットは `/Game/DD/...`（原作から作り直せるので git の外）。取り込みは `dd_ui.py` に足し、`WasamiDDTools` から呼ぶ（01 記録）。
-- PIE の収録はビューポートの範囲 `1822 206 2862 858`（`Tools/playthrough.py` の `VIEWPORT`）を `desktop.py record --grab gdi --region …` で撮り、`video_probe.py sheet` でグリッドにする。
+- PIE の収録: **エディタを前面にしてから**（端末が前面だとエディタが約 3 fps に落ち、Slate の 1/8 s の打ち切りで画面が半分の速さになる。症状索引）。前面にするのは `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe --allow WindowsTerminal.exe`（タイトルバーの空き）。`python Tools/pie.py cmd "t.MaxFPS 60"` → `desktop.py record --grab gdi --region 1822 206 2862 858 --fps 60` → `pie.py cmd "Wasami.LevelClear"` → `video_probe.py sheet`。終わったら `t.MaxFPS 0` と `pie.py stop`。`Wasami.LevelClear` の画面は NEXT ができるまで PIE を止めるまで残る。
+- C++ のファイルを足したら、コミットの前に無名名前空間の名前の重複を洗う（症状索引の「ファイルを足したらビルドが落ちた」）。ステップ 3 で `tmp/anon_dupes.py` を書いた（git の外）。
 
 ## 検証
 
-- check_records: OK（ステップ 2、2026-09-19）
-- C++ ビルド: 成功（ステップ 2）。テスト `Wasami.LevelClear.*` 2 件・`Wasami.GameFlow.*` 7 件・シャード・ゾーンの流れ・矢印・死亡画面の 15 件が通った
-- PIE（ステップ 2）: `Wasami.Streak 200` で札・ビネット・EXTRA LIFE ! が出てライフ 3 → 4（13 記録の「確かめたこと」）
+- check_records: OK（ステップ 3、2026-09-19）
+- C++ ビルド: 成功（ステップ 3。1 回目は `WasamiLevelResults.cpp` と `WasamiGameMode.cpp` の `StreakMilestones` がユニティでぶつかって落ちた。直してから重複を洗った）。テスト `Wasami.LevelClear.*` 3 件が通った
+- PIE（ステップ 3）: `Wasami.LevelClear` で赤 → You Escaped! → 閃光 → RESULTS の画面が曲線どおりの時刻で出た（13 記録の「確かめたこと」）

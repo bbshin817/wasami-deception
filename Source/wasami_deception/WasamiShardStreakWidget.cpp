@@ -43,7 +43,7 @@ namespace
 		{54000., 1.f, 2.941177172033349e-06, 2.941177172033349e-06}, {90000., 1.1f, 0., 0.}};
 
 	// Image_161's brush tint, and its ColorAndOpacity's alpha at rest (Anim sets it from 0).
-	const FLinearColor VignetteTint(0.22481299936771393f, 0.f, 0.38020798563957214f, 1.f);
+	const FLinearColor StreakVignetteTint(0.22481299936771393f, 0.f, 0.38020798563957214f, 1.f);
 	constexpr float VignetteRestAlpha = 0.25f;
 	constexpr float VignetteRestScale = 2.f;
 	// TextBlock_94's outline colour (its outline size is UMG's default 0, so none is drawn).
@@ -56,7 +56,7 @@ namespace
 		TEXT("/Game/DD/UI/Menu/Streaks/shard_streak_350"), TEXT("/Game/DD/UI/Menu/Streaks/shard_streak_500"),
 		TEXT("/Game/DD/UI/Menu/Streaks/shard_streak_700"), TEXT("/Game/DD/UI/Menu/Streaks/shard_streak_1000")};
 
-	UCanvasPanelSlot* Place(UCanvasPanel* Panel, UWidget* Child, const FAnchors& Anchors, const FMargin& Offsets,
+	UCanvasPanelSlot* StreakPlace(UCanvasPanel* Panel, UWidget* Child, const FAnchors& Anchors, const FMargin& Offsets,
 		const FVector2D& Alignment, bool bAutoSize)
 	{
 		UCanvasPanelSlot* Slot = Panel->AddChildToCanvas(Child);
@@ -69,7 +69,7 @@ namespace
 		return Slot;
 	}
 
-	FSlateBrush TextureBrush(UTexture2D* Texture, const FVector2D& Size, const FLinearColor& Tint = FLinearColor::White)
+	FSlateBrush StreakBrush(UTexture2D* Texture, const FVector2D& Size, const FLinearColor& Tint = FLinearColor::White)
 	{
 		FSlateBrush Brush;
 		Brush.SetResourceObject(Texture);
@@ -130,29 +130,29 @@ TSharedRef<SWidget> UWasamiShardStreakWidget::RebuildWidget()
 
 		// StreakImage: the card, 612 × 227 at its size in the middle, clear until Anim.
 		StreakImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("StreakImage"));
-		StreakImage->SetBrush(TextureBrush(StreakTextures.Num() > 0 ? StreakTextures[0].LoadSynchronous() : nullptr,
+		StreakImage->SetBrush(StreakBrush(StreakTextures.Num() > 0 ? StreakTextures[0].LoadSynchronous() : nullptr,
 			FVector2D(612.f, 227.f)));
 		StreakImage->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.f));
-		Place(Root, StreakImage, FAnchors(0.5f, 0.5f), FMargin(0.f, 0.f, 0.f, 40.f), FVector2D(0.5f, 0.5f), true);
+		StreakPlace(Root, StreakImage, FAnchors(0.5f, 0.5f), FMargin(0.f, 0.f, 0.f, 40.f), FVector2D(0.5f, 0.5f), true);
 
 		// Image_161: T_Vignette tinted purple over the whole screen, over the card.
 		Vignette = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Image_161"));
-		Vignette->SetBrush(TextureBrush(VignetteTexture.LoadSynchronous(), FVector2D(1920.f, 1080.f), VignetteTint));
+		Vignette->SetBrush(StreakBrush(VignetteTexture.LoadSynchronous(), FVector2D(1920.f, 1080.f), StreakVignetteTint));
 		Vignette->SetColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, VignetteRestAlpha));
 		SetScale(Vignette, VignetteRestScale);
-		Place(Root, Vignette, FAnchors(0.f, 0.f, 1.f, 1.f),
+		StreakPlace(Root, Vignette, FAnchors(0.f, 0.f, 1.f, 1.f),
 			FMargin(0.9609375f, 0.54052734375f, 0.9609375f, 0.54052734375f), FVector2D(0.5f, 0.5f), true);
 
 		// extralife: 280 × 129 hanging 115 px below the middle, the skull on its left and EXTRA LIFE ! beside it.
 		ExtraLife = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("extralife"));
 		ExtraLife->SetRenderOpacity(LifeRestOpacity);
 		SetScale(ExtraLife, LifeRestScale);
-		Place(Root, ExtraLife, FAnchors(0.5f, 0.5f), FMargin(0.f, 115.45947265625f, 280.18017578125f, 129.09909057617188f),
+		StreakPlace(Root, ExtraLife, FAnchors(0.5f, 0.5f), FMargin(0.f, 115.45947265625f, 280.18017578125f, 129.09909057617188f),
 			FVector2D(0.5f, 0.f), false);
 
 		UImage* Skull = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Image_88"));
-		Skull->SetBrush(TextureBrush(LifeTexture.LoadSynchronous(), FVector2D(90.f, 90.f)));
-		Place(ExtraLife, Skull, FAnchors(0.f, 0.5f), FMargin(-8.f, -44.54954528808594f, 0.f, 0.f), FVector2D::ZeroVector, true);
+		Skull->SetBrush(StreakBrush(LifeTexture.LoadSynchronous(), FVector2D(90.f, 90.f)));
+		StreakPlace(ExtraLife, Skull, FAnchors(0.f, 0.5f), FMargin(-8.f, -44.54954528808594f, 0.f, 0.f), FVector2D::ZeroVector, true);
 
 		UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TextBlock_94"));
 		Text->SetText(FText::FromString(TEXT("EXTRA LIFE !")));
@@ -164,7 +164,7 @@ TSharedRef<SWidget> UWasamiShardStreakWidget::RebuildWidget()
 		Font.OutlineSettings.bSeparateFillAlpha = true;
 		Font.OutlineSettings.bApplyOutlineToDropShadows = true;
 		Text->SetFont(Font);
-		Place(ExtraLife, Text, FAnchors(0.f, 0.f, 1.f, 0.5f), FMargin(80.f, 44.f, 100.18017578125f, -9.450454711914062f),
+		StreakPlace(ExtraLife, Text, FAnchors(0.f, 0.f, 1.f, 0.5f), FMargin(80.f, 44.f, 100.18017578125f, -9.450454711914062f),
 			FVector2D::ZeroVector, false);
 	}
 	return Super::RebuildWidget();

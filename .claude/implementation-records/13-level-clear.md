@@ -1,18 +1,20 @@
 ---
-title: 脱出後のスコア画面（リザルトの規則・連続回収）
+title: 脱出後のスコア画面（リザルトの規則・連続回収・画面）
 sources:
   - Source/wasami_deception/WasamiLevelResults.h
   - Source/wasami_deception/WasamiLevelResults.cpp
   - Source/wasami_deception/WasamiShardStreakWidget.h
   - Source/wasami_deception/WasamiShardStreakWidget.cpp
+  - Source/wasami_deception/WasamiLevelClearWidget.h
+  - Source/wasami_deception/WasamiLevelClearWidget.cpp
   - Source/wasami_deception/Tests/WasamiLevelClearTests.cpp
 updated: 2026-09-19
 ---
 
-# 脱出後のスコア画面（リザルトの規則・連続回収）
+# 脱出後のスコア画面（リザルトの規則・連続回収・画面）
 
 ## 役割
-Zone 2 のガレージのポータルで脱出したあとのスコア画面（本家の `UI/Menu/UMG_LevelClear`）の値。本家の病院のレベル BP `06_Hospital` の `Escape` が画面に入れる 6 行（TIME・SOUL SHARDS・BONUS SHARDS・SECRETS・LIVES LOST・SHARD STREAK）の文字・ランク・加算シャードと、画面のバインド関数が出す TOTAL SHARDS と FINAL RANK を、エンジンに依らない静的関数で作る。SHARD STREAK の元になる**シャードの連続回収**（本家 `BP_DD_GameMode` の `Check Streak` と、節目の画面 `UI/Menu/Streaks/UMG_ShardStreak`）もここに書く（ゲームモードの口は 02・06 記録の `AWasamiGameMode`）。スコア画面そのものと出し方は作業一覧の項目 14 の残りのステップ（進捗記録 `20260919-level-clear`）。
+Zone 2 のガレージのポータルで脱出したあとのスコア画面（本家の `UI/Menu/UMG_LevelClear`）の値。本家の病院のレベル BP `06_Hospital` の `Escape` が画面に入れる 6 行（TIME・SOUL SHARDS・BONUS SHARDS・SECRETS・LIVES LOST・SHARD STREAK）の文字・ランク・加算シャードと、画面のバインド関数が出す TOTAL SHARDS と FINAL RANK を、エンジンに依らない静的関数で作る。SHARD STREAK の元になる**シャードの連続回収**（本家 `BP_DD_GameMode` の `Check Streak` と、節目の画面 `UI/Menu/Streaks/UMG_ShardStreak`）もここに書く（ゲームモードの口は 02・06 記録の `AWasamiGameMode`）。スコア画面そのもの（`UWasamiLevelClearWidget`。本家の `UI/Menu/UMG_LevelClear` の木と `ClearAnimation`）もここに書く。行の出方・NEXT・脱出からの出し方は作業一覧の項目 14 の残りのステップ（進捗記録 `20260919-level-clear`）。
 
 ## 公開インターフェース
 - `FWasamiResultRow`（USTRUCT）… 1 行: `Value`（`FText`。本家の `<行>_Var`）・`Rank`（`uint8`。本家の `Enum_Ranks`: 0 は空・1 C・2 B・3 A・4 S）・`Shards`（`int32`。本家の `<行>_Shards`。合計に足し、行の数え上げが数える値）。
@@ -25,6 +27,7 @@ Zone 2 のガレージのポータルで脱出したあとのスコア画面（�
 
 - 連続回収（ゲームモード `AWasamiGameMode`）: `CheckStreak()`（戻り値は出した節目、無ければ 0）・静的 `StreakMilestoneFor(CurrentStreak)`（20・50・100・150・200・250・350・500・700・1000 ちょうどで 1..10、ほかは 0）・静的 `StreakSoundIndex(Milestone)`（`StreakSounds` の添字）・`StreakSounds`（`Shard_Streak_Milestone_V1A`・`V2`・`V3A`・`V4`）・`StreakShakeClass`（`BP_CameraShake_Streak`）。`CheckShards()` が毎回呼ぶ。デバッグの `Wasami.Streak N`（セーブの `CurrentStreak` を N − 1 にして `CheckStreak`。N 番目を取ったのと同じ）。
 - `UWasamiShardStreakWidget`（`UUserWidget`）… 節目の画面。`Show(WorldContext, Streak)`（本家の `Create` → `Streak` → `AddToPlayerScreen(2)`。プレイヤーのコントローラが無いと出さない）・`Streak`（1..10）・`GivesExtraLife(Streak)`（5〈200〉と 8〈500〉）・`Begin(Streak)`（Construct の頭から。テストが単独で呼ぶ）・`Advance(DeltaSeconds)`・`IsFinished()`・`IsExtraLifeShown()`・`GetStreakTexture()`・`Evaluate*`（`Anim` の 6 本の曲線）・定数 `AnimLength`（90001 / 60000 s）・`RemoveDelay` 2 s・`ZOrder` 2・素材の `StreakTextures`（10 枚）・`VignetteTexture`・`LifeTexture`・`TextFont`。
+- `UWasamiLevelClearWidget`（`UUserWidget`）… スコア画面。`Show(WorldContext, Results)`（本家の `Escape` の `Create` → 値を入れる → `AddToViewport(6)`。プレイヤーのコントローラが無いと出さない）・`Results`（`FWasamiLevelResults`）・`Begin()`（Construct の頭から。`NativeConstruct` が呼ぶ）・`Advance(DeltaSeconds)`・`GetElapsed()`・`HasPlayedEscapedSound()`・`HasShownResults()`・`IsEasyModeShown()`・バインドの文字の読み出し `GetValueText(Row)`・`GetRankText(Row)`・`GetRankColor(Row)`・`GetTotalText()`・`GetFinalRankText()`・`GetFinalRankColor()`・`ClearAnimation` の曲線 `Evaluate*`（10 本）・定数 `ClearLength`（263388 / 60000 s）・`EscapedSoundTime` 0.75・`ShowResultsTime` 3.25・`ViewportZOrder` 6・素材の `EscapedTexture`・`RuleTexture`・`LevelNameTexture`・`VignetteTexture`・`TextFont`・`EscapedSound`。デバッグの `Wasami.LevelClear`（セーブの病院の欄にゲームモードの時間を足した値で、止めず・書かずに画面だけを出す）。
 
 ## 内部構造と処理の流れ
 - **TIME**: 文字は `TimeText`（`FTimespan::FromSeconds` の分の部分〈1 桁以上〉+ ` : ` + 秒の部分〈2 桁〉。本家の `FromSeconds` → `BreakTimespan`。分は時間の部分を含まないので、1 時間を超えると折り返す。秒は切り捨て）。ランクは `TimeRank`: 2700 s 以下 4（S）、3600 s 以下 3（A）、4200 s 以下 2（B）、それ以外 1（C）。加算（ランク 0..4）[0, 20, 20, 50, 70]。
@@ -53,24 +56,42 @@ Zone 2 のガレージのポータルで脱出したあとのスコア画面（�
 - Construct（`NativeConstruct` → `Begin`）: 札を `Streak` で選ぶ（0 や範囲の外は Select の既定の null）、`Anim` を 0 から、`extralife` を `Streak` 5・8 なら `Visible`（そしてゲームインスタンスの `IncrementLives`。0..6 に収まる）、ほかは `Hidden`。2 s で `RemoveFromParent`。`Anim` と 2 s はウィジェットのティック（`Advance`）で進める（SAVING PROGRESS と同じ。本家の `Delay` はゲームの時間なので、止まっている間も進むのが本家との違い）。
 - `Anim`（1.5 s。書き出しのキーと UE の自動の接線、`WasamiWidgetAnimation.h`）: 札の拡大 2 → 1（0.15 s）→ 1.1（0.25 s）→ 1（0.5 s）→ 1（0.9 s）→ 1.2（1.5 s）、アルファ 0 → 1（0.15 s）→ 1（0.9 s）→ 0（1.5 s）。ビネットの拡大は 1 のまま（線形の 2 つのキー、0.35 s）→ 0.9 s から作者の接線で 2 へ、アルファ 0 → 1（0.15 s）→ 0.5（0.25 s）→ 0.25（0.9 s）→ 0。`extralife` は 0.2 s からの区間で、不透明度 0 → 1（0.35 s）→ 1（0.9 s）→ 0、拡大 1.25 → 0.95（0.35 s）→ 1（0.9 s）→ 1.1。0.2 s より前は区間の外なので、パネル自身の不透明度 0・拡大 1.1 のまま。旧版（`pak_reference`）も同じ値（WebGL 版 `hud/streak.ts` と一致）。
 
+### スコア画面（`UWasamiLevelClearWidget`、本家 `UMG_LevelClear`）
+- 旧版（`pak_reference`）の木と `ClearAnimation` を写す（WebGL 版と同じ。最新版との差は見えない所だけ〈進捗記録の決定事項〉）。木はスロットのまま C++ で組み、描く順も本家の順。作らないもの: XP の箱（`XPBox` と、その `Level Up Animation` だけが使う紫の `Image_161`）、`FinalRankText`（DIARY UNLOCKED!。FINAL RANK が S のときだけ見える。本作に日記が無い。WebGL 版も出さない）。
+- 木（ルート `CanvasPanel_0` は `Visible`。ほかは `HitTestInvisible`）:
+  - `Image_4`: 黒（エンジンの `Black` の代わりに色のブラシ）を全画面より外へ（余白 −38.04 / −32.03 / −63.96 / −40.01）。
+  - `ResultsBox`（`VerticalBox`、1820 × 980 を真ん中に、`RenderOpacity` 0）: `LevelName`（病院の題字 `chapter_ui_title_tormenttherapy` を 648.72 × 129.6 で赤 (1, 0, 0) に染める。本家の Construct はゲームモードの `Level` で選び〈最新版の 7 が病院〉、`SetBrushFromTexture(…, False)` で大きさを保つ。余白 20・真ん中）→ `TextBlock_0` RESULTS（36・灰 0.140625）→ `Image_1`（`results_window` 914 × 18 を箱の幅に伸ばす・余白 10）→ `VerticalBox_142` の 6 行 → `Image_2`（同じ線）→ `HorizontalBox_0`（TOTAL SHARDS:〈30・紫〉と `TotalShardAmount`〈50・最小幅 140.66・中央揃え・折り返し・`RenderOpacity` 0〉）→ `HorizontalBox_1`（FINAL RANK〈50・灰 0.4167〉と `FinalRank`〈75・右揃え・拡大 1.15・`RenderOpacity` 0〉）。
+  - 行（`TimeBox` ほか 6 つ、縦の真ん中）: 見出し（35・灰 0.14126・最小幅 400・左の余白 250）、値（30・最小幅 196.15・右揃え・左の余白 500。TIME だけ拡大 1.05）、ランク（40・左の余白 30）、加算（25・紫・最小幅 243・左の余白 65・右寄せ。サイズは `Automatic` で `Value` 0.5）。値・ランク・加算は `RenderOpacity` 0（行のアニメが出す）。加算の文字は本家の設計どおり `+25`・空・`+25`・`+30`・`+21`・`+21`（数え上げが書き換える）。
+  - `easymode`（EASY MODE、UMG の既定のフォント、灰 0.4167、下から 10 % の所）: Construct が難易度 EASY でなければ外す（本家の `RemoveFromParent`）。
+  - `NextButton`（右下から (−163.4, −89.1)、自動の大きさ。`BackgroundColor` のアルファ 0 で枠が見えず、`ColorAndOpacity` の灰 0.1146 が文字を染める）と `TextBlock_314` NEXT（35、右下揃え、右の余白 5）。クリックとホバーはこれから。
+  - `ClearLevel`（`CanvasPanel`、全画面、`RenderOpacity` 0）: `Image_5`（赤 (1, 0, 0) を画面より外へ）と `Image_216`（`you_escaped` 1141 × 276 を真ん中に）。
+  - `FadeOut`（黒、`RenderOpacity` 0。NEXT の後の暗転）、`Image_6`（白い `T_Vignette` 1920 × 1080、アルファ 0）、`Image_7`（白、アルファ 0）。
+- バインド関数（値・ランクの文字と色・TOTAL SHARDS・FINAL RANK と色）は `Begin` で `Results` から一度だけ入れる（`Results` は画面の間に変わらない）。数の文字は `IntText`（区切りあり。新しいセーブの合計は `1,483`）。
+- `ClearAnimation`（4.39 s。書き出しのキーと UE の自動の接線）: ウィジェット全体の不透明度 0 → 1（0.25 s）。`ClearLevel` 0 → 1（0.25 s）→ 1（2.75 s）→ 0（3.0 s）、その平行移動（0.75 s からの区間）(0, 0) → (6, 3)（0.8 s）→ (−2, −7)（0.85 s）→ 0（0.95 s）。`Image_216` の不透明度 0（0.5 s）→ 1（0.75 s）、回転と拡大（0.5 s からの区間）45° / 2 → 0° / 1（0.75 s）→ −10° / 1.1（0.8 s）→ 0° / 1（0.95 s）。`Image_6` のアルファ 0（0.7 s）→ 1（0.75 s）→ 0（1.0 s）、`Image_7`（0.7 s からの区間）0 → 1（0.75 s）→ 0（0.85 s）。赤・緑・青のキーは無く、画像の白のまま（本家の色のトラックは値の無いチャンネルを今の値で埋める）。`ResultsBox` 0（3.0 s）→ 1（3.25 s）、`easymode` 0（3.0 s）→ 1（3.25 s）。後から始まる区間は、その前はウィジェット自身の値（`LevelClearEvalFrom`）。区間の後は最後のキーの値のまま（本家の `KeepState`）。
+- 音のトラック: `UI_YouEscaped`（3.64 s）を 0.75 s から。区間は 4.39 s まで（音の終わりと同じ）。`Advance` が 0.75 s を過ぎたコマで `PlaySound2D`（UI の音なので止まっている間も鳴る）を、過ぎた分だけ先から鳴らす。
+- イベントのトラック: 3.25 s に `ShowResults`。今は何もしない（行の Delay の連鎖・TOTAL SHARDS・FINAL RANK はこれから）。
+- ウィジェットのティック（`NativeTick` → `Advance`）で進める。ゲームが止まっていても進む。
+
 ### テスト
 - `Wasami.LevelClear.Results`: 時間の境目（2700 / 3600 / 4200 s とその少し後）と加算、時間の文字（0 s・65 s・59.9 s・2700 s・1 時間の折り返し）、SOUL SHARDS、BONUS SHARDS 0..4・SECRETS 0..6・LIVES LOST 0..8・SHARD STREAK 0..11 の文字・ランク・加算、1000 の区切り、新しいセーブ・全部 S・EASY・全部が表の外の合計と FINAL RANK、ランクの文字と色。
 - `Wasami.LevelClear.ShardStreak`: 節目の数（10 個ちょうどと 1 つ後・0・19・2000）と表示名、音の添字（0..11）、EXTRA LIFE ! の節目（5・8 だけ）、画面の `Begin`（200 の札が `shard_streak_200`・EXTRA LIFE ! の出し分け・0 は札なし）と 2 s で外れること、`Anim` の曲線の要所、テストのワールドのゲームモードでの `CheckStreak`（19 は節目でない・20 で 1・セーブの `Streak` と `ShardStreak` が上がる・200 で 5・後の 20 では最高が残る・死亡で `CurrentStreak` 0 と最長が残る・`CheckShards` を続けて 2 回で 2）。ライフの +1（Construct の `IncrementLives`）はテストのワールドにプレイヤーのコントローラが無いので、PIE で確かめた（下）。
+- `Wasami.LevelClear.Screen`: `ClearAnimation` の長さ・音と `ShowResults` の時刻・Z 6、木（`NewObject` → `Initialize` → `TakeWidget` で組み、Construct も走る）の部品 13 と、XP の箱と DIARY UNLOCKED! が無いこと、`easymode` が外れること（EASY なら残ること）、絵 3 つ（`you_escaped`・`chapter_ui_title_tormenttherapy`・`T_Vignette`）、新しいセーブの 6 行の値・ランクの文字と色・TOTAL SHARDS `1,483`・FINAL RANK B と色、1/60 s ずつ進めたときの全体の不透明度・音（0.75 s）・赤が消えること（3 s）・`ShowResults`（3.25 s）、`ClearAnimation` の曲線の要所。
 
 ## 作るアセット
 - 連続回収: `dd_ui.import_shard_streak()`（`WasamiDDTools.import_dd_ui` から。01 記録）が `/Game/DD/UI/Menu/Streaks/shard_streak_20`〜`_1000`（10 枚）と `/Game/DD/Audio/UI/Shard_Streak_Milestone_V1A`・`V2`・`V3A`・`V4` を `pak_reference_2` から作る。`T_Vignette`・`helvetica-neue-bold_Font` はタブレット、`life_icon_02` は死亡画面、`BP_CameraShake_Streak` はパワーの取り込みが作る。
-- スコア画面の素材は画面のステップで足す。
+- スコア画面: `dd_ui.import_level_clear()`（`import_dd_ui` から）が `/Game/DD/UI/Menu/you_escaped`・`results_window`・`/Game/DD/UI/Menu/TitleCards/chapter_ui_title_tormenttherapy`（901 × 180。画面は 648.72 × 129.6 で出す）と `/Game/DD/Audio/UI/UI_YouEscaped`・`Level_Clear_Grade_Stamp_v1`・`_v2`・`UI_XP_Bar_Fill_V2A_0617` を `pak_reference_2` から作る（判の音と数え上げの音は行の出方で使う）。白い `T_Vignette` と `helvetica-neue-bold_Font` はタブレットのもの。
 
 ## 原作データの根拠
 - 行の値: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital.txt` の `Escape`（@55455。`python Tools/dd/bp_flow.py <file> Escape`）: 時間のランク @57931・@58760・@59589（2700・3600・4200）、`Create(UMG_LevelClear)` @38874 から `Time_Var` @39424・`Time_Shards` @40163・`Shards_Var`/`Shards_Rank`/`Shards_Shards` @40437・`BonusShards_*` @41144〜@43706・`Secrets_*` @44450〜@47128・`LivesLost_*` @47908〜@50459・`ShardStreak_Var` @51275・`ShardsStreak_Rank` @52424・`ShardsStreak_Shards` @54050。WebGL 版（04 記録の `results.ts`）はホテル `01_Hotel` の値で、境目・表・分母・LIVES LOST の数え方が違う。
 - 合計と FINAL RANK と色: `pak_reference_2/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt` の `Get_TotalShardAmount_Text_0`・`Get_FinalRank_Text_0`（`Global Settings Save Instance` の `Difficulty` が 0 なら上限 3）・`Get_TimeRank_Text_0`・`Get_TimeRank_ColorAndOpacity_0`。旧版 `pak_reference` も同じ（名前の付け方だけが違う）。
 - `Enum_ShardStreaks` の表示名: `pak_reference_2/_assets/DDeception/Content/UI/Menu/Streaks/Enum_ShardStreaks.json`（`NewEnumerator0` "20"〜`NewEnumerator9` "1000"・`NewEnumerator10` "0"）。値の並びは `BP_DD_GameMode` の `Check Streak` が 20 で 1、1000 で 10 を書くことから（値 0 が "0"）。
 - 連続回収: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_GameMode.txt` の `Check Streak`（@35674。`python Tools/dd/bp_flow.py <file> "Check Streak"`）: `CurrentStreak` +1 @36171、`Shard Streak` @30366、節目の枝 @30697（20）〜@32677（1000）、揺れと音と `Streak` @6871（20）ほか、100 の枝の実績 @12808。`Check Shards` の Sequence @34491。画面は `.../UI/Menu/Streaks/UMG_ShardStreak.txt` の `Construct`（@122。5・8 で `BP_DD_Functions.Increment Lives`）と `_assets/…/UMG_ShardStreak.json`（木・`Anim`）、揺れは `BP_CameraShake_Streak.json`。旧版 `pak_reference` も節目・音・木・`Anim` は同じ。WebGL 版（`src/game/state.ts`・`src/hud/streak.ts`）とも一致。
+- スコア画面: `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_LevelClear.json`（木は `UMG_LevelClear_C.WidgetTree` の側の `CanvasPanelSlot`・`VerticalBoxSlot`・`HorizontalBoxSlot`・`ButtonSlot`。書き出しに無い値はスロットの既定〈キャンバスの余白 (0, 0, 100, 30)・揃え 0、箱のスロットは `Fill` と `Automatic`〉。`ClearAnimation` は `UMG_LevelClear_C.ClearAnimation_INST.ClearAnimation` の `ObjectBindings` と各トラックの区間、音とイベントは `ClearAnimation_INST` の `PrecompiledEvaluationTemplate`〈`SectionStartTimeSeconds` 0.75、`ShowResults` 195000、`KeepState`〉）。Construct は `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_LevelClear.txt`（`python Tools/dd/bp_flow.py <file> Construct`: `PlayAnimation(ClearAnimation)` @21870・Final Rank・`LevelName.SetBrushFromTexture` @21460・難易度が 0〈EASY〉でなければ `easymode.RemoveFromParent` @1673）。最新版の Construct は `Level` 7 に `chapter_ui_title_tormenttherapy` を置く（@19236）。DIARY UNLOCKED! の色は `Get_FinalRankText_ColorAndOpacity_0`（FINAL RANK が 4 のときだけアルファ 1）。WebGL 版 `src/hud/level-clear.ts` の `CLEAR` と値が一致。
 - セーブの欄の型: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/LevelStructure/DD_LevelStructureyyy.json`（`BonusShards`・`Secrets` は int の配列）。
 
 ## 依存関係
 - 使う: `FWasamiLevelProgress`（`WasamiSaveGame.h`、06 記録）、`UWasamiGameInstance::IncrementLives`（06 記録）、`WasamiWidgetAnimation.h`（09 記録）。
-- 使う側: ゲームモードの `CheckStreak`（`StreakMilestone`・`UWasamiShardStreakWidget::Show`）。リザルトはまだ無い（スコア画面と脱出の流れが使う予定）。
+- 使う側: ゲームモードの `CheckStreak`（`StreakMilestone`・`UWasamiShardStreakWidget::Show`）、スコア画面 `UWasamiLevelClearWidget`（`Results` の 6 行・合計・FINAL RANK）。脱出の流れ（Zone 2 の `OnEndTrigger`）からはまだ呼ばない。
 - エンジン: `FTimespan`、`FText::AsNumber`（`FNumberFormattingOptions`）。
 
 ## 既知の制約・注意点
@@ -79,10 +100,16 @@ Zone 2 のガレージのポータルで脱出したあとのスコア画面（�
 - 病院のシャードは 679 個なので、連続回収の節目は 500 まで届きうる（700・1000 は死なずに全部を取っても届かない）。
 - 同じフレームに節目をいくつも越えると（`Wasami.CollectShards` で一度に取るなど）、画面が節目ごとに重なって出る（本家も同じ）。
 - 難易度（項目 18）が無いので、呼ぶ側は `bEasy` を偽で渡す。
+- スコア画面の `ShowResults` はまだ何もしないので、3.25 s の後は見出し・線・TOTAL SHARDS:・FINAL RANK・NEXT だけが見える（値・ランク・合計は透明のまま）。NEXT も押せず、`Wasami.LevelClear` の画面は PIE を止めるまで残る。
+- ウィジェットのティックの時間は Slate が 1 コマ 1/8 s で打ち切るので、8 fps を切ると画面が遅れる（エディタが背面にあって PIE が約 3 fps のとき、`ClearAnimation` も連続回収の画面も約半分の速さになった。症状索引の「エディタが背面にあると PIE のティックが 3 fps ほどに落ちる」）。本家の UMG のアニメも同じ時間で進む。
 
 ## 確かめたこと（2026-09-19、PIE、Zone 1 の駐車場）
 - `Wasami.Lives 3` の後に `Wasami.Streak 200`: 「UNSTOPPABLE / 200 SHARD STREAK!」の札が大きく出て縮み、紫のビネットが画面の縁で光って広がり、札の下に髑髏と EXTRA LIFE ! が出て、約 1.5 s で消えた。ライフが 3 → 4、セーブの `Streak` 5・`CurrentStreak` 200。
 
+## 確かめたこと（2026-09-19、PIE、Zone 1 の駐車場、エディタを前面・`t.MaxFPS 60`）
+- `Wasami.LevelClear`: 画面が赤くなり、大きく傾いた You Escaped! が回りながら縮んで 0.75 s に着地し、白い閃光と縁の白い光・揺れ、UI_YouEscaped が鳴り、2.75 s から赤が引いて、赤い TORMENT THERAPY・RESULTS・線・6 行の見出し・TOTAL SHARDS:・FINAL RANK・右下の NEXT の画面が 3.25 s に出た（収録を `video_probe.py series`・`sheet` で測った時刻が曲線どおり）。
+
 ## 変更履歴
+- 2026-09-19: スコア画面 `UWasamiLevelClearWidget`（本家 `UMG_LevelClear` の木と `ClearAnimation`・0.75 s の音・3.25 s の `ShowResults` の口）、デバッグ `Wasami.LevelClear`、取り込み `dd_ui.import_level_clear`、テスト `Wasami.LevelClear.Screen` を足した。ユニティビルドでぶつからないよう、連続回収の画面の無名名前空間の補助を `StreakPlace`・`StreakBrush`・`StreakVignetteTint` に、`WasamiLevelResults.cpp` の表を `StreakDisplayNames` に改めた（作業一覧の項目 14 のステップ 3）
 - 2026-09-19: シャードの連続回収（ゲームモードの `CheckStreak`・`Wasami.Streak N`、節目の画面 `UWasamiShardStreakWidget`、札と音の取り込み `dd_ui.import_shard_streak`）とテスト `Wasami.LevelClear.ShardStreak` を足した（作業一覧の項目 14 のステップ 2）
 - 2026-09-19: 初版。リザルトの規則 `FWasamiLevelResults`（病院の `Escape` の値）とテスト `Wasami.LevelClear.Results`（作業一覧の項目 14 のステップ 1）

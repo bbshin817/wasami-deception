@@ -1,9 +1,13 @@
 #include "Misc/AutomationTest.h"
 
 #include "../WasamiGameMode.h"
+#include "../WasamiLevelClearWidget.h"
 #include "../WasamiLevelResults.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiShardStreakWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Image.h"
+#include "Components/Widget.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -246,6 +250,129 @@ bool FWasamiLevelClearShardStreakTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Check Shards counts each shard, waiting or not"), Hospital.CurrentStreak, 2);
 
 	UGameplayStatics::DeleteGameInSlot(StreakSlotName, UWasamiSaveGame::UserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiLevelClearScreenTest, "Wasami.LevelClear.Screen",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiLevelClearScreenTest::RunTest(const FString& Parameters)
+{
+	using W = UWasamiLevelClearWidget;
+	using R = FWasamiLevelResults;
+
+	// ClearAnimation's length, its audio track and its event track.
+	TestEqual(TEXT("ClearAnimation runs 263388 ticks"), W::ClearLength, 4.3898f, 1e-4f);
+	TestEqual(TEXT("UI_YouEscaped from 0.75 s"), W::EscapedSoundTime, 0.75f);
+	TestEqual(TEXT("ShowResults at 3.25 s"), W::ShowResultsTime, 3.25f);
+	TestEqual(TEXT("added at Z 6"), W::ViewportZOrder, 6);
+
+	// The tree, built as the widget is taken (its Construct runs then), with a new save's results.
+	W* Screen = NewObject<W>();
+	Screen->Results = R::ForHospital(FWasamiLevelProgress(), false);
+	Screen->Initialize();
+	Screen->TakeWidget();
+	UWidgetTree* Tree = Screen->WidgetTree;
+	if (!TestNotNull(TEXT("the tree"), Tree))
+	{
+		return false;
+	}
+	for (const TCHAR* Name : {TEXT("Image_4"), TEXT("ResultsBox"), TEXT("LevelName"), TEXT("TimeBox"), TEXT("ShardStreakShards"),
+		TEXT("TotalShardAmount"), TEXT("FinalRank"), TEXT("NextButton"), TEXT("ClearLevel"), TEXT("Image_216"), TEXT("FadeOut"),
+		TEXT("Image_6"), TEXT("Image_7")})
+	{
+		TestNotNull(FString::Printf(TEXT("%s is in the tree"), Name), Tree->FindWidget(Name));
+	}
+	TestNull(TEXT("no XP box"), Tree->FindWidget(TEXT("XPBox")));
+	TestNull(TEXT("no DIARY UNLOCKED!"), Tree->FindWidget(TEXT("FinalRankText")));
+	TestFalse(TEXT("easymode taken off"), Screen->IsEasyModeShown());
+	const TCHAR* const Images[][2] = {{TEXT("Image_216"), TEXT("you_escaped")}, {TEXT("LevelName"), TEXT("chapter_ui_title_tormenttherapy")},
+		{TEXT("Image_6"), TEXT("T_Vignette")}};
+	for (const auto& Each : Images)
+	{
+		const UImage* Image = Cast<UImage>(Tree->FindWidget(Each[0]));
+		const UObject* Texture = Image ? Image->GetBrush().GetResourceObject() : nullptr;
+		if (Texture)
+		{
+			TestEqual(FString::Printf(TEXT("%s shows %s"), Each[0], Each[1]), Texture->GetName(), FString(Each[1]));
+		}
+		else
+		{
+			AddError(FString::Printf(TEXT("%s is missing: run WasamiDDTools.import_dd_ui"), Each[1]));
+		}
+	}
+
+	// The bindings: the values, the ranks' letters and colours, TOTAL SHARDS and FINAL RANK.
+	const TCHAR* const Values[] = {TEXT("0 : 00"), TEXT("679"), TEXT("0/2"), TEXT("0/4"), TEXT("0"), TEXT("0")};
+	const uint8 Ranks[] = {4, 4, 1, 1, 4, 1};
+	for (int32 Row = 0; Row < 6; ++Row)
+	{
+		TestEqual(FString::Printf(TEXT("row %d's value"), Row), Screen->GetValueText(Row).ToString(), FString(Values[Row]));
+		TestEqual(FString::Printf(TEXT("row %d's rank"), Row), Screen->GetRankText(Row).ToString(), R::RankText(Ranks[Row]).ToString());
+		TestTrue(FString::Printf(TEXT("row %d's rank colour"), Row), Screen->GetRankColor(Row).Equals(R::RankColor(Ranks[Row])));
+	}
+	TestEqual(TEXT("TOTAL SHARDS"), Screen->GetTotalText().ToString(), FString(TEXT("1,483")));
+	TestEqual(TEXT("FINAL RANK"), Screen->GetFinalRankText().ToString(), FString(TEXT("B")));
+	TestTrue(TEXT("its colour"), Screen->GetFinalRankColor().Equals(R::RankColor(2)));
+
+	// ClearAnimation, frame by frame: clear at first, the sound as it passes 0.75 s, ShowResults as it passes 3.25 s.
+	TestEqual(TEXT("the screen starts clear"), Screen->GetRenderOpacity(), 0.f, 1e-4f);
+	float Seconds = 0.f;
+	auto RunTo = [&](float Until)
+	{
+		while (Seconds + 1e-4f < Until)
+		{
+			Screen->Advance(1.f / 60.f);
+			Seconds += 1.f / 60.f;
+		}
+	};
+	RunTo(0.25f);
+	TestEqual(TEXT("in at 0.25 s"), Screen->GetRenderOpacity(), 1.f, 1e-3f);
+	RunTo(0.74f);
+	TestFalse(TEXT("no sound before 0.75 s"), Screen->HasPlayedEscapedSound());
+	RunTo(0.76f);
+	TestTrue(TEXT("the sound at 0.75 s"), Screen->HasPlayedEscapedSound());
+	RunTo(3.24f);
+	TestFalse(TEXT("no results before 3.25 s"), Screen->HasShownResults());
+	TestEqual(TEXT("the red leaves by 3 s"), Tree->FindWidget(TEXT("ClearLevel"))->GetRenderOpacity(), 0.f, 1e-4f);
+	RunTo(3.26f);
+	TestTrue(TEXT("ShowResults at 3.25 s"), Screen->HasShownResults());
+
+	// ClearAnimation's tracks.
+	TestEqual(TEXT("RESULTS clear at 3 s"), W::EvaluateResultsOpacity(3.f), 0.f, 1e-4f);
+	TestEqual(TEXT("RESULTS in at 3.25 s"), W::EvaluateResultsOpacity(3.25f), 1.f, 1e-4f);
+	TestEqual(TEXT("You Escaped! clear at 0.5 s"), W::EvaluateEscapedOpacity(0.5f), 0.f, 1e-4f);
+	TestEqual(TEXT("in at 0.75 s"), W::EvaluateEscapedOpacity(0.75f), 1.f, 1e-4f);
+	TestEqual(TEXT("unturned before its section"), W::EvaluateEscapedAngle(0.4f), 0.f, 1e-4f);
+	TestEqual(TEXT("at its own size before its section"), W::EvaluateEscapedScale(0.4f), 1.f, 1e-4f);
+	TestEqual(TEXT("45° at 0.5 s"), W::EvaluateEscapedAngle(0.5f), 45.f, 1e-3f);
+	TestEqual(TEXT("twice its size at 0.5 s"), W::EvaluateEscapedScale(0.5f), 2.f, 1e-4f);
+	TestEqual(TEXT("lands at 0.75 s"), W::EvaluateEscapedAngle(0.75f), 0.f, 1e-3f);
+	TestEqual(TEXT("at its size at 0.75 s"), W::EvaluateEscapedScale(0.75f), 1.f, 1e-4f);
+	TestEqual(TEXT("-10° at 0.8 s"), W::EvaluateEscapedAngle(0.8f), -10.f, 1e-3f);
+	TestEqual(TEXT("1.1 at 0.8 s"), W::EvaluateEscapedScale(0.8f), 1.1f, 1e-4f);
+	TestEqual(TEXT("still after 0.95 s"), W::EvaluateEscapedAngle(1.5f), 0.f, 1e-3f);
+	TestEqual(TEXT("the red in at 0.25 s"), W::EvaluateClearOpacity(0.25f), 1.f, 1e-4f);
+	TestEqual(TEXT("still at 2.75 s"), W::EvaluateClearOpacity(2.75f), 1.f, 1e-4f);
+	TestEqual(TEXT("gone at 3 s"), W::EvaluateClearOpacity(3.f), 0.f, 1e-4f);
+	TestTrue(TEXT("the jolt at 0.8 s"), W::EvaluateClearJolt(0.8f).Equals(FVector2D(6., 3.), 1e-3));
+	TestTrue(TEXT("and back at 0.85 s"), W::EvaluateClearJolt(0.85f).Equals(FVector2D(-2., -7.), 1e-3));
+	TestTrue(TEXT("none before"), W::EvaluateClearJolt(0.5f).IsZero());
+	TestEqual(TEXT("the vignette clear at 0.7 s"), W::EvaluateVignetteAlpha(0.7f), 0.f, 1e-3f);
+	TestEqual(TEXT("flashes at 0.75 s"), W::EvaluateVignetteAlpha(0.75f), 1.f, 1e-4f);
+	TestEqual(TEXT("gone at 1 s"), W::EvaluateVignetteAlpha(1.f), 0.f, 1e-4f);
+	TestEqual(TEXT("the white clear before its section"), W::EvaluateFlashAlpha(0.6f), 0.f, 1e-4f);
+	TestEqual(TEXT("the white at 0.75 s"), W::EvaluateFlashAlpha(0.75f), 1.f, 1e-4f);
+	TestEqual(TEXT("gone at 0.85 s"), W::EvaluateFlashAlpha(0.85f), 0.f, 1e-4f);
+	TestEqual(TEXT("EASY MODE clear before 3 s"), W::EvaluateEasyOpacity(2.f), 0.f, 1e-4f);
+	TestEqual(TEXT("EASY MODE in at 3.25 s"), W::EvaluateEasyOpacity(3.25f), 1.f, 1e-4f);
+
+	// On EASY, easymode stays.
+	W* Easy = NewObject<W>();
+	Easy->Results = R::ForHospital(FWasamiLevelProgress(), true);
+	Easy->Initialize();
+	Easy->TakeWidget();
+	TestTrue(TEXT("easymode stays on EASY"), Easy->IsEasyModeShown());
 	return true;
 }
 
