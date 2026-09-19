@@ -274,7 +274,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital.txt`（`00_Initial Start` → @19290。`python Tools/dd/bp_flow.py … "00_Initial Start"`）、`pak_reference_2/_bytecode/DDeception/Content/UI/Menu/UMG_ChapterPortal.txt`・`_assets/DDeception/Content/UI/Menu/UMG_ChapterPortal.json`（木とアニメ `loop`）、`UI/Main/chapter_ui_portal_outer` ほかのテクスチャ、WebGL 版 10 記録の「stage-intro.ts」と 04 記録の「ステージ OP」、実装記録 09（UI）・11（Zone 1 の開始）・15（ポーズの頭）・13（題字）。
 - 依存: 6、17。
 - 規模: 2
-- 状態: 未着手（2026-09-20 に足した）。
+- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-stage-op`）。計画の段階で、出すのは Zone 1 を開いたときセーブのチェックポイントが 0 だったとき（本家の入口の `Spawn` が 0 でだけ `00_Initial Start` を呼ぶ）、時機は本家どおり次のティックに出して `CanMove?` を 10 s 偽（エレベーターの扉は 11.3 s に開くので流れは変えない）、WebGL 版の推定の黒は写さない、と決めた。
 
 ### 31. 祭壇の見た目（祭壇の金属・水晶の球・欠片の材質をコンパイル済みのシェーダーから）
 
