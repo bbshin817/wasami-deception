@@ -135,6 +135,7 @@ updated: 2026-09-19
 - **cook で式が消えた材質も、コンパイル済みのシェーダーは残っている**（2026-09-18 に見つけた。作業一覧の項目 23 のステップ 5d3）。最新版（UE 4.24）は材質ごとにシェーダーマップを `.uexp` に埋め込み、シェーダー 1 つが zlib のストリーム 1 つ、中身が DXBC。`python Tools/dd/cooked_shaders.py "<pak のパスの一部>."` が Steam の最新版の pak（読むだけ。`--pak` で変えられる）から `.uasset`/`.uexp` を取り出し、ストリームを戻して、システムの `d3dcompiler_47.dll` の `D3DDisassemble` で逆アセンブルし、`Intermediate/Pipeline/dd/shaders/<名前>/NN_<モデル>.txt` に書く。表（モデル・読む補間子・リソース・サンプル数）と、一様パラメータの名前（1 度ずつ、最初に出た順）と、**定数バッファ cb3 のどこがどの式か**（`cb3[4].y = hilightPower (10.0)` のように。2026-09-18、5f で足した）を印字する。cb3 は vector の式 1 つに float4 を 1 つ、その後に scalar の式を 4 つずつ詰める。並びはシェーダーマップの uniform の式の集まり（名前の表の後。式ごとにクラス名の表の番号と、クラスごとのフィールド。UE 4.24 の `MaterialUniformExpressions.h`）から読む。知らないクラスがあると名前だけになるので、そのときはコードの使い方から読む（`FIELDS` に足す）。`SelectionColor` はエディタの選択の色で、Emissive の最後の lerp。実行時は黒。`--show N` で N 番のコードを出す。pak の読み方は `pak_reference_2/_tools/scripts/unpak.py` を借りる。
 - **読むのは半透明のベースパスのピクセルシェーダー**: `texture3d`（半透明の灯／霧の体積）と、`sample_l` で読む `texture2d`（深度のぼかしのシーンの深度）を持つ `ps_5_0`。前半が材質の式、後半が霧と出力（`o0.w` がエンジンの saturate の後の不透明度）。頂点ファクトリ（スプライト・メッシュ・GPU スプライト）と霧の組ごとに 1 つずつある。スプライトのものは動的パラメータを補間子（TEXCOORD1）で読み、GPU スプライトのものは既定値が畳み込まれている。
 - **静的スイッチを上書きするインスタンス**（`bHasStaticPermutationResource`）は自分のシェーダーマップを持つ（`MI_ky_starDust_sq`）。持たないもの（`MI_ky_aura7c`・`MI_ky_shockWave02_4x4_nonD`）は親のものを使う。
+- **`cb3` の表**（ユニフォームの式。パラメータを CPU で畳んだもの）は `FIELDS` の書き方で読む。`FoldedMath` は A・B・演算〈1 バイト〉・値の型〈int32〉の順、`TrigMath` は X・Y・演算（sin・cos・…・atan2。2026-09-19 に直した。それまでは `FoldedMath` の演算をいつも `+` と印字し、`TrigMath` を持つ材質は表を出さなかった）。
 - 消えた定数も数値で残る（例: `M_ky_starDust` の `Rotator` の回転は cos 0.000796・sin 1 = 既定の速さ 0.25 × 時刻 6.28）。**推定の材質を作る・直す前に、まずここで式を読む**（`.claude/guides/original-fidelity.md`）。
 
 ### ブループリントを流れで読む（`Tools/dd/bp_flow.py`）
@@ -348,6 +349,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-19: `Tools/dd/cooked_shaders.py` の `cb3` の表の読み方を直した（`FoldedMath` の演算の位置、`TrigMath` を足した。上の「cook のシェーダーを読む」）
 - 2026-09-19: 前処理の `CLASS_MESHES` に除細動器の台 `hospital_defibrillator_01` を足して取り込み、`dd_gimmicks.import_defib` を足した（08 記録）。`dd_particles` がイベントの配列（`EVENT_MEMBERS`、`_struct`）とエンジンの資産への参照を書けるようにし、LOD の値をモジュールの後に書くようにした（`EventGenerator`）。作業一覧の項目 8 のステップ 2
 - 2026-09-19: 組み立ての `_flow` が両開き扉を流れが名指しする 3 枚に絞らず、すべて置くようにし（`FLOW_DOUBLE_DOORS` を外した）、Zone 1 に `place_dd_flow` で置き直して道を焼いた（62 枚。作業一覧の項目 8 のステップ 1。08 記録）
 - 2026-09-19: 音のクラスとミックス（`dd_assets.sound_class`・`sound_mix`・`sound_classes`、`sound`・`sound_cue` の `SoundClassObject`、`WasamiDDTools.import_dd_sound_classes`）を足し、取り込み済みの音 62 件にクラスを付けた（作業一覧の項目 18 のステップ 2）

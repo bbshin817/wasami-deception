@@ -339,6 +339,13 @@
 - 確かめ方: 読んだ式で組んだ材質を PIE で撮り、形と色が収録と合うか見る。
 - 出典: 作業一覧の項目 23 のステップ 5d3（2026-09-18）。星屑の推定を収録から 2 回読み（5d1 で「四芒星」、5d2 でそれを作った）、どちらも外れていた。**粒子を寿命から見分けるときは、粒子系が出る時刻（BP の `Delay`）を足す**（5d1 は力場が閃光の 0.2 秒後に出ることを落とし、白飛びした幕の破片を星屑と取り違えた）。Zone 2 の `M_SharpenFilter_Inst` のマスター（未解決の節）も同じ方法で読める見込み。
 
+### `cooked_shaders.py` の `cb3` の表で、畳んだ演算がいつも `+`（`(A + B)`）と出る／回転（`Rotator`）を持つ材質で表が `cb3[0] = ?` だけになる
+
+- 原因: 2026-09-19 までの `FIELDS` が `FMaterialUniformExpressionFoldedMath` を A・B・値の型・演算の順で読んでいた（本当は A・B・演算〈uint8〉・値の型〈uint32〉。演算を値の型の上位バイト〈0 = `+`〉から読んでいた）。`TrigMath`（X・Y・演算）が無く、それを含む表は読めずに捨てていた。
+- 対処: 直した（01 記録の「cook のシェーダーを読む」）。**それより前の推定で表の `+` を根拠にした所**は、表を出し直して確かめる（ポータルの `Glow Multiplier + Base Glow` は直した後も `+`）。
+- 確かめ方: `python Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/MI_ky_polarC_two."` の表に `cos((noiseRot * 0.25))` と `(-1.0 * sin(…))` が出る。
+- 出典: 作業一覧の項目 8 のステップ 2（2026-09-19）。シェーダーを読んだサブエージェントが見つけた。
+
 ### 壁・床が灰色の市松（`DefaultMaterial`）で描かれる
 
 - 症状: ログに `Failed to compile Material Instance with Base M_DD_Substance for platform PCD3D_SM6, Default Material will be used in game.`、その前に `Sampler type is Linear Color, should be Masks for …`（2026-09-16 は 814 件）。取り込みも組み立てもビルドも止まらない。
