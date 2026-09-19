@@ -112,7 +112,9 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         import_dd_stage_assets, which makes its materials); Zone 2's ring piece over the altar (WasamiRingPiece): its
         glow (P_08_RingPiece and its material, after import_dd_shards); the garage's portal (WasamiPortal); the
         defibrillators (WasamiDefib): the charge's hum, the crackle as the player is hit and the discharge (P_06_Defib,
-        its lightning's textures and estimated material, and the meshes of its undrawn mesh emitters). The doors',
+        its lightning's textures and estimated material, and the meshes of its undrawn mesh emitters); Zone 2's saw
+        traps: their whirring loop and their four skinned meshes with their animations (after import_dd_stage_assets,
+        which makes their materials). The doors',
         lifts' and defibrillators' meshes and materials come with the stage's assets; the level build puts them and the barriers' materials on the placed actors, and the bursts'
         systems on their emitters (place_dd_sequences those the sequences fire).
 
@@ -124,7 +126,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
             '_materials', '_particle_systems', 'nurse_door_hit_sounds', '_sound_cues', '_materials',
             '_particle_systems', 'lift_attenuations', '_sounds', 'garage_lift_skeletal_meshes',
             '_animations', 'ring_piece_materials', '_particle_systems', the portal's ('portal_…'), and
-            'defib_attenuations', '_sounds', '_textures', '_meshes', '_materials', '_particle_systems').
+            'defib_attenuations', '_sounds', '_textures', '_meshes', '_materials', '_particle_systems',
+            'saw_trap_sounds', '_skeletal_meshes', '_animations').
         """
         _module("dd_stage")
         _module("dd_assets")

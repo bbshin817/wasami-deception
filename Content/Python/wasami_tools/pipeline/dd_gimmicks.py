@@ -17,7 +17,9 @@ materials the cook took the graphs of, estimated off their compiled shaders. Zon
 AWasamiCornerLift, after Blueprints/06_Hospital/Lifts/Zone2): the clunk as they start and stop (DD_TT_GarageLift_Down,
 through MonkeyAttenuation), the loop while they move (DD_TT_Lift_Loop, through 01_Lobby_Attenuation), and the garage
 lifts' rising sound (DD_TT_GarageLift_Up); their meshes and materials come with the stage's assets. The garage lifts
-(AWasamiGarageLift, after Blueprints/06_Hospital/Lifts/Garage): their skinned mesh and its animation (dd_skeletal). The
+(AWasamiGarageLift, after Blueprints/06_Hospital/Lifts/Garage): their skinned mesh and its animation (dd_skeletal).
+Zone 2's saw traps (after Blueprints/06_Hospital/Traps/BP_06_sawTrap_medium and its children): the four skinned meshes
+with their animations (dd_skeletal) and the loop they whirr with (SFX_Matron_SawLoop, the matron's saw's too). The
 parking lot's nurses stabbing at the tunnel's doors (AWasamiEnemy06Chase's Hit FX): the slam (20-Elevator_Slams) and the
 dust (P_06_NurseDoorHit, with Whisps_additive, an additive instance of the doors' estimated smoke). Zone 2's ring piece
 over the altar (AWasamiRingPiece): its glow (P_08_RingPiece, with MI_ky_primitive_dynB_nonD1, an instance of the
@@ -136,6 +138,7 @@ LIFT_SOUNDS = (
     "Audio/06_Hospital/DD_TT_Lift_Loop",
 )
 LIFT_ATTENUATIONS = DOUBLE_DOOR_ATTENUATIONS   # MonkeyAttenuation and 01_Lobby_Attenuation
+SAW_TRAP_SOUNDS = ("Animation/Enemies/Nurse/Matron/Sounds/SFX_Matron_SawLoop",)
 # Zone 2's altar and the ring piece over it (AWasamiRingStatue and AWasamiRingPiece, after Blueprints/01_Hotel/BP_01_Statue
 # and Blueprints/08_BearHouse/BP_08_RingPiece_NoPickup): the piece's glow (P_08_RingPiece), whose emitter glowSub draws
 # MI_ky_primitive_dynB_nonD1, an instance of M_ky_primitive; that and the other emitter's M_ky_polarGlow02 come with the
@@ -911,10 +914,17 @@ def import_garage_lift():
     return {"skeletal_meshes": 1, "animations": 1}
 
 
+def import_saw_traps():
+    """The saw traps' loop, and their skinned meshes and animations. Returns how many of each."""
+    result = {"sounds": len([dd_assets.sound(rel, VERSION) for rel in SAW_TRAP_SOUNDS])}
+    result["skeletal_meshes"] = result["animations"] = len(dd_skeletal.import_saw_traps())
+    return result
+
+
 def import_all():
     """Imports the gimmicks' assets (the double doors', the zone barrier's, the speed barriers', the doors broken in,
-    the cell's, the nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's, the portal's and the defibrillators'),
-    then saves /Game/DD and /Game/Pipeline."""
+    the cell's, the nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's, the portal's, the
+    defibrillators' and the saw traps'), then saves /Game/DD and /Game/Pipeline."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"speed_barrier_" + key: count for key, count in import_speed_barrier().items()})
@@ -926,6 +936,7 @@ def import_all():
     result.update({"ring_piece_" + key: count for key, count in import_ring_statue().items()})
     result.update({"portal_" + key: count for key, count in import_portal().items()})
     result.update({"defib_" + key: count for key, count in import_defib().items()})
+    result.update({"saw_trap_" + key: count for key, count in import_saw_traps().items()})
     for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT):
         EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

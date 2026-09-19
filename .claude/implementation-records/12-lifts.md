@@ -97,3 +97,4 @@ Zone 2 の迷路の 2 つの階をつなぐ床。本家の `pak_reference_2` の
 - 2026-09-18: ガレージリフトのアクタ `AWasamiGarageLift`・`AWasamiGarageLiftZone1Special` と本家の ABP の写し `UWasamiGarageLiftAnimInstance`、テスト `Wasami.GarageLift.Actor` を足し、組み立てが両ゾーンに 3 台置くようにした（作業一覧の項目 6 のステップ 8b2）
 - 2026-09-19: `AWasamiGarageLiftZone1Special` の `bNurseNear` を Zone 1 の流れが書くようになった（コメントだけ直した。作業一覧の項目 7 のステップ 3）
 - 2026-09-19: `MoveLocation` を Zone 2 の迷路のナースが読むようになった（コメントだけ直した。作業一覧の項目 7 のステップ 4）
+- 2026-09-19: `dd_skeletal` が根以外の骨の回転のキーも運ぶようにした（のこぎりの罠のため。01・08 記録）。ガレージリフトの骨は回らないので、`prepare` の出力は変わらない（取り込み直していない）

@@ -95,13 +95,17 @@ CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospita
                 "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06.ring_piece06",
                 "/Game/Meshes/06_Hospital/hospital_defibrillator_01.hospital_defibrillator_01")
 # Materials of meshes that are not the stage's static meshes: the garage lifts' skinned mesh (hospital_garage_lift_anim,
-# its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name), and the ones the
-# altar's and the ring piece's components put over their meshes' own (OverrideMaterials: the placed altar's, and
+# its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name) and the saw traps'
+# (hospital_sawTrap_*_anim: the blade, the stained metal, and short_01's diamond plate), and the ones the altar's and the
+# ring piece's components put over their meshes' own (OverrideMaterials: the placed altar's, and
 # BP_08_RingPiece's StaticMesh_GEN_VARIABLE's).
 CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06_Hospital_MetalPanel_04",
                    "/Game/Materials/06_Hospital/M_06_Hospital_Concrete_06_Painted1.M_06_Hospital_Concrete_06_Painted1",
                    "/Game/Materials/06_Hospital/M_06_Hospital_MetalBrushed_02.M_06_Hospital_MetalBrushed_02",
                    "/Game/Materials/07_FunPlace/M_07_TP_DiamondPlate.M_07_TP_DiamondPlate",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_SawBlade.M_06_Hospital_SawBlade",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MetalStained.M_06_Hospital_MetalStained",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_Metal_DiamondPlate.M_06_Hospital_Metal_DiamondPlate",
                    "/Game/Materials/00_Ballroom/MM_00_Ballroom_Ring_Altar_Metal.MM_00_Ballroom_Ring_Altar_Metal",
                    "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal.M_ring_metal",
                    "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal2.M_ring_metal2")

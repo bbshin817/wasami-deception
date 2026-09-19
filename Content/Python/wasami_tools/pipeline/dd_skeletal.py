@@ -1,13 +1,18 @@
 """Dark Deception's skinned meshes with their animations, from pak_reference_2 (UE 4.24): the garage lifts'
-(hospital_garage_lift_anim and hospital_garage_lift_anim_Anim, for AWasamiGarageLift).
+(hospital_garage_lift_anim and hospital_garage_lift_anim_Anim, for AWasamiGarageLift) and Zone 2's saw traps'
+(hospital_sawTrap_short_01_anim, _short_02_, _medium_01_ and _long_01_, each with its _Anim: a blade that spins as it
+slides along its track).
 
   sources   _meshes_gltf/<mesh>.gltf, the SkeletalMesh in its reference pose (glTF's metres and Y up: UE's (x, y, z) cm
             is (x, z, y) / 100), and _anims_psa/<anim>.psa, its AnimSequence as ActorX keys (UE's centimetres and axes,
             one key per bone per frame, the frames 1 / rate apart with rate = (NumFrames - 1) / SequenceLength)
   prepared  Intermediate/Pipeline/dd/skeletal/<mesh>_prepared.glb: the mesh with the psa as a glTF animation named as
             the AnimSequence. Its translations go through the same axes as the reference pose (checked against the
-            glTF's own joints), its rotations stay the glTF's joints' (a psa whose bones turn is refused: its root key's
-            rotation is written in another convention than its reference pose's, and the garage lift's only slide).
+            glTF's own joints). A bone's rotations go through the axes too: the swap of Y and Z mirrors, so (x, y, z, w)
+            is (-x, -z, -y, w) in the glTF (checked on every bone's reference pose; the other bones' keys are written as
+            their reference pose, as the garage lift's shows: its bones that do not turn key their reference rotations,
+            a quarter turn among them). The root's keys are written in another convention than its reference pose's,
+            so a root that turns is refused and the root keeps the glTF's rotation (none of the meshes' roots turn).
             A joint's parent that is not a joint and does nothing (the glTF's '<mesh>.ao' node) is taken out, so the
             skeleton is the original's bones alone, and the mesh's node gets the mesh's name (the import names the
             SkeletalMesh, its _Skeleton and _PhysicsAsset after the node).
@@ -17,6 +22,7 @@
             is made usable on skinned meshes.
 """
 import json
+import math
 import os
 import struct
 
@@ -30,6 +36,9 @@ VERSION = 2   # the hospital is only in the latest version
 PREPARED_DIR = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "dd", "skeletal")
 GARAGE_LIFT_MESH = "Meshes/06_Hospital/hospital_garage_lift_anim"
 GARAGE_LIFT_ANIM = "Meshes/06_Hospital/hospital_garage_lift_anim_Anim"
+# The saw traps' meshes (BP_06_sawTrap_short01's, _short02's, _medium's and _long01's); each one's animation is <mesh>_Anim.
+SAW_TRAP_MESHES = tuple("Meshes/06_Hospital/hospital_sawTrap_%s_anim" % n
+                        for n in ("short_01", "short_02", "medium_01", "long_01"))
 CM = 100.0
 TOLERANCE = 1e-4   # cm, and quaternion components
 
@@ -79,8 +88,24 @@ def to_gltf_position(p):
     return (p[0] / CM, p[2] / CM, p[1] / CM)
 
 
+def to_gltf_rotation(q):
+    """UE's (x, y, z, w) → the glTF's: the axes' swap is a mirror, which turns the other way about the swapped axes."""
+    return (-q[0], -q[2], -q[1], q[3])
+
+
 def _same_rotation(a, b):
     return abs(abs(sum(x * y for x, y in zip(a, b))) - 1.0) < TOLERANCE
+
+
+def _continuous(quats):
+    """The quaternions each on the side of the one before (the same rotations, so a blend between keys takes the short
+    way)."""
+    out = []
+    for q in quats:
+        if out and sum(x * y for x, y in zip(out[-1], q)) < 0.0:
+            q = tuple(-x for x in q)
+        out.append(tuple(q))
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ prepare
@@ -150,13 +175,19 @@ def prepare(mesh_rel, anim_rel):
         if any(abs(a - b) * CM > TOLERANCE for a, b in zip(to_gltf_position(bone["position"]), bind)):
             raise ValueError("%s: %s's reference position %s is not the glTF's %s through the axes"
                              % (anim_rel, bone["name"], bone["position"], bind))
-        first = psa["keys"][0][i][1]
-        if any(not _same_rotation(first, psa["keys"][f][i][1]) for f in range(frames)):
-            raise ValueError("%s: %s turns; the reading carries slides only" % (anim_rel, bone["name"]))
-        if bone["parent"] >= 0 and not _same_rotation(first, bone["rotation"]):
-            raise ValueError("%s: %s's keys turn it off its reference pose" % (anim_rel, bone["name"]))
+        bind_rotation = tuple(joint.get("rotation", [0.0, 0.0, 0.0, 1.0]))
+        if not _same_rotation(to_gltf_rotation(bone["rotation"]), bind_rotation):
+            raise ValueError("%s: %s's reference rotation %s is not the glTF's %s through the axes"
+                             % (anim_rel, bone["name"], bone["rotation"], bind_rotation))
         tracks[(bone["name"], "translation")] = [to_gltf_position(psa["keys"][f][i][0]) for f in range(frames)]
-        tracks[(bone["name"], "rotation")] = [tuple(joint.get("rotation", [0.0, 0.0, 0.0, 1.0]))] * frames
+        if bone["parent"] < 0:
+            first = psa["keys"][0][i][1]
+            if any(not _same_rotation(first, psa["keys"][f][i][1]) for f in range(frames)):
+                raise ValueError("%s: the root %s turns; the reading carries a still root only" % (anim_rel, bone["name"]))
+            tracks[(bone["name"], "rotation")] = [bind_rotation] * frames
+        else:
+            tracks[(bone["name"], "rotation")] = _continuous(
+                [to_gltf_rotation(psa["keys"][f][i][1]) for f in range(frames)])
     dropped = _drop_idle_joint_parents(model)
     for node in model["nodes"]:
         if "mesh" in node and not node.get("name"):
@@ -169,7 +200,15 @@ def prepare(mesh_rel, anim_rel):
     gltf.write(out, model, blob)
     moved = {b["name"]: round(max(abs(a - z) for k in psa["keys"] for a, z in zip(k[i][0], psa["keys"][0][i][0])), 3)
              for i, b in enumerate(psa["bones"])}
-    return out, rate, {"frames": frames, "seconds": length, "rate": rate, "dropped_nodes": dropped, "slide_cm": moved}
+    turned = {b["name"]: round(max(_angle(k[i][1], psa["keys"][0][i][1]) for k in psa["keys"]), 1)
+              for i, b in enumerate(psa["bones"])}
+    return out, rate, {"frames": frames, "seconds": length, "rate": rate, "dropped_nodes": dropped, "slide_cm": moved,
+                       "turn_deg": turned}
+
+
+def _angle(a, b):
+    """Degrees between two rotations."""
+    return math.degrees(2.0 * math.acos(min(1.0, abs(sum(x * y for x, y in zip(a, b))))))
 
 
 # ------------------------------------------------------------------------------------------------ import
@@ -237,3 +276,8 @@ def import_skinned(mesh_rel, anim_rel):
 def import_garage_lift():
     """The garage lifts' mesh and animation. Returns the report."""
     return import_skinned(GARAGE_LIFT_MESH, GARAGE_LIFT_ANIM)
+
+
+def import_saw_traps():
+    """The saw traps' four meshes with their animations. Returns the reports by mesh."""
+    return {mesh_rel.split("/")[-1]: import_skinned(mesh_rel, mesh_rel + "_Anim") for mesh_rel in SAW_TRAP_MESHES}
