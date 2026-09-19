@@ -23,7 +23,7 @@ updated: 2026-09-20
 # 秘密と収集物
 
 ## 役割
-本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: 素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）まである。PIE での確かめはこれから（進捗記録 `20260919-secrets`）。
+本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。**作っている途中**: 素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）まである。PIE で確かめた（下の「確かめたこと」）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_secrets()`（素材。前処理 `Tools/dd/prepare_stage.py` と `WasamiStageTools.import_dd_stage_assets` を残りが 0 になるまで、`import_dd_tablet`・`import_dd_ui` の後に）。戻り値 `sounds` 5 / `textures` 6 / `meshes` 1 / `materials` 1。
@@ -111,9 +111,20 @@ updated: 2026-09-20
 - `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `other` になり、M_DD_Substance に載る（縁の Fresnel の光は無い）。
 - おとりのエレベーターの `ActorSequence` は `ActorSequenceComponent` を使わずティックで写した（プラグイン `ActorSequence` をモジュールに足さず、キー 2 つの曲線は式で足りる）。変形のトラックが扉の相対の変形を丸ごと入れるので、扉の相対の変形を置き場で変えても使うと (±x, 0, 0) に戻る（本家も同じ。置いたものは変えていない）。
 - メモの `Plane` の当たりはエンジンの `Plane` の厚み 0 の箱（100 × 100 × 0）。エディタのワールドと PIE では見るトレースが止まるが、テストのワールドのトレースは静的メッシュの体を拾わないので、テストは `LineTraceComponent` で確かめる（症状索引）。
-- テストのワールドにはプレイヤーの画面が無いので、メモの画面が作られるかはテストで確かめられない（`GetLastNote` が null になることだけ）。画面の中身は `Wasami.Secrets.Widgets.MysteryNote`、PIE での読みはステップ 6。
+- テストのワールドにはプレイヤーの画面が無いので、メモの画面が作られるかはテストで確かめられない（`GetLastNote` が null になることだけ）。画面の中身は `Wasami.Secrets.Widgets.MysteryNote`、PIE での読みは下の「確かめたこと」。
+- Zone 2 の秘密の壁と部屋は 2 階（床 z 約 500）にあり、道の網は 1 階とつながらない。本家は Zone 2 のテレポートの床 `hospital_zone_02_teleport`（1 階と 2 階の 2 層）で上がる作り。本作でも迷路の入口の上の 2 階の歩き道（(−3300, 0)・(−2500, 550)、z 531）に Teleport のチャンネルの上の層があり、そこから 2 階を西へ歩くと壁の前 (−3560, 0, 503) に着く（2 階の道の網は一続き）。
+
+## 確かめたこと（2026-09-20、PIE）
+
+- 置いたもの（`Wasami.ResetSave` の後）: Zone 1 に書類 ID 0・1、見て使う偽の部品 7（秘密のエレベーター 2・おとり 5）。Zone 2 に書類 ID 2、壁・区域、メモ 3、チェックポイント 10 から始めると目印 `collec` (−6755, −1014, 87) に書類 ID 3。
+- Zone 1 の秘密のエレベーター 2 つ: 呼びボタン（`BP_FakeUseActor_2`・`5`）に手のマーク → 左クリックで扉が開き（シーケンス）、奥の書類を踏むと `NEW EXTRAS UNLOCKED!` とセーブの `Secrets` に ID。おとり（`BP_FakeUseActor2`）は扉が開いて空の箱のまま止まり、手のマークは残る（本家の派生は親の `Used Event` を呼ばない）。
+- Zone 2: 壁は 1 クリックで上がり（約 4.3 s）、部屋に入ると `YOU FOUND A MYSTERIOUS ROOM`・囁き・グリッチ。出ると囁きが止み、グリッチの `BlendingOpacity` が 0。メモ 3 枚はどれも 1 ページ（1/1）で、開くとゲームが止まってカーソルが出て、CLOSE で戻る。書類は宙に浮く紙挟み（灯つき）。
+- 書類はメモリの上のセーブに足すだけで、チェックポイントの保存（`Wasami.Checkpoint`）の後に死ぬと開き直しても戻らない（迷路の後の ID 3 も出た直後に消える）。
+- 4 つそろえて脱出（`Wasami.Escape`）すると、スコア画面が `SECRETS 4/4`（S・+35）。
+- 画面の操作の注意: PIE でクリックの位置を変えるとカーソルの移動が視点を回すので、見て使う物を狙うときは、狙いを入れてから前のクリックと同じ位置を押す。
 
 ## 変更履歴
+- 2026-09-20: PIE で両ゾーンの秘密を確かめた（「確かめたこと」。作業一覧の項目 12 のステップ 6）
 - 2026-09-20: 両ゾーンに置いた（`dd_level` の `SECRET_CLASSES`・`set_secret`・`link_sequence_players`）。書類のメッシュを `OnConstruction` で入れるようにし、迷路の後の書類 ID 3 を Zone 2 の流れが出す（作業一覧の項目 12 のステップ 5）
 - 2026-09-20: メモ `AWasamiMysteryCollectable` と見て使う偽の部品 `AWasamiFakeUseActor`・`AWasamiFakeUseSequencePlayer`・`AWasamiFakeUseElevator`、テスト 4 件を足した（作業一覧の項目 12 のステップ 4）
 - 2026-09-20: 書類 `AWasamiCollectable`・秘密の部屋の区域 `AWasamiSecretRoomZone`・秘密の壁 `AWasamiSecretWall` とテスト 5 件を足した（作業一覧の項目 12 のステップ 3）
