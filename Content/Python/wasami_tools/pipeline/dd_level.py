@@ -179,6 +179,15 @@ NAV_FOLDER = "Hospital/Navigation"
 SENTRY_CLASS = "BP_06_ReaperNurse_Sentry_C"
 SENTRY_PROPS = {"CanSpawn": "can_spawn", "Offset": "offset"}
 SENTRY_SKIPPED_PROPS = ("Initial Yaw", "SpawnCollisionHandlingMethod")
+# Zone 2's Matron (BP_06_Matron_MiniBoss → AWasamiMatron) over the same corridor, and her two view cones the level places
+# (→ AWasamiViewconeMatronLong / _Short). The placed ones move their parts (from the level export): the Matron her
+# SkeletalMesh (its location: the boss keeps AWasamiMatron's MeshScale) and her CloseArea, each cone its Plane (the map's
+# fan). Her Long Cone and Short Cone are the level's references to the cones, set by the cones' names.
+MATRON_CLASS = "BP_06_Matron_MiniBoss_C"
+MATRON_PARTS = {"SkeletalMesh": "skeletal_mesh", "CloseArea": "close_area"}
+MATRON_CONES = {"Long Cone": "long_cone", "Short Cone": "short_cone"}
+MATRON_CONE_CLASSES = {"BP_06_Miniboss_viewcone_Matron_Long_C": "WasamiViewconeMatronLong",
+                       "BP_06_Miniboss_viewcone_Matron_Short_C": "WasamiViewconeMatronShort"}
 ENEMY_FOLDER = "Hospital/Gameplay/Enemies"
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
@@ -634,6 +643,32 @@ def set_sentry(actor, zone, a, level):
     return sorted(set(a["props"]) - set(SENTRY_PROPS) - set(SENTRY_SKIPPED_PROPS))
 
 
+def _set_part(comp, props):
+    """A part moved as the level export's props for it do: RelativeLocation, RelativeRotation, RelativeScale3D."""
+    if "RelativeLocation" in props:
+        comp.set_editor_property("relative_location", _vec(props["RelativeLocation"]))
+    if "RelativeRotation" in props:
+        pitch, yaw, roll = (float(v) for v in props["RelativeRotation"])
+        comp.set_editor_property("relative_rotation", unreal.Rotator(roll=roll, pitch=pitch, yaw=yaw))
+    if "RelativeScale3D" in props:
+        comp.set_editor_property("relative_scale3d", _vec(props["RelativeScale3D"]))
+
+
+def set_matron(actor, zone, name, level):
+    """The Matron placed from the original's of that name: her SkeletalMesh and CloseArea where the placed one has them
+    (MATRON_PARTS). Returns the level's names of her cones by her property (MATRON_CONES)."""
+    for part, prop in MATRON_PARTS.items():
+        _set_part(actor.get_editor_property(prop), _level_props(zone, "%s.%s" % (name, part), level))
+    own = _level_props(zone, name, level)
+    return {prop: own[key].rsplit(".", 1)[-1] for key, prop in MATRON_CONES.items() if own.get(key)}
+
+
+def set_matron_cone(actor, zone, name, level):
+    """One of the Matron's view cones placed from the original's of that name: its Plane (the map's fan) as the placed
+    one's."""
+    _set_part(actor.get_editor_property("plane"), _level_props(zone, name + ".Plane", level))
+
+
 def set_emitter(actor, zone, name, level):
     """An Emitter placed from the original's of that name, set up as its ParticleSystemComponent is: bAutoActivate and
     the template (imported under /Game/DD). level: the zone's level export by path (level_file), or {} to have it read.
@@ -660,15 +695,7 @@ def set_speed_barrier(actor, zone, name, level):
             raise RuntimeError("missing %s: run WasamiDDTools.import_dd_gimmicks" % path)
         actor.get_editor_property(prop).set_material(0, material)
     for part, prop in SPEED_BARRIER_PLANES.items():
-        over = _level_props(zone, "%s.%s" % (name, part), level)
-        plane = actor.get_editor_property(prop)
-        if "RelativeLocation" in over:
-            plane.set_editor_property("relative_location", _vec(over["RelativeLocation"]))
-        if "RelativeRotation" in over:
-            pitch, yaw, roll = (float(v) for v in over["RelativeRotation"])
-            plane.set_editor_property("relative_rotation", unreal.Rotator(roll=roll, pitch=pitch, yaw=yaw))
-        if "RelativeScale3D" in over:
-            plane.set_editor_property("relative_scale3d", _vec(over["RelativeScale3D"]))
+        _set_part(actor.get_editor_property(prop), _level_props(zone, "%s.%s" % (name, part), level))
 
 
 def set_saw_trap_light(actor, zone, name, level):
@@ -680,21 +707,23 @@ def set_saw_trap_light(actor, zone, name, level):
 
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
-    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the altar, the
-    ring piece, the defibrillators, the speed barriers, the saw traps and the special shards with their spawn points, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the Matron
+    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps and the special shards with their spawn points, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS)."""
     placed = []
     level = {}
+    cones = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         special = a["class"] in SPECIAL_SHARD_CLASSES or a["class"] in SPECIAL_SPAWN_POINT_CLASSES
+        enemy = a["class"] in (SENTRY_CLASS, MATRON_CLASS) or a["class"] in MATRON_CONE_CLASSES
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
-                                                 TARGET_POINT_CLASS, SENTRY_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
+                                                 TARGET_POINT_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
                                                  DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
-                              and not doors and not emitter and not special):
+                              and not doors and not emitter and not special and not enemy):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -757,6 +786,19 @@ def _flow(eas, stage, zone, counts, failures):
             if unwritten:
                 failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
             counts["sentries"] += 1
+        elif a["class"] == MATRON_CLASS:
+            actor = eas.spawn_actor_from_class(unreal.WasamiMatron, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            cones[actor] = set_matron(actor, zone, a["name"], level)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["matrons"] += 1
+        elif a["class"] in MATRON_CONE_CLASSES:
+            actor = eas.spawn_actor_from_class(getattr(unreal, MATRON_CONE_CLASSES[a["class"]]), _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            set_matron_cone(actor, zone, a["name"], level)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["viewcones"] += 1
         elif a["class"] == STATUE_CLASS:
             actor = eas.spawn_actor_from_class(unreal.WasamiRingStatue, _vec(world["location"]), _rot(world["quat_xyzw"]))
             over = _level_props(zone, a["name"] + ".StaticMeshComponent0", level).get("OverrideMaterials")
@@ -825,7 +867,7 @@ def _flow(eas, stage, zone, counts, failures):
         actor.set_actor_scale3d(_vec(world["scale"]))
         lift = a["class"] in LIFT_CLASSES or a["class"] in GARAGE_LIFT_CLASSES
         folder = (LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES
-                  else ENEMY_FOLDER if a["class"] == SENTRY_CLASS
+                  else ENEMY_FOLDER if enemy
                   else TRAP_FOLDER if a["class"] in (DEFIB_CLASS, SPEED_BARRIER_CLASS) or a["class"] in SAW_TRAP_CLASSES
                   else SPECIAL_SHARD_FOLDER if special
                   else FLOW_FOLDER)
@@ -861,11 +903,18 @@ def _flow(eas, stage, zone, counts, failures):
             actor.attach_to_actor(parent, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
                                   unreal.AttachmentRule.KEEP_WORLD, False)
             counts["attached"] += 1
+    for actor, refs in cones.items():
+        for prop, name in refs.items():
+            cone = by_source.get(name)
+            if cone is None:
+                failures.append("%s: no %s %s" % (actor.get_actor_label(), prop, name))
+            else:
+                actor.set_editor_property(prop, cone)
 
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers, lifts, garage lifts, sentries, altar, ring piece, defibrillators, speed barriers, saw traps and special shards with their spawn
+    checkers, lifts, garage lifts, sentries, the Matron with her view cones, altar, ring piece, defibrillators, speed barriers, saw traps and special shards with their spawn
     points in again (and takes out the barrier, ring piece, speed barrier, saw trap and special shard lights an earlier build placed on their
     own), leaving the rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts, the
     altar, the defibrillators' stands, the saw traps, the special shards and the barriers', the piece's and the traps' lights are movable), and
@@ -883,7 +932,7 @@ def place_flow(zone="Zone1", map_path=""):
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
-              "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
+              "matrons": 0, "viewcones": 0, "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
               "specialSpawnPoints": 0, "portals": 0, "attached": 0}
     old += lights
     if old:
@@ -907,7 +956,7 @@ def build(zone="Zone1", map_path=""):
     counts = {k: 0 for k in ("meshes", "decals", "lights", "captures", "fog", "sky", "postProcess", "playerStarts",
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
-                             "shardCheckers", "lifts", "garageLifts", "sentries", "ringStatues", "ringPieces", "defibs",
+                             "shardCheckers", "lifts", "garageLifts", "sentries", "matrons", "viewcones", "ringStatues", "ringPieces", "defibs",
                              "speedBarriers", "sawTraps", "specialShards", "specialSpawnPoints", "portals", "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)

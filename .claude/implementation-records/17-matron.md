@@ -14,7 +14,7 @@ updated: 2026-09-19
 # Zone 2 の Matron（ボスワサミ）
 
 ## 役割
-本家の Zone 2 の中ボス `BP_06_Matron_MiniBoss`（最新版 `pak_reference_2`）を、大きいボスワサミとして置く（作業一覧の項目 11）。**作っている途中**: いまあるのはボスワサミの素材の取り込みと、Matron のアクタ `AWasamiMatron`・ボスのアニメの再生 `UWasamiBossAnimInstance`・Matron の視界コーン 2 種（`WasamiViewcone.*`。07 記録）。Zone 2 への配置と流れへの結び付けはこれから（進捗記録 `20260919-matron`）。
+本家の Zone 2 の中ボス `BP_06_Matron_MiniBoss`（最新版 `pak_reference_2`）を、大きいボスワサミとして置く（作業一覧の項目 11）。**作っている途中**: いまあるのはボスワサミの素材の取り込みと、Matron のアクタ `AWasamiMatron`・ボスのアニメの再生 `UWasamiBossAnimInstance`・Matron の視界コーン 2 種（`WasamiViewcone.*`。07 記録）と、Zone 2 への配置（組み立ての `_flow`）・流れへの結び付け（`ActivateMinibossEnemies`）。PIE での確かめと通しはこれから（進捗記録 `20260919-matron`）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_wasami_boss()`（01 記録）→ `dd_boss.import_all()`。戻り値 `textures` 3 / `materials` 1 / `meshes` 1 / `animations` 3、`idle_head_cm`（Idle の最初のコマの頭の骨の高さ。拡縮 1 で 128.2 cm）。
@@ -53,6 +53,10 @@ updated: 2026-09-19
 - **LookAt**（本家: `spine_02`、`LookAt_Axis` (0, 1, 0) を骨の空間でなく部品の空間で、上の軸なし、補間なし、制限 90°、アルファは `bSpotted` の真偽で入り 0.5 s〈Cubic〉・出 0 s）: 代理の `Evaluate` で、混ぜた姿勢を部品の空間にして `spine_02` の変形を読み、`Location` を部品の空間へ移し（エンジンの `FBoneSocketTarget` の骨の無いときと同じく世界の位置と読む）、`AnimationCore::SolveAim(骨, 的, +Y, false, 上, 90)` の回転を骨の回転の前に掛け、`LocalBlendCSBoneTransforms` でアルファの分だけ混ぜて局所に戻す（エンジンの `FAnimNode_LookAt` と同じ手順。モジュールの非公開の依存に `AnimationCore`）。部品の +Y はボスの正面。
 - 本家の ModifyBone（のこぎり 2 つの骨を拡縮 0）はボスに無い骨なので作らない。
 
+### Zone 2 への配置（組み立ての `_flow`。01 記録）と流れ（11 記録）
+- レベルの組み立て（`build_dd_stage_level` / `place_dd_flow Zone2`）が、本家の `MnM_Matron_Idle_2` を `AWasamiMatron` で根 (−6900.98, −1023.26, −50.22)・ヨー 90（前は −X）に置き、`SkeletalMesh` を相対 (3.0, −98.0, −57.0)、`CloseArea` を相対 (−27.38, 617.40, 234.0)・拡縮 (56.44, 10.05, 9.58)（机の前の帯）にする。コーンは `BP_06_Miniboss_viewcone_Matron_Long` を `AWasamiViewconeMatronLong` で (−7067.35, −1025.0, 676.26)・ヨー 180、扇 `Plane` を相対 (1673.83, 0, 0)・拡縮 (35.18, 32.04, 1)、`_Short_5` を `AWasamiViewconeMatronShort` で (−6630.76, −1025.0, 518.37)・ヨー 180・ピッチ −20、扇を相対 (659.98, 0, 0)・拡縮 (13.34, 17.79, 1)。Matron の `LongCone`・`ShortCone` にこの 2 つを入れる。3 つともフォルダ `Hospital/Gameplay/Enemies`、タグ `src:<本家の名前>`。
+- Zone 2 の流れの `ActivateMinibossEnemies`（保存 8 の廊下の箱と、8 で開いたとき）が見張りの `Activate` の後に、名前 `AWasamiZone2Flow::Matron`（`MnM_Matron_Idle_2`）で引いた Matron の `Activate` を呼ぶ。迷路の始まり（`Trigger_MazeStart`）の `RemoveAllEnemies` がタグ `Enemy` で Matron を消す（コーンは本家どおり残る。持ち主が消えているので見つけても何も起きない）。
+
 ### 大きさ（`AWasamiMatron::MeshScale`。`TODO(仮)`）
 本家の長いコーンの高さ（z 676.26。Matron の目の高さと読む）に、ボスの `Idle` の最初のコマの `head` の骨（拡縮 1 で 128.2 cm）が来る拡縮: (676.26 + 107.22) / 128.2 ≈ **6.111**（107.22 cm はメッシュの原点が床より下にある分: Matron の根の z −50.22 と部品の相対 z −57）。高さ約 10.4 m、頭の上は床から約 932 cm（本家の Matron は 1031 cm）。本家は `SK_Matron` を 5 倍で描く。PIE（ステップ 4）で天井・机・壁を突き抜けるなら詰める。
 
@@ -80,7 +84,7 @@ updated: 2026-09-19
 ## 依存関係
 - `pipeline/dd_enemy.py`（`BONES`・`RATE`・`_content_frames`・`_sample`・`_key`・`_extract_textures`・`_build_master`・`_import_model`・`MASTER`）、`gltf.py`、`dd_assets.material_instance`。
 - Matron: 視界コーン `AWasamiViewcone`・`AWasamiViewconeMatronLong/Short` と見張り `AWasamiEnemySentry`（07 記録）、`WasamiEnemyAnim::BlendPoses`・`FWasamiStateBlend`・`FWasamiBoolBlend`・`FWasamiEnemyAnimSample`（07 記録）、エンジンの `AnimationCore::SolveAim`・`FCSPose`。
-- 使う側: これから（Zone 2 の配置と `AWasamiZone2Flow::ActivateMinibossEnemies`）。
+- 使う側: レベルの組み立て `dd_level._flow`（01 記録）、`AWasamiZone2Flow::ActivateMinibossEnemies`（11 記録）。
 
 ## 既知の制約・注意点
 - 敵ワサミを取り込み直してマスター `M_DD_WasamiGltf` を作り直しても、`MI_WasamiBoss` はテクスチャを上書きしているので変わらない。
@@ -88,5 +92,6 @@ updated: 2026-09-19
 - LookAt の軸は部品の +Y（本家と同じ）なので、プレイヤーが真下に近いと上半身が大きく前へ倒れる（制限 90°）。見た目は PIE で見る。
 
 ## 変更履歴
+- 2026-09-19: Zone 2 に置いた（組み立ての `_flow` が Matron とコーン 2 つを本家の位置・部品の変形で置き、Matron のコーンの参照を入れる）。Zone 2 の `ActivateMinibossEnemies` が Matron の `Activate` を呼ぶ（作業一覧の項目 11 のステップ 3）
 - 2026-09-19: Matron のアクタ `AWasamiMatron`（部品・`Activate`・`Switch`・`Player Spotted`・1.0948 s の見張りへの知らせ）、ボスのアニメの再生 `UWasamiBossAnimInstance`（Idle ↔ Alert の 0.95 s のクロスフェード・Detected のスロット・`spine_02` の LookAt）、テスト `Wasami.Matron.*` 4 件を足した（作業一覧の項目 11 のステップ 2）。`Wasami.*` の 119 件が通った
 - 2026-09-19: 初版。ボスワサミの素材の取り込み（`dd_boss.py`、原本 `boss_wasami.glb`）を記録（作業一覧の項目 11 のステップ 1）

@@ -8,6 +8,7 @@
 #include "../WasamiGameMode.h"
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
+#include "../WasamiMatron.h"
 #include "../WasamiPortal.h"
 #include "../WasamiRingPiece.h"
 #include "../WasamiRingPieceWidget.h"
@@ -475,6 +476,18 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	}
 	Sentry->Offset = 10.f;
 	const TWeakObjectPtr<AWasamiEnemySentry> WeakSentry(Sentry);
+	// The Matron the level places, with her two cones, far below too.
+	AWasamiMatron* Matron = World->SpawnActor<AWasamiMatron>(FVector(0., -8000., -40000.), FRotator::ZeroRotator);
+	AWasamiViewcone* LongCone = World->SpawnActor<AWasamiViewconeMatronLong>(FVector(0., -8000., -39000.), FRotator::ZeroRotator);
+	AWasamiViewcone* ShortCone = World->SpawnActor<AWasamiViewconeMatronShort>(FVector(0., -8000., -39200.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the Matron"), Matron) || !TestNotNull(TEXT("her long cone"), LongCone) || !TestNotNull(TEXT("her short cone"), ShortCone))
+	{
+		return false;
+	}
+	Matron->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::Matron));
+	Matron->LongCone = LongCone;
+	Matron->ShortCone = ShortCone;
+	const TWeakObjectPtr<AWasamiMatron> WeakMatron(Matron);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 7);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -504,11 +517,15 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	Walk(World, TEXT("Miniboss_BierceTalk"));
 	TestEqual(TEXT("Bierce's trigger, bound 1 s on"), Flow->GetSection(), FName(TEXT("Miniboss_BierceTalk")));
 	TestFalse(TEXT("the sentry not looking in the cell"), Sentry->GetViewcone()->IsInitialized());
+	TestFalse(TEXT("nor the Matron"), Matron->IsActivated() || LongCone->IsInitialized() || ShortCone->IsInitialized());
 
 	Walk(World, TEXT("BP_MiniBoss_Trigger"));
 	TestEqual(TEXT("the Matron's corridor"), Flow->GetSection(), FName(TEXT("Miniboss Transition ")));
 	TestTrue(TEXT("Activate MiniBoss Enemies: the sentry looks"), Sentry->GetViewcone()->IsInitialized());
 	TestEqual(TEXT("its cone waiting its Offset"), Sentry->GetViewcone()->Offset, 10.f);
+	TestTrue(TEXT("and then the Matron: her Switch"), Matron->IsActivated());
+	TestTrue(TEXT("her cones hers"), LongCone->GetOwner() == Matron && ShortCone->GetOwner() == Matron);
+	TestTrue(TEXT("and looking"), LongCone->IsInitialized() && ShortCone->IsInitialized());
 	TestEqual(TEXT("checkpoint 8 saved"), SavedCheckpoint(), 8);
 	TestEqual(TEXT("past the nurses, with the original's space"), Objective(Mode), FString(TEXT("Get past the nurses ")));
 	TestTrue(TEXT("the arrow clear"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(0.f, 0.f, 0.f, 0.f)));
@@ -519,6 +536,7 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the maze's shards"), Objective(Mode), FString(TEXT("COLLECT ALL SHARDS")));
 	TestTrue(TEXT("the arrow on the shards"), Flow->IsArrowOnShards());
 	TestTrue(TEXT("the sentry removed"), !WeakSentry.IsValid() || WeakSentry->IsActorBeingDestroyed());
+	TestTrue(TEXT("the Matron removed (tagged Enemy)"), !WeakMatron.IsValid() || WeakMatron->IsActorBeingDestroyed());
 	// Spawn Nurses: a Zone 2 nurse at each of NurseSpawn_4, _1 and _2, turned as the point is.
 	const TArray<AWasamiEnemy*> MazeNurses = Alive<AWasamiEnemy>(World, false);
 	TestEqual(TEXT("three nurses in the maze"), MazeNurses.Num(), 3);
