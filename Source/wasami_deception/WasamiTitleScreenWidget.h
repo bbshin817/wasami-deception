@@ -15,18 +15,19 @@ class USoundBase;
 class UTextBlock;
 class UTexture2D;
 class UVerticalBox;
+class UWasamiExtrasWidget;
 class UWasamiPopUpWidget;
 class UWasamiSaveGame;
 
 /**
  * The title screen, after Dark Deception's UI/Main/TitleScreen/UMG_TitleScreen as of v1.6.1 (pak_reference; the WebGL
  * version copied the same): black, the face on the right, the smoke's black and the panning brush strokes on the left,
- * the logo with its glow, the notice, the menu (RESUME / NEW GAME / OPTIONS / QUIT, the red brush under the one
- * hovered), and over them the black cover Slideshow lifts, the black and red FadeOut plays with and the version. The
- * tree is built here slot for slot, without the hidden video and slideshow and the chapters, replays and extras this
- * game has none of. Construct (the cover, the input, the music) runs from NativeConstruct; the animations, their
- * sounds and the Delays before a level opens are ticked by the widget. NEW GAME and QUIT ask first with a
- * UWasamiPopUpWidget (NEW GAME only once a game was begun).
+ * the logo with its glow, the notice, the menu (RESUME / NEW GAME / EXTRAS / OPTIONS / QUIT, the red brush under the
+ * one hovered), and over them the black cover Slideshow lifts, the black and red FadeOut plays with and the version.
+ * The tree is built here slot for slot, without the hidden video and slideshow and the chapters and replays this game
+ * has none of. Construct (the cover, the input, the music) runs from NativeConstruct; the animations, their sounds and
+ * the Delays before a level opens are ticked by the widget. NEW GAME and QUIT ask first with a UWasamiPopUpWidget
+ * (NEW GAME only once a game was begun); EXTRAS opens UWasamiExtrasWidget over the screen.
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiTitleScreenWidget : public UUserWidget
@@ -58,10 +59,15 @@ public:
 
 	/**
 	 * Construct's run: RESUME off without progress, Slideshow, the input to the screen with the cursor, and the music
-	 * (Pause_Sound_v1 at pitch 0.5, fading in over 2 s to 0.5). NativeConstruct calls it with the save's progress (the
-	 * tests call it alone).
+	 * (FadeInMusic). NativeConstruct calls it with the save's progress (the tests call it alone).
 	 */
 	void Begin(bool bInHasProgress);
+
+	/**
+	 * FadeInMusic (@11218; Construct's music is the same): Music made anew, Pause_Sound_v1 at pitch 0.5 fading in over
+	 * 2 s to 0.5. EXTRAS' FadeMusic brings the music back with it. Nothing without a world.
+	 */
+	void FadeInMusic();
 
 	/** Moves the animations and their sounds on by DeltaSeconds. */
 	void Advance(float DeltaSeconds);
@@ -89,6 +95,12 @@ public:
 	 * save's checkpoint (AWasamiGameMode::LevelForCheckpoint). The original's question UMG_PopUp_Resume is not made.
 	 */
 	void PressResume();
+
+	/**
+	 * EXTRAS' click (@2293): the extras screen at Z 2 (UWasamiExtrasWidget::Show; nothing without a player) with its
+	 * FadeMusic bound to FadeInMusic, the select sound, and the music out over 1 s.
+	 */
+	void PressExtras();
 
 	/** OPTIONS' click: the options screen at Z 10 (UWasamiOptionsWidget::Show; nothing without a player) and the select sound. */
 	void PressOptions();
@@ -121,15 +133,19 @@ public:
 	static constexpr float NewGameDelay = 10.f;
 	static constexpr float ResumeDelay = 5.f;
 
-	/** How long the music takes to go: NEW GAME's and RESUME's Music.FadeOut. */
+	/** How long the music takes to go: NEW GAME's, RESUME's and EXTRAS' Music.FadeOut. */
 	static constexpr float NewGameMusicFadeOut = 1.f;
 	static constexpr float ResumeMusicFadeOut = 4.f;
+	static constexpr float ExtrasMusicFadeOut = 1.f;
 
 	/** Seconds since Begin. */
 	float GetElapsed() const { return Elapsed; }
 
 	/** Whether the menu keeps RESUME. */
 	bool HasResume() const { return ResumeButton != nullptr; }
+
+	/** The extras screen EXTRAS last opened (null before, or without a player). */
+	UWasamiExtrasWidget* GetExtras() const { return Extras; }
 
 	/** Image_128's opacity (Slideshow's cover), Image_0's (the black), Image_2's (the red) and CanvasPanel_0's scale. */
 	float GetCoverOpacity() const { return CoverOpacity; }
@@ -205,7 +221,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<USoundBase> VoiceSound;
 
-	/** UI_Select_V3: the questions and OPTIONS. */
+	/** UI_Select_V3: the questions, EXTRAS and OPTIONS. */
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<USoundBase> SelectSound;
 
@@ -235,6 +251,9 @@ private:
 	void OnNewGameClicked();
 
 	UFUNCTION()
+	void OnExtrasClicked();
+
+	UFUNCTION()
 	void OnOptionsClicked();
 
 	UFUNCTION()
@@ -252,6 +271,12 @@ private:
 
 	UFUNCTION()
 	void OnNewGameUnhovered();
+
+	UFUNCTION()
+	void OnExtrasHovered();
+
+	UFUNCTION()
+	void OnExtrasUnhovered();
 
 	UFUNCTION()
 	void OnOptionsHovered();
@@ -290,6 +315,9 @@ private:
 	TObjectPtr<UButton> NewGameButton;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UButton> ExtrasButton;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UButton> OptionsButton;
 
 	UPROPERTY(Transient)
@@ -300,6 +328,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> NewGameText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ExtrasText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> OptionsText;
@@ -314,6 +345,10 @@ private:
 	/** FadeOut's Start_New_Game, whose volume the section's curve moves. */
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> StartAudio;
+
+	/** The extras screen EXTRAS opened. */
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiExtrasWidget> Extras;
 
 	/** NEW GAME's question, which its YES closes. */
 	UPROPERTY(Transient)

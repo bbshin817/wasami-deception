@@ -49,7 +49,7 @@ namespace
 	// The movies' IDs in WrapBox_3's order (the original's third to tenth are all 2).
 	const int32 VideoIDs[UWasamiExtrasWidget::VideoCount] = {0, 1, 2, 2, 2, 2, 2, 2, 2, 2};
 
-	UCanvasPanelSlot* ExtrasPlace(UCanvasPanel* Panel, UWidget* Child, const FAnchors& Anchors, const FMargin& Offsets,
+	UCanvasPanelSlot* ExtrasScreenPlace(UCanvasPanel* Panel, UWidget* Child, const FAnchors& Anchors, const FMargin& Offsets,
 		const FVector2D& Alignment = FVector2D::ZeroVector, bool bAutoSize = false)
 	{
 		UCanvasPanelSlot* Slot = Panel->AddChildToCanvas(Child);
@@ -163,7 +163,7 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		BlackStyle.SetNormal(BlackBrush).SetHovered(BlackBrush).SetPressed(BlackBrush).SetNormalPadding(FMargin(2.f))
 			.SetPressedPadding(FMargin(2.f, 3.f, 2.f, 1.f));
 		Black->SetStyle(BlackStyle);
-		ExtrasPlace(Root, Black, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.f));
+		ExtrasScreenPlace(Root, Black, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.f));
 
 		// Image_0: the title's brush strokes panning over the whole screen (MM_TitleScreen_Mask_).
 		Backdrop = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Image_0"));
@@ -171,12 +171,12 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		{
 			Backdrop->SetBrushFromMaterial(Material);
 		}
-		ExtrasPlace(Root, Backdrop, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.f));
+		ExtrasScreenPlace(Root, Backdrop, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.f));
 
 		// BackgroundBlur_0: what is under it blurred (3), letting the pointer through.
 		Blur = WidgetTree->ConstructWidget<UBackgroundBlur>(UBackgroundBlur::StaticClass(), TEXT("BackgroundBlur_0"));
 		Blur->SetBlurStrength(3.f);
-		ExtrasPlace(Root, Blur, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.f));
+		ExtrasScreenPlace(Root, Blur, FAnchors(0.f, 0.f, 1.f, 1.f), FMargin(0.f));
 
 		// VerticalBox_0: the sections, 70 px in from the left's middle (helvetica-normal 36, left aligned in their buttons).
 		SectionBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox_0"));
@@ -211,7 +211,7 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		// MOVIES is hidden and disabled.
 		SectionButtons[MoviesSection]->SetIsEnabled(false);
 		SectionButtons[MoviesSection]->SetVisibility(ESlateVisibility::Hidden);
-		ExtrasPlace(Root, SectionBox, FAnchors(0.f, 0.5f), FMargin(70.02057647705078f, 0.f, 474.3743591308594f, 513.3007202148438f),
+		ExtrasScreenPlace(Root, SectionBox, FAnchors(0.f, 0.5f), FMargin(70.02057647705078f, 0.f, 474.3743591308594f, 513.3007202148438f),
 			FVector2D(0.f, 0.5f), true);
 
 		// Back: BACK (helvetica-neue-bold 24) 24 px in from the bottom left, 69 px up.
@@ -221,7 +221,7 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		BackText->SetText(FText::FromString(TEXT("BACK")));
 		BackText->SetFont(ExtrasFont(BoldFont.LoadSynchronous(), 24.f));
 		BackButton->AddChild(BackText);
-		ExtrasPlace(Root, BackButton, FAnchors(0.f, 1.f), FMargin(24.f, -69.0810546875f, 100.f, 30.f), FVector2D::ZeroVector, true);
+		ExtrasScreenPlace(Root, BackButton, FAnchors(0.f, 1.f), FMargin(24.f, -69.0810546875f, 100.f, 30.f), FVector2D::ZeroVector, true);
 
 		// Slider_0: a thin red line (a vertical slider at 1, its bar 6 thick in red at 0.5 and its handle clear) 746 px
 		// long, 452 px in from the left's middle.
@@ -233,11 +233,11 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		Slider->SetOrientation(Orient_Vertical);
 		Slider->SetSliderBarColor(FLinearColor(1.f, 0.f, 0.f, 0.5f));
 		Slider->SetSliderHandleColor(FLinearColor(1.f, 1.f, 1.f, 0.f));
-		ExtrasPlace(Root, Slider, FAnchors(0.f, 0.5f), FMargin(452.f, 0.f, 100.f, 746.2161865234375f), FVector2D(0.f, 0.5f));
+		ExtrasScreenPlace(Root, Slider, FAnchors(0.f, 0.5f), FMargin(452.f, 0.f, 100.f, 746.2161865234375f), FVector2D(0.f, 0.5f));
 
 		// WidgetSwitcher_276: the sections' pages, from 401 px left of the middle (1328 × 1031).
 		Switcher = WidgetTree->ConstructWidget<UWidgetSwitcher>(UWidgetSwitcher::StaticClass(), TEXT("WidgetSwitcher_276"));
-		ExtrasPlace(Root, Switcher, FAnchors(0.5f), FMargin(-400.9609375f, -514.5585327148438f, 1328.32421875f, 1030.990966796875f));
+		ExtrasScreenPlace(Root, Switcher, FAnchors(0.5f), FMargin(-400.9609375f, -514.5585327148438f, 1328.32421875f, 1030.990966796875f));
 
 		// 0 HorizontalBox_0 → RichTextBlock_258: the credits in the middle (10 px off the bottom), centred and wrapped,
 		// 1110 px down until Credits_Scroll moves them.
@@ -286,7 +286,7 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		{
 			UCanvasPanel* Page = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), PanelName);
 			OutBar = WidgetTree->ConstructWidget<UWasamiExtrasSoundBarWidget>(UWasamiExtrasSoundBarWidget::StaticClass(), BarName);
-			ExtrasPlace(Page, OutBar, FAnchors(0.5f), FMargin(-661.162109375f, -207.7221221923828f, 1324.f, 30.f));
+			ExtrasScreenPlace(Page, OutBar, FAnchors(0.5f), FMargin(-661.162109375f, -207.7221221923828f, 1324.f, 30.f));
 			OutBox = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), BoxName);
 			OutBox->SetInnerSlotPadding(FVector2D(30.f, 30.f));
 			OutBox->SetWrapSize(1635.440185546875f);
@@ -304,7 +304,7 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 				OutBox->AddChildToWrapBox(Button);
 				OutButtons.Add(Button);
 			}
-			ExtrasPlace(Page, OutBox, FAnchors(0.5f), FMargin(0.f, -107.29153442382812f, 1289.f, 573.f), FVector2D(0.5f, 0.f), true);
+			ExtrasScreenPlace(Page, OutBox, FAnchors(0.5f), FMargin(0.f, -107.29153442382812f, 1289.f, 573.f), FVector2D(0.5f, 0.f), true);
 			Switcher->AddChild(Page);
 		};
 		AddSoundPage(TEXT("CanvasPanel_19"), TEXT("UMG_Extras_Sound_Bar"), TEXT("WrapBox_1"), true, DiaryBar, DiaryBox, DiaryButtons);

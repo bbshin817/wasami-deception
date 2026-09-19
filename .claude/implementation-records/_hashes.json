@@ -20,7 +20,7 @@
     "Tools/dd/cooked_shaders.py": "7c25a3166fefd04a63cb38bc6cfab05bd8210627",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
-    "Tools/editor_cycle.py": "0252f069d3c45d94f410928fe292e577c8c2b3c5",
+    "Tools/editor_cycle.py": "2fa7b4c81d572b8745f4e6d906157776a087a022",
     "Tools/console_session.py": "79504ece5845d94fa038c18ab4f20d73945363fa",
     "Tools/desktop.py": "ab6bfa966afede0d7aaf0c2d2951ffe760d464a9",
     "Tools/desktop_agent.py": "e7d138f0d0f089abb775b10b6ac9bf88e7bbac2a",
@@ -260,11 +260,11 @@
   },
   "14-title.md": {
     "Tools/dd/prepare_title.py": "f11875c129fb470af4a9e023cae2d21e5eb57a38",
-    "Source/wasami_deception/WasamiTitleScreenWidget.h": "4e477c756768b54ff941ee64253331007260bf1d",
-    "Source/wasami_deception/WasamiTitleScreenWidget.cpp": "1e8d92a24d980a5fcac707780d1d1527e2100859",
+    "Source/wasami_deception/WasamiTitleScreenWidget.h": "72c7ed54e2b5fe9b850df9300b01ed54a2ce1199",
+    "Source/wasami_deception/WasamiTitleScreenWidget.cpp": "5c301c498761213af5833c095a75cf809a6781a3",
     "Source/wasami_deception/WasamiTitleGameMode.h": "c11abe29e83187d6cc692272de05005522c542d9",
     "Source/wasami_deception/WasamiTitleGameMode.cpp": "2fae5ba4e952baee6e621b9288414783326b8716",
-    "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "19eec61207e6b7720695d595c24f96d36ab42747"
+    "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "aa88b43719b2490292f4407abc85dd28dec71412"
   },
   "15-options-pause.md": {
     "Source/wasami_deception/WasamiSettingsSaveGame.h": "06b3b0900259c944c8fcc50f83783a99b1988999",
@@ -312,7 +312,7 @@
     "Source/wasami_deception/WasamiMysteryNoteWidget.h": "6cd5780c4460abe93503a74a3c72f09c26046dce",
     "Source/wasami_deception/WasamiMysteryNoteWidget.cpp": "deda6c9e41a0d75fd81f15c15b70514e35a5a1f8",
     "Source/wasami_deception/WasamiCollectable.h": "fadfaf9b824c1b229bb3420e6a773b1b9e41c9ce",
-    "Source/wasami_deception/WasamiCollectable.cpp": "bcfe2074ef2edc9d57e9480b0bffa73f9c927b82",
+    "Source/wasami_deception/WasamiCollectable.cpp": "65ac7f51393e0c78f17cd60d86f9e3a9b5e29f31",
     "Source/wasami_deception/WasamiSecretRoomZone.h": "c6529c18addc28dceabfc251b81d6f841946a55e",
     "Source/wasami_deception/WasamiSecretRoomZone.cpp": "8e79b4319987a5658f554d84bf05b63c42c32802",
     "Source/wasami_deception/WasamiSecretWall.h": "23aeac2f61b1797ae60e8dfe427f93d4cd902193",
@@ -325,7 +325,7 @@
   },
   "19-extras.md": {
     "Source/wasami_deception/WasamiExtrasWidget.h": "0c78e192dfdae007fca1251ef206d6c2818eeaee",
-    "Source/wasami_deception/WasamiExtrasWidget.cpp": "7f770431c6a2f2145bc2596854af89aaa4c59cc4",
+    "Source/wasami_deception/WasamiExtrasWidget.cpp": "add851356e9e37bb27b2a89e1fefb13b709ffc83",
     "Source/wasami_deception/WasamiExtrasItemWidget.h": "c8bfee0e3fec1d7916653813cbf2d62850ecd66e",
     "Source/wasami_deception/WasamiExtrasItemWidget.cpp": "56e111b50d68a8bbf5029c0ef12310bccda1eab7",
     "Source/wasami_deception/WasamiMaximizePictureWidget.h": "e572ee59d4b92d5bf89e8d6a1626c3160403f22f",

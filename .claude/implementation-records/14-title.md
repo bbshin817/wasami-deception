@@ -13,7 +13,7 @@ updated: 2026-09-20
 # タイトル画面
 
 ## 役割
-ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19）。メニューは RESUME / NEW GAME / OPTIONS / QUIT（本家の CHAPTERS・REPLAY・EXTRAS と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイ・おまけが無い。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）、死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先（ステップ 4）まで。
+ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19）。メニューは RESUME / NEW GAME / EXTRAS / OPTIONS / QUIT（本家の CHAPTERS・REPLAY と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイが無い。EXTRAS は作業一覧の項目 29 で足した〈画面は 19 記録〉。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）、死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先（ステップ 4）まで。EXTRAS の入口は項目 29 のステップ 5。
 
 ## 公開インターフェース
 - `python Tools/dd/prepare_title.py [--out <dir>]` … 本作の顔とロゴのグローを作る（下の「作るアセット」）。PIL と numpy を使う（エディタの Python には無い）。
@@ -22,9 +22,9 @@ updated: 2026-09-20
 - `UWasamiTitleScreenWidget`（`UUserWidget`。C++ で木を組む）
   - `Show(WorldContextObject)`（BlueprintCallable）: 最初のプレイヤーに作って Z 1（`ViewportZOrder`）で足す（本家のレベル `TitleScreen` の BeginPlay）。PIE で画面だけを出すときはリモート実行で `unreal.WasamiTitleScreenWidget.show(<ゲームのワールド>)`。
   - `SaveSlotName`（既定は `UWasamiSaveGame::SlotName`。テストは別のスロット）、`HasProgress(Save)`（`Hospital.LevelCheckpoint` > 0）、`VersionText()`（`v` + プロジェクト設定の `ProjectVersion`）。
-  - `Begin(bHasProgress)`（Construct の中身。`NativeConstruct` がセーブを読んで呼ぶ）、`Advance(DeltaSeconds)`（`NativeTick` から）、`PlayFadeOut()`（NEW GAME の暗転）、`PlayFadeOut0()`（RESUME の暗転）、`FadeOutMusic(Seconds)`。
-  - ボタンの道（下の「ボタンの道」）: `PressNewGame()`・`PressResume()`・`PressOptions()`・`PressQuit()`（ボタンのクリック〈RESUME は押下〉がこれを呼ぶ）、問いの YES の `NewGameEvent()`・`QuitEvent()`（UFUNCTION）。定数 `NewGameQuestion`・`PopUpZOrder`（2）・`NewGameDelay`（10）・`ResumeDelay`（5）・`NewGameMusicFadeOut`（1）・`ResumeMusicFadeOut`（4）。
-  - テスト用の読み出し: `GetElapsed`・`HasResume`・`GetCoverOpacity`（`Image_128`）・`GetBlackOpacity`（`Image_0`）・`GetRedOpacity`（`Image_2`）・`GetPulseScale`（`CanvasPanel_0`）・`GetStartVolume`・`HasPlayedVoice`・`GetLevelToOpen`（道が開くレベル。道の前は空）・`HasLeft`（遅延が切れてレベルを開いた）・`HasQuit`。曲線の静的関数 `EvaluateSlideshow`・`EvaluateBlack`・`EvaluatePulse`・`EvaluateRed`・`EvaluateStartVolume` と定数（長さ・声の時刻・曲の値）。
+  - `Begin(bHasProgress)`（Construct の中身。`NativeConstruct` がセーブを読んで呼ぶ）、`FadeInMusic()`（曲を作り直して入れる。Construct と EXTRAS の `FadeMusic` が呼ぶ）、`Advance(DeltaSeconds)`（`NativeTick` から）、`PlayFadeOut()`（NEW GAME の暗転）、`PlayFadeOut0()`（RESUME の暗転）、`FadeOutMusic(Seconds)`。
+  - ボタンの道（下の「ボタンの道」）: `PressNewGame()`・`PressResume()`・`PressExtras()`・`PressOptions()`・`PressQuit()`（ボタンのクリック〈RESUME は押下〉がこれを呼ぶ）、問いの YES の `NewGameEvent()`・`QuitEvent()`（UFUNCTION）。定数 `NewGameQuestion`・`PopUpZOrder`（2）・`NewGameDelay`（10）・`ResumeDelay`（5）・`NewGameMusicFadeOut`（1）・`ResumeMusicFadeOut`（4）・`ExtrasMusicFadeOut`（1）。
+  - テスト用の読み出し: `GetElapsed`・`HasResume`・`GetCoverOpacity`（`Image_128`）・`GetBlackOpacity`（`Image_0`）・`GetRedOpacity`（`Image_2`）・`GetPulseScale`（`CanvasPanel_0`）・`GetStartVolume`・`HasPlayedVoice`・`GetExtras`（EXTRAS が出した画面。プレイヤーが居なければ null）・`GetLevelToOpen`（道が開くレベル。道の前は空）・`HasLeft`（遅延が切れてレベルを開いた）・`HasQuit`。曲線の静的関数 `EvaluateSlideshow`・`EvaluateBlack`・`EvaluatePulse`・`EvaluateRed`・`EvaluateStartVolume` と定数（長さ・声の時刻・曲の値）。
 - `AWasamiTitleGameMode`（`AGameModeBase`）… タイトルのレベルのゲームモード（下の「タイトルのレベル」）。ポーンなし（`PlayerCanRestart` が偽）。
 - タイトルのレベル `/Game/Stage/Maps/L_Title`（`Content/Stage` は git の外）: `WasamiStageTools.build_title_level(map_path="")`（`dd_level.build_title`）が作る。`Config/DefaultEngine.ini` の `GameDefaultMap`（パッケージの始まり）はこのレベル。エディタの開始のレベル `EditorStartupMap` は Zone 1 のまま。
 - テスト `Wasami.Title.Curves`・`Wasami.Title.Screen`・`Wasami.Title.Animations`・`Wasami.Title.WaysOut`（`Tests/WasamiTitleScreenTests.cpp`）。
@@ -52,14 +52,14 @@ WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/i
 5. `Image_104`: 筆の跡の材質を左端から幅 1654.65・上から下まで。本家どおり無効（`SetIsEnabled(false)`）。
 6. `LogoGlow`（本作だけ）と `Image_103`: 本作のロゴを、WebGL 版が本家のロゴ（(4, −44)、1043.7 × 564.9）の文字の箱に合わせた (58.8, 61.6)・幅 848・高さ 848 × 809 / 1942 に。グロー `T_TitleLogoGlow` はその下に、前処理の縮めたロゴ（486 × 202）がロゴの箱に重なるように縦横それぞれの倍率で、余白 100 px を含めて置く。
 7. `TextBlock_79`: 左下の注記（左端から 48・下端から 81.08。本家の著作権の代わりに WebGL 版の `UNOFFICIAL FAN GAME — NOT AFFILIATED WITH GLOWSTICK ENTERTAINMENT`）。`helvetica-normal_Font` 18、灰 0.107（linear）。
-8. `VerticalBox_160`: メニュー。左端の中央から (7.06, −93.09)、421.75 × 550.72。ボタンは上から `Resume`・`NewGame`・`Options`・`Quit`（本家の `Chapters`・`Replay`・`Extras` は作らない）。各ボタンの縦並びのスロットは下の余白 −10。
+8. `VerticalBox_160`: メニュー。左端の中央から (7.06, −93.09)、421.75 × 550.72。ボタンは上から `Resume`・`NewGame`・`Extras`・`Options`・`Quit`（本家の並び `Resume`・`NewGame`・`Chapters`・`Replay`・`Extras`・`Options`・`Quit` から `Chapters`・`Replay` を作らない）。各ボタンの縦並びのスロットは下の余白 −10。
    - ボタンの様式は本家の `Setup Buttons` の後のもの: 押したときとホバーのブラシが `title_screen_selection_marker`（394 × 74、Image で描く＝ボタンいっぱいに引き伸ばす）、ふだんは同じブラシの Tint の α 0。余白は UE 4 の既定（ふだん 2、押したとき (2, 3, 2, 1)。UE 5 の既定の様式は違うので書く）。
    - 文字（`Resume_Text` など）: `helvetica-normal_Font` 30、灰 0.107、最小の幅 250、Margin 10。ボタンのスロットは書き出しの余白 (40, 3) と既定の右 4・下 2、既定の中央揃え（文字は 250 の箱の中で左寄せ、箱はボタンの中央。WebGL 版は左寄せで置いていた）。
    - ホバー: 入ると文字が白、出ると `Unhovered Color`（0.107）。クリックは本家の結線どおり RESUME だけ `OnPressed`、ほかは `OnClicked`（下の「ボタンの道」）。
 9. `Image_0`（黒）・`Image_128`（黒。各辺から (−31.5, −80, −22, −57.5) はみ出す）・`Image_2`（赤 (0.266, 0, 0.002)）: どれも全面、不透明度 0、入力を取らない。
 10. `TextBlock_0`: 版の文字。右端の上から (−81.92, 12) に左寄せ（黒の上でも見える）。18、灰 0.107。
 
-Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlotName`。無ければ読まない）に進みが無ければ `Resume` を外す（本家は `New Game?` が立ち `Progress` < 2 なら外す。本作は Zone 1 を開くとチェックポイント 4 が書かれ、NEW GAME・RESTART・スコア画面の NEXT が病院の欄を空にするので、進み = `LevelCheckpoint` > 0）→ `Slideshow` → `SetInputMode_UIOnlyEx`（この画面、マウスを閉じ込めない）とカーソル → 曲 `Pause_Sound_v1` を `CreateSound2D`（音量 1・ピッチ 0.5）→ `FadeIn(2, 0.5)`（SoundWave の音量 0.4 と掛けて 0.2）。
+Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlotName`。無ければ読まない）に進みが無ければ `Resume` を外す（本家は `New Game?` が立ち `Progress` < 2 なら外す。本作は Zone 1 を開くとチェックポイント 4 が書かれ、NEW GAME・RESTART・スコア画面の NEXT が病院の欄を空にするので、進み = `LevelCheckpoint` > 0）→ `Slideshow` → `SetInputMode_UIOnlyEx`（この画面、マウスを閉じ込めない）とカーソル → 曲 `Pause_Sound_v1` を `CreateSound2D`（音量 1・ピッチ 0.5）→ `FadeIn(2, 0.5)`（SoundWave の音量 0.4 と掛けて 0.2）。曲は本家の `FadeInMusic`（@11218）と同じ手順なので `FadeInMusic()` にまとめた。
 
 アニメ（書き出しのキーと UE の自動の接線。区間は終わった後も最後の値のまま〈どの区間も `KeepState`〉）:
 - `Slideshow`（2.5 s）: `Image_128` の不透明度 1 → 0。
@@ -71,6 +71,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - **NEW GAME**（@8532）: 本家は `SaveSlot` の `New Game?`（新しいゲームを始めるまで立つ）なら問わずに進む。本作のセーブにその印は無いので、**進み（`HasProgress`。クリックの時にセーブを読む）があれば問う**。問いは `UWasamiPopUpWidget`（`STARTING A NEW GAME WILL RESET ALL PROGRESS.`、Frame は既定の 0 = RESTART の枠、Z 2）と選択音 `UI_Select_V3`（1）。YES（`NewGameEvent`。本家の `New Game` @8743）は問いの `PressNo`（閉じて選択音 0.7）の後に、問わないときと同じ道へ。NO は問いが自分で閉じるだけ。
   - その道（@1748）: 曲を 1 s で消す → 本家のゲームモードの `Erase Save Files`（本作は `UWasamiSaveGame::Erase`: 新しいセーブを書く。06 記録）→ `SetInputMode_GameOnly` → `FadeOut` → **10 s** 後に Zone 1 を開く（本家は最初の章の `00_TypeWriter`。空のセーブの Zone 1 はエレベーターの到着から）。
 - **RESUME**（@9272。押下）: 本家は章のチェックポイントが 0 より大きければ問い `UMG_PopUp_Resume`（チェックポイントから続けるか。NO でその章を最初から）を出すが、**作らない**（WebGL 版と同じく問わずに続きへ。NO は NEW GAME と重なり、YES の行き先は問わないときと同じ）。@115: 曲を 4 s で消す → `SetInputMode_GameOnly` → `FadeOut_0` → **5 s** 後にセーブのチェックポイントのゾーン（`AWasamiGameMode::LevelForCheckpoint`: 本家の病院の入口 `06_Hospital` の `Spawn` @81063 の振り分け。7〜10 は Zone 2、ほかは Zone 1。02 記録）を開く。本家は章の最初のレベル（`00_Ballroom`）を開き、その `Spawn` がチェックポイントから続ける。
+- **EXTRAS**（@9267 → @2293。クリック）: EXTRAS の画面 `UWasamiExtrasWidget::Show`（本家の `Create(UMG_Extras)` → `AddToViewport(2)`。19 記録）→ その `FadeMusic`（BACK で外れる 0.25 s 前後に 1 回）に `FadeInMusic` を結ぶ（`OnFadeMusic.AddUObject`）→ 選択音（1）→ 曲を 1 s で消す（`Music.FadeOut(1, 0)`）。BACK で画面が外れると曲が作り直されて 2 s で 0.5 まで戻る。プレイヤーがいなければ画面は出ず、曲だけ消える。道ではない（`GetLevelToOpen` は空のまま）。
 - **OPTIONS**（@8405）: オプション画面 `UWasamiOptionsWidget::Show`（本家の `CreateAndAddWidget(UMG_Options, 10)`。タイトルでは DIFFICULTY が出る。15 記録）と選択音（1）。プレイヤーがいなければ画面は出ない。
 - **QUIT**（@8527 → @1004）: `UWasamiPopUpWidget`（Frame 1 = `quit_window_frame`。文は空で、枠の絵が問う。Z 2）と選択音（1）。YES（`QuitEvent`。@8705）は `QuitGame(Self, None, Quit, False)`（問いは出たまま）。PIE では PIE が止まる。
 - 道が 1 つ始まると（`GetLevelToOpen` が空でない）ほかのボタンは何もしない。本家は入力をゲームへ渡す（`SetInputMode_GameOnly`: ビューポートがマウスを捕まえる）のでメニューがクリックを受けないのを、プレイヤーの居ないテストでも同じになるように書いたもの。

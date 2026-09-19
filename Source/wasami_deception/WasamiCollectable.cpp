@@ -39,7 +39,7 @@ namespace
 	constexpr float BounceMaxYaw = 7.f;
 
 	/** Bounce's NewTrack_0 (CurveFloat_0): 0, 1, 0 at 0, 2.5 and 5 s, cubic, with the flat tangents UE worked out. */
-	FRichCurve MakeBounceCurve()
+	FRichCurve MakeCollectableBounceCurve()
 	{
 		FRichCurve Curve;
 		for (const FVector2f& Each : {FVector2f(0.f, 0.f), FVector2f(2.5f, 1.f), FVector2f(5.f, 0.f)})
@@ -101,7 +101,7 @@ void AWasamiCollectable::OnConstruction(const FTransform& Transform)
 
 float AWasamiCollectable::EvaluateBounce(float Seconds)
 {
-	static const FRichCurve Curve = MakeBounceCurve();
+	static const FRichCurve Curve = MakeCollectableBounceCurve();
 	return Curve.Eval(FMath::Clamp(Seconds, 0.f, BounceLength));
 }
 
