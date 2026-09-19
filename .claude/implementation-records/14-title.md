@@ -13,7 +13,7 @@ updated: 2026-09-19
 # タイトル画面
 
 ## 役割
-ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19）。メニューは RESUME / NEW GAME / OPTIONS / QUIT（本家の CHAPTERS・REPLAY・EXTRAS と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイ・おまけが無い。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）まで。死亡画面の QUIT TO TITLE とスコア画面の NEXT の後をタイトルへつなぐのはステップ 4（進捗記録 `20260919-title-screen`）。
+ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19）。メニューは RESUME / NEW GAME / OPTIONS / QUIT（本家の CHAPTERS・REPLAY・EXTRAS と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイ・おまけが無い。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）、死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先（ステップ 4）まで。
 
 ## 公開インターフェース
 - `python Tools/dd/prepare_title.py [--out <dir>]` … 本作の顔とロゴのグローを作る（下の「作るアセット」）。PIL と numpy を使う（エディタの Python には無い）。
@@ -107,7 +107,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - 画面: `UWasamiSaveGame`（`Erase` を含む。06 記録）、`UWasamiPopUpWidget`・`WasamiWidgetAnimation.h`（09 記録）、`AWasamiGameMode::Zone1LevelName`・`LevelForCheckpoint`（02 記録）、`WasamiAssets.h`
 - ゲームモード: `UWasamiGameInstance`（06 記録）、`UWasamiTitleScreenWidget`
 - レベルの道具: `dd_level.py` の `_open_level`（01 記録）
-- 使う側: `L_Title`（`GameDefaultMap`。00 記録）。死亡画面の QUIT TO TITLE とスコア画面の NEXT の後（ステップ 4 でつなぐ）
+- 使う側: `L_Title`（`GameDefaultMap`。00 記録）。死亡画面の QUIT TO TITLE（09 記録）とスコア画面の NEXT の後（ゲームモードの `FinishedLevel`。13 記録）とデバッグの `Wasami.Title`（06 記録）が `TitleLevelName` を開く。台本 `Tools/playthrough.py` の区間 `title`（01 記録）
 - エンジン: `MaterialExpressionPanner`・`MaterialExpressionDesaturation`・`TextureFactory`・`SoundFactory`、`UGeneralProjectSettings`（`EngineSettings`）
 
 ## 既知の制約・注意点
@@ -117,7 +117,13 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も焦点を持てない画面を渡しているので、そのままにしている（死亡画面も同じ）。
 - 顔とロゴのグローは WebGL 版の CSS の見た目を焼いたもの（本家に無い本作の素材）。直すときは `prepare_title.py` の定数を変えて前処理と `import_dd_ui` をやり直す。
 
+## 確かめたこと（2026-09-19、PIE、`L_Title` から、エディタを前面）
+- `python Tools/playthrough.py run title --record step4_title.mkv --shots`（セーブはチェックポイント 4）: RESUME のある画面で NEW GAME → RESTART? の枠と STARTING A NEW GAME WILL RESET ALL PROGRESS. → YES で問いが閉じ、約 0.3 s で赤の閃光（収録の全体の R が 34 → 67）、赤が引きながら暗くなり YES から約 3.6 s で真っ黒（右上の版の文字だけ残る）、YES から約 11 s で Zone 1 がエレベーターの到着（チェックポイント 4・ライフ 3・シャード 337）で開いた。収録は `video_probe.py series` で測った。グリッド `Intermediate/Overnight/title_newgame_grid.png`（git の外）。
+- Zone 1 で `Wasami.Checkpoint 8`・`Wasami.Lives 1`・`Wasami.Kill` → YOU ARE DEAD と 3 つのボタン → QUIT TO TITLE → 約 1 s でタイトル（チェックポイント 8 のまま・RESUME あり・ライフ 3）→ RESUME → 約 6 s で Zone 2 の `PlayerStart_MiniBoss`（チェックポイント 8・目的 Get past the nurses）。
+- `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
+
 ## 変更履歴
+- 2026-09-19: 死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先をタイトルにし、デバッグ `Wasami.Title` と台本の区間 `title` を足して、通しで確かめた（作業一覧の項目 17 のステップ 4）
 - 2026-09-19: 初版。前処理 `Tools/dd/prepare_title.py`（顔に WebGL 版のフィルタとマスク、ロゴのグロー）と `dd_ui.import_title`（本家のテクスチャ 3・音 3、焼き込みのシェーダーから組んだ `MM_TitleScreen_Mask_Grey`、本作のテクスチャ 3）を足した（作業一覧の項目 17 のステップ 1）
 - 2026-09-19: 画面 `UWasamiTitleScreenWidget` を足した: 本家の旧版の木をスロットのまま（作らない部品を除く）、Setup Buttons の後の様式とホバー、Construct（進みが無ければ RESUME を外す・Slideshow・入力・曲）、FadeOut（黒・脈動・赤と開始の音と声）と FadeOut_0、テスト `Wasami.Title.*`（作業一覧の項目 17 のステップ 2）
 - 2026-09-19: ボタンの道（NEW GAME〈進みがあれば問う・セーブを消す・10 s で Zone 1〉・RESUME〈5 s でチェックポイントのゾーン〉・OPTIONS〈選択音だけ〉・QUIT〈問うて閉じる〉）とタイトルのレベル `L_Title`・`AWasamiTitleGameMode`・`build_title_level`、`GameDefaultMap` をタイトルに、テスト `Wasami.Title.WaysOut`（作業一覧の項目 17 のステップ 3）

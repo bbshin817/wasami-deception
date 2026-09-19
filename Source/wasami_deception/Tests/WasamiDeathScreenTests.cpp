@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 
 #include "../WasamiDeathScreenWidget.h"
+#include "../WasamiGameMode.h"
 #include "../WasamiPopUpWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -155,6 +156,8 @@ bool FWasamiDeathScreenButtonsTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("the first click's 1 s"), Quit->HasLeft());
 	RunUntil(Quit, 4.05f);
 	TestTrue(TEXT("QUIT TO TITLE's level at 1 s"), Quit->GetChoice() == W::EChoice::QuitToTitle && Quit->HasLeft());
+	TestEqual(TEXT("the title"), Quit->GetLevelToOpen(), FString(AWasamiGameMode::TitleLevelName));
+	TestTrue(TEXT("RESTART opens the level again"), Restart->GetLevelToOpen().IsEmpty() && Checkpoint->GetLevelToOpen().IsEmpty());
 
 	// Without a player there is no question to ask, and without a save LAST CHECKPOINT does nothing (as the original
 	// when SaveSlot cannot be read).

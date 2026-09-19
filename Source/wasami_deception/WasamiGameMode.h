@@ -142,8 +142,8 @@ public:
 
 	/**
 	 * Finished Level (@75934), once: the game unpaused, and FinishedLevelDelay on the hospital's save entry emptied and
-	 * written, the game instance reset (the shards collected forgotten, 3 lives) and Zone 1 opened from the start (the
-	 * original opens 06_Cinematic, or TitleScreen when replaying; this game's title is item 17).
+	 * written, the game instance reset (the shards collected forgotten, 3 lives) and the title opened (the original
+	 * opens 06_Cinematic, the next chapter's, or TitleScreen when replaying; this game has no next chapter).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void FinishedLevel();
@@ -153,6 +153,9 @@ public:
 
 	/** Whether Finished Level ran (its DoOnce closed). */
 	bool HasFinishedLevel() const { return bLevelFinished; }
+
+	/** The level Finished Level opened after its Delay (empty before). */
+	const FString& GetLevelToOpen() const { return LevelToOpen; }
 
 	/** The save read or made when play began (Struct Save). */
 	UFUNCTION(BlueprintPure, Category = "Game")
@@ -261,6 +264,7 @@ private:
 	bool bDeathClosed = false;
 	/** Finished Level's DoOnce. */
 	bool bLevelFinished = false;
+	FString LevelToOpen;
 	int32 TotalShards = 0;
 	int32 ShardStreak = 0;
 	int32 StartCheckpoint = 0;
