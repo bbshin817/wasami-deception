@@ -18,11 +18,15 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
+#include "WasamiBlackFadeWidget.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
+#include "WasamiOptionsWidget.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiSaveGame.h"
 #include "WasamiWidgetAnimation.h"
 
 namespace
@@ -33,6 +37,12 @@ namespace
 
 	// FadeIn (UMG_Pause): CanvasPanel_0's RenderOpacity 0 → 1 over 30000 ticks, both keys UE's auto tangent, flat.
 	const FAnimKey PauseFadeInKeys[] = {{0., 0.f, 0., 0.}, {30000., 1.f, 0., 0.}};
+
+	// Popup and Popup_0 (the same keys): the window's RenderOpacity 0 → 1 (0.25 s; the section ends there and the value
+	// stays), as CanvasPanel_3's, and Blur+Red's 1 → 0 alike; the window's scale 0 → 1 (0.25 s, UE's auto tangent, so it
+	// goes a little past 1) and 1 to 0.5 s.
+	const FAnimKey PausePopupOpacityKeys[] = {{0., 0.f, 0., 0.}, {15000., 1.f, 0., 0.}};
+	const FAnimKey PausePopupScaleKeys[] = {{0., 0.f, 0., 0.}, {15000., 1.f, 3.333333370392211e-05, 3.333333370392211e-05}, {30000., 1.f, 0., 0.}};
 
 	// Image_1's and redblock's tint (the same as the options screen's wash).
 	const FLinearColor PauseWashRed(0.182292f, 0.f, 0.f, 0.371429f);
@@ -98,6 +108,7 @@ UWasamiPauseWidget::UWasamiPauseWidget(const FObjectInitializer& ObjectInitializ
 	OpenSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Pause")));
 	MusicSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Pause_Sound_v1")));
 	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
+	PopUpSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Window_PopUp_V3")));
 }
 
 UWasamiPauseWidget* UWasamiPauseWidget::Show(const UObject* WorldContextObject)
@@ -192,8 +203,8 @@ void UWasamiPauseWidget::BuildScreen(UCanvasPanel* Root)
 		return Button;
 	};
 
-	PlaceInPause(Root, MakeWash(TEXT("Blur+Red"), TEXT("BackgroundBlur_0"), TEXT("Image_1"), false), Fill,
-		FMargin(-12.012011528015137f, -13.51351261138916f, -9.909912109375f, -22.492431640625f));
+	WashPanel = MakeWash(TEXT("Blur+Red"), TEXT("BackgroundBlur_0"), TEXT("Image_1"), false);
+	PlaceInPause(Root, WashPanel, Fill, FMargin(-12.012011528015137f, -13.51351261138916f, -9.909912109375f, -22.492431640625f));
 
 	// Image_152: the brush stroke, 912 wide, a little left of the middle and down the whole height (and past it).
 	UImage* Stroke = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Image_152"));
@@ -218,16 +229,21 @@ void UWasamiPauseWidget::BuildScreen(UCanvasPanel* Root)
 	// widest (the vertical box slot's default fill); none takes the focus.
 	UVerticalBox* Menu = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox_113"));
 	ResumeButton = MakeButton(TEXT("RESUME"), TEXT("TextBlock_0"), TEXT("RESUME"), 36.f, false);
-	Menu->AddChildToVerticalBox(ResumeButton);
-	Menu->AddChildToVerticalBox(MakeButton(TEXT("RESTART"), TEXT("Restarttext"), TEXT("RESTART"), 36.f, false));
-	Menu->AddChildToVerticalBox(MakeButton(TEXT("OPTIONS"), TEXT("TextBlock_2"), TEXT("OPTIONS"), 36.f, false));
-	Menu->AddChildToVerticalBox(MakeButton(TEXT("QUIT"), TEXT("TextBlock_3"), TEXT("QUIT"), 36.f, false));
+	UButton* RestartButton = MakeButton(TEXT("RESTART"), TEXT("Restarttext"), TEXT("RESTART"), 36.f, false);
+	UButton* OptionsButton = MakeButton(TEXT("OPTIONS"), TEXT("TextBlock_2"), TEXT("OPTIONS"), 36.f, false);
+	UButton* QuitButton = MakeButton(TEXT("QUIT"), TEXT("TextBlock_3"), TEXT("QUIT"), 36.f, false);
+	for (UButton* Item : {ResumeButton.Get(), RestartButton, OptionsButton, QuitButton})
+	{
+		Menu->AddChildToVerticalBox(Item);
+	}
 	PlaceInPause(Root, Menu, Middle, FMargin(0.f), FVector2D(0.5f, 0.f), true);
 
 	// CanvasPanel_3: clear, and let clicks through, until a pop-up.
-	UCanvasPanel* Veil = MakeWash(TEXT("CanvasPanel_3"), TEXT("BackgroundBlur_1"), TEXT("redblock"), true);
-	Veil->SetRenderOpacity(0.f);
-	PlaceInPause(Root, Veil, Fill, FMargin(-28.528528213500977f, -21.021020889282227f, -21.921875f, -36.0059814453125f));
+	VeilPanel = MakeWash(TEXT("CanvasPanel_3"), TEXT("BackgroundBlur_1"), TEXT("redblock"), true);
+	VeilPanel->SetRenderOpacity(0.f);
+	PlaceInPause(Root, VeilPanel, Fill, FMargin(-28.528528213500977f, -21.021020889282227f, -21.921875f, -36.0059814453125f));
+	// (FindWidget walks down from the root, so only once the wash is in it.)
+	RedBlock = Cast<UImage>(WidgetTree->FindWidget(TEXT("redblock")));
 
 	// A window: its panel in the middle, at scale 0 and clear until its pop-up animation; the frame and the head let
 	// clicks through.
@@ -248,7 +264,7 @@ void UWasamiPauseWidget::BuildScreen(UCanvasPanel* Root)
 	};
 
 	// Givingupbox: GIVING UP? (on the frame), the head over it, and under the middle the text and the three buttons.
-	UCanvasPanel* GivingUp = MakeWindow(TEXT("Givingupbox"));
+	UCanvasPanel* GivingUp = GivingUpBox = MakeWindow(TEXT("Givingupbox"));
 	AddPicture(GivingUp, TEXT("Image_420"), QuitFrameTexture.LoadSynchronous(), FVector2D(1222.f, 928.f), 0.f, FLinearColor::White);
 	AddPicture(GivingUp, TEXT("window_quit_head"), Peek, FVector2D(1222.f, 928.f), 0.f, HeadTint());
 	UVerticalBox* QuitBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("VerticalBox_0"));
@@ -265,20 +281,25 @@ void UWasamiPauseWidget::BuildScreen(UCanvasPanel* Root)
 		QuitSlot->SetHorizontalAlignment(HAlign_Center);
 		QuitSlot->SetVerticalAlignment(VAlign_Center);
 	};
+	UButton* QuitToTitleButton = MakeButton(TEXT("QuitToTitleButton"), TEXT("TextBlock_4"), TEXT("QUIT TO TITLE"), 28.f, true);
+	UButton* QuitToDesktopButton = MakeButton(TEXT("QuitToDesktopButton"), TEXT("TextBlock_5"), TEXT("QUIT TO DESKTOP"), 28.f, true);
+	UButton* CancelButton = MakeButton(TEXT("CancelButton"), TEXT("TextBlock_6"), TEXT("CANCEL"), 28.f, true);
 	AddToQuitBox(QuitText, FMargin(0.f, 0.f, 0.f, 30.f));
-	AddToQuitBox(MakeButton(TEXT("QuitToTitleButton"), TEXT("TextBlock_4"), TEXT("QUIT TO TITLE"), 28.f, true), FMargin(0.f, 15.f, 0.f, 0.f));
-	AddToQuitBox(MakeButton(TEXT("QuitToDesktopButton"), TEXT("TextBlock_5"), TEXT("QUIT TO DESKTOP"), 28.f, true), FMargin(0.f, 15.f, 0.f, 0.f));
-	AddToQuitBox(MakeButton(TEXT("CancelButton"), TEXT("TextBlock_6"), TEXT("CANCEL"), 28.f, true), FMargin(0.f, 15.f, 0.f, 0.f));
+	for (UButton* Choice : {QuitToTitleButton, QuitToDesktopButton, CancelButton})
+	{
+		AddToQuitBox(Choice, FMargin(0.f, 15.f, 0.f, 0.f));
+	}
 	PlaceInPause(GivingUp, QuitBox, Middle, FMargin(0.f, 167.7858123779297f, 0.f, 0.f), Centred, true);
 	PlaceInPause(Root, GivingUp, Middle, FMargin(0.f), Centred, true);
 
 	// RestartBox: RESTART? (on the frame), the head lower over it, and YES / NO side by side under the middle.
-	UCanvasPanel* Restart = MakeWindow(TEXT("RestartBox"));
+	UCanvasPanel* Restart = RestartBox = MakeWindow(TEXT("RestartBox"));
 	AddPicture(Restart, TEXT("Image_0"), RestartFrameTexture.LoadSynchronous(), FVector2D(1222.f, 532.f), 0.f, FLinearColor::White);
 	AddPicture(Restart, TEXT("quitwindowhead"), Peek, FVector2D(1222.f, 928.f), 77.3114013671875f, HeadTint());
 	UHorizontalBox* Choices = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("HorizontalBox_0"));
-	for (UButton* Choice : {MakeButton(TEXT("YesButton"), TEXT("TextBlock_12"), TEXT("YES"), 28.f, true),
-		MakeButton(TEXT("NoButton"), TEXT("TextBlock_13"), TEXT("NO"), 28.f, true)})
+	UButton* YesButton = MakeButton(TEXT("YesButton"), TEXT("TextBlock_12"), TEXT("YES"), 28.f, true);
+	UButton* NoButton = MakeButton(TEXT("NoButton"), TEXT("TextBlock_13"), TEXT("NO"), 28.f, true);
+	for (UButton* Choice : {YesButton, NoButton})
 	{
 		UHorizontalBoxSlot* ChoiceSlot = Choices->AddChildToHorizontalBox(Choice);
 		ChoiceSlot->SetPadding(FMargin(35.f, 15.f, 35.f, 0.f));
@@ -289,6 +310,14 @@ void UWasamiPauseWidget::BuildScreen(UCanvasPanel* Root)
 	PlaceInPause(Root, Restart, Middle, FMargin(0.f), Centred, true);
 
 	ResumeButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnResumeClicked);
+	RestartButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnRestartClicked);
+	OptionsButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnOptionsClicked);
+	QuitButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnQuitClicked);
+	QuitToTitleButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnQuitToTitleClicked);
+	QuitToDesktopButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnQuitToDesktopClicked);
+	CancelButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnCancelClicked);
+	YesButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnYesClicked);
+	NoButton->OnClicked.AddDynamic(this, &UWasamiPauseWidget::OnNoClicked);
 	ApplyAnimation();
 }
 
@@ -345,6 +374,10 @@ void UWasamiPauseWidget::Begin(UWasamiSettingsSaveGame* InSettings)
 	FadeInTime = 0.f;
 	bResuming = bFinished = false;
 	ResumeElapsed = 0.f;
+	Popups[0] = Popups[1] = FPopupPlay();
+	LastPopup = INDEX_NONE;
+	bRestarting = bLeft = false;
+	LevelToOpen.Reset();
 	ApplyAnimation();
 	RefreshColours();
 	if (!GetWorld())
@@ -379,8 +412,16 @@ void UWasamiPauseWidget::Advance(float DeltaSeconds)
 	{
 		return;
 	}
-	// FadeIn moves on first and the Delay comes due after it, as a user widget ticks them.
+	// The animations move on first and the Delay comes due after them, as a user widget ticks them.
 	FadeInTime = bResuming ? FMath::Max(FadeInTime - DeltaSeconds, 0.f) : FMath::Min(FadeInTime + DeltaSeconds, FadeInLength);
+	for (FPopupPlay& Play : Popups)
+	{
+		if (Play.bPlaying)
+		{
+			Play.Time = Play.bReverse ? FMath::Max(Play.Time - DeltaSeconds, 0.f) : FMath::Min(Play.Time + DeltaSeconds, PopupLength);
+			Play.bPlaying = Play.bReverse ? Play.Time > 0.f : Play.Time < PopupLength;
+		}
+	}
 	ApplyAnimation();
 	RefreshColours();
 	if (bResuming)
@@ -418,9 +459,203 @@ void UWasamiPauseWidget::PressResume()
 	}
 }
 
+void UWasamiPauseWidget::PressRestart()
+{
+	OpenPopup(EPopup::Restart);
+}
+
+void UWasamiPauseWidget::PressQuit()
+{
+	OpenPopup(EPopup::GivingUp);
+}
+
+void UWasamiPauseWidget::PressNo()
+{
+	ClosePopup(EPopup::Restart);
+}
+
+void UWasamiPauseWidget::PressCancel()
+{
+	ClosePopup(EPopup::GivingUp);
+}
+
+void UWasamiPauseWidget::OpenPopup(EPopup Popup)
+{
+	// @3996 / @4516: PlayAnimation(Popup_0 / Popup, 0, 1, Forward, 1); UI_Select_V3 and UI_Window_PopUp_V3 (in the
+	// other order for QUIT; they sound together); redblock.SetVisibility(Visible).
+	PlayPopup(Popup, 0.f, false);
+	PlaySound(SelectSound, 1.f);
+	PlaySound(PopUpSound, 1.f);
+	if (RedBlock)
+	{
+		RedBlock->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UWasamiPauseWidget::ClosePopup(EPopup Popup)
+{
+	// @5946 / @4709: PlayAnimation(Popup_0 / Popup, 0.25, 1, Reverse, 1); UI_Select_V3 at 0.7;
+	// redblock.SetVisibility(HitTestInvisible).
+	PlayPopup(Popup, CloseFrom, true);
+	PlaySound(SelectSound, ClosePitch);
+	if (RedBlock)
+	{
+		RedBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UWasamiPauseWidget::PlayPopup(EPopup Popup, float StartAt, bool bReverse)
+{
+	FPopupPlay& Play = Popups[static_cast<int32>(Popup)];
+	Play.Time = StartAt;
+	Play.bReverse = bReverse;
+	Play.bPlaying = true;
+	LastPopup = static_cast<int32>(Popup);
+	ApplyAnimation();
+}
+
+void UWasamiPauseWidget::PressYes()
+{
+	// The latest version's YES (@5408 → @244 → @52): levelStruct[the level] = levelStruct[10] (an empty entry) and
+	// SaveGameToSlot('structSlot'); Shards To Be Removed (and Sewer Doors Opened, which the hospital does not have)
+	// emptied; UI_Select_V3; SetInputMode_GameOnly and the cursor hidden; Hard Check Point 0 (the entrance's, which this
+	// game does not have); UMG_BlackFade_2 with Speed 5 at Z 10, whose Animation Finished is Finish Restart. Nothing
+	// here resets the lives. The old version's YES is the same but keeps the shards and, with no fade, unpauses and
+	// opens the level at once. Nothing guards a second YES (the original's does it all again).
+	bRestarting = true;
+	if (UWorld* World = GetWorld())
+	{
+		if (AWasamiGameMode* Mode = Cast<AWasamiGameMode>(UGameplayStatics::GetGameMode(this)))
+		{
+			if (UWasamiSaveGame* Save = Mode->GetSave())
+			{
+				Save->Hospital = FWasamiLevelProgress();
+				Mode->WriteSave();
+			}
+		}
+		if (UWasamiGameInstance* Instance = World->GetGameInstance<UWasamiGameInstance>())
+		{
+			Instance->ForgetCollectedShards();
+		}
+	}
+	PlaySound(SelectSound, 1.f);
+	if (APlayerController* Controller = GetOwningPlayer())
+	{
+		UWidgetBlueprintLibrary::SetInputMode_GameOnly(Controller);
+		Controller->SetShowMouseCursor(false);
+	}
+	if (GetWorld())
+	{
+		if (UWasamiBlackFadeWidget* Fade = UWasamiBlackFadeWidget::Show(this, true, RestartFadeSpeed, RestartFadeZOrder))
+		{
+			Fade->OnFadeFinished.AddDynamic(this, &UWasamiPauseWidget::FinishRestart);
+		}
+	}
+}
+
+void UWasamiPauseWidget::FinishRestart()
+{
+	// @6656: SetGamePaused(False); OpenLevel(GetCurrentLevelName). The save has no checkpoint now, so Zone 1 opens at
+	// the lift's arrival and Zone 2 opens Zone 1 (the game mode's Spawn).
+	if (GetWorld())
+	{
+		UGameplayStatics::SetGamePaused(this, false);
+	}
+	OpenLevel(nullptr);
+}
+
+void UWasamiPauseWidget::PressOptions()
+{
+	// @6085: UI_Select_V3; CreateAndAddWidget(UMG_Options, 10) (the latest version's opens its SettingsUI at 1).
+	PlaySound(SelectSound, 1.f);
+	if (GetWorld())
+	{
+		UWasamiOptionsWidget::Show(this);
+	}
+}
+
+void UWasamiPauseWidget::PressQuitToTitle()
+{
+	// @6207: UI_Select_V3; OpenLevel(TitleScreen), this game's L_Title. The save and the game instance stay as they are
+	// (the title's game mode forgets the shards and resets the lives).
+	PlaySound(SelectSound, 1.f);
+	OpenLevel(AWasamiGameMode::TitleLevelName);
+}
+
+void UWasamiPauseWidget::PressQuitToDesktop()
+{
+	// @4843: UI_Select_V3; QuitGame(Self, None, Quit, False) (in the editor it ends the play session).
+	PlaySound(SelectSound, 1.f);
+	if (GetWorld())
+	{
+		UKismetSystemLibrary::QuitGame(this, nullptr, EQuitPreference::Quit, false);
+	}
+}
+
+void UWasamiPauseWidget::OpenLevel(const TCHAR* LevelName)
+{
+	// The original's OpenLevel leaves the input as it finds it (YES has given it to the game already).
+	bLeft = true;
+	LevelToOpen = LevelName ? LevelName : TEXT("");
+	if (GetWorld())
+	{
+		UGameplayStatics::OpenLevel(this, LevelName ? FName(LevelName) : FName(UGameplayStatics::GetCurrentLevelName(this, true)), true);
+	}
+}
+
+float UWasamiPauseWidget::GetPopupTime(EPopup Popup) const
+{
+	return Popups[static_cast<int32>(Popup)].Time;
+}
+
+bool UWasamiPauseWidget::IsMenuBlocked() const
+{
+	return RedBlock && RedBlock->GetVisibility() == ESlateVisibility::Visible;
+}
+
 void UWasamiPauseWidget::OnResumeClicked()
 {
 	PressResume();
+}
+
+void UWasamiPauseWidget::OnRestartClicked()
+{
+	PressRestart();
+}
+
+void UWasamiPauseWidget::OnOptionsClicked()
+{
+	PressOptions();
+}
+
+void UWasamiPauseWidget::OnQuitClicked()
+{
+	PressQuit();
+}
+
+void UWasamiPauseWidget::OnYesClicked()
+{
+	PressYes();
+}
+
+void UWasamiPauseWidget::OnNoClicked()
+{
+	PressNo();
+}
+
+void UWasamiPauseWidget::OnQuitToTitleClicked()
+{
+	PressQuitToTitle();
+}
+
+void UWasamiPauseWidget::OnQuitToDesktopClicked()
+{
+	PressQuitToDesktop();
+}
+
+void UWasamiPauseWidget::OnCancelClicked()
+{
+	PressCancel();
 }
 
 void UWasamiPauseWidget::PlaySound(const TSoftObjectPtr<USoundBase>& Sound, float Pitch) const
@@ -441,6 +676,30 @@ void UWasamiPauseWidget::ApplyAnimation()
 	if (RootPanel)
 	{
 		RootPanel->SetRenderOpacity(Opacity);
+	}
+	// Each window by its own animation (at 0 before one plays, as the tree has it); the washes by the pop-up played last
+	// (both animations have tracks on them).
+	for (const EPopup Popup : {EPopup::GivingUp, EPopup::Restart})
+	{
+		if (UCanvasPanel* Window = WindowOf(Popup))
+		{
+			const float Time = GetPopupTime(Popup);
+			const float Scale = EvaluatePopupScale(Time);
+			Window->SetRenderOpacity(EvaluatePopupOpacity(Time));
+			Window->SetRenderScale(FVector2D(Scale, Scale));
+		}
+	}
+	if (LastPopup != INDEX_NONE)
+	{
+		const float Shown = EvaluatePopupOpacity(Popups[LastPopup].Time);
+		if (WashPanel)
+		{
+			WashPanel->SetRenderOpacity(1.f - Shown);
+		}
+		if (VeilPanel)
+		{
+			VeilPanel->SetRenderOpacity(Shown);
+		}
 	}
 }
 
@@ -471,6 +730,18 @@ float UWasamiPauseWidget::EvaluateFadeIn(float Seconds)
 {
 	static const FRichCurve Curve = MakeCurve(PauseFadeInKeys);
 	return Eval(Curve, Seconds, FadeInLength);
+}
+
+float UWasamiPauseWidget::EvaluatePopupScale(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(PausePopupScaleKeys);
+	return Eval(Curve, Seconds, PopupLength);
+}
+
+float UWasamiPauseWidget::EvaluatePopupOpacity(float Seconds)
+{
+	static const FRichCurve Curve = MakeCurve(PausePopupOpacityKeys);
+	return Eval(Curve, Seconds, PopupLength);
 }
 
 FLinearColor UWasamiPauseWidget::EasyModeColor(EWasamiDifficulty Difficulty)

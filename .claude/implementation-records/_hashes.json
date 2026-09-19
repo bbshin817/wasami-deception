@@ -250,8 +250,8 @@
     "Source/wasami_deception/WasamiOptionsWidget.h": "327e06a9358ba641cd4ba28b00a4071eab70719f",
     "Source/wasami_deception/WasamiOptionsWidget.cpp": "3e1b35ff04ab4932a9722e77bbc36af71d8dd90a",
     "Source/wasami_deception/Tests/WasamiOptionsTests.cpp": "5bbb10f68b716de9988601683dc9367844c0c166",
-    "Source/wasami_deception/WasamiPauseWidget.h": "f9d33db7e652d504588b66f450ed5a06ea9cbc05",
-    "Source/wasami_deception/WasamiPauseWidget.cpp": "22760425ecd0d1d4ceffd1681bf700f560d788bc",
-    "Source/wasami_deception/Tests/WasamiPauseTests.cpp": "a9a5e2c8d2d221eaaac14ebe60f41f71f30da305"
+    "Source/wasami_deception/WasamiPauseWidget.h": "6e2f333903435c83aab38628fd854a829f8e0da9",
+    "Source/wasami_deception/WasamiPauseWidget.cpp": "6454496473131fa201b716852f60c7473307f3cf",
+    "Source/wasami_deception/Tests/WasamiPauseTests.cpp": "84bbbb23572ba8b41749022060cc76d1706dae50"
   }
 }

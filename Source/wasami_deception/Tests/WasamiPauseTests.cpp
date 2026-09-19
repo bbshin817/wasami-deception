@@ -7,6 +7,7 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "../WasamiGameMode.h"
 #include "../WasamiPauseWidget.h"
 #include "../WasamiSettingsSaveGame.h"
 
@@ -190,6 +191,118 @@ bool FWasamiPauseResumeTest::RunTest(const FString& Parameters)
 	const float Left = Menu->GetOpacity();
 	RunPause(Menu, 0.5f);
 	TestEqual(TEXT("nothing moves after"), Menu->GetOpacity(), Left, 1e-6f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiPausePopupsTest, "Wasami.Pause.Popups",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiPausePopupsTest::RunTest(const FString& Parameters)
+{
+	using EPopup = UWasamiPauseWidget::EPopup;
+
+	// The keys: the window's scale 0 → 1 by 0.25 s, then a little past 1 (the auto tangent) and back to 1 at 0.5 s; its
+	// opacity 0 → 1 by 0.25 s and flat after.
+	TestEqual(TEXT("scale 0 at 0"), UWasamiPauseWidget::EvaluatePopupScale(0.f), 0.f, 1e-5f);
+	TestEqual(TEXT("scale 1 at 0.25 s"), UWasamiPauseWidget::EvaluatePopupScale(0.25f), 1.f, 1e-5f);
+	TestEqual(TEXT("past 1 a third of a second in"), UWasamiPauseWidget::EvaluatePopupScale(1.f / 3.f), 1.074f, 2e-3f);
+	TestEqual(TEXT("scale 1 at 0.5 s"), UWasamiPauseWidget::EvaluatePopupScale(0.5f), 1.f, 1e-5f);
+	TestEqual(TEXT("opacity 1 at 0.25 s"), UWasamiPauseWidget::EvaluatePopupOpacity(0.25f), 1.f, 1e-5f);
+	TestEqual(TEXT("opacity 1 after"), UWasamiPauseWidget::EvaluatePopupOpacity(0.4f), 1.f, 1e-5f);
+
+	UWasamiPauseWidget* Menu = MakePauseMenu();
+	RunPause(Menu, 1.f);
+	UWidgetTree* Tree = Menu->WidgetTree;
+	const UWidget* Wash = Tree->FindWidget(TEXT("Blur+Red"));
+	const UWidget* Veil = Tree->FindWidget(TEXT("CanvasPanel_3"));
+	const UWidget* RedBlock = Tree->FindWidget(TEXT("redblock"));
+
+	// Each pop-up by its button: up by 0.25 s over the second wash, the first gone, redblock taking the clicks; the
+	// other window stays hidden. Its closing button puts it back by 0.25 s and lets the clicks through again.
+	struct FCase
+	{
+		const TCHAR* Open;
+		const TCHAR* Close;
+		const TCHAR* Window;
+		const TCHAR* Other;
+		EPopup Popup;
+	};
+	for (const FCase& Case : {FCase{TEXT("RESTART"), TEXT("NoButton"), TEXT("RestartBox"), TEXT("Givingupbox"), EPopup::Restart},
+		FCase{TEXT("QUIT"), TEXT("CancelButton"), TEXT("Givingupbox"), TEXT("RestartBox"), EPopup::GivingUp}})
+	{
+		UButton* Open = Cast<UButton>(Tree->FindWidget(Case.Open));
+		UButton* Close = Cast<UButton>(Tree->FindWidget(Case.Close));
+		const UWidget* Window = Tree->FindWidget(Case.Window);
+		const UWidget* Other = Tree->FindWidget(Case.Other);
+		if (!TestTrue(FString::Printf(TEXT("%s's parts"), Case.Open), Open && Close && Window && Other && Wash && Veil && RedBlock))
+		{
+			return false;
+		}
+		Open->OnClicked.Broadcast();
+		TestTrue(FString::Printf(TEXT("%s blocks the menu"), Case.Open), Menu->IsMenuBlocked()
+			&& RedBlock->GetVisibility() == ESlateVisibility::Visible);
+		Menu->Advance(0.125f);
+		TestEqual(FString::Printf(TEXT("%s half up"), Case.Window), Window->GetRenderOpacity(), 0.5f, 1e-3f);
+		Menu->Advance(0.125f);
+		TestEqual(FString::Printf(TEXT("%s up at 0.25 s"), Case.Window), Window->GetRenderOpacity(), 1.f, 1e-3f);
+		TestEqual(FString::Printf(TEXT("%s full size"), Case.Window), static_cast<float>(Window->GetRenderTransform().Scale.X), 1.f, 1e-2f);
+		TestEqual(TEXT("the second wash in"), Veil->GetRenderOpacity(), 1.f, 1e-3f);
+		TestEqual(TEXT("the first wash out"), Wash->GetRenderOpacity(), 0.f, 1e-3f);
+		TestTrue(FString::Printf(TEXT("%s still hidden"), Case.Other), Other->GetRenderOpacity() == 0.f
+			&& Other->GetRenderTransform().Scale == FVector2D::ZeroVector);
+		RunPause(Menu, 0.5f);
+		TestEqual(FString::Printf(TEXT("%s at its end"), Case.Open), Menu->GetPopupTime(Case.Popup), UWasamiPauseWidget::PopupLength, 1e-5f);
+
+		Close->OnClicked.Broadcast();
+		TestFalse(FString::Printf(TEXT("%s lets the clicks through"), Case.Close), Menu->IsMenuBlocked());
+		TestTrue(TEXT("redblock HitTestInvisible"), RedBlock->GetVisibility() == ESlateVisibility::HitTestInvisible);
+		TestEqual(FString::Printf(TEXT("%s from 0.25 s"), Case.Close), Menu->GetPopupTime(Case.Popup), UWasamiPauseWidget::CloseFrom, 1e-5f);
+		TestEqual(FString::Printf(TEXT("%s still up as it starts back"), Case.Window), Window->GetRenderOpacity(), 1.f, 1e-3f);
+		RunPause(Menu, 0.25f + 1.f / 60.f);
+		TestTrue(FString::Printf(TEXT("%s gone"), Case.Window), Window->GetRenderOpacity() == 0.f
+			&& Window->GetRenderTransform().Scale == FVector2D::ZeroVector);
+		TestEqual(TEXT("the second wash out"), Veil->GetRenderOpacity(), 0.f, 1e-5f);
+		TestEqual(TEXT("the first wash back"), Wash->GetRenderOpacity(), 1.f, 1e-5f);
+	}
+	TestTrue(TEXT("the menu itself still up"), !Menu->IsResuming() && Menu->GetOpacity() == 1.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiPauseLeaveTest, "Wasami.Pause.Leave",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiPauseLeaveTest::RunTest(const FString& Parameters)
+{
+	// Without a world nothing is saved, faded or opened; what each way out would open is kept.
+	UWasamiPauseWidget* Menu = MakePauseMenu();
+	RunPause(Menu, 1.f);
+	UWidgetTree* Tree = Menu->WidgetTree;
+	UButton* Yes = Cast<UButton>(Tree->FindWidget(TEXT("YesButton")));
+	UButton* ToTitle = Cast<UButton>(Tree->FindWidget(TEXT("QuitToTitleButton")));
+	UButton* ToDesktop = Cast<UButton>(Tree->FindWidget(TEXT("QuitToDesktopButton")));
+	if (!TestTrue(TEXT("the buttons"), Yes && ToTitle && ToDesktop))
+	{
+		return false;
+	}
+
+	// YES: the restart begins, and the level opens again only once the fade ends (Finish Restart).
+	Menu->PressRestart();
+	Yes->OnClicked.Broadcast();
+	TestTrue(TEXT("YES begins the restart"), Menu->IsRestarting());
+	TestFalse(TEXT("nothing opened before the fade ends"), Menu->HasLeft());
+	Menu->FinishRestart();
+	TestTrue(TEXT("the level opened at the fade's end"), Menu->HasLeft());
+	TestTrue(TEXT("the level again"), Menu->GetLevelToOpen().IsEmpty());
+
+	// QUIT TO DESKTOP quits (nothing without a world); QUIT TO TITLE opens the title.
+	UWasamiPauseWidget* Quitting = MakePauseMenu();
+	Quitting->PressQuit();
+	Cast<UButton>(Quitting->WidgetTree->FindWidget(TEXT("QuitToDesktopButton")))->OnClicked.Broadcast();
+	TestFalse(TEXT("QUIT TO DESKTOP opens no level"), Quitting->HasLeft());
+	Cast<UButton>(Quitting->WidgetTree->FindWidget(TEXT("QuitToTitleButton")))->OnClicked.Broadcast();
+	TestTrue(TEXT("QUIT TO TITLE leaves"), Quitting->HasLeft());
+	TestEqual(TEXT("for the title"), Quitting->GetLevelToOpen(), FString(AWasamiGameMode::TitleLevelName));
+	TestFalse(TEXT("and does not restart"), Quitting->IsRestarting());
 	return true;
 }
 
