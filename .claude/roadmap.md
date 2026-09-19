@@ -256,7 +256,7 @@
 - 項目 7 から（2026-09-19）: 視界コーンの基底 `AWasamiViewcone`（本家の `BP_06_Miniboss_viewcone`）・インターフェース `IWasamiViewconeInterface`（`BPI_06_Viewcone`）・見張りの `_Nurse` と地図の印の材質、Zone 2 の流れの `Activate MiniBoss Enemies`（Matron の `MnM_Matron_Idle_2` を呼ぶ所だけ空け）は作ってある（実装記録 07・11）。この項目は Matron と `_Matron_Long`・`_Short` を足す。
 - 依存: 7。
 - 規模: 2
-- 状態: 未着手。
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-matron`）。計画の段階で、本家の Matron は動かない（`Actor` で移動の部品も処理も無い。巡回路は無い）、「見つかると追われる」は本家どおり Matron の発見（Detected のモンタージュの 1.0948 s の通知）で見張り 6 体が追う、発見の声 `Matron_ReinforcementCall_01` は項目 20 へ回す、大きさは本家の長いコーン（z 676）の高さにボスの頭が来る拡縮を仮にする、と決めた。ボスワサミの取り込み → Matron のアクタ・アニメ・コーン 2 種 → Zone 2 に置いて流れに結ぶ → PIE と通し → 閉じる、の 5 ステップ。
 
 ### 12. 秘密と収集物（シークレット）
 
