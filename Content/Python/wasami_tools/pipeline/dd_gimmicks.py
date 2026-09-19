@@ -170,6 +170,24 @@ PORTAL_LOGO_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREG
 # The instances name a second texture, Albedo_1, which none of the vortex's compiled shaders samples (the graph's
 # compile dropped it), so the estimate has no such parameter and the instances' values of it are left out.
 PORTAL_LEFT_OUT = ("Albedo_1",)
+# The defibrillators (AWasamiDefib, after Blueprints/06_Hospital/BP_06_Defib): the charge's hum (DD_TT_Defibrillator_Zap,
+# through MonkeyAttenuation, which the double doors bring), the crackle as the player is hit (Electric_Sparks_08) and the
+# discharge (P_06_Defib). Of the system's 18 emitters the original draws four: thander, the lightning (MI_ky_spark02_4x5,
+# an instance of M_ky_spark02_4x4, whose graph the cook took away: estimated off its compiled shaders), and three that
+# only send events (the engine's DefaultParticle). The other 14 have their one LOD level off, so they are made without
+# their materials (DEFIB_UNDRAWN): nothing draws them, and theirs would be estimates of what no one sees. The meshes of
+# the two of them that are mesh emitters are made, as a mesh emitter's type data has to have one. The stands' mesh and
+# material come with the stage's assets, the camera shake as it fires (BP_Portal_CameraShake) with the portal's.
+KY09 = "ThirdParty/AdvancedMagicFX09/"
+DEFIB_SOUNDS = ("Audio/06_Hospital/DD_TT_Defibrillator_Zap", "Audio/07_FunPlace/Electric_Sparks_08")
+DEFIB_ATTENUATIONS = ("Audio/Misc/MonkeyAttenuation",)
+SPARK02_TEXTURE = KY09 + "Textures/T_ky_spark02_4x4"
+MASK_RGB3 = KY09 + "Textures/T_ky_maskRGB3"
+DEFIB_TEXTURES = (SPARK02_TEXTURE, MASK_RGB3)
+DEFIB_MESHES = (KY09 + "Meshes/SM_ky_cylinder_superLow", KY09 + "Meshes/SM_ky_quad_centerRot")
+DEFIB = "Particles/06_Hospital/P_06_Defib"
+DEFIB_UNDRAWN = ("ground", "dustLineRise", "dustFlash", "shockWave3D", "energy", "beam", "swLage", "circleLageTop",
+                 "energyLage", "energyDust", "circle", "flashDustLage", "circleLageUnder", "dustLine")
 
 
 def _build_speed_barrier(mat):
@@ -603,6 +621,100 @@ CELL_MATERIALS = (
 SMOKE_LEFT_OUT = ("CamFade", "Radius")
 
 
+def _panned_sample(g, tex, uvs, speed, x, y):
+    """A TextureSample (sRGB) of tex at uvs panned (u, v) per second."""
+    pan = g.node(unreal.MaterialExpressionPanner, x - 200, y)
+    pan.set_editor_property("speed_x", speed[0])
+    pan.set_editor_property("speed_y", speed[1])
+    dd_assets.connect(uvs, "", pan, "Coordinate")
+    sample = g.node(unreal.MaterialExpressionTextureSample, x, y)
+    sample.set_editor_property("texture", tex)
+    sample.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+    dd_assets.connect(pan, "", sample, "UVs")
+    return sample
+
+
+def _build_spark02(mat, d):
+    """M_ky_spark02_4x4 (the defibrillator's lightning: MI_ky_spark02_4x5 on P_06_Defib's thander), read off the
+    original's compiled shaders (Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/M_ky_spark02_4x4." --show 5,
+    changeThunder off, and "AdvancedMagicFX09/Materials/MI_ky_spark02_4x5." --show 5, the instance's own shader map with
+    it on: the translucent base pass pixel shaders of sprites). The cook's expressions (translucent, unlit, two-sided, for
+    sprites, beam trails and mesh particles; the parameters coreHardness, coreDensity, alphaDensity, hilightDetailPower,
+    coreHilightPower, outColor and coreColor; a SubUV sample of baseTex - T_ky_spark02_4x4, linear: R a spiky ring, G its
+    glow, B four lightning bolts - its two frames blended; two samples of T_ky_maskRGB3 - sRGB - at Panners; the static
+    switch changeThunder, three times) are the pieces; the code is how they are put together, with scratch the R of
+    maskRGB3 at TexCoord 0 x 4 panned (0.3, 1) and bubble its B panned (-0.2, -0.2), as M_ky_shockWave02_4x4's:
+      shape     the texture's B with changeThunder on (the bolts), its R off (the ring)
+      sparks    (scratch x bubble x hilightDetailPower) x ((scratch + bubble) x hilightDetailPower) x coreHilightPower
+                x saturate(shape^coreDensity x coreHardness)
+      emissive  coreColor x sparks + the particle's colour x shape (off, + outColor x the texture's G), not clamped:
+                MI_ky_spark02_4x5's coreColor is (7, 0, 0), red sparks along the bolts
+      opacity   (shape x the particle's alpha)^alphaDensity (off, (R + G) x the alpha), faded over 30 cm (a constant,
+                1/30 in the code, not a parameter); the engine saturates it"""
+    dd_assets.particle_material(mat, beam_trails=True, two_sided=True)
+    g = dd_stage._Graph(mat, checked=True)
+    tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1900, -300)
+    tex.set_editor_property("parameter_name", "baseTex")
+    tex.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(SPARK02_TEXTURE)))
+    tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    shape = g.switch("changeThunder", tex, "B", tex, "R", -1600, -300)
+    glow = g.multiply(g.vector("outColor", d["outColor"], -1600, -650), "RGB", tex, "G", -1400, -600)
+    glow_off = g.switch("changeThunder", dd_assets.constant(g, 0.0, -1400, -700), "", glow, "", -1200, -650)
+    ring_alpha = dd_assets.add(g, tex, "R", tex, "G", -1600, 900)
+    alpha = g.switch("changeThunder", tex, "B", ring_alpha, "", -1400, 850)
+
+    masks = unreal.load_asset(dd_assets.asset_path(MASK_RGB3))
+    uvs = g.node(unreal.MaterialExpressionTextureCoordinate, -1900, 350)
+    uvs.set_editor_property("u_tiling", 4.0)
+    uvs.set_editor_property("v_tiling", 4.0)
+    scratch = _panned_sample(g, masks, uvs, (0.3, 1.0), -1500, 250)
+    bubble = _panned_sample(g, masks, uvs, (-0.2, -0.2), -1500, 500)
+    power = g.scalar("hilightDetailPower", d["hilightDetailPower"], -1250, 650)
+    both = g.multiply(g.multiply(scratch, "R", bubble, "B", -1250, 250), "", power, "", -1050, 250)
+    either = g.multiply(dd_assets.add(g, scratch, "R", bubble, "B", -1250, 450), "", power, "", -1050, 450)
+    detail = g.multiply(g.multiply(both, "", either, "", -900, 350), "",
+                        g.scalar("coreHilightPower", d["coreHilightPower"], -900, 500), "", -750, 350)
+
+    hottest = g.power(shape, "", g.scalar("coreDensity", d["coreDensity"], -1250, -50), "", -1050, -100)
+    hard = g.multiply(hottest, "", g.scalar("coreHardness", d["coreHardness"], -1050, 0), "", -900, -100)
+    core = dd_assets.single(g, unreal.MaterialExpressionSaturate, hard, "", -750, -100)
+    sparks = g.multiply(detail, "", core, "", -600, 100)
+    tinted = g.multiply(g.vector("coreColor", d["coreColor"], -600, -250), "RGB", sparks, "", -400, 0)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -1200, 750)
+    lit = g.multiply(particle, "RGB", shape, "", -400, -300)
+    emissive = dd_assets.add(g, dd_assets.add(g, lit, "", tinted, "", -200, -150), "", glow_off, "", 0, -300)
+    g.out(emissive, "", MP.MP_EMISSIVE_COLOR)
+    thick = g.power(g.multiply(alpha, "", particle, "A", -1000, 850), "",
+                    g.scalar("alphaDensity", d["alphaDensity"], -1000, 1000), "", -750, 900)
+    dd_assets.depth_faded_opacity(g, thick, dd_assets.constant(g, 30.0, -550, 1000), -350, 900)
+
+
+# (the original's material, the master holding our estimate, its builder, the original's instances of it)
+DEFIB_MATERIALS = (
+    ("M_ky_spark02_4x4", "M_DD_KySpark02", _build_spark02, ("MI_ky_spark02_4x5",)),
+)
+
+
+def _defib_undrawn(exports):
+    """dd_particles' adjust for P_06_Defib: the emitters whose LOD levels are all off (DEFIB_UNDRAWN) lose their
+    materials (their Required modules' Material: None). Raises if those off are not the ones known, or if a Required
+    module losing its material is also a drawn emitter's."""
+    off, drawn = set(), set()
+    for e in exports.values():
+        if e["class"] != "ParticleSpriteEmitter":
+            continue
+        lods = [exports[key]["props"] for key in e["props"].get("LODLevels", [])]
+        (drawn if any(lod.get("bEnabled", True) for lod in lods) else off).update(
+            (e["props"]["EmitterName"], lod["RequiredModule"]) for lod in lods)
+    if {name for name, _ in off} != set(DEFIB_UNDRAWN):
+        raise RuntimeError("P_06_Defib's emitters off are %s, not DEFIB_UNDRAWN" % sorted(name for name, _ in off))
+    shared = {module for _, module in off} & {module for _, module in drawn}
+    if shared:
+        raise RuntimeError("P_06_Defib's %s are drawn emitters' as well" % sorted(shared))
+    for _, module in off:
+        exports[module]["props"]["Material"] = None
+
+
 def make_zone_barrier_materials():
     """MM_SpeedBarrier and the barrier's instances of it (with their own values and overrides), and P_ky_impact3's
     MI_ky_flare14R, at the original's paths (saved)."""
@@ -736,6 +848,19 @@ def import_portal():
     return result
 
 
+def import_defib():
+    """The defibrillators' sounds, the discharge (P_06_Defib) with the lightning's textures and estimated material, and
+    the undrawn mesh emitters' meshes. Returns how many of each."""
+    result = {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in DEFIB_ATTENUATIONS]),
+              "sounds": len([dd_assets.sound(rel, VERSION) for rel in DEFIB_SOUNDS]),
+              "textures": len([dd_assets.texture(rel, VERSION) for rel in DEFIB_TEXTURES]),
+              "meshes": len([dd_assets.static_mesh(rel, VERSION) for rel in DEFIB_MESHES])}
+    result["materials"] = len(dd_assets.estimated_materials(KY09 + "Materials/", DEFIB_MATERIALS, VERSION))
+    dd_particles.particle_system(DEFIB, VERSION, adjust=_defib_undrawn)
+    result["particle_systems"] = 1
+    return result
+
+
 def import_double_doors():
     """The double doors' sounds, SoundCue and attenuations. Returns how many of each."""
     result = {"attenuations": len([dd_assets.sound_attenuation(rel, VERSION) for rel in DOUBLE_DOOR_ATTENUATIONS]),
@@ -758,7 +883,8 @@ def import_garage_lift():
 
 def import_all():
     """Imports the gimmicks' assets (the double doors', the zone barrier's, the doors broken in, the cell's, the
-    nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's and the portal's), then saves /Game/DD."""
+    nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's, the portal's and the defibrillators'),
+    then saves /Game/DD and /Game/Pipeline."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
@@ -768,5 +894,7 @@ def import_all():
     result.update({"garage_lift_" + key: count for key, count in import_garage_lift().items()})
     result.update({"ring_piece_" + key: count for key, count in import_ring_statue().items()})
     result.update({"portal_" + key: count for key, count in import_portal().items()})
-    EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
+    result.update({"defib_" + key: count for key, count in import_defib().items()})
+    for folder in (paths.DD_ROOT, paths.PIPELINE_ROOT):
+        EAL.save_directory(folder, only_if_is_dirty=True, recursive=True)
     return result

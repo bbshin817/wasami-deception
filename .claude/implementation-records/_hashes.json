@@ -15,7 +15,7 @@
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "8492592be32f6a9eac9c091927f2f1f86721dd86",
+    "Tools/dd/prepare_stage.py": "102f8e54556d5a943144216c35f6a7f0ef0472a0",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "cee314799ff6c30003dbdb55bc0e1aea8d2e2584",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
@@ -33,7 +33,7 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "12239ddb370f8e5ea542589be982311ebdc59d2a",
+    "Content/Python/wasami_tools/toolsets/dd.py": "299058a0eca178f3d329caab20025fc44fcbbff6",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "807cece26ffd955419f230c12dcd97066b8b0898",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
@@ -45,10 +45,10 @@
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "a18824e0c731665eca110895835a9f5e758afc8d",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "7cc22fba63f063b2d87e935abbec6527899ff631",
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "62cf5c53e0b249affdd0f409cefa86e2f1970367",
-    "Content/Python/wasami_tools/pipeline/dd_particles.py": "0f9440a36537a6379efcc520495115cf9425076a",
+    "Content/Python/wasami_tools/pipeline/dd_particles.py": "e1ec57646501401274dade17170d95a4864c90be",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "4242e5dc7b2b065317d920ff94db1143d702650c",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "cd2a2c1c7b36d54b6765e5cb5538a7a9357eb9a3",
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "5cdfaacccecf34c6acb238dd3657346610db7a7a",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "e15a4f582a56db876869696dd2c611e2421762cd",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "e8a7098d90714c4f2f6d4009b7b79e9e02d1c120",
@@ -209,7 +209,7 @@
     "Source/wasami_deception/WasamiPortal.cpp": "03467ea183e30d5fe3f9a85337dce014c593cb31",
     "Source/wasami_deception/Tests/WasamiPortalTests.cpp": "dc2871f28c26a87593117e3aa7b1520f1f3de901",
     "Tools/dd/prepare_portal_logo.py": "178abe50daff82d674d0835b51aedb656f633cc7",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "cd2a2c1c7b36d54b6765e5cb5538a7a9357eb9a3"
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "5cdfaacccecf34c6acb238dd3657346610db7a7a"
   },
   "12-lifts.md": {
     "Source/wasami_deception/WasamiLift.h": "070308d6fd060466c90f0ae322ec654e1dcf1102",

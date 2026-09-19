@@ -86,12 +86,14 @@ TELEPORT_ZONE_COMPONENT = "Cube"
 # Meshes the level build puts on Blueprint actors it places itself (the class leaves them unset, and the level export
 # leaves the component's mesh out, as the class's own): Zone 2's lifts' LiftMesh (BP_06_LiftBase_Corner's and
 # BP_06_Lift_03's / _04's), and Zone 2's altar (BP_01_Statue's StaticMeshComponent0) and the ring piece on it
-# (BP_08_RingPiece's StaticMesh). They come into `meshes` with their own materials.
+# (BP_08_RingPiece's StaticMesh), and the defibrillators' two stands (BP_06_Defib's hospital_defibrillator_01 and _02, the
+# same mesh). They come into `meshes` with their own materials.
 CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospital_zone_02_lifts_lift_01",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_03.hospital_zone_02_lifts_lift_03",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_04.hospital_zone_02_lifts_lift_04",
                 "/Game/Meshes/00_Ballroom/ring_statue.ring_statue",
-                "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06.ring_piece06")
+                "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06.ring_piece06",
+                "/Game/Meshes/06_Hospital/hospital_defibrillator_01.hospital_defibrillator_01")
 # Materials of meshes that are not the stage's static meshes: the garage lifts' skinned mesh (hospital_garage_lift_anim,
 # its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name), and the ones the
 # altar's and the ring piece's components put over their meshes' own (OverrideMaterials: the placed altar's, and
