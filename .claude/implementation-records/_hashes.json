@@ -208,6 +208,9 @@
     "Source/wasami_deception/WasamiPortal.h": "1b8a630c3d47a6e579cd57ea1529ff4a629cd0aa",
     "Source/wasami_deception/WasamiPortal.cpp": "03467ea183e30d5fe3f9a85337dce014c593cb31",
     "Source/wasami_deception/Tests/WasamiPortalTests.cpp": "dc2871f28c26a87593117e3aa7b1520f1f3de901",
+    "Source/wasami_deception/WasamiDefib.h": "77e3f5d049dd482be9d3c4f9453b545d21f9aeb3",
+    "Source/wasami_deception/WasamiDefib.cpp": "c37aa4223fa3e1f6d103a4f52852ab059ad142ff",
+    "Source/wasami_deception/Tests/WasamiDefibTests.cpp": "9a37b1852d374c0437a3bb9f337160b86e25608a",
     "Tools/dd/prepare_portal_logo.py": "178abe50daff82d674d0835b51aedb656f633cc7",
     "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "5cdfaacccecf34c6acb238dd3657346610db7a7a"
   },
