@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/cutscenes
 base: 4ef89d6
 started: 2026-09-20 06:50
-updated: 2026-09-20 06:50
+updated: 2026-09-20 07:35
 ---
 
 # ゲームの途中の場面（作業一覧の項目 25）
@@ -20,10 +20,7 @@ updated: 2026-09-20 06:50
 
 ## 計画
 
-- [ ] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）← 次
-  - いまの `dd_sequence.track()` は Transform・Float・Fade・Particle・Audio だけを組み、ほかは `skipped_tracks` に落ちる。3 つの場面に要るのは SkeletalAnimation（10 + 2 + 14）・Visibility（2 + 1 + 1）・CameraShake（3 + 2 + 9）・CameraAnim（1）・Slomo（Capture・Cell の master）・ComponentMaterial（Cell 1）。これらを足し、3 つの場面を組んで `skipped_tracks` が空になることを確かめる。
-  - 場面の役者（`BP_06_ReaperNurse_06Special`・`_Special2`・`nurse_idle1`・`nurse_idle2`）は本家のナースなので、敵ワサミ v3 のメッシュで置き、SkeletalAnimation の本家のアニメを「場面の代用」の対応表で v3 のアニメに読み替える（読み替えの表は取り込みの側に持つ）。
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_sequence.py`、`dd_level.py`（役者の置き方）、`/Game/DD/Animation/06_Hospital/...`
+- [x] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）— 骨のアニメ・可視・揺れ・スローモーション・部品の材質を足し（CameraAnim は UE 5.8 に無いので落とす）、3 つの場面と救急車の到着を `SEQUENCE_ACTORS` に足して両ゾーンを組み直した。ナース 4 体は `AWasamiCutsceneNurse`（新しい C++）で置き、本家のアニメを `NURSE_ANIMS` で敵ワサミのクリップに読み替える。実装記録 01・08・11（コミット `<step1>`）
 - [ ] 2. **場面を流す土台**（`AWasamiZoneFlow`）
   - 本家の `Initialize Cutscene Widget(player, bCanSkip, ...)`（`BP_DD_Functions`。スキップの画面 `UMG_Cutscene`）と、場面の間のプレイヤーの入力（`Disable Player Input`）・視点（`SetViewTargetWithBlend(CineCameraActor, 0.5)`）・`OnFinished` の結びを 1 つにまとめた `PlayCutscene` を作る。
   - 変更予定: `Source/wasami_deception/WasamiZoneFlow.{h,cpp}`、新しい `WasamiCutsceneWidget.{h,cpp}`
@@ -41,27 +38,31 @@ updated: 2026-09-20 06:50
 
 ## 次にやること
 
-ステップ 1。作業ブランチ `feature/cutscenes` を切ってから、`Content/Python/wasami_tools/pipeline/dd_sequence.py` の `track()` に SkeletalAnimation・Visibility・CameraShake・CameraAnim・Slomo・ComponentMaterial を足す。3 つの場面の JSON で必要な `Params`・`channels` の形を先に読む（`python -c` で `tracks[].sections[]` を見る）。
+ステップ 2（場面を流す土台）。本家 `BP_DD_Functions` の `Initialize Cutscene Widget` と、`AWasamiZoneFlow` の `PlaySequence` を包む `PlayCutscene`（入力の停止・視点をシネカメラへ 0.5 s・`OnFinished` の結び・スキップの画面）を作る。読むのは `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Main/BP_DD_Functions.txt` の `Initialize Cutscene Widget`（`python Tools/dd/bp_flow.py … "Initialize Cutscene Widget"`）と、`06_Hospital_Zone_02.txt` の `Arrive_CaptureCutscene`（@…）。シネカメラはレベルにタグ `src:06_CineCamera`（Zone 1）・`src:CineCameraActor_2`（Zone 2）で置いてある。
 
 ## 決定事項
 
-- 2026-09-20: **既存の `dd_sequence` を広げる**（場面ごとの手書きの再生機を作らない） — 本家のシーケンスは既に LevelSequence アセットとして組み立てて置く仕組みがあり（実装記録 01 の `dd_sequence`、`AWasamiZoneFlow::PlaySequence` が `GetSequencePlayer()->Play()`）、Zone 2 の棘 `06_Hospital_Zone2_Spikes` などは既にこの道で流れている。足りないのはトラックの種類だけ。
-- 2026-09-20: **Zone 2 の始まりは配布版の道を写す** — 本家の `Arrive Event` は `IsPackagedForDistribution()` で分岐し、配布版だけ救急車の到着 `AmbulanceArrive1` を流す（エディタでは捕まる場面から）。本作はパッケージして遊ぶので配布版の道が本家の姿。
-- 2026-09-20: **場面のナースは敵ワサミ v3 で代用** — `.claude/references/enemy-wasami-motions.md` の「場面の代用」の表（構え → `Idle_5`、跳んで去る → `Parkour_Vault_with_Roll`、殴る → `Male_Head_Down_Charge`、待機 → `Idle_11`、後ずさり → `Walking` の逆再生、透明化 → `Walking` で去る）。PIE で見て合わなければ表ごと直す。
-- 2026-09-20: 場面の**台詞と曲は項目 19・20 の口にとどめる** — Capture・Cell の master には Bierce の台詞（`Bierce_TormentTherapy_Event_11`〜`16`）と足音があり、シーケンスの Audio トラックとして組めば鳴るので、音の素材が取り込めていればそのまま流し、足りないものはコメントで項目 19・20 に回す。
+- 2026-09-20: **既存の `dd_sequence` を広げる**（場面ごとの手書きの再生機を作らない） — シーケンスは `AWasamiZoneFlow::PlaySequence`（`GetSequencePlayer()->Play()`）で既に流れている。ステップ 1 で 3 つの場面が組めるようになったので、残りは流す所を作るだけ。
+- 2026-09-20: **Zone 2 の始まりは配布版の道を写す** — 本家の `Arrive Event` は `IsPackagedForDistribution()` で分岐し、配布版だけ救急車の到着 `AmbulanceArrive1` を流す。本作はパッケージして遊ぶので配布版の道が本家の姿（ステップ 4）。
+- 2026-09-20: **捕まる場面の CameraAnim は流れが流す** — UE 5.8 に `MovieSceneCameraAnimTrack` が無い（`skipped_tracks` に出る）。`CameraAnim_Nurse_01` は `/Game/DD/…` に `UWasamiCameraAnim` として取り込めるので、ステップ 4 で `UWasamiCameraAnimModifier::Play` を場面の 20.53 s（区間 492800〜606400 刻み、4.73 s）に合わせて呼ぶ。
+- 2026-09-20: 場面の**台詞と曲は項目 19・20 の口にとどめる** — Capture・Cell の master の音のトラックには Bierce の台詞（`Bierce_TormentTherapy_Event_11`〜`16`）と足音の SoundCue が組み込まれ、ステップ 1 で取り込み済み（そのまま鳴る）。足りないものが出たらコメントで項目 19・20 に回す。
 
 ## 要確認（ユーザー）
 
-（なし）
+- 2026-09-20（ステップ 1、仮で進めた）: 場面のナースの演技の読み替え（`dd_sequence.NURSE_ANIMS`）。構え → `Idle_Alert`、跳躍 → `Chase_VaultRoll` → 空中は `Run` → もう一度 `Chase_VaultRoll`、殴る → `Chase_Charge`、待機と台詞の演技（`Event_40`〜`47`）→ `Idle`、後ずさり → `Walk` の逆再生、透明化 → `Walk`。ステップ 6 の PIE で見て直す（見た目の仮の値なので、作業一覧の項目 28 の後回しの一覧にも書いた）。
 
 ## 再開時の注意
 
-- まだ何も変更していない。作業ブランチ `feature/cutscenes` は未作成（ステップ 1 の始めに切る）。
-- 3 つの場面の尺と作り: `06Event` 10.53 s・19 バインディング（ナース 2 体、シネカメラと `06_CameraTarget`、スポットライト 4、粒子と音）、`Capture` 26.23 s・6 バインディング（シネカメラ、`camera look`、両開き扉 2、`nurse_idle1`）+ master 11 音・Slomo・Fade、`Cell` 74.07 s・12 バインディング（シネカメラ、`nurse_idle2`、牢の扉・壁のスイッチ・偽の天井・棘ほか）+ master 14 音・Slomo。どれも tick 24000・表示 30 fps。
+- 作業ブランチ `feature/cutscenes`（`main` から。ステップ 1 をコミット済み）。
+- 3 つの場面は組み上がってレベルに置いてある（`/Game/DD/Animation/06_Hospital/06_Hospital_Zone1_06Event`・`_Zone2_AmbulanceArrive1`・`_Zone2_Capture`・`_Zone2_Cell` と、同じ名前の `LevelSequenceActor`。流すのは `AWasamiZoneFlow::PlaySequence(名前)`）。ナース 4 体・シネカメラ 2 台も置いてある（タグ `src:<本家の名前>`）。
+- **`dd_sequence` を直したら** `python Tools/ue_remote.py <script>` から `dd_sequence.place("Zone1")` / `("Zone2")` で組み直し、**そのつど `dd_level.build_navigation()` を呼ぶ**（保存でレベルの道が空になる。Zone を切り替えるときは「開くだけの呼び出し」→「焼く呼び出し」の 2 回）。確かめ方は `skipped_tracks` が CameraAnim と `Ballroom_Event_Fade` のイベントだけ・`missing` と `missing_particles` が空。
+- Automation テストは、エディタが背面だと 3 fps で進まない。`python Tools/desktop.py start` → `click 2752 81 --allow WindowsTerminal.exe --allow UnrealEditor.exe`（エディタのタイトルバー）で前面にしてから走らせ、終わったら `stop`。
+- 3 つの場面の尺と作り: `06Event` 10.53 s（ナース 2 体、シネカメラと `06_CameraTarget`、スポットライト 4、粒子と音）、`Capture` 26.23 s（シネカメラ、`camera look`、両開き扉 2、`nurse_idle1`）+ master 11 音・Slomo・Fade、`Cell` 74.07 s（シネカメラ、`nurse_idle2`、牢の扉・壁のスイッチ・偽の天井・棘ほか）+ master 14 音・Slomo。どれも tick 24000・表示 30 fps。
 - `pak_reference_2/_sequences/*.csv` は同じ中身を 30 fps で標本化した表で、PIE の収録と数字で見比べるのに使える。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（19 件。記録 01・08・11 を直した）
+- C++ ビルド: OK（`Tools/editor_cycle.py`。`WasamiCutsceneNurse` を足した）
+- テスト: `Wasami.Cutscene.Nurse` = Success
+- エディタでの確認: 両ゾーンを `dd_sequence.place` で組み直し（Zone 1 は 6 本・結び付け 32・トラック 39・区間 57・キー 213、Zone 2 は 6 本・29・55・117・526。`missing` と `missing_particles` は空）、道を焼き直した。組み上がった 3 つの場面の中身（アニメの読み替え・可視の反転・揺れのクラスと強さ・Slomo のキー・材質の `Efficiency` 6 キー）と、置いたナース 4 体（メッシュ・拡縮 1.359・Zone 1 は −117.84 / −90°・隠して置く）を読み出して確かめた。
