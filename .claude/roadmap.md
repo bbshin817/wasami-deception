@@ -292,7 +292,7 @@
 - 根拠: `pak_reference_2/_assets/DDeception/Content/UI/Main/TitleScreen/UMG_Extras*.json`・`Extras_*.json`、`pak_reference*/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_Extras*.txt`、`Blueprints/Main/BP_Collectable.txt`（`Unlock`）、`Blueprints/Enums/Enum_Collectables`・`UI/Main/Collectables/Struct_Collectable`、本家のセーブ `SaveSlot` の型、レベルの書類の `Collectables` の値（`_levels/06_Hospital_Zone_0*.full.json`）。実装記録 18（書類）・14（タイトル画面）。
 - 依存: 12、17。
 - 規模: 3
-- 状態: 未着手（2026-09-20 に足した）。
+- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-extras`）。計画の段階で、EXTRAS の画面は最新版の木を写し（病院の書類が解放する Art 19〜22・Sound 5 は最新版にだけある）、タイトルの入口は旧版の並び（NEW GAME と OPTIONS の間）、解放は本作の 1 つのセーブに足す（NEW GAME の消去で消えるのは本家の `Erase Save Files` と同じ）、と決めた。
 
 ### 24. 捕獲のカメラの動き（本家ホテルの捕獲の体）
 
