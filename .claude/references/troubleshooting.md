@@ -552,6 +552,14 @@
 - 確かめ方: `UWasamiCascadeLibrary::DescribeEmitterInstances(部品)`（エミッタの実体ごとの一覧の数と粒子の数）を PIE の中で毎フレーム読む。エディタが背面だと PIE が約 3 fps で、寿命 0.1 s の粒子は数えられない（上の「エディタが背面にあると…」）。
 - 出典: 01 記録の「Cascade のパーティクル」、08 記録の「確かめたこと」。2026-09-19、作業一覧の項目 8 のステップ 4（C++ の道具を足すためにエディタを 1 回開き直した）。
 
+### テレポートでエレベーターの扉・閉ざした両開き扉（F で破る扉）を抜けられる
+
+- 症状: Zone 1 の開始のエレベーターの中から、閉じた扉越しに外の廊下へテレポートできる。F の連打で破る扉 `BP_06_DoubleDoors11` も、閉ざしたまま向こうへ抜けられる。
+- 原因: 本家の `BP_Power_Teleport` は移動の間カプセルの WorldDynamic と Pawn を Ignore にしてスイープする。扉 2 枚とエレベーターの扉は `BlockAllDynamic`（WorldDynamic）。照準が狙えるテレポートの床（`hospital_zone_01_teleport`）はエレベーターの中を覆わないが、すぐ外と扉の両側の廊下を覆う。本家のデータでも同じ（エディタのワールドで `ECC_TELEPORT` のオブジェクトのトレースを格子に引いて確かめた）。
+- 対処: 本作は移動の前に `AWasamiTeleportAim::StopAtGates` で、道の途中の WorldDynamic の Pawn を止める部品の手前を行き先にする（行き先の真下の WorldDynamic の物〈救急車〉は除く）。04 記録の「既知の制約」。
+- 確かめ方: テスト `Wasami.Powers.TeleportGates`。PIE でエレベーターの中 (−25, 3735)・南向きから撃つと y 3548.7 で止まる（04 記録の「テレポートの扉の手前での止まり」）。
+- 出典: 2026-09-20 の有人セッションのユーザーの指摘（進捗記録 `20260920-teleport-gates`）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている
@@ -641,6 +649,7 @@
 
 - 症状: 「前面の窓が許可の一覧に無い」で断られる。Win・Alt+Tab・Alt+F4 も断る。30 分何も来ないと自分で終了する。
 - 対処: エディタに送るときは `--allow UnrealEditor.exe`（VS Code が前面で、エディタを前面にするクリックだけなら `--allow Code.exe` も。無人運転で駆動役のターミナルが前面のときは `--allow WindowsTerminal.exe`。2026-09-17、撮った画面でタイトルバーの空き〈2957, 95〉がエディタの上であることを確かめて押した）。終了していたら `python Tools/desktop.py start`。何を送ったかは `Intermediate/DesktopAgent/agent.log`。
+- 前面が Chrome リモートデスクトップの共有バー（`remoting_desktop.exe`。ユーザーが遠隔で画面を見ているとき）だと、エージェントがその窓のプロセス名を読めず（`foreground.process` が空）、`--allow remoting_desktop.exe` を付けても「the foreground window is unknown ()」で断る（2026-09-20）。キーの要らない確かめは、リモート実行で `UWasamiPowerComponent` の `UsePower`・`ConfirmTeleport` などを呼んで済ませる（04 記録の「テレポートの扉の手前での止まり」）。キーが要るときはユーザーにエディタを 1 回クリックしてもらう。
 - 出典: `.claude/guides/verification.md`。
 
 ### 撮った PNG が大きくて会話に読めない（5〜6 MB）

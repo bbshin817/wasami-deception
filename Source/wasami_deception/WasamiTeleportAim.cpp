@@ -114,6 +114,43 @@ float AWasamiTeleportAim::StepAlpha(float InAlpha, float AxisValue)
 	return FMath::Clamp(AxisValue / WheelDivisor + InAlpha, 0.f, 1.f);
 }
 
+FVector AWasamiTeleportAim::StopAtGates(const UCapsuleComponent* Capsule, const FVector& From, const FVector& To)
+{
+	const UWorld* World = Capsule ? Capsule->GetWorld() : nullptr;
+	if (!World)
+	{
+		return To;
+	}
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(WasamiTeleportGates), false, Capsule->GetOwner());
+	// What the capsule lands on: a world-dynamic floor (the ambulances' roofs, over their bodies) is passed through.
+	FHitResult Floor;
+	if (World->LineTraceSingleByChannel(Floor, To, To - FVector(0., 0., TraceDepth), ECC_Pawn, Params)
+		&& Floor.GetComponent() && Floor.GetComponent()->GetCollisionObjectType() == ECC_WorldDynamic)
+	{
+		Params.AddIgnoredActor(Floor.GetActor());
+	}
+	// Every world-dynamic thing on the way; only the ones that would stop the capsule count (not the doors' trigger
+	// boxes, which only overlap it).
+	TArray<FHitResult> Hits;
+	World->SweepMultiByObjectType(Hits, From, To, Capsule->GetComponentQuat(), FCollisionObjectQueryParams(ECC_WorldDynamic),
+		Capsule->GetCollisionShape(), Params);
+	const FHitResult* First = nullptr;
+	for (const FHitResult& Hit : Hits)
+	{
+		const UPrimitiveComponent* Component = Hit.GetComponent();
+		if (Hit.bStartPenetrating || !Component
+			|| Component->GetCollisionResponseToChannel(Capsule->GetCollisionObjectType()) != ECR_Block)
+		{
+			continue;
+		}
+		if (!First || Hit.Time < First->Time)
+		{
+			First = &Hit;
+		}
+	}
+	return First ? First->Location : To;
+}
+
 void AWasamiTeleportAim::BeginPlay()
 {
 	Super::BeginPlay();
@@ -212,9 +249,11 @@ void AWasamiTeleportAim::Commit()
 	UGameplayStatics::PlaySound2D(this, LoadedCommittedSound, CommittedVolume);
 	if (Player)
 	{
-		// A sweep: walls and closed doors stop the capsule on the way.
-		Player->SetActorLocation(Location, true, nullptr, ETeleportType::TeleportPhysics);
+		// A sweep: walls stop the capsule on the way. It passes world-dynamic things and pawns, as in the original, but
+		// this game ends the move in front of a door or an elevator's doors first (the user's report of 2026-09-20).
 		UCapsuleComponent* Capsule = Player->GetCapsuleComponent();
+		Location = StopAtGates(Capsule, Player->GetActorLocation(), Location);
+		Player->SetActorLocation(Location, true, nullptr, ETeleportType::TeleportPhysics);
 		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
 	}
