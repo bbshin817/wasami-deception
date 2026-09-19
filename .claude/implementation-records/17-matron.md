@@ -55,15 +55,20 @@ updated: 2026-09-19
 
 ### Zone 2 への配置（組み立ての `_flow`。01 記録）と流れ（11 記録）
 - レベルの組み立て（`build_dd_stage_level` / `place_dd_flow Zone2`）が、本家の `MnM_Matron_Idle_2` を `AWasamiMatron` で根 (−6900.98, −1023.26, −50.22)・ヨー 90（前は −X）に置き、`SkeletalMesh` を相対 (3.0, −98.0, −57.0)、`CloseArea` を相対 (−27.38, 617.40, 234.0)・拡縮 (56.44, 10.05, 9.58)（机の前の帯）にする。コーンは `BP_06_Miniboss_viewcone_Matron_Long` を `AWasamiViewconeMatronLong` で (−7067.35, −1025.0, 676.26)・ヨー 180、扇 `Plane` を相対 (1673.83, 0, 0)・拡縮 (35.18, 32.04, 1)、`_Short_5` を `AWasamiViewconeMatronShort` で (−6630.76, −1025.0, 518.37)・ヨー 180・ピッチ −20、扇を相対 (659.98, 0, 0)・拡縮 (13.34, 17.79, 1)。Matron の `LongCone`・`ShortCone` にこの 2 つを入れる。3 つともフォルダ `Hospital/Gameplay/Enemies`、タグ `src:<本家の名前>`。
-- Zone 2 の流れの `ActivateMinibossEnemies`（保存 8 の廊下の箱と、8 で開いたとき）が見張りの `Activate` の後に、名前 `AWasamiZone2Flow::Matron`（`MnM_Matron_Idle_2`）で引いた Matron の `Activate` を呼ぶ。迷路の始まり（`Trigger_MazeStart`）の `RemoveAllEnemies` がタグ `Enemy` で Matron を消す（コーンは本家どおり残る。持ち主が消えているので見つけても何も起きない）。
+- Zone 2 の流れの `ActivateMinibossEnemies`（保存 8 の廊下の箱と、8 で開いたとき）が見張りの `Activate` の後に、名前 `AWasamiZone2Flow::Matron`（`MnM_Matron_Idle_2`）で引いた Matron の `Activate` を呼ぶ。迷路の始まり（`Trigger_MazeStart`）の `RemoveAllEnemies` がタグ `Enemy` で Matron を消す（コーンは本家どおり残って見続ける。持ち主の参照は壊れた Matron を指したまま残るが、本家の BP の実行系は壊れた〈Pending Kill の〉相手への呼び出しを飛ばし〈`ProcessContextOpcode` の `IsValid`〉、本作のコーンも `IsValid` で飛ばすので、見つけても何も起きない。07 記録）。
 
 ### 大きさ（`AWasamiMatron::MeshScale`。`TODO(仮)`）
-本家の長いコーンの高さ（z 676.26。Matron の目の高さと読む）に、ボスの `Idle` の最初のコマの `head` の骨（拡縮 1 で 128.2 cm）が来る拡縮: (676.26 + 107.22) / 128.2 ≈ **6.111**（107.22 cm はメッシュの原点が床より下にある分: Matron の根の z −50.22 と部品の相対 z −57）。高さ約 10.4 m、頭の上は床から約 932 cm（本家の Matron は 1031 cm）。本家は `SK_Matron` を 5 倍で描く。PIE（ステップ 4）で天井・机・壁を突き抜けるなら詰める。
+本家の長いコーンの高さ（z 676.26。Matron の目の高さと読む）に、ボスの `Idle` の最初のコマの `head` の骨（拡縮 1 で 128.2 cm）が来る拡縮: (676.26 + 107.22) / 128.2 ≈ **6.111**（107.22 cm はメッシュの原点が床より下にある分: Matron の根の z −50.22 と部品の相対 z −57）。高さ約 10.4 m、頭の上は床から約 932 cm（本家の Matron は 1031 cm）。本家は `SK_Matron` を 5 倍で描く。PIE（2026-09-19）で、メッシュの範囲の上端は床から約 860 cm で部屋の天井の下にあり、机の後ろに立って天井・机・壁を突き抜けない。
+
+### PIE で確かめたこと（2026-09-19、Zone 2 をチェックポイント 8 で）
+- 見張りと一緒に起き、長いコーンが点く。`CloseArea` に入ると 1 s の内に短いコーンへ替わり、出ると長いコーンへ戻る。長いコーンに見つかると、見張り 6 体が跳び降りて追い、プレイヤーを捕まえる（収録。死亡 → 残りライフの画面まで）。
+- **長いコーンを隠れて渡れる道が無い**（本家のレベルの置き方どおり）: 25 cm の格子でナビの上の点ごとに長いコーンの角度・長さと見通し（コーン → カプセルの中心の `Camera` の線）を調べた（`z2_corridor` の道を決めるのに使った）。入口（`PlayerStart_MiniBoss`）から机の前の帯へ行く道はどれも、Matron の目の高さから救急車 8 と 7・13 の間を見通す帯（y −1200〜−700）を渡る。見られない隙間は祭壇の像（`ring_statue_2`）の陰の 25〜50 cm の線と、その先の救急車 13 の端の約 60 cm だけで、コーンの 0.3〜0.5 s ごとの見張りに対して全力（600 cm/s）で 2〜4 回に 1 回見つかる。机の前の帯（`CloseArea`）の中は長いコーンの下（角度の外）で、短いコーンの線は机が遮る。台本 `z2_corridor`（01 記録）は Vanish で帯を渡る。
 
 ### テスト（`Tests/WasamiMatronTests.cpp`）
 - `Wasami.Matron.Anim`: 変化の長さ 0.95 s、最初の更新は移らない、半分の時間で半分（HermiteCubic）、Alert は 0 から、変化の途中で `bAlert` が戻っても終わるまで進む、終わってから Idle へ戻り Idle は 0 から、Idle のループ、Detected の 0.125 s で半分・0.25 s で全部・下が見えない・最後の姿勢で止まる、LookAt の 0.25 s で半分・0.5 s で全部・出はすぐ、欠けた Detected は流れず欠けた Alert の分は Idle が埋める。
 - `Wasami.Matron.Clips`: パス、取り込んだ 3 本の長さ（11.3・4.0・5.2 s）・骨格 `SK_WasamiBoss_Skeleton`・`spine_02` がある。
 - `Wasami.Matron.Cones`: コーン 2 種の CDO の値（07 記録）。
+- `Wasami.Matron.Removed`: 起きた Matron を消す（迷路の始まりの `RemoveAllEnemies` と同じ）→ コーンの持ち主は消えた Matron のまま → 長いコーンの前に立っても、コーン 2 つは消えず見続ける（壊れた持ち主に `Player Spotted` を送らない）。
 - `Wasami.Matron.Actor`: CDO（タグ・拡縮・当たり・ナビ・`AnimClass`・箱の応答と大きさ）と、手で進めるゲームのワールド（0.0625 s 刻み。タイマーは最大 2 刻み遅れるので確かめる時刻に余裕を取る）: `Activate` の前は切り替えない → `Activate` でコーンが Matron のものになり見始める → 最初の `Switch` で `bMode`・長いコーンが 1 s 後に点く・短いのは消える・アニメが Alert → プレイヤーを `CloseArea`（Matron の後ろ）へ → 次の `Switch` で短いコーン・Idle、後ろは見えない → `bMode` が変わらない間は手で点けた長いコーンを消さない → 外へ出ると長いコーンの番 → 長いコーンの前 1500 cm に立つとサイトの間隔の内に見つかり、コーン 2 つが消え、Detected を流し、1.0948 s より前は見張りは追わず後は追う、Detected が全部・LookAt が 1 → 2 回目の `Player Spotted` は何もしない → `Switch` はコーンが無くても `bMode` を書く → Detected は最後の姿勢で止まる。
 
 ## 作るアセット
@@ -92,6 +97,7 @@ updated: 2026-09-19
 - LookAt の軸は部品の +Y（本家と同じ）なので、プレイヤーが真下に近いと上半身が大きく前へ倒れる（制限 90°）。見た目は PIE で見る。
 
 ## 変更履歴
+- 2026-09-19: PIE で確かめた（大きさ・コーンの切り替え・見つかると 6 体が追う・隠れて渡れる道が無いこと）。コーンが壊れた持ち主・親へ送る呼び出しを `IsValid` で飛ばすようにし（07 記録）、テスト `Wasami.Matron.Removed` を足した（作業一覧の項目 11 のステップ 4）
 - 2026-09-19: Zone 2 に置いた（組み立ての `_flow` が Matron とコーン 2 つを本家の位置・部品の変形で置き、Matron のコーンの参照を入れる）。Zone 2 の `ActivateMinibossEnemies` が Matron の `Activate` を呼ぶ（作業一覧の項目 11 のステップ 3）
 - 2026-09-19: Matron のアクタ `AWasamiMatron`（部品・`Activate`・`Switch`・`Player Spotted`・1.0948 s の見張りへの知らせ）、ボスのアニメの再生 `UWasamiBossAnimInstance`（Idle ↔ Alert の 0.95 s のクロスフェード・Detected のスロット・`spine_02` の LookAt）、テスト `Wasami.Matron.*` 4 件を足した（作業一覧の項目 11 のステップ 2）。`Wasami.*` の 119 件が通った
 - 2026-09-19: 初版。ボスワサミの素材の取り込み（`dd_boss.py`、原本 `boss_wasami.glb`）を記録（作業一覧の項目 11 のステップ 1）

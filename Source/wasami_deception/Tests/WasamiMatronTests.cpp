@@ -302,4 +302,58 @@ bool FWasamiMatronActorTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiMatronRemovedTest, "Wasami.Matron.Removed",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiMatronRemovedTest::RunTest(const FString& Parameters)
+{
+	// The maze's start takes the enemies away (tag Enemy): the Matron goes and her cones stay, looking. A cone that sees
+	// the player then tells nobody (the Blueprint VM drops a message to a destroyed actor) and stays.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+	ACharacter* Player = World->SpawnActor<ACharacter>(FVector(0., 3000., 300.), FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	AWasamiMatron* Matron = World->SpawnActor<AWasamiMatron>(FVector::ZeroVector, FRotator(0., -90., 0.));
+	AWasamiViewcone* Long = World->SpawnActor<AWasamiViewconeMatronLong>(FVector(0., 0., 300.), FRotator::ZeroRotator);
+	AWasamiViewcone* Short = World->SpawnActor<AWasamiViewconeMatronShort>(FVector(0., 0., 200.), FRotator(-20., 0., 0.));
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller) || !TestNotNull(TEXT("the Matron"), Matron)
+		|| !TestNotNull(TEXT("the long cone"), Long) || !TestNotNull(TEXT("the short cone"), Short))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	Matron->GetCloseArea()->SetWorldLocation(FVector(-500., 0., 100.));
+	Matron->LongCone = Long;
+	Matron->ShortCone = Short;
+	Matron->Activate();
+	TickTo(3.f);
+	TestTrue(TEXT("the long cone on"), Long->IsOn());
+
+	Matron->Destroy();
+	TestFalse(TEXT("the Matron gone"), IsValid(Matron));
+	TestTrue(TEXT("her cones still hers"), Long->GetOwner() == Matron);
+	Player->SetActorLocation(FVector(1500., 0., 300.));
+	TestTrue(TEXT("the player in the long cone's sight"), Long->PlayerInsideCone() && Long->PlayerInFullView());
+	TickTo(Now + 1.f);
+	TestTrue(TEXT("the long cone stays"), IsValid(Long) && !Long->IsActorBeingDestroyed());
+	TestTrue(TEXT("the short cone stays"), IsValid(Short) && !Short->IsActorBeingDestroyed());
+	TestTrue(TEXT("still looking"), Long->IsOn());
+	return true;
+}
+
 #endif
