@@ -237,7 +237,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_Defib.txt`・`BP_06_DoubleDoors.txt`・`BP_06_Hospital_DoorBreak.txt`・`Traps/BP_06_sawTrap_medium.txt`・`Traps/BP_06_TrapBase.txt`、`Blueprints/Main/Traps/BP_SpeedBarrier.txt`、`_levels/06_Hospital_Zone_0*.full.json`。
 - 依存: 5（死亡）。
 - 規模: 4
-- 状態: 未着手。
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-traps`）。計画の段階で、扉の破壊 ×2 は項目 6 で両ゾーンに置いて流れに結んであるので確かめるだけにし、罠の実績 `06_Trap` は写さないと決めた。両開き扉の残り 60 枚 → 除細動器の素材 → クラス → 置いて確かめる → スピードバリアの素材とクラス → 置いて確かめる → のこぎりの罠の素材（骨が回る psa の変換）→ クラス → 置いて確かめる → 通しの確かめ → 閉じる、の 11 ステップ。
 
 ### 10. 特殊シャード 2 種（スタンオーブ・敵の位置が地図に出るボーナスシャード）
 
