@@ -179,6 +179,20 @@ void AWasamiDefib::ResetCharge()
 	}
 }
 
+float AWasamiDefib::GetTimeToFire() const
+{
+	const FTimerManager& Timers = GetWorldTimerManager();
+	if (Timers.IsTimerActive(ChargeTimer))
+	{
+		return Timers.GetTimerRemaining(ChargeTimer);
+	}
+	if (bLooping && Timers.IsTimerActive(RechargeTimer))
+	{
+		return Timers.GetTimerRemaining(RechargeTimer) + ChargeDelay;
+	}
+	return -1.f;
+}
+
 void AWasamiDefib::Fire()
 {
 	// @1019.

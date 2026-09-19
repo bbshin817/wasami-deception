@@ -565,6 +565,13 @@
 - 対処: 先にビューポートを 1 回クリックして焦点を渡す（PIE を始めただけでは届かない）。PIE でないときにビューポートをクリックするとアクタを選ぶ（選択だけならレベルは汚れない）。前面の小窓（メッセージログ・Automation のログ）は先に閉じる。
 - 出典: コミット 9264dac（2026-09-16）、`.claude/guides/verification.md`。
 
+### PIE でタイトルの RESUME から開いたレベルの最初のクリックが効かない（テレポートの照準で押しても移らない）
+
+- 症状: `Tools/playthrough.py` の `z1_ambulance` が `on the roof: GOOD LUCK (saved 7) did not happen within 5 s` で止まる。照準の輪は屋根に出ているのに、左クリックで移らない。同じ所でもう一度押すと移る。頭から通すときだけ起き、`z1_ambulance --setup` を単独で流すと通る。
+- 原因: `pause` の区間がタイトルへ戻り、タイトルの RESUME（画面のボタンのクリック）で Zone 1 を開いた後、キーは届くがビューポートがマウスを取っていないので、次の最初のクリックはマウスを取るのに使われてゲームに届かない（`run` の始めの `focus` のクリックに当たるものが無い）。カーソルがタブレットの上にあることとは関係しない（同じ位置の 2 回目で移った）。
+- 対処: `pause` の区間の最後に `g.focus()`（ビューポートの真ん中のクリック）を足した（2026-09-19）。ほかの台本・手の確かめでも、画面のボタンでレベルを開いた後は、ゲームのクリックの前にビューポートを 1 回押す。
+- 出典: 作業一覧の項目 8 のステップ 10（`traps_through5.mkv`。2026-09-19）。項目 8 のステップ 1 の「頭から通したときに 1 度だけ来なかった」も同じ。
+
 ### `desktop.py record` が終わらない（`record_status` が `running` のまま、動画も `.mkv.log` も空）
 
 - 原因: ffmpeg の `ddagrab` が `Opened dxgi output 0` の後、最初のフレームを待って止まる（原因は未特定。「未解決」）。
@@ -668,7 +675,7 @@
 
 ## 直さなくてよい既知の見え方
 
-- **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
+- **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。`Tools/editor_cycle.py` の開き直しの後に閉じ忘れると、`playthrough.py` の画面のボタンのクリックが小窓に当たり、`pause` の区間がタイトルの RESUME の後に `L_Hospital_Zone1 to open did not happen within 40 s` で止まる（2026-09-19。`desktop.py ping` の前面が `メッセージ ログ` になる。窓の右上の × を `--allow UnrealEditor.exe` で押す）。
 - **エンジンの起動時の `LogAutomationTest: Error: Condition failed` 19 件** — エンジン自身の自己テスト。毎回同じ数（04 記録の「確かめたこと」）。
 - **Automation テストの後に `get_dirty_map_packages()` が `/Temp/Untitled_1`・`/Temp/Untitled_3` を返す** — `Wasami.Powers.PrimalStun`・`VanishNotify` などが作った一時的なワールドのパッケージ。ガベージコレクションでも消えないが、`/Temp` なので保存されず、その後の `editor_cycle.py` の終了も妨げない（2026-09-17 の 3 つのセッションのログで確かめた）。「未保存なし」を確かめるときは `/Game` のものだけを見る。
 - **VSM の「非 Nanite マーキング ジョブ キュー オーバーフロー」2 件** — 前のセッションから出ているもの（04 記録）。

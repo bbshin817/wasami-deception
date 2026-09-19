@@ -73,7 +73,15 @@ public:
 	bool IsLooping() const { return bLooping; }
 	/** Charge's DoOnce closed: from the zap until Reset Charge. */
 	bool IsCharging() const { return bChargeClosed; }
+	/** Firing: FiringTime from each Fire; the player walking into Box now is hit. */
+	UFUNCTION(BlueprintPure, Category = "Defib")
 	bool IsFiring() const { return bFiring; }
+	/**
+	 * Seconds to the next Fire: what is left of the charge, or of the recharge and then a whole charge while Looping; -1
+	 * with neither (the player out of Sphere). For the tools that walk the player past (Tools/playthrough.py).
+	 */
+	UFUNCTION(BlueprintPure, Category = "Defib")
+	float GetTimeToFire() const;
 	/** Player Hit has gone through. */
 	bool HasHitPlayer() const { return bHitClosed; }
 

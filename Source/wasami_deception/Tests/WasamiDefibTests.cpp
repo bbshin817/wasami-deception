@@ -214,10 +214,13 @@ bool FWasamiDefibChargeTest::RunTest(const FString& Parameters)
 	Teleport(Player, DefibNear);
 	TestTrue(TEXT("Looping"), Defib->IsLooping());
 	TestTrue(TEXT("charging"), Defib->IsCharging());
+	TestTrue(TEXT("the fire 2.25 s on"), FMath::IsNearlyEqual(Defib->GetTimeToFire(), AWasamiDefib::ChargeDelay, 1e-3f));
 	AdvanceDefib(Wrapper, Defib, Clock, AWasamiDefib::ChargeDelay - 0.05f);
 	TestFalse(TEXT("not yet firing"), Defib->IsFiring());
 	AdvanceUntilFiring(Wrapper, Defib, Clock, 0.05f + DefibLate);
 	TestTrue(TEXT("firing 2.25 s on"), Defib->IsFiring());
+	TestTrue(TEXT("the next fire 3.5 s on"), FMath::IsNearlyEqual(Defib->GetTimeToFire(),
+		AWasamiDefib::RechargeDelay + AWasamiDefib::ChargeDelay, DefibLate));
 	TestTrue(TEXT("both sparks going"), Defib->GetParticleSystem()->IsActive() && Defib->GetParticleSystem1()->IsActive());
 	TestFalse(TEXT("the player clear of Box"), Defib->HasHitPlayer());
 	AdvanceDefib(Wrapper, Defib, Clock, AWasamiDefib::FiringTime - 0.05f);
@@ -230,6 +233,7 @@ bool FWasamiDefibChargeTest::RunTest(const FString& Parameters)
 	Teleport(Player, DefibAway);
 	TestFalse(TEXT("not Looping once out"), Defib->IsLooping());
 	TestTrue(TEXT("still charging"), Defib->IsCharging());
+	TestTrue(TEXT("its fire still coming"), Defib->GetTimeToFire() > 0.f);
 	AdvanceDefib(Wrapper, Defib, Clock, 14.f - Clock.Time);
 	const float Period = AWasamiDefib::ChargeDelay + AWasamiDefib::RechargeDelay;
 	TestEqual(TEXT("three fires"), Clock.Fires.Num(), 3);
@@ -240,6 +244,7 @@ bool FWasamiDefibChargeTest::RunTest(const FString& Parameters)
 			Clock.Fires[Index] >= Due - 1e-3f && Clock.Fires[Index] <= Due + DefibLate);
 	}
 	TestFalse(TEXT("then at rest"), Defib->IsCharging() || Defib->IsFiring());
+	TestEqual(TEXT("no fire coming"), Defib->GetTimeToFire(), -1.f);
 	TestFalse(TEXT("never hit"), Defib->HasHitPlayer());
 
 	// Coming back charges it at once; walking in and out again while it charges starts nothing more.
