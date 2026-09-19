@@ -160,6 +160,7 @@
 - 原因: `Use Less CPU when in Background`。
 - 2026-09-19: **ウィジェットのティック（`NativeTick` の `InDeltaTime`）も遅れる**。Slate は 1 コマの時間を 1/8 s で打ち切る（`FSlateApplication::TickTime`）ので、約 3 fps だとスコア画面の `ClearAnimation` も連続回収の画面（2 s で消える）も約半分の速さになった。ゲームの時間（`get_time_seconds`）は実時間どおり進むので気づきにくい。画面の時刻を収録で測る前に、エディタを前面にして 8 fps を超えているか（`unreal.SystemLibrary.get_frame_count()` の進み）を見る。
 - 対処: `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe`（タイトルバーの空き。エディタの窓が今の位置のとき。撮った画面でクリックの位置がエディタの上であることを先に見る）でエディタを前面にする。PIE を始めてもエディタは前面に来ない。
+- 対処（前面に出せないとき。2026-09-19）: ユーザーのターミナルが前面だと `desktop.py` はクリックを断り（前面が許した窓でない）、MCP の `SlateInspectorToolset.Windows` の `select` も Windows に前面の切り替えを止められる。そのときはリモート実行で `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)` にする（クラスは Python の型として出ていないが、CDO は `find_object` で取れて書ける。メモリ上だけなので開き直すと戻る）。背面のまま PIE とテストが前面と同じ速さで進み、`desktop.py record` で約 58 fps で収録できた。終わったら `True` に戻す。前面の小窓（メッセージログ）は `SlateInspectorToolset.Windows` の `list` → `close`（番号）で閉じられる。
 - 確かめ方: `stat fps`、またはリモート実行で `unreal.GameplayStatics.get_time_seconds` の進み。
 - 出典: `.claude/guides/verification.md` の「動きの確認」（2026-09-16）、03 記録。「試して駄目だった案」も参照。
 
@@ -645,7 +646,7 @@
 
 ## 試して駄目だった案
 
-- **背面のエディタの 3 fps を設定で直す**: コンソールの `set EditorPerformanceSettings bThrottleCPUWhenNotForeground False` は効かず、設定は Python から見えない → エディタを前面にする（2026-09-16、`.claude/guides/verification.md`）。
+- **背面のエディタの 3 fps を設定で直す**: コンソールの `set EditorPerformanceSettings bThrottleCPUWhenNotForeground False` は効かず、設定は Python の型としては見えない → エディタを前面にする（2026-09-16、`.claude/guides/verification.md`）。2026-09-19: CDO を `unreal.find_object` で取れば Python から書ける（上の「エディタが背面にあると…」の対処）。
 - **`UPostProcessComponent` / `ULegacyCameraShake` を C++ で継ぐ** → MinimalAPI でリンクできない（上の C++ の節）。
 - **Lumen で間接光を出す** → 距離フィールドが潰れてゼロ。焼き込みに切り替えた（コミット 89611ee）。
 - **ライトマップの解像度を表面積から決め（1 テクセル 20 cm）、UV の無い結合メッシュに UE の UV を作らせる** → 実機の 2 倍明るい。原作の値を写す（コミット 81d3e7e）。
