@@ -20,7 +20,7 @@ updated: 2026-09-20 07:35
 
 ## 計画
 
-- [x] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）— 骨のアニメ・可視・揺れ・スローモーション・部品の材質を足し（CameraAnim は UE 5.8 に無いので落とす）、3 つの場面と救急車の到着を `SEQUENCE_ACTORS` に足して両ゾーンを組み直した。ナース 4 体は `AWasamiCutsceneNurse`（新しい C++）で置き、本家のアニメを `NURSE_ANIMS` で敵ワサミのクリップに読み替える。実装記録 01・08・11（コミット `<step1>`）
+- [x] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）— 骨のアニメ・可視・揺れ・スローモーション・部品の材質を足し（CameraAnim は UE 5.8 に無いので落とす）、3 つの場面と救急車の到着を `SEQUENCE_ACTORS` に足して両ゾーンを組み直した。ナース 4 体は `AWasamiCutsceneNurse`（新しい C++）で置き、本家のアニメを `NURSE_ANIMS` で敵ワサミのクリップに読み替える。実装記録 01・08・11（コミット `3221644`）
 - [ ] 2. **場面を流す土台**（`AWasamiZoneFlow`）
   - 本家の `Initialize Cutscene Widget(player, bCanSkip, ...)`（`BP_DD_Functions`。スキップの画面 `UMG_Cutscene`）と、場面の間のプレイヤーの入力（`Disable Player Input`）・視点（`SetViewTargetWithBlend(CineCameraActor, 0.5)`）・`OnFinished` の結びを 1 つにまとめた `PlayCutscene` を作る。
   - 変更予定: `Source/wasami_deception/WasamiZoneFlow.{h,cpp}`、新しい `WasamiCutsceneWidget.{h,cpp}`
