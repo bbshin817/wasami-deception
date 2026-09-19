@@ -112,7 +112,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - エンジン: `MaterialExpressionPanner`・`MaterialExpressionDesaturation`・`TextureFactory`・`SoundFactory`、`UGeneralProjectSettings`（`EngineSettings`）
 
 ## 既知の制約・注意点
-- 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は仮の 0.1.0（要確認。進捗記録）。
+- 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は仮の 0.1.0（作業一覧の「未回答の要確認」）。
 - NEW GAME が問うかどうかは本家の `New Game?` の代わりに進みで決める（上の「ボタンの道」）。本家は一度でも新しいゲームを始めた後は、進みが無くても問う。
 - `L_Title` は git の外（`Content/Stage`）。作り直すときは C++ をビルドしてから `WasamiStageTools.build_title_level`。エディタで遊んで確かめるときは `L_Title` を開いて PIE（エディタの開始のレベルは Zone 1）。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も焦点を持てない画面を渡しているので、そのままにしている（死亡画面も同じ）。

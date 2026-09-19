@@ -16,7 +16,7 @@ updated: 2026-09-19
 # 設定・オプション画面・ポーズ画面
 
 ## 役割
-プレイヤーの設定（本家の旧版 v1.6.1 の `BP_DD_Settings_SaveGame`、スロット `Settings`）と、それを読んで当てる本家の `BP_DD_GameMode` の `Check Settings Save` → `Set Settings`（音量は本家の `DD_SoundMix` のクラスの上書き）、プレイヤーが読む値（感度・Y 反転・頭の揺れ・ダッシュの切り替え・マウスのスムージング）、難易度の効き先（スコア画面の EASY）。作業一覧の項目 18。いまはステップ 6b（死亡画面の EASY の分岐とその上のポーズ）まで。
+プレイヤーの設定（本家の旧版 v1.6.1 の `BP_DD_Settings_SaveGame`、スロット `Settings`）と、それを読んで当てる本家の `BP_DD_GameMode` の `Check Settings Save` → `Set Settings`（音量は本家の `DD_SoundMix` のクラスの上書き）、プレイヤーが読む値（感度・Y 反転・頭の揺れ・ダッシュの切り替え・マウスのスムージング）、難易度の効き先（スコア画面の EASY）。作業一覧の項目 18（2026-09-19 に完了）。
 
 オプション画面は旧版を写す（最新版 v1.9.6〈`pak_reference_2`〉に `UMG_Options` は無く、第三者の AutoSettings プラグインの `SettingsUI` と CVar に替わった。作業一覧の完了の条件の WebGL 版 04・10 記録も旧版を写したもの。2026-09-19）。設定の項目は両版で同じ（最新版の `VSync`・`Motion Blur` は旧版のメニューに無いので持たない）。
 
@@ -178,7 +178,7 @@ GIVING UP? の枠 `quit_window_frame` は死亡画面、曲 `Pause_Sound_v1` は
 - MOUSE SENSITIVITY のスライダーは枠の右を越えて描かれる: CONTROLS の箱の幅は見出しの最小の幅 550 で決まり、行はそれに合わせて広がり、スライダーのスロットの右の余白が −10 なので（本家の木のまま）。
 - `Wasami.Settings` で値を変えると `Saved/SaveGames/Settings.sav` に残る（次の PIE もその値で始まる）。確かめた後は `Wasami.ResetSettings`。
 
-- **本家の最新版の死亡画面の EASY の分岐は、コードどおりだとポーズでも抜けられない**（ステップ 5 で読んだ）: レベルの `DeathEvent` が `SetGamePaused(true)` し、EASY の分岐は入力の様式を変えないが、Esc の結び付けは止まっている間は動かない。ユーザーの回答（抜けるのはポーズから）に合わせて、その死亡画面の上でだけ止まっていても開けるようにし、RESUME は止まりを解かないようにした（進捗記録の要確認）。ポーズの RESTART はライフを戻さないので、抜けた後もライフは 0 のまま（本家どおり。要確認）。
+- **本家の最新版の死亡画面の EASY の分岐は、コードどおりだとポーズでも抜けられない**（ステップ 5 で読んだ）: レベルの `DeathEvent` が `SetGamePaused(true)` し、EASY の分岐は入力の様式を変えないが、Esc の結び付けは止まっている間は動かない。ユーザーの回答（抜けるのはポーズから）に合わせて、その死亡画面の上でだけ止まっていても開けるようにし、RESUME は止まりを解かないようにした（作業一覧の「未回答の要確認」）。ポーズの RESTART はライフを戻さないので、抜けた後もライフは 0 のまま（本家どおり。同じ要確認）。
 - PIE では Esc がエディタの「プレイを止める」に取られるので、ポーズ画面は `Wasami.Pause` で開く（症状索引）。
 
 ## 確かめたこと
@@ -194,3 +194,4 @@ GIVING UP? の枠 `quit_window_frame` は死亡画面、曲 `Pause_Sound_v1` は
 - 2026-09-19: ポーズ画面 `UWasamiPauseWidget`（本家の `UMG_Pause` の木・Construct・FadeIn・RESUME・Destruct・EASY MODE とホバーの色、頭は本作のワサミ）と素材の取り込み（`dd_ui.import_pause`）、Esc とデバッグ `Wasami.Pause`（02 記録）、テスト `Wasami.Pause.*` を足した（ステップ 5）。
 - 2026-09-19: ポーズ画面のボタンの道（RESTART? の YES / NO、OPTIONS、GIVING UP? の QUIT TO TITLE / QUIT TO DESKTOP / CANCEL）とポップアップのアニメ `Popup`・`Popup_0`、テスト `Wasami.Pause.Popups`・`Leave` を足した（ステップ 6a）。
 - 2026-09-19: 死亡画面の EASY の分岐（09 記録）と、その上でだけ止まっていても開く Esc（02 記録）、その上では止まりを解かない RESUME を足した（ステップ 6b）。
+- 2026-09-19: 作業一覧の項目 18 を閉じた（残った要確認 4 件は作業一覧の「未回答の要確認」へ）。
