@@ -237,7 +237,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_Defib.txt`・`BP_06_DoubleDoors.txt`・`BP_06_Hospital_DoorBreak.txt`・`Traps/BP_06_sawTrap_medium.txt`・`Traps/BP_06_TrapBase.txt`、`Blueprints/Main/Traps/BP_SpeedBarrier.txt`、`_levels/06_Hospital_Zone_0*.full.json`。
 - 依存: 5（死亡）。
 - 規模: 4
-- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-traps`）。計画の段階で、扉の破壊 ×2 は項目 6 で両ゾーンに置いて流れに結んであるので確かめるだけにし、罠の実績 `06_Trap` は写さないと決めた。両開き扉の残り 60 枚 → 除細動器の素材 → クラス → 置いて確かめる → スピードバリアの素材とクラス → 置いて確かめる → のこぎりの罠の素材（骨が回る psa の変換）→ クラス → 置いて確かめる → 通しの確かめ → 閉じる、の 11 ステップ。
+- 状態: **完了（2026-09-19）**。両開き扉を Zone 1 に 62 枚（Zone 2 の 1 枚は項目 6）、除細動器 `AWasamiDefib`（本家 `BP_06_Defib` の `Charge`・`Fire`・`Player Hit`）を両ゾーンに 23 + 13、スピードバリア `AWasamiSpeedBarrier`（`BP_SpeedBarrier`。Speed Boost の間だけ砕ける）を Zone 1 に 4、のこぎりの罠 `AWasamiSawTrap` と派生 3 つ（`BP_06_TrapBase` + `sawTrap_*`。骨入りのメッシュとアニメ、刃に付く当たり、閃き → 黒い画面 → 死）を Zone 2 に 74 置いた（実装記録 08・01・09・12）。PIE で扉の開閉（ナースとプレイヤー）、除細動器の放電・揺れ・台の間での死、スピードバリアがダッシュで止まり Speed Boost で砕けること、のこぎりの刃がせり上がって乗ると死ぬことを確かめ、台本 `Tools/playthrough.py` の頭からの通し（11 区間）が罠を置いた後も通る（台本は除細動器の放電を待って抜ける）。08 記録の「確かめたこと」。テストは `Wasami.Defib.*`・`SpeedBarrier.*`・`SawTrap.*` ほか。**完了の条件の読み替え**: (1) `BP_06_Hospital_DoorBreak` ×2 は項目 6 で両ゾーンに置いて流れに結んであったので、確かめるだけにした（通しで Zone 1 のエレベーターの前と Zone 2 の独房の 2 つとも外れた）。(2) 「各種 1 つずつ収録」は 08 記録の「罠を置いた後の通し」に並べた収録（扉 `door_walk`・除細動器 `pie-defib-fire2`・`pie-defib-hit`・スピードバリア `sb_break`・のこぎり `saw_catch`・扉の破壊 `traps_through6`。git の外）。(3) 罠の実績 `06_Trap` は写さない（本作に実績の仕組みが無い）。(4) 稲妻・網目・刃の見え方は本家と見比べていない（大目標 1・2 の決め方）。
 
 ### 10. 特殊シャード 2 種（スタンオーブ・敵の位置が地図に出るボーナスシャード）
 
