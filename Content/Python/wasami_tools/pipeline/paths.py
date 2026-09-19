@@ -25,6 +25,7 @@ DD_SKELETAL_PIPELINE = "/Game/Pipeline/Interchange/PL_DD_Skeletal"
 MASTER_SUBSTANCE = "/Game/Pipeline/Materials/M_DD_Substance"
 MASTER_DECAL = "/Game/Pipeline/Materials/M_DD_Decal"
 MASTER_UNLIT = "/Game/Pipeline/Materials/M_DD_Unlit"
+MASTER_METAL = "/Game/Pipeline/Materials/M_DD_Metal"
 DEFAULT_PACKED = "/Game/Pipeline/Textures/T_DD_DefaultPacked"
 PIPELINE_ROOT = "/Game/Pipeline"
 

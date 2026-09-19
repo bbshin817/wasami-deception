@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/altar-look
 base: 63bab43
 started: 2026-09-20 04:40
-updated: 2026-09-20 04:45
+updated: 2026-09-20 05:15
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -17,10 +17,7 @@ updated: 2026-09-20 04:45
 
 ## 計画
 
-- [ ] 1. 祭壇の金属 `MM_Main_Metal` を推定のマスター `M_DD_Metal`（`/Game/Pipeline/Materials/`）に組み、前処理とステージの取り込みの経路に載せて `MM_00_Ballroom_Ring_Altar_Metal` を作り直す
-  - 変更予定: `Tools/dd/prepare_stage.py`（`MASTERS` に `MM_Main_Metal` → `metal`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`（`MASTER_OF`・`TEX_PARAM`・`SCALARS`・`VECTORS`・`ensure_masters` に `metal`、`make_material` が既にあるインスタンスをその場で親を付け替える形に、作り直しの入口）、`paths.py`（マスターのパス）、`/Game/Pipeline/Materials/M_DD_Metal`、`/Game/DD/Materials/00_Ballroom/MM_00_Ballroom_Ring_Altar_Metal`
-  - 式（2026-09-20 に読んだもの。作業一覧の項目 31）: 基底色 定数 (0.276042, 0.255386, 0.148085)・金属 1・スペキュラ 0.5・粗さ `saturate(Roughness)`・法線は `Normal` を `Normal Flatness` で (0, 0, 1) へ寄せる・発光 ((1 − max(N·V, 0))^6 × 0.999 + 0.001) × `Hover Intensity` × `Hover Color`。組む前に `python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Metal."` の出力（`Intermediate/Pipeline/dd/shaders/MM_Main_Metal/`）で `Normal Flatness` の寄せ方と既定値を確かめる。
-  - 確かめ: 材質がコンパイルでき、Zone 2 の祭壇のメッシュに当たったまま（置き直さない）で真鍮色になる（エディタの静止画で可）。
+- [x] 1. 祭壇の金属 `MM_Main_Metal` を `M_DD_Metal` に組み、`MM_00_Ballroom_Ring_Altar_Metal` を同じパスで作り直した（2026-09-20。前処理 `MASTERS` の `metal`、`dd_stage` の `_build_metal`・`make_material` のその場の作り直し・`refresh_settings` の `materials_remade`。Zone 2 の祭壇に当たったまま真鍮色。01・08 記録）
 - [ ] 2. 欠片の `MM_Main_Substance_Fresnel` をシェーダーから読んで推定のマスター `M_DD_SubstanceFresnel` を組み、同じ経路（`fresnel`）に載せて `M_ring_metal2` と書類の `MM_Shared_Secret_Folder` を作り直す
   - 変更予定: `Tools/dd/prepare_stage.py`、`dd_stage.py`、`paths.py`、`/Game/Pipeline/Materials/M_DD_SubstanceFresnel`、`/Game/DD/Meshes/Ring_Assets/ring_pieces/M_ring_metal2`、`/Game/DD/Materials/Shared/MM_Shared_Secret_Folder`
   - 読む: `python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Substance_Fresnel."`。インスタンスの値は `_materials.json`（`M_ring_metal2`: `Roughness Power` 1・`BaseReflectFractionIn` 0.246・`Fresnel ExponentIn` 5.79・`Fresnel Setting` (1.156, 0, 5)、書類: `Fresnel Setting` (1, 1, 1)）。
@@ -30,7 +27,7 @@ updated: 2026-09-20 04:45
 
 ## 次にやること
 
-作業ブランチ `feature/altar-look` を main から作り、ステップ 1 を始める: `Intermediate/Pipeline/dd/shaders/MM_Main_Metal/` の SM5 のベースパスで `Normal Flatness` の式と既定値を確かめてから、`dd_stage.py` の `_build_substance` の組み方に倣って `M_DD_Metal` を組む。
+ステップ 2: `python Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Substance_Fresnel."` を読み（ベースパスの画素シェーダーの定数の束 cb3 の並びと、`Fresnel Setting` の xyz・`BaseReflectFractionIn`・`Fresnel ExponentIn` がどこに効くか）、`dd_stage.py` に `_build_substance_fresnel`（`paths.MASTER_FRESNEL` = `/Game/Pipeline/Materials/M_DD_SubstanceFresnel`）を足して、前処理の `MASTERS` に `fresnel` を足し、`prepare_stage.py` → `refresh_dd_stage_assets`（`materials_remade` 2 のはず）で作り直す。
 
 ## 決定事項
 
@@ -43,11 +40,12 @@ updated: 2026-09-20 04:45
 
 ## 再開時の注意
 
-- エディタは `L_Hospital_Zone1` を開いて応答している（2026-09-20 04:40、PIE なし・未保存なし）。祭壇は Zone 2（`L_Hospital_Zone2`）。
-- `import_batch` はまだ無いアセットだけを作るので、既にある 3 つのインスタンスは作り直しの入口で付け替える。
+- エディタは `L_Hospital_Zone2` を開いて応答している（2026-09-20 05:15、PIE なし・未保存なし）。祭壇は `ring_statue_2`（-8584, -983, 0）、ヨー 90（正面は +Y 側だが車が塞ぐ）。+X 側の (-8183, -982, 250)・ヨー 180 から撮ると球を掲げた像が見える（紫の灯で色は分かりにくいので、色は `CaptureAssetImage` のサムネイルで見た）。
+- 作り直しの入口は `refresh_dd_stage_assets`（`dd_stage.refresh_settings`）: 親がステージのマスターで根の振り分けと違うインスタンスを同じパスで作り直す（`materials_remade`）。前処理を直したら先に `python Tools/dd/prepare_stage.py`。
+- `MCP の CaptureViewport` の結果は大きすぎて会話に入らないので、保存されたファイルを `tmp/altar/decode.py <結果の txt> <png>` で PNG にして読む（`annotations` は全部 0 と `classFilter.refPath` 空で渡す）。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 不要の見込み（Python と材質だけ）
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: ステップ 1 で通した
+- C++ ビルド: 不要（Python と材質だけ）
+- ステップ 1: `M_DD_Metal` がコンパイルでき（画素 363 命令）、`refresh_settings` は `materials_remade` 1・ほかは変化なし、祭壇の部品の材質は同じパスのまま

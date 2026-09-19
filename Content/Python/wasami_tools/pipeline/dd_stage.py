@@ -2,11 +2,12 @@
 (its PNG) and one material instance per material of the export, from the pipeline data written by
 Tools/dd/prepare_stage.py. Everything lands under /Game/DD, mirroring the original's own /Game tree.
 
-The original's master materials are rebuilt as three of ours (their graphs are cooked away; only the parameters and the
-material settings survive):
+The original's master materials are rebuilt as four of ours (their graphs are cooked away; only the parameters and the
+material settings survive, and for some the compiled shaders, Tools/dd/cooked_shaders.py):
   M_DD_Substance  MM_Main_Substance and its Emissive / AlphaColorMask / Translucent / Glass variants, and anything else
   M_DD_Decal      M_01_Hotel_Decals — a deferred decal material, which the level puts on plane meshes (mesh decals)
   M_DD_Unlit      MM_Lit — an unlit colour times a multiplier
+  M_DD_Metal      MM_Main_Metal — the altar's brass, read back from its compiled shaders
 """
 import os
 import struct
@@ -24,12 +25,13 @@ MASTER_VERSION = "1"
 VERSION_TAG = "WasamiGraphVersion"
 
 # Which of our masters each master of the export maps to (prepare_stage.py's `master`).
-MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT}
+MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT, "metal": paths.MASTER_METAL}
 # The export's texture kinds → our texture parameters, per master.
 TEX_PARAM = {
     paths.MASTER_SUBSTANCE: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed", "emissive": "Emissive"},
     paths.MASTER_DECAL: {"albedo": "Texture"},
     paths.MASTER_UNLIT: {},
+    paths.MASTER_METAL: {"normal": "Normal"},
 }
 # The export's parameters we can carry over. The rest (Normal Flatness, RefractionDepthBias, Emissive Multiplier,
 # Fade Length (S) …) belong to graph parts that cook removed, so they are counted and skipped, not guessed.
@@ -37,11 +39,13 @@ SCALARS = {
     paths.MASTER_SUBSTANCE: ("Roughness Power", "Metallic Power", "Emissive Intensity", "Opacity Override"),
     paths.MASTER_DECAL: (),
     paths.MASTER_UNLIT: ("Light Multiplier",),
+    paths.MASTER_METAL: ("Roughness", "Normal Flatness", "Hover Intensity"),
 }
 VECTORS = {
     paths.MASTER_SUBSTANCE: ("Emissive Color Multiplier", "Mask Color"),
     paths.MASTER_DECAL: ("Color Multiplier",),
     paths.MASTER_UNLIT: ("Light Color",),
+    paths.MASTER_METAL: ("Hover Color",),
 }
 BLEND = {
     None: unreal.BlendMode.BLEND_OPAQUE,
@@ -133,11 +137,11 @@ def _material(asset_path):
 
 
 def ensure_masters():
-    """Builds (or rebuilds) the three master materials and returns them by package path."""
+    """Builds (or rebuilds) the master materials and returns them by package path."""
     out = {}
     _, packed_changed = ensure_default_packed()
     for asset_path, build in ((paths.MASTER_SUBSTANCE, _build_substance), (paths.MASTER_DECAL, _build_decal),
-                              (paths.MASTER_UNLIT, _build_unlit)):
+                              (paths.MASTER_UNLIT, _build_unlit), (paths.MASTER_METAL, _build_metal)):
         mat, needs_build = _material(asset_path)
         if needs_build:
             build(mat)
@@ -297,6 +301,33 @@ def _build_unlit(mat):
     g.out(colour, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 
+def _build_metal(mat):
+    """MM_Main_Metal, as its cooked base pass pixel shader computes it (Tools/dd/cooked_shaders.py
+    "MasterMaterials/MM_Main_Metal."): a constant brass base colour (0.276042, 0.255386, 0.148085), metallic 1, the
+    default specular 0.5, Roughness (0.25), the Normal texture pulled towards (0, 0, 1) by Normal Flatness (0), and a
+    rim of Fresnel (exponent 6, base reflect fraction 0.001: 0.001 + 0.999 (1 − N·V)^6) × Hover Intensity (0) ×
+    Hover Color (white). Only 00_Ballroom's level Blueprint raises Hover Intensity; the hospital leaves it 0."""
+    g = _Graph(mat, checked=True)
+    flat = unreal.load_asset("/Engine/EngineMaterials/DefaultNormal")
+    g.out(g.const3((0.276042, 0.255386, 0.148085, 1.0), -600, -500), "", unreal.MaterialProperty.MP_BASE_COLOR)
+    one = g.node(unreal.MaterialExpressionConstant, -600, -380)
+    one.set_editor_property("r", 1.0)
+    g.out(one, "", unreal.MaterialProperty.MP_METALLIC)
+    g.out(g.scalar("Roughness", 0.25, -600, -280), "", unreal.MaterialProperty.MP_ROUGHNESS)
+
+    normal = g.texture("Normal", flat, unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL, -1100, -100)
+    normal = g.lerp(normal, "RGB", g.const3((0.0, 0.0, 1.0, 1.0), -1100, 150), "",
+                    g.scalar("Normal Flatness", 0.0, -1100, 250), "", -600, -50)
+    g.out(normal, "", unreal.MaterialProperty.MP_NORMAL)
+
+    fresnel = g.node(unreal.MaterialExpressionFresnel, -1100, 400)
+    fresnel.set_editor_property("exponent", 6.0)
+    fresnel.set_editor_property("base_reflect_fraction", 0.001)
+    rim = g.multiply(fresnel, "", g.scalar("Hover Intensity", 0.0, -1100, 550), "", -850, 450)
+    rim = g.multiply(rim, "", g.vector("Hover Color", (1.0, 1.0, 1.0, 1.0), -1100, 650), "RGB", -600, 500)
+    g.out(rim, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+
 # ------------------------------------------------------------------------------------------------ meshes
 def import_mesh(entry, nanite):
     ensure_mesh_pipeline()
@@ -409,12 +440,18 @@ def master_of(material):
 
 
 def make_material(m, textures, skipped=None):
-    """One material instance of the export → a MaterialInstanceConstant of our matching master."""
+    """One material instance of the export → a MaterialInstanceConstant of our matching master. One that exists is
+    remade in place (its parameters cleared, then set again): what the levels placed keeps pointing at the same asset."""
     master_path = master_of(m)
     masters = ensure_masters()
-    folder, name = paths.split(m["asset"])
-    mic = _tools().create_asset(name, folder, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    if EAL.does_asset_exist(m["asset"]):
+        mic = unreal.load_asset(m["asset"])
+    else:
+        folder, name = paths.split(m["asset"])
+        mic = _tools().create_asset(name, folder, unreal.MaterialInstanceConstant,
+                                    unreal.MaterialInstanceConstantFactoryNew())
     MEL.set_material_instance_parent(mic, masters[master_path])
+    MEL.clear_all_material_instance_parameters(mic)
 
     params = TEX_PARAM[master_path]
     for kind, png in (m.get("kinds") or {}).items():
@@ -447,8 +484,9 @@ def make_material(m, textures, skipped=None):
     if m.get("clip") is not None:
         over.set_editor_property("override_opacity_mask_clip_value", True)
         over.set_editor_property("opacity_mask_clip_value", float(m["clip"]))
-    if m.get("shading") == "MSM_Unlit" and master_path == paths.MASTER_SUBSTANCE:
-        over.set_editor_property("override_shading_model", True)
+    unlit = m.get("shading") == "MSM_Unlit" and master_path == paths.MASTER_SUBSTANCE
+    over.set_editor_property("override_shading_model", unlit)
+    if unlit:
         over.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     mic.set_editor_property("base_property_overrides", over)
     MEL.update_material_instance(mic)
@@ -495,13 +533,15 @@ def import_batch(max_items):
 def refresh_settings():
     """Brings the already imported assets up to this module: rebuilds a master material whose graph version is old,
     re-applies each texture's settings and each mesh's lightmap settings, and recompiles every material instance (an instance with static switches keeps
-    a failed shader map from an older master until it is updated)."""
+    a failed shader map from an older master until it is updated). An instance on one of these masters that is no
+    longer the one its root maps to (a master added since, as M_DD_Metal) is remade in place on the right one; one
+    another module has put on a master of its own is left alone."""
     stage = paths.load_dd_stage()
     rebuilt = 0
-    for asset_path in (paths.MASTER_SUBSTANCE, paths.MASTER_DECAL, paths.MASTER_UNLIT):
+    for asset_path in TEX_PARAM:
         if not EAL.does_asset_exist(asset_path) or EAL.get_metadata_tag(unreal.load_asset(asset_path), VERSION_TAG) != MASTER_VERSION:
             rebuilt += 1
-    ensure_masters()
+    masters = ensure_masters()
     changed = 0
     with unreal.ScopedSlowTask(len(stage["textures"]), "Updating the stage's texture settings") as task:
         for t in stage["textures"].values():
@@ -517,14 +557,22 @@ def refresh_settings():
             mesh = unreal.load_asset(m["asset"])
             if isinstance(mesh, unreal.StaticMesh) and setup_lightmap(mesh, m):
                 lightmaps += 1
-    updated = 0
+    updated = remade = 0
     with unreal.ScopedSlowTask(len(stage["materials"]), "Recompiling the stage's material instances") as task:
         for m in stage["materials"].values():
             task.enter_progress_frame(1, m["asset"] or "")
             mic = unreal.load_asset(m["asset"]) if m["asset"] and EAL.does_asset_exist(m["asset"]) else None
-            if isinstance(mic, unreal.MaterialInstanceConstant):
+            if not isinstance(mic, unreal.MaterialInstanceConstant):
+                continue
+            parent = mic.get_editor_property("parent")
+            parent = parent.get_path_name() if parent else ""
+            if parent in (paths.object_path(p) for p in masters) and parent != paths.object_path(master_of(m)):
+                make_material(m, stage["textures"])
+                remade += 1
+            else:
                 MEL.update_material_instance(mic)
-                updated += 1
+            updated += 1
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     EAL.save_directory(paths.PIPELINE_ROOT, only_if_is_dirty=True, recursive=True)
-    return {"masters_rebuilt": rebuilt, "textures_updated": changed, "lightmaps_updated": lightmaps, "materials_updated": updated}
+    return {"masters_rebuilt": rebuilt, "textures_updated": changed, "lightmaps_updated": lightmaps,
+            "materials_updated": updated, "materials_remade": remade}

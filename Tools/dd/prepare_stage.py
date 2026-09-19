@@ -48,6 +48,7 @@ MASTERS = {
     "/Game/Materials/MasterMaterials/MM_Main_Substance_Glass_ColorMask": "glassmask",
     "/Game/Materials/01_Hotel/M_01_Hotel_Decals": "decal",
     "/Game/Materials/MasterMaterials/MM_Lit": "lit",
+    "/Game/Materials/MasterMaterials/MM_Main_Metal": "metal",
 }
 # Which texture parameter feeds which input of our rebuilt master materials.
 TEX_KIND = {
