@@ -171,6 +171,13 @@
 - 対処: テストと PIE の確認は続けて行い、同時に走らせない。テストの後に出る Automation のログの小窓は PIE の前に閉じる。
 - 出典: `.claude/guides/verification.md`。
 
+### PIE で Esc を押すとポーズ画面が出ずに遊びが止まる
+
+- 症状: PIE のビューポートで Esc を押すと、ゲームのポーズ画面（`UWasamiPauseWidget`）が出ずに PIE が終わる。
+- 原因: エディタのキー割り当て（`PlayWorld.StopPlaySession` の既定が Esc）が、ゲームより先にキーを取る。パッケージや `-game` では起きない。割り当てはユーザーのエディタの設定なので変えない。
+- 対処: ポーズ画面は `python Tools/pie.py cmd "Wasami.Pause"` で開く（プレイヤーの `EscapePressed` と同じ道。止まっている間は開かない）。ボタンは `Tools/desktop.py click` で押す。
+- 出典: 2026-09-19 の作業一覧の項目 18 のステップ 5（15 記録）。
+
 ### Zone 1 の PIE（や死亡の後の開き直し）で、始まる場所が毎回違う（`04_Start`・`05_Start`・`PlayerStart_1` など）
 
 - 症状: `python Tools/pie.py start` の後の `player:` や、死亡画面の後に開き直した場所が、回ごとに別の PlayerStart になる。`(4295, −23330)`（タグ `PlayerStart_1`）のような、チェックポイントでない所から始まることもある。

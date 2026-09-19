@@ -7,13 +7,16 @@ sources:
   - Source/wasami_deception/WasamiOptionsWidget.h
   - Source/wasami_deception/WasamiOptionsWidget.cpp
   - Source/wasami_deception/Tests/WasamiOptionsTests.cpp
+  - Source/wasami_deception/WasamiPauseWidget.h
+  - Source/wasami_deception/WasamiPauseWidget.cpp
+  - Source/wasami_deception/Tests/WasamiPauseTests.cpp
 updated: 2026-09-19
 ---
 
 # 設定・オプション画面・ポーズ画面
 
 ## 役割
-プレイヤーの設定（本家の旧版 v1.6.1 の `BP_DD_Settings_SaveGame`、スロット `Settings`）と、それを読んで当てる本家の `BP_DD_GameMode` の `Check Settings Save` → `Set Settings`（音量は本家の `DD_SoundMix` のクラスの上書き）、プレイヤーが読む値（感度・Y 反転・頭の揺れ・ダッシュの切り替え・マウスのスムージング）、難易度の効き先（スコア画面の EASY）。作業一覧の項目 18。いまはステップ 4（オプション画面の木と操作、タイトルの OPTIONS）まで。ポーズ画面（旧版 `UMG_Pause`）はステップ 5・6 でここに足す。
+プレイヤーの設定（本家の旧版 v1.6.1 の `BP_DD_Settings_SaveGame`、スロット `Settings`）と、それを読んで当てる本家の `BP_DD_GameMode` の `Check Settings Save` → `Set Settings`（音量は本家の `DD_SoundMix` のクラスの上書き）、プレイヤーが読む値（感度・Y 反転・頭の揺れ・ダッシュの切り替え・マウスのスムージング）、難易度の効き先（スコア画面の EASY）。作業一覧の項目 18。いまはステップ 5（ポーズ画面の木・アニメ・音と Esc、RESUME）まで。ポーズのほかのボタンの道（RESTART? / OPTIONS / GIVING UP?）と死亡画面の EASY の分岐はステップ 6。
 
 オプション画面は旧版を写す（最新版 v1.9.6〈`pak_reference_2`〉に `UMG_Options` は無く、第三者の AutoSettings プラグインの `SettingsUI` と CVar に替わった。作業一覧の完了の条件の WebGL 版 04・10 記録も旧版を写したもの。2026-09-19）。設定の項目は両版で同じ（最新版の `VSync`・`Motion Blur` は旧版のメニューに無いので持たない）。
 
@@ -35,6 +38,11 @@ updated: 2026-09-19
   - `ShowsDifficulty(LevelName)`（タイトル `L_Title` だけ真）、`Begin(Settings, bShowDifficulty)`（Construct の中身。`NativeConstruct` が呼ぶ）、`SetupValues(Settings)`、`Advance(DeltaSeconds)`（`NativeTick` から。FadeIn・閉じるときの Delay・値の文字）。
   - テスト用の読み出し: `GetQualitySetting`・`GetDifficultySetting`・`HasDifficulty`・`GetFadeInTime`・`GetBoxOpacity`・`GetBoxScale`（`CanvasPanel_2`）・`GetWashOpacity`（`Blur+Red`）、曲線 `EvaluateFadeInOpacity`・`EvaluateFadeInScale`、定数 `RootScale` 1.015・`FadeInLength`・`CheckHoverGrey` 0.515625。
 - テスト `Wasami.Options.Screen`（木・素材・様式・既定値と別の値の表示・値の文字がスライダーに付いていくこと・DIFFICULTY の出し分け）・`Wasami.Options.FadeIn`・`Wasami.Options.Controls`（`Setup Values` が 0.5 を吸着させないこと・6 本のスライダーの吸着・矢印の端・SAVE & EXIT と CANCEL のホバーの色・SAVE & EXIT までは設定に届かないこと）・`Wasami.Options.SaveAndCancel`（スロット `WasamiTest_Options` のゲームインスタンスで: CANCEL は捨てて 0.25 s で消え 0.3 s 過ぎで外れる、SAVE & EXIT は設定に書いて当てて〈ガンマ〉スロットに書き、閉じる、開き直すと保存した値、持ち主が無ければ書くだけ）（`Tests/WasamiOptionsTests.cpp`）。
+- `UWasamiPauseWidget`（`UUserWidget`。C++ で木を組む。下の「ポーズ画面」）
+  - `Show(WorldContextObject)`（BlueprintCallable）: 最初のプレイヤーに作って Z 5（`ViewportZOrder`）で足す。ポーズ画面がもう出ていれば作らない（`Find`）。開くのはプレイヤーの `EscapePressed`（Esc。02 記録）とデバッグ `Wasami.Pause`（同じ道。PIE では Esc がエディタの遊びを止めるので、確かめはこれ）。
+  - `Settings`（EASY MODE の色の結び付けが読む設定。空ならゲームインスタンスの `GetSettings()`、無ければ既定の新しいもの）。`Begin(Settings)`（Construct の中身。世界が無ければ止める・入力・音はしない）、`Advance(DeltaSeconds)`（`NativeTick` から。FadeIn・RESUME の Delay・色）、`PressResume()`（RESUME）、`IsResuming`・`IsFinished`、`Find(WorldContextObject)`（出ているポーズ画面）。
+  - テスト用の読み出し: `GetFadeInTime`・`GetOpacity`、曲線 `EvaluateFadeIn`、`EasyModeColor(Difficulty)`、`HeadTint()`（頭の赤 rgb(192, 0, 0)）、定数 `FadeInLength`・`ResumeDelay` 0.5・`MusicFadeInSeconds` 1・`MusicFadeOutSeconds` 0.5・`UnhoveredGrey` 0.1146。
+- テスト `Wasami.Pause.Screen`（ルートの子の順・メニューの 4 つと焦点を取らないこと・色と大きさ・頭とのぞく頭のスロット・隠れたポップアップ・EASY MODE の色）・`Wasami.Pause.FadeIn`・`Wasami.Pause.Resume`（逆再生と 0.5 s の Delay、押し直し）（`Tests/WasamiPauseTests.cpp`）。
 - テスト `Wasami.Settings.Defaults`・`Wasami.Settings.Rules`・`Wasami.Settings.SoundMix`（SoundMix の 3 つのクラスと子へ当てないこと、クラスの木と Properties、音 6 つのクラス）・`Wasami.Settings.Slot`（スロット `WasamiTest_Settings`。ゲームインスタンスの読み・当て・SAVE & EXIT の書き込み・`IsEasy`。表示ガンマは終わりに元へ戻す）・`Wasami.Settings.Player`（`Tests/WasamiSettingsTests.cpp`）。
 
 ## 内部構造と処理の流れ
@@ -62,7 +70,8 @@ updated: 2026-09-19
 ### 難易度の効き先
 - スコア画面（13 記録）: `AWasamiGameMode::Escape` とデバッグ `Wasami.LevelClear` が `FWasamiLevelResults::ForHospital(…, IsEasy())` を渡す（EASY MODE の文字と、FINAL RANK が A で止まる）。
 - 死亡画面の Easy の分岐は**最新版に倣う**（2026-09-19 のユーザーの回答。作業一覧の項目 18 のステップ 6 で作る。**まだ無い**）: 旧版の `UMG_DeathScreen` は難易度を読まない。最新版はライフ 0 で EASY なら `Life Animation` だけで止まり、ボタンが出ず開き直しもしない（ポーズからしか抜けられない）。いまは EASY でもライフ 0 でゲームオーバー。
-- 病院の敵は難易度を読まない（両版で `Difficulty` を読むのはホテル・学校・屋敷・下水・サーカスの敵と、死亡画面・スコア画面・ポーズ・オプション・ゲームインスタンス）。ポーズの EASY MODE はステップ 5。
+- 病院の敵は難易度を読まない（両版で `Difficulty` を読むのはホテル・学校・屋敷・下水・サーカスの敵と、死亡画面・スコア画面・ポーズ・オプション・ゲームインスタンス）。
+- ポーズ画面の EASY MODE（下）: EASY のときだけ暗い赤で見える。
 
 ### オプション画面（`UWasamiOptionsWidget`）
 本家の旧版 `UMG_Options` の木を、スロットの値のまま（書き出しに無い値はスロット・部品の既定）`RebuildWidget` で組む（死亡画面・タイトルと同じ作り。09・14 記録）。書き出しの `UMG_Options_C.WidgetTree` の側の部品と、その `Slot` の値を読んだ。
@@ -94,6 +103,23 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - Esc は何もしない（本家は結ばない。UI の入力の様式なのでキャラクターの Esc も届かない）。WebGL 版は Esc を CANCEL と同じにしていた（ブラウザの Esc がポインタロックを外すため）。
 - タイトルの OPTIONS（`UWasamiTitleScreenWidget::PressOptions`。本家 @8405）: `Show`（Z 10）と選択音。
 
+### ポーズ画面（`UWasamiPauseWidget`）
+本家の `UI/Menu/Pause/UMG_Pause`（旧版と最新版で木・アニメ・音が同じ。最新版はゲームパッドの仮想カーソルを足しただけ）の木を、スロットの値のまま `RebuildWidget` で組む。
+- `CanvasPanel_0`（ルート。FadeIn が不透明度を動かす）に 8 つ、この順: `Blur+Red`（ぼかし 8 と赤の幕。オプション画面と同じ値で、画面より少しはみ出す）、`Image_152`（黒い筆の帯 `pause_screen_bg`。幅 912、中央から左に 20.56、縦は上に 20.63・下に 38.92 はみ出して引き伸ばす）、`Icon`（頭。900 四方、上端の中央に整列 (0.5, 0.2) = 上に 180 はみ出す）、`TextBlock_1`（EASY MODE。中央から上 515.46 が上端、Roboto Bold 36、最小の幅 358.48、中央揃え）、`VerticalBox_113`（RESUME / RESTART / OPTIONS / QUIT。上端が画面の中央、横は中央。スロットは既定で箱の幅いっぱい）、`CanvasPanel_3`（ポップアップの 2 枚目の幕。不透明度 0、`BackgroundBlur_1` と `redblock` はクリックを通す）、`Givingupbox`（GIVING UP?）、`RestartBox`（RESTART?。どちらも中央、拡大 0・不透明度 0）。
+- ボタン: UE 4 の既定のボタン（余白 2・押すと (2, 3, 2, 1)）で背景の α 0、中身の色 `Unhovered Color` 0.1146、文字は TextBlock の既定の書体（エンジンの Roboto Bold）で、メニューは 36・焦点を取らない（`IsFocusable` 偽。UE 5 は Slate を作る前にしか書けないので、プロパティに直に書く）、ポップアップのボタンは 28・焦点を取る（既定）。ボタンのスロットは UE の既定 (4, 2)・中央。
+- `Givingupbox`: 枠 `Image_420`（`quit_window_frame` 1222 × 928。GIVING UP? は絵に描かれている）とのぞく頭 `window_quit_head`（同じ大きさ）、中央から下 167.79 に `VerticalBox_0`（`quittext` = 「YOU WILL BE ABLE TO RESTART \r\nFROM LAST CHECKPOINT」30・下に 30、QUIT TO TITLE / QUIT TO DESKTOP / CANCEL は上に 15）。本家の Construct はゲームインスタンスの `Replay Mode?` で「PROGRESS WILL BE LOST」に替えるが、本作にリプレイは無いので木の文のまま。
+- `RestartBox`: 枠 `Image_0`（`restart_window_frame` 1222 × 532）、のぞく頭 `quitwindowhead`（1222 × 928 を下へ 77.31）、中央から下 60.39 に YES / NO（左右 35・上 15 の余白）。
+- 頭: 本家の Construct はゲームモードの `Level` で頭（病院は `pause_reapernurse_head`、のぞく頭は `quit_window_head_reapernurse`）を選ぶが、キャラクターなので本作のワサミの白い絵（`T_PauseHead`・`T_PausePeek`）を本家の頭の赤 rgb(192, 0, 0)（線形 (0.527, 0, 0)）で塗る（WebGL 版の CSS のマスクと同じ見え方。のぞく頭の黒い縁は黒のまま）。
+- 色の結び付け（毎フレーム）: EASY MODE は `GetColorAndOpacity_0`（設定の `Difficulty` が 0 = EASY なら (0.5255, 0, 0, 1)、1 = NORMAL なら (1, 0, 1, 0) = 見えない、2 なら (1, 0, 1, 1)）。ボタンの中身は `OnHovered` で白、`OnUnhovered` で `Unhovered Color`（9 つとも。本作はホバーの状態をティックで読んで同じ色にする。音は無い）。
+
+Construct（`NativeConstruct` → `Begin`。本家 @861）: `UI_Pause`（1）→ `PlayAnimation(FadeIn)` → `SetGamePaused(True)` → `SetInputMode_UIOnlyEx(自分, DoNotLock)` とカーソル → `CreateSound2D(Pause_Sound_v1, 1, 1, 0, None, False, True)`（UI の音なので止まったゲームでも鳴る。音量は SoundWave の 0.4）の `FadeIn(1, 1, 0)` → 頭（上）→ ゲームモードの `Pause Time Counter`。本家の `LoadGameFromSlot('SaveSlot')` はステップ 6 の RESTART の道で使う。
+- FadeIn（0.5 s。`CanvasPanel_0` の不透明度 0 → 1、両端とも平らな自動の接線。書き出しの `WidgetName` もルート）。ウィジェットのティックで進めるので止まったゲームの上でも動く。
+- RESUME（@3654）: `UI_Select_V3`（1）→ `PlayAnimation(FadeIn, 0, 1, Reverse, 1)`（押すたびに終わりから逆に）→ `SetInputMode_GameOnly`・カーソルを消す → `Delay(0.5)`（待っている間の 2 回目は無視）→ `SetGamePaused(False)`・`RemoveFromParent`（@15）。
+- Destruct（@6316）: 曲の `FadeOut(0.5, 0)` とゲームモードの `Unpause Time Counter`。
+- ホバー 18 個（@3218〜@5116）とボタンの OnClicked のうち、RESUME 以外（RESTART @3996・OPTIONS @6085・QUIT @4516・YES @5158・NO @6080・QUIT TO TITLE @6207・QUIT TO DESKTOP @4843・CANCEL @4709）とポップアップのアニメ `Popup`・`Popup_0` はステップ 6。
+
+開き方（02 記録の `EscapePressed`）: 本家の旧版はキャラクターの Esc で Z 5、最新版はプレイヤーコントローラーの Esc とゲームパッドの Special Left で Z 1。どちらも条件なしで作るが、キーの結び付けは止まっている間は動かない（`bExecuteWhenPaused` 偽）ので、死亡画面（本家のレベルの `DeathEvent` が `SetGamePaused(true)`）・欠片の画面・Zone 2 の脱出の保存の間は開かない。UI だけの入力の様式の画面（ポーズ・オプション・スコア画面・タイトル・ゲームオーバーのボタン）の上では Esc がゲームに届かない。本作は旧版の Z 5 を採った（最新版の 1 では Z 5 の死亡画面の下になり、ステップ 6 の EASY の死亡画面から抜けられない）。
+
 ## 作るアセット
 なし（セーブは実行時に `Saved/SaveGames/Settings.sav`）。SoundMix と SoundClass は取り込み（01 記録）が作る。オプション画面の素材は `dd_ui.import_options()`（`WasamiDDTools.import_dd_ui` の `import_all` も呼ぶ。01 記録）:
 
@@ -103,6 +129,16 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 | 音（本家） | `/Game/DD/Audio/UI/UI_Select_V2`（SAVE & EXIT。0.55 s、クラス `DD_SoundClass_SFX`。`pak_reference_2` から、旧版と同じ ogg） | 1 |
 
 見出し・値・ボタンの書体 `/Game/DD/UI/Fonts/helvetica-neue-bold_Font` はタブレットの取り込み（03 記録）が作る。
+
+ポーズ画面の素材は `dd_ui.import_pause()`（`import_all` も呼ぶ。01 記録）:
+
+| 種類 | アセット | 数 |
+| --- | --- | --- |
+| テクスチャ（本家） | `/Game/DD/UI/Menu/Pause/pause_screen_bg`（912 × 1200）・`restart_window_frame`（1222 × 532）。`pak_reference_2` から、sRGB・UI の LOD グループ | 2 |
+| テクスチャ（本作） | `/Game/Wasami/UI/Pause/T_PauseHead`（1024 × 1024。白いワサミの頭を中央に）・`T_PausePeek`（1222 × 928。白い絵に黒い縁、上端の中央）。原本 `SourceArt/Wasami/UI/pause_head.png`・`pause_peek.png`（Git LFS。WebGL 版の `pause-head.webp`・`pause-peek.webp` をそのまま PNG に）、読み込み画面の紋章と同じ設定 | 2 |
+| 音（本家） | `/Game/DD/Audio/UI/UI_Pause`（クラス `DD_SoundClass_SFX`） | 1 |
+
+GIVING UP? の枠 `quit_window_frame` は死亡画面、曲 `Pause_Sound_v1` はタイトル、`UI_Select_V3` はタブレットの取り込みが作る。
 
 ## 原作データの根拠
 - `pak_reference/_assets/DDeception/Content/Blueprints/Save/BP_DD_Settings_SaveGame.json` の `Default__BP_DD_Settings_SaveGame_C`: 項目と既定値（`Difficulty` は `ENUM_DifficultySettings::NewEnumerator1`）。
@@ -114,7 +150,10 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - オプション画面: `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_Options.json`（木は `UMG_Options_C.WidgetTree` の側。FadeIn は `FadeIn_INST` の `MovieScene` の区間と `AnimationBindings`・`PrecompiledEvaluationTemplate` の `KeepState`、値の箱の結び付けは `UMG_Options_C` の `Bindings`、`Unhovered Color` は `Default__UMG_Options_C`）。Construct・`Setup Values` と操作は `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_Options.txt`（`python Tools/dd/bp_flow.py <file> Construct` / `"Setup Values"` / `--list` の番地）、結び付けの関数は同じファイルの `=== Resolution Scale` ほか。UE 5 の `USlider::SetValue` が `OnValueChanged` を呼ぶのは UE 5.8 の `Runtime/UMG/Private/Components/Slider.cpp`。UE 4 の既定の様式（ボタン・スライダーの Box の絵と余白）は UE 4.21 の `FCoreStyle`、UE 5 の違いは UE 5.8 の `SlateTypes.cpp`（`FCheckBoxStyle`・`FSliderStyle` の既定）・`SSlider::OnPaint`・`SCheckBox::BuildCheckBox`。
 - 難易度: `pak_reference/_bytecode` と `pak_reference_2/_bytecode` で `BP_DD_Settings_SaveGame_C.Difficulty` を grep。最新版の死亡画面の分岐は `pak_reference_2/_bytecode/DDeception/Content/Blueprints/UMG/UMG_DeathScreen.txt` @2639（`python Tools/dd/bp_flow.py <file> 2354`）。
 
+- ポーズ画面: `pak_reference/_assets/DDeception/Content/UI/Menu/Pause/UMG_Pause.json`（木は `UMG_Pause_C.WidgetTree` の側、FadeIn・`Popup`・`Popup_0` は `MovieScene` の区間と `AnimationBindings`、`Unhovered Color` は `Default__UMG_Pause_C`。`pak_reference_2` の木は同じ）。流れは `pak_reference/_bytecode/DDeception/Content/UI/Menu/Pause/UMG_Pause.txt`（`python Tools/dd/bp_flow.py <file> Construct` / `Destruct` / `--list`）と最新版の同じファイル（`Virtual Cursor` のほか同じ。RESTART の YES は違う: ステップ 6）。開き方は `pak_reference/_bytecode/.../Blueprints/Main/BP_DD_PlayerCharacter.txt` の `InpActEvt_Escape_K2Node_InputKeyEvent_1` と `pak_reference_2/_bytecode/.../Blueprints/Main/DD_PlayerController.txt` の @746、キーの結び付けの `bExecuteWhenPaused` は両方の `.json` の `InputKeyDelegateBinding`。死亡画面の止まりは `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt` @5731。WebGL 版 10 記録の styles.css「ポーズ画面」・`pause.ts`（頭の塗り方）。
+
 ## 依存関係
+- ポーズ画面: `UWasamiGameInstance::GetSettings`（EASY MODE）、`AWasamiGameMode::PauseTimeCounter`・`UnpauseTimeCounter`、`WasamiWidgetAnimation.h`、`WasamiAssets.h`、エンジンの `UBackgroundBlur`・`UWidgetBlueprintLibrary`（入力の様式・`GetAllWidgetsOfClass`）。開くのは `AWasamiPlayerCharacter::EscapePressed`（02 記録）。
 - オプション画面: `UWasamiGameInstance::GetSettings`、`UWasamiSettingsSaveGame` の規則（`SliderText`・`QualityText`・`DifficultyText`）、`AWasamiGameMode::TitleLevelName`、`WasamiWidgetAnimation.h`（09 記録）、`WasamiAssets.h`、エンジンの `UGridPanel`・`USlider`・`UCheckBox`・`UBackgroundBlur`。使う側はタイトルの OPTIONS（14 記録）とステップ 6 のポーズの OPTIONS（まだ無い）。SAVE & EXIT は `UWasamiGameInstance::SaveSettings`（`WriteValues` の後）、音は `/Game/DD/Audio/UI/UI_Select_V2`・`UI_Select_V3`。
 - 使う側: `UWasamiGameInstance`（持ち主）、`AWasamiGameMode`・`AWasamiTitleGameMode`（BeginPlay）、`AWasamiPlayerCharacter`（BeginPlay・`SaveSettings`）。
 - エンジン: `UGameplayStatics`（`LoadGameFromSlot`・`SaveGameToSlot`・`CreateSaveGameObject`・`SetSubtitlesEnabled`・`SetBaseSoundMix`・`SetSoundMixClassOverride`）、`UGameUserSettings`、`UKismetMathLibrary`（`GridSnap_Float`・`MapRangeClamped`）、`UEngine::DisplayGamma`、`FAudioDevice::GetSoundClassCurrentProperties`（デバッグ）。
@@ -124,15 +163,20 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - **感度の換算は本家と違う**（2026-09-19 のユーザーの回答で確定）: 本家はマウスの軸に設定の値そのもの（既定 0.5）を掛けるが、本作の視点の速さ（1 カウント 0.175°。02 記録）は最新版の実機を感度 1 で測って合わせたので、そのまま掛けると既定で半分の速さになる。`PlayerSensitivityFor` = 設定 / 0.5 で、既定の 0.5 を今の速さ 1.0 にした（WebGL 版の `lookScale` と同じ）。
 - エディタではスケーラビリティ・解像度・ポストプロセスの品質を当てない（上）。QUALITY と RESOLUTION SCALE の効きはパッケージでしか確かめられない。
 - スライダーはキーボードの左右では動かない（UE の `StepSize` 0.01 だけ動いて吸着で戻る。本家も同じ）。WebGL 版は左右キーで 1/9 ずつ動かしていた。
-- 閉じた後、入力の様式は UI のまま焦点を持つウィジェットが無い（本家どおり）。タイトルはマウスで押せる。ポーズの上で閉じたときの焦点はステップ 5 で見る。
+- 閉じた後、入力の様式は UI のまま焦点を持つウィジェットが無い（本家どおり）。タイトルはマウスで押せる。ポーズの上で閉じたときの焦点はステップ 6（ポーズの OPTIONS）で見る。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も同じ（タイトル・死亡画面と同じく、そのままにしている。14 記録）。
 - MOUSE SENSITIVITY のスライダーは枠の右を越えて描かれる: CONTROLS の箱の幅は見出しの最小の幅 550 で決まり、行はそれに合わせて広がり、スライダーのスロットの右の余白が −10 なので（本家の木のまま）。
 - `Wasami.Settings` で値を変えると `Saved/SaveGames/Settings.sav` に残る（次の PIE もその値で始まる）。確かめた後は `Wasami.ResetSettings`。
 
+- **本家の最新版の死亡画面の EASY の分岐は、コードどおりだとポーズでも抜けられない**（ステップ 5 で読んだ）: レベルの `DeathEvent` が `SetGamePaused(true)` し、EASY の分岐は入力の様式を変えないが、Esc の結び付けは止まっている間は動かない。ステップ 6 でユーザーの回答（抜けるのはポーズから）に合わせて、その死亡画面の上でだけ止まっていても開けるようにする（進捗記録の要確認）。
+- PIE では Esc がエディタの「プレイを止める」に取られるので、ポーズ画面は `Wasami.Pause` で開く（症状索引）。
+
 ## 確かめたこと
+- 2026-09-19（ステップ 5、PIE、`L_Hospital_Zone1`）: `Wasami.Pause` で赤くぼけた幕・黒い筆の帯・赤いワサミの頭・灰色の RESUME / RESTART / OPTIONS / QUIT が出て（NORMAL なので EASY MODE は見えない）、ゲームが止まり、カーソルが出て、`Pause_Sound_v1` が音量 0.4 で鳴り、ゲームモードの時間が止まった。RESUME にカーソルを置くと白くなり、押すと 0.5 s で消えて、ゲームが動き、カーソルが消え、曲も止んだ。開いている間の 2 回目の `Wasami.Pause` は何も足さない。死亡画面（`Wasami.Kill`）の上では止まっているので開かない。
 - 2026-09-19（ステップ 3、PIE、`L_Title`、エディタを右半分・ビューポート約 1050 × 690）: リモート実行の `unreal.WasamiOptionsWidget.show(<ゲームのワールド>)` で、タイトルの上に赤くぼけた幕と OPTIONS の枠が出て、左に GRAPHICS（QUALITY の矢印と HIGH、RESOLUTION SCALE・BRIGHTNESS の 1 と右端のつまみ）と AUDIO（MUSIC・SFX・DIALOGUE の 1、SUBTITLES の入り）、右に DIFFICULTY（NORMAL）と CONTROLS（MOUSE SENSITIVITY の 0.5 と中ほどのつまみ、HEAD BOBBING・MOUSE SMOOTHING の入り、INVERTED Y AXIS・TOGGLE SPRINT の外れ）、下に灰色の SAVE & EXIT・CANCEL が並んだ（WebGL 版 10 記録の styles.css「OPTIONS」と同じ配置）。
 
 ## 変更履歴
 - 2026-09-19: 初版（作業一覧の項目 18 のステップ 1: 設定のセーブと適用）。
 - 2026-09-19: 音量（`DD_SoundMix` のクラスの上書きとベースのミックス）と難易度の効き先（スコア画面の EASY、`IsEasy`）を足した（ステップ 2）。
 - 2026-09-19: オプション画面 `UWasamiOptionsWidget`（本家の旧版 `UMG_Options` の木・Construct・`Setup Values`・値の文字の結び付け・FadeIn）と素材の取り込み（`dd_ui.import_options`）、テスト `Wasami.Options.Screen`・`Wasami.Options.FadeIn` を足した（ステップ 3）。
+- 2026-09-19: ポーズ画面 `UWasamiPauseWidget`（本家の `UMG_Pause` の木・Construct・FadeIn・RESUME・Destruct・EASY MODE とホバーの色、頭は本作のワサミ）と素材の取り込み（`dd_ui.import_pause`）、Esc とデバッグ `Wasami.Pause`（02 記録）、テスト `Wasami.Pause.*` を足した（ステップ 5）。

@@ -29,6 +29,7 @@
 #include "WasamiGameMode.h"
 #include "WasamiInteractWidget.h"
 #include "WasamiInteractable.h"
+#include "WasamiPauseWidget.h"
 #include "WasamiPowerComponent.h"
 #include "WasamiSettingsSaveGame.h"
 #include "WasamiShard.h"
@@ -276,6 +277,7 @@ void AWasamiPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	Input->BindAction(LeftMouseAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::LeftMousePressed);
 	Input->BindAction(LeftMouseAction, ETriggerEvent::Completed, this, &AWasamiPlayerCharacter::LeftMouseReleased);
 	Input->BindAction(MouseWheelAction, ETriggerEvent::Triggered, this, &AWasamiPlayerCharacter::MouseWheel);
+	Input->BindAction(EscapeAction, ETriggerEvent::Started, this, &AWasamiPlayerCharacter::EscapePressed);
 }
 
 void AWasamiPlayerCharacter::CreateInput()
@@ -304,6 +306,9 @@ void AWasamiPlayerCharacter::CreateInput()
 	InteractAction = NewAction(TEXT("IA_Interact"), EInputActionValueType::Boolean);
 	LeftMouseAction = NewAction(TEXT("IA_LeftMouseButton"), EInputActionValueType::Boolean);
 	MouseWheelAction = NewAction(TEXT("IA_MouseWheelAxis"), EInputActionValueType::Axis1D);
+	EscapeAction = NewAction(TEXT("IA_Escape"), EInputActionValueType::Boolean);
+	// EscapePressed asks whether the game is paused itself, as the debug command comes through it too.
+	EscapeAction->bTriggerWhenPaused = true;
 
 	InputContext = NewObject<UInputMappingContext>(this, TEXT("IMC_Player"));
 	auto Map = [this](const UInputAction* Action, const FKey& Key, const TArray<UInputModifier*>& Modifiers = {})
@@ -355,11 +360,23 @@ void AWasamiPlayerCharacter::CreateInput()
 	// triggers on a frame the wheel moves, which is when the original's every-frame binding changes anything.
 	Map(LeftMouseAction, EKeys::LeftMouseButton);
 	Map(MouseWheelAction, EKeys::MouseWheelAxis);
+	// The old version's character takes Esc itself (the latest version's player controller takes it and Gamepad Special
+	// Left, which is not mapped, like the other actions' gamepad keys).
+	Map(EscapeAction, EKeys::Escape);
 }
 
 void AWasamiPlayerCharacter::InteractPressed()
 {
 	OnInteract.Broadcast();
+}
+
+void AWasamiPlayerCharacter::EscapePressed()
+{
+	// The key's binding does not execute while the game is paused (bExecuteWhenPaused off).
+	if (!UGameplayStatics::IsGamePaused(this))
+	{
+		UWasamiPauseWidget::Show(this);
+	}
 }
 
 void AWasamiPlayerCharacter::LeftMousePressed()

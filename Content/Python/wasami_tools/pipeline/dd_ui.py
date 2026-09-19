@@ -43,6 +43,13 @@ The options screen (UWasamiOptionsWidget, after the old version's UI/Menu/UMG_Op
 its frame, the value boxes, the arrows (normal and hovered), the sliders' thumb and the two check boxes, the same in
 both versions. Its font comes with the tablet.
 
+The pause menu (UWasamiPauseWidget, after UI/Menu/Pause/UMG_Pause, the same tree in both versions): the black brush
+stroke down the middle (pause_screen_bg), RESTART?'s frame (restart_window_frame; GIVING UP?'s comes with the death
+screen) and the sound it opens with (UI_Pause). Its music (Pause_Sound_v1) comes with the title, the select with the
+tablet. In place of the original's heads (the level's monster above the menu and peeking over the two windows), this
+game's Wasami, white to be tinted red by the widget (SourceArt/Wasami/UI/pause_head.png and pause_peek.png, the WebGL
+version's pause-head.webp and pause-peek.webp as they were) under /Game/Wasami/UI/Pause.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -121,6 +128,15 @@ OPTIONS_TEXTURES = tuple("UI/Menu/Settings/" + name for name in (
     "checkbox_icon_checked",
 ))
 OPTIONS_SOUNDS = ("Audio/UI/UI_Select_V2",)  # SAVE & EXIT
+
+# ------------------------------------------------------------------------------------------------ the pause menu
+PAUSE_TEXTURES = ("UI/Menu/Pause/pause_screen_bg", "UI/Menu/Pause/restart_window_frame")
+PAUSE_SOUNDS = ("Audio/UI/UI_Pause",)
+PAUSE_WASAMI_ROOT = paths.WASAMI_ROOT + "/UI/Pause"
+PAUSE_WASAMI = (
+    (os.path.join(paths.PROJECT, "SourceArt", "Wasami", "UI", "pause_head.png"), PAUSE_WASAMI_ROOT + "/T_PauseHead"),
+    (os.path.join(paths.PROJECT, "SourceArt", "Wasami", "UI", "pause_peek.png"), PAUSE_WASAMI_ROOT + "/T_PausePeek"),
+)
 
 # ------------------------------------------------------------------------------------------------ the title screen
 TITLE_MASK = "UI/Main/TitleScreen/title_screen_video_mask"
@@ -311,10 +327,21 @@ def import_options():
             "sounds": len([dd_assets.sound(rel, VERSION) for rel in OPTIONS_SOUNDS])}
 
 
+def import_pause():
+    """The pause menu's textures and sound, and this game's heads (saved). Returns how many of each."""
+    result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in PAUSE_TEXTURES]),
+              "sounds": len([dd_assets.sound(rel, VERSION) for rel in PAUSE_SOUNDS])}
+    for path, asset in PAUSE_WASAMI:
+        tex = dd_stage.import_texture(dict(LOADING_EMBLEM_SETTINGS, file=path, asset=asset))
+        EAL.save_loaded_asset(tex, only_if_is_dirty=False)
+    result["wasami_textures"] = len(PAUSE_WASAMI)
+    return result
+
+
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
-    screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's, the title screen's and
-    the options screen's, then saves /Game/DD."""
+    screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's, the title screen's, the
+    options screen's and the pause menu's, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -334,5 +361,7 @@ def import_all():
         result["title_" + key] = count
     for key, count in import_options().items():
         result["options_" + key] = count
+    for key, count in import_pause().items():
+        result["pause_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

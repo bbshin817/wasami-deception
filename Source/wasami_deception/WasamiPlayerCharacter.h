@@ -71,6 +71,13 @@ public:
 	/** Fires OnInteract (F calls it; the debug command and the tests call it directly). */
 	void InteractPressed();
 
+	/**
+	 * Esc pressed (the old version's InpActEvt_Escape, @7758): CreateAndAddWidget(UMG_Pause, 5), unless the game is
+	 * paused (the original's key binding does not execute then); the menu's UI-only input keeps Esc from coming again.
+	 * Wasami.Pause calls it (Esc stops a play session in the editor).
+	 */
+	void EscapePressed();
+
 	/** How far ahead of the camera the player looks for something to use (the original's 200 cm traces). */
 	static constexpr float InteractDistance = 200.f;
 
@@ -319,6 +326,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInputAction> MouseWheelAction;
+
+	/** Esc, which opens the pause menu. */
+	UPROPERTY(Transient)
+	TObjectPtr<UInputAction> EscapeAction;
 
 	/** The sounds and shakes above, loaded at BeginPlay. */
 	UPROPERTY(Transient)

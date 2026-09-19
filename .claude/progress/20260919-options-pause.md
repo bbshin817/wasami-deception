@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/options-pause
 base: d7ae8be
 started: 2026-09-19 12:03
-updated: 2026-09-19 15:35
+updated: 2026-09-19 16:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -22,16 +22,12 @@ updated: 2026-09-19 15:35
 - [x] 2. 音量の SoundClass と SoundMix、難易度の効き先 … 2026-09-19 完了。`DD_SoundMix` と SoundClass 5 つを取り込み、取り込み済みの音 62 件に本家のクラスを付けた（`import_dd_sound_classes`。01 記録）。`Apply(WorldContext)` の `SetSoundMixClassOverride` と `CheckSettingsSave` の `SetBaseSoundMix`、`UWasamiGameInstance::IsEasy()` をスコア画面へ（15・13 記録）。死亡画面の Easy の分岐はステップ 6 で最新版どおりに作る（ユーザーの回答）。
 - [x] 3. オプション画面の木と素材 … 2026-09-19 完了。`UWasamiOptionsWidget`（旧版 `UMG_Options` の木をスロットのまま・Construct・`Setup Values`・値の箱の結び付け・FadeIn。タイトルの外では DIFFICULTY を外す）、`dd_ui.import_options`（7 枚）、テスト `Wasami.Options.Screen`・`FadeIn`。中身は実装記録 15。
 - [x] 4. オプション画面の操作とタイトルの OPTIONS … 2026-09-19 完了。スライダーの 1/9 の吸着（`Setup Values` の間は吸着させない）・矢印・SAVE & EXIT（`WriteValues` → 持ち主 `SettingsOwner` の `SaveSettings`）・CANCEL（FadeIn の逆再生、0.3 s で外れる）・ホバー、`UI_Select_V2` の取り込み、タイトルの OPTIONS、テスト `Wasami.Options.Controls`・`SaveAndCancel`。中身は実装記録 15。閉じた後は入力の様式を戻さない（本家どおり）ので、**ポーズの上で閉じたときの焦点・Esc はステップ 5 で見る**。
-- [ ] 5. ポーズ画面の木・アニメ・音と開き方（`UWasamiPauseWidget`）
-  - 旧版 `pak_reference/_assets/.../UI/Menu/Pause/UMG_Pause.json` の木（Blur+Red → 帯 Image_152・頭 Icon・EASY MODE TextBlock_1・メニュー VerticalBox_113〈RESUME / RESTART / OPTIONS / QUIT〉→ CanvasPanel_3 → Givingupbox → RestartBox）をスロットのまま C++ で。頭は本家の病院の `pause_reapernurse_head`（キャラクター）でなく本作のワサミ（WebGL 版の `<WEBGL>/public/title/pause-head.webp`、のぞく頭は `pause-peek.webp`。前処理で PNG にして `SourceArt/Wasami/UI/` へ。本家の頭の赤 `rgb(192, 0, 0)` で塗る）。帯・枠は本家のテクスチャ（`restart_window_frame_2`・`quit_window_frame` は取り込み済み、帯は JSON で名前を確かめて取り込む）。
-  - `Construct`（`SetGamePaused(True)`・UI の入力とカーソル・`UI_Pause`・曲 `Pause_Sound_v1` を FadeIn・`FadeIn` のアニメ）と `Destruct`（曲を 0.5 s で消す）、RESUME（`FadeIn` の逆再生・0.5 s 後に `SetGamePaused(False)`・ゲームの入力・`RemoveFromParent`）。EASY MODE は難易度が EASY のときだけ見える（本家は色の結び付け。`UWasamiGameInstance::IsEasy()`）。
-  - 開き方: 本家の旧版はキャラクターの Esc で `CreateAndAddWidget(UMG_Pause, Z 5)`、最新版はプレイヤーコントローラーの Esc と Gamepad Special Left で Z 1（`DD_PlayerController` @746 → @15。条件なしで毎回作る。キーの結び付けは `bExecuteWhenPaused` 偽）。死亡画面の EASY の分岐（ステップ 6）はポーズでしか抜けないので、**死亡画面の上でもポーズが開けるか**をここで確かめておく。Enhanced Input にポーズの入力を足す。**死亡画面・捕獲・スコア画面・読み込み画面・欠片の画面・タイトル・ポーズ中は開かない**かを本家のコードで確かめる（本家は Esc で毎回作る。ゲームが止まっている間に Esc が届くか・`SetGamePaused` の下で入力がどうなるかを読む）。**PIE では Esc がエディタの「プレイを止める」に取られる**ので、確かめはデバッグ `Wasami.Pause` か、エディタのキー割り当てを見て決める（症状索引に書く）。
-  - テスト `Wasami.Pause.*`（木・アニメのキー・音・RESUME で解ける）。
-  - 変更予定: `Source/wasami_deception/WasamiPauseWidget.*`（新）、`WasamiPlayerCharacter.*`（か新しいプレイヤーコントローラー）、`Tests/WasamiPauseTests.cpp`（新）、`Tools/dd/prepare_title.py`（か新しい前処理）、`SourceArt/Wasami/UI/pause_*.png`（新）、`dd_ui.py`、`/Game/DD/UI/Menu/Pause/…`・`/Game/Wasami/UI/Pause/…`、実装記録 09（か 15）・02・01
+- [x] 5. ポーズ画面の木・アニメ・音と開き方 … 2026-09-19 完了。`UWasamiPauseWidget`（本家の `UMG_Pause` の木をスロットのまま・Construct・FadeIn・RESUME・Destruct・EASY MODE とホバーの色。頭は本作のワサミ `T_PauseHead`・`T_PausePeek` を赤で塗る）、`dd_ui.import_pause`、プレイヤーの Esc（`IA_Escape` → `EscapePressed`: 止まっていなければ Z 5 で開く）とデバッグ `Wasami.Pause`、テスト `Wasami.Pause.*` 3 件。ポップアップ 2 つ（`Givingupbox`・`RestartBox`）と 2 枚目の幕 `CanvasPanel_3` は木にあり、拡大 0・不透明度 0 のまま。中身は実装記録 15。
 - [ ] 6. ポーズのボタンの道と通しの確かめ
   - RESTART → RESTART?（`Popup_0`・選択音とウィンドウの音）→ YES: 本家どおりセーブの病院の欄を空の欄にして書き、今のレベルを開く（旧版 @5158: 選択音 → `SetGamePaused(False)` → ゲームの入力 → `Hard Check Point` 0 → `OpenLevel`。最新版は回収の記憶〈`Shards To Be Removed`〉も空にし、`UMG_BlackFade_2`〈Speed 5、Z 10〉の後に開く。下の決定事項）。死亡画面の `RestartEvent`（09 記録。Zone 2 でチェックポイント 0 なら Zone 1 の到着）と同じ道を使う。NO（再生速度 0.7 の選択音と `Popup_0` の逆再生）。
   - OPTIONS → `UWasamiOptionsWidget` を Z 10 で（ポーズの上。ゲームの中では本家どおり DIFFICULTY の箱が外れる。15 記録）。QUIT → GIVING UP?（`Popup`）→ QUIT TO TITLE（セーブはそのまま、タイトル `L_Title`）/ QUIT TO DESKTOP（`QuitGame`。WebGL 版はブラウザなので置かなかった）/ CANCEL。
-  - **死亡画面の EASY の分岐（最新版に倣う。2026-09-19 のユーザーの回答）**: 最新版 `pak_reference_2/_bytecode/DDeception/Content/Blueprints/UMG/UMG_DeathScreen.txt` の @2354〜: `Local Lives`（Construct の `Decrement Lives` の後。`Clamp(Lives − 1, 0, 6)` なので EASY でも 0 まで減る）が 0 なら `Fade In` → `Get Lives` が 0 で `Global Settings Save Instance.Difficulty == 0`（`ENUM_DifficultySettings` の 0 = EASY）なら `Life Animation`（@46420。残りのライフの絵を 1 s ごとに外して `Shake`）だけ → 6 s 後の DoOnce（@2743 → @2778）が `Get Lives > 0` で止まる。ゲームオーバーの音・`Death` のアニメ・`SetInputMode_UIOnlyEx`・ボタン（@3104 → @354 → @972）は出ず、`Proceed`（声の終わり @2934）は `Local Lives` が 0 でないときだけ結ぶので開き直しもしない。抜けるのはポーズの RESTART / QUIT だけ。NORMAL は今のまま。本作の `UWasamiDeathScreenWidget`（09 記録）のライフ 0 の分岐に `UWasamiGameInstance::IsEasy()` を足し、死亡画面の入力の状態でポーズの入力が届くこと・ポーズが死亡画面の上に出ること（Z の順）を確かめる。テスト `Wasami.DeathScreen.Easy*`（EASY でライフ 0 ならボタンが出ず開き直さない、NORMAL は今のまま）。PIE で EASY・ライフ 1 から死に、ポーズの RESTART で抜ける。
+  - ポップアップのアニメ `Popup`（`Givingupbox`）・`Popup_0`（`RestartBox`）は同じキー: 窓の拡大 0 → 1（0.25 s、自動の接線 3.33e-5/tick で少し行き過ぎる）→ 1（0.5 s）と不透明度 0 → 1（0.25 s）、`Blur+Red` の不透明度 1 → 0・`CanvasPanel_3` の不透明度 0 → 1（どちらも 0.25 s）。再生範囲は [0, 30001)。オプション画面の FadeIn と同じ値（`UMG_PopUp` の `Popup`）。`redblock` の見え方の切り替え（開くと Visible でメニューのクリックを遮る）は各ボタンの流れで読む。
+  - **死亡画面の EASY の分岐（最新版に倣う。2026-09-19 のユーザーの回答）**: 最新版 `pak_reference_2/_bytecode/DDeception/Content/Blueprints/UMG/UMG_DeathScreen.txt` の @2354〜: `Local Lives`（Construct の `Decrement Lives` の後。`Clamp(Lives − 1, 0, 6)` なので EASY でも 0 まで減る）が 0 なら `Fade In` → `Get Lives` が 0 で `Global Settings Save Instance.Difficulty == 0`（`ENUM_DifficultySettings` の 0 = EASY）なら `Life Animation`（@46420。残りのライフの絵を 1 s ごとに外して `Shake`）だけ → 6 s 後の DoOnce（@2743 → @2778）が `Get Lives > 0` で止まる。ゲームオーバーの音・`Death` のアニメ・`SetInputMode_UIOnlyEx`・ボタン（@3104 → @354 → @972）は出ず、`Proceed`（声の終わり @2934）は `Local Lives` が 0 でないときだけ結ぶので開き直しもしない。抜けるのはポーズの RESTART / QUIT だけ。NORMAL は今のまま。本作の `UWasamiDeathScreenWidget`（09 記録）のライフ 0 の分岐に `UWasamiGameInstance::IsEasy()` を足す。**本家のコードどおりだとここでもポーズは開かない**（ステップ 5 で読んだ: 死亡画面の間はレベルの `DeathEvent` の `SetGamePaused(true)` で止まっていて、Esc の結び付けは止まっている間は動かない）ので、`AWasamiPlayerCharacter::EscapePressed` の「止まっていれば開かない」に、EASY でライフ 0 の死亡画面が出ているときだけの例外を足す（死亡画面に待っていることを問う関数を足す。入力の様式はゲームのままなので Esc は届く。`IA_Escape` は止まっている間も起きる）。ポーズは Z 5 で死亡画面（Z 5）より後に足すので上に出る。テスト `Wasami.DeathScreen.Easy*`（EASY でライフ 0 ならボタンが出ず開き直さない、NORMAL は今のまま）。PIE で EASY・ライフ 1 から死に、ポーズの RESTART で抜ける。
   - デバッグ `Wasami.Pause`、台本 `Tools/playthrough.py` に区間 `pause`（Zone 1 でポーズ → OPTIONS で感度を変えて SAVE & EXIT → RESUME で視点の速さが変わる → ポーズ → QUIT → QUIT TO TITLE → RESUME で続き）。PIE で通し、`--record` の連番のグリッドを Discord に（ポーズの FadeIn・OPTIONS・GIVING UP?）。
   - 変更予定: `WasamiPauseWidget.*`、`WasamiDeathScreenWidget.*`（EASY の分岐と、道を共有するなら）、`WasamiGameMode.*`、`Tests/WasamiPauseTests.cpp`、`Tests/WasamiDeathScreenTests.cpp`、`Tools/playthrough.py`、実装記録 09・15・06・01
 - [ ] 7. 閉じる
@@ -39,7 +35,7 @@ updated: 2026-09-19 15:35
 
 ## 次にやること
 
-ステップ 5 を始める（ブランチ `feature/options-pause`）。旧版 `pak_reference/_assets/DDeception/Content/UI/Menu/Pause/UMG_Pause.json` の木を `python tmp/umg_tree.py`（無ければ作り直す。下の「再開時の注意」）で読み、`python Tools/dd/bp_flow.py pak_reference/_bytecode/DDeception/Content/UI/Menu/Pause/UMG_Pause.txt --list` で Construct・Destruct・RESUME とホバーを読む。開き方は旧版のキャラクターの `InpActEvt_Escape` @7758 と最新版の `DD_PlayerController` @746 を比べる。頭の絵は WebGL 版の `pause-head.webp`・`pause-peek.webp` を前処理で PNG にする。
+ステップ 6 を始める（ブランチ `feature/options-pause`）。旧版 `pak_reference/_bytecode/DDeception/Content/UI/Menu/Pause/UMG_Pause.txt` の RESTART @3996・YES @5158・NO @6080・OPTIONS @6085・QUIT @4516・QUIT TO TITLE @6207・QUIT TO DESKTOP @4843・CANCEL @4709 を `python Tools/dd/bp_flow.py <file> <番地>` で読み（最新版 `pak_reference_2` の同じファイルの YES @5408・`Finish Restart` @6656 と比べる）、`UWasamiPauseWidget`（実装記録 15 の「ポーズ画面」）にポップアップのアニメとボタンの道を足す。死亡画面の EASY の分岐は `UWasamiDeathScreenWidget`（09 記録）と `AWasamiPlayerCharacter::EscapePressed`（02 記録）。大きければ 6a（ポップアップとボタンの道）・6b（死亡画面の EASY と通しの確かめ）に分ける。
 
 ## 本家の流れ（読んだもの）
 
@@ -63,20 +59,22 @@ updated: 2026-09-19 15:35
 
 - 2026-09-19: **オプション画面の Esc は本家どおり何もしない**（ステップ 4）— 本家の `UMG_Options` は Esc を結ばず、UI の入力の様式なのでキャラクターの Esc も届かない。WebGL 版の Esc = CANCEL はブラウザの Esc がポインタロックを外すための足し。下の要確認。
 
+- 2026-09-19（ステップ 5）: **ポーズは旧版の Z 5 で開く**（最新版は 1）— 最新版の 1 では Z 5 の死亡画面の下になり、ステップ 6 の EASY の死亡画面の上に出せない。**Esc はキャラクターが受ける**（旧版。本作はプレイヤーコントローラーを持たず、ゲームパッドのキーはほかの操作と同じく割り当てない）。止まりの確かめは `EscapePressed` がする（`Wasami.Pause` も同じ道）。
+- 2026-09-19（ステップ 5）: **頭は WebGL 版の白い絵を本家の頭の赤で塗る**（`HeadTint` = rgb(192, 0, 0)。のぞく頭は白い絵に黒い縁なので、塗ると赤い絵に黒い縁）。
+
 ## 要確認（ユーザー）
 
 - 2026-09-19（ステップ 4）: オプション画面で Esc を押しても何も起きない（本家どおり。閉じるのは CANCEL / SAVE & EXIT だけ）。WebGL 版は Esc を CANCEL と同じにしていた。Esc でも閉じたいか。
+- 2026-09-19（ステップ 5）: 本家の最新版は、EASY でライフ 0 の死亡画面のあいだゲームが止まっていて Esc も効かない（コードどおりだと抜け道の無い行き止まり）。回答（抜けるのはポーズから）どおりにするため、その死亡画面の上でだけ、止まっていても Esc でポーズが開くようにする（ステップ 6。ポーズは旧版の Z 5 で死亡画面の上に出す）。本家どおり行き止まりのままにするか、この形でよいか。
 
 ## 再開時の注意
 
-- 本家のウィジェットの木を読むのは `python tmp/umg_tree.py <pak_reference の …/UMG_X.json>`（ステップ 3 で作った使い捨て。git の外なので、無ければ作り直す: `WidgetTree` の側の部品を `Slots` → `Content` でたどり、`Slot`・`Parent` を除いた props を並べる）。ステップ 5 の `UMG_Pause` にも使う。
-
+- 本家のウィジェットの木を読むのは `python tmp/umg_tree.py <pak_reference の …/UMG_X.json>`（ステップ 3 で作った使い捨て。git の外なので、無ければ作り直す: `WidgetTree` の側の部品を `Slots` → `Content` でたどり、`Slot`・`Parent` を除いた props を並べる）。アニメのキーは同じ `.json` の `exports` の `MovieScene`・`MovieSceneFloatSection`・`MovieScene2DTransformSection`（`outer` が `UMG_X_C.` で始まるもの）と `WidgetAnimation` の `AnimationBindings`。
+- PIE でポーズ画面を出すのは `python Tools/pie.py cmd "Wasami.Pause"`（Esc はエディタが遊びを止める。症状索引）。2026-09-19 のエディタの配置（右半分）では RESUME が画面の (2345, 551)、ビューポートの切り出しは `--region 1826 180 2870 860`。PIE の前に `Saved/SaveGames/*.sav` の控えを取り、止めたら戻す（`Wasami.Kill` で死亡数が書かれる）。
 - 開発用の設定のセーブ `Saved/SaveGames/Settings.sav` は既定値（ステップ 1 の確かめの後に書き直した）。`Wasami.Settings` で値を変えたら `Wasami.ResetSettings` で戻す。
 - テストをリモート実行で走らせるときは、エディタを前面にする（`python Tools/desktop.py click <タイトルバーの空き> --allow WindowsTerminal.exe --allow UnrealEditor.exe`。2026-09-19 はエディタが右半分にあり、タイトルバーの空きは (2800, 82)。起動時に浮いて出るメッセージログの窓は閉じてよい）。PIE でオプション画面だけを出すのは `L_Title` を開いて `python Tools/pie.py start` の後、リモート実行の `unreal.WasamiOptionsWidget.show(<ゲームのワールド>)`（止めたら Zone 1 を開き直す）。タイトルの OPTIONS は PIE の画面の (1964, 576)（同じ窓の配置のとき）。ボタンのホバーだけを見るのは `python Tools/desktop.py click X Y --count 0 --allow UnrealEditor.exe`（動かすだけで押さない。`look` の相対の動きはカーソルを思った所へ運ばない）。
 
 ## 検証
 
-- ステップ 1: check_records OK。C++ ビルド OK（`WasamiVanishWidget.cpp` の定数がユニティの塊でぶつかったので `VanishTicksPerSecond` に改め、無名名前空間の名前の重複を洗い出した〈多重定義の `Place` だけ〉）。テスト `Wasami.Settings`・`Title`・`GameFlow`・`Capture` の 18 件が通った。PIE（Zone 1）で `Settings.sav` が作られ、プレイヤーは感度 1.0・ラグ 20 で始まり、`Wasami.Settings MouseSensitivity 1` で 2.0、`bMouseSmoothing False` でラグ 50、`Brightness 0.5` で画面の平均の明るさが 56.5 → 48.9 になり、PIE を止めるとエディタの明るさが戻った（`gamma` の前後で同じ）。
-- ステップ 2: check_records OK。C++ ビルド OK。テスト `Wasami.Settings`（新しい `SoundMix` を含む）・`LevelClear`・`GameFlow`・`Title`・`ZoneFlow`・`DeathScreen` の 31 件が通った。PIE（Zone 1）で `Wasami.Settings Music 0.3`・`SFX 0.5` の後、音の装置の Music と SFX のクラスの音量が約 1 s で 0.300・0.500 になり、Dialogue は 1 のまま。`Wasami.ResetSettings` で既定に戻した。
-- ステップ 3: check_records OK。C++ ビルド OK（ラムダの引数 `Padding` が `UUserWidget::Padding` を隠して C4458 になったので改名）。テスト `Wasami.Options`（新しい `Screen`・`FadeIn`）・`Settings`・`Title`・`DeathScreen` の 18 件が通った。PIE（`L_Title`）で画面を出し、本家の旧版と同じ配置（左に GRAPHICS・AUDIO、右に DIFFICULTY・CONTROLS、下に SAVE & EXIT・CANCEL）と既定値の表示を撮って確かめた。
-- ステップ 4: check_records OK。C++ ビルド OK（警告なし）。テスト `Wasami.Options`（新しい `Controls`・`SaveAndCancel`）・`Settings`・`Title` の 13 件が通った。PIE（`L_Title`）でタイトルの OPTIONS から開き、MUSIC のバーを押すと 0.3（1/3）に吸い付き、QUALITY の左矢印で MEDIUM、DIFFICULTY の左矢印で EASY、INVERTED Y AXIS が入り、SAVE & EXIT はホバーで白くなり、押すと閉じて `Settings.sav` が書かれ（`Wasami.Settings` で Quality 1・Music 0.333・Easy・Y 反転、Music のクラスの音量 0.333）、PIE を開き直して開くとその値のまま出た。SFX を 0 にして CANCEL で閉じると設定は 1 のまま。開発用の設定は `Wasami.ResetSettings` の後に控えから戻した。
+- ステップ 1〜4: check_records OK・ビルド OK・テスト（`Wasami.Settings`・`Options`・`Title` ほか）が通り、PIE で設定・音量・オプション画面を確かめた（中身は実装記録 15 の「確かめたこと」）。
+- ステップ 5: check_records OK。C++ ビルド OK（ラムダの `Padding`・`Slot` が `UUserWidget` の同名を隠して C4458 になったので改名。警告なし）。テスト `Wasami.Pause`（新しい 3 件）・`Options`・`Settings`・`Title` の 16 件と、`GameFlow`・`Power`・`Interact`・`DeathScreen`・`Capture`・`Settings.Player` の 32 件が通った。PIE（Zone 1）で `Wasami.Pause` がメニューを出してゲームと時間を止め、曲が鳴り、RESUME のホバーで白、押すと 0.5 s で消えて動きが戻り、開いている間の 2 回目は何も足さず、死亡画面の上では開かない。開発用のセーブは控えから戻した。
