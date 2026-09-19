@@ -24,7 +24,7 @@ updated: 2026-09-19
 # 特殊シャード（スタンオーブと赤いシャード）
 
 ## 役割
-本家の特殊シャード 2 種（最新版 `pak_reference_2` の `Blueprints/Main/BP_PowerOrb` = スタンオーブ、`BP_BonusShard` = 赤いシャード）。1 体ずつ置かれ、150 s ごとに 5 s 明滅して出現点を移る。オーブを取ると全敵が気絶し、赤いシャードを取ると 60 s 敵がタブレットの地図に出る（作業一覧の項目 10）。**作っている途中**: いまあるのは素材の取り込み、取得の画面 `UWasamiVignetteSidesWidget`、共通の基底 `AWasamiSpecialShard`、オーブ `AWasamiPowerOrb` と赤いシャード `AWasamiBonusShard`、それぞれの取得の演出 `AWasamiStunCollectEffect`・`AWasamiBonusShardCollectEffect`、出現点 2 種、プレイヤーの `AddToMap`・`RemoveFromMap`（02 記録）と敵の地図の印（07 記録）。両ゾーンに置いてある（組み立ての `dd_level._flow`。01 記録）。PIE での確かめは進捗記録 `20260919-special-shards` のステップ 6。
+本家の特殊シャード 2 種（最新版 `pak_reference_2` の `Blueprints/Main/BP_PowerOrb` = スタンオーブ、`BP_BonusShard` = 赤いシャード）。1 体ずつ置かれ、150 s ごとに 5 s 明滅して出現点を移る。オーブを取ると全敵が気絶し、赤いシャードを取ると 60 s 敵がタブレットの地図に出る（作業一覧の項目 10）。**作っている途中**: いまあるのは素材の取り込み、取得の画面 `UWasamiVignetteSidesWidget`、共通の基底 `AWasamiSpecialShard`、オーブ `AWasamiPowerOrb` と赤いシャード `AWasamiBonusShard`、それぞれの取得の演出 `AWasamiStunCollectEffect`・`AWasamiBonusShardCollectEffect`、出現点 2 種、プレイヤーの `AddToMap`・`RemoveFromMap`（02 記録）と敵の地図の印（07 記録）。両ゾーンに置いてある（組み立ての `dd_level._flow`。01 記録）。PIE で両ゾーンを確かめた（下の「PIE での確かめ」。作業一覧の項目を閉じるのは進捗記録 `20260919-special-shards` のステップ 7）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_specials()`（素材。`import_dd_shards` と `import_dd_gimmicks` の後。地図の印のマスターと粒子の材質を共有する）。
@@ -132,6 +132,14 @@ updated: 2026-09-19
 - エンジン: `MaterialExpressionNoise`・`MaterialExpressionCustom`・`MaterialExpressionFresnel`・`MaterialExpressionRotator`
 - 本体: `AWasamiSphereBurst`・`AWasamiPowerBurst`・`AWasamiPrimalPower::PrimalFadeCurve`（04 記録。取得の演出の基底と曲線）、`IWasamiEnemyInterface` とタグ `Enemy`、敵の地図の印（07 記録）、プレイヤーの `MinimapActorClasses`・`AddToMap`・`RemoveFromMap`（02 記録）、ゲームモードのセーブの `BonusShards`（06 記録）、`UWasamiVignetteSidesWidget`
 
+## PIE での確かめ（2026-09-19、進捗記録のステップ 6）
+収録と画像は `Intermediate/DesktopAgent/shots/`・`Intermediate/Overnight/`（git の外）。調べる道具は `observations/tools/specials/`（`probe.py` が本体・出現点・敵の状態を読む、`move.sh` が本体を好きな所へ動かす、`freeze.sh` が敵の時間を止める。git の外）。
+- **Zone 1**（`Wasami.ResetSave` から、04）: オーブの出現点 11・赤いシャードの 10・`ID` 0。`slomo 5` で早回しすると、143〜159 s の間に両方とも出現点へ移った（オーブ [10]、赤いシャード [5]）。`Wasami.PowerOrb` で 0.1 s ごとの明滅 → 5 s で橙の閃光が出て別の点へ移った（`pie-orb-flicker.mkv`、グリッド `specials-grid-flicker.png`）。
+- **オーブ**（Zone 2 のチェックポイント 9。迷路の入口に動かして歩いて取る）: タブレットの地図にオーブの橙の四角。取ると黄の閃き → ENEMIES STUNNED → 橙の球が広がって約 2 s で晴れる（`pie-orb-collect2.mkv`、`specials-grid-orb.png`）。迷路のナース 3 体が `Stun`・気絶の残り 16.4 s（取った直後に読んだ）。
+- **赤いシャード**（同じ所）: 地図に赤い三角。取ると赤紫の閃き → 赤の ENEMIES REVEALED と赤い縁（`pie-bonus-collect.mkv`、`specials-grid-bonus.png`）。地図を広げる（Z）と 50 m の内のナース 2 体に赤い三角、60 s 後にシャードが消えて印も外れた（`specials-grid-map.png`）。`Wasami.Checkpoint 9` → `Wasami.Kill` で開き直すと、赤いシャードは出ずオーブは出た。`Wasami.LevelClear` の BONUS SHARDS は 1/2・A・+15。
+- **出現点のそばの罠**: Zone 2 のオーブの出現点 5 (7124, 1766) はのこぎりの罠（`WasamiSawTrap_3` (7169, 1750)）の通り道にあり、歩いて取りに行くと取った直後にのこぎりで死んだ（打たれた閃き → 死亡画面）。本家の配置どおりで、Zone 2 の出現点の多くが迷路の罠の通り道にある。
+- **通し**（台本 `Tools/playthrough.py` を `Wasami.ResetSave` から 1 回の PIE で、`shards_through2.mkv`）: 11 区間がすべて終わりに着いた（終了コード 0、266 s）。1 回目は `z2_altar` の最初の歩きで迷路の入口のアーチの脇に当たって止まり、台本を直した（01 記録）。どの区間もゾーンに 155 s いないので、特殊シャードは台本の道に出ない。
+
 ## テスト（`Tests/WasamiSpecialShardTests.cpp`）
 - `Wasami.PowerOrb.Parts`: 部品の値（結晶のメッシュ・材質・位置・拡縮・当たりなし、カプセルの 45.46 cm・中心・`OverlapAllDynamic`・Pawn の重なり・重なりの通知、灯の色・単位なし 1000・減衰 200・影なし、印の材質・20 m 上・拡縮・影なし・当たりなし）、`ShardSpawnTime` 150、テレキネシスのインターフェースを持たない、プレイヤーの地図がオーブのクラスを写す、出現点のビルボード（ルート・ゲーム中は隠れる・32 cm・`m_crystal_Inst3`）。
 - `Wasami.PowerOrb.CollectEffect`: 演出の 4 本のトラック（書き出しのキーと接線から Python で計算した値）、橙のゲイン・閃光・`Range` 4000・球の色・ピッチ 2、Primal Fear は色を入れずピッチ 1。
@@ -149,6 +157,7 @@ updated: 2026-09-19
 - Zone 2 の `m_crystal_Inst2`（ステージの小物）はステージの組み立てが汎用の `M_DD_Substance` のインスタンスで作っていて、ここの `m_crystal` とは別。
 
 ## 変更履歴
+- 2026-09-19: PIE で両ゾーンを確かめ、台本の通しを流した（上の「PIE での確かめ」。ステップ 6）
 - 2026-09-19: 両ゾーンに本体と出現点を置いた（`dd_level._flow`。上の「配置」。ステップ 5）
 - 2026-09-19: 赤いシャード `AWasamiBonusShard`（本家 `BP_BonusShard`）と取得の演出 `AWasamiBonusShardCollectEffect`、デバッグのコマンド `Wasami.BonusShard`、テスト `Wasami.BonusShard.*` を足した。オーブと同じ部品と周期を基底 `AWasamiSpecialShard` に移し（`SpawnPowerOrb` は `SpawnSpecialShard` に）、印の当たりを外した。ユニティビルドの塊が変わり、`WasamiStunCollectEffect.cpp`（Primal とぶつかった曲線のキーを `Stun*` に）と `WasamiVignetteSidesWidget.cpp`（連続回収の画面とぶつかった名前を `Sides*` に）の無名名前空間の名前を改めた（ステップ 4）
 - 2026-09-19: オーブ `AWasamiPowerOrb`（本家 `BP_PowerOrb`）、取得の演出 `AWasamiStunCollectEffect`（`BP_StunCollectEffect`。Primal Fear と共有する球の基底 `AWasamiSphereBurst` を 04 記録に）、出現点 2 種、デバッグのコマンド `Wasami.PowerOrb`、テスト `Wasami.PowerOrb.*` を足した（ステップ 3）

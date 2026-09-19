@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/special-shards
 base: ae0762c
 started: 2026-09-19 20:19
-updated: 2026-09-19 21:36
+updated: 2026-09-19 22:06
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -23,16 +23,13 @@ updated: 2026-09-19 21:36
 - [x] 3. オーブ `AWasamiPowerOrb` と取得の演出 `AWasamiStunCollectEffect`、出現点 2 種、テスト … 2026-09-19 完了。実装記録 16・04。
 - [x] 4. 赤いシャード `AWasamiBonusShard` と `AWasamiBonusShardCollectEffect`、地図の敵の印、テスト … 2026-09-19 完了。オーブと同じ部品と周期を基底 `AWasamiSpecialShard` に移した（`SpawnPowerOrb` → `SpawnSpecialShard`）。プレイヤーの `AddToMap`・`RemoveFromMap`・`IsOnMap`（02 記録）、敵の `MapMark`（07 記録）、デバッグの `Wasami.BonusShard [N]`、テスト `Wasami.BonusShard.Parts`・`.Save`・`.Collect`。ユニティビルドの名前のぶつかりを洗い出す `Tools/check_unity_names.py` を足した。作りは実装記録 16。
 - [x] 5. 両ゾーンに置く … 2026-09-19 完了。`dd_level._flow` が本体 2 つと出現点を置き（`SpawnPoints` は空でクラスで集める。Zone 2 の赤いシャードは `ID` 1）、本体の灯を単独で置かない。両ゾーンに `place_dd_flow`（Zone 1: 本体 2・点 21、Zone 2: 2・20、前の灯 2 つずつを外した、`failed_settings` 0）→ `build_navigation`（2/2・29/29）。作りは実装記録 01・16 の「配置」。
-- [ ] 6. PIE で確かめ、通しを流す
-  - PIE（両ゾーン）: 155 s（かデバッグの `Wasami.PowerOrb [N]`・`Wasami.BonusShard [N]`）で出現点に明滅して現れ、地図に印、取るとオーブは ENEMIES STUNNED・橙の閃き・揺れ・敵が倒れて 17 s で起きる、赤いシャードは ENEMIES REVEALED・赤の閃き・地図に敵の印が 60 s、チェックポイントの後に死んで開き直すと赤いシャードが出ない、スコア画面の BONUS SHARDS が数える。収録して連番のグリッドを Discord に。
-  - 台本 `Tools/playthrough.py` を頭から流し、置いた後も通ることを確かめる（台本が特殊シャードを取りに行く必要は無い）。
-  - 変更予定: 要るなら `Tools/playthrough.py`、実装記録 16・01
+- [x] 6. PIE で確かめ、通しを流す … 2026-09-19 完了。両ゾーンで周期・明滅・取得・気絶・地図の暴き・セーブ・スコア画面を確かめ、台本の通しが 11 区間とも通った（1 回目に止まった `z2_altar` の歩きを `snap` にした）。結果は実装記録 16 の「PIE での確かめ」、台本は 01。
 - [ ] 7. 閉じる
   - 作業一覧の項目 10 を完了にし（完了の条件の読み替えを書く）、実装記録と handover の「現状と次の一歩」（遊んで確かめる手順に特殊シャードを足す）を直す。note の原稿に節と GIF を足して記事を書き換える（`.claude/guides/note-progress.md`）。作業ブランチの上でこの記録を消し、main へマージして push、ブランチを消す。
 
 ## 次にやること
 
-ステップ 6 を始める（作業ブランチ `feature/special-shards` の上）。`Tools/pie.py` で Zone 1 の PIE を始め、デバッグの `Wasami.PowerOrb` / `Wasami.PowerOrb N`・`Wasami.BonusShard N`（N は出現点の番号。明滅なしで点 N へ）で本体を出し、プレイヤーを `place` でその近くに置いて見え方・地図の印・取得（画面・閃き・揺れ・敵の気絶 / 地図の敵の印）を確かめる。手順は `.claude/guides/observation.md` と `Tools/pie.py`。
+ステップ 7（閉じる）を始める（作業ブランチ `feature/special-shards` の上）。note の GIF は、ステップ 6 の収録（git の外の `Intermediate/DesktopAgent/shots/`）から切り出せる: オーブの取得 `pie-orb-collect2.mkv`（2.4〜4.5 s）、赤いシャードの取得 `pie-bonus-collect.mkv`（2.0〜4.2 s）、明滅と移る閃光 `pie-orb-flicker.mkv`（5.9〜7.4 s。手前に餅が重なる）。地図の暴きは静止画 3 枚を並べた `Intermediate/Overnight/specials-grid-map.png`。GIF の作り方は `.claude/guides/note-progress.md` と `observations/tools/note_gif.py`。
 
 ## 決定事項
 
@@ -50,12 +47,14 @@ updated: 2026-09-19 21:36
 
 ## 再開時の注意
 
-- エディタは開いたまま（PIE なし、いまのレベルは L_Hospital_Zone2）。両ゾーンのレベルは git の外（`Content/Stage/`）なので、配置はコミットに入らない（作り直しは `place_dd_flow` → 別の呼び出しで `build_navigation`）。
+- エディタは開いたまま（PIE なし、いまのレベルは L_Hospital_Zone1）。両ゾーンのレベルは git の外（`Content/Stage/`）なので、配置はコミットに入らない（作り直しは `place_dd_flow` → 別の呼び出しで `build_navigation`）。
+- 開発用のセーブ（`Saved/SaveGames/structSlot.sav`）は、ステップ 6 の通しの終わりの脱出で空（チェックポイント 0）になっている。ステップ 6 の前のセーブ（Zone 2 のチェックポイント 7）の控えは取らなかった。Zone 2 の確かめの後の控え（チェックポイント 9・`BonusShards` {1}）は `Intermediate/SaveBackups/20260919-special-shards/`。
 
 ## 検証
 
-- check_records: OK（2026-09-19 21:36、16 件）
+- check_records: OK（2026-09-19 22:05、16 件）
 - C++ ビルド: 成功（2026-09-19、ステップ 4。最初のビルドはステップ 2・3 のファイルの無名名前空間の名前がぶつかって落ち、改名して通った）
 - 自動テスト: `Wasami.*` 115 件すべて成功（2026-09-19、ステップ 4。`Wasami.BonusShard.*` 3 件を含む）
 - `python Tools/check_unity_names.py`: ぶつかりなし（ステップ 4）
-- エディタでの確認: ステップ 1 の素材が取り込まれ、推定のマスターがコンパイルされた。ステップ 2 の画面を PIE で `Show` して収録した（`Intermediate/Overnight/shots-vsides-*.png`）。本体の見え方は PIE（ステップ 6）で
+- エディタでの確認: ステップ 1 の素材が取り込まれ、推定のマスターがコンパイルされた。ステップ 2 の画面を PIE で `Show` して収録した（`Intermediate/Overnight/shots-vsides-*.png`）。ステップ 6 で両ゾーンの本体・取得・地図・セーブを PIE で確かめた（実装記録 16 の「PIE での確かめ」）
+- 台本の通し: `python Tools/playthrough.py run --from z1_arrive --to z2_escape --setup --record shards_through2.mkv --record-seconds 420 --shots` で 11 区間すべて（終了コード 0、266 s。2026-09-19 22:02）
