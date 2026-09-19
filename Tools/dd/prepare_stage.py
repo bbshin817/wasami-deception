@@ -124,6 +124,12 @@ CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06
 # bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
 # seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's
 # shadows and in Lightmass.
+# An actor's lists of a blueprint struct the level build writes (a secret file's Collectables: Struct_Collectable's Type,
+# an Enum_Collectables, and ID), each item's fields by their names without the editor's suffix (Type_5_<guid> → Type)
+# and an enum by its number (Enum_Collectables::NewEnumerator2 → 2). The actors' other lists and maps are left out.
+KEEP_ACTOR_LISTS = {"BP_Collectable_C": ("Collectables",)}
+STRUCT_FIELD_SUFFIX = re.compile(r"_\d+_[0-9A-F]{32}$")
+ENUM_VALUE = re.compile(r"^\w+::NewEnumerator(\d+)$")
 KEEP_COMPONENT_PROPS = ("bVisible", "bHiddenInGame", "CastShadow", "bCastDynamicShadow", "bCastStaticShadow",
                         "bCastShadowAsTwoSided", "bReceivesDecals", "Mobility", "CollisionProfileName", "CustomDepthStencilValue",
                         "bRenderCustomDepth", "LightmassSettings", "OverriddenLightMapRes", "bOverrideLightMapRes")
@@ -202,6 +208,15 @@ def compose(parent, rel_loc, rel_pyr, rel_scale):
     return {"location": [round(pl[i] + rotated[i], 4) for i in range(3)],
             "quat_xyzw": [round(v, 8) for v in q],
             "scale": [round(ps[i] * rel_scale[i], 6) for i in range(3)]}
+
+
+def plain_struct(item):
+    """A blueprint struct's value from the export → its fields by their plain names, an enum's by its number."""
+    out = {}
+    for key, value in item.items():
+        m = ENUM_VALUE.match(value) if isinstance(value, str) else None
+        out[STRUCT_FIELD_SUFFIX.sub("", key)] = int(m.group(1)) if m else value
+    return out
 
 
 def world_of(entry):
@@ -686,6 +701,9 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
         for k, v in own.items():                     # a map keyed by the level's actors, by their names
             if isinstance(v, dict) and v and all(str(x).startswith(prefix) for x in v):
                 props[k] = {actor_of(x): y for x, y in v.items()}   # BP_MapTexture_MultiFloor's Map
+        for k in KEEP_ACTOR_LISTS.get(cls, ()):
+            if k in own:
+                props[k] = [plain_struct(x) for x in own[k]]
         entry = {"name": name, "class": cls, "world": actor_world.get(name), "props": props}
         root = (by_path.get(own.get("RootComponent") or "") or {}).get("props") or {}
         if root.get("AttachParent"):

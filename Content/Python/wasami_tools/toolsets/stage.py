@@ -121,7 +121,8 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         lights turned down where the original does), the special shards (WasamiPowerOrb, BP_PowerOrb, and
         WasamiBonusShard, BP_BonusShard, with Zone 2's ID) and their spawn points (WasamiPowerOrbSpawnPoint and
         WasamiBonusShardSpawnPoint; after import_dd_specials), the secrets (WasamiCollectable, BP_Collectable, with its
-        ID; WasamiSecretRoomZone, BP_SecretRoomZone, with its box; WasamiSecretWall, BP_07_Zone1_SecretWall, with its
+        ID and Collectables; WasamiSecretRoomZone, BP_SecretRoomZone, with its box; WasamiSecretWall,
+        BP_07_Zone1_SecretWall, with its
         mesh and brick; WasamiMysteryCollectable, BP_MysteryCollectable, with its texture, texts and paper;
         WasamiFakeUseSequencePlayer, BP_FakeUseActor_SequencePlayer, its Sequence set to the level's sequence actor;
         WasamiFakeUseElevator, BP_FakeUseActor_06_HospitalZone1_Elevator, with its doors; after import_dd_secrets), and

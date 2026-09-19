@@ -179,13 +179,37 @@ void AWasamiCollectable::Collect()
 	}
 	// Create(Self, UMG_Collectables_C, None).AddToPlayerScreen(0).
 	UWasamiCollectablesWidget::Show(this);
-	// Unlock's end: Array_AddUnique(the Struct Save's entry for the level's Secrets, ID).
-	if (AWasamiGameMode* Mode = GetWorld()->GetAuthGameMode<AWasamiGameMode>())
+	Unlock();
+	Destroy();
+}
+
+void AWasamiCollectable::Unlock()
+{
+	AWasamiGameMode* Mode = GetWorld()->GetAuthGameMode<AWasamiGameMode>();
+	UWasamiSaveGame* Held = Mode ? Mode->GetSave() : nullptr;
+	const FString& Slot = Mode ? Mode->SaveSlotName : UWasamiSaveGame::SlotName;
+	// ForEachLoop over Collectables: LoadGameFromSlot('SaveSlot') cast to BP_DD_SaveGame (failing: the loop's next),
+	// the SwitchEnum on Type (UWasamiSaveGame::Unlock) and SaveGameToSlot after Art Gallery's and Sound's. The loop's
+	// end writes the last one read again, as it is, and is left out.
+	for (const FWasamiCollectableEntry& Entry : Collectables)
 	{
-		if (UWasamiSaveGame* Save = Mode->GetSave())
+		UWasamiSaveGame* Stored = Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(Slot, UWasamiSaveGame::UserIndex));
+		if (!Stored)
 		{
-			Save->Hospital.Secrets.AddUnique(ID);
+			continue;
+		}
+		if (Stored->Unlock(Entry))
+		{
+			UGameplayStatics::SaveGameToSlot(Stored, Slot, UWasamiSaveGame::UserIndex);
+		}
+		if (Held)
+		{
+			Held->Unlock(Entry);
 		}
 	}
-	Destroy();
+	// Array_AddUnique(the Struct Save's entry for the level's Secrets, ID).
+	if (Held)
+	{
+		Held->Hospital.Secrets.AddUnique(ID);
+	}
 }
