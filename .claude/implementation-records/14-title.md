@@ -7,7 +7,7 @@ sources:
   - Source/wasami_deception/WasamiTitleGameMode.h
   - Source/wasami_deception/WasamiTitleGameMode.cpp
   - Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # タイトル画面
@@ -112,7 +112,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - エンジン: `MaterialExpressionPanner`・`MaterialExpressionDesaturation`・`TextureFactory`・`SoundFactory`、`UGeneralProjectSettings`（`EngineSettings`）
 
 ## 既知の制約・注意点
-- 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は仮の 0.1.0（作業一覧の「未回答の要確認」）。
+- 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は 1.0.0（`v1.0.0`。2026-09-20 のユーザーの回答。それまでは仮の 0.1.0）。
 - NEW GAME が問うかどうかは本家の `New Game?` の代わりに進みで決める（上の「ボタンの道」）。本家は一度でも新しいゲームを始めた後は、進みが無くても問う。
 - `L_Title` は git の外（`Content/Stage`）。作り直すときは C++ をビルドしてから `WasamiStageTools.build_title_level`。エディタで遊んで確かめるときは `L_Title` を開いて PIE（エディタの開始のレベルは Zone 1）。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も焦点を持てない画面を渡しているので、そのままにしている（死亡画面も同じ）。
@@ -124,6 +124,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
 
 ## 変更履歴
+- 2026-09-20: 版を 1.0.0 にした（2026-09-20 のユーザーの回答）
 - 2026-09-19: タイトルのゲームモードの `BeginPlay` の頭で設定を読んで当てるようにした（15 記録。作業一覧の項目 18 のステップ 1）
 - 2026-09-19: OPTIONS がオプション画面を Z 10 で開くようにした（15 記録。作業一覧の項目 18 のステップ 4）
 - 2026-09-19: 死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先をタイトルにし、デバッグ `Wasami.Title` と台本の区間 `title` を足して、通しで確かめた（作業一覧の項目 17 のステップ 4）

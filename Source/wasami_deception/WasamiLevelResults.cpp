@@ -69,7 +69,7 @@ FWasamiLevelResults FWasamiLevelResults::ForHospital(const FWasamiLevelProgress&
 
 int32 FWasamiLevelResults::GetTotalShards() const
 {
-	int32 Total = FCString::Atoi(*SoulShards.Value.ToString());
+	int32 Total = 0;
 	for (const FWasamiResultRow* Row : GetRows())
 	{
 		Total += Row->Shards;

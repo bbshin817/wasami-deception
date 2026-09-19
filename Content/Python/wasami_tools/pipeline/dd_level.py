@@ -2,7 +2,7 @@
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
 zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers,
-Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points, the secrets (the files, the mysterious room with its wall and notes, the secret and decoy elevators) and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
 import math
@@ -189,6 +189,31 @@ MATRON_CONES = {"Long Cone": "long_cone", "Short Cone": "short_cone"}
 MATRON_CONE_CLASSES = {"BP_06_Miniboss_viewcone_Matron_Long_C": "WasamiViewconeMatronLong",
                        "BP_06_Miniboss_viewcone_Matron_Short_C": "WasamiViewconeMatronShort"}
 ENEMY_FOLDER = "Hospital/Gameplay/Enemies"
+# The secrets (item 12): the secret files (BP_Collectable → AWasamiCollectable, with its ID: Zone 1's 0 and 1 behind the
+# secret elevators, Zone 2's 2 in the mysterious room; the 3rd is Zone 2's flow's, after the maze), Zone 2's mysterious
+# room (BP_SecretRoomZone → AWasamiSecretRoomZone, its Box moved and sized as the placed one's), the secret wall before
+# it (BP_07_Zone1_SecretWall → AWasamiSecretWall, its StaticMesh moved and given the placed one's material over
+# manor_fake_wall) and the room's three notes (BP_MysteryCollectable → AWasamiMysteryCollectable: its Texture, its Texts
+# from the original's string table Strings, and its Plane placed and given the placed one's material), and Zone 1's
+# fake-use actors: the two secret elevators (BP_FakeUseActor_SequencePlayer → AWasamiFakeUseSequencePlayer, whose
+# Sequence, the level's LevelSequenceActor, link_sequence_players sets) and the five decoy elevators
+# (BP_FakeUseActor_06_HospitalZone1_Elevator → AWasamiFakeUseElevator, with its doors' meshes, which the class leaves
+# unset). The file puts its own mesh on (OnConstruction), and its light is a component of it, so the lights the
+# preprocessing lists under a file are not placed on their own (builds before 2026-09-20 did, into SECRET_LIGHT_FOLDER).
+SECRET_CLASSES = {"BP_Collectable_C": "WasamiCollectable", "BP_SecretRoomZone_C": "WasamiSecretRoomZone",
+                  "BP_07_Zone1_SecretWall_C": "WasamiSecretWall", "BP_MysteryCollectable_C": "WasamiMysteryCollectable",
+                  "BP_FakeUseActor_SequencePlayer_C": "WasamiFakeUseSequencePlayer",
+                  "BP_FakeUseActor_06_HospitalZone1_Elevator_C": "WasamiFakeUseElevator"}
+COLLECTABLE_CLASS = "BP_Collectable_C"
+SECRET_PROPS = {"ID": "id"}
+SECRET_PARTS = {"BP_SecretRoomZone_C": {"Box": "box"}, "BP_07_Zone1_SecretWall_C": {"StaticMesh": "static_mesh"},
+                "BP_MysteryCollectable_C": {"Plane": "plane"}}
+SECRET_WALL_MESH = "/Game/Meshes/03_Manor/manor_fake_wall"
+ELEVATOR_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_elevator_doors_R_elevator_door",
+                        "static_mesh1": "/Game/Meshes/06_Hospital/hospital_elevator_doors_L_elevator_door_"}
+NOTE_STRINGS = "Blueprints/Main/Strings/Strings"
+SECRET_LIGHT_FOLDER = "Hospital/Lights/" + COLLECTABLE_CLASS
+SECRET_FOLDER = "Hospital/Gameplay/Secrets"
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
 FLOW_FOLDER = "Hospital/Gameplay/Flow"
@@ -371,7 +396,7 @@ def _lights(eas, zone, counts, failures):
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
             if lt["actorClass"] in (SHARD_CLASS, BARRIER_CLASS, RING_PIECE_CLASS, SPEED_BARRIER_CLASS,
-                                    SAW_TRAP_LIGHT_CLASS) or lt["actorClass"] in SPECIAL_SHARD_CLASSES:
+                                    SAW_TRAP_LIGHT_CLASS, COLLECTABLE_CLASS) or lt["actorClass"] in SPECIAL_SHARD_CLASSES:
                 continue
             cls = LIGHT_CLASS.get(lt["class"])
             if cls is None or not lt["world"]:
@@ -705,25 +730,101 @@ def set_saw_trap_light(actor, zone, name, level):
         actor.get_editor_property("point_light").set_editor_property("intensity", float(intensity))
 
 
+def _material(stage, path, where):
+    """The stage's material made from the original's at path ('/Game/Materials/…/M.M' or without the object name)."""
+    m = stage["materials"].get(path.rsplit(".", 1)[0])
+    material = unreal.load_asset(m["asset"]) if m else None
+    if material is None:
+        raise RuntimeError("missing material %s of %s: run WasamiStageTools.import_dd_stage_assets" % (path, where))
+    return material
+
+
+def _note_texts(refs, strings):
+    """A note's Texts (the level export's string table entries) as the text of Strings' entries. strings: the table's
+    entries, or {} to have them read."""
+    if not strings:
+        pkg = dd_assets.export_json(NOTE_STRINGS, version=2)
+        strings.update(next(e for e in pkg["exports"] if e.get("string_table"))["string_table"]["entries"])
+    return [unreal.Text(strings[r["key"]]) for r in refs]
+
+
+def set_secret(actor, stage, zone, a, level, strings):
+    """A secret placed from the original's (a: its stage entry): its ID, its parts moved as the placed one's
+    (SECRET_PARTS), the wall's mesh and material, a note's texture, texts and paper, a decoy's doors. Returns the names
+    of its own values that are not written."""
+    for key, name in SECRET_PROPS.items():
+        if key in a["props"]:
+            actor.set_editor_property(name, a["props"][key])
+    written = set(SECRET_PROPS)
+    parts = {part: _level_props(zone, "%s.%s" % (a["name"], part), level) for part in SECRET_PARTS.get(a["class"], {})}
+    for part, prop in SECRET_PARTS.get(a["class"], {}).items():
+        _set_part(actor.get_editor_property(prop), parts[part])
+    if a["class"] == "BP_07_Zone1_SecretWall_C":
+        over = parts["StaticMesh"].get("OverrideMaterials")
+        _set_mesh(actor.get_editor_property("static_mesh"), stage, SECRET_WALL_MESH,
+                  [m.rsplit(".", 1)[0] for m in over] if over else None)
+    elif a["class"] == "BP_MysteryCollectable_C":
+        own = _level_props(zone, a["name"], level)
+        texture = dd_assets.asset_path(dd_assets.game_rel(own["Texture"]))
+        if not EAL.does_asset_exist(texture):
+            raise RuntimeError("missing %s of %s: run WasamiStageTools.import_dd_stage_assets" % (texture, a["name"]))
+        actor.set_editor_property("texture", unreal.load_asset(texture))
+        actor.set_editor_property("texts", _note_texts(own.get("Texts") or [], strings))
+        for i, path in enumerate(parts["Plane"].get("OverrideMaterials") or []):
+            actor.get_editor_property("plane").set_material(i, _material(stage, path, a["name"]))
+        written |= {"Texture"}
+    elif a["class"] == "BP_FakeUseActor_06_HospitalZone1_Elevator_C":
+        for prop, source in ELEVATOR_DOOR_MESHES.items():
+            _set_mesh(actor.get_editor_property(prop), stage, source)
+    return sorted(set(a["props"]) - written)
+
+
+def link_sequence_players(eas, zone):
+    """In the open level: each secret elevator's Sequence (AWasamiFakeUseSequencePlayer) set to the level's
+    LevelSequenceActor the placed one names (dd_sequence places those after the flow's actors, and again on its own).
+    Returns (how many were set, the names of the sequence actors not in the level)."""
+    level = {}
+    by_source = {}
+    for actor in eas.get_all_level_actors():
+        for t in actor.tags:
+            if str(t).startswith("src:"):
+                by_source.setdefault(str(t)[4:], actor)
+    linked, missing = 0, []
+    for source, actor in by_source.items():
+        if not isinstance(actor, unreal.WasamiFakeUseSequencePlayer):
+            continue
+        name = (_level_props(zone, source, level).get("Sequence") or "").rsplit(".", 1)[-1]
+        sequence = by_source.get(name)
+        if isinstance(sequence, unreal.LevelSequenceActor):
+            actor.set_editor_property("sequence", sequence)
+            linked += 1
+        else:
+            missing.append("%s's Sequence %s" % (source, name or "(none)"))
+    return linked, missing
+
+
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the Matron
-    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps and the special shards with their spawn points, each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
-    is in the level; and this game's garage portal and the trigger by it (PORTALS)."""
+    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points and the secrets (SECRET_CLASSES), each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    is in the level; and this game's garage portal and the trigger by it (PORTALS). The secret elevators' sequences are
+    set afterwards (link_sequence_players)."""
     placed = []
     level = {}
+    strings = {}
     cones = {}
     for a in zone["actors"]:
         doors = a["class"] == DOUBLE_DOORS_CLASS
         emitter = a["class"] == "Emitter" and a["name"] in FLOW_EMITTERS
         special = a["class"] in SPECIAL_SHARD_CLASSES or a["class"] in SPECIAL_SPAWN_POINT_CLASSES
         enemy = a["class"] in (SENTRY_CLASS, MATRON_CLASS) or a["class"] in MATRON_CONE_CLASSES
+        secret = a["class"] in SECRET_CLASSES
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
                                                  TARGET_POINT_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
                                                  DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
-                              and not doors and not emitter and not special and not enemy):
+                              and not doors and not emitter and not special and not enemy and not secret):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -850,6 +951,13 @@ def _flow(eas, stage, zone, counts, failures):
             if unwritten:
                 failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
             counts["specialShards" if a["class"] in SPECIAL_SHARD_CLASSES else "specialSpawnPoints"] += 1
+        elif secret:
+            actor = eas.spawn_actor_from_class(getattr(unreal, SECRET_CLASSES[a["class"]]), _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            unwritten = set_secret(actor, stage, zone, a, level, strings)
+            if unwritten:
+                failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
+            counts["secrets"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -870,6 +978,7 @@ def _flow(eas, stage, zone, counts, failures):
                   else ENEMY_FOLDER if enemy
                   else TRAP_FOLDER if a["class"] in (DEFIB_CLASS, SPEED_BARRIER_CLASS) or a["class"] in SAW_TRAP_CLASSES
                   else SPECIAL_SHARD_FOLDER if special
+                  else SECRET_FOLDER if secret
                   else FLOW_FOLDER)
         _tag(actor, a["name"], folder, FLOW_TAG, "src:" + a["name"])
         placed.append((actor, a))
@@ -914,11 +1023,11 @@ def _flow(eas, stage, zone, counts, failures):
 
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
-    checkers, lifts, garage lifts, sentries, the Matron with her view cones, altar, ring piece, defibrillators, speed barriers, saw traps and special shards with their spawn
-    points in again (and takes out the barrier, ring piece, speed barrier, saw trap and special shard lights an earlier build placed on their
-    own), leaving the rest of the level and its baked lighting as they are (none of them is in the baked lighting: the doors, the lifts, the
-    altar, the defibrillators' stands, the saw traps, the special shards and the barriers', the piece's and the traps' lights are movable), and
-    saves the level."""
+    checkers, lifts, garage lifts, sentries, the Matron with her view cones, altar, ring piece, defibrillators, speed barriers, saw traps, special shards with their spawn
+    points and secrets in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
+    secret file lights an earlier build placed on their own), leaving the rest of the level and its baked lighting as they are (none of them is in
+    the baked lighting: the doors, the lifts, the altar, the defibrillators' stands, the saw traps, the special shards, the secrets and the
+    barriers', the piece's, the traps' and the files' lights are movable), and saves the level."""
     stage = paths.load_dd_stage()
     if zone not in stage["zones"]:
         raise ValueError("no zone %r in the stage data (have %s)" % (zone, ", ".join(stage["zones"])))
@@ -927,18 +1036,21 @@ def place_flow(zone="Zone1", map_path=""):
     old = [a for a in eas.get_all_level_actors() if a.actor_has_tag(FLOW_TAG)]
     lights = [a for a in eas.get_all_level_actors()
               if a.actor_has_tag(TAG) and str(a.get_folder_path()) in (BARRIER_LIGHT_FOLDER, RING_PIECE_LIGHT_FOLDER,
-                                                                  SPEED_BARRIER_LIGHT_FOLDER, SAW_TRAP_LIGHT_FOLDER)
+                                                                  SPEED_BARRIER_LIGHT_FOLDER, SAW_TRAP_LIGHT_FOLDER,
+                                                                  SECRET_LIGHT_FOLDER)
                                                                   + SPECIAL_SHARD_LIGHT_FOLDERS]
     counts = {"removed": len(old), "removed_lights": len(lights), "triggers": 0, "volumes": 0, "navVolumes": 0,
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
               "matrons": 0, "viewcones": 0, "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
-              "specialSpawnPoints": 0, "portals": 0, "attached": 0}
+              "specialSpawnPoints": 0, "secrets": 0, "portals": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
     failures = []
     _flow(eas, stage, z, counts, failures)
+    counts["sequencePlayers"], missing = link_sequence_players(eas, z)
+    failures += ["no level sequence actor for " + m for m in missing]
     for f in failures:
         unreal.log_warning("place_dd_flow: " + f)
     counts["failed_settings"] = len(failures)
@@ -957,7 +1069,8 @@ def build(zone="Zone1", map_path=""):
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
                              "shardCheckers", "lifts", "garageLifts", "sentries", "matrons", "viewcones", "ringStatues", "ringPieces", "defibs",
-                             "speedBarriers", "sawTraps", "specialShards", "specialSpawnPoints", "portals", "attached")}
+                             "speedBarriers", "sawTraps", "specialShards", "specialSpawnPoints", "secrets", "portals",
+                             "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
     _lights(eas, z, counts, failures)
@@ -973,7 +1086,9 @@ def build(zone="Zone1", map_path=""):
     sequences = dd_sequence.place_all(eas, zone, z)
     counts["sequences"] = sequences["sequences"]
     counts["sequenceActors"] = sequences["sequence_actors"]
+    counts["sequencePlayers"] = sequences["sequence_players"]
     failures += ["sequence binding without its actor: " + m for m in sequences["missing"]]
+    failures += ["no level sequence actor for " + m for m in sequences["unlinked_players"]]
     for f in failures[:50]:
         unreal.log_warning("build_dd_stage_level: " + f)
     counts["failed_settings"] = len(failures)

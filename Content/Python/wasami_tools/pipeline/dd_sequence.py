@@ -12,10 +12,11 @@ from wasami_tools.pipeline import dd_assets, paths, ue_props
 EAL = unreal.EditorAssetLibrary
 VERSION = 2   # the hospital is only in the latest version
 
-# The zones' level sequence actors the flow plays. The levels' other ones belong to the cut scenes (work list item 25)
-# and the secret elevator.
+# The zones' level sequence actors the flow and the secret elevators (AWasamiFakeUseSequencePlayer, after
+# BP_FakeUseActor_SequencePlayer) play. The levels' other ones belong to the cut scenes (work list item 25).
 SEQUENCE_ACTORS = {
-    "Zone1": ("06_Hospital_Zone01_ElevatorArrive", "06_Hospital_Zone1_AmbulanceTakeOff"),
+    "Zone1": ("06_Hospital_Zone01_ElevatorArrive", "06_Hospital_Zone1_AmbulanceTakeOff",
+              "06_Hospital_Zone1_SecretElevator", "06_Hospital_Zone1_SecretElevator1_2"),
     "Zone2": ("06_Hospital_Zone2_Spikes", "06_Hospital_Zone2_Cell_DoorPicked"),
 }
 # Sequences without bindings, which the game plays through a player it makes (BP_DD_Functions' Basic DD Fade Out plays
@@ -330,8 +331,8 @@ class _Builder:
 
 def _new_result():
     return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "sounds": 0, "attenuations": 0,
-            "camera_shakes": 0, "sequence_actors": 0, "helpers": 0, "missing": [], "skipped_tracks": [],
-            "missing_particles": []}
+            "camera_shakes": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "missing": [],
+            "unlinked_players": [], "skipped_tracks": [], "missing_particles": []}
 
 
 def _source_actors(eas):
@@ -377,8 +378,8 @@ def _helpers(eas, zone, names, existing, result):
 
 def place_all(eas, zone_name, zone, result=None):
     """In the open level: the zone's bound helper actors, its sequences bound to the level's actors, and the
-    LevelSequenceActors that play them; also the free sequences and the zone's camera shakes. The caller has taken out
-    what an earlier call placed and saves the level."""
+    LevelSequenceActors that play them (set as the secret elevators' Sequence); also the free sequences and the zone's
+    camera shakes. The caller has taken out what an earlier call placed and saves the level."""
     from wasami_tools.pipeline import dd_level
     result = result if result is not None else _new_result()
     builder = _Builder(result)
@@ -424,6 +425,10 @@ def place_all(eas, zone_name, zone, result=None):
         actor.set_sequence(seq)
         dd_level._tag(actor, name, SEQUENCE_FOLDER, SEQUENCE_TAG, "src:" + name)
         result["sequence_actors"] += 1
+    # The secret elevators play two of them: their Sequence is the actor just placed.
+    linked, unlinked = dd_level.link_sequence_players(eas, zone)
+    result["sequence_players"] += linked
+    result["unlinked_players"] += unlinked
     for rel in FREE_SEQUENCES:
         builder.build(rel)
     for rel in CAMERA_SHAKES.get(zone_name, ()):

@@ -10,7 +10,7 @@ sources:
   - Source/wasami_deception/WasamiPauseWidget.h
   - Source/wasami_deception/WasamiPauseWidget.cpp
   - Source/wasami_deception/Tests/WasamiPauseTests.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # 設定・オプション画面・ポーズ画面
@@ -70,7 +70,7 @@ updated: 2026-09-19
 
 ### 難易度の効き先
 - スコア画面（13 記録）: `AWasamiGameMode::Escape` とデバッグ `Wasami.LevelClear` が `FWasamiLevelResults::ForHospital(…, IsEasy())` を渡す（EASY MODE の文字と、FINAL RANK が A で止まる）。
-- 死亡画面の EASY の分岐は**最新版に倣う**（2026-09-19 のユーザーの回答。09 記録の「時間の流れ」）: 旧版の `UMG_DeathScreen` は難易度を読まない。最新版はライフ 0 で EASY なら `Life Animation` だけで止まり、ボタンが出ず開き直しもしない。死亡画面は `NativeConstruct` で `IsEasy()` を読む。抜けるのはポーズからで、その死亡画面の上でだけ止まっていても Esc でポーズが開き、RESUME は止まりを解かない（下の「ポーズ画面」の開き方と RESUME）。
+- 死亡画面の EASY の分岐は**最新版に倣う**（2026-09-19 のユーザーの回答。09 記録の「時間の流れ」）: 旧版の `UMG_DeathScreen` は難易度を読まない。最新版はライフ 0 で EASY なら `Life Animation` だけで止まり、ボタンが出ず開き直しもしない。死亡画面は `NativeConstruct` で `IsEasy()` を読む。**本家どおり抜け道の無い行き止まり**（ゲームが止まっているので Esc でポーズも開かない。2026-09-20 のユーザーの回答「本家通り」。それまでは 2026-09-19 の回答「抜けるのはポーズから」で、その画面の上でだけ Esc でポーズを開いていた）。
 - 病院の敵は難易度を読まない（両版で `Difficulty` を読むのはホテル・学校・屋敷・下水・サーカスの敵と、死亡画面・スコア画面・ポーズ・オプション・ゲームインスタンス）。
 - ポーズ画面の EASY MODE（下）: EASY のときだけ暗い赤で見える。
 
@@ -101,7 +101,7 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - SAVE & EXIT・CANCEL のホバー（@15973・@16040、@15864・@15931）: 入ると中身の色が白、出ると `Unhovered Color` 0.1146（死亡画面・ポップアップと同じ）。
 - CANCEL（@16082。`Cancel` 関数 @21302 も同じ所へ飛ぶ）: `PlayAnimation(FadeIn, 0.25, 1, Reverse, 1)`（押すたびに 0.25 から逆に）→ `UI_Select_V3` を再生速度 0.7 → `Delay(0.3)`（待っている間の 2 回目は無視）→ `RemoveFromParent`。入力の様式は戻さない（本家どおり。下のタイトルはマウスで押せる）。
 - SAVE & EXIT（@19624）: `UI_Select_V2` → 適用（@18949 → @16506: スケーラビリティ・解像度・ポストプロセスの品質・字幕・`ApplySettings`・`gamma`・SoundMix の 3 つ）→ `Save Values`（@19688: スロットを読み、画面の全項目を書き、ゲームモードの `Global Settings Save Instance` にして書き、プレイヤーがいれば `Set Up Mouse Smoothing`）→ `Cancel`。本作は `WriteValues` で画面の値を `Settings`（持ち主の設定そのもの）に書いてから持ち主の `SaveSettings()`（`Apply` → スロット → プレイヤーの `ApplySettings`・`SetUpMouseSmoothing`）を呼ぶので、適用と保存が 1 つの道になる。
-- Esc は何もしない（本家は結ばない。UI の入力の様式なのでキャラクターの Esc も届かない）。WebGL 版は Esc を CANCEL と同じにしていた（ブラウザの Esc がポインタロックを外すため）。
+- Esc は何もしない（本家は結ばない。UI の入力の様式なのでキャラクターの Esc も届かない）。WebGL 版は Esc を CANCEL と同じにしていた（ブラウザの Esc がポインタロックを外すため）。本作は本家どおり閉じない（2026-09-20 のユーザーの回答）。
 - タイトルの OPTIONS（`UWasamiTitleScreenWidget::PressOptions`。本家 @8405）: `Show`（Z 10）と選択音。
 
 ### ポーズ画面（`UWasamiPauseWidget`）
@@ -115,20 +115,20 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 
 Construct（`NativeConstruct` → `Begin`。本家 @861）: `UI_Pause`（1）→ `PlayAnimation(FadeIn)` → `SetGamePaused(True)` → `SetInputMode_UIOnlyEx(自分, DoNotLock)` とカーソル → `CreateSound2D(Pause_Sound_v1, 1, 1, 0, None, False, True)`（UI の音なので止まったゲームでも鳴る。音量は SoundWave の 0.4）の `FadeIn(1, 1, 0)` → 頭（上）→ ゲームモードの `Pause Time Counter`。本家の Construct の `LoadGameFromSlot('SaveSlot')` は変数 `SaveGame` に入れるだけで読む所が無い（頭を選ぶ `Get Level` はゲームモードのセーブの `Progress` を読む）ので作らない。
 - FadeIn（0.5 s。`CanvasPanel_0` の不透明度 0 → 1、両端とも平らな自動の接線。書き出しの `WidgetName` もルート）。ウィジェットのティックで進めるので止まったゲームの上でも動く。
-- RESUME（@3654）: `UI_Select_V3`（1）→ `PlayAnimation(FadeIn, 0, 1, Reverse, 1)`（押すたびに終わりから逆に）→ `SetInputMode_GameOnly`・カーソルを消す → `Delay(0.5)`（待っている間の 2 回目は無視）→ `SetGamePaused(False)`・`RemoveFromParent`（@15）。**EASY でライフ 0 の死亡画面の上（`UWasamiDeathScreenWidget::FindHoldingOnEasy`）では `SetGamePaused(False)` をしない**（本作の足し。本家はそこでポーズが開かない。解くと死亡画面の下でゲームが動き、また捕まる）。
+- RESUME（@3654）: `UI_Select_V3`（1）→ `PlayAnimation(FadeIn, 0, 1, Reverse, 1)`（押すたびに終わりから逆に）→ `SetInputMode_GameOnly`・カーソルを消す → `Delay(0.5)`（待っている間の 2 回目は無視）→ `SetGamePaused(False)`・`RemoveFromParent`（@15）。
 - Destruct（@6316）: 曲の `FadeOut(0.5, 0)` とゲームモードの `Unpause Time Counter`。
 
 ボタンの道（旧版の番地。最新版は同じ中身で番地がずれる。規則が違うのは RESTART の YES だけで、最新版を採った）:
 - ポップアップのアニメ `Popup`（`Givingupbox`）と `Popup_0`（`RestartBox`）は同じキー: 窓の拡大 0 → 1（0.25 s、自動の接線 3.33e-5/tick なので 1 を越えて 1/3 s で 1.074、0.5 s で 1 に戻る）、窓と `CanvasPanel_3` の不透明度 0 → 1・`Blur+Red` の 1 → 0（0.25 s。区間が終わっても値は残る）。再生範囲 [0, 30001)。本作は窓ごとに時刻を持ち、2 つの幕は最後に再生したポップアップの値にする（どちらのアニメも幕のトラックを持つ）。音のトラックは中身が無い。
 - RESTART（@3996）/ QUIT（@4516）: ポップアップを 0 から → `UI_Select_V3` と `UI_Window_PopUp_V3`（1。QUIT は逆の順）→ `redblock` を `Visible`（下のメニューはクリックを受けない。窓は `CanvasPanel_3` より後なので押せる）。
 - NO（@6080 → @5946）/ CANCEL（@4709）: ポップアップを 0.25 s から逆に（押すたびにやり直す）→ `UI_Select_V3` を 0.7 → `redblock` を `HitTestInvisible`。どれも OnClicked（死亡画面のポップアップの NO は OnPressed だが、ここは違う）。
-- YES（**最新版** @5408 → @244 → @52）: セーブの `Hospital` を空の欄にして書く（本家の `levelStruct[レベル] = levelStruct[10]` と `SaveGameToSlot('structSlot')`）→ ゲームインスタンスの回収の記憶を空に（`Shards To Be Removed`。`Sewer Doors Opened` は病院に無い）→ `UI_Select_V3` → `SetInputMode_GameOnly`・カーソルを消す →（`Hard Check Point` 0 は入口のもので作らない）→ `UWasamiBlackFadeWidget`（`UMG_BlackFade_2`、Fade in? 真・Speed 5 = 1 s、Z 10）→ その終わり（`Finish Restart` @6656）で `SetGamePaused(False)` と今のレベルの `OpenLevel`。チェックポイント 0 なので、Zone 1 はリフトの到着、Zone 2 は Zone 1 を開く（06 記録）。**ライフは戻さない**（本家どおり。死亡画面の RESTART は `Reset Game Instance` と `Reset Lives` で戻す。09 記録）。旧版の YES は回収の記憶を残し、幕なしですぐ `SetGamePaused(False)` と `OpenLevel`。どちらも 2 度目の YES を止めない。
+- YES（**最新版** @5408 → @244 → @52）: セーブの `Hospital` を空の欄にして書く（本家の `levelStruct[レベル] = levelStruct[10]` と `SaveGameToSlot('structSlot')`）→ ゲームインスタンスの回収の記憶を空に（`Shards To Be Removed`。`Sewer Doors Opened` は病院に無い）→ `UI_Select_V3` → `SetInputMode_GameOnly`・カーソルを消す →（`Hard Check Point` 0 は入口のもので作らない）→ `UWasamiBlackFadeWidget`（`UMG_BlackFade_2`、Fade in? 真・Speed 5 = 1 s、Z 10）→ その終わり（`Finish Restart` @6656）で `SetGamePaused(False)` と今のレベルの `OpenLevel`。チェックポイント 0 なので、Zone 1 はリフトの到着、Zone 2 は Zone 1 を開く（06 記録）。**ライフを 3 に戻す**（ゲームインスタンスの `ResetLives`。本家は戻さないが、2026-09-20 のユーザーの回答「3に戻そう」で、死亡画面の RESTART〈`Reset Game Instance` と `Reset Lives`。09 記録〉と同じにした）。旧版の YES は回収の記憶を残し、幕なしですぐ `SetGamePaused(False)` と `OpenLevel`。どちらも 2 度目の YES を止めない。
 - OPTIONS（@6085）: `UI_Select_V3` → `UWasamiOptionsWidget::Show`（Z 10。ゲームの中なので DIFFICULTY の箱は外れる）。最新版は `SettingsUI` を Z 1 で開く（上の決定で旧版の画面）。
 - QUIT TO TITLE（@6207）: `UI_Select_V3` → 本家の `TitleScreen`、本作の `L_Title` を `OpenLevel`。セーブもゲームインスタンスもそのまま（タイトルのゲームモードが回収の記憶を空に、ライフを 3 にする。14 記録）。止まりは解かない（レベルが替わるので要らない）。
 - QUIT TO DESKTOP（@4843）: `UI_Select_V3` → `QuitGame(Self, None, Quit, False)`（エディタでは PIE が終わる）。WebGL 版はブラウザなので置かなかった。
 - ホバー 18 個（@3218〜@5116）は上の「色の結び付け」。
 
-開き方（02 記録の `EscapePressed`）: 本家の旧版はキャラクターの Esc で Z 5、最新版はプレイヤーコントローラーの Esc とゲームパッドの Special Left で Z 1。どちらも条件なしで作るが、キーの結び付けは止まっている間は動かない（`bExecuteWhenPaused` 偽）ので、死亡画面（本家のレベルの `DeathEvent` が `SetGamePaused(true)`）・欠片の画面・Zone 2 の脱出の保存の間は開かない。UI だけの入力の様式の画面（ポーズ・オプション・スコア画面・タイトル・ゲームオーバーのボタン）の上では Esc がゲームに届かない。本作は旧版の Z 5 を採った（最新版の 1 では Z 5 の死亡画面の下になり、EASY の死亡画面から抜けられない）。**EASY でライフ 0 の死亡画面の上だけは、止まっていても開く**（本作の例外。`EscapePressed` が `UWasamiDeathScreenWidget::FindHoldingOnEasy` を問う。その画面は入力の様式を変えないので Esc が届く。ポーズは死亡画面と同じ Z 5 で後から足すので上に出る）。
+開き方（02 記録の `EscapePressed`）: 本家の旧版はキャラクターの Esc で Z 5、最新版はプレイヤーコントローラーの Esc とゲームパッドの Special Left で Z 1。どちらも条件なしで作るが、キーの結び付けは止まっている間は動かない（`bExecuteWhenPaused` 偽）ので、死亡画面（本家のレベルの `DeathEvent` が `SetGamePaused(true)`）・欠片の画面・Zone 2 の脱出の保存の間は開かない。UI だけの入力の様式の画面（ポーズ・オプション・スコア画面・タイトル・ゲームオーバーのボタン）の上では Esc がゲームに届かない。本作は旧版の Z 5 を採った。EASY でライフ 0 の死亡画面の上でも開かない（本家どおり。2026-09-20 のユーザーの回答。2026-09-20 まではそこでだけ止まっていても開く本作の例外があった）。
 
 ## 作るアセット
 なし（セーブは実行時に `Saved/SaveGames/Settings.sav`）。SoundMix と SoundClass は取り込み（01 記録）が作る。オプション画面の素材は `dd_ui.import_options()`（`WasamiDDTools.import_dd_ui` の `import_all` も呼ぶ。01 記録）:
@@ -178,7 +178,7 @@ GIVING UP? の枠 `quit_window_frame` は死亡画面、曲 `Pause_Sound_v1` は
 - MOUSE SENSITIVITY のスライダーは枠の右を越えて描かれる: CONTROLS の箱の幅は見出しの最小の幅 550 で決まり、行はそれに合わせて広がり、スライダーのスロットの右の余白が −10 なので（本家の木のまま）。
 - `Wasami.Settings` で値を変えると `Saved/SaveGames/Settings.sav` に残る（次の PIE もその値で始まる）。確かめた後は `Wasami.ResetSettings`。
 
-- **本家の最新版の死亡画面の EASY の分岐は、コードどおりだとポーズでも抜けられない**（ステップ 5 で読んだ）: レベルの `DeathEvent` が `SetGamePaused(true)` し、EASY の分岐は入力の様式を変えないが、Esc の結び付けは止まっている間は動かない。ユーザーの回答（抜けるのはポーズから）に合わせて、その死亡画面の上でだけ止まっていても開けるようにし、RESUME は止まりを解かないようにした（作業一覧の「未回答の要確認」）。ポーズの RESTART はライフを戻さないので、抜けた後もライフは 0 のまま（本家どおり。同じ要確認）。
+- **本家の最新版の死亡画面の EASY の分岐は、コードどおりだとポーズでも抜けられない**（ステップ 5 で読んだ）: レベルの `DeathEvent` が `SetGamePaused(true)` し、EASY の分岐は入力の様式を変えないが、Esc の結び付けは止まっている間は動かない。2026-09-20 のユーザーの回答「本家通り」で、本作も行き止まり（ゲームを終えるしかない）。2026-09-19 から 20 までは、その死亡画面の上でだけ止まっていてもポーズが開き、RESUME が止まりを解かない本作の例外があった（下の確かめたことのステップ 6b はその時のもの）。
 - PIE では Esc がエディタの「プレイを止める」に取られるので、ポーズ画面は `Wasami.Pause` で開く（症状索引）。
 
 ## 確かめたこと
@@ -188,6 +188,7 @@ GIVING UP? の枠 `quit_window_frame` は死亡画面、曲 `Pause_Sound_v1` は
 - 2026-09-19（ステップ 3、PIE、`L_Title`、エディタを右半分・ビューポート約 1050 × 690）: リモート実行の `unreal.WasamiOptionsWidget.show(<ゲームのワールド>)` で、タイトルの上に赤くぼけた幕と OPTIONS の枠が出て、左に GRAPHICS（QUALITY の矢印と HIGH、RESOLUTION SCALE・BRIGHTNESS の 1 と右端のつまみ）と AUDIO（MUSIC・SFX・DIALOGUE の 1、SUBTITLES の入り）、右に DIFFICULTY（NORMAL）と CONTROLS（MOUSE SENSITIVITY の 0.5 と中ほどのつまみ、HEAD BOBBING・MOUSE SMOOTHING の入り、INVERTED Y AXIS・TOGGLE SPRINT の外れ）、下に灰色の SAVE & EXIT・CANCEL が並んだ（WebGL 版 10 記録の styles.css「OPTIONS」と同じ配置）。
 
 ## 変更履歴
+- 2026-09-20: 要確認への回答（2026-09-20）を入れた: EASY でライフ 0 の死亡画面は本家どおりの行き止まりにし（Esc の例外と、その上の RESUME が止まりを解かない例外を外した。02・09 記録）、ポーズの RESTART の YES がライフを 3 に戻すようにした（`ResetLives`）。オプション画面の Esc は本家どおり閉じない（回答「いいえ」。変更なし）
 - 2026-09-19: 初版（作業一覧の項目 18 のステップ 1: 設定のセーブと適用）。
 - 2026-09-19: 音量（`DD_SoundMix` のクラスの上書きとベースのミックス）と難易度の効き先（スコア画面の EASY、`IsEasy`）を足した（ステップ 2）。
 - 2026-09-19: オプション画面 `UWasamiOptionsWidget`（本家の旧版 `UMG_Options` の木・Construct・`Setup Values`・値の文字の結び付け・FadeIn）と素材の取り込み（`dd_ui.import_options`）、テスト `Wasami.Options.Screen`・`Wasami.Options.FadeIn` を足した（ステップ 3）。

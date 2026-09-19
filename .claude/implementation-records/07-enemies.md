@@ -21,7 +21,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiCaptureTests.cpp
   - SourceArt/Wasami/enemy_wasami_v3.glb
   - SourceArt/Wasami/enemy_wasami_capture.glb
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）
@@ -117,7 +117,7 @@ v3 の `restpose`（腕を広げた基準姿勢、0.083 s）と、使わなく�
 - **根: 気絶**（`FWasamiBoolBlend`。本家の Blend Poses by bool、0.25 s、Linear）: 気絶の側 = 倒れる 1 本かその起き上がり（`FWasamiStunPlayback`。1 回だけ流すので繰り返さない）、偽の側 = 移動。
 - **移動: Idle ↔ Moving**（`FWasamiStateBlend`。本家のステートマシンの標準のブレンド）: 速さ > 5 で Moving へ 0.5 s（Sinusoidal）、速さ < 5 で Idle へ 0.25 s（ExpOut）。ちょうど 5 はどちらにも移らない。移る先の重みは、その時の重みから遷移の曲線に沿って 1 へ動く。本家は Skating → Stop Skating（`nurse_skate_stop` を 0.35 s から 1 回）→ Idle（残り 10 % 未満、0.5 s、Cubic）だが、止まるクリップが無いので Stop へ入る値のまま直接 Idle へ移る。
   - Idle の中: `Idle` | `Idle_Alert`（`bAggressiveIdle`、1.0 s、Linear。本家は Alert がさらに 2 本〈`bVarIdle` で 0.1 s〉だが、ここは 1 本）。
-  - Moving の中: `Walk` | 走り（速さ > 400、0.25 s、Linear）。走りの中: `Run` | `Run_Nightmare`（`bNightmare`、0.25 s。本家に無い分岐で、走りと同じ切り替えにした。`TODO(仮)`）。
+  - Moving の中: `Walk` | 走り（速さ > 400、0.25 s、Linear）。走りの中: `Run` | `Run_Nightmare`（`bNightmare`、0.25 s。本家に無い分岐で、走りと同じ切り替えにした。2026-09-20 のユーザーの回答でこのまま）。
 - **ブレンドの動き**（エンジンの `FAnimNode_BlendListBase` と同じ）: 重みは 1 / ブレンド時間 の速さで目標へ動く（途中で折り返すと、残りの重みの分の時間で戻る）。リセットの後の最初の更新は目標へ飛ぶ。
 - **時刻の進め方**: 重み 0 の枝は進めない。重み 0 から入った状態（Idle / Moving）は中のクリップを 0 から始め、中の切り替えもリセットする（本家の `bAlwaysResetOnEntry` 偽・`bResetChildOnActivation` 偽と同じ）。**本家と違い、移動の木は気絶の下でも 1 回再生の下でも進める**（本家の Slot と BlendList は重み 0 の子を進めない）。気絶が明けたときに移動の木を速さに合った状態（止まっていれば Idle）にしておき、起き上がりの終わりの待機へ走りの姿勢が混ざらないようにするため。追跡中の変化が終わったときも走りの位相が続いている。
 - **再生の速さ**（`TODO(仮)`。本家はスケートで速さ 1）: `Walk` = 速さ / (133 × `MeshScale`) を 0.5〜2、`Run` = 速さ / (450 × `MeshScale`) を 0.6〜1.8、`Run_Nightmare` = 速さ / (500 × `MeshScale`) を 0.6〜1.8。分母は各クリップの接地した足の速さ（上の「足の運びの速さ」）を、敵のアクタがメッシュを描く大きさ `AWasamiEnemy::MeshScale` 倍にしたもの（歩幅が大きさに比例するため。`WasamiEnemyAnimInstance.cpp` の `StrideScale`）、範囲は WebGL 版の 15 記録の `speedRatio` の範囲。巡回 200 cm/s の `Walk` は 1.11、追跡 430 cm/s の `Run` は 0.70（2026-09-19 まではナースの 350・800 で 1.94・1.31）。拡縮 1 のときの PIE での接地中の足の滑り（前向きの速さ）は、追跡 800 cm/s の `Run` で 1 %（ほぼ止まる）、巡回 350 cm/s の `Walk` は上限 2 に当たって速さの 24 % 滑った（2026-09-18 に大きくしてからは、上限に当たらない。滑りは測り直していない）。`Run_Nightmare` は初めの分母 460（取り込み前の骨盤の進みから出した値）では足が後ろへ 8 % 流れたので、測った 500 にした。待機・気絶は速さ 1、1 回再生は指定の速さ。
@@ -288,6 +288,7 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
 ## 変更履歴
+- 2026-09-20: 要確認への回答（2026-09-20）: 全回収の後の追跡の走りを作らないこと、`Run_Nightmare` への切り替えの 0.25 s、待機 `Idle_11`・見張りの待機 `Idle_5`、`Chase_VaultLand` の形は今のままでよい（`Run_Nightmare` の `TODO(仮)` を外した）。再生の速さの式（`TODO(仮)`）は保留
 - 2026-09-19: Matron の視界コーン 2 種 `AWasamiViewconeMatronLong`・`_Short` を足し、クリップの姿勢を混ぜる所を `WasamiEnemyAnim::BlendPoses`（標本 `FWasamiPoseSample`）に出してボスのアニメと共用にした（作業一覧の項目 11 のステップ 2。17 記録）
 - 2026-09-19: `_extract_textures`・`_import_model` を引数でモデルのパスと名前を受ける形にした（ボスワサミの取り込みが使う。17 記録）
 - 2026-09-19: 地図の印 `MapMark`（本家のナースの `StaticMesh`。`Plane`・`M_Enemy`・カプセルの中心から 10 m 上）を足した（作業一覧の項目 10 のステップ 4。16 記録）

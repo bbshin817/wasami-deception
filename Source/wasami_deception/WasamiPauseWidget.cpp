@@ -22,7 +22,6 @@
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiBlackFadeWidget.h"
-#include "WasamiDeathScreenWidget.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiOptionsWidget.h"
@@ -430,10 +429,9 @@ void UWasamiPauseWidget::Advance(float DeltaSeconds)
 		ResumeElapsed += DeltaSeconds;
 		if (ResumeElapsed >= ResumeDelay)
 		{
-			// @15: SetGamePaused(False), RemoveFromParent. Over the death screen EASY holds (which only this game opens the
-			// menu over) the game stays paused under the screen.
+			// @15: SetGamePaused(False), RemoveFromParent.
 			bFinished = true;
-			if (GetWorld() && !UWasamiDeathScreenWidget::FindHoldingOnEasy(this))
+			if (GetWorld())
 			{
 				UGameplayStatics::SetGamePaused(this, false);
 			}
@@ -522,8 +520,9 @@ void UWasamiPauseWidget::PressYes()
 	// SaveGameToSlot('structSlot'); Shards To Be Removed (and Sewer Doors Opened, which the hospital does not have)
 	// emptied; UI_Select_V3; SetInputMode_GameOnly and the cursor hidden; Hard Check Point 0 (the entrance's, which this
 	// game does not have); UMG_BlackFade_2 with Speed 5 at Z 10, whose Animation Finished is Finish Restart. Nothing
-	// here resets the lives. The old version's YES is the same but keeps the shards and, with no fade, unpauses and
-	// opens the level at once. Nothing guards a second YES (the original's does it all again).
+	// there resets the lives; this game's YES gives back 3, as the death screen's RESTART does (the user's answer of
+	// 2026-09-20). The old version's YES is the same but keeps the shards and, with no fade, unpauses and opens the
+	// level at once. Nothing guards a second YES (the original's does it all again).
 	bRestarting = true;
 	if (UWorld* World = GetWorld())
 	{
@@ -538,6 +537,7 @@ void UWasamiPauseWidget::PressYes()
 		if (UWasamiGameInstance* Instance = World->GetGameInstance<UWasamiGameInstance>())
 		{
 			Instance->ForgetCollectedShards();
+			Instance->ResetLives();
 		}
 	}
 	PlaySound(SelectSound, 1.f);

@@ -134,16 +134,10 @@ public:
 
 	/**
 	 * Whether EASY with no lives left holds the screen (the latest version's @2639): Life Animation only, then nothing
-	 * more (no game over, no buttons, no respawn) with the game paused under it; the pause menu is the way out.
+	 * more (no game over, no buttons, no respawn) with the game paused under it. As in the original it is a dead end:
+	 * Esc does not open the pause menu while the game is paused (the user's answer of 2026-09-20).
 	 */
 	bool IsHoldingOnEasy() const { return bEasyHold; }
-
-	/**
-	 * The death screen on the screen that EASY holds, or null. The player's Esc opens the pause menu over it although
-	 * the game is paused (this game's exception: in the original that screen is a dead end), and the menu's RESUME
-	 * leaves the game paused under it.
-	 */
-	static UWasamiDeathScreenWidget* FindHoldingOnEasy(const UObject* WorldContextObject);
 
 	/**
 	 * RESTART's click: asks ARE YOU SURE YOU WANT TO RESTART? (Frame 0, Z 5); its YES is RestartEvent. LAST

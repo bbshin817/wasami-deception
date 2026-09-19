@@ -78,7 +78,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         the player looks at something it can use), and the ring piece's picture and pickup sound (WasamiRingPieceWidget,
         which Zone 2's altar puts up). And the shard streak's ten cards and four milestone sounds
         (WasamiShardStreakWidget and the game mode's Check Streak). And the level clear screen's (WasamiLevelClearWidget)
-        You Escaped!, rules and hospital title, and its sounds (You Escaped!, the grade stamps, the counters' fill).
+        You Escaped!, rules and this game's level title (drawn first by python Tools/dd/prepare_level_title.py outside the
+        editor), and its sounds (You Escaped!, the grade stamps, the counters' fill).
         And the title screen's (WasamiTitleScreenWidget) smoky mask, the strokes and their panning material, the hover
         smear, the music and NEW GAME's sound and voice, and this game's logo, its glow and Wasami's face (the glow and
         the face are baked first by python Tools/dd/prepare_title.py outside the editor). And the options screen's
@@ -88,7 +89,7 @@ class WasamiDDTools(unreal.ToolsetDefinition):
             How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
             '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems',
             'interact_textures', 'ring_piece_textures', 'ring_piece_sounds', 'streak_textures', 'streak_sounds',
-            'level_clear_textures', 'level_clear_sounds', 'title_textures', 'title_sounds', 'title_materials',
+            'level_clear_textures', 'level_clear_sounds', 'level_clear_wasami_textures', 'title_textures', 'title_sounds', 'title_materials',
             'title_wasami_textures' and 'options_textures').
         """
         _module("dd_stage")
@@ -192,6 +193,23 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         _module("dd_assets")
         _module("dd_particles")
         return _module("dd_specials").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_dd_secrets() -> dict[str, int]:
+        """Imports (or re-imports) what the secrets show and play: the secret files' (WasamiCollectable) pickup sound
+        and the secret file's material on its mesh, UMG_Collectables' icons and frame, Zone 2's mysterious room's
+        (WasamiSecretRoomZone) whispers, sting and picture and its glitch (M_GlitchHLSL, estimated off its compiled
+        shader as M_DD_ChameleonGlitch), the secret wall's (WasamiSecretWall) sliding sound and the lore note's sound
+        (WasamiMysteryNoteWidget). After prepare_stage and import_dd_stage_assets (the secret file's and the wall's
+        meshes and the notes' materials come with the stage's assets), import_dd_tablet and import_dd_ui.
+
+        Returns:
+            How many assets of each kind were made ('sounds', 'textures', 'meshes', 'materials').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_secrets").import_all()
 
     @toolset_registry.tool_call
     @staticmethod

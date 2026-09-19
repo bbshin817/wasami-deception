@@ -126,7 +126,7 @@ def name_table(data):
 FIELDS = {
     "Constant": "cb", "VectorParameter": "nai" + "c", "ScalarParameter": "naif", "ComponentSwizzle": "ebbbbb",
     "AppendVector": "eei", "Max": "ee", "Min": "ee", "Clamp": "eee", "Saturate": "e", "Abs": "e", "Floor": "e",
-    "Ceil": "e", "Frac": "e", "Periodic": "e", "SquareRoot": "e", "Logarithm2": "e", "Logarithm10": "e",
+    "Ceil": "e", "Round": "e", "Frac": "e", "Periodic": "e", "SquareRoot": "e", "Logarithm2": "e", "Logarithm10": "e",
     "Fmod": "ee", "Sine": "ei", "Length": "ei", "FoldedMath": "eebi", "TrigMath": "eeb", "Time": "", "RealTime": "",
 }
 FOLDED = {0: "+", 1: "-", 2: "*", 3: "/", 4: "dot", 5: "cross"}

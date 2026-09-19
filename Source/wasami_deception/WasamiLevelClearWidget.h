@@ -181,7 +181,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Level Clear|Assets")
 	TSoftObjectPtr<UTexture2D> RuleTexture;
 
-	/** The level's title (LevelName, tinted red): Construct picks it by the game mode's Level, the hospital's is 7. */
+	/**
+	 * The level's title (LevelName, tinted red): Construct picks it by the game mode's Level, the hospital's is 7. This
+	 * game shows the WebGL version's "Stinky Gachimi" in its place (the user's answer of 2026-09-20).
+	 */
 	UPROPERTY(EditAnywhere, Category = "Level Clear|Assets")
 	TSoftObjectPtr<UTexture2D> LevelNameTexture;
 

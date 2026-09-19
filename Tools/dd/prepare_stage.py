@@ -87,18 +87,22 @@ TELEPORT_ZONE_COMPONENT = "Cube"
 # leaves the component's mesh out, as the class's own): Zone 2's lifts' LiftMesh (BP_06_LiftBase_Corner's and
 # BP_06_Lift_03's / _04's), and Zone 2's altar (BP_01_Statue's StaticMeshComponent0) and the ring piece on it
 # (BP_08_RingPiece's StaticMesh), and the defibrillators' two stands (BP_06_Defib's hospital_defibrillator_01 and _02, the
-# same mesh). They come into `meshes` with their own materials.
+# same mesh), and the secret files (BP_Collectable's StaticMesh) and Zone 2's secret wall (BP_03_SecretWall1's). They
+# come into `meshes` with their own materials.
 CLASS_MESHES = ("/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_01.hospital_zone_02_lifts_lift_01",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_03.hospital_zone_02_lifts_lift_03",
                 "/Game/Meshes/06_Hospital/hospital_zone_02_lifts_lift_04.hospital_zone_02_lifts_lift_04",
                 "/Game/Meshes/00_Ballroom/ring_statue.ring_statue",
                 "/Game/Meshes/Ring_Assets/ring_pieces/ring_piece06.ring_piece06",
-                "/Game/Meshes/06_Hospital/hospital_defibrillator_01.hospital_defibrillator_01")
+                "/Game/Meshes/06_Hospital/hospital_defibrillator_01.hospital_defibrillator_01",
+                "/Game/Meshes/Shared/secret_file.secret_file",
+                "/Game/Meshes/03_Manor/manor_fake_wall.manor_fake_wall")
 # Materials of meshes that are not the stage's static meshes: the garage lifts' skinned mesh (hospital_garage_lift_anim,
 # its glTF's materials in order; dd_skeletal imports the mesh and puts these on its slots by name) and the saw traps'
 # (hospital_sawTrap_*_anim: the blade, the stained metal, and short_01's diamond plate), and the ones the altar's and the
 # ring piece's components put over their meshes' own (OverrideMaterials: the placed altar's, and
-# BP_08_RingPiece's StaticMesh_GEN_VARIABLE's).
+# BP_08_RingPiece's StaticMesh_GEN_VARIABLE's), and the ones Zone 2's level puts on its secret wall (the brick) and on
+# its three mystery notes' planes (BP_MysteryCollectable's Plane, the engine's plane).
 CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06_Hospital_MetalPanel_04",
                    "/Game/Materials/06_Hospital/M_06_Hospital_Concrete_06_Painted1.M_06_Hospital_Concrete_06_Painted1",
                    "/Game/Materials/06_Hospital/M_06_Hospital_MetalBrushed_02.M_06_Hospital_MetalBrushed_02",
@@ -108,7 +112,11 @@ CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06
                    "/Game/Materials/06_Hospital/M_06_Hospital_Metal_DiamondPlate.M_06_Hospital_Metal_DiamondPlate",
                    "/Game/Materials/00_Ballroom/MM_00_Ballroom_Ring_Altar_Metal.MM_00_Ballroom_Ring_Altar_Metal",
                    "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal.M_ring_metal",
-                   "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal2.M_ring_metal2")
+                   "/Game/Meshes/Ring_Assets/ring_pieces/M_ring_metal2.M_ring_metal2",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_Brick_01.M_06_Hospital_Brick_01",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MysteryRoom_Note_01.M_06_Hospital_MysteryRoom_Note_01",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MysteryRoom_Note_02.M_06_Hospital_MysteryRoom_Note_02",
+                   "/Game/Materials/06_Hospital/M_06_Hospital_MysteryRoom_Note_03.M_06_Hospital_MysteryRoom_Note_03")
 # Component properties of a placement worth carrying over (the rest is either the transform or editor bookkeeping).
 # bCastShadowAsTwoSided: Zone 1's five merged stage meshes (tiles_tile_01/02/03, parking, tunnel) are one-sided rooms
 # seen from inside; without it their ceilings let the sun and the next room's lights through, both in the renderer's

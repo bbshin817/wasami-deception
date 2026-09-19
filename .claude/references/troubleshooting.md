@@ -309,7 +309,7 @@
 - 原因: UE 5.8 の `FTimerManager`（UE4 も同じ）は、(1) 期限を**過ぎた**最初の更新で発火する（`InternalTime > ExpireTime`。ちょうど同じ時刻では発火しない）、(2) 更新の外（BeginPlay・テストの本文）や発火の処理の中（`LastTickedFrame` がまだ前のフレーム）で入れたタイマーは保留になり、その更新の終わりの `InternalTime` を足して数え始める。刻みが 2 進数で割り切れると期限がちょうど更新の時刻に重なり、(1) の 1 刻みが必ず出る。
 - 対処: 実装は直さない（エンジンの規則）。テストの期待の時刻を規則に合わせて書く（`Wasami.Enemy.Actor.Stun` の冒頭の注釈）。`GetTimerRemaining` は更新の間では `ExpireTime − InternalTime`（保留中は入れた秒数そのもの）。
 - 確かめ方: エンジンの `Engine/Source/Runtime/Engine/Private/TimerManager.cpp` の `Tick`（`InternalTime > Top->ExpireTime`、末尾の `PendingTimerSet` の `ExpireTime += InternalTime`）。
-- 出典: 07 記録の「エンジンのタイマーの刻み」、進捗記録 `20260917-enemy-wasami-body.md` のステップ 3（2026-09-18。期待の時刻を直すのにビルドを 1 回やり直した）。
+- 出典: 07 記録の「エンジンのタイマーの刻み」、進捗記録 `20260917-enemy-wasami-body.md` のステップ 3（2026-09-18。期待の時刻を直すのにビルドを 1 回やり直した）。2026-09-20 にも `Wasami.Secrets.Collectable.Save`（書類の 0.2 s の `Delay` を 0.05 s 刻みで。0.25 s ではまだ、0.3 s で発火）で同じ 1 刻みに当たり、ビルドを 1 回やり直した（18 記録）。
 
 ### Automation テストが、ほかと続けて流すときだけ落ちる（弱い参照で持った文の枠が消える）
 
@@ -317,6 +317,13 @@
 - 原因: 障壁・祭壇は出した文の枠を `TWeakObjectPtr` で持つ。テストのワールドにはビューポートが無く枠を持つものが無いので、ティックの途中の GC が枠を回収し、弱い参照が空になる（空いたメモリに次の枠が入ることもある）。GC が走るかは前に流したテストで決まる。
 - 対処: テストで最初の枠を `TStrongObjectPtr` で持つ（両方のテスト。実装は直さない: ゲームではビューポートが枠を持つ）。
 - 出典: 項目 8 のステップ 5（障壁、2026-09-19）とステップ 8（祭壇、同日）。
+
+### Automation テストで、静的メッシュの部品にワールドのトレースが当たらない（箱の部品には当たる）
+
+- 症状: テストのワールド（`FTestWorldWrapper`、`EWorldType::Game`）に出したアクタの `UStaticMeshComponent`（`BlockAllDynamic`・`Visibility` は block・物理の状態あり・`GetBodyInstance()->IsValidBodyInstance()` 真）に、`World->LineTraceSingleByChannel(…, ECC_Visibility)` が何も返さない。ティックを進めても、アクタを回して境界に厚みを持たせても、斜めに撃っても同じ。同じワールドの `UBoxComponent`（厚み 0 の箱も）には当たる。
+- 原因: 未解明（テストのワールドのシーンの問い合わせが静的メッシュの体を拾わない）。ゲームには関係しない: エディタのワールドと PIE では同じメモ（`AWasamiMysteryCollectable` の `Plane` = エンジンの `Plane`、当たりは厚み 0 の箱）に当たる（PIE は `summon WasamiMysteryCollectable` で出して確かめた）。
+- 対処: テストでは部品の体へ直に撃つ `UPrimitiveComponent::LineTraceComponent` で確かめる（`Wasami.Secrets.MysteryCollectable`）。ワールドのトレースで確かめたいときは PIE で。
+- 出典: 18 記録の「既知の制約・注意点」、作業一覧の項目 12 のステップ 4（2026-09-20。調べるのにビルドとエディタの開き直し 4 回）。
 
 ### ヘッダーや UCLASS / UPROPERTY の変更が Live Coding で効かない
 

@@ -11,6 +11,7 @@
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiBlackFadeWidget.h"
+#include "WasamiCollectable.h"
 #include "WasamiDoubleDoors.h"
 #include "WasamiEnemySentry.h"
 #include "WasamiEnemyZone2.h"
@@ -50,6 +51,7 @@ const FRotator AWasamiZone2Flow::WallSwitchThrown(0., 0., 40.809776306152344);
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
 const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
 const FName AWasamiZone2Flow::Matron(TEXT("MnM_Matron_Idle_2"));
+const FName AWasamiZone2Flow::PostmazeFilePoint(TEXT("collec"));
 
 AWasamiZone2Flow::AWasamiZone2Flow()
 {
@@ -237,7 +239,21 @@ void AWasamiZone2Flow::PostmazeTransition()
 	Enter(TEXT("Postmaze Transition"));
 	RemoveAllEnemies(GetWorld());
 	DestroyAllShards(GetWorld());
-	// BP_Collectable ID 3 spawned at the target point collec (item 12).
+	// BeginDeferredActorSpawnFromClass(BP_Collectable, collec's transform, AdjustIfPossibleButAlwaysSpawn) with ID 3.
+	if (const AActor* Point = Source(PostmazeFilePoint))
+	{
+		const FTransform Transform = Point->GetActorTransform();
+		if (AWasamiCollectable* File = GetWorld()->SpawnActorDeferred<AWasamiCollectable>(AWasamiCollectable::StaticClass(),
+			Transform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn))
+		{
+			File->ID = PostmazeFileID;
+			File->FinishSpawning(Transform);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no target point %s for the secret file"), *GetClass()->GetName(), *PostmazeFilePoint.ToString());
+	}
 	if (AWasamiRingStatue* Statue = Cast<AWasamiRingStatue>(Source(TEXT("ring_statue_2"))))
 	{
 		Statue->OnInteractAllShards.AddUniqueDynamic(this, &AWasamiZone2Flow::OnCollectedRingPiece);

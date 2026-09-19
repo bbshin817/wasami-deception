@@ -73,8 +73,7 @@ public:
 
 	/**
 	 * Esc pressed (the old version's InpActEvt_Escape, @7758): CreateAndAddWidget(UMG_Pause, 5), unless the game is
-	 * paused (the original's key binding does not execute then) and not by the death screen EASY holds (this game's
-	 * exception; see UWasamiDeathScreenWidget::FindHoldingOnEasy); the menu's UI-only input keeps Esc from coming again.
+	 * paused (the original's key binding does not execute then); the menu's UI-only input keeps Esc from coming again.
 	 * Wasami.Pause calls it (Esc stops a play session in the editor).
 	 */
 	void EscapePressed();

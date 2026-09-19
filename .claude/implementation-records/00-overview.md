@@ -14,7 +14,7 @@ sources:
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
   - Source/wasami_deception/WasamiAssets.h
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # 全体像
@@ -66,7 +66,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
-- **`DefaultGame.ini`**: CommonUI の設定とプロジェクト ID に、`[/Script/EngineSettings.GeneralProjectSettings]` の `ProjectVersion=0.1.0`（タイトルの右上の版の文字。本作に版の決まりが無いので仮。`TODO(仮)`。14 記録）。
+- **`DefaultGame.ini`**: CommonUI の設定とプロジェクト ID に、`[/Script/EngineSettings.GeneralProjectSettings]` の `ProjectVersion=1.0.0`（タイトルの右上の版の文字。2026-09-20 のユーザーの回答。14 記録）。
 - **`DefaultEditor.ini`**: テンプレートのまま。
 
 ## 露出（2026-09-16）
@@ -158,6 +158,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
+- 2026-09-20: `ProjectVersion` を 1.0.0 にした（ユーザーの回答。仮の 0.1.0 から）
 - 2026-09-16: 初版（現行の構成・設定を記録）
 - 2026-09-19: `DefaultEngine.ini` に本家のナビの設定（`RecastNavMesh`・`NavigationSystemV1`）を足した（作業一覧の項目 7 のステップ 1）
 - 2026-09-18: `GameInstanceClass` を `WasamiGameInstance` にした（作業一覧の項目 5 のステップ 3）

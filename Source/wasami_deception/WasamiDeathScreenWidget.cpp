@@ -316,21 +316,6 @@ void UWasamiDeathScreenWidget::NativeConstruct()
 	Begin(Lives, Voice, bCheckpoint, bEasyMode);
 }
 
-UWasamiDeathScreenWidget* UWasamiDeathScreenWidget::FindHoldingOnEasy(const UObject* WorldContextObject)
-{
-	TArray<UUserWidget*> Found;
-	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(WorldContextObject, Found, StaticClass(), true);
-	for (UUserWidget* Each : Found)
-	{
-		UWasamiDeathScreenWidget* Screen = Cast<UWasamiDeathScreenWidget>(Each);
-		if (Screen && Screen->IsHoldingOnEasy())
-		{
-			return Screen;
-		}
-	}
-	return nullptr;
-}
-
 void UWasamiDeathScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);

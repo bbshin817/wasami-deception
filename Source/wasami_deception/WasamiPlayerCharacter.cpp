@@ -26,7 +26,6 @@
 #include "WasamiAssets.h"
 #include "WasamiBonusShard.h"
 #include "WasamiChameleonComponent.h"
-#include "WasamiDeathScreenWidget.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiInteractWidget.h"
@@ -376,9 +375,9 @@ void AWasamiPlayerCharacter::InteractPressed()
 
 void AWasamiPlayerCharacter::EscapePressed()
 {
-	// The key's binding does not execute while the game is paused (bExecuteWhenPaused off), but here it does over EASY's
-	// death screen with no lives, whose only way out is this menu.
-	if (!UGameplayStatics::IsGamePaused(this) || UWasamiDeathScreenWidget::FindHoldingOnEasy(this))
+	// The key's binding does not execute while the game is paused (bExecuteWhenPaused off), so not over the death
+	// screen either: EASY's with no lives left stays a dead end, as in the original (the user's answer of 2026-09-20).
+	if (!UGameplayStatics::IsGamePaused(this))
 	{
 		UWasamiPauseWidget::Show(this);
 	}
