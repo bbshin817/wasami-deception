@@ -9,9 +9,8 @@ class UMaterialParameterCollection;
 /**
  * Zone 2's level Blueprint (pak_reference_2's 06_Hospital_Zone_02): the ambulance's arrival and the capture (checkpoint
  * 7), out of the cell before its spikes come down, past the Matron's nurses (8), through the maze for all its shards
- * (9), and on to the ring piece (10), whose screen breaks the barrier to the garage. The cell's scene (item 25's step
- * 5) is still left out: what it leaves moved is put there and the player goes to its player start. The events keep the
- * original's names in their comments and in GetSection.
+ * (9), and on to the ring piece (10), whose screen breaks the barrier to the garage. The events keep the original's
+ * names in their comments and in GetSection.
  *
  * Where the original rides the ambulance from the garage to the boss fight, this game leaves by a portal in the garage,
  * as the hotel's exit is left (01_Hotel): the garage's trigger opens it, and a trigger by it (the hotel's EndTrigger) is
@@ -27,6 +26,9 @@ public:
 
 	/** Arrive Event: the ambulance's arrival plays 0.3 s after the player is moved to PlayerStart_1. */
 	static constexpr float ArriveSequenceDelay = 0.3f;
+
+	/** Cell Cutscene Start: the cell's scene plays 1 s after the capture ends. */
+	static constexpr float CellSequenceDelay = 1.f;
 
 	/** Cell Cutscene Finished: the view blends back from the scenes' cine camera to the player over 2 s. */
 	static constexpr float CellViewBlendTime = 2.f;
@@ -57,10 +59,6 @@ public:
 	 */
 	static constexpr float EscapeFadeSpeed = 20.f;
 	static constexpr int32 EscapeFadeZOrder = 5;
-
-	/** Where the left-out cell's scene leaves what it moves (its sections that keep their state). */
-	static const FVector FalseCeilingOpen;
-	static const FRotator WallSwitchThrown;
 
 protected:
 	/** ReceiveBeginPlay: Portal Extra Brightness set, then the zone's Setup (the base's BeginPlay). */
@@ -94,8 +92,6 @@ private:
 	 * view nor the input; walking into Trigger_Arrive_CaptureScene brings the capture.
 	 */
 	void ArriveEvent();
-	/** The state the left-out cell's scene leaves (item 25's step 5 plays it instead). */
-	void SkippedCellSceneEnd();
 	/** Miniboss Transition: the Matron's corridor. */
 	void MinibossTransition();
 	/** Activate MiniBoss Enemies: the sentry nurses start looking. */
@@ -115,7 +111,7 @@ private:
 	UFUNCTION()
 	void OnArriveCaptureCutscene();
 
-	/** Cell Cutscene Start: the cell's scene, which item 25's step 5 plays (its end is all that is here yet). */
+	/** Cell Cutscene Start: 1 s on, the cell's scene, with the player moved into the cell as it opens. */
 	UFUNCTION()
 	void OnCellCutsceneStart();
 

@@ -27,7 +27,6 @@
 #include "Camera/CameraActor.h"
 #include "Engine/BlockingVolume.h"
 #include "Engine/PointLight.h"
-#include "Engine/StaticMeshActor.h"
 #include "Engine/TargetPoint.h"
 #include "Engine/TriggerVolume.h"
 #include "Engine/World.h"
@@ -77,15 +76,6 @@ namespace
 		Scene->SetPlaybackRange(FFrameNumber(0), Scene->GetTickResolution().AsFrameNumber(Seconds).Value);
 		ALevelSequenceActor* Actor = World->SpawnActor<ALevelSequenceActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 		Actor->SetSequence(Sequence);
-		Actor->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
-		return Actor;
-	}
-
-	/** A static actor placed from the original's of that name (Static, as the level has the ambulance and the switch). */
-	AStaticMeshActor* SpawnStatic(UWorld* World, const TCHAR* Name, const FVector& Location, const FRotator& Rotation)
-	{
-		AStaticMeshActor* Actor = World->SpawnActor<AStaticMeshActor>(Location, Rotation);
-		Actor->GetRootComponent()->SetMobility(EComponentMobility::Static);
 		Actor->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		return Actor;
 	}
@@ -485,23 +475,21 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	const FTransform FileAt(FRotator(0., -90., 0.), FVector(0., 3000., -40000.));
 	ATargetPoint* FilePoint = World->SpawnActor<ATargetPoint>(FileAt.GetLocation(), FileAt.Rotator());
 	FilePoint->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::PostmazeFilePoint));
-	// The scenes' lengths, as _sequences has them: the ambulance's arrival and the capture.
+	// The scenes' lengths, as _sequences has them: the ambulance's arrival, the capture and the cell.
 	const float ArrivalSeconds = 6.7667f;
 	const float CaptureSeconds = 26.2333f;
+	const float CellSeconds = 74.0667f;
 	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone2_AmbulanceArrive1_2"), ArrivalSeconds);
 	const ALevelSequenceActor* Capture = SpawnSequence(World, TEXT("06_Hospital_Zone2_Capture"), CaptureSeconds);
+	const ALevelSequenceActor* Cell = SpawnSequence(World, TEXT("06_Hospital_Zone2_Cell"), CellSeconds);
 	const ALevelSequenceActor* Spikes = SpawnSequence(World, TEXT("06_Hospital_Zone2_Spikes"), 70.);
 	const ALevelSequenceActor* DoorPicked = SpawnSequence(World, TEXT("06_Hospital_Zone2_Cell_DoorPicked"), 4.2667);
 	AWasamiDoorBreak* DoorBreak = World->SpawnActorDeferred<AWasamiDoorBreak>(AWasamiDoorBreak::StaticClass(), FTransform::Identity);
 	DoorBreak->ProgressSpeed = 3.f;
 	DoorBreak->FinishSpawning(FTransform::Identity);
 	DoorBreak->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_Hospital_DoorBreak_2")));
-	// The blocker the arrival's end destroys, and what the left-out cell's scene moves, where the level has it.
+	// The blocker at the ambulance's front, which the arrival's end destroys.
 	const TWeakObjectPtr<ABlockingVolume> Blocker(SpawnBlocker(World, TEXT("Ambulance_Arrive_Blockers4"), ECollisionEnabled::QueryAndPhysics));
-	AStaticMeshActor* Ceiling = SpawnStatic(World, TEXT("hospital_zone_02_holdingCell_01_false_ceiling_11"), FVector(-0.0371, 0., 0.), FRotator::ZeroRotator);
-	Ceiling->GetRootComponent()->SetMobility(EComponentMobility::Movable);
-	const FVector SwitchAt(-14199.4062, 712.5936, 199.5126);
-	const AStaticMeshActor* Switch = SpawnStatic(World, TEXT("hospital_zone_02_holdingCell_01_wall_switch_14"), SwitchAt, FRotator(0., 0., -43.689768));
 	// A sentry the level places (its BeginPlay is empty: it stays without CanSpawn), far below.
 	AWasamiEnemySentry* Sentry = World->SpawnActor<AWasamiEnemySentry>(FVector(0., -5000., -40000.), FRotator::ZeroRotator);
 	if (!TestNotNull(TEXT("a sentry"), Sentry) || !TestNotNull(TEXT("with its cone"), Sentry->GetViewcone()))
@@ -548,12 +536,14 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the capture plays"), Capture->GetSequencePlayer() && Capture->GetSequencePlayer()->IsPlaying());
 	Advance(Wrapper, CaptureSeconds);
 
-	// The cell's scene, still left out (item 25's step 5): what it leaves moved is put there, the player goes to its
-	// player start and it ends at once.
+	// The cell's scene, 1 s after the capture: it moves the cell's own doors, switch and ceiling, and the player into it
+	// (PlayerStart_Cell, which this world has no more than the other starts), with the view left on the capture's camera.
+	TestEqual(TEXT("the capture over: Cell Cutscene Start"), Flow->GetSection(), FName(TEXT("Cell Cutscene Start")));
+	TestFalse(TEXT("which waits its 1 s"), Cell->GetSequencePlayer() && Cell->GetSequencePlayer()->IsPlaying());
+	Advance(Wrapper, AWasamiZone2Flow::CellSequenceDelay + 0.05f);
+	TestTrue(TEXT("then the cell"), Cell->GetSequencePlayer() && Cell->GetSequencePlayer()->IsPlaying());
+	Advance(Wrapper, CellSeconds);
 	TestEqual(TEXT("out of the cell's scene"), Flow->GetSection(), FName(TEXT("Cell Cutscene Finished")));
-	TestTrue(TEXT("the false ceiling open"), Ceiling->GetActorLocation().Equals(AWasamiZone2Flow::FalseCeilingOpen, 0.01));
-	TestTrue(TEXT("the switch thrown"), Switch->GetActorLocation().Equals(SwitchAt, 0.01)
-		&& Switch->GetActorRotation().Equals(AWasamiZone2Flow::WallSwitchThrown, 1e-3));
 	TestTrue(TEXT("the spikes coming down"), Spikes->GetSequencePlayer() && Spikes->GetSequencePlayer()->IsPlaying());
 
 	// The cell's door lock (34 presses at 3.0) opens the door with its sequence.

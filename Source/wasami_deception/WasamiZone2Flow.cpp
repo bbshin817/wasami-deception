@@ -1,7 +1,6 @@
 #include "WasamiZone2Flow.h"
 
 #include "Camera/CameraShakeBase.h"
-#include "Camera/PlayerCameraManager.h"
 #include "Components/LightComponent.h"
 #include "Engine/Light.h"
 #include "EngineUtils.h"
@@ -33,21 +32,8 @@ namespace
 	const FLinearColor GarageArrow(1.f, 0.8941f, 0.f, 1.f);
 	// 01_Hotel's Change Color as it points the arrow at its exit portal.
 	const FLinearColor PortalArrow(1.f, 0.f, 0.016666f, 1.f);
-
-	/** Where a scene leaves an actor it moved (Sequencer makes the static ones movable to move them). */
-	void Leave(AActor* Actor, const FVector& Location, const FRotator& Rotation)
-	{
-		if (USceneComponent* Root = Actor ? Actor->GetRootComponent() : nullptr)
-		{
-			Root->SetMobility(EComponentMobility::Movable);
-			Actor->SetActorLocationAndRotation(Location, Rotation);
-		}
-	}
 }
 
-// 06_Hospital_Zone2_Cell's last keys.
-const FVector AWasamiZone2Flow::FalseCeilingOpen(-0.037109375, 864.614990234375, 0.);
-const FRotator AWasamiZone2Flow::WallSwitchThrown(0., 0., 40.809776306152344);
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
 const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
 const FName AWasamiZone2Flow::Matron(TEXT("MnM_Matron_Idle_2"));
@@ -128,35 +114,17 @@ void AWasamiZone2Flow::OnArriveCaptureCutscene()
 void AWasamiZone2Flow::OnCellCutsceneStart()
 {
 	Enter(TEXT("Cell Cutscene Start"));
-	// @3149: a 1 s wait, then 06_Hospital_Zone2_Cell plays (no skip) and the player is moved to PlayerStart_Cell, with
-	// the music fading in; item 25's step 5 plays it. Until then the scene is left out as it was: what it leaves moved
-	// is put there, the player goes to its player start and it ends at once.
-	SkippedCellSceneEnd();
-	TeleportPlayerTo(TEXT("PlayerStart_Cell"));
-	// The capture leaves the screen black (its fade's last key is 1 and its section keeps that state) for the cell's
-	// scene to clear as it opens; with that scene left out, the fade is stopped here instead (step 5 takes this away).
-	if (APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0))
+	// @3149: a 1 s wait, then 06_Hospital_Zone2_Cell played with its skip screen — whose bars do not slide in, as the
+	// capture's are up already — its OnFinished bound to Cell Cutscene Finished, and the player moved into the cell
+	// (PlayerStart_Cell), where the scene is about to show them. The scene takes no camera of its own: it animates the
+	// capture's CineCameraActor_2, which the view is on still, and its fade carries the black the capture ends on (the
+	// cell in sight at 7.43 s). BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn(0.5, 0.3) is item 19's.
+	After(CellSequenceDelay, [this]()
 	{
-		if (APlayerCameraManager* Camera = Controller->PlayerCameraManager)
-		{
-			Camera->StopCameraFade();
-		}
-	}
-	OnCellCutsceneFinished();
-}
-
-void AWasamiZone2Flow::SkippedCellSceneEnd()
-{
-	// The cell's scene leaves the false ceiling slid open and the wall switch thrown; what else it moves goes back as it
-	// ends.
-	if (AActor* Ceiling = Source(TEXT("hospital_zone_02_holdingCell_01_false_ceiling_11")))
-	{
-		Leave(Ceiling, FalseCeilingOpen, Ceiling->GetActorRotation());
-	}
-	if (AActor* Switch = Source(TEXT("hospital_zone_02_holdingCell_01_wall_switch_14")))
-	{
-		Leave(Switch, Switch->GetActorLocation(), WallSwitchThrown);
-	}
+		PlayCutscene(TEXT("06_Hospital_Zone2_Cell"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellCutsceneFinished),
+			NAME_None, false);
+		TeleportPlayerTo(TEXT("PlayerStart_Cell"));
+	});
 }
 
 void AWasamiZone2Flow::OnCellCutsceneFinished()
