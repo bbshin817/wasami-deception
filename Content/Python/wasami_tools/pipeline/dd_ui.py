@@ -56,6 +56,13 @@ the game begins in Zone 1: the portal's outer ring (UI/Main/chapter_ui_portal_ou
 (chapter_title_portal_inner) and the two banners behind the title (chapter_ui_banner_bg_01 and _02). The head in the
 ring is the pause menu's Wasami and the title the level clear screen's.
 
+The extras screen (after the latest version's UI/Main/TitleScreen/UMG_Extras, whose Art Gallery and Sound Archive hold
+what the hospital's secret documents unlock) as the title's EXTRAS opens it: the play and pause icons, the pictures'
+and the sounds' locks, the buttons' frame (the ring altar's equipped frame), the sound it opens with
+(UI_Window_PopUp_V2) and the material of the strokes behind it (MM_TitleScreen_Mask_, over the title's strokes, its
+graph read from its compiled shader). What the original lists in it — its art, music, diaries and movies — is left out;
+the screen shows stand-ins.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -180,6 +187,30 @@ TITLE_WASAMI = (
     (os.path.join(TITLE_UI_DIR, "title_face.png"), TITLE_WASAMI_ROOT + "/T_TitleFace"),
 )
 
+# ------------------------------------------------------------------------------------------------ the extras screen
+# The latest version's UMG_Extras and the parts it lists (UMG_Extras_Extra, _Extra_Video, _Sound_Button, _Sound_Bar,
+# UMG_MaximizePicture, _MaximizeVideo) without what they list — the Art Gallery's pictures, the music, the diaries'
+# voices and the movies, which this game leaves out (the user's answer, 2026-09-20): the play and pause icons, the two
+# locks (the pictures' and the sounds'), the buttons' frame and the sound the screen opens with. The strokes come with
+# the title, the select sound with the tablet, the fonts with the death screen and the tablet; the maximized views' plain
+# squares are the engine's WhiteSquareTexture (a brush with no image draws the same).
+EXTRAS_TEXTURES = (
+    "UI/Main/TitleScreen/extras_play_icon",
+    "UI/Main/TitleScreen/extras_pause_icon",
+    "UI/Main/TitleScreen/locked",
+    "UI/Main/TitleScreen/locked_-_Copy",
+    "UI/RingAltar_UI/Textures/ring_altar_power_equipped_frame",
+)
+EXTRAS_SOUNDS = ("Audio/UI/UI_Window_PopUp_V2",)
+# MM_TitleScreen_Mask_ (UMG_Extras' Image_0, behind everything): a UI material whose graph the cook took away but for
+# two samples of the strokes through two Panners, the two Time Multipliers and an Add as the emissive colour. Its
+# compiled Slate pixel shader (Tools/dd/cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask_." --show 4) gives the rest:
+# the strokes at the UVs × (0.35, 1) panned 0.02 a second along U, once at Time × Time Multiplier and once at Time ×
+# Time Multiplier_1, the second a quarter as strong added to the first in all four channels — the sum's colour is the
+# emissive colour and its alpha, saturated, the opacity.
+EXTRAS_BACKDROP_MATERIAL = "UI/Main/TitleScreen/MM_TitleScreen_Mask_"
+EXTRAS_BACKDROP_ECHO = 0.25
+
 # The original emblems' settings (UI/Main/Loaders/loader_reapernurse in _textures.json: sRGB, default compression, UI).
 LOADING_EMBLEM_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
 
@@ -259,6 +290,38 @@ def _build_title_strokes(mat):
     g.out(dd_assets.single(g, unreal.MaterialExpressionDesaturation, strokes, "RGB", -350, -50), "",
           MP.MP_EMISSIVE_COLOR)
     g.out(g.multiply(mask, "A", strokes, "A", -350, 200), "", MP.MP_OPACITY)
+
+
+def _build_extras_backdrop(mat):
+    g = dd_stage._Graph(mat, checked=True)
+    scalars, _ = dd_assets.parameter_defaults(EXTRAS_BACKDROP_MATERIAL, VERSION)
+    uv = g.node(unreal.MaterialExpressionTextureCoordinate, -1500, 0)
+    uv.set_editor_property("u_tiling", TITLE_STROKES_TILING[0])
+    uv.set_editor_property("v_tiling", TITLE_STROKES_TILING[1])
+    time = g.node(unreal.MaterialExpressionTime, -1500, 150)
+    texture = unreal.load_asset(dd_assets.asset_path(TITLE_STROKES))
+    samples = []
+    for i, name in enumerate(("Time Multiplier", "Time Multiplier_1")):
+        y = -200 + 400 * i
+        multiplier = g.scalar(name, scalars.get(name, 1.0), -1300, y + 100)
+        scaled = g.multiply(time, "", multiplier, "", -1100, y + 100)
+        panner = g.node(unreal.MaterialExpressionPanner, -900, y)
+        panner.set_editor_property("speed_x", TITLE_STROKES_SPEED)
+        panner.set_editor_property("speed_y", 0.0)
+        g.link(uv, "", panner, "Coordinate")
+        g.link(scaled, "", panner, "Time")
+        sample = g.node(unreal.MaterialExpressionTextureSample, -650, y)
+        sample.set_editor_property("texture", texture)
+        g.link(panner, "", sample, "UVs")
+        samples.append(sample)
+    first, second = samples
+    echo = dd_assets.constant(g, EXTRAS_BACKDROP_ECHO, -450, 0)
+    colour = g.binary(unreal.MaterialExpressionAdd, first, "RGB", g.multiply(second, "RGB", echo, "", -350, 100), "",
+                      -150, -100)
+    alpha = g.binary(unreal.MaterialExpressionAdd, first, "A", g.multiply(second, "A", echo, "", -350, 300), "",
+                     -150, 200)
+    g.out(colour, "", MP.MP_EMISSIVE_COLOR)
+    g.out(dd_assets.single(g, unreal.MaterialExpressionSaturate, alpha, "", 0, 200), "", MP.MP_OPACITY)
 
 
 def make_door_break_materials():
@@ -367,10 +430,22 @@ def import_chapter_portal():
     return {"textures": len([dd_assets.texture(rel, VERSION) for rel in CHAPTER_PORTAL_TEXTURES])}
 
 
+def import_extras():
+    """The extras screen's icons, locks, buttons' frame and opening sound, and its backdrop's material (saved). The
+    strokes the material pans have to have come with the title (import_title). Returns how many of each."""
+    result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in EXTRAS_TEXTURES]),
+              "sounds": len([dd_assets.sound(rel, VERSION) for rel in EXTRAS_SOUNDS])}
+    ui = {"domain": unreal.MaterialDomain.MD_UI, "blend_mode": unreal.BlendMode.BLEND_TRANSLUCENT}
+    backdrop = dd_assets.material(dd_assets.asset_path(EXTRAS_BACKDROP_MATERIAL), _build_extras_backdrop, **ui)
+    EAL.save_loaded_asset(backdrop, only_if_is_dirty=False)
+    result["materials"] = 1
+    return result
+
+
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
     screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's, the title screen's, the
-    options screen's, the pause menu's and the stage's title card's, then saves /Game/DD."""
+    options screen's, the pause menu's, the stage's title card's and the extras screen's, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -394,5 +469,7 @@ def import_all():
         result["pause_" + key] = count
     for key, count in import_chapter_portal().items():
         result["chapter_portal_" + key] = count
+    for key, count in import_extras().items():
+        result["extras_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result
