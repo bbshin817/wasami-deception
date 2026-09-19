@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/options-pause
 base: d7ae8be
 started: 2026-09-19 12:03
-updated: 2026-09-19 16:05
+updated: 2026-09-19 16:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -23,7 +23,9 @@ updated: 2026-09-19 16:05
 - [x] 3. オプション画面の木と素材 … 2026-09-19 完了。`UWasamiOptionsWidget`（旧版 `UMG_Options` の木をスロットのまま・Construct・`Setup Values`・値の箱の結び付け・FadeIn。タイトルの外では DIFFICULTY を外す）、`dd_ui.import_options`（7 枚）、テスト `Wasami.Options.Screen`・`FadeIn`。中身は実装記録 15。
 - [x] 4. オプション画面の操作とタイトルの OPTIONS … 2026-09-19 完了。スライダーの 1/9 の吸着（`Setup Values` の間は吸着させない）・矢印・SAVE & EXIT（`WriteValues` → 持ち主 `SettingsOwner` の `SaveSettings`）・CANCEL（FadeIn の逆再生、0.3 s で外れる）・ホバー、`UI_Select_V2` の取り込み、タイトルの OPTIONS、テスト `Wasami.Options.Controls`・`SaveAndCancel`。中身は実装記録 15。閉じた後は入力の様式を戻さない（本家どおり）ので、**ポーズの上で閉じたときの焦点・Esc はステップ 5 で見る**。
 - [x] 5. ポーズ画面の木・アニメ・音と開き方 … 2026-09-19 完了。`UWasamiPauseWidget`（本家の `UMG_Pause` の木をスロットのまま・Construct・FadeIn・RESUME・Destruct・EASY MODE とホバーの色。頭は本作のワサミ `T_PauseHead`・`T_PausePeek` を赤で塗る）、`dd_ui.import_pause`、プレイヤーの Esc（`IA_Escape` → `EscapePressed`: 止まっていなければ Z 5 で開く）とデバッグ `Wasami.Pause`、テスト `Wasami.Pause.*` 3 件。ポップアップ 2 つ（`Givingupbox`・`RestartBox`）と 2 枚目の幕 `CanvasPanel_3` は木にあり、拡大 0・不透明度 0 のまま。中身は実装記録 15。
-- [ ] 6. ポーズのボタンの道と通しの確かめ
+- [ ] 6. ポーズのボタンの道と通しの確かめ（6a・6b に分けた。2026-09-19）
+  - [ ] 6a. ポップアップのアニメとボタンの道（**作業中**）: `UWasamiPauseWidget` に RESTART → RESTART? → YES / NO、OPTIONS、QUIT → GIVING UP? → QUIT TO TITLE / QUIT TO DESKTOP / CANCEL、`Popup`・`Popup_0` と `redblock`。変更: `WasamiPauseWidget.*`・`Tests/WasamiPauseTests.cpp`・実装記録 15。確かめ: ビルド・`Wasami.Pause` のテスト・PIE（Zone 1 で `Wasami.Pause` → 各ボタン）。
+  - [ ] 6b. 死亡画面の EASY・Esc の例外・台本の区間 `pause`・通しの確かめ（下の 3 つ目〜5 つ目の箇条）。
   - RESTART → RESTART?（`Popup_0`・選択音とウィンドウの音）→ YES: 本家どおりセーブの病院の欄を空の欄にして書き、今のレベルを開く（旧版 @5158: 選択音 → `SetGamePaused(False)` → ゲームの入力 → `Hard Check Point` 0 → `OpenLevel`。最新版は回収の記憶〈`Shards To Be Removed`〉も空にし、`UMG_BlackFade_2`〈Speed 5、Z 10〉の後に開く。下の決定事項）。死亡画面の `RestartEvent`（09 記録。Zone 2 でチェックポイント 0 なら Zone 1 の到着）と同じ道を使う。NO（再生速度 0.7 の選択音と `Popup_0` の逆再生）。
   - OPTIONS → `UWasamiOptionsWidget` を Z 10 で（ポーズの上。ゲームの中では本家どおり DIFFICULTY の箱が外れる。15 記録）。QUIT → GIVING UP?（`Popup`）→ QUIT TO TITLE（セーブはそのまま、タイトル `L_Title`）/ QUIT TO DESKTOP（`QuitGame`。WebGL 版はブラウザなので置かなかった）/ CANCEL。
   - ポップアップのアニメ `Popup`（`Givingupbox`）・`Popup_0`（`RestartBox`）は同じキー: 窓の拡大 0 → 1（0.25 s、自動の接線 3.33e-5/tick で少し行き過ぎる）→ 1（0.5 s）と不透明度 0 → 1（0.25 s）、`Blur+Red` の不透明度 1 → 0・`CanvasPanel_3` の不透明度 0 → 1（どちらも 0.25 s）。再生範囲は [0, 30001)。オプション画面の FadeIn と同じ値（`UMG_PopUp` の `Popup`）。`redblock` の見え方の切り替え（開くと Visible でメニューのクリックを遮る）は各ボタンの流れで読む。
