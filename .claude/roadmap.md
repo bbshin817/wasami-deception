@@ -219,7 +219,7 @@
 - 根拠: `pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`・`UMG_PopUp.txt`、`_assets/**/UMG_TitleScreen.json`、WebGL 版 10 記録、`<WEBGL>/public/title/`。
 - 依存: 5（セーブ）。
 - 規模: 2
-- 状態: 未着手。
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-title-screen`）。計画の段階で、画面は WebGL 版と同じ旧版の `UMG_TitleScreen` を写し、メニューは RESUME / NEW GAME / OPTIONS / QUIT（CHAPTERS・REPLAY・EXTRAS は作らない）、RESUME は本家の問い `UMG_PopUp_Resume` を出さずにチェックポイントのゾーンへ（WebGL 版と同じ）、暗転の後にレベルを開くまでは本家の Delay（NEW GAME 10 s・RESUME 5 s）、OPTIONS は項目 18 まで選択音だけ、タイトルは別のレベル `L_Title` と別のゲームモードにする、と決めた。
 
 ### 18. オプション画面とポーズ画面（WebGL 版と同じ）
 
