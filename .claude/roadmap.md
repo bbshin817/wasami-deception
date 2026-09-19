@@ -265,7 +265,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/Shared/BP_SecretRoomZone.txt`、`Blueprints/Main/BP_MysteryCollectable*.txt`・`BP_Collectable.txt`、`UI/Main/UMG_Collectables_Secret.txt`、`_levels/06_Hospital*.full.json`。
 - 依存: 5、6。
 - 規模: 2
-- 状態: 未着手。
+- 状態: 進行中（2026-09-19 から。進捗記録 `20260919-secrets`）。計画の段階で、`SECRETS` の 4 は `BP_Collectable` の ID 0〜3（Zone 1 の秘密のエレベーター 2 つの奥の 0・1、Zone 2 の秘密の部屋の 2、迷路の後にレベル BP が出す 3）で、秘密の部屋の区域とメモは数えない、書類の Unlock が本家の別のセーブに足す EXTRAS は作らない（画面 `NEW EXTRAS UNLOCKED!` は出す）、Zone 1 のおとりのエレベーター 5 つも同じ基底 `BP_FakeUseActor` で置く、と決めた。
 
 ### 24. 捕獲のカメラの動き（本家ホテルの捕獲の体）
 
