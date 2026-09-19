@@ -4,6 +4,9 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Sound/SoundClass.h"
+#include "Sound/SoundMix.h"
+#include "WasamiAssets.h"
 
 const FString UWasamiSettingsSaveGame::SlotName(TEXT("Settings"));
 
@@ -19,9 +22,38 @@ UWasamiSettingsSaveGame* UWasamiSettingsSaveGame::Check(const FString& Slot)
 	return Made;
 }
 
-void UWasamiSettingsSaveGame::Apply() const
+namespace
 {
-	// Set Settings (@33342). The sound mix's classes (Music, SFX, Dialogue) are not in yet.
+	template <typename T>
+	T* LoadSettingsAsset(const TCHAR* Package)
+	{
+		return TSoftObjectPtr<T>(WasamiAssets::Path(Package)).LoadSynchronous();
+	}
+}
+
+USoundMix* UWasamiSettingsSaveGame::LoadSoundMix()
+{
+	return LoadSettingsAsset<USoundMix>(TEXT("/Game/DD/Audio/SoundMix/DD_SoundMix"));
+}
+
+USoundClass* UWasamiSettingsSaveGame::LoadMusicClass()
+{
+	return LoadSettingsAsset<USoundClass>(TEXT("/Game/DD/Audio/SoundMix/DD_SoundClass_Music"));
+}
+
+USoundClass* UWasamiSettingsSaveGame::LoadSFXClass()
+{
+	return LoadSettingsAsset<USoundClass>(TEXT("/Game/DD/Audio/SoundMix/DD_SoundClass_SFX"));
+}
+
+USoundClass* UWasamiSettingsSaveGame::LoadDialogueClass()
+{
+	return LoadSettingsAsset<USoundClass>(TEXT("/Game/DD/Audio/SoundMix/DD_SoundClass_Dialogue"));
+}
+
+void UWasamiSettingsSaveGame::Apply(const UObject* WorldContextObject) const
+{
+	// Set Settings (@33342).
 	if (!GIsEditor)
 	{
 		if (UGameUserSettings* User = UGameUserSettings::GetGameUserSettings())
@@ -38,6 +70,14 @@ void UWasamiSettingsSaveGame::Apply() const
 	if (GEngine)
 	{
 		GEngine->DisplayGamma = GammaFor(Brightness);
+	}
+	// On the world's audio device (there is none for a game instance a test makes without a world).
+	if (GEngine && GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull))
+	{
+		USoundMix* Mix = LoadSoundMix();
+		UGameplayStatics::SetSoundMixClassOverride(WorldContextObject, Mix, LoadMusicClass(), Music, 1.f, 1.f, false);
+		UGameplayStatics::SetSoundMixClassOverride(WorldContextObject, Mix, LoadSFXClass(), SFX, 1.f, 1.f, false);
+		UGameplayStatics::SetSoundMixClassOverride(WorldContextObject, Mix, LoadDialogueClass(), Dialogue, 1.f, 1.f, false);
 	}
 }
 

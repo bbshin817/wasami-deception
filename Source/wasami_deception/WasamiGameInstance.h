@@ -40,6 +40,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Settings")
 	void SaveSettings();
 
+	/**
+	 * Whether the settings' Difficulty is EASY (the original's `Global Settings Save Instance.Difficulty == 0`, which the
+	 * level clear screen and the pause read).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	bool IsEasy();
+
 	/** The settings' slot; empty for the original's Settings (the tests use their own). */
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	FString SettingsSlotName;

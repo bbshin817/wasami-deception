@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/options-pause
 base: d7ae8be
 started: 2026-09-19 12:03
-updated: 2026-09-19 12:35
+updated: 2026-09-19 13:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -19,10 +19,7 @@ updated: 2026-09-19 12:35
 
 - [x] 0. 本家のコードと WebGL 版の記録を読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」。
 - [x] 1. 設定のセーブと適用 … 2026-09-19 完了。`UWasamiSettingsSaveGame`（項目・既定値・規則）、ゲームインスタンスが持つ（`CheckSettingsSave`・`GetSettings`・`SaveSettings`）、両ゲームモードの BeginPlay で読んで当てる（スケーラビリティはパッケージだけ）、プレイヤーの `ApplySettings`・`SetUpMouseSmoothing`、`Wasami.Settings`・`Wasami.ResetSettings`、テスト `Wasami.Settings.*` 4 件。中身は実装記録 15。
-- [ ] 2. 音量の SoundClass と SoundMix、難易度の効き先
-  - 本家の `Audio/SoundMix/DD_SoundMix`・`DD_SoundClass_Music`・`_SFX`・`_Dialogue`（と `_SFX_UI`・`_SFX_Movies`。親子を JSON で確かめる）を取り込み、取り込み済みの音（`dd_assets.py` は今 `SoundClassObject` を書かない。18 行目のコメント）に本家の SoundClass を付ける（SoundWave と SoundCue の JSON の `SoundClassObject` から。既存の音は取り込み直さずに付け直す道具を足す）。`Set Settings` と SAVE & EXIT で `SetSoundMixClassOverride(DD_SoundMix, 各 Class, 値, 1, 1, False)`（`PushSoundMixModifier` が要るかは UE 5.8 の挙動で確かめる）。
-  - 難易度（本家の旧版のメニューで選べるのは EASY / NORMAL。HARD は Clamp で届かない）: スコア画面の `easymode` と FINAL RANK の A 止め（13 記録。今は出さない）、死亡画面の Easy の分岐（`pak_reference_2/.../UMG_DeathScreen.txt` の 694 行あたり。09 記録・`.claude/references/game-flow/README.md` の 78 行は「本作は作らない」としていた）を本家のコードどおりにつなぐ。病院の敵（ナース）は難易度を読まない（`pak_reference_2` で Difficulty を読むのは `BP_Monkey`・`BP_Monkey_Chef`・`BP_03_Watcher`・`BP_Agatha1`・死亡画面・スコア画面・ポーズ・ゲームインスタンスだけ）ので、敵の速さは変えない。
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_assets.py`（か `dd_audio` の新しい関数）、`toolsets/dd.py`、`/Game/DD/Audio/SoundMix/…`、`WasamiLevelClearWidget.*`・`WasamiLevelResults.*`・`WasamiGameMode.cpp`（`Escape` の EASY）、`WasamiDeathScreenWidget.*`、テスト、実装記録 01・09・13・06
+- [x] 2. 音量の SoundClass と SoundMix、難易度の効き先 … 2026-09-19 完了。`DD_SoundMix` と SoundClass 5 つを取り込み、取り込み済みの音 62 件に本家のクラスを付けた（`import_dd_sound_classes`。01 記録）。`Apply(WorldContext)` の `SetSoundMixClassOverride` と `CheckSettingsSave` の `SetBaseSoundMix`、`UWasamiGameInstance::IsEasy()` をスコア画面へ（15・13 記録）。死亡画面の Easy の分岐は作らない（要確認）。
 - [ ] 3. オプション画面の木と素材（`UWasamiOptionsWidget`）
   - 死亡画面・タイトル（09・14 記録）と同じく、旧版 `pak_reference/_assets/.../UI/Menu/UMG_Options.json`（`_bytecode/.../UMG_Options.txt`）の木をスロットのまま C++ で組む: ルート CanvasPanel_0（レンダー変換 1.015）、Blur+Red、CanvasPanel_2（枠 `options-frame`・見出し）、CanvasPanel_1 の GridPanel_0（GRAPHICS / AUDIO / CONTROLS / DIFFICULTY の 4 つの VerticalBox。UMG の `UGridPanel` はそのまま Slate の配置になるので WebGL 版の `slateGrid` は要らない）、SAVE & EXIT / CANCEL。WebGL 版 10 記録の styles.css「OPTIONS」が同じ木を写した値の控え。
   - 素材: 本家のテクスチャ（枠・値の箱・矢印・つまみ・チェック 2 枚。名前は JSON で。WebGL 版は `options-frame.webp` ほか）とフォント（Helvetica Neue Bold。取り込み済みの `/Game/DD/UI/Fonts` を確かめる）を取り込む（`dd_ui.py` に `import_options()`）。
@@ -35,7 +32,7 @@ updated: 2026-09-19 12:35
   - 変更予定: `WasamiOptionsWidget.*`、`WasamiTitleScreenWidget.cpp`、`Tests/WasamiOptionsTests.cpp`、実装記録 14・09（か 15）
 - [ ] 5. ポーズ画面の木・アニメ・音と開き方（`UWasamiPauseWidget`）
   - 旧版 `pak_reference/_assets/.../UI/Menu/Pause/UMG_Pause.json` の木（Blur+Red → 帯 Image_152・頭 Icon・EASY MODE TextBlock_1・メニュー VerticalBox_113〈RESUME / RESTART / OPTIONS / QUIT〉→ CanvasPanel_3 → Givingupbox → RestartBox）をスロットのまま C++ で。頭は本家の病院の `pause_reapernurse_head`（キャラクター）でなく本作のワサミ（WebGL 版の `<WEBGL>/public/title/pause-head.webp`、のぞく頭は `pause-peek.webp`。前処理で PNG にして `SourceArt/Wasami/UI/` へ。本家の頭の赤 `rgb(192, 0, 0)` で塗る）。帯・枠は本家のテクスチャ（`restart_window_frame_2`・`quit_window_frame` は取り込み済み、帯は JSON で名前を確かめて取り込む）。
-  - `Construct`（`SetGamePaused(True)`・UI の入力とカーソル・`UI_Pause`・曲 `Pause_Sound_v1` を FadeIn・`FadeIn` のアニメ）と `Destruct`（曲を 0.5 s で消す）、RESUME（`FadeIn` の逆再生・0.5 s 後に `SetGamePaused(False)`・ゲームの入力・`RemoveFromParent`）。EASY MODE は難易度が EASY のときだけ見える（本家は色の結び付け）。
+  - `Construct`（`SetGamePaused(True)`・UI の入力とカーソル・`UI_Pause`・曲 `Pause_Sound_v1` を FadeIn・`FadeIn` のアニメ）と `Destruct`（曲を 0.5 s で消す）、RESUME（`FadeIn` の逆再生・0.5 s 後に `SetGamePaused(False)`・ゲームの入力・`RemoveFromParent`）。EASY MODE は難易度が EASY のときだけ見える（本家は色の結び付け。`UWasamiGameInstance::IsEasy()`）。
   - 開き方: 本家の旧版はキャラクターの Esc で `CreateAndAddWidget(UMG_Pause, Z 5)`、最新版はプレイヤーコントローラーの Esc と Gamepad Special Left で Z 1。Enhanced Input にポーズの入力を足す。**死亡画面・捕獲・スコア画面・読み込み画面・欠片の画面・タイトル・ポーズ中は開かない**かを本家のコードで確かめる（本家は Esc で毎回作る。ゲームが止まっている間に Esc が届くか・`SetGamePaused` の下で入力がどうなるかを読む）。**PIE では Esc がエディタの「プレイを止める」に取られる**ので、確かめはデバッグ `Wasami.Pause` か、エディタのキー割り当てを見て決める（症状索引に書く）。
   - テスト `Wasami.Pause.*`（木・アニメのキー・音・RESUME で解ける）。
   - 変更予定: `Source/wasami_deception/WasamiPauseWidget.*`（新）、`WasamiPlayerCharacter.*`（か新しいプレイヤーコントローラー）、`Tests/WasamiPauseTests.cpp`（新）、`Tools/dd/prepare_title.py`（か新しい前処理）、`SourceArt/Wasami/UI/pause_*.png`（新）、`dd_ui.py`、`/Game/DD/UI/Menu/Pause/…`・`/Game/Wasami/UI/Pause/…`、実装記録 09（か 15）・02・01
@@ -49,7 +46,7 @@ updated: 2026-09-19 12:35
 
 ## 次にやること
 
-ステップ 2 を始める（ブランチ `feature/options-pause`）。本家の `Audio/SoundMix/DD_SoundMix` と `DD_SoundClass_*` の JSON（`pak_reference/_assets/DDeception/Content/Audio/SoundMix/`）で親子と値を読み、`Content/Python/wasami_tools/pipeline/dd_assets.py`（18 行目のコメント: 今は `SoundClassObject` を書かない）と `dd_audio` の取り込みを読んでから、SoundClass・SoundMix を取り込み、取り込み済みの音に本家の SoundClass を付け直す道具を足す。`UWasamiSettingsSaveGame::Apply` に `SetSoundMixClassOverride` を足す（`// The sound mix's classes ... are not in yet.` の所）。
+ステップ 3 を始める（ブランチ `feature/options-pause`）。旧版 `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_Options.json` の木（スロット・テクスチャ・フォントの名前）と `_bytecode/.../UMG_Options.txt` の `Construct` @21404・`Setup Values` @17146 を読み、死亡画面・タイトルの組み方（`WasamiTitleScreenWidget.*`・09・14 記録）に倣って `UWasamiOptionsWidget` を C++ で組む。素材は `dd_ui.py` に `import_options()` を足して取り込む。
 
 ## 本家の流れ（読んだもの）
 
@@ -70,6 +67,8 @@ updated: 2026-09-19 12:35
 
 ## 要確認（ユーザー）
 
+- 死亡画面の EASY（2026-09-19、ステップ 2）: 最新版の死亡画面はライフ 0 で難易度が EASY だと、ライフの絵が消えるだけでゲームオーバーにならず、ボタンも出ない（ポーズからしか抜けられない）。旧版の死亡画面は難易度を読まない。オプション画面を写す旧版に合わせて**作らなかった**（EASY でもライフ 0 でゲームオーバー）。最新版どおりにする方がよければ直す。
+- SFX の音量が効かない音（2026-09-19、ステップ 2）: 本家どおり、音のクラスは本家の書き出しのまま付けたので、本家でクラスの無い病院の音 21 件（扉・リフト・エレベーター・鍵開け・針の罠など）は SFX のスライダーで小さくならない。UI の音（SFX_UI）も本家どおり SFX のスライダーが効かない。すべての効果音に効かせる方がよければ直す。
 - マウス感度の換算（2026-09-19、ステップ 1）: 本家の旧版はマウスの軸に設定の値（既定 0.5）をそのまま掛けるが、本作の視点の速さは項目 2 で最新版の実機を感度 1 で測って合わせてある。そのまま掛けると既定で今の半分の速さになるので、**設定 ÷ 0.5 を掛ける**（既定で今の速さ、最大 1 で 2 倍。WebGL 版の `lookScale` と同じ）と仮に決めた。本家どおり設定の値そのものを掛ける（既定で今の半分）方がよければ直す。
 
 ## 再開時の注意
@@ -80,3 +79,4 @@ updated: 2026-09-19 12:35
 ## 検証
 
 - ステップ 1: check_records OK。C++ ビルド OK（`WasamiVanishWidget.cpp` の定数がユニティの塊でぶつかったので `VanishTicksPerSecond` に改め、無名名前空間の名前の重複を洗い出した〈多重定義の `Place` だけ〉）。テスト `Wasami.Settings`・`Title`・`GameFlow`・`Capture` の 18 件が通った。PIE（Zone 1）で `Settings.sav` が作られ、プレイヤーは感度 1.0・ラグ 20 で始まり、`Wasami.Settings MouseSensitivity 1` で 2.0、`bMouseSmoothing False` でラグ 50、`Brightness 0.5` で画面の平均の明るさが 56.5 → 48.9 になり、PIE を止めるとエディタの明るさが戻った（`gamma` の前後で同じ）。
+- ステップ 2: check_records OK。C++ ビルド OK。テスト `Wasami.Settings`（新しい `SoundMix` を含む）・`LevelClear`・`GameFlow`・`Title`・`ZoneFlow`・`DeathScreen` の 31 件が通った。PIE（Zone 1）で `Wasami.Settings Music 0.3`・`SFX 0.5` の後、音の装置の Music と SFX のクラスの音量が約 1 s で 0.300・0.500 になり、Dialogue は 1 のまま。`Wasami.ResetSettings` で既定に戻した。

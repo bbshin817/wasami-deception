@@ -33,13 +33,13 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "e61817aaf385e63d9218cef5739ef7dfa1d935d1",
+    "Content/Python/wasami_tools/toolsets/dd.py": "5d9d51d1887ff7134c5d270b3d387ecd58258f23",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "807cece26ffd955419f230c12dcd97066b8b0898",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "6cbabb6fabec4072534453536fa8242a316627a4",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
-    "Content/Python/wasami_tools/pipeline/dd_assets.py": "c67e0df3e869b88b9a004ce8c9154e0a9079ad76",
+    "Content/Python/wasami_tools/pipeline/dd_assets.py": "ee6d59c65152afad81f6526096445b8aad0deb9b",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "8902d5e6db7b442640b644e16b2d78583ef5a568",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "bc5332d3319cc4e5466a1e97463ab6db84f005fb",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "a18824e0c731665eca110895835a9f5e758afc8d",
@@ -62,7 +62,7 @@
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "3fe380a6e8ce2e5bc7155535010bb039ab7354ab",
-    "Source/wasami_deception/WasamiGameMode.cpp": "f25b2236e5932b5e6bdbb5f74845d47f01f8220d",
+    "Source/wasami_deception/WasamiGameMode.cpp": "7170a62f215238902c4bedc74f05a8f8ff9c1cf3",
     "Source/wasami_deception/WasamiPlayerCharacter.h": "2bc8a561d20b056c17fb376e8c6d4c855f1108cf",
     "Source/wasami_deception/WasamiPlayerCharacter.cpp": "6734481b9587619faa48f70f18dfcd7f954a565c"
   },
@@ -116,8 +116,8 @@
     "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "956a79e018c51e07c01b0937d1cf1788c9d22f86"
   },
   "06-game-flow-save.md": {
-    "Source/wasami_deception/WasamiGameInstance.h": "3b494534fe07a970626407d5c701d3a21f580938",
-    "Source/wasami_deception/WasamiGameInstance.cpp": "f8d6c9a1a5fc086f6e594373ea1ac51db25928e3",
+    "Source/wasami_deception/WasamiGameInstance.h": "6d41202032d14deed20ca3e2675d257fb9392062",
+    "Source/wasami_deception/WasamiGameInstance.cpp": "853fbaf69d60a58358312331c33dfc338de27183",
     "Source/wasami_deception/WasamiSaveGame.h": "35913c78865564063b7c87af8ed5b0a87f5955e6",
     "Source/wasami_deception/WasamiSaveGame.cpp": "abf2736da33de268769df998e5543f796ccf1510",
     "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "55ee3968afb4b81cdd6d0830778ed86a6fc352db",
@@ -232,7 +232,7 @@
     "Source/wasami_deception/WasamiShardStreakWidget.h": "16fdafa93de48badfb32b58bb2e52f7243ba69cc",
     "Source/wasami_deception/WasamiShardStreakWidget.cpp": "77cfd41c2714cb6729e0b05998da22409ba5a2b5",
     "Source/wasami_deception/WasamiLevelClearWidget.h": "1e768553641c557bc932d1623bfa9b54981faed1",
-    "Source/wasami_deception/WasamiLevelClearWidget.cpp": "e4b726b35201f0dc588617429784d9c1c9b0ce24",
+    "Source/wasami_deception/WasamiLevelClearWidget.cpp": "f6c943fd0f522f565460c9581391a45bf9c28898",
     "Source/wasami_deception/Tests/WasamiLevelClearTests.cpp": "e4f85a22d7b79f3f478f5258fd10a19bdbe6a6ae"
   },
   "14-title.md": {
@@ -244,8 +244,8 @@
     "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "dcf22c9a76e5a8671a9b53de652c4561694ba2d0"
   },
   "15-options-pause.md": {
-    "Source/wasami_deception/WasamiSettingsSaveGame.h": "0d0389e2907c3241451d1f4d2305a674ded9f449",
-    "Source/wasami_deception/WasamiSettingsSaveGame.cpp": "3d1246bcb5e201c0d2ef81e375ad06cecefab421",
-    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "1567a49b8cb3088f453449eb3adb01b78c149f21"
+    "Source/wasami_deception/WasamiSettingsSaveGame.h": "e33dedcec55f88a85a1c8d4405e3bdda7e3340aa",
+    "Source/wasami_deception/WasamiSettingsSaveGame.cpp": "1c28d24c467bcbfdb0cccd0cd5c1e6f108bdcc9f",
+    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "679c717eedb800b510dcc9ab8de298a6d25685bb"
   }
 }

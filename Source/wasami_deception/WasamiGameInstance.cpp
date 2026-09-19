@@ -1,9 +1,11 @@
 #include "WasamiGameInstance.h"
 
+#include "AudioDevice.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Sound/SoundClass.h"
 #include "UObject/UnrealType.h"
 #include "WasamiCapture.h"
 #include "WasamiPlayerCharacter.h"
@@ -14,7 +16,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogWasamiSettings, Log, All);
 namespace
 {
 	FAutoConsoleCommandWithWorldAndArgs SettingsCommand(TEXT("Wasami.Settings"),
-		TEXT("Wasami.Settings [Name Value]: prints the settings (the OPTIONS' save); with one of their names (Quality, MouseSensitivity, bInvertedYAxis, Difficulty, ...) and a value, sets it and saves as SAVE & EXIT does."),
+		TEXT("Wasami.Settings [Name Value]: prints the settings (the OPTIONS' save) and the volumes the audio device has for the Music, SFX and Dialogue classes; with one of their names (Quality, MouseSensitivity, bInvertedYAxis, Difficulty, ...) and a value, sets it and saves as SAVE & EXIT does."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UWasamiGameInstance* Instance = World ? World->GetGameInstance<UWasamiGameInstance>() : nullptr;
@@ -38,6 +40,17 @@ namespace
 				FString Value;
 				It->ExportTextItem_Direct(Value, It->ContainerPtrToValuePtr<void>(Settings), nullptr, Settings, PPF_None);
 				UE_LOG(LogWasamiSettings, Display, TEXT("%s = %s"), *It->GetName(), *Value);
+			}
+			// The volumes the audio device works out for the sliders' classes (they reach them over the overrides' 1 s).
+			if (FAudioDevice* Device = World->GetAudioDeviceRaw())
+			{
+				for (USoundClass* Class : {UWasamiSettingsSaveGame::LoadMusicClass(), UWasamiSettingsSaveGame::LoadSFXClass(), UWasamiSettingsSaveGame::LoadDialogueClass()})
+				{
+					if (const FSoundClassProperties* Properties = Class ? Device->GetSoundClassCurrentProperties(Class) : nullptr)
+					{
+						UE_LOG(LogWasamiSettings, Display, TEXT("%s volume now %.3f"), *Class->GetName(), Properties->Volume);
+					}
+				}
 			}
 		}));
 
@@ -81,7 +94,12 @@ UWasamiSettingsSaveGame* UWasamiGameInstance::CheckSettingsSave()
 	Settings = UWasamiSettingsSaveGame::Check(GetSettingsSlot());
 	if (Settings)
 	{
-		Settings->Apply();
+		Settings->Apply(this);
+	}
+	// BeginPlay goes on to SetBaseSoundMix(DD_SoundMix) (@27511), which the classes' volumes are overrides of.
+	if (GetWorld())
+	{
+		UGameplayStatics::SetBaseSoundMix(this, UWasamiSettingsSaveGame::LoadSoundMix());
 	}
 	return Settings;
 }
@@ -93,7 +111,7 @@ void UWasamiGameInstance::SaveSettings()
 	{
 		return;
 	}
-	Current->Apply();
+	Current->Apply(this);
 	UGameplayStatics::SaveGameToSlot(Current, GetSettingsSlot(), UWasamiSettingsSaveGame::UserIndex);
 	UWorld* World = GetWorld();
 	if (AWasamiPlayerCharacter* Player = World ? Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0)) : nullptr)
@@ -106,6 +124,12 @@ void UWasamiGameInstance::SaveSettings()
 UWasamiSettingsSaveGame* UWasamiGameInstance::GetSettings()
 {
 	return Settings ? Settings.Get() : CheckSettingsSave();
+}
+
+bool UWasamiGameInstance::IsEasy()
+{
+	const UWasamiSettingsSaveGame* Current = GetSettings();
+	return Current && Current->Difficulty == EWasamiDifficulty::Easy;
 }
 
 FString UWasamiGameInstance::GetSettingsSlot() const

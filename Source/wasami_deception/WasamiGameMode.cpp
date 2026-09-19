@@ -388,9 +388,10 @@ UWasamiLevelClearWidget* AWasamiGameMode::Escape()
 	UGameplayStatics::SetGamePaused(this, true);
 	SaveCheckpoint(0);
 	// The time's rank and the rows (@57305 → @38874), Create(UMG_LevelClear), Finished bound to Finished Level,
-	// AddToViewport(6). EASY comes with the difficulty (item 18).
+	// AddToViewport(6). EASY is the settings' difficulty, which the screen's Construct and Final Rank read.
+	UWasamiGameInstance* Instance = GetWasamiGameInstance();
 	UWasamiLevelClearWidget* Screen = UWasamiLevelClearWidget::Show(this,
-		FWasamiLevelResults::ForHospital(StructSave ? StructSave->Hospital : FWasamiLevelProgress(), false));
+		FWasamiLevelResults::ForHospital(StructSave ? StructSave->Hospital : FWasamiLevelProgress(), Instance && Instance->IsEasy()));
 	if (Screen)
 	{
 		Screen->OnFinished.AddDynamic(this, &AWasamiGameMode::FinishedLevel);

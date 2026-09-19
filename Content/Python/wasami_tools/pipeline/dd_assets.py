@@ -15,7 +15,7 @@ MEL = unreal.MaterialEditingLibrary
 
 # SoundWave properties of the export that are written onto the imported wave, with UE's default for when the export
 # leaves them out (it keeps only what differs from the defaults). Channels, rate and duration come with the file; the
-# original's sound classes are not made (yet), so SoundClassObject is not written.
+# sound class (SoundClassObject) is written by _write_sound_class.
 SOUND_DEFAULTS = {"Volume": 1.0, "Pitch": 1.0}
 SOUND_FLAGS = {"bLooping": False}
 
@@ -181,11 +181,144 @@ def sound(rel, version=1):
         wave.set_editor_property(ue_props.snake(key), bool(props.get(key, default)))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
+    _write_sound_class(wave, props)
     return target
 
 
-# SoundCue properties the builder sets itself (the tree) or UE works out from it, and the sound classes, which are not
-# made yet (as for the waves).
+# The original's sound mix (BP_DD_GameMode's SetBaseSoundMix; the options' volumes are its class overrides) and the
+# sound classes it adjusts, which the sounds name as their SoundClassObject.
+SOUND_MIX = "Audio/SoundMix/DD_SoundMix"
+
+
+def _sound_class_asset(rel, version):
+    """The SoundClass /Game/DD/<rel> with the export's Properties (made when missing), and the export's props."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        asset = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        asset = _tools().create_asset(name, folder, unreal.SoundClass, unreal.SoundClassFactory())
+    props = main_export(export_json(rel, version), rel)["props"]
+    # ParentClass is read-only to Python; adding the class to its parent's ChildClasses sets it (_sound_class_tree).
+    failures = ue_props.apply(asset, props, skip=("ParentClass", "ChildClasses"))
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    return asset, props
+
+
+def _sound_class_tree(rel, version):
+    """The SoundClass /Game/DD/<rel> and the ChildClasses under it, as the exports have them (saved)."""
+    asset, props = _sound_class_asset(rel, version)
+    for child_path in props.get("ChildClasses", []):
+        child = _sound_class_tree(game_rel(child_path), version)
+        children = list(asset.get_editor_property("child_classes"))
+        if child not in children:
+            # One at a time: USoundClass::PostEditChangeProperty makes the first new entry's ParentClass this class and
+            # stops there.
+            asset.set_editor_property("child_classes", children + [child])
+        if child.get_editor_property("parent_class") != asset:
+            raise RuntimeError("%s did not become the parent of %s" % (rel, child_path))
+    EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return asset
+
+
+# The class trees made since this module was loaded (the toolsets load it again for each call), by root and version.
+_made_class_trees = set()
+
+
+def sound_class(rel, version=1):
+    """The SoundClass of the original's /Game/<rel> ('Audio/SoundMix/DD_SoundClass_SFX_UI') with the export's
+    Properties, made with the whole tree it is in (from the root through the exports' ParentClass, then each
+    ChildClasses) and saved. A parent in the engine's content is left out: the latest version hangs Music under the
+    engine's Master for its master volume, which the old version's options (the ones this game has) do not have, and
+    /Engine cannot be saved. Returns the asset."""
+    root = rel
+    while True:
+        parent = main_export(export_json(root, version), root)["props"].get("ParentClass")
+        if not parent or parent.startswith(ENGINE_REL):
+            break
+        root = game_rel(parent)
+    if (root, version) not in _made_class_trees:
+        _sound_class_tree(root, version)
+        _made_class_trees.add((root, version))
+    return unreal.load_asset(asset_path(rel))
+
+
+def sound_mix(rel=SOUND_MIX, version=1):
+    """The original's SoundMix ('Audio/SoundMix/DD_SoundMix') with its SoundClassEffects (the sound classes they adjust
+    made first) and settings, saved. Returns the asset."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        mix = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        mix = _tools().create_asset(name, folder, unreal.SoundMix, unreal.SoundMixFactory())
+    props = main_export(export_json(rel, version), rel)["props"]
+    effects = []
+    failures = []
+    for entry in props.get("SoundClassEffects", []):
+        adjuster = unreal.SoundClassAdjuster()
+        adjuster.set_editor_property("sound_class_object", sound_class(game_rel(entry["SoundClassObject"]), version))
+        ue_props.apply(adjuster, entry, skip=("SoundClassObject",), failures=failures)
+        effects.append(adjuster)
+    mix.set_editor_property("sound_class_effects", effects)
+    ue_props.apply(mix, props, skip=("SoundClassEffects",), failures=failures)
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    EAL.save_loaded_asset(mix, only_if_is_dirty=False)
+    return mix
+
+
+def _write_sound_class(sound, props):
+    """Sets the sound's SoundClassObject to the export's (made when missing), or to none where the export has none (the
+    project's default class, as in the original). The classes are the old version's (the options this game has are
+    its; the latest's differ only in Music's parent, see sound_class). Returns whether it changed."""
+    path = props.get("SoundClassObject")
+    cls = sound_class(game_rel(path), 1) if path else None
+    if sound.get_editor_property("sound_class_object") == cls:
+        return False
+    sound.set_editor_property("sound_class_object", cls)
+    return True
+
+
+def _sound_rel(package_path):
+    """'/Game/DD/Audio/UI/Life_Lost' → 'Audio/UI/Life_Lost'; an engine sound's → '/Engine/VREditor/...'."""
+    sub = package_path[len(paths.DD_ROOT) + 1:]
+    if sub.startswith(ENGINE_FOLDER + "/"):
+        return ENGINE_REL + sub[len(ENGINE_FOLDER) + 1:]
+    return sub
+
+
+def sound_classes():
+    """Gives every SoundWave and SoundCue under /Game/DD the sound class its export names (SoundClassObject) without
+    importing it again, and makes the sound mix. A sound in both versions of the original takes the latest's (only
+    Audio/UI/Pause_Sound_v1 differs: SFX in the old, Music in the latest, which the title imports it from). Saves the
+    ones it changes. Returns how many sounds went to each class ('None' for none) and how many changed."""
+    sound_mix()
+    registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    result = {"changed": 0}
+    for cls in ("SoundWave", "SoundCue"):
+        found = registry.get_assets(unreal.ARFilter(class_paths=[unreal.TopLevelAssetPath("/Script/Engine", cls)],
+                                                    package_paths=[paths.DD_ROOT], recursive_paths=True))
+        for data in found:
+            package = str(data.package_name)
+            rel = _sound_rel(package)
+            try:
+                pkg, version = export_json(rel, 2), 2
+            except FileNotFoundError:
+                pkg, version = export_json(rel, 1), 1
+            props = main_export(pkg, rel)["props"]
+            sound = unreal.load_asset(package)
+            if _write_sound_class(sound, props):
+                EAL.save_loaded_asset(sound, only_if_is_dirty=False)
+                result["changed"] += 1
+            name = props.get("SoundClassObject", "None").rsplit(".", 1)[-1]
+            result[name] = result.get(name, 0) + 1
+    return result
+
+
+# SoundCue properties the builder sets itself (the tree) or UE works out from it, and the sound class, which
+# _write_sound_class writes.
 SOUND_CUE_SKIP = ("FirstNode", "SoundClassObject", "Duration", "MaxDistance")
 
 
@@ -249,6 +382,7 @@ def sound_cue(rel, version=1):
     failures = ue_props.apply(cue, props, skip=SOUND_CUE_SKIP + ("AttenuationSettings",))
     if failures:
         raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    _write_sound_class(cue, props)
     EAL.save_asset(target, only_if_is_dirty=False)
     return target
 

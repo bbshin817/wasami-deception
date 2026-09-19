@@ -39,10 +39,24 @@ public:
 	/**
 	 * The game mode's Set Settings: the scalability at Quality (with the view distance at 3 and the post-processing at
 	 * PostProcessingQualityFor), the resolution scale × 100, applied without a check; the subtitles; the display gamma
-	 * (GammaFor). In the editor the first part is skipped: UE's scalability is the editor's own too, and its settings
-	 * would be written into the editor's GameUserSettings.ini (.claude/guides/performance.md).
+	 * (GammaFor); and MUSIC, SFX and DIALOGUE as the volumes of DD_SoundMix's Music, SFX and Dialogue classes
+	 * (SetSoundMixClassOverride over 1 s, not to their children: SFX leaves SFX_UI and SFX_Movies as they are, as in the
+	 * original) on WorldContextObject's audio device. In the editor the first part is skipped: UE's scalability is the
+	 * editor's own too, and its settings would be written into the editor's GameUserSettings.ini
+	 * (.claude/guides/performance.md).
 	 */
-	void Apply() const;
+	void Apply(const UObject* WorldContextObject) const;
+
+	/**
+	 * DD_SoundMix (pak_reference's Audio/SoundMix, rebuilt by the pipeline's import_dd_sound_classes): the base sound mix
+	 * BP_DD_GameMode's BeginPlay sets, whose classes Set Settings overrides.
+	 */
+	static class USoundMix* LoadSoundMix();
+
+	/** The sound classes the MUSIC, SFX and DIALOGUE sliders set. */
+	static class USoundClass* LoadMusicClass();
+	static class USoundClass* LoadSFXClass();
+	static class USoundClass* LoadDialogueClass();
 
 	/** QUALITY: 0 to 3, LOW / MEDIUM / HIGH / VERY HIGH, the level of UE's overall scalability. */
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Settings")

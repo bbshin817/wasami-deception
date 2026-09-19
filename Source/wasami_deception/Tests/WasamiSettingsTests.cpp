@@ -4,7 +4,11 @@
 #include "Engine/World.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundClass.h"
+#include "Sound/SoundMix.h"
 #include "Tests/AutomationCommon.h"
+#include "../WasamiAssets.h"
 #include "../WasamiGameInstance.h"
 #include "../WasamiPlayerCharacter.h"
 #include "../WasamiSettingsSaveGame.h"
@@ -88,6 +92,78 @@ bool FWasamiSettingsRulesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSettingsSoundMixTest, "Wasami.Settings.SoundMix",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSettingsSoundMixTest::RunTest(const FString& Parameters)
+{
+	// DD_SoundMix as the original's: SFX, Dialogue and Music at 1, none of them to its children.
+	using S = UWasamiSettingsSaveGame;
+	const USoundMix* Mix = S::LoadSoundMix();
+	USoundClass* Music = S::LoadMusicClass();
+	USoundClass* SFX = S::LoadSFXClass();
+	USoundClass* Dialogue = S::LoadDialogueClass();
+	if (!TestNotNull(TEXT("the mix"), Mix) || !TestNotNull(TEXT("Music"), Music) || !TestNotNull(TEXT("SFX"), SFX)
+		|| !TestNotNull(TEXT("Dialogue"), Dialogue))
+	{
+		return false;
+	}
+	if (TestEqual(TEXT("three classes"), Mix->SoundClassEffects.Num(), 3))
+	{
+		const USoundClass* Order[] = {SFX, Dialogue, Music};
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			const FSoundClassAdjuster& Adjuster = Mix->SoundClassEffects[Index];
+			TestTrue(FString::Printf(TEXT("adjuster %d's class"), Index), Adjuster.SoundClassObject == Order[Index]);
+			TestEqual(FString::Printf(TEXT("adjuster %d's volume"), Index), Adjuster.VolumeAdjuster, 1.f);
+			TestFalse(FString::Printf(TEXT("adjuster %d not to the children"), Index), Adjuster.bApplyToChildren);
+		}
+	}
+	// The classes' tree and properties.
+	TestNull(TEXT("Music has no parent"), Music->ParentClass.Get());
+	TestFalse(TEXT("Music without reverb"), Music->Properties.bReverb);
+	TestTrue(TEXT("SFX with the ambient volumes"), SFX->Properties.bApplyAmbientVolumes);
+	TestEqual(TEXT("SFX has SFX_Movies and SFX_UI"), SFX->ChildClasses.Num(), 2);
+	for (const USoundClass* Child : SFX->ChildClasses)
+	{
+		if (TestNotNull(TEXT("a child of SFX"), Child))
+		{
+			TestTrue(FString::Printf(TEXT("%s's parent is SFX"), *Child->GetName()), Child->ParentClass == SFX);
+			if (Child->GetName() == TEXT("DD_SoundClass_SFX_UI"))
+			{
+				TestTrue(TEXT("SFX_UI is a UI sound"), Child->Properties.bIsUISound);
+			}
+			else
+			{
+				TestEqual(TEXT("SFX_Movies at 0.5"), Child->Properties.Volume, 0.5f);
+			}
+		}
+	}
+
+	// Sounds carry their exports' classes (none where the original has none).
+	const struct
+	{
+		const TCHAR* Sound;
+		const TCHAR* Class;
+	} Cases[] = {
+		{TEXT("/Game/DD/Audio/UI/UI_Select_V3"), TEXT("DD_SoundClass_SFX")},
+		{TEXT("/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue"), TEXT("DD_SoundClass_SFX")},
+		{TEXT("/Game/DD/Audio/UI/UI_YouEscaped"), TEXT("DD_SoundClass_SFX_UI")},
+		{TEXT("/Game/DD/Audio/UI/Pause_Sound_v1"), TEXT("DD_SoundClass_Music")},
+		{TEXT("/Game/DD/Audio/Titlescreen/Bierce_Title_Modified_03"), TEXT("DD_SoundClass_Dialogue")},
+		{TEXT("/Game/DD/Audio/06_Hospital/DD_TT_Lift_Loop"), TEXT("")},
+	};
+	for (const auto& Case : Cases)
+	{
+		const USoundBase* Sound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(Case.Sound)).LoadSynchronous();
+		if (TestNotNull(Case.Sound, Sound))
+		{
+			TestEqual(FString::Printf(TEXT("%s's class"), Case.Sound), Sound->SoundClassObject ? Sound->SoundClassObject->GetName() : FString(), FString(Case.Class));
+		}
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSettingsSlotTest, "Wasami.Settings.Slot",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
@@ -114,6 +190,7 @@ bool FWasamiSettingsSlotTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestTrue(TEXT("kept as the settings"), Instance->GetSettings() == Read);
+	TestFalse(TEXT("NORMAL is not EASY"), Instance->IsEasy());
 	TestEqual(TEXT("the brightness applied as the display gamma"), GEngine->DisplayGamma, 2.2f, 1e-5f);
 	Read->Brightness = 0.5f;
 	Read->MouseSensitivity = 1.f;
@@ -121,6 +198,7 @@ bool FWasamiSettingsSlotTest::RunTest(const FString& Parameters)
 	Read->Difficulty = EWasamiDifficulty::Easy;
 	Instance->SaveSettings();
 	TestEqual(TEXT("SAVE & EXIT applies the gamma"), GEngine->DisplayGamma, 2.f, 1e-5f);
+	TestTrue(TEXT("EASY"), Instance->IsEasy());
 
 	UWasamiSettingsSaveGame* Again = UWasamiSettingsSaveGame::Check(SettingsTestSlotName);
 	if (TestNotNull(TEXT("read again"), Again))

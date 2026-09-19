@@ -53,6 +53,20 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_sound_classes() -> dict[str, int]:
+        """Makes (or rewrites) the original's sound mix DD_SoundMix and its sound classes (Music, SFX with its children
+        SFX_UI and SFX_Movies, Dialogue) under /Game/DD/Audio/SoundMix, and gives every SoundWave and SoundCue already
+        under /Game/DD the class its export names (none where it names none), without importing the sounds again.
+        Sounds imported after this get their class as they are imported.
+
+        Returns:
+            How many sounds went to each class ('DD_SoundClass_SFX' …, 'None') and how many changed ('changed').
+        """
+        _module("dd_stage")
+        return _module("dd_assets").sound_classes()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_dd_ui() -> dict[str, int]:
         """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
