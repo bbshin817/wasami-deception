@@ -142,8 +142,8 @@ public:
 
 	/**
 	 * Finished Level (@75934), once: the game unpaused, and FinishedLevelDelay on the hospital's save entry emptied and
-	 * written, the game instance reset (the shards collected forgotten, 3 lives) and Zone 1 opened from the start (the
-	 * original opens 06_Cinematic, or TitleScreen when replaying; this game's title is item 17).
+	 * written, the game instance reset (the shards collected forgotten, 3 lives) and the title opened (the original
+	 * opens 06_Cinematic, the next chapter's, or TitleScreen when replaying; this game has no next chapter).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void FinishedLevel();
@@ -153,6 +153,9 @@ public:
 
 	/** Whether Finished Level ran (its DoOnce closed). */
 	bool HasFinishedLevel() const { return bLevelFinished; }
+
+	/** The level Finished Level opened after its Delay (empty before). */
+	const FString& GetLevelToOpen() const { return LevelToOpen; }
 
 	/** The save read or made when play began (Struct Save). */
 	UFUNCTION(BlueprintPure, Category = "Game")
@@ -205,6 +208,15 @@ public:
 	/** Zone 2's level, which Zone 1 opens from the ambulance's roof. */
 	static const TCHAR* Zone2LevelName;
 
+	/** The title's level (the original's TitleScreen). */
+	static const TCHAR* TitleLevelName;
+
+	/**
+	 * The zone a saved checkpoint goes on in, as the entrance's Spawn opens it (the title's RESUME goes through there):
+	 * Zone 2 for 7 to 10, Zone 1 for the rest (4 to 6, and 0, which Zone 1 reads as its arrival).
+	 */
+	static const TCHAR* LevelForCheckpoint(int32 Checkpoint);
+
 	/** The fade from black a level opens with (UMG_BlackFade_2 fading out at 10, Z 10). */
 	static constexpr float OpeningFadeSpeed = 10.f;
 	static constexpr int32 OpeningFadeZOrder = 10;
@@ -252,6 +264,7 @@ private:
 	bool bDeathClosed = false;
 	/** Finished Level's DoOnce. */
 	bool bLevelFinished = false;
+	FString LevelToOpen;
 	int32 TotalShards = 0;
 	int32 ShardStreak = 0;
 	int32 StartCheckpoint = 0;

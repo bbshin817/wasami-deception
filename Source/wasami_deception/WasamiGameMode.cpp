@@ -83,12 +83,22 @@ namespace
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs EscapeCommand(TEXT("Wasami.Escape"),
-		TEXT("The hospital's Escape where the player stands: the game paused, checkpoint 0 saved with the time, the level clear screen; its NEXT empties the save and opens Zone 1 from the start."),
+		TEXT("The hospital's Escape where the player stands: the game paused, checkpoint 0 saved with the time, the level clear screen; its NEXT empties the save and opens the title."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (AWasamiGameMode* Mode = WasamiModeOf(World))
 			{
 				Mode->Escape();
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs TitleCommand(TEXT("Wasami.Title"),
+		TEXT("Opens the title (L_Title), as the game over's QUIT TO TITLE does; the save is kept."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (World)
+			{
+				UGameplayStatics::OpenLevel(World, AWasamiGameMode::TitleLevelName, true);
 			}
 		}));
 
@@ -189,6 +199,7 @@ namespace
 
 const TCHAR* AWasamiGameMode::Zone1LevelName = TEXT("L_Hospital_Zone1");
 const TCHAR* AWasamiGameMode::Zone2LevelName = TEXT("L_Hospital_Zone2");
+const TCHAR* AWasamiGameMode::TitleLevelName = TEXT("L_Title");
 
 AWasamiGameMode::AWasamiGameMode()
 {
@@ -399,7 +410,8 @@ void AWasamiGameMode::LeaveFinishedLevel()
 {
 	// @17537: levelStruct[the level] = levelStruct[10] (an empty entry), written; Hard Check Point = 0 (the entrance's,
 	// which this game does not have); Reset Game Instance(False), which forgets the shards collected and resets the
-	// lives; then the next level.
+	// lives; then the next level: TitleScreen when replaying, else 06_Cinematic, the next chapter's, which this game
+	// does not have (its one level is done).
 	if (StructSave)
 	{
 		StructSave->Hospital = FWasamiLevelProgress();
@@ -410,7 +422,8 @@ void AWasamiGameMode::LeaveFinishedLevel()
 		Instance->ForgetCollectedShards();
 		Instance->ResetLives();
 	}
-	UGameplayStatics::OpenLevel(this, Zone1LevelName, true);
+	LevelToOpen = TitleLevelName;
+	UGameplayStatics::OpenLevel(this, FName(LevelToOpen), true);
 }
 
 UWasamiGameInstance* AWasamiGameMode::GetWasamiGameInstance() const
@@ -562,6 +575,13 @@ int32 AWasamiGameMode::ZoneOf(const FString& LevelName)
 		return 2;
 	}
 	return 0;
+}
+
+const TCHAR* AWasamiGameMode::LevelForCheckpoint(int32 Checkpoint)
+{
+	// 06_Hospital's Spawn (@81063): 4 to 6 open Zone 1, 7 to 10 Zone 2 (11 and 12 the boss, which this game does not
+	// have); at 0 the entrance goes on to Zone 1 itself.
+	return Checkpoint >= 7 && Checkpoint <= 10 ? Zone2LevelName : Zone1LevelName;
 }
 
 FName AWasamiGameMode::PlayerStartTagFor(int32 Zone, int32 Checkpoint)

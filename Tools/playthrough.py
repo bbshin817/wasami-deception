@@ -96,6 +96,14 @@ if w is not None:
         save = mode.get_save()
         s['checkpoint'] = save.get_editor_property('hospital').get_editor_property('level_checkpoint') if save else None
         s['objective'] = str(mode.get_editor_property('current_objective'))
+    elif unreal.GameplayStatics.does_save_game_exist('structSlot', 0):
+        save = unreal.GameplayStatics.load_game_from_slot('structSlot', 0)
+        s['checkpoint'] = save.get_editor_property('hospital').get_editor_property('level_checkpoint') if save else None
+    titles = unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiTitleScreenWidget, False)
+    s['title'] = len(titles) > 0
+    resume = unreal.find_object(None, titles[0].get_path_name() + '.WidgetTree.Resume') if titles else None
+    s['resume'] = resume is not None and resume.get_parent() is not None  # Construct takes it out without a game begun
+    s['popup'] = len(unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.WasamiPopUpWidget, False)) > 0
     instance = unreal.GameplayStatics.get_game_instance(w)
     if isinstance(instance, unreal.WasamiGameInstance):
         s['lives'] = instance.get_lives()
@@ -109,6 +117,53 @@ if w is not None:
         s['player'] = [round(l.x, 1), round(l.y, 1), round(l.z, 1), round(r.yaw, 1), round(r.pitch, 1)]
 print('JSON ' + json.dumps(s))
 """ % MARK
+
+# The middle of a button of the title's menu, of the question over it (UWasamiPopUpWidget) or of the game over's, as
+# fractions of the viewport. Python cannot read a widget's geometry (FGeometry has no reflected fields), so this lays the
+# button out as the screens place it (14 and 09 records): the title's menu VerticalBox_160 at (7.06, -93.09) from the
+# left edge's middle, 421.75 wide, each button its desired height less 10; the question's column 115.2 below the
+# middle, the question over YES, 50, NO, 40 below it; the game over's VerticalBox_161 hanging from 358.19 above the
+# bottom's middle, 10 around each button. Sizes are in the screen's units; the viewport's DPI scale turns them into
+# pixels.
+WIDGET_AT = """
+w = _need_game()
+scale = unreal.WidgetLayoutLibrary.get_viewport_scale(w)
+pixels = unreal.WidgetLayoutLibrary.get_viewport_size(w)
+width, height = pixels.x / scale, pixels.y / scale
+found = unreal.WidgetLibrary.get_all_widgets_of_class(w, unreal.{cls}, False)
+part = (lambda n: unreal.find_object(None, found[-1].get_path_name() + '.WidgetTree.' + n)) if found else None
+at = None
+if found and {cls!r} == 'WasamiTitleScreenWidget':
+    top = height / 2 - 93.0933
+    for n in ['Resume', 'NewGame', 'Options', 'Quit']:
+        button = part(n)
+        if button is None or button.get_parent() is None:
+            continue
+        tall = button.get_desired_size().y
+        if n == {name!r}:
+            at = [7.0576 + 421.7503 / 2, top + tall / 2]
+            break
+        top += tall - 10.0
+elif found and {cls!r} == 'WasamiPopUpWidget':
+    question, yes, no = part('RichTextBlock_374').get_desired_size(), part('Yes').get_desired_size(), part('No').get_desired_size()
+    row_wide, row_tall = yes.x + 50.0 + no.x, max(yes.y, no.y)
+    top = height / 2 + 115.205 - (question.y + 40.0 + row_tall) / 2
+    left = width / 2 - row_wide / 2
+    x = left + yes.x / 2 if {name!r} == 'Yes' else left + yes.x + 50.0 + no.x / 2
+    at = [x, top + question.y + 40.0 + row_tall / 2]
+elif found and {cls!r} == 'WasamiDeathScreenWidget':
+    top = height - 358.188
+    for n in ['Restart', 'LastCheckpoint', 'QUITTOTITLE']:
+        button = part(n)
+        if button is None or button.get_visibility() == unreal.SlateVisibility.COLLAPSED:
+            continue
+        tall = button.get_desired_size().y
+        if n == {name!r}:
+            at = [width / 2, top + 10.0 + tall / 2]
+            break
+        top += tall + 20.0
+print('JSON ' + json.dumps([at[0] / width, at[1] / height] if at else None))
+"""
 
 MARK_WORLD = """
 w = _need_game()
@@ -300,6 +355,9 @@ class Play:
         s = s or self.status()
         if not s.get("pie"):
             return "not in PIE"
+        if s.get("title"):
+            return "%s cp %s lives %s title%s%s" % (s["world"].replace("UEDPIE_0_", ""), s.get("checkpoint"), s.get("lives"),
+                                                    " RESUME" if s.get("resume") else "", " POPUP" if s.get("popup") else "")
         p = s.get("player")
         return "%s cp %s lives %s shards %s obj %r player %s%s" % (
             s["world"].replace("UEDPIE_0_", ""), s.get("checkpoint"), s.get("lives"), s.get("shards"),
@@ -330,6 +388,14 @@ class Play:
         """Clicks the viewport at a fraction of its width and height (a button of a screen with the cursor)."""
         left, top, right, bottom = self.viewport
         self.send("click", x=round(left + (right - left) * fx), y=round(top + (bottom - top) * fy))
+
+    def click_widget(self, cls, name):
+        """Clicks the middle of a screen's button, found by the widget's class and the button's name."""
+        at = self.ed.json(WIDGET_AT.format(cls=cls, name=name))
+        if not at:
+            raise Failed("no %s button %s on the screen" % (cls, name))
+        self.log("click %s.%s at (%.3f, %.3f) of the viewport" % (cls, name, at[0], at[1]))
+        self.click_at(*at)
 
     def key(self, *names, gap_ms=80):
         self.send("key", keys=list(names), gap_ms=gap_ms)
@@ -380,7 +446,9 @@ class Play:
         self.log("waiting for %s to open" % level)
 
         def fresh(s):
-            return s.get("pie") and level in s.get("world", "") and s.get("player") and not s.get("marked")
+            # the title has nobody to play: its screen instead
+            return (s.get("pie") and level in s.get("world", "") and (s.get("title") if level == TITLE else s.get("player"))
+                    and not s.get("marked"))
 
         s = self.wait_for("%s to open" % level, fresh, timeout, every=0.5)
         time.sleep(warmup)
@@ -526,7 +594,31 @@ print('JSON ' + json.dumps(out))
 # ------------------------------------------------------------------------------------------------------------------
 # Sections. Each starts where the one before it stops; SETUPS put the game there for a section run alone.
 
-ZONE1, ZONE2 = "L_Hospital_Zone1", "L_Hospital_Zone2"
+ZONE1, ZONE2, TITLE = "L_Hospital_Zone1", "L_Hospital_Zone2", "L_Title"
+# FadeOut's red flash (the line comes at 1.65 s) and its black (whole by 3.75 s), from NEW GAME's click (14 record).
+TITLE_FLASH, TITLE_BLACK = 1.65, 4.0
+
+
+def title(g):
+    """The title screen's NEW GAME: with a game begun it asks RESTART? first and its YES goes on. The music fades, the
+    screen pulses red and goes black, and 10 s on Zone 1 opens at the elevator's arrival with the save started over."""
+    s = g.expect("the title screen", lambda s: s.get("title"))
+    g.shot("title")
+    g.mark_world()
+    g.click_widget("WasamiTitleScreenWidget", "NewGame")
+    if s.get("resume"):
+        g.expect("the RESTART? question", lambda s: s.get("popup"))
+        time.sleep(0.5)  # its fade in
+        g.shot("title_restart")
+        g.click_widget("WasamiPopUpWidget", "Yes")
+    started = time.time()
+    time.sleep(TITLE_FLASH)
+    g.shot("title_flash")
+    time.sleep(max(0.0, TITLE_BLACK - (time.time() - started)))
+    g.shot("title_black")
+    s = g.wait_new_world(ZONE1, mark=False, timeout=30)
+    if s.get("checkpoint") != 4 or s.get("lives") != 3:
+        raise Failed("Zone 1 did not open from the start with 3 lives (%s)" % g.brief(s))
 
 
 def z1_arrive(g):
@@ -787,7 +879,7 @@ NEXT_BUTTON = (0.95, 0.948)
 def z2_escape(g):
     """Through the unlocked doors to the garage's box (GET TO THE PORTAL: the portal opens), then along the garage to
     the portal: the player stops, the screen goes black and the game pauses under the score screen (You Escaped!, the
-    results, FINAL RANK). Its NEXT fades out, and 5 s on Zone 1 opens from the start with the save emptied."""
+    results, FINAL RANK). Its NEXT fades out, and 5 s on the title opens with the save emptied (no RESUME)."""
     g.walk(-6300, -3950, reach=60.0, timeout=60.0, until=lambda st: "PORTAL" in st["objective"].upper())
     g.shot("z2_escape_garage")
     g.walk(-10357, -7700, reach=30.0, timeout=90.0, escape=True, until=lambda st: st["escaped"])
@@ -800,16 +892,18 @@ def z2_escape(g):
     g.mark_world()
     g.click_at(*NEXT_BUTTON)
     g.expect("the game unpaused 4 s after NEXT", lambda s: not s.get("paused"), timeout=8.0)
-    s = g.wait_new_world(ZONE1, mark=False)
-    if s.get("checkpoint") != 4 or s.get("lives") != 3:
-        raise Failed("Zone 1 did not open from the start with 3 lives (%s)" % g.brief(s))
+    s = g.wait_new_world(TITLE, mark=False)
+    if s.get("checkpoint") != 0 or s.get("resume") or s.get("lives") != 3:
+        raise Failed("the title did not open with the save emptied and 3 lives (%s)" % g.brief(s))
 
 
-SECTIONS = [z1_arrive, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
+SECTIONS = [title, z1_arrive, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
 
-# How a section run alone begins: the save's checkpoint (None: the save started over) and the level opened again,
-# then console commands.
+# How a section run alone begins: the save's checkpoint (None: the save started over; KEEP: as it is) and the level
+# opened again, then console commands.
+KEEP = "keep"
 SETUPS = {
+    "title": (KEEP, TITLE, []),
     "z1_arrive": (None, ZONE1, []),
     "z1_maze": (5, ZONE1, []),
     "z1_shards": (5, ZONE1, []),
@@ -830,7 +924,7 @@ def setup(g, name):
     checkpoint, level, commands = SETUPS[name]
     if checkpoint is None:
         g.console("Wasami.ResetSave")
-    else:
+    elif checkpoint != KEEP:
         g.console("Wasami.Checkpoint %d" % checkpoint, "Wasami.Lives 3")
     g.mark_world()
     g.console("open " + level)

@@ -715,15 +715,17 @@ bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the deaths kept"), SavedEntry().Deaths, 2);
 	TestEqual(TEXT("the counter back to 0"), Mode->GetTime(), 0.f);
 
-	// The screen's Finished → Finished Level: 1 s on the hospital's entry is emptied and written (then Zone 1 opens).
+	// The screen's Finished → Finished Level: 1 s on the hospital's entry is emptied and written, and the title opens.
 	TestFalse(TEXT("Finished Level not yet"), Mode->HasFinishedLevel());
 	Mode->FinishedLevel();
 	TestTrue(TEXT("Finished Level"), Mode->HasFinishedLevel());
 	Advance(Wrapper, AWasamiGameMode::FinishedLevelDelay - 0.1f);
 	TestEqual(TEXT("the entry kept before 1 s"), SavedEntry().Deaths, 2);
+	TestTrue(TEXT("no level before 1 s"), Mode->GetLevelToOpen().IsEmpty());
 	Advance(Wrapper, 0.2f);
 	TestEqual(TEXT("the entry emptied at 1 s"), SavedEntry().Deaths, 0);
 	TestEqual(TEXT("its time too"), SavedEntry().Time, 0.f);
+	TestEqual(TEXT("then the title"), Mode->GetLevelToOpen(), FString(AWasamiGameMode::TitleLevelName));
 
 	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;

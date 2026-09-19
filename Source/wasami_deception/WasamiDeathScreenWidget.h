@@ -154,6 +154,9 @@ public:
 	EChoice GetChoice() const { return Choice; }
 	bool HasLeft() const { return bLeft; }
 
+	/** The level the way out opened by name (empty for the current level, or before it left). */
+	const FString& GetLevelToOpen() const { return LevelToOpen; }
+
 	/** The tip the screen shows. */
 	FText GetTip() const { return Tip; }
 
@@ -341,6 +344,7 @@ private:
 	bool bQuitClosed = false;
 	EChoice Choice = EChoice::None;
 	bool bLeft = false;
+	FString LevelToOpen;
 
 	/** Seconds into each animation (already scaled by its speed); negative when it is not playing. */
 	float FadeInTime = -1.f;

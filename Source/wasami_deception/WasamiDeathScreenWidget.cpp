@@ -535,21 +535,9 @@ void UWasamiDeathScreenWidget::RunStep(EStep Step)
 		break;
 
 	case EStep::QuitToTitle:
-		// The original opens TitleScreen. Until the title (item 17) is made, Zone 1 from the start, as its NEW GAME
-		// would: 3 lives, the hospital's save entry emptied.
-		if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
-		{
-			Instance->ResetLives();
-		}
-		if (AWasamiGameMode* Mode = GameModeOf(this))
-		{
-			if (UWasamiSaveGame* Save = Mode->GetSave())
-			{
-				Save->Hospital = FWasamiLevelProgress();
-				Mode->WriteSave();
-			}
-		}
-		OpenLevel(AWasamiGameMode::Zone1LevelName);
+		// OpenLevel(TitleScreen). The save stays as it is, so the title's RESUME goes on from its checkpoint (the title
+		// gives the lives back).
+		OpenLevel(AWasamiGameMode::TitleLevelName);
 		break;
 	}
 }
@@ -672,6 +660,7 @@ void UWasamiDeathScreenWidget::BeginLeaving(EChoice InChoice, EStep Step)
 void UWasamiDeathScreenWidget::OpenLevel(const TCHAR* LevelName)
 {
 	bLeft = true;
+	LevelToOpen = LevelName ? LevelName : TEXT("");
 	if (GetWorld())
 	{
 		if (APlayerController* Controller = GetOwningPlayer())
