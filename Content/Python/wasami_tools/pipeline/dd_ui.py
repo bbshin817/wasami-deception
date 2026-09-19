@@ -31,6 +31,14 @@ the rules above and under the rows, the hospital's title (Torment Therapy, which
 sound, the rows' and FINAL RANK's grade stamps and the counters' fill. The white vignette and the font come with the
 tablet.
 
+The title screen (UWasamiTitleScreenWidget, after the old version's UI/Main/TitleScreen/UMG_TitleScreen): the smoky
+black over the left (title_screen_video_mask), the brush strokes panning over it (MM_TitleScreen_Mask_Grey over
+title_screen_chapters_background, its graph read from its compiled shader), the hover smear behind a menu item
+(title_screen_selection_marker), the menu's music (Pause_Sound_v1) and NEW GAME's sound and voice (Start_New_Game,
+Bierce_Title_Modified_03). The select and pop-up sounds, the quit frame and the font come with the tablet and the death
+screen. In place of the original's logo and monster face, this game's (SourceArt/Wasami/UI/title_logo.png, and the
+face and the logo's glow that Tools/dd/prepare_title.py bakes the WebGL version's CSS into) under /Game/Wasami/UI/Title.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -98,6 +106,31 @@ LEVEL_CLEAR_SOUNDS = (
     "Audio/UI/UI_XP_Bar_Fill_V2A_0617",
 )
 
+# ------------------------------------------------------------------------------------------------ the title screen
+TITLE_MASK = "UI/Main/TitleScreen/title_screen_video_mask"
+TITLE_STROKES = "UI/Main/TitleScreen/title_screen_chapters_background"
+TITLE_TEXTURES = (TITLE_MASK, TITLE_STROKES, "UI/Main/TitleScreen/title_screen_selection_marker")
+TITLE_SOUNDS = (
+    "Audio/UI/Pause_Sound_v1",
+    "Audio/UI/Start_New_Game",
+    "Audio/Titlescreen/Bierce_Title_Modified_03",
+)
+# MM_TitleScreen_Mask_Grey: a UI material whose graph the cook took away but for its samples (the strokes through a
+# Panner, the mask at the UVs), a Time Multiplier and a Desaturation as the emissive colour. Its compiled Slate pixel
+# shader (Tools/dd/cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask_Grey." --show 4) gives the rest: the strokes at
+# the UVs × (0.35, 1) panned 0.02 a second along U (Time × Time Multiplier), fully desaturated (UE's luminance factors)
+# as the colour; the opacity is the mask's alpha × the strokes' alpha.
+TITLE_STROKES_MATERIAL = "UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey"
+TITLE_STROKES_TILING = (0.35, 1.0)
+TITLE_STROKES_SPEED = 0.02
+TITLE_UI_DIR = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "wasami", "ui")
+TITLE_WASAMI_ROOT = paths.WASAMI_ROOT + "/UI/Title"
+TITLE_WASAMI = (
+    (os.path.join(paths.PROJECT, "SourceArt", "Wasami", "UI", "title_logo.png"), TITLE_WASAMI_ROOT + "/T_TitleLogo"),
+    (os.path.join(TITLE_UI_DIR, "title_logo_glow.png"), TITLE_WASAMI_ROOT + "/T_TitleLogoGlow"),
+    (os.path.join(TITLE_UI_DIR, "title_face.png"), TITLE_WASAMI_ROOT + "/T_TitleFace"),
+)
+
 # The original emblems' settings (UI/Main/Loaders/loader_reapernurse in _textures.json: sRGB, default compression, UI).
 LOADING_EMBLEM_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
 
@@ -153,6 +186,30 @@ def _spark_builder(texture_rel):
         g.out(g.const3((1.0, 1.0, 1.0), -300, -100), "", MP.MP_EMISSIVE_COLOR)
         g.out(dd_assets.single(g, unreal.MaterialExpressionSaturate, sample, "R", -300, 100), "", MP.MP_OPACITY)
     return build
+
+
+def _build_title_strokes(mat):
+    g = dd_stage._Graph(mat, checked=True)
+    scalars, _ = dd_assets.parameter_defaults(TITLE_STROKES_MATERIAL, VERSION)
+    uv = g.node(unreal.MaterialExpressionTextureCoordinate, -1300, -100)
+    uv.set_editor_property("u_tiling", TITLE_STROKES_TILING[0])
+    uv.set_editor_property("v_tiling", TITLE_STROKES_TILING[1])
+    time = g.node(unreal.MaterialExpressionTime, -1300, 50)
+    multiplier = g.scalar("Time Multiplier", scalars.get("Time Multiplier", 1.0), -1300, 150)
+    scaled = g.multiply(time, "", multiplier, "", -1100, 100)
+    panner = g.node(unreal.MaterialExpressionPanner, -900, -50)
+    panner.set_editor_property("speed_x", TITLE_STROKES_SPEED)
+    panner.set_editor_property("speed_y", 0.0)
+    g.link(uv, "", panner, "Coordinate")
+    g.link(scaled, "", panner, "Time")
+    strokes = g.node(unreal.MaterialExpressionTextureSample, -650, -50)
+    strokes.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(TITLE_STROKES)))
+    g.link(panner, "", strokes, "UVs")
+    mask = g.node(unreal.MaterialExpressionTextureSample, -650, 250)
+    mask.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(TITLE_MASK)))
+    g.out(dd_assets.single(g, unreal.MaterialExpressionDesaturation, strokes, "RGB", -350, -50), "",
+          MP.MP_EMISSIVE_COLOR)
+    g.out(g.multiply(mask, "A", strokes, "A", -350, 200), "", MP.MP_OPACITY)
 
 
 def make_door_break_materials():
@@ -213,10 +270,29 @@ def import_level_clear():
             "sounds": len([dd_assets.sound(rel, VERSION) for rel in LEVEL_CLEAR_SOUNDS])}
 
 
+def import_title():
+    """The title screen's textures, sounds and strokes material (saved), and this game's logo, its glow and the face
+    (saved). Returns how many of each."""
+    for path, _ in TITLE_WASAMI:
+        if not os.path.exists(path):
+            raise FileNotFoundError("%s is missing: run python Tools/dd/prepare_title.py first." % path)
+    result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TITLE_TEXTURES]),
+              "sounds": len([dd_assets.sound(rel, VERSION) for rel in TITLE_SOUNDS])}
+    ui = {"domain": unreal.MaterialDomain.MD_UI, "blend_mode": unreal.BlendMode.BLEND_TRANSLUCENT}
+    strokes = dd_assets.material(dd_assets.asset_path(TITLE_STROKES_MATERIAL), _build_title_strokes, **ui)
+    EAL.save_loaded_asset(strokes, only_if_is_dirty=False)
+    result["materials"] = 1
+    for path, asset in TITLE_WASAMI:
+        tex = dd_stage.import_texture(dict(LOADING_EMBLEM_SETTINGS, file=path, asset=asset))
+        EAL.save_loaded_asset(tex, only_if_is_dirty=False)
+    result["wasami_textures"] = len(TITLE_WASAMI)
+    return result
+
+
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
-    screen's, the hand's, the ring piece screen's, the shard streak's and the level clear screen's, then saves
-    /Game/DD."""
+    screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's and the title
+    screen's, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -232,5 +308,7 @@ def import_all():
         result["streak_" + key] = count
     for key, count in import_level_clear().items():
         result["level_clear_" + key] = count
+    for key, count in import_title().items():
+        result["title_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result

@@ -1,10 +1,10 @@
 ---
 title: タイトル画面（作業一覧の項目 17）
 status: 進行中
-branch: main
+branch: feature/title
 base: 380c9b5
 started: 2026-09-19 10:53
-updated: 2026-09-19 10:53
+updated: 2026-09-19 11:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -18,16 +18,10 @@ updated: 2026-09-19 10:53
 ## 計画
 
 - [x] 0. 本家のコードと WebGL 版の記録を読み、計画を立てる … 2026-09-19 完了。読んだものは下の「本家の流れ（読んだもの）」。
-- [ ] 1. タイトルの素材
-  - 作業ブランチ `feature/title` を main から作る。
-  - 本作の素材の原本: WebGL 版（`<WEBGL>` = `C:\Users\User\Downloads\wasami-deseption`）の `public/title/logo.webp`・`wasami-face.webp` を PNG にして `SourceArt/Wasami/UI/title_logo.png`・`title_face.png` に置く（Git LFS。`.gitattributes` の `SourceArt/**/*.png`）。
-  - 前処理 `Tools/dd/prepare_title.py`（`prepare_portal_logo.py` と同じ形）: 顔に WebGL 版の CSS（10 記録の `.title__monster`: `grayscale(0.75) sepia(0.5) hue-rotate(38deg) saturate(0.85) brightness(0.46) contrast(1.45)` と楕円の放射のマスク 30% → 58%（α 0.5）→ 86%）を焼き込み、`Intermediate/Pipeline/wasami/ui/title_face.png` に。ロゴは余白込みのまま（ロゴのグロー〈WebGL の `drop-shadow` 116u・(255,40,0) α 0.28〉も焼き込むかはステップ 2 で見て決める）。
-  - 取り込み `dd_ui.import_title()`（`WasamiDDTools.import_dd_ui` から）: 原作の `UI/Main/TitleScreen/title_screen_video_mask`・`title_screen_chapters_background`・`title_screen_selection_marker`、音 `Audio/UI/Pause_Sound_v1`・`Start_New_Game`・`Audio/Titlescreen/Bierce_Title_Modified_03`（`UI_Select_V3`・`UI_Window_PopUp_V3`・`quit_window_frame`・`helvetica-normal_Font` は取り込み済み）、本作の `/Game/Wasami/UI/Title/T_TitleLogo`・`T_TitleFace`。
-  - 筆の跡の材質 `M_TitleScreen_Mask_Grey`（本家の `MM_TitleScreen_Mask_Grey`。cook で式が消えている）は WebGL 版の推定のまま作る: UI の材質、灰 sRGB 179 × `chapters_background` の白（横に 1 タイル / 100 s で左へ流す。高さに合わせて 4.8:1 で横に繰り返す）× `video_mask` の α。項目 28 の後回しの一覧に 1 行書く。
-  - 変更予定: `SourceArt/Wasami/UI/title_*.png`（新）、`Tools/dd/prepare_title.py`（新）、`Content/Python/wasami_tools/pipeline/dd_ui.py`、`toolsets/dd.py`、`/Game/DD/UI/Main/TitleScreen/…`・`/Game/DD/Audio/UI/…`・`/Game/DD/Audio/Titlescreen/…`・`/Game/Wasami/UI/Title/…`、実装記録 09・01、`.claude/roadmap.md`（項目 28）
+- [x] 1. タイトルの素材 … 2026-09-19 完了。前処理 `Tools/dd/prepare_title.py`（顔に WebGL 版のフィルタとマスク、ロゴのグローを別の絵に）と `dd_ui.import_title()` を足して取り込んだ（中身は実装記録 14）。筆の跡の材質は推定でなく焼き込みのシェーダーから組んだ（本家の名前 `MM_TitleScreen_Mask_Grey` のまま）ので、項目 28 の後回しの一覧には書かない。
 - [ ] 2. タイトルの画面の木とアニメと音（`UWasamiTitleScreenWidget`）
   - 死亡画面・スコア画面（09・13 記録）と同じく、本家（旧版 `pak_reference` の `UMG_TitleScreen.json`）の木をスロットのまま C++ で組み、アニメを書き出しのキーから `WasamiWidgetAnimation.h` の曲線で作ってウィジェットのティックで進める。木は WebGL 版の重なり順（10 記録の styles.css「タイトル画面」: `Image_97`〈顔〉→ `VideoMask` → `Image_104`〈筆の跡〉→ `Image_103`〈ロゴ〉→ `TextBlock_79`〈注記〉→ `VerticalBox_160`〈メニュー〉→ `Image_0`〈黒〉→ `Image_128`〈覆い〉→ `Image_2`〈赤〉→ `TextBlock_0`〈版〉）。隠れている `Image_1`（動画）・`Slideshow_img` と CHAPTERS・REPLAY・EXTRAS は作らない（下の決定事項）。
-  - ロゴは WebGL 版の合わせ方（原作ロゴの文字の箱 (54, 78)〜(919, 398) に本作ロゴの文字を合わせる: 左 58.8・上 61.6・幅 848）、顔は `Image_97` のスロットに本作の顔。注記の文字は WebGL 版の `UNOFFICIAL FAN GAME — NOT AFFILIATED WITH GLOWSTICK ENTERTAINMENT`、版の文字は `v` + UE のプロジェクト設定の `ProjectVersion`（`Config/DefaultGame.ini` の `[/Script/EngineSettings.GeneralProjectSettings]`。WebGL 版が `package.json` の版を出したのと同じ。今は未設定なので仮に `0.1.0` を書く。要確認）。
+  - ロゴは WebGL 版の合わせ方（原作ロゴの文字の箱 (54, 78)〜(919, 398) に本作ロゴの文字を合わせる: 左 58.8・上 61.6・幅 848。`T_TitleLogo` 1942 × 809 → 高さ 848 × 809 / 1942 = 353.3）。その下にグロー `T_TitleLogoGlow`（686 × 402）をロゴの箱から四方に 400 ロゴ px = 174.67 単位広げた箱（左 −115.87・上 −113.07・幅 1197.33・高さ 702.6）で描く（実装記録 14 の前処理）。筆の跡 `Image_104` は材質 `/Game/DD/UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey` のブラシ（色味なし）、`VideoMask` は `title_screen_video_mask`、顔 `Image_97` は `/Game/Wasami/UI/Title/T_TitleFace`、選択の印は `/Game/DD/UI/Main/TitleScreen/title_screen_selection_marker`。顔は `Image_97` のスロットに本作の顔。注記の文字は WebGL 版の `UNOFFICIAL FAN GAME — NOT AFFILIATED WITH GLOWSTICK ENTERTAINMENT`、版の文字は `v` + UE のプロジェクト設定の `ProjectVersion`（`Config/DefaultGame.ini` の `[/Script/EngineSettings.GeneralProjectSettings]`。WebGL 版が `package.json` の版を出したのと同じ。今は未設定なので仮に `0.1.0` を書く。要確認）。
   - メニュー: RESUME（セーブの `Hospital.LevelCheckpoint` が 0 でないときだけ）/ NEW GAME / OPTIONS / QUIT。ボタンの様式は本家の `Setup Buttons`（ホバーと押下のブラシを `title_screen_selection_marker` 394×74 に、色は元の様式の Tint）、文字の色はホバーで白・外れると `Unhovered Color`（JSON の既定値）。押下の音はボタンの様式の `PressedSlateSound` があればそれ（JSON で確かめる）。
   - アニメ: `Slideshow`（Construct で再生。覆いが 2.5 s で 1 → 0）、`FadeOut`（NEW GAME。3.75 s: 黒・画面の脈動・赤、音のトラック 2 本〈`Start_New_Game` を 0 s から音量の曲線 0.6 → 0.3、`Bierce_Title_Modified_03` を 98999 tick = 1.65 s から〉）、`FadeOut_0`（RESUME。黒だけ）。キーは JSON から取り、WebGL 版 10 記録の `ANIM` と一致するかを確かめる（違えば JSON を採る）。
   - 曲: Construct で `CreateSound2D(Pause_Sound_v1, 音量 1, ピッチ 0.5)` → `FadeIn(2, 0.5)`（WebGL 版の 0.4 × 0.5 = 0.2、速度 0.5）。`SetInputMode_UIOnlyEx` とカーソル。
@@ -52,7 +46,7 @@ updated: 2026-09-19 10:53
 
 ## 次にやること
 
-ステップ 1 を始める。`git switch -c feature/title`。`<WEBGL>/public/title/logo.webp`・`wasami-face.webp` を PIL で PNG にして `SourceArt/Wasami/UI/` へ。`Tools/dd/prepare_loader.py`・`prepare_portal_logo.py` と `dd_ui.import_level_clear()` の形を読んでから `prepare_title.py` と `import_title()` を書く。WebGL 版の `<WEBGL>/src/hud/title.ts`・`src/styles.css` のタイトルの節も読む。
+ステップ 2 を始める（ブランチ `feature/title`）。`UMG_TitleScreen.json`（旧版 `pak_reference/_assets/DDeception/Content/UI/Main/TitleScreen/`）の木・スロット・アニメのキーと、死亡画面・スコア画面の作り（`Source/wasami_deception/WasamiLevelClearWidget.*`・`WasamiDeathScreenWidget.*`・`WasamiWidgetAnimation.h`、実装記録 13・09）を読んでから `UWasamiTitleScreenWidget` を書く。実装記録は 14（`14-title.md`）に足す。
 
 ## 本家の流れ（読んだもの）
 
@@ -87,11 +81,10 @@ updated: 2026-09-19 10:53
 
 ## 再開時の注意
 
-- エディタは起きている前提（2026-09-19 10:53 の時点で未確認。ステップ 1 の前に `ue_remote.py` で確かめる）。
-- 取り込んだアセットは `/Game/DD/...`・`/Game/Wasami/...`（git の外。道具で作り直せる）。本作の素材の原本は `SourceArt/`（Git LFS）。
+- 取り込んだアセットは `/Game/DD/...`・`/Game/Wasami/UI/Title/...`（git の外。`python Tools/dd/prepare_title.py` → `import_dd_ui`〈か `dd_ui.import_title()`〉で作り直せる）。本作の素材の原本は `SourceArt/Wasami/UI/title_logo.png`・`title_face.png`（Git LFS）。
 
 ## 検証
 
-- check_records: 未実行（ステップ 0 はソースを変えていない）
+- check_records: ステップ 1 で通した
 - C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- エディタ: ステップ 1 の取り込み（テクスチャ 6・音 3・材質 1）と材質の配線（色 ← Desaturation ← 筆の跡 ← Panner、不透明度 ← マスクの α × 筆の跡の α）を確かめた。画面での見え方はステップ 2
