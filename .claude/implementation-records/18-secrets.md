@@ -23,7 +23,7 @@ updated: 2026-09-20
 # 秘密と収集物
 
 ## 役割
-本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）。PIE で確かめた（下の「確かめたこと」）。書類が解放する EXTRAS（`Unlock`。本家の別のセーブ `SaveSlot` の `Extras_Art`・`Extras_SFX`）はセーブに足して保存する（2026-09-20、作業一覧の項目 29。画面は作業一覧の項目 29 の残り）。
+本家の病院の秘密と収集物（作業一覧の項目 12）。Zone 1 の秘密のエレベーター 2 つの奥と Zone 2 の秘密の部屋・迷路の後の秘密の書類（`BP_Collectable`。スコアの `SECRETS` の 4）、Zone 2 の秘密の部屋（`BP_SecretRoomZone`）と秘密の壁（`BP_07_Zone1_SecretWall`）、部屋のメモ 3 枚（`BP_MysteryCollectable`）、Zone 1 の見て使うエレベーター（`BP_FakeUseActor` の派生）。素材の取り込み（`dd_secrets.py`）、Zone 1 の秘密のエレベーターのシーケンス 2 本（01 記録の「シーケンス」）、画面 3 つ（書類の `NEW EXTRAS UNLOCKED!`・秘密の部屋の `YOU FOUND A MYSTERIOUS ROOM`・メモを読む画面）、書類・秘密の部屋の区域・秘密の壁・メモ・見て使う偽の部品（シーケンスを流すもの・おとりのエレベーター）のアクタ、両ゾーンへの置き方（`dd_level`）と迷路の後の書類（`AWasamiZone2Flow`）。PIE で確かめた（下の「確かめたこと」）。書類が解放する EXTRAS（`Unlock`。本家の別のセーブ `SaveSlot` の `Extras_Art`・`Extras_SFX`）はセーブに足して保存する（2026-09-20、作業一覧の項目 29。画面は 19 記録）。
 
 ## 公開インターフェース
 - ツール: `WasamiDDTools.import_dd_secrets()`（素材。前処理 `Tools/dd/prepare_stage.py` と `WasamiStageTools.import_dd_stage_assets` を残りが 0 になるまで、`import_dd_tablet`・`import_dd_ui` の後に）。戻り値 `sounds` 5 / `textures` 6 / `meshes` 1 / `materials` 1。

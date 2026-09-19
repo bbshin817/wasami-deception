@@ -322,5 +322,14 @@
     "Source/wasami_deception/WasamiFakeUseActor.h": "06b9f5cd9d1fde636e4a81941bfe923d81b69878",
     "Source/wasami_deception/WasamiFakeUseActor.cpp": "6145eea41d30951492d16f68c9e3e23216998eb9",
     "Source/wasami_deception/Tests/WasamiSecretsTests.cpp": "875ca20055c269e92d21c130016a3ba48957a223"
+  },
+  "19-extras.md": {
+    "Source/wasami_deception/WasamiExtrasItemWidget.h": "c8bfee0e3fec1d7916653813cbf2d62850ecd66e",
+    "Source/wasami_deception/WasamiExtrasItemWidget.cpp": "56e111b50d68a8bbf5029c0ef12310bccda1eab7",
+    "Source/wasami_deception/WasamiMaximizePictureWidget.h": "e572ee59d4b92d5bf89e8d6a1626c3160403f22f",
+    "Source/wasami_deception/WasamiMaximizePictureWidget.cpp": "df8a1ea8164ab99a779751b6565879d42192cabb",
+    "Source/wasami_deception/WasamiExtrasSoundWidget.h": "1bec2fd1e8146cffadb851ec11515d56d38672da",
+    "Source/wasami_deception/WasamiExtrasSoundWidget.cpp": "5c1f60127335fd9a42783db3e4d3ad63850446f6",
+    "Source/wasami_deception/Tests/WasamiExtrasTests.cpp": "5de5cfeffeaa3aa1b706888594512a2b1866ad61"
   }
 }
