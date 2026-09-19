@@ -270,6 +270,14 @@ points = [[p.x, p.y, p.z] for p in path.get_editor_property('path_points')] if p
 print('JSON ' + json.dumps(points))
 """
 
+# The right socket's power and the powers in use (EWasamiPower names, e.g. WasamiPower.VANISH).
+POWERS = """
+w = _need_game()
+powers = unreal.GameplayStatics.get_player_character(w, 0).get_component_by_class(unreal.WasamiPowerComponent)
+print('JSON ' + json.dumps({'right': str(powers.get_socket_power(False)),
+                            'using': [str(p) for p in unreal.WasamiPower if powers.is_using_power(p)]}))
+"""
+
 FACE = """
 w = _need_game()
 pc = unreal.GameplayStatics.get_player_controller(w, 0)
@@ -937,6 +945,18 @@ def z1_parking(g):
     g.log("06: REACH THE TUNNEL -- " + g.brief())
 
 
+def select_power(g, name):
+    """Cycles the right socket (2; the tablet up) until it holds the power (a part of its EWasamiPower name, e.g.
+    TELEPORT)."""
+    for _ in range(6):
+        power = g.ed.json(POWERS)["right"]
+        if name in power.upper():
+            return
+        g.key("2")
+        time.sleep(0.5)
+    raise Failed("the right socket never showed %s (%s)" % (name, power))
+
+
 def z1_ambulance(g):
     """06: past the doors that lock behind, into the tunnel, up the garage lift, Teleportation onto the ambulance's roof,
     the ride and the loading screen to Zone 2's cell. Starts running at once: the nurses are on the way."""
@@ -952,18 +972,7 @@ def z1_ambulance(g):
     g.shot("z1_ambulance_lift")
     g.key("space")
     time.sleep(1.0)
-    for _ in range(6):
-        power = g.ed.json("""
-w = _need_game()
-player = unreal.GameplayStatics.get_player_character(w, 0)
-print("JSON " + json.dumps(str(player.get_component_by_class(unreal.WasamiPowerComponent).get_socket_power(False))))
-""")
-        if "TELEPORT" in power.upper():
-            break
-        g.key("2")
-        time.sleep(0.5)
-    else:
-        raise Failed("the right socket never showed Teleportation (%s)" % power)
+    select_power(g, "TELEPORT")
     g.key("e")
     time.sleep(0.8)
     # the aim starts 1000 cm ahead and a notch of the wheel moves it 125 cm (Lv5, 04 record): aim at the middle of the
@@ -1027,11 +1036,41 @@ def z2_cell(g):
              lambda s: s.get("checkpoint") == 8 and "NURSES" in s.get("objective", "").upper())
 
 
+# The Matron's long cone (3000 cm, 35 degrees, from her head over the desk: 17 record) looks over the corridor while the
+# player is not in the strip before her desk (CloseArea), and nothing on the way in hides the player from it: the one
+# gap is the ring statue's shadow, 25 to 50 cm wide, and then 60 cm in her sight by ambulance 13's end, a gamble on her
+# look every 0.3 to 0.5 s. So the player vanishes (15 s) and runs to the strip's north end, out of the long cone, and
+# from there goes along the desk's front, which hides the player from her short cone, and round its south end behind
+# her. Worked out on a 25 cm grid of the navmesh and her cones' traces (2026-09-19).
+MATRON_BESIDE = (-7950.0, 450.0)
+MATRON_PAST = [(-7775.0, 0.0), (-7550.0, -325.0), (-7550.0, -1100.0), (-7125.0, -1525.0), (-6575.0, -1525.0),
+               (-6575.0, -350.0), (-5950.0, 275.0)]
+
+
 def z2_corridor(g):
-    """8: past the six sentries on their shelves to the maze's box (saved 9, COLLECT ALL SHARDS), stopping before a
-    stretch of the way that a cone looks at while it looks or would look before the player is through (Cones)."""
+    """8: past the six sentries on their shelves and the Matron at her desk to the maze's box (saved 9, COLLECT ALL
+    SHARDS): the tablet up, Vanish and a run to the north end of the strip before her desk (MATRON_BESIDE), then along the desk and
+    behind her, stopping before a stretch of the way that a sentry's cone looks at while it looks or would look before
+    the player is through (Cones); the tablet down behind her."""
     guard = Cones(g, getattr(g, "sentries_awake", None))
     g.shot("z2_corridor")
+    g.key("space")  # the tablet up (its sockets turn only then), and its map shows her cones' fans till she is passed
+    time.sleep(1.0)
+    select_power(g, "VANISH")
+    g.key("e")
+    deadline = time.time() + 3.0
+    while not any("VANISH" in p.upper() for p in g.ed.json(POWERS)["using"]):
+        if time.time() > deadline:
+            raise Failed("Vanish did not start")
+        time.sleep(0.2)
+    # neither her cones nor the sentries' see the player now: no guard (its waits would use the 15 s up)
+    step = g.walk(*MATRON_BESIDE, reach=60.0, timeout=13.0, snap=True)
+    if step["spotted"]:
+        raise Failed("spotted by %s while vanished" % ", ".join(step["spotted"]))
+    g.shot("z2_corridor_matron")
+    for x, y in MATRON_PAST:
+        g.walk(x, y, reach=40.0, snap=True, guard=guard)
+    g.key("space")
     g.walk(-3400, 0, reach=60.0, timeout=120.0, guard=guard, until=lambda st: st["checkpoint"] == 9)
     g.expect("COLLECT ALL SHARDS (saved 9)",
              lambda s: s.get("checkpoint") == 9 and "SHARDS" in s.get("objective", "").upper())

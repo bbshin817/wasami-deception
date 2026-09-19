@@ -35,7 +35,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 ## モジュールとビルド
 
-- `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）、`LevelSequence`・`MovieScene`（ゾーンの流れがレベルのシーケンスを再生する。11 記録）、`AIModule`・`GameplayTasks`・`NavigationSystem`（敵の AI MoveTo とランダムの点。07 記録）。非公開依存: `Slate`、`SlateCore`、`EngineSettings`（タイトルの版の文字がプロジェクト設定の `ProjectVersion` を読む。14 記録）。
+- `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）、`LevelSequence`・`MovieScene`（ゾーンの流れがレベルのシーケンスを再生する。11 記録）、`AIModule`・`GameplayTasks`・`NavigationSystem`（敵の AI MoveTo とランダムの点。07 記録）。非公開依存: `Slate`、`SlateCore`、`EngineSettings`（タイトルの版の文字がプロジェクト設定の `ProjectVersion` を読む。14 記録）、`AnimationCore`（Matron の LookAt の `SolveAim`。17 記録）。
 - ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V5`、`IncludeOrderVersion.Unreal5_6`（テンプレートのまま）。
 - `wasami_deception.cpp` / `.h` はモジュールの実装（`IMPLEMENT_PRIMARY_GAME_MODULE`）。
 - **パイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）の参照の決まり**（`WasamiAssets.h`）: C++ はそれらをソフト参照で持ち（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に、`WasamiAssets::Path("/Game/…/Name")`〈→ `/Game/…/Name.Name`〉や `WasamiAssets::ClassPath`〈→ `…/BP_Name.BP_Name_C`〉で既定のパスを入れる）、使うとき（`BeginPlay`・`RebuildWidget`）に `LoadSynchronous` で読む。`ConstructorHelpers` で読むとエディタの起動時の読み込みでルートに入り、パイプラインが作り直そうとするとエディタが落ちる（01 記録の注意点）。
@@ -171,3 +171,4 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - 2026-09-18: 依存に `LevelSequence`・`MovieScene` を足した（ゾーンの流れがシーケンスを再生する。作業一覧の項目 6 のステップ 3a）
 - 2026-09-19: 依存に `AIModule`・`GameplayTasks`・`NavigationSystem` を足した（敵の判断。作業一覧の項目 7 のステップ 2）
 - 2026-09-19: 非公開の依存に `EngineSettings` を、`DefaultGame.ini` に `ProjectVersion`（仮に 0.1.0）を足した（タイトルの版の文字。作業一覧の項目 17 のステップ 2）
+- 2026-09-19: 非公開の依存に `AnimationCore` を足した（Matron の LookAt。作業一覧の項目 11 のステップ 2）

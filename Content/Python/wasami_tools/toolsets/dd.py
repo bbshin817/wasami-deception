@@ -209,3 +209,21 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         _module("dd_assets")
         _module("gltf")
         return _module("dd_enemy").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
+    def import_wasami_boss() -> dict[str, float]:
+        """Imports (or re-imports) the boss Wasami (WasamiBoss, Zone 2's Matron) from this game's model in SourceArt:
+        its skeletal mesh, skeleton and physics asset, its textures and material instance (of the enemy Wasami's
+        master), and its animations named A_WasamiBoss_<role> (Idle, Alert, Detected), after writing the prepared glb
+        (animations resampled at 30 fps, Idle's loop closed) under Intermediate/Pipeline/wasami/boss.
+
+        Returns:
+            How many assets of each kind were made ('textures', 'materials', 'meshes', 'animations'), and the head
+            bone's height in cm at Idle's first key, unscaled ('idle_head_cm').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        _module("gltf")
+        _module("dd_enemy")
+        return _module("dd_boss").import_all()

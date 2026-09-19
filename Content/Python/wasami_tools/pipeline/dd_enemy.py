@@ -501,24 +501,25 @@ def ensure_skeletal_pipeline(pipeline=paths.SKELETAL_PIPELINE, sample_rate=None)
     return pl
 
 
-def _extract_textures():
-    """Writes the model's embedded pictures next to the prepared glb and imports them. Returns {parameter: texture}."""
-    model, blob = gltf.read(SOURCE)
+def _extract_textures(source=SOURCE, prepared_dir=PREPARED_DIR, folder=FOLDER, prefix="T_WasamiEnemy_"):
+    """Writes a model's embedded pictures next to its prepared glb and imports them as <folder>/<prefix><parameter>
+    (the enemy's by default; the boss's have the same slots). Returns {parameter: texture}."""
+    model, blob = gltf.read(source)
     material = model["materials"][0]
     slots = dict(material.get("pbrMetallicRoughness", {}))
     slots.update({k: v for k, v in material.items() if k.endswith("Texture")})
-    os.makedirs(PREPARED_DIR, exist_ok=True)
+    os.makedirs(prepared_dir, exist_ok=True)
     out = {}
     for slot, param, srgb, compression, lod_group in TEXTURES:
         image = model["images"][model["textures"][slots[slot]["index"]]["source"]]
         view = model["bufferViews"][image["bufferView"]]
         start = view.get("byteOffset", 0)
         extension = {"image/jpeg": ".jpg", "image/png": ".png"}[image["mimeType"]]
-        name = "T_WasamiEnemy_" + param
-        file = os.path.join(PREPARED_DIR, name + extension)
+        name = prefix + param
+        file = os.path.join(prepared_dir, name + extension)
         with open(file, "wb") as f:
             f.write(blob[start:start + view["byteLength"]])
-        tex = dd_stage.import_texture({"file": file, "asset": "%s/%s" % (FOLDER, name),
+        tex = dd_stage.import_texture({"file": file, "asset": "%s/%s" % (folder, name),
                                        "srgb": srgb, "compression": compression, "lodGroup": lod_group})
         if param == "Normal":
             tex.set_editor_property("flip_green_channel", True)  # glTF's normal maps point Y up, UE's down
@@ -542,31 +543,33 @@ def _build_master(mat, textures):
     g.out(normal, "RGB", unreal.MaterialProperty.MP_NORMAL)
 
 
-def _import_model(material):
-    """Imports the prepared glb and gives the mesh its material. Returns (mesh, {role: animation})."""
+def _import_model(material, prepared=None, folder=FOLDER, mesh_path=MESH, anim_prefix=ANIM_PREFIX, roles=None):
+    """Imports a prepared glb (the enemy's by default) into folder and gives the mesh at mesh_path its material. Returns
+    (mesh, {role: animation}) of roles (the enemy's ROLES by default)."""
+    prepared = prepared or prepared_file()
     ensure_skeletal_pipeline()
     params = unreal.ImportAssetParameters()
     params.is_automated = True
     params.replace_existing = True
     params.override_pipelines = [unreal.SoftObjectPath(paths.object_path(paths.SKELETAL_PIPELINE))]
-    src = unreal.InterchangeManager.create_source_data(prepared_file())
-    if not unreal.InterchangeManager.get_interchange_manager_scripted().import_asset(FOLDER, src, params):
-        raise RuntimeError("the import of %s failed (see the output log)" % prepared_file())
-    mesh = unreal.load_asset(MESH)
+    src = unreal.InterchangeManager.create_source_data(prepared)
+    if not unreal.InterchangeManager.get_interchange_manager_scripted().import_asset(folder, src, params):
+        raise RuntimeError("the import of %s failed (see the output log)" % prepared)
+    mesh = unreal.load_asset(mesh_path)
     if not isinstance(mesh, unreal.SkeletalMesh):
-        raise RuntimeError("the import made no SkeletalMesh at %s" % MESH)
+        raise RuntimeError("the import made no SkeletalMesh at %s" % mesh_path)
     materials = mesh.get_editor_property("materials")
     if len(materials) != 1:
-        raise RuntimeError("%s has %d material slots, the glb one" % (MESH, len(materials)))
+        raise RuntimeError("%s has %d material slots, the glb one" % (mesh_path, len(materials)))
     slot = materials[0]
     slot.set_editor_property("material_interface", material)
     materials[0] = slot
     mesh.set_editor_property("materials", materials)
     anims = {}
-    for role in [r[0] for r in ROLES]:
-        anim = unreal.load_asset(FOLDER + "/" + ANIM_PREFIX + role)
+    for role in roles or [r[0] for r in ROLES]:
+        anim = unreal.load_asset(folder + "/" + anim_prefix + role)
         if not isinstance(anim, unreal.AnimSequence):
-            raise RuntimeError("the import made no animation %s%s (see the output log)" % (ANIM_PREFIX, role))
+            raise RuntimeError("the import made no animation %s%s (see the output log)" % (anim_prefix, role))
         anims[role] = anim
     return mesh, anims
 

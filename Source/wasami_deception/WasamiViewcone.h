@@ -216,3 +216,27 @@ private:
 	bool bTurnedOff = false;
 	FTimerHandle TurnTimer;
 };
+
+/**
+ * BP_06_Miniboss_viewcone_Matron_Long: the Matron's sight while the player is away from her desk, 3000 cm long and 35
+ * degrees wide. It does not turn on as it finishes initializing: the Matron's Switch turns it and the short one on and
+ * off in turn. Its dot is hidden; its fan (at the class's 0) is placed by the level.
+ */
+UCLASS()
+class WASAMI_DECEPTION_API AWasamiViewconeMatronLong : public AWasamiViewcone
+{
+	GENERATED_BODY()
+
+public:
+	AWasamiViewconeMatronLong();
+};
+
+/** BP_06_Miniboss_viewcone_Matron_Short: the Matron's sight while the player is by her desk, 1350 cm long, 35 degrees wide. */
+UCLASS()
+class WASAMI_DECEPTION_API AWasamiViewconeMatronShort : public AWasamiViewcone
+{
+	GENERATED_BODY()
+
+public:
+	AWasamiViewconeMatronShort();
+};

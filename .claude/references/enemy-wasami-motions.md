@@ -72,19 +72,19 @@
 
 ## ボスワサミ（`boss_wasami.glb`。Matron の代わり）
 
-- 骨組みは敵ワサミと同じ 28 本（名前も同じ）。メッシュ 95,427 頂点・100,128 三角形、高さ 1.70 m・幅 2.22 m、テクスチャは敵ワサミと同じ構成。大きさ（「大きい敵ワサミ」）は項目 11 で本家の Matron から決める。
+- 骨組みは敵ワサミと同じ 28 本（名前も同じ）。メッシュ 95,427 頂点・100,128 三角形、高さ 1.70 m・幅 2.22 m、テクスチャは敵ワサミと同じ構成。大きさは本家の長いコーンの高さ（z 676）に Idle の頭の骨（1.282 m）が来る拡縮 6.111（高さ約 10.4 m。2026-09-19、項目 11。仮で、項目 28 の後回しの一覧）。
 - 本家の Matron（`Matron_MiniBoss_AnimBP`）は、待機（13.3 s）・警戒の待機（8.0 s）・待機 ↔ 警戒の切り替え（各 0.8 s）・見つけた瞬間（1.33 s。`DD_Matron_Zone_02_Detected_Montage`）を使う。
 
-| 役（仮） | アニメ | 長さ | 備考 |
-|---|---|---|---|
-| 待機 | `Long_Breathe_and_Look_Around` | 11.333 s | 深く息をして見回す |
-| 警戒の待機 | `Alert` | 4.083 s | |
-| 見つけた瞬間 | `Lower_Weapon_Look_Raise` | 5.292 s | 武器を下ろして見て、構え直す |
-| 巡回（Matron が動くなら） | `Walking_Scan_with_Sudden_Look_Back` | 6.833 s | 3.3 m 進む。見回して急に振り返る |
-| 歩き・走り | `Walking`・`Running` | 1.083・0.708 s | その場 |
-| — | `restpose` | 0.083 s | |
+**確定**（2026-09-19、項目 11 で Matron に使い PIE で確かめた）。取り込みは `WasamiDDTools.import_wasami_boss`、アセットは `/Game/Wasami/Boss/A_WasamiBoss_<役>`、作り方と再生は実装記録 17。長さは glb の元の値（取り込み後の長さは実装記録 17）。
 
-待機 ↔ 警戒の切り替えは専用のアニメが無いので、混ぜて移る。Matron が歩くか・追うかは項目 11 で本家のコードから確かめる。
+| 役 | アニメ | 長さ | 備考 |
+|---|---|---|---|
+| `Idle`（本家の `Idle`） | `Long_Breathe_and_Look_Around` | 11.333 s | 深く息をして見回す。ループ（取り込みで閉じる） |
+| `Alert`（本家の `Alert`。プレイヤーが `CloseArea` の外） | `Alert` | 4.083 s | ループ（原本で閉じている） |
+| `Detected`（本家の `DD_Matron_Zone_02_Detected_Montage`） | `Lower_Weapon_Look_Raise` | 5.292 s | 武器を下ろして見て、構え直す。1 回流して最後の姿勢で止まる |
+| （使わない） | `Walking_Scan_with_Sudden_Look_Back`（6.833 s、3.3 m 進む）・`Walking`・`Running`（その場）・`restpose`（0.083 s） | | 本家の Matron は動かないので取り込まない |
+
+待機 ↔ 警戒の切り替えは専用のアニメが無いので、0.95 s の 1 回のクロスフェードで移る（本家の切り替えのクリップ 0.8 s に、残り 0.05 s までと 0.2 s を足した長さ）。見つけた後は Detected の上に、上半身（`spine_02`）をプレイヤーへ向ける LookAt を重ねる。本家の Matron は歩かず、追わない（`BP_06_Matron_MiniBoss` は `Actor` で移動が無い。見つけると見張り 6 体が追う。2026-09-19 に本家のコードで確かめた）。
 
 ## ワサミ餅（`wasami_mochi_v3.glb`。項目 22）
 

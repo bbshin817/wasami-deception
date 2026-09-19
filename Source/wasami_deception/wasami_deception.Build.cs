@@ -10,7 +10,7 @@ public class wasami_deception : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "LevelSequence", "MovieScene", "AIModule", "GameplayTasks", "NavigationSystem" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "EngineSettings" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "EngineSettings", "AnimationCore" });
 
 
 		// Uncomment if you are using online features

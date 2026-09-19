@@ -110,7 +110,9 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         materials), the zone shard checkers (WasamiZoneShardChecker, the tablet's arrow's box over the zone) and Zone 2's
         lifts (WasamiLift, BP_06_Lift_03 / _04, and WasamiCornerLift, BP_06_LiftBase_Corner, with their meshes and box
         sizes; after import_dd_stage_assets), sentries (WasamiEnemySentry, BP_06_ReaperNurse_Sentry, with their
-        CanSpawn, Offset and Jump Down Spot), altar (WasamiRingStatue, BP_01_Statue, with its mesh and material) and
+        CanSpawn, Offset and Jump Down Spot), Matron (WasamiMatron, BP_06_Matron_MiniBoss, with her mesh and
+        CloseArea placed and her Long Cone and Short Cone set) and her view cones (WasamiViewconeMatronLong / _Short,
+        with their fans placed; after import_wasami_boss), altar (WasamiRingStatue, BP_01_Statue, with its mesh and material) and
         ring piece (WasamiRingPiece, BP_08_RingPiece_NoPickup, with its mesh, materials and glow; after
         import_dd_gimmicks), the defibrillators (WasamiDefib, BP_06_Defib, with their stands' mesh), the speed barriers
         (WasamiSpeedBarrier, BP_SpeedBarrier, with their planes' materials, places and sizes), the saw traps

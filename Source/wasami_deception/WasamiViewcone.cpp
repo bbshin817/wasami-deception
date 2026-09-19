@@ -154,13 +154,15 @@ void AWasamiViewcone::LookForPlayer()
 
 void AWasamiViewcone::TellPlayerSpotted()
 {
+	// The Blueprint VM drops a message to an actor already destroyed (an invalid context): the Matron's cones outlive her
+	// (the maze's start takes the enemies away) and keep their owner.
 	AActor* Parent = GetParentActor();
 	AActor* Carrier = GetOwner();
-	if (Parent && Parent->Implements<UWasamiViewconeInterface>())
+	if (IsValid(Parent) && Parent->Implements<UWasamiViewconeInterface>())
 	{
 		IWasamiViewconeInterface::Execute_PlayerSpotted(Parent);
 	}
-	if (Carrier && Carrier->Implements<UWasamiViewconeInterface>())
+	if (IsValid(Carrier) && Carrier->Implements<UWasamiViewconeInterface>())
 	{
 		IWasamiViewconeInterface::Execute_PlayerSpotted(Carrier);
 	}
@@ -203,7 +205,7 @@ bool AWasamiViewcone::PlayerInFullView() const
 
 void AWasamiViewcone::TurnOn()
 {
-	if (AActor* Parent = GetParentActor(); Parent && Parent->Implements<UWasamiViewconeInterface>())
+	if (AActor* Parent = GetParentActor(); IsValid(Parent) && Parent->Implements<UWasamiViewconeInterface>())
 	{
 		IWasamiViewconeInterface::Execute_StartLooking(Parent);
 	}
@@ -223,7 +225,7 @@ void AWasamiViewcone::SeeAfterTurnOn()
 
 void AWasamiViewcone::TurnOff()
 {
-	if (AActor* Parent = GetParentActor(); Parent && Parent->Implements<UWasamiViewconeInterface>())
+	if (AActor* Parent = GetParentActor(); IsValid(Parent) && Parent->Implements<UWasamiViewconeInterface>())
 	{
 		IWasamiViewconeInterface::Execute_StopLooking(Parent);
 	}
@@ -288,4 +290,28 @@ void AWasamiViewconeNurse::Turn()
 	{
 		TurnOn();
 	}
+}
+
+namespace
+{
+	/** The Matron's cones' class: Plane and Plane1 at 0, Plane1 hidden, and not turned on by initializing. */
+	void MakeMatronCone(AWasamiViewcone& Cone, float Length, float Angle)
+	{
+		Cone.Length = Length;
+		Cone.Angle = Angle;
+		Cone.bAutoOn = false;
+		Cone.GetPlane()->SetRelativeLocation(FVector::ZeroVector);
+		Cone.GetDot()->SetRelativeLocation(FVector::ZeroVector);
+		Cone.GetDot()->SetVisibility(false);
+	}
+}
+
+AWasamiViewconeMatronLong::AWasamiViewconeMatronLong()
+{
+	MakeMatronCone(*this, 3000.f, 35.f);
+}
+
+AWasamiViewconeMatronShort::AWasamiViewconeMatronShort()
+{
+	MakeMatronCone(*this, 1350.f, 35.f);
 }

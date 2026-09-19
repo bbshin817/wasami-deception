@@ -16,6 +16,7 @@
 #include "WasamiEnemyZone2.h"
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
+#include "WasamiMatron.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiPortal.h"
 #include "WasamiRingPieceWidget.h"
@@ -48,6 +49,7 @@ const FVector AWasamiZone2Flow::FalseCeilingOpen(-0.037109375, 864.614990234375,
 const FRotator AWasamiZone2Flow::WallSwitchThrown(0., 0., 40.809776306152344);
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
 const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
+const FName AWasamiZone2Flow::Matron(TEXT("MnM_Matron_Idle_2"));
 
 AWasamiZone2Flow::AWasamiZone2Flow()
 {
@@ -177,10 +179,14 @@ void AWasamiZone2Flow::MinibossTransition()
 
 void AWasamiZone2Flow::ActivateMinibossEnemies()
 {
-	// Every BP_06_ReaperNurse_Sentry's Activate, then the Matron's (MnM_Matron_Idle_2, item 11).
+	// Every BP_06_ReaperNurse_Sentry's Activate, then the Matron's (the level's MnM_Matron_Idle_2).
 	for (TActorIterator<AWasamiEnemySentry> It(GetWorld()); It; ++It)
 	{
 		It->Activate();
+	}
+	if (AWasamiMatron* Placed = Cast<AWasamiMatron>(Source(Matron)))
+	{
+		Placed->Activate();
 	}
 }
 
