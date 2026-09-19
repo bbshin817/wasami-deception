@@ -4,7 +4,7 @@ status: 進行中
 branch: feature/special-shards
 base: ae0762c
 started: 2026-09-19 20:19
-updated: 2026-09-19 20:52
+updated: 2026-09-19 20:48
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -86,7 +86,7 @@ updated: 2026-09-19 20:52
 
 ## 検証
 
-- check_records: OK（2026-09-19 20:52、16 件）
+- check_records: OK（2026-09-19 20:47、16 件）
 - C++ ビルド: 成功（2026-09-19、ステップ 2）
 - 自動テスト: `Wasami.VignetteSides.Anim`・`.Screen` 成功
 - エディタでの確認: ステップ 1 の素材（音・テクスチャ・結晶の材質・メッシュ・印・粒子）が取り込まれ、推定のマスターがコンパイルされた。ステップ 2 の画面を PIE で `Show` して収録し、橙の ENEMIES STUNNED・赤の ENEMIES REVEALED・縁の閃き・文字の叩きつけと 2 s で消えるのを見た（`Intermediate/Overnight/shots-vsides-*.png`）。本体の見え方は PIE（ステップ 6）で
