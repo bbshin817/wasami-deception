@@ -21,7 +21,7 @@ updated: 2026-09-20 07:55
 ## 計画
 
 - [x] 1. **シーケンスの組み立ての足りないトラック**（`dd_sequence`）— 骨のアニメ・可視・揺れ・スローモーション・部品の材質を足し（CameraAnim は UE 5.8 に無いので落とす）、3 つの場面と救急車の到着を `SEQUENCE_ACTORS` に足して両ゾーンを組み直した。ナース 4 体は `AWasamiCutsceneNurse`（新しい C++）で置き、本家のアニメを `NURSE_ANIMS` で敵ワサミのクリップに読み替える。実装記録 01・08・11（コミット `3221644`）
-- [x] 2. **場面を流す土台** — スキップの画面 `UWasamiCutsceneWidget`（本家の `UMG_CutsceneWidget`。帯・PRESS P TO SKIP・暗転で終わりへ飛ばす。入力はプレイヤーコントローラーの `InputComponent`）と、`AWasamiZoneFlow` の `PlayCutscene`・`SequencePlayer`・`SetPlayerViewTarget`・`DisablePlayerInput`・`EnablePlayerInput`。実装記録 09・11・`_index`（コミット ↓）
+- [x] 2. **場面を流す土台** — スキップの画面 `UWasamiCutsceneWidget`（本家の `UMG_CutsceneWidget`。帯・PRESS P TO SKIP・暗転で終わりへ飛ばす。入力はプレイヤーコントローラーの `InputComponent`）と、`AWasamiZoneFlow` の `PlayCutscene`・`SequencePlayer`・`SetPlayerViewTarget`・`DisablePlayerInput`・`EnablePlayerInput`。実装記録 09・11・`_index`（コミット `da86730`）
 - [ ] 3. **Zone 1 の途中の出来事**（`06_Hospital_Zone1_06Event`）
   - いまの `On05ParkingLotCutscene` は場面を飛ばして `Transition06` を直に呼んでいる（実装記録 11）。本家 @17019 どおり場面を流し、`OnFinished` → `06_Transition` → `Transition06` にする。
   - 変更予定: `Source/wasami_deception/WasamiZone1Flow.{h,cpp}`、Zone 1 のレベル
