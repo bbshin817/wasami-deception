@@ -3,13 +3,13 @@
     "wasami_deception.uproject": "0f6eeeb069413c61c7e744c3d5df63f67944e65d",
     ".mcp.json": "d2e3ee5c9642aabc67459c39080c1497ba12eaec",
     "Config/DefaultEngine.ini": "a7a7b62ea78d98a7162eb15af523564c20df919d",
-    "Config/DefaultGame.ini": "5296cbc0324f0571ac878ec809d11727ddd262a8",
+    "Config/DefaultGame.ini": "5dc3084cb51ae989bd644f17d98c4cf108f1d9bc",
     "Config/DefaultInput.ini": "a919105de6016a7a1094346d603c99a3274d5083",
     "Config/DefaultEditor.ini": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
     "Config/DefaultEditorPerProjectUserSettings.ini": "d8862707d73e7faf99ca9c07d761499418a11371",
     "Source/wasami_deception.Target.cs": "afe6f0d5169b2cb6491d7de438ab465dadbe6d35",
     "Source/wasami_deceptionEditor.Target.cs": "096e1e8454e881aebc9d2cfe365add216de13167",
-    "Source/wasami_deception/wasami_deception.Build.cs": "5476dcd6486c546f07e7b7512b83834b0b7926c4",
+    "Source/wasami_deception/wasami_deception.Build.cs": "8dc85d1c9a59c0a1756c788512428964bed4518b",
     "Source/wasami_deception/wasami_deception.cpp": "2107f18ca549210efe63277f953523bbc45df68f",
     "Source/wasami_deception/wasami_deception.h": "677c8e25baf2999c23674260b43a50272cad2594",
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
@@ -236,6 +236,9 @@
     "Source/wasami_deception/Tests/WasamiLevelClearTests.cpp": "e4f85a22d7b79f3f478f5258fd10a19bdbe6a6ae"
   },
   "14-title.md": {
-    "Tools/dd/prepare_title.py": "f11875c129fb470af4a9e023cae2d21e5eb57a38"
+    "Tools/dd/prepare_title.py": "f11875c129fb470af4a9e023cae2d21e5eb57a38",
+    "Source/wasami_deception/WasamiTitleScreenWidget.h": "d8ca5dc3dc0d73b382eb168759a41f685f802ec5",
+    "Source/wasami_deception/WasamiTitleScreenWidget.cpp": "5d89e1c4dae407acaa778aca7897d47bec099596",
+    "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "48341cf967ed5ada1954a32054569ea6834f08da"
   }
 }

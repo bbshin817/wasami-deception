@@ -35,7 +35,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 
 ## モジュールとビルド
 
-- `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）、`LevelSequence`・`MovieScene`（ゾーンの流れがレベルのシーケンスを再生する。11 記録）、`AIModule`・`GameplayTasks`・`NavigationSystem`（敵の AI MoveTo とランダムの点。07 記録）。非公開依存: `Slate`、`SlateCore`。
+- `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）、`LevelSequence`・`MovieScene`（ゾーンの流れがレベルのシーケンスを再生する。11 記録）、`AIModule`・`GameplayTasks`・`NavigationSystem`（敵の AI MoveTo とランダムの点。07 記録）。非公開依存: `Slate`、`SlateCore`、`EngineSettings`（タイトルの版の文字がプロジェクト設定の `ProjectVersion` を読む。14 記録）。
 - ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V5`、`IncludeOrderVersion.Unreal5_6`（テンプレートのまま）。
 - `wasami_deception.cpp` / `.h` はモジュールの実装（`IMPLEMENT_PRIMARY_GAME_MODULE`）。
 - **パイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）の参照の決まり**（`WasamiAssets.h`）: C++ はそれらをソフト参照で持ち（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に、`WasamiAssets::Path("/Game/…/Name")`〈→ `/Game/…/Name.Name`〉や `WasamiAssets::ClassPath`〈→ `…/BP_Name.BP_Name_C`〉で既定のパスを入れる）、使うとき（`BeginPlay`・`RebuildWidget`）に `LoadSynchronous` で読む。`ConstructorHelpers` で読むとエディタの起動時の読み込みでルートに入り、パイプラインが作り直そうとするとエディタが落ちる（01 記録の注意点）。
@@ -66,7 +66,8 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
-- **`DefaultGame.ini`**、**`DefaultEditor.ini`**: テンプレートのまま（CommonUI の設定とプロジェクト ID）。
+- **`DefaultGame.ini`**: CommonUI の設定とプロジェクト ID に、`[/Script/EngineSettings.GeneralProjectSettings]` の `ProjectVersion=0.1.0`（タイトルの右上の版の文字。本作に版の決まりが無いので仮。`TODO(仮)`。14 記録）。
+- **`DefaultEditor.ini`**: テンプレートのまま。
 
 ## 露出（2026-09-16）
 
@@ -169,3 +170,4 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - 2026-09-16: 原作の `r.UsePreExposure=False` の代わりに `r.EyeAdaptation.PreExposureOverride=1` を入れた（テレポートの閃光の後の黒いフレームの対処。ユーザーの決定）
 - 2026-09-18: 依存に `LevelSequence`・`MovieScene` を足した（ゾーンの流れがシーケンスを再生する。作業一覧の項目 6 のステップ 3a）
 - 2026-09-19: 依存に `AIModule`・`GameplayTasks`・`NavigationSystem` を足した（敵の判断。作業一覧の項目 7 のステップ 2）
+- 2026-09-19: 非公開の依存に `EngineSettings` を、`DefaultGame.ini` に `ProjectVersion`（仮に 0.1.0）を足した（タイトルの版の文字。作業一覧の項目 17 のステップ 2）
