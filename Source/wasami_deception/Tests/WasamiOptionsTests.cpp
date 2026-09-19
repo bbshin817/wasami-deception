@@ -12,6 +12,9 @@
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Engine/Engine.h"
+#include "Kismet/GameplayStatics.h"
+#include "../WasamiGameInstance.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiOptionsWidget.h"
 #include "../WasamiSettingsSaveGame.h"
@@ -20,6 +23,8 @@
 
 namespace
 {
+	const FString OptionsTestSlotName(TEXT("WasamiTest_Options"));
+
 	/** A screen whose tree is built and whose Construct ran with InSettings in InLevelName. */
 	UWasamiOptionsWidget* MakeOptionsScreen(UWasamiSettingsSaveGame* InSettings, const TCHAR* InLevelName)
 	{
@@ -47,6 +52,48 @@ namespace
 	{
 		const UCheckBox* Check = Cast<UCheckBox>(Tree->FindWidget(Name));
 		return Check && Check->IsChecked();
+	}
+
+	/** Moves the slider Name to Value as a drag does (its OnValueChanged runs). Returns where it ends up. */
+	float DragOptionsSlider(const UWidgetTree* Tree, const TCHAR* Name, float Value)
+	{
+		USlider* Slider = Cast<USlider>(Tree->FindWidget(Name));
+		if (!Slider)
+		{
+			return -1.f;
+		}
+		Slider->SetValue(Value);
+		return Slider->GetValue();
+	}
+
+	void ClickOptions(const UWidgetTree* Tree, const TCHAR* Name, int32 Times = 1)
+	{
+		if (UButton* Button = Cast<UButton>(Tree->FindWidget(Name)))
+		{
+			for (int32 Each = 0; Each < Times; ++Each)
+			{
+				Button->OnClicked.Broadcast();
+			}
+		}
+	}
+
+	/** A screen whose settings are Owner's (read by its Construct, as in a game). */
+	UWasamiOptionsWidget* MakeOwnedOptionsScreen(UWasamiGameInstance* Owner)
+	{
+		UWasamiOptionsWidget* Screen = NewObject<UWasamiOptionsWidget>();
+		Screen->SettingsOwner = Owner;
+		Screen->LevelName = AWasamiGameMode::TitleLevelName;
+		Screen->Initialize();
+		Screen->TakeWidget();
+		return Screen;
+	}
+
+	void RunOptions(UWasamiOptionsWidget* Screen, float Seconds)
+	{
+		for (float Time = 0.f; Time < Seconds - 1e-4f; Time += 1.f / 60.f)
+		{
+			Screen->Advance(1.f / 60.f);
+		}
 	}
 }
 
@@ -217,6 +264,158 @@ bool FWasamiOptionsFadeInTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("ends at full size"), Screen->GetBoxScale(), 1.f, 1e-4f);
 	const UWidget* Box = Screen->WidgetTree->FindWidget(TEXT("CanvasPanel_2"));
 	TestTrue(TEXT("on CanvasPanel_2"), Box && FMath::IsNearlyEqual(Box->GetRenderTransform().Scale.X, 1., 1e-4) && FMath::IsNearlyEqual(Box->GetRenderOpacity(), 1.f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiOptionsControlsTest, "Wasami.Options.Controls",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiOptionsControlsTest::RunTest(const FString& Parameters)
+{
+	UWasamiOptionsWidget* Screen = MakeOptionsScreen(NewObject<UWasamiSettingsSaveGame>(), AWasamiGameMode::TitleLevelName);
+	const UWidgetTree* Tree = Screen->WidgetTree;
+
+	// Setup Values leaves the saved values as they are, off the stops too.
+	TestEqual(TEXT("MOUSE SENSITIVITY stays at 0.5"), OptionsSliderOf(Tree, TEXT("MouseSensitivitySlider")), 0.5f, 1e-6f);
+
+	// A slider snaps to its ten stops as it moves; its box reads the stop.
+	TestEqual(TEXT("MUSIC at 0.3 snaps to 1/3"), DragOptionsSlider(Tree, TEXT("MusicSlider"), 0.3f), 1.f / 3.f, 1e-6f);
+	TestEqual(TEXT("SFX at 0.05 to 0"), DragOptionsSlider(Tree, TEXT("SFXSlider"), 0.05f), 0.f, 1e-6f);
+	TestEqual(TEXT("DIALOGUE at 0.95 to 1"), DragOptionsSlider(Tree, TEXT("DialogueSlider"), 0.95f), 1.f, 1e-6f);
+	TestEqual(TEXT("MOUSE SENSITIVITY once moved from 0.5 to 5/9"), DragOptionsSlider(Tree, TEXT("MouseSensitivitySlider"), 0.51f), 5.f / 9.f, 1e-6f);
+	TestEqual(TEXT("RESOLUTION SCALE at 0.7 to 2/3"), DragOptionsSlider(Tree, TEXT("ResolutionScaleSlider"), 0.7f), 6.f / 9.f, 1e-6f);
+	TestEqual(TEXT("BRIGHTNESS at 0.2 to 2/9"), DragOptionsSlider(Tree, TEXT("BrightnessSlider"), 0.2f), 2.f / 9.f, 1e-6f);
+	Screen->Advance(1.f / 60.f);
+	TestEqual(TEXT("MUSIC reads 0.3"), OptionsTextOf(Tree, TEXT("TextBlock_14")), FString(TEXT("0.3")));
+	TestEqual(TEXT("MOUSE SENSITIVITY reads 0.6"), OptionsTextOf(Tree, TEXT("TextBlock_15")), FString(TEXT("0.6")));
+
+	// QUALITY's arrows step 0 to 3, DIFFICULTY's 0 to 1 (HARD out of reach).
+	ClickOptions(Tree, TEXT("QualityLower"), 3);
+	TestEqual(TEXT("QUALITY down to LOW"), Screen->GetQualitySetting(), 0);
+	ClickOptions(Tree, TEXT("QualityHigher"), 5);
+	TestEqual(TEXT("QUALITY up to VERY HIGH"), Screen->GetQualitySetting(), 3);
+	Screen->Advance(1.f / 60.f);
+	TestEqual(TEXT("and reads it"), OptionsTextOf(Tree, TEXT("TextBlock_4")), FString(TEXT("VERY HIGH")));
+	ClickOptions(Tree, TEXT("DifficultyLower"), 2);
+	TestTrue(TEXT("DIFFICULTY down to EASY"), Screen->GetDifficultySetting() == EWasamiDifficulty::Easy);
+	ClickOptions(Tree, TEXT("DifficultyHigher"), 3);
+	TestTrue(TEXT("and up to NORMAL only"), Screen->GetDifficultySetting() == EWasamiDifficulty::Normal);
+
+	// SAVE & EXIT and CANCEL go white while hovered and back to Unhovered Color.
+	for (const TCHAR* Name : {TEXT("ApplyButton"), TEXT("CancelButton")})
+	{
+		UButton* Button = Cast<UButton>(Tree->FindWidget(Name));
+		if (!TestNotNull(Name, Button))
+		{
+			continue;
+		}
+		TestEqual(FString::Printf(TEXT("%s grey at first"), Name), Button->GetColorAndOpacity().R, 0.114583f, 1e-5f);
+		Button->OnHovered.Broadcast();
+		TestTrue(FString::Printf(TEXT("%s white when hovered"), Name), Button->GetColorAndOpacity().Equals(FLinearColor::White));
+		Button->OnUnhovered.Broadcast();
+		TestEqual(FString::Printf(TEXT("%s grey again"), Name), Button->GetColorAndOpacity().R, 0.114583f, 1e-5f);
+	}
+
+	// Nothing reaches the settings until SAVE & EXIT.
+	TestEqual(TEXT("the settings' MUSIC untouched"), Screen->Settings->Music, 1.f);
+	TestEqual(TEXT("and QUALITY"), Screen->Settings->Quality, 2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiOptionsSaveAndCancelTest, "Wasami.Options.SaveAndCancel",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiOptionsSaveAndCancelTest::RunTest(const FString& Parameters)
+{
+	using W = UWasamiOptionsWidget;
+	const float Gamma = GEngine->DisplayGamma;
+	UGameplayStatics::DeleteGameInSlot(OptionsTestSlotName, UWasamiSettingsSaveGame::UserIndex);
+	UWasamiGameInstance* Owner = NewObject<UWasamiGameInstance>();
+	Owner->SettingsSlotName = OptionsTestSlotName;
+	UWasamiSettingsSaveGame* Kept = Owner->CheckSettingsSave();
+	if (!TestNotNull(TEXT("the owner's settings"), Kept))
+	{
+		return false;
+	}
+
+	// CANCEL: the settings and the slot as they were, FadeIn backwards from 0.25 s and off at 0.3 s.
+	UWasamiOptionsWidget* Cancelled = MakeOwnedOptionsScreen(Owner);
+	TestTrue(TEXT("Construct reads the owner's settings"), Cancelled->Settings == Kept);
+	RunOptions(Cancelled, 0.6f);
+	DragOptionsSlider(Cancelled->WidgetTree, TEXT("MusicSlider"), 0.2f);
+	ClickOptions(Cancelled->WidgetTree, TEXT("QualityLower"));
+	ClickOptions(Cancelled->WidgetTree, TEXT("CancelButton"));
+	TestTrue(TEXT("CANCEL closes"), Cancelled->IsClosing());
+	TestEqual(TEXT("from 0.25 s of FadeIn"), Cancelled->GetFadeInTime(), W::CloseFrom, 1e-6f);
+	TestEqual(TEXT("still in view"), Cancelled->GetBoxOpacity(), 1.f, 1e-5f);
+	TestEqual(TEXT("MUSIC not kept"), Kept->Music, 1.f);
+	TestEqual(TEXT("QUALITY not kept"), Kept->Quality, 2);
+	RunOptions(Cancelled, 0.25f);
+	TestEqual(TEXT("gone by 0.25 s"), Cancelled->GetBoxOpacity(), 0.f, 1e-4f);
+	TestEqual(TEXT("the wash too"), Cancelled->GetWashOpacity(), 0.f, 1e-4f);
+	RunOptions(Cancelled, 1.f / 30.f);
+	TestFalse(TEXT("not off before 0.3 s"), Cancelled->IsFinished());
+	RunOptions(Cancelled, 1.f / 30.f);
+	TestTrue(TEXT("off after 0.3 s"), Cancelled->IsFinished());
+	const UWasamiSettingsSaveGame* Unsaved = UWasamiSettingsSaveGame::Check(OptionsTestSlotName);
+	TestTrue(TEXT("the slot untouched"), Unsaved && Unsaved->Music == 1.f && Unsaved->Quality == 2);
+
+	// SAVE & EXIT: the screen's values into the settings, applied and written, then closing as CANCEL does.
+	UWasamiOptionsWidget* Saved = MakeOwnedOptionsScreen(Owner);
+	RunOptions(Saved, 0.6f);
+	DragOptionsSlider(Saved->WidgetTree, TEXT("MusicSlider"), 0.3f);
+	DragOptionsSlider(Saved->WidgetTree, TEXT("BrightnessSlider"), 0.52f);
+	DragOptionsSlider(Saved->WidgetTree, TEXT("MouseSensitivitySlider"), 0.9f);
+	ClickOptions(Saved->WidgetTree, TEXT("QualityLower"), 2);
+	ClickOptions(Saved->WidgetTree, TEXT("DifficultyLower"));
+	if (UCheckBox* InvertedY = Cast<UCheckBox>(Saved->WidgetTree->FindWidget(TEXT("InvertedYCheck"))))
+	{
+		InvertedY->SetIsChecked(true);
+	}
+	if (UCheckBox* Subtitles = Cast<UCheckBox>(Saved->WidgetTree->FindWidget(TEXT("SubtitlesCheck"))))
+	{
+		Subtitles->SetIsChecked(false);
+	}
+	ClickOptions(Saved->WidgetTree, TEXT("ApplyButton"));
+	TestTrue(TEXT("SAVE & EXIT closes"), Saved->IsClosing());
+	TestEqual(TEXT("MUSIC kept"), Kept->Music, 1.f / 3.f, 1e-6f);
+	TestEqual(TEXT("BRIGHTNESS kept"), Kept->Brightness, 5.f / 9.f, 1e-6f);
+	TestEqual(TEXT("MOUSE SENSITIVITY kept"), Kept->MouseSensitivity, 8.f / 9.f, 1e-6f);
+	TestEqual(TEXT("QUALITY kept"), Kept->Quality, 0);
+	TestTrue(TEXT("EASY kept"), Kept->Difficulty == EWasamiDifficulty::Easy && Owner->IsEasy());
+	TestTrue(TEXT("INVERTED Y AXIS kept"), Kept->bInvertedYAxis);
+	TestFalse(TEXT("SUBTITLES off"), Kept->bSubtitles);
+	TestTrue(TEXT("the rest as they were"), Kept->SFX == 1.f && Kept->bHeadBobbing && Kept->bMouseSmoothing && !Kept->bToggleSprint);
+	TestEqual(TEXT("the gamma applied"), GEngine->DisplayGamma, UWasamiSettingsSaveGame::GammaFor(5.f / 9.f), 1e-5f);
+	const UWasamiSettingsSaveGame* Written = UWasamiSettingsSaveGame::Check(OptionsTestSlotName);
+	if (TestNotNull(TEXT("written"), Written))
+	{
+		TestTrue(TEXT("a new object"), Written != Kept);
+		TestEqual(TEXT("MUSIC in the slot"), Written->Music, 1.f / 3.f, 1e-6f);
+		TestEqual(TEXT("QUALITY in the slot"), Written->Quality, 0);
+		TestTrue(TEXT("EASY in the slot"), Written->Difficulty == EWasamiDifficulty::Easy);
+		TestTrue(TEXT("INVERTED Y AXIS in the slot"), Written->bInvertedYAxis);
+	}
+	RunOptions(Saved, 0.35f);
+	TestTrue(TEXT("and off after 0.3 s"), Saved->IsFinished());
+
+	// Opened again, the screen shows what was saved.
+	UWasamiOptionsWidget* Again = MakeOwnedOptionsScreen(Owner);
+	TestEqual(TEXT("MUSIC reads 0.3"), OptionsTextOf(Again->WidgetTree, TEXT("TextBlock_14")), FString(TEXT("0.3")));
+	TestEqual(TEXT("QUALITY reads LOW"), OptionsTextOf(Again->WidgetTree, TEXT("TextBlock_4")), FString(TEXT("LOW")));
+	TestEqual(TEXT("DIFFICULTY reads EASY"), OptionsTextOf(Again->WidgetTree, TEXT("TextBlock_28")), FString(TEXT("EASY")));
+	TestTrue(TEXT("INVERTED Y AXIS checked"), OptionsIsChecked(Again->WidgetTree, TEXT("InvertedYCheck")));
+
+	// Without an owner SAVE & EXIT only writes the screen's values into its settings.
+	UWasamiSettingsSaveGame* Loose = NewObject<UWasamiSettingsSaveGame>();
+	UWasamiOptionsWidget* Unowned = MakeOptionsScreen(Loose, AWasamiGameMode::Zone1LevelName);
+	DragOptionsSlider(Unowned->WidgetTree, TEXT("SFXSlider"), 0.f);
+	Unowned->PressSave();
+	TestEqual(TEXT("SFX written"), Loose->SFX, 0.f);
+	TestTrue(TEXT("and closing"), Unowned->IsClosing());
+
+	UGameplayStatics::DeleteGameInSlot(OptionsTestSlotName, UWasamiSettingsSaveGame::UserIndex);
+	GEngine->DisplayGamma = Gamma;
 	return true;
 }
 

@@ -24,6 +24,7 @@
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiGameMode.h"
+#include "WasamiOptionsWidget.h"
 #include "WasamiPopUpWidget.h"
 #include "WasamiSaveGame.h"
 #include "WasamiWidgetAnimation.h"
@@ -496,7 +497,7 @@ void UWasamiTitleScreenWidget::PressResume()
 void UWasamiTitleScreenWidget::PressOptions()
 {
 	// @8405: CreateAndAddWidget(UMG_Options, Z 10) and the select sound.
-	// TODO(項目 18): the options screen at Z 10.
+	UWasamiOptionsWidget::Show(this);
 	PlaySelect();
 }
 

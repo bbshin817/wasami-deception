@@ -13,7 +13,7 @@ updated: 2026-09-19
 # 設定・オプション画面・ポーズ画面
 
 ## 役割
-プレイヤーの設定（本家の旧版 v1.6.1 の `BP_DD_Settings_SaveGame`、スロット `Settings`）と、それを読んで当てる本家の `BP_DD_GameMode` の `Check Settings Save` → `Set Settings`（音量は本家の `DD_SoundMix` のクラスの上書き）、プレイヤーが読む値（感度・Y 反転・頭の揺れ・ダッシュの切り替え・マウスのスムージング）、難易度の効き先（スコア画面の EASY）。作業一覧の項目 18。いまはステップ 3（オプション画面の木・Construct・Setup Values・FadeIn）まで。オプション画面の操作（スライダーの吸着・矢印・チェック・ホバー・SAVE & EXIT・CANCEL）とタイトルの OPTIONS はステップ 4、ポーズ画面（旧版 `UMG_Pause`）はステップ 5・6 でここに足す。
+プレイヤーの設定（本家の旧版 v1.6.1 の `BP_DD_Settings_SaveGame`、スロット `Settings`）と、それを読んで当てる本家の `BP_DD_GameMode` の `Check Settings Save` → `Set Settings`（音量は本家の `DD_SoundMix` のクラスの上書き）、プレイヤーが読む値（感度・Y 反転・頭の揺れ・ダッシュの切り替え・マウスのスムージング）、難易度の効き先（スコア画面の EASY）。作業一覧の項目 18。いまはステップ 4（オプション画面の木と操作、タイトルの OPTIONS）まで。ポーズ画面（旧版 `UMG_Pause`）はステップ 5・6 でここに足す。
 
 オプション画面は旧版を写す（最新版 v1.9.6〈`pak_reference_2`〉に `UMG_Options` は無く、第三者の AutoSettings プラグインの `SettingsUI` と CVar に替わった。作業一覧の完了の条件の WebGL 版 04・10 記録も旧版を写したもの。2026-09-19）。設定の項目は両版で同じ（最新版の `VSync`・`Motion Blur` は旧版のメニューに無いので持たない）。
 
@@ -30,10 +30,11 @@ updated: 2026-09-19
 - デバッグ: `Wasami.Settings`（今の値と、音の装置が Music・SFX・Dialogue のクラスに今当てている音量〈`FAudioDevice::GetSoundClassCurrentProperties`。上書きは 1 s かけて届く〉を `LogWasamiSettings` に並べる）、`Wasami.Settings <名前> <値>`（`UWasamiSettingsSaveGame` の UPROPERTY の名前〈`Quality`・`MouseSensitivity`・`bInvertedYAxis`・`Difficulty` ほか〉に値を入れ、SAVE & EXIT と同じく当てて書いてプレイヤーに渡す）、`Wasami.ResetSettings`（既定値に戻して同じく保存）。どちらも `WasamiGameInstance.cpp`。
 - `UWasamiOptionsWidget`（`UUserWidget`。C++ で木を組む。下の「オプション画面」）
   - `Show(WorldContextObject)`（BlueprintCallable）: 最初のプレイヤーに作って Z 10（`ViewportZOrder`。本家のタイトルとポーズの `CreateAndAddWidget(UMG_Options, 10)`）で足す。PIE で画面だけを出すときはリモート実行で `unreal.WasamiOptionsWidget.show(<ゲームのワールド>)`。
-  - `Settings`（`Setup Values` が読み、ステップ 4 の SAVE & EXIT が書き込む設定。空ならゲームインスタンスの `GetSettings()`、それも無ければ既定の新しいもの）、`LevelName`（DIFFICULTY を決めるレベル。空なら今のレベル）。テストはどちらも入れてから足す。
-  - `ShowsDifficulty(LevelName)`（タイトル `L_Title` だけ真）、`Begin(Settings, bShowDifficulty)`（Construct の中身。`NativeConstruct` が呼ぶ）、`SetupValues(Settings)`、`Advance(DeltaSeconds)`（`NativeTick` から。FadeIn と値の文字）。
+  - `Settings`（`Setup Values` が読み、SAVE & EXIT が書き込む設定。空なら `SettingsOwner` の `GetSettings()`、それも無ければ既定の新しいもの）、`SettingsOwner`（SAVE & EXIT が `SaveSettings()` を呼ぶゲームインスタンス。空ならワールドのもの。無ければ SAVE & EXIT は `Settings` に書くだけ）、`LevelName`（DIFFICULTY を決めるレベル。空なら今のレベル）。テストはこれらを入れてから足す（`SettingsOwner` は自分のスロットのゲームインスタンス）。
+  - `PressSave()`（SAVE & EXIT）・`PressCancel()`（CANCEL）・`WriteValues(Settings)`（`Save Values` の書き込み）・`IsClosing()`・`IsFinished()`、定数 `CloseFrom` 0.25・`CloseDelay` 0.3・`CancelPitch` 0.7。
+  - `ShowsDifficulty(LevelName)`（タイトル `L_Title` だけ真）、`Begin(Settings, bShowDifficulty)`（Construct の中身。`NativeConstruct` が呼ぶ）、`SetupValues(Settings)`、`Advance(DeltaSeconds)`（`NativeTick` から。FadeIn・閉じるときの Delay・値の文字）。
   - テスト用の読み出し: `GetQualitySetting`・`GetDifficultySetting`・`HasDifficulty`・`GetFadeInTime`・`GetBoxOpacity`・`GetBoxScale`（`CanvasPanel_2`）・`GetWashOpacity`（`Blur+Red`）、曲線 `EvaluateFadeInOpacity`・`EvaluateFadeInScale`、定数 `RootScale` 1.015・`FadeInLength`・`CheckHoverGrey` 0.515625。
-- テスト `Wasami.Options.Screen`（木・素材・様式・既定値と別の値の表示・値の文字がスライダーに付いていくこと・DIFFICULTY の出し分け）・`Wasami.Options.FadeIn`（`Tests/WasamiOptionsTests.cpp`）。
+- テスト `Wasami.Options.Screen`（木・素材・様式・既定値と別の値の表示・値の文字がスライダーに付いていくこと・DIFFICULTY の出し分け）・`Wasami.Options.FadeIn`・`Wasami.Options.Controls`（`Setup Values` が 0.5 を吸着させないこと・6 本のスライダーの吸着・矢印の端・SAVE & EXIT と CANCEL のホバーの色・SAVE & EXIT までは設定に届かないこと）・`Wasami.Options.SaveAndCancel`（スロット `WasamiTest_Options` のゲームインスタンスで: CANCEL は捨てて 0.25 s で消え 0.3 s 過ぎで外れる、SAVE & EXIT は設定に書いて当てて〈ガンマ〉スロットに書き、閉じる、開き直すと保存した値、持ち主が無ければ書くだけ）（`Tests/WasamiOptionsTests.cpp`）。
 - テスト `Wasami.Settings.Defaults`・`Wasami.Settings.Rules`・`Wasami.Settings.SoundMix`（SoundMix の 3 つのクラスと子へ当てないこと、クラスの木と Properties、音 6 つのクラス）・`Wasami.Settings.Slot`（スロット `WasamiTest_Settings`。ゲームインスタンスの読み・当て・SAVE & EXIT の書き込み・`IsEasy`。表示ガンマは終わりに元へ戻す）・`Wasami.Settings.Player`（`Tests/WasamiSettingsTests.cpp`）。
 
 ## 内部構造と処理の流れ
@@ -84,12 +85,22 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - 値の箱の文字は本家では関数の結び付け（描くたびに読む）: スライダーの行は `RoundFloatDecimals(Slider.GetValue(), 1)` を `Conv_FloatToText`（`UWasamiSettingsSaveGame::SliderText`）、QUALITY は `Quality Text`（`QualitySetting`）、DIFFICULTY は `GetText_0`（`Difficulty Setting`）。本作はティックごとに読み直して、変わったときだけ書く（`RefreshTexts`）。
 - FadeIn（書き出しのキー。0.5 s、区間は終わっても最後の値のまま）: `Blur+Red` と `CanvasPanel_2` の不透明度 0 → 1（0.25 s）、`CanvasPanel_2` の拡大 0 → 1（0.25 s、UE の自動の接線で少し行き過ぎる）→ 1（0.5 s）。アニメの結び付けの名前は `CanvasPanel_0` だが、`AnimationBindings` の `WidgetName` は `CanvasPanel_2`（ルートの 1.015 はそのまま）。キーは `UMG_PopUp` の `Popup` と同じ値。ウィジェットのティックで進めるので、止まったゲームの上でも動く。
 
+操作（本家のグラフの結び付けたイベント。`BindControls` が木を組んだ後に結ぶ）:
+- スライダー 6 本の `OnValueChanged`（@30・@390・@516・@642・@16254・@16380）: `SetValue(GridSnap_Float(値, 1/9))`（`SnapSlider`）。ドラッグの間ずっと 10 段に吸い付く。UE 5 の `USlider::SetValue` は値が変われば `OnValueChanged` を呼ぶ（UE 4 は呼ばなかった）ので、`Setup Values` の間は吸着させない（`bSettingUp`。保存した 0.5 が 5/9 にならない）。吸着の `SetValue` がもう一度呼ぶ `OnValueChanged` は同じ段に吸い付いて止まる。
+- 矢印: QUALITY（@156・@273）は `Clamp(QualitySetting ∓ 1, 0, 3)`、DIFFICULTY（@22041・@21782）は `Clamp(Difficulty Setting ∓ 1, 0, 1)`（HARD には届かない）。チェックは UE のまま入り切りするだけ（本家もイベントを結ばない）。
+- SAVE & EXIT・CANCEL のホバー（@15973・@16040、@15864・@15931）: 入ると中身の色が白、出ると `Unhovered Color` 0.1146（死亡画面・ポップアップと同じ）。
+- CANCEL（@16082。`Cancel` 関数 @21302 も同じ所へ飛ぶ）: `PlayAnimation(FadeIn, 0.25, 1, Reverse, 1)`（押すたびに 0.25 から逆に）→ `UI_Select_V3` を再生速度 0.7 → `Delay(0.3)`（待っている間の 2 回目は無視）→ `RemoveFromParent`。入力の様式は戻さない（本家どおり。下のタイトルはマウスで押せる）。
+- SAVE & EXIT（@19624）: `UI_Select_V2` → 適用（@18949 → @16506: スケーラビリティ・解像度・ポストプロセスの品質・字幕・`ApplySettings`・`gamma`・SoundMix の 3 つ）→ `Save Values`（@19688: スロットを読み、画面の全項目を書き、ゲームモードの `Global Settings Save Instance` にして書き、プレイヤーがいれば `Set Up Mouse Smoothing`）→ `Cancel`。本作は `WriteValues` で画面の値を `Settings`（持ち主の設定そのもの）に書いてから持ち主の `SaveSettings()`（`Apply` → スロット → プレイヤーの `ApplySettings`・`SetUpMouseSmoothing`）を呼ぶので、適用と保存が 1 つの道になる。
+- Esc は何もしない（本家は結ばない。UI の入力の様式なのでキャラクターの Esc も届かない）。WebGL 版は Esc を CANCEL と同じにしていた（ブラウザの Esc がポインタロックを外すため）。
+- タイトルの OPTIONS（`UWasamiTitleScreenWidget::PressOptions`。本家 @8405）: `Show`（Z 10）と選択音。
+
 ## 作るアセット
 なし（セーブは実行時に `Saved/SaveGames/Settings.sav`）。SoundMix と SoundClass は取り込み（01 記録）が作る。オプション画面の素材は `dd_ui.import_options()`（`WasamiDDTools.import_dd_ui` の `import_all` も呼ぶ。01 記録）:
 
 | 種類 | アセット | 数 |
 | --- | --- | --- |
 | テクスチャ（本家） | `/Game/DD/UI/Menu/Settings/options_window_frame`（1732 × 1200）・`selection_bar`（242 × 55）・`selection_bar_arrow_normal`・`selection_bar_arrow_hover`（21 × 32）・`slider_bar_tab`（22 × 38）・`checkbox_icon`・`checkbox_icon_checked`（55 × 64）。`pak_reference_2` から（旧版と同じ画像）、sRGB・UI の LOD グループ | 7 |
+| 音（本家） | `/Game/DD/Audio/UI/UI_Select_V2`（SAVE & EXIT。0.55 s、クラス `DD_SoundClass_SFX`。`pak_reference_2` から、旧版と同じ ogg） | 1 |
 
 見出し・値・ボタンの書体 `/Game/DD/UI/Fonts/helvetica-neue-bold_Font` はタブレットの取り込み（03 記録）が作る。
 
@@ -100,11 +111,11 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 - `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_Options.txt`: `Quality Text`（VERY HIGH ほか）、スライダーの吸着と文字・矢印の Clamp（WebGL 版 04 記録の `settings.ts` が読んだもの）。
 - WebGL 版 04 記録の `settings.ts`（`snap`・`sliderText`・`stepValue`・`gamma`・`lookScale`・`rotationLagSpeed`・`SPRING_ARM_LAG_SPEED`）。
 - 音量: `pak_reference/_assets/DDeception/Content/Audio/SoundMix/DD_SoundMix.json`・`DD_SoundClass_*.json`（`pak_reference_2` は Music の親が `/Engine/EngineSounds/Master` のほか同じ）、`BP_DD_GameMode.txt` の `SetBaseSoundMix` @27511 と `Set Settings` の `SetSoundMixClassOverride` @34211・@34304・@34397。
-- オプション画面: `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_Options.json`（木は `UMG_Options_C.WidgetTree` の側。FadeIn は `FadeIn_INST` の `MovieScene` の区間と `AnimationBindings`・`PrecompiledEvaluationTemplate` の `KeepState`、値の箱の結び付けは `UMG_Options_C` の `Bindings`、`Unhovered Color` は `Default__UMG_Options_C`）。Construct・`Setup Values` は `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_Options.txt`（`python Tools/dd/bp_flow.py <file> Construct` / `"Setup Values"`）、結び付けの関数は同じファイルの `=== Resolution Scale` ほか。UE 4 の既定の様式（ボタン・スライダーの Box の絵と余白）は UE 4.21 の `FCoreStyle`、UE 5 の違いは UE 5.8 の `SlateTypes.cpp`（`FCheckBoxStyle`・`FSliderStyle` の既定）・`SSlider::OnPaint`・`SCheckBox::BuildCheckBox`。
+- オプション画面: `pak_reference/_assets/DDeception/Content/UI/Menu/UMG_Options.json`（木は `UMG_Options_C.WidgetTree` の側。FadeIn は `FadeIn_INST` の `MovieScene` の区間と `AnimationBindings`・`PrecompiledEvaluationTemplate` の `KeepState`、値の箱の結び付けは `UMG_Options_C` の `Bindings`、`Unhovered Color` は `Default__UMG_Options_C`）。Construct・`Setup Values` と操作は `pak_reference/_bytecode/DDeception/Content/UI/Menu/UMG_Options.txt`（`python Tools/dd/bp_flow.py <file> Construct` / `"Setup Values"` / `--list` の番地）、結び付けの関数は同じファイルの `=== Resolution Scale` ほか。UE 5 の `USlider::SetValue` が `OnValueChanged` を呼ぶのは UE 5.8 の `Runtime/UMG/Private/Components/Slider.cpp`。UE 4 の既定の様式（ボタン・スライダーの Box の絵と余白）は UE 4.21 の `FCoreStyle`、UE 5 の違いは UE 5.8 の `SlateTypes.cpp`（`FCheckBoxStyle`・`FSliderStyle` の既定）・`SSlider::OnPaint`・`SCheckBox::BuildCheckBox`。
 - 難易度: `pak_reference/_bytecode` と `pak_reference_2/_bytecode` で `BP_DD_Settings_SaveGame_C.Difficulty` を grep。最新版の死亡画面の分岐は `pak_reference_2/_bytecode/DDeception/Content/Blueprints/UMG/UMG_DeathScreen.txt` @2639（`python Tools/dd/bp_flow.py <file> 2354`）。
 
 ## 依存関係
-- オプション画面: `UWasamiGameInstance::GetSettings`、`UWasamiSettingsSaveGame` の規則（`SliderText`・`QualityText`・`DifficultyText`）、`AWasamiGameMode::TitleLevelName`、`WasamiWidgetAnimation.h`（09 記録）、`WasamiAssets.h`、エンジンの `UGridPanel`・`USlider`・`UCheckBox`・`UBackgroundBlur`。使う側はステップ 4 のタイトルの OPTIONS とステップ 6 のポーズの OPTIONS（まだ無い）。
+- オプション画面: `UWasamiGameInstance::GetSettings`、`UWasamiSettingsSaveGame` の規則（`SliderText`・`QualityText`・`DifficultyText`）、`AWasamiGameMode::TitleLevelName`、`WasamiWidgetAnimation.h`（09 記録）、`WasamiAssets.h`、エンジンの `UGridPanel`・`USlider`・`UCheckBox`・`UBackgroundBlur`。使う側はタイトルの OPTIONS（14 記録）とステップ 6 のポーズの OPTIONS（まだ無い）。SAVE & EXIT は `UWasamiGameInstance::SaveSettings`（`WriteValues` の後）、音は `/Game/DD/Audio/UI/UI_Select_V2`・`UI_Select_V3`。
 - 使う側: `UWasamiGameInstance`（持ち主）、`AWasamiGameMode`・`AWasamiTitleGameMode`（BeginPlay）、`AWasamiPlayerCharacter`（BeginPlay・`SaveSettings`）。
 - エンジン: `UGameplayStatics`（`LoadGameFromSlot`・`SaveGameToSlot`・`CreateSaveGameObject`・`SetSubtitlesEnabled`・`SetBaseSoundMix`・`SetSoundMixClassOverride`）、`UGameUserSettings`、`UKismetMathLibrary`（`GridSnap_Float`・`MapRangeClamped`）、`UEngine::DisplayGamma`、`FAudioDevice::GetSoundClassCurrentProperties`（デバッグ）。
 - アセット: `/Game/DD/Audio/SoundMix/DD_SoundMix`・`DD_SoundClass_Music`・`_SFX`・`_SFX_UI`・`_SFX_Movies`・`_Dialogue`（01 記録の `import_dd_sound_classes`）。
@@ -112,7 +123,8 @@ Construct（`NativeConstruct` → `Begin`。本家 @21404）: `SetInputMode_UIOn
 ## 既知の制約・注意点
 - **感度の換算は本家と違う**（2026-09-19 のユーザーの回答で確定）: 本家はマウスの軸に設定の値そのもの（既定 0.5）を掛けるが、本作の視点の速さ（1 カウント 0.175°。02 記録）は最新版の実機を感度 1 で測って合わせたので、そのまま掛けると既定で半分の速さになる。`PlayerSensitivityFor` = 設定 / 0.5 で、既定の 0.5 を今の速さ 1.0 にした（WebGL 版の `lookScale` と同じ）。
 - エディタではスケーラビリティ・解像度・ポストプロセスの品質を当てない（上）。QUALITY と RESOLUTION SCALE の効きはパッケージでしか確かめられない。
-- オプション画面はまだ操作できない（ステップ 4）: スライダー・チェック・矢印は UE の既定の動き（吸着・SAVE & EXIT・CANCEL・ホバーの色は無い）で、画面を閉じる道も無い。
+- スライダーはキーボードの左右では動かない（UE の `StepSize` 0.01 だけ動いて吸着で戻る。本家も同じ）。WebGL 版は左右キーで 1/9 ずつ動かしていた。
+- 閉じた後、入力の様式は UI のまま焦点を持つウィジェットが無い（本家どおり）。タイトルはマウスで押せる。ポーズの上で閉じたときの焦点はステップ 5 で見る。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も同じ（タイトル・死亡画面と同じく、そのままにしている。14 記録）。
 - MOUSE SENSITIVITY のスライダーは枠の右を越えて描かれる: CONTROLS の箱の幅は見出しの最小の幅 550 で決まり、行はそれに合わせて広がり、スライダーのスロットの右の余白が −10 なので（本家の木のまま）。
 - `Wasami.Settings` で値を変えると `Saved/SaveGames/Settings.sav` に残る（次の PIE もその値で始まる）。確かめた後は `Wasami.ResetSettings`。

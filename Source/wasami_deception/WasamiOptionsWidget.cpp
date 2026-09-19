@@ -24,6 +24,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
@@ -121,6 +122,8 @@ UWasamiOptionsWidget::UWasamiOptionsWidget(const FObjectInitializer& ObjectIniti
 	CheckTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Menu/Settings/checkbox_icon")));
 	CheckedTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Menu/Settings/checkbox_icon_checked")));
 	Font = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/UI/Fonts/helvetica-neue-bold_Font")));
+	SaveSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V2")));
+	CancelSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
 }
 
 UWasamiOptionsWidget* UWasamiOptionsWidget::Show(const UObject* WorldContextObject)
@@ -441,12 +444,47 @@ void UWasamiOptionsWidget::BuildScreen(UCanvasPanel* Root)
 		AddToOptionsRow(Buttons, Button, SlotPadding, HAlign_Center, VAlign_Center);
 		return Button;
 	};
-	MakeButton(TEXT("ApplyButton"), TEXT("TextBlock_5"), TEXT("SAVE & EXIT"), FMargin(0.f, 0.f, 40.f, 0.f));
-	MakeButton(TEXT("CancelButton"), TEXT("TextBlock_23"), TEXT("CANCEL"), FMargin(40.f, 0.f, 0.f, 0.f));
+	ApplyButton = MakeButton(TEXT("ApplyButton"), TEXT("TextBlock_5"), TEXT("SAVE & EXIT"), FMargin(0.f, 0.f, 40.f, 0.f));
+	CancelButton = MakeButton(TEXT("CancelButton"), TEXT("TextBlock_23"), TEXT("CANCEL"), FMargin(40.f, 0.f, 0.f, 0.f));
 	PlaceInOptions(Box, Buttons, FAnchors(0.5f, 1.f), FMargin(0.f, -6.752490997314453f, 100.f, 30.f), FVector2D(0.5f, 1.25f), true);
 
 	PlaceInOptions(Root, Box, Fill, FMargin(0.f));
+	BindControls();
 	ApplyAnimation();
+}
+
+void UWasamiOptionsWidget::BindControls()
+{
+	// The graph's bound events: the sliders' OnValueChanged, the arrows' and the two buttons' OnClicked, and the two
+	// buttons' OnHovered / OnUnhovered.
+	ResolutionScaleSlider->OnValueChanged.AddDynamic(this, &UWasamiOptionsWidget::OnResolutionScaleChanged);
+	BrightnessSlider->OnValueChanged.AddDynamic(this, &UWasamiOptionsWidget::OnBrightnessChanged);
+	MusicSlider->OnValueChanged.AddDynamic(this, &UWasamiOptionsWidget::OnMusicChanged);
+	SFXSlider->OnValueChanged.AddDynamic(this, &UWasamiOptionsWidget::OnSFXChanged);
+	DialogueSlider->OnValueChanged.AddDynamic(this, &UWasamiOptionsWidget::OnDialogueChanged);
+	MouseSensitivitySlider->OnValueChanged.AddDynamic(this, &UWasamiOptionsWidget::OnMouseSensitivityChanged);
+	if (UButton* Arrow = WidgetTree->FindWidget<UButton>(TEXT("QualityLower")))
+	{
+		Arrow->OnClicked.AddDynamic(this, &UWasamiOptionsWidget::OnQualityLowerClicked);
+	}
+	if (UButton* Arrow = WidgetTree->FindWidget<UButton>(TEXT("QualityHigher")))
+	{
+		Arrow->OnClicked.AddDynamic(this, &UWasamiOptionsWidget::OnQualityHigherClicked);
+	}
+	if (UButton* Arrow = WidgetTree->FindWidget<UButton>(TEXT("DifficultyLower")))
+	{
+		Arrow->OnClicked.AddDynamic(this, &UWasamiOptionsWidget::OnDifficultyLowerClicked);
+	}
+	if (UButton* Arrow = WidgetTree->FindWidget<UButton>(TEXT("DifficultyHigher")))
+	{
+		Arrow->OnClicked.AddDynamic(this, &UWasamiOptionsWidget::OnDifficultyHigherClicked);
+	}
+	ApplyButton->OnClicked.AddDynamic(this, &UWasamiOptionsWidget::OnApplyClicked);
+	CancelButton->OnClicked.AddDynamic(this, &UWasamiOptionsWidget::OnCancelClicked);
+	ApplyButton->OnHovered.AddDynamic(this, &UWasamiOptionsWidget::OnApplyHovered);
+	ApplyButton->OnUnhovered.AddDynamic(this, &UWasamiOptionsWidget::OnApplyUnhovered);
+	CancelButton->OnHovered.AddDynamic(this, &UWasamiOptionsWidget::OnCancelHovered);
+	CancelButton->OnUnhovered.AddDynamic(this, &UWasamiOptionsWidget::OnCancelUnhovered);
 }
 
 void UWasamiOptionsWidget::NativeConstruct()
@@ -454,17 +492,19 @@ void UWasamiOptionsWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	// Cast To GameMode → Global Settings Save Instance: the settings the game instance keeps (new defaults without one).
-	UWasamiSettingsSaveGame* Read = Settings;
 	FString Level = LevelName;
-	if (UWorld* World = GetWorld())
+	UWorld* World = GetWorld();
+	if (!SettingsOwner && World)
 	{
-		if (!Read)
-		{
-			if (UWasamiGameInstance* Instance = Cast<UWasamiGameInstance>(World->GetGameInstance()))
-			{
-				Read = Instance->GetSettings();
-			}
-		}
+		SettingsOwner = Cast<UWasamiGameInstance>(World->GetGameInstance());
+	}
+	UWasamiSettingsSaveGame* Read = Settings;
+	if (!Read && SettingsOwner)
+	{
+		Read = SettingsOwner->GetSettings();
+	}
+	if (World)
+	{
 		if (Level.IsEmpty())
 		{
 			Level = UGameplayStatics::GetCurrentLevelName(this, true);
@@ -494,6 +534,8 @@ void UWasamiOptionsWidget::Begin(UWasamiSettingsSaveGame* InSettings, bool bInSh
 		Controller->SetShowMouseCursor(true);
 	}
 	FadeInTime = 0.f;
+	bClosing = bFinished = false;
+	CloseElapsed = 0.f;
 	ApplyAnimation();
 	Settings = InSettings;
 	if (Settings)
@@ -510,7 +552,9 @@ void UWasamiOptionsWidget::Begin(UWasamiSettingsSaveGame* InSettings, bool bInSh
 
 void UWasamiOptionsWidget::SetupValues(const UWasamiSettingsSaveGame& InSettings)
 {
-	// Setup Values (@17146), in its order.
+	// Setup Values (@17146), in its order. UE 4's SetValue told no one; UE 5's calls OnValueChanged, which is let be
+	// here so the values are shown as saved (0.5 stays off the sliders' stops).
+	TGuardValue<bool> SettingUp(bSettingUp, true);
 	QualitySetting = InSettings.Quality;
 	auto SetSlider = [](USlider* Slider, float Value)
 	{
@@ -543,9 +587,184 @@ void UWasamiOptionsWidget::SetupValues(const UWasamiSettingsSaveGame& InSettings
 
 void UWasamiOptionsWidget::Advance(float DeltaSeconds)
 {
-	FadeInTime = FMath::Min(FadeInTime + DeltaSeconds, FadeInLength);
+	if (bFinished)
+	{
+		return;
+	}
+	// FadeIn moves on first and the Delay comes due after it, as a user widget ticks them.
+	FadeInTime = bClosing ? FMath::Max(FadeInTime - DeltaSeconds, 0.f) : FMath::Min(FadeInTime + DeltaSeconds, FadeInLength);
 	ApplyAnimation();
 	RefreshTexts();
+	if (bClosing)
+	{
+		CloseElapsed += DeltaSeconds;
+		if (CloseElapsed >= CloseDelay)
+		{
+			bFinished = true;
+			RemoveFromParent();
+		}
+	}
+}
+
+void UWasamiOptionsWidget::PressSave()
+{
+	// @19624: UI_Select_V2, then the Sequence: apply (@18949 → @16506), Save Values (@19688), Cancel. The settings get
+	// the screen's values first, so the owner's SaveSettings applies and writes what the original's two steps did.
+	PlaySound(SaveSound, 1.f);
+	if (Settings)
+	{
+		WriteValues(*Settings);
+		if (SettingsOwner && SettingsOwner->GetSettings() == Settings)
+		{
+			SettingsOwner->SaveSettings();
+		}
+	}
+	PressCancel();
+}
+
+void UWasamiOptionsWidget::PressCancel()
+{
+	// Cancel (@21302 → @16082): PlayAnimation(FadeIn, 0.25, 1, Reverse, 1), which starts over each time;
+	// PlaySound2D(UI_Select_V3, 1, 0.7); Delay(0.3), which a pending Delay ignores; RemoveFromParent.
+	FadeInTime = CloseFrom;
+	if (!bClosing)
+	{
+		bClosing = true;
+		CloseElapsed = 0.f;
+	}
+	ApplyAnimation();
+	PlaySound(CancelSound, CancelPitch);
+}
+
+void UWasamiOptionsWidget::WriteValues(UWasamiSettingsSaveGame& InSettings) const
+{
+	// Save Values (@19688), in its order.
+	auto SliderValue = [](const USlider* Slider, float Fallback)
+	{
+		return Slider ? Slider->GetValue() : Fallback;
+	};
+	auto IsChecked = [](const UCheckBox* Check, bool bFallback)
+	{
+		return Check ? Check->IsChecked() : bFallback;
+	};
+	InSettings.Quality = QualitySetting;
+	InSettings.ResolutionScale = SliderValue(ResolutionScaleSlider, InSettings.ResolutionScale);
+	InSettings.Brightness = SliderValue(BrightnessSlider, InSettings.Brightness);
+	InSettings.Music = SliderValue(MusicSlider, InSettings.Music);
+	InSettings.SFX = SliderValue(SFXSlider, InSettings.SFX);
+	InSettings.Dialogue = SliderValue(DialogueSlider, InSettings.Dialogue);
+	InSettings.bSubtitles = IsChecked(SubtitlesCheck, InSettings.bSubtitles);
+	InSettings.MouseSensitivity = SliderValue(MouseSensitivitySlider, InSettings.MouseSensitivity);
+	InSettings.bHeadBobbing = IsChecked(HeadBobbingCheck, InSettings.bHeadBobbing);
+	InSettings.bInvertedYAxis = IsChecked(InvertedYCheck, InSettings.bInvertedYAxis);
+	InSettings.bToggleSprint = IsChecked(ToggleSprintCheck, InSettings.bToggleSprint);
+	InSettings.bMouseSmoothing = IsChecked(MouseSmoothingCheck, InSettings.bMouseSmoothing);
+	InSettings.Difficulty = DifficultySetting;
+}
+
+void UWasamiOptionsWidget::SnapSlider(USlider* Slider, float Value)
+{
+	if (Slider && !bSettingUp)
+	{
+		Slider->SetValue(UWasamiSettingsSaveGame::Snap(Value));
+	}
+}
+
+void UWasamiOptionsWidget::OnResolutionScaleChanged(float Value)
+{
+	SnapSlider(ResolutionScaleSlider, Value);
+}
+
+void UWasamiOptionsWidget::OnBrightnessChanged(float Value)
+{
+	SnapSlider(BrightnessSlider, Value);
+}
+
+void UWasamiOptionsWidget::OnMusicChanged(float Value)
+{
+	SnapSlider(MusicSlider, Value);
+}
+
+void UWasamiOptionsWidget::OnSFXChanged(float Value)
+{
+	SnapSlider(SFXSlider, Value);
+}
+
+void UWasamiOptionsWidget::OnDialogueChanged(float Value)
+{
+	SnapSlider(DialogueSlider, Value);
+}
+
+void UWasamiOptionsWidget::OnMouseSensitivityChanged(float Value)
+{
+	SnapSlider(MouseSensitivitySlider, Value);
+}
+
+void UWasamiOptionsWidget::OnQualityLowerClicked()
+{
+	// @156 / @273: Clamp(QualitySetting ∓ 1, 0, 3).
+	QualitySetting = UWasamiSettingsSaveGame::StepValue(QualitySetting, -1, UWasamiSettingsSaveGame::QualityMax);
+}
+
+void UWasamiOptionsWidget::OnQualityHigherClicked()
+{
+	QualitySetting = UWasamiSettingsSaveGame::StepValue(QualitySetting, 1, UWasamiSettingsSaveGame::QualityMax);
+}
+
+void UWasamiOptionsWidget::OnDifficultyLowerClicked()
+{
+	// @22041 / @21782: Clamp(Difficulty Setting ∓ 1, 0, 1).
+	DifficultySetting = static_cast<EWasamiDifficulty>(
+		UWasamiSettingsSaveGame::StepValue(static_cast<int32>(DifficultySetting), -1, UWasamiSettingsSaveGame::DifficultyMax));
+}
+
+void UWasamiOptionsWidget::OnDifficultyHigherClicked()
+{
+	DifficultySetting = static_cast<EWasamiDifficulty>(
+		UWasamiSettingsSaveGame::StepValue(static_cast<int32>(DifficultySetting), 1, UWasamiSettingsSaveGame::DifficultyMax));
+}
+
+void UWasamiOptionsWidget::OnApplyClicked()
+{
+	PressSave();
+}
+
+void UWasamiOptionsWidget::OnCancelClicked()
+{
+	PressCancel();
+}
+
+void UWasamiOptionsWidget::OnApplyHovered()
+{
+	// @15973 / @16040: the content white while hovered, Unhovered Color otherwise; CANCEL's the same (@15864 / @15931).
+	ApplyButton->SetColorAndOpacity(FLinearColor::White);
+}
+
+void UWasamiOptionsWidget::OnApplyUnhovered()
+{
+	ApplyButton->SetColorAndOpacity(FLinearColor(OptionsButtonGrey, OptionsButtonGrey, OptionsButtonGrey, 1.f));
+}
+
+void UWasamiOptionsWidget::OnCancelHovered()
+{
+	CancelButton->SetColorAndOpacity(FLinearColor::White);
+}
+
+void UWasamiOptionsWidget::OnCancelUnhovered()
+{
+	CancelButton->SetColorAndOpacity(FLinearColor(OptionsButtonGrey, OptionsButtonGrey, OptionsButtonGrey, 1.f));
+}
+
+void UWasamiOptionsWidget::PlaySound(const TSoftObjectPtr<USoundBase>& Sound, float Pitch) const
+{
+	// A UI sound, which goes on while the game is paused.
+	if (GetWorld())
+	{
+		if (USoundBase* Loaded = Sound.LoadSynchronous())
+		{
+			UGameplayStatics::PlaySound2D(this, Loaded, 1.f, Pitch);
+		}
+	}
 }
 
 void UWasamiOptionsWidget::ApplyAnimation()

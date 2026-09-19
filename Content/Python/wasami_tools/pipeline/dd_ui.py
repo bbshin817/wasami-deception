@@ -120,6 +120,7 @@ OPTIONS_TEXTURES = tuple("UI/Menu/Settings/" + name for name in (
     "checkbox_icon",
     "checkbox_icon_checked",
 ))
+OPTIONS_SOUNDS = ("Audio/UI/UI_Select_V2",)  # SAVE & EXIT
 
 # ------------------------------------------------------------------------------------------------ the title screen
 TITLE_MASK = "UI/Main/TitleScreen/title_screen_video_mask"
@@ -305,8 +306,9 @@ def import_title():
 
 
 def import_options():
-    """The options screen's textures. Returns how many."""
-    return {"textures": len([dd_assets.texture(rel, VERSION) for rel in OPTIONS_TEXTURES])}
+    """The options screen's textures and sound. Returns how many."""
+    return {"textures": len([dd_assets.texture(rel, VERSION) for rel in OPTIONS_TEXTURES]),
+            "sounds": len([dd_assets.sound(rel, VERSION) for rel in OPTIONS_SOUNDS])}
 
 
 def import_all():

@@ -71,7 +71,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - **NEW GAME**（@8532）: 本家は `SaveSlot` の `New Game?`（新しいゲームを始めるまで立つ）なら問わずに進む。本作のセーブにその印は無いので、**進み（`HasProgress`。クリックの時にセーブを読む）があれば問う**。問いは `UWasamiPopUpWidget`（`STARTING A NEW GAME WILL RESET ALL PROGRESS.`、Frame は既定の 0 = RESTART の枠、Z 2）と選択音 `UI_Select_V3`（1）。YES（`NewGameEvent`。本家の `New Game` @8743）は問いの `PressNo`（閉じて選択音 0.7）の後に、問わないときと同じ道へ。NO は問いが自分で閉じるだけ。
   - その道（@1748）: 曲を 1 s で消す → 本家のゲームモードの `Erase Save Files`（本作は `UWasamiSaveGame::Erase`: 新しいセーブを書く。06 記録）→ `SetInputMode_GameOnly` → `FadeOut` → **10 s** 後に Zone 1 を開く（本家は最初の章の `00_TypeWriter`。空のセーブの Zone 1 はエレベーターの到着から）。
 - **RESUME**（@9272。押下）: 本家は章のチェックポイントが 0 より大きければ問い `UMG_PopUp_Resume`（チェックポイントから続けるか。NO でその章を最初から）を出すが、**作らない**（WebGL 版と同じく問わずに続きへ。NO は NEW GAME と重なり、YES の行き先は問わないときと同じ）。@115: 曲を 4 s で消す → `SetInputMode_GameOnly` → `FadeOut_0` → **5 s** 後にセーブのチェックポイントのゾーン（`AWasamiGameMode::LevelForCheckpoint`: 本家の病院の入口 `06_Hospital` の `Spawn` @81063 の振り分け。7〜10 は Zone 2、ほかは Zone 1。02 記録）を開く。本家は章の最初のレベル（`00_Ballroom`）を開き、その `Spawn` がチェックポイントから続ける。
-- **OPTIONS**（@8405）: 選択音（1）だけ。本家の `UMG_Options` を Z 10 で開くのは作業一覧の項目 18（`TODO(項目 18)`）。
+- **OPTIONS**（@8405）: オプション画面 `UWasamiOptionsWidget::Show`（本家の `CreateAndAddWidget(UMG_Options, 10)`。タイトルでは DIFFICULTY が出る。15 記録）と選択音（1）。プレイヤーがいなければ画面は出ない。
 - **QUIT**（@8527 → @1004）: `UWasamiPopUpWidget`（Frame 1 = `quit_window_frame`。文は空で、枠の絵が問う。Z 2）と選択音（1）。YES（`QuitEvent`。@8705）は `QuitGame(Self, None, Quit, False)`（問いは出たまま）。PIE では PIE が止まる。
 - 道が 1 つ始まると（`GetLevelToOpen` が空でない）ほかのボタンは何もしない。本家は入力をゲームへ渡す（`SetInputMode_GameOnly`: ビューポートがマウスを捕まえる）のでメニューがクリックを受けないのを、プレイヤーの居ないテストでも同じになるように書いたもの。
 - レベルを開くのは `UGameplayStatics::OpenLevel(<名前>, true)`。ワールドが無いとき（テスト）は `HasLeft` を立てるだけ。
@@ -125,6 +125,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 
 ## 変更履歴
 - 2026-09-19: タイトルのゲームモードの `BeginPlay` の頭で設定を読んで当てるようにした（15 記録。作業一覧の項目 18 のステップ 1）
+- 2026-09-19: OPTIONS がオプション画面を Z 10 で開くようにした（15 記録。作業一覧の項目 18 のステップ 4）
 - 2026-09-19: 死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先をタイトルにし、デバッグ `Wasami.Title` と台本の区間 `title` を足して、通しで確かめた（作業一覧の項目 17 のステップ 4）
 - 2026-09-19: 初版。前処理 `Tools/dd/prepare_title.py`（顔に WebGL 版のフィルタとマスク、ロゴのグロー）と `dd_ui.import_title`（本家のテクスチャ 3・音 3、焼き込みのシェーダーから組んだ `MM_TitleScreen_Mask_Grey`、本作のテクスチャ 3）を足した（作業一覧の項目 17 のステップ 1）
 - 2026-09-19: 画面 `UWasamiTitleScreenWidget` を足した: 本家の旧版の木をスロットのまま（作らない部品を除く）、Setup Buttons の後の様式とホバー、Construct（進みが無ければ RESUME を外す・Slideshow・入力・曲）、FadeOut（黒・脈動・赤と開始の音と声）と FadeOut_0、テスト `Wasami.Title.*`（作業一覧の項目 17 のステップ 2）

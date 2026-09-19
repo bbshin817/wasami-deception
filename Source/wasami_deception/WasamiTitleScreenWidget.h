@@ -90,7 +90,7 @@ public:
 	 */
 	void PressResume();
 
-	/** OPTIONS' click: the select sound (the options screen is item 18's). */
+	/** OPTIONS' click: the options screen at Z 10 (UWasamiOptionsWidget::Show; nothing without a player) and the select sound. */
 	void PressOptions();
 
 	/** QUIT's click: asks with the quit frame (Z 2) and the select sound; its YES is QuitEvent. */

@@ -10,9 +10,11 @@ class UCanvasPanel;
 class UCheckBox;
 class UFont;
 class USlider;
+class USoundBase;
 class UTextBlock;
 class UTexture2D;
 class UVerticalBox;
+class UWasamiGameInstance;
 
 /**
  * The options screen, after Dark Deception's UI/Menu/UMG_Options as of v1.6.1 (pak_reference; the latest version put
@@ -23,7 +25,10 @@ class UVerticalBox;
  * slot for slot, the two RESOLUTION rows the original keeps unseen included, with the style Construct gives the check
  * boxes and QUALITY's arrows. Construct takes the input with the cursor, plays FadeIn and reads the settings into the
  * controls (Setup Values); DIFFICULTY is taken off anywhere but the title. The value boxes read their sliders every
- * frame, as the original's bindings do. The widget's own tick plays FadeIn, so it works over the paused game.
+ * frame, as the original's bindings do. A slider snaps to its ten stops as it moves, the arrows step QUALITY and
+ * DIFFICULTY, and SAVE & EXIT applies and saves what the screen shows (through the game instance) before closing as
+ * CANCEL does: FadeIn backwards and off the screen. Esc does nothing, as in the original. The widget's own tick plays
+ * FadeIn and the Delay, so it works over the paused game.
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiOptionsWidget : public UUserWidget
@@ -48,6 +53,15 @@ public:
 	UPROPERTY(Transient)
 	TObjectPtr<UWasamiSettingsSaveGame> Settings;
 
+	/**
+	 * The game instance whose SaveSettings SAVE & EXIT calls (the original's Save Values writes the slot and the game
+	 * mode's instance, and sets up the player's mouse smoothing). Left empty, Construct takes the world's, and its
+	 * settings when Settings is empty too; the tests set one with a slot of their own. Without one, SAVE & EXIT only
+	 * writes the screen's values into Settings.
+	 */
+	UPROPERTY(Transient)
+	TObjectPtr<UWasamiGameInstance> SettingsOwner;
+
 	/** The level Construct decides DIFFICULTY by; left empty, the world's current one (the tests set it). */
 	FString LevelName;
 
@@ -69,8 +83,31 @@ public:
 	 */
 	void SetupValues(const UWasamiSettingsSaveGame& InSettings);
 
-	/** Moves FadeIn on by DeltaSeconds and writes the value boxes (NativeTick calls it). */
+	/** Moves FadeIn and the Delay on by DeltaSeconds and writes the value boxes (NativeTick calls it). */
 	void Advance(float DeltaSeconds);
+
+	/**
+	 * SAVE & EXIT (ApplyButton, @19624): UI_Select_V2, the settings applied (@18949) and saved (Save Values, @19688) as
+	 * the screen shows them (WriteValues, then the owner's SaveSettings), then Cancel.
+	 */
+	void PressSave();
+
+	/** CANCEL (CancelButton, @16082; Cancel, @21302): FadeIn backwards from 0.25 s, UI_Select_V3 at 0.7, and off 0.3 s later. */
+	void PressCancel();
+
+	/** Save Values' writes: the screen's QualitySetting, sliders, check boxes and Difficulty Setting into InSettings. */
+	void WriteValues(UWasamiSettingsSaveGame& InSettings) const;
+
+	/** Whether the screen is closing, and whether it has taken itself off the screen. */
+	bool IsClosing() const { return bClosing; }
+	bool IsFinished() const { return bFinished; }
+
+	/** Cancel plays FadeIn backwards from here, and RemoveFromParent comes this long after. */
+	static constexpr float CloseFrom = 0.25f;
+	static constexpr float CloseDelay = 0.3f;
+
+	/** Cancel's UI_Select_V3 plays at this pitch. */
+	static constexpr float CancelPitch = 0.7f;
 
 	/** The screen's QualitySetting and Difficulty Setting (what the arrows step and the boxes read). */
 	int32 GetQualitySetting() const { return QualitySetting; }
@@ -135,9 +172,70 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Options|Assets")
 	TSoftObjectPtr<UFont> Font;
 
+	/** UI_Select_V2: SAVE & EXIT. */
+	UPROPERTY(EditAnywhere, Category = "Options|Assets")
+	TSoftObjectPtr<USoundBase> SaveSound;
+
+	/** UI_Select_V3: Cancel, at CancelPitch. */
+	UPROPERTY(EditAnywhere, Category = "Options|Assets")
+	TSoftObjectPtr<USoundBase> CancelSound;
+
 private:
 	void BuildScreen(UCanvasPanel* Root);
+	void BindControls();
 	void ApplyAnimation();
+	void PlaySound(const TSoftObjectPtr<USoundBase>& Sound, float Pitch) const;
+
+	/** A slider's OnValueChanged: SetValue(GridSnap_Float(Value, 1/9)). Setup Values' own SetValue is let be. */
+	void SnapSlider(USlider* Slider, float Value);
+
+	UFUNCTION()
+	void OnResolutionScaleChanged(float Value);
+
+	UFUNCTION()
+	void OnBrightnessChanged(float Value);
+
+	UFUNCTION()
+	void OnMusicChanged(float Value);
+
+	UFUNCTION()
+	void OnSFXChanged(float Value);
+
+	UFUNCTION()
+	void OnDialogueChanged(float Value);
+
+	UFUNCTION()
+	void OnMouseSensitivityChanged(float Value);
+
+	UFUNCTION()
+	void OnQualityLowerClicked();
+
+	UFUNCTION()
+	void OnQualityHigherClicked();
+
+	UFUNCTION()
+	void OnDifficultyLowerClicked();
+
+	UFUNCTION()
+	void OnDifficultyHigherClicked();
+
+	UFUNCTION()
+	void OnApplyClicked();
+
+	UFUNCTION()
+	void OnCancelClicked();
+
+	UFUNCTION()
+	void OnApplyHovered();
+
+	UFUNCTION()
+	void OnApplyUnhovered();
+
+	UFUNCTION()
+	void OnCancelHovered();
+
+	UFUNCTION()
+	void OnCancelUnhovered();
 
 	/** The bound texts: the sliders' values (SliderText), Quality Text and the DIFFICULTY's. */
 	void RefreshTexts();
@@ -150,6 +248,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> DifficultyBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ApplyButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CancelButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USlider> ResolutionScaleSlider;
@@ -213,8 +317,14 @@ private:
 	int32 QualitySetting = 2;
 	EWasamiDifficulty DifficultySetting = EWasamiDifficulty::Normal;
 
-	/** Seconds into FadeIn, and the values it moves (kept once it ends). */
+	/** Whether Setup Values is setting the sliders (their OnValueChanged lets them be). */
+	bool bSettingUp = false;
+
+	/** Seconds into FadeIn, and the values it moves (kept once it ends). It runs backwards once closing. */
 	float FadeInTime = 0.f;
+	bool bClosing = false;
+	float CloseElapsed = 0.f;
+	bool bFinished = false;
 	float BoxOpacity = 1.f;
 	float BoxScale = 1.f;
 	float WashOpacity = 0.f;
