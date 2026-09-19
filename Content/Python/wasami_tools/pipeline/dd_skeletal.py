@@ -223,6 +223,47 @@ def _skinnable(material):
     return True
 
 
+def add_sockets(mesh_rel):
+    """Gives the imported mesh's skeleton the original's sockets (its <mesh>_Skeleton's SkeletalMeshSockets: the saw
+    traps' sawSocket on the blade, which BP_06_TrapBase's construction script attaches collision attach to; the import
+    makes none). A socket already there is made again. Saves the mesh and the skeleton; returns the sockets' names.
+
+    Python cannot write a socket's names, so the socket is made on the mesh with its bone (SetSocketParent), added
+    (UE 5.8's AddSocket names it Socket and puts it in the mesh's list and a copy in the skeleton's) and renamed in both.
+    """
+    mesh = unreal.load_asset(dd_assets.asset_path(mesh_rel))
+    names = []
+    for export in dd_assets.export_json(mesh_rel + "_Skeleton", VERSION)["exports"]:
+        if export["class"] != "SkeletalMeshSocket":
+            continue
+        props = export["props"]
+        name = props["SocketName"]
+        if mesh.find_socket(name) is not None:
+            mesh.remove_socket(name)
+        socket = unreal.new_object(unreal.SkeletalMeshSocket, outer=mesh)
+        socket.set_socket_parent(mesh, props["BoneName"])
+        socket.set_editor_property("relative_location", unreal.Vector(*props.get("RelativeLocation", (0.0, 0.0, 0.0))))
+        socket.set_editor_property("relative_rotation", unreal.Rotator(*_rotator(props.get("RelativeRotation"))))
+        socket.set_editor_property("relative_scale", unreal.Vector(*props.get("RelativeScale", (1.0, 1.0, 1.0))))
+        mesh.add_socket(socket, True)
+        if not mesh.rename_socket(socket.get_editor_property("socket_name"), name):
+            raise RuntimeError("%s: the socket %s could not be named" % (mesh.get_path_name(), name))
+        added = mesh.find_socket(name)
+        if added is None or str(added.get_editor_property("bone_name")) != props["BoneName"]:
+            raise RuntimeError("%s: the socket %s is not on %s" % (mesh.get_path_name(), name, props["BoneName"]))
+        names.append(name)
+    if names:
+        for asset in (mesh, mesh.get_editor_property("skeleton")):
+            EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return names
+
+
+def _rotator(pyr):
+    """The export's [pitch, yaw, roll] as unreal.Rotator's (roll, pitch, yaw)."""
+    pitch, yaw, roll = pyr or (0.0, 0.0, 0.0)
+    return roll, pitch, yaw
+
+
 def import_skinned(mesh_rel, anim_rel):
     """Prepares and imports the mesh with its animation, and gives its slots the stage's materials of their names."""
     prepared, rate, report = prepare(mesh_rel, anim_rel)
@@ -263,6 +304,7 @@ def import_skinned(mesh_rel, anim_rel):
         raise RuntimeError("%s: slots %s have no material of the original's %s"
                            % (mesh.get_path_name(), unmatched, sorted(materials)))
     mesh.set_editor_property("materials", slots)
+    report["sockets"] = add_sockets(mesh_rel)
     report["skinnable_masters"] = sum(1 for m in materials.values() if _skinnable(m))
     report["imported_seconds"] = round(anim.get_play_length(), 4)
     report["imported_frames"] = unreal.AnimationLibrary.get_num_frames(anim)

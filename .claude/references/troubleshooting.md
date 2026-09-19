@@ -252,6 +252,7 @@
 - `MaterialExpressionIf` の `ConstAGreaterThanB` など: 扇形のマスクは `ceil(saturate(…))` で作る（03 記録）。
 - `SlateBlueprintLibrary`（画面上の大きさ）: ウィジェットのパス（`get_user_widget_object()` のパス + `.WidgetTree.<名前>`）を `find_object` して `render_transform` と `get_render_opacity()` を読む（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。
 - **ウィジェットの画面上の位置（`get_cached_geometry()` / `get_tick_space_geometry()` / `get_paint_space_geometry()`）**: Python の名前は `unreal.SlateLibrary` で関数はあるが、Python が受け取る `Geometry` は空の写し（反映されたフィールドが無い）で、`SlateLibrary.get_local_size` は 0、`local_to_viewport` はビューポートの左上を返す。C++ の `unreal.WasamiWidgetProbe.viewport_fraction(widget, unreal.Vector2D(0.5, 0.5))`（ビューポートの大きさに対する割合。描かれていなければ (-1, -1)。09 記録）で読む。`Tools/playthrough.py` の `click_part` がこれで画面のボタン・スライダーを押す（2026-09-19。エディタの開き直し 1 回）。
+- `SkeletalMeshSocket` の `socket_name`・`bone_name`（読むだけ）: ソケットをメッシュを outer に作って `set_socket_parent(mesh, 骨)` で骨を決め、`mesh.add_socket(socket, True)`（UE 5.8 は `Socket` と名付けてメッシュの一覧に入れ、骨格に写しを足す）→ `mesh.rename_socket("Socket", 名前)`（両方の名前が変わる）。消すのは `remove_socket(名前)`（両方から消える）。`dd_skeletal.add_sockets`（01 記録。2026-09-19）。
 - `Use Less CPU when in Background`（`EditorPerformanceSettings`）: Python から見えない。エディタを前面にする（上）。
 - `WidgetBlueprintLibrary`（`GetAllWidgetsOfClass`）: `unreal.WidgetBlueprintLibrary` は無い（`module 'unreal' has no attribute 'WidgetBlueprintLibrary'`）。`unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, False)` で呼べる（`Tools/playthrough.py` の脱出の見分け。2026-09-19）。
 
@@ -307,6 +308,13 @@
 - 対処: 実装は直さない（エンジンの規則）。テストの期待の時刻を規則に合わせて書く（`Wasami.Enemy.Actor.Stun` の冒頭の注釈）。`GetTimerRemaining` は更新の間では `ExpireTime − InternalTime`（保留中は入れた秒数そのもの）。
 - 確かめ方: エンジンの `Engine/Source/Runtime/Engine/Private/TimerManager.cpp` の `Tick`（`InternalTime > Top->ExpireTime`、末尾の `PendingTimerSet` の `ExpireTime += InternalTime`）。
 - 出典: 07 記録の「エンジンのタイマーの刻み」、進捗記録 `20260917-enemy-wasami-body.md` のステップ 3（2026-09-18。期待の時刻を直すのにビルドを 1 回やり直した）。
+
+### Automation テストが、ほかと続けて流すときだけ落ちる（弱い参照で持った文の枠が消える）
+
+- 症状: `Wasami.ZoneBarrier.Interact`・`Wasami.RingStatue.Interact` が単独では通るのに、`Wasami.` を全部流すと `Expected 'nor at 4.8 s' to be true.` で落ちる（最初の文の枠と違うものが返る）。
+- 原因: 障壁・祭壇は出した文の枠を `TWeakObjectPtr` で持つ。テストのワールドにはビューポートが無く枠を持つものが無いので、ティックの途中の GC が枠を回収し、弱い参照が空になる（空いたメモリに次の枠が入ることもある）。GC が走るかは前に流したテストで決まる。
+- 対処: テストで最初の枠を `TStrongObjectPtr` で持つ（両方のテスト。実装は直さない: ゲームではビューポートが枠を持つ）。
+- 出典: 項目 8 のステップ 5（障壁、2026-09-19）とステップ 8（祭壇、同日）。
 
 ### ヘッダーや UCLASS / UPROPERTY の変更が Live Coding で効かない
 

@@ -116,6 +116,9 @@ bool FWasamiRingStatueInteractTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// Held, so that a garbage collection in the ticks (the test world has no viewport to keep it) cannot take it away
+	// from the statue's weak pointer (as the barrier's test).
+	const TStrongObjectPtr<UWasamiTextPromptWidget> HeldFirst(First);
 	TestEqual(TEXT("saying to collect the shards"), First->Text.ToString(),
 		FString(TEXT("Collect all soul shards to break the ring barrier.")));
 	TestEqual(TEXT("not Interact All Shards"), Listener->Count, 0);
