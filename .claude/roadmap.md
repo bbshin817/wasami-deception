@@ -283,7 +283,7 @@
 - 根拠: `Intermediate/Pipeline/dd/shaders/`（上のコマンドの出力）、`pak_reference_2/_materials.json`（3 つのインスタンスの値）、`_assets/DDeception/Content/Blueprints/01_Hotel/BP_01_Statue.json`、`_levels/01_Hotel.full.json`（ホテルの `BP_01_Statue`・`ring_statue_orb_4`）・`06_Hospital_Zone_02.full.json`（`ring_statue_2`・`ring_statue_orb_5`）、実装記録 01（前処理のマスター `MASTERS`・`dd_stage`）・08（祭壇と欠片）・16（`m_crystal`）。
 - 依存: 13。
 - 規模: 1
-- 状態: 未着手（2026-09-20 に足した）。
+- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-altar-look`）。計画の段階で、3 つの材質は前処理が根で振り分けてステージの取り込みが作る経路に載せ（祭壇 `metal`・欠片と書類 `fresnel`・球は `dd_specials` の結晶）、置いたものは同じパスのインスタンスの親の付け替えで置き直さない、と決めた。
 
 ### 29. EXTRAS（秘密の書類で解放される収集物。タイトル画面から開く）
 
