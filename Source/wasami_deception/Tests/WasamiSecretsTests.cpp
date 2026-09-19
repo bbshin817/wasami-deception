@@ -22,17 +22,27 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelSequence.h"
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "MovieScene.h"
+#include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
+#include "UObject/StrongObjectPtr.h"
 #include "../WasamiAssets.h"
 #include "../WasamiCollectable.h"
 #include "../WasamiCollectablesWidget.h"
+#include "../WasamiFakeUseActor.h"
 #include "../WasamiGameMode.h"
 #include "../WasamiInteractable.h"
+#include "../WasamiMysteryCollectable.h"
 #include "../WasamiMysteryNoteWidget.h"
 #include "../WasamiSaveGame.h"
 #include "../WasamiSecretRoomZone.h"
 #include "../WasamiSecretWall.h"
+#include "WasamiTestListener.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -737,6 +747,262 @@ bool FWasamiSecretsWallTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("stopped at its end"), Wall->IsMoving());
 	TestEqual(TEXT("at 5 s"), Wall->GetMoveUpPosition(), A::MoveUpLength);
 	TestEqual(TEXT("and up"), Wall->GetActorLocation().Z, 375., 1e-3);
+	return true;
+}
+
+namespace
+{
+	/** Whether a Visibility trace (the look's channel) from From to To stops on Component. */
+	bool SecretsTraceHits(UWorld* World, const FVector& From, const FVector& To, const UPrimitiveComponent* Component)
+	{
+		FHitResult Hit;
+		return World->LineTraceSingleByChannel(Hit, From, To, ECC_Visibility) && Hit.GetComponent() == Component;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsMysteryCollectableTest, "Wasami.Secrets.MysteryCollectable",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsMysteryCollectableTest::RunTest(const FString& Parameters)
+{
+	using A = AWasamiMysteryCollectable;
+
+	// The defaults: no paper (the original's sewer_note_01 is not brought in), no pages, not a lore note.
+	TestTrue(TEXT("no paper by default"), GetDefault<A>()->Texture.IsNull());
+	TestEqual(TEXT("no pages"), GetDefault<A>()->Texts.Num(), 0);
+	TestFalse(TEXT("not a lore note"), GetDefault<A>()->bLoreNote);
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	A* Note = World->SpawnActor<A>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the note"), Note))
+	{
+		return false;
+	}
+
+	// The Plane: the engine's, with BasicShapeMaterial, 215 cm up, stood up, 0.64 wide, tagged interact, blocking.
+	const UStaticMeshComponent* Plane = Note->GetPlane();
+	TestEqual(TEXT("the engine's Plane"), Plane->GetStaticMesh() ? Plane->GetStaticMesh()->GetPathName() : FString(),
+		FString(TEXT("/Engine/BasicShapes/Plane.Plane")));
+	TestEqual(TEXT("BasicShapeMaterial"), Plane->GetMaterial(0) ? Plane->GetMaterial(0)->GetName() : FString(),
+		FString(TEXT("BasicShapeMaterial")));
+	TestEqual(TEXT("215 cm up"), Plane->GetRelativeLocation(), FVector(0., -0.0001220703125, 215.42315673828125));
+	TestTrue(TEXT("stood up (roll 90)"), Plane->GetRelativeRotation().Equals(FRotator(0., 0., 90.00009155273438), 1e-3));
+	TestEqual(TEXT("0.64 wide"), Plane->GetRelativeScale3D(), FVector(0.6404496431350708, 1., 1.));
+	TestTrue(TEXT("tagged interact"), Plane->ComponentHasTag(TEXT("interact")));
+	TestEqual(TEXT("blocking"), Plane->GetCollisionProfileName(), UCollisionProfile::BlockAllDynamic_ProfileName);
+	TestTrue(TEXT("usable by the look"), Note->Implements<UWasamiInteractable>());
+
+	// The look's trace, across the stood-up plane, stops on its body (the hand). Traced against the component: the test
+	// world's scene queries miss a static mesh's body (a box's they find), though PIE's hit the note.
+	FHitResult Hit;
+	const FVector Face = Plane->GetComponentLocation();
+	const FVector Across = Plane->GetUpVector() * 100.;
+	TestTrue(TEXT("the look's trace stops on it"), const_cast<UStaticMeshComponent*>(Plane)->LineTraceComponent(Hit, Face - Across,
+		Face + Across, FCollisionQueryParams()));
+
+	// Used with no player's screen (a test's world): no note's screen, and nothing else changes; it can be used again.
+	IWasamiInteractable::Execute_InteractWithObject(Note, nullptr);
+	TestNull(TEXT("no screen without a player"), Note->GetLastNote());
+	TestTrue(TEXT("still there, still tagged"), IsValid(Note) && Plane->ComponentHasTag(TEXT("interact")));
+	IWasamiInteractable::Execute_InteractWithObject(Note, nullptr);
+	TestTrue(TEXT("used again"), IsValid(Note));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsFakeUseActorTest, "Wasami.Secrets.FakeUse.Actor",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsFakeUseActorTest::RunTest(const FString& Parameters)
+{
+	using A = AWasamiFakeUseActor;
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	A* Fake = World->SpawnActor<A>(FVector(0., 0., 100.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the actor"), Fake))
+	{
+		return false;
+	}
+
+	// The box: UE's 32 cm on the root, tagged interact, a WorldDynamic object blocking only the traces, out of the
+	// navigation.
+	const UBoxComponent* Box = Fake->GetBox();
+	TestEqual(TEXT("UE's 32 cm"), Box->GetUnscaledBoxExtent(), FVector(32.));
+	TestEqual(TEXT("on the root"), Box->GetRelativeLocation(), FVector::ZeroVector);
+	TestTrue(TEXT("tagged interact"), Box->ComponentHasTag(TEXT("interact")));
+	TestTrue(TEXT("query and physics"), Box->GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics);
+	TestTrue(TEXT("a WorldDynamic object"), Box->GetCollisionObjectType() == ECC_WorldDynamic);
+	TestTrue(TEXT("blocking Visibility"), Box->GetCollisionResponseToChannel(ECC_Visibility) == ECR_Block);
+	TestTrue(TEXT("and Camera"), Box->GetCollisionResponseToChannel(ECC_Camera) == ECR_Block);
+	for (const ECollisionChannel Ignored : {ECC_WorldStatic, ECC_WorldDynamic, ECC_Pawn, ECC_PhysicsBody, ECC_Vehicle,
+			ECC_Destructible})
+	{
+		TestTrue(FString::Printf(TEXT("ignoring channel %d"), static_cast<int32>(Ignored)), Box->GetCollisionResponseToChannel(Ignored) == ECR_Ignore);
+	}
+	TestFalse(TEXT("out of the navigation"), Box->CanEverAffectNavigation());
+	TestTrue(TEXT("usable by the look"), Fake->Implements<UWasamiInteractable>());
+	TestTrue(TEXT("the look's trace stops on it"), SecretsTraceHits(World, FVector(-100., 0., 100.), FVector(100., 0., 100.), Box));
+
+	// Used: Used once, then Used Event takes it away.
+	TStrongObjectPtr<UWasamiTestListener> Listener(NewObject<UWasamiTestListener>());
+	Fake->OnUsed.AddDynamic(Listener.Get(), &UWasamiTestListener::Hear);
+	IWasamiInteractable::Execute_InteractWithObject(Fake, nullptr);
+	TestEqual(TEXT("Used broadcast"), Listener->Count, 1);
+	TestFalse(TEXT("taken away"), IsValid(Fake));
+
+	// bInactive: no collision (no hand, no trace) until Activate gives it its queries.
+	const FTransform Placed(FVector(0., 3000., 100.));
+	A* Inactive = World->SpawnActorDeferred<A>(A::StaticClass(), Placed);
+	if (!TestNotNull(TEXT("an inactive one"), Inactive))
+	{
+		return false;
+	}
+	Inactive->bInactive = true;
+	Inactive->FinishSpawning(Placed);
+	TestTrue(TEXT("no collision"), Inactive->GetBox()->GetCollisionEnabled() == ECollisionEnabled::NoCollision);
+	TestFalse(TEXT("the trace goes through"), SecretsTraceHits(World, FVector(-100., 3000., 100.), FVector(100., 3000., 100.), Inactive->GetBox()));
+	Inactive->Activate();
+	TestTrue(TEXT("queries after Activate"), Inactive->GetBox()->GetCollisionEnabled() == ECollisionEnabled::QueryOnly);
+	TestTrue(TEXT("the trace stops on it"), SecretsTraceHits(World, FVector(-100., 3000., 100.), FVector(100., 3000., 100.), Inactive->GetBox()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsFakeUseSequencePlayerTest, "Wasami.Secrets.FakeUse.SequencePlayer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsFakeUseSequencePlayerTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+
+	// The level's sequence: an empty one of 5 s.
+	ULevelSequence* Sequence = NewObject<ULevelSequence>(GetTransientPackage());
+	Sequence->Initialize();
+	UMovieScene* Scene = Sequence->GetMovieScene();
+	Scene->SetPlaybackRange(FFrameNumber(0), Scene->GetTickResolution().AsFrameNumber(5.).Value);
+	ALevelSequenceActor* SequenceActor = World->SpawnActor<ALevelSequenceActor>(FVector::ZeroVector, FRotator::ZeroRotator);
+	AWasamiFakeUseSequencePlayer* Secret = World->SpawnActor<AWasamiFakeUseSequencePlayer>(FVector(0., 0., 100.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the sequence's actor"), SequenceActor) || !TestNotNull(TEXT("the actor"), Secret))
+	{
+		return false;
+	}
+	SequenceActor->SetSequence(Sequence);
+	Secret->Sequence = SequenceActor;
+	ULevelSequencePlayer* Player = SequenceActor->GetSequencePlayer();
+	if (!TestNotNull(TEXT("its player"), Player))
+	{
+		return false;
+	}
+	TestFalse(TEXT("not playing before"), Player->IsPlaying());
+
+	// Used: the sequence plays; the actor stays, its box tagged (the hand stays, as in the original).
+	IWasamiInteractable::Execute_InteractWithObject(Secret, nullptr);
+	TestTrue(TEXT("the sequence playing"), Player->IsPlaying());
+	TestTrue(TEXT("the actor stays"), IsValid(Secret) && Secret->IsUsed());
+	TestTrue(TEXT("still tagged"), Secret->GetBox()->ComponentHasTag(TEXT("interact")));
+
+	// Used again: nothing (the DoOnce).
+	Player->Stop();
+	IWasamiInteractable::Execute_InteractWithObject(Secret, nullptr);
+	TestFalse(TEXT("not played again"), Player->IsPlaying());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSecretsFakeUseElevatorTest, "Wasami.Secrets.FakeUse.Elevator",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiSecretsFakeUseElevatorTest::RunTest(const FString& Parameters)
+{
+	using A = AWasamiFakeUseElevator;
+
+	// The ActorSequence: 5 s; the doors' keys at 53600 and 119200 of 24000 a second, 145 cm apart, cubic and flat at both.
+	TestEqual(TEXT("5 s long"), A::SequenceLength, 5.f);
+	TestEqual(TEXT("from 2.23 s"), A::DoorsStart, 2.2333333f, 1e-5f);
+	TestEqual(TEXT("to 4.97 s"), A::DoorsEnd, 4.9666667f, 1e-5f);
+	TestEqual(TEXT("145 cm"), A::DoorTravel, 145.f);
+	TestEqual(TEXT("shut at 0"), A::EvaluateDoors(0.f), 0.f);
+	TestEqual(TEXT("still shut at 2.2 s"), A::EvaluateDoors(2.2f), 0.f);
+	TestEqual(TEXT("half open half way"), A::EvaluateDoors(0.5f * (A::DoorsStart + A::DoorsEnd)), 0.5f, 1e-5f);
+	TestTrue(TEXT("eased: under a quarter a quarter of the way"), A::EvaluateDoors(A::DoorsStart + 0.25f * (A::DoorsEnd - A::DoorsStart)) < 0.25f);
+	TestEqual(TEXT("open at 4.97 s"), A::EvaluateDoors(A::DoorsEnd), 1.f, 1e-5f);
+	TestEqual(TEXT("and after"), A::EvaluateDoors(5.f), 1.f);
+	TestEqual(TEXT("the doors' sound"), GetDefault<A>()->DoorsSound.ToSoftObjectPath().GetAssetName(), FString(TEXT("DD_TT_Elevator_Doors_Open")));
+	TestEqual(TEXT("its attenuation"), GetDefault<A>()->DoorsAttenuation.ToSoftObjectPath().GetAssetName(), FString(TEXT("01_Lobby_Attenuation")));
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	A* Lift = World->SpawnActor<A>(FVector(0., 0., 100.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the lift"), Lift))
+	{
+		return false;
+	}
+
+	// The parts: Scene 305 cm ahead, 70 to the side and 145 down; the doors on it, out of the navigation; Audio1 160 cm
+	// above it, not started, with its sound and attenuation from BeginPlay.
+	TestEqual(TEXT("Scene"), Lift->GetScene()->GetRelativeLocation(), FVector(305., 70., -145.));
+	TestTrue(TEXT("the doors on Scene"), Lift->GetRightDoor()->GetAttachParent() == Lift->GetScene()
+		&& Lift->GetLeftDoor()->GetAttachParent() == Lift->GetScene());
+	TestFalse(TEXT("out of the navigation"), Lift->GetRightDoor()->CanEverAffectNavigation() || Lift->GetLeftDoor()->CanEverAffectNavigation());
+	TestEqual(TEXT("blocking"), Lift->GetLeftDoor()->GetCollisionProfileName(), UCollisionProfile::BlockAllDynamic_ProfileName);
+	const UAudioComponent* Audio = Lift->GetAudio();
+	TestTrue(TEXT("Audio1 on Scene, 160 cm up"), Audio->GetAttachParent() == Lift->GetScene() && Audio->GetRelativeLocation() == FVector(0., 0., 160.));
+	TestFalse(TEXT("not started"), static_cast<bool>(Audio->bAutoActivate));
+	TestEqual(TEXT("its sound"), Audio->Sound ? Audio->Sound->GetName() : FString(), FString(TEXT("DD_TT_Elevator_Doors_Open")));
+	TestEqual(TEXT("its attenuation"), Audio->AttenuationSettings ? Audio->AttenuationSettings->GetName() : FString(), FString(TEXT("01_Lobby_Attenuation")));
+	TestTrue(TEXT("the box tagged interact"), Lift->GetBox()->ComponentHasTag(TEXT("interact")));
+
+	// Used: Used once, the sequence from its start; the doors shut until 2.23 s.
+	TStrongObjectPtr<UWasamiTestListener> Listener(NewObject<UWasamiTestListener>());
+	Lift->OnUsed.AddDynamic(Listener.Get(), &UWasamiTestListener::Hear);
+	IWasamiInteractable::Execute_InteractWithObject(Lift, nullptr);
+	TestEqual(TEXT("Used broadcast"), Listener->Count, 1);
+	TestTrue(TEXT("the lift stays"), IsValid(Lift));
+	TestTrue(TEXT("playing"), Lift->IsPlaying());
+	TestEqual(TEXT("the left door shut"), Lift->GetLeftDoor()->GetRelativeLocation(), FVector::ZeroVector);
+	AdvanceSecrets(Wrapper, 2.1f);
+	TestEqual(TEXT("still shut at 2.1 s"), Lift->GetLeftDoor()->GetRelativeLocation(), FVector::ZeroVector);
+
+	// Half way through their slide, on the curve: the left door +x, the right one -x.
+	AdvanceSecrets(Wrapper, 1.5f);
+	const float Open = A::DoorTravel * A::EvaluateDoors(Lift->GetSequencePosition());
+	TestEqual(TEXT("the left door on the curve"), Lift->GetLeftDoor()->GetRelativeLocation(), FVector(Open, 0., 0.));
+	TestEqual(TEXT("the right door on the curve"), Lift->GetRightDoor()->GetRelativeLocation(), FVector(-Open, 0., 0.));
+	TestEqual(TEXT("about half open"), Open, 72.5f, 10.f);
+
+	// Open at the end, and kept so.
+	AdvanceSecrets(Wrapper, 1.6f);
+	TestFalse(TEXT("stopped at its end"), Lift->IsPlaying());
+	TestEqual(TEXT("at 5 s"), Lift->GetSequencePosition(), A::SequenceLength);
+	TestEqual(TEXT("the left door open"), Lift->GetLeftDoor()->GetRelativeLocation(), FVector(145., 0., 0.));
+	TestEqual(TEXT("the right door open"), Lift->GetRightDoor()->GetRelativeLocation(), FVector(-145., 0., 0.));
+
+	// Used again: nothing (the DoOnce).
+	IWasamiInteractable::Execute_InteractWithObject(Lift, nullptr);
+	TestEqual(TEXT("Used once only"), Listener->Count, 1);
+	TestFalse(TEXT("not played again"), Lift->IsPlaying());
+	AdvanceSecrets(Wrapper, SecretsStep);
+	TestEqual(TEXT("still open"), Lift->GetLeftDoor()->GetRelativeLocation(), FVector(145., 0., 0.));
 	return true;
 }
 

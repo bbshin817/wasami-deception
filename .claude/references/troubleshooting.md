@@ -318,6 +318,13 @@
 - 対処: テストで最初の枠を `TStrongObjectPtr` で持つ（両方のテスト。実装は直さない: ゲームではビューポートが枠を持つ）。
 - 出典: 項目 8 のステップ 5（障壁、2026-09-19）とステップ 8（祭壇、同日）。
 
+### Automation テストで、静的メッシュの部品にワールドのトレースが当たらない（箱の部品には当たる）
+
+- 症状: テストのワールド（`FTestWorldWrapper`、`EWorldType::Game`）に出したアクタの `UStaticMeshComponent`（`BlockAllDynamic`・`Visibility` は block・物理の状態あり・`GetBodyInstance()->IsValidBodyInstance()` 真）に、`World->LineTraceSingleByChannel(…, ECC_Visibility)` が何も返さない。ティックを進めても、アクタを回して境界に厚みを持たせても、斜めに撃っても同じ。同じワールドの `UBoxComponent`（厚み 0 の箱も）には当たる。
+- 原因: 未解明（テストのワールドのシーンの問い合わせが静的メッシュの体を拾わない）。ゲームには関係しない: エディタのワールドと PIE では同じメモ（`AWasamiMysteryCollectable` の `Plane` = エンジンの `Plane`、当たりは厚み 0 の箱）に当たる（PIE は `summon WasamiMysteryCollectable` で出して確かめた）。
+- 対処: テストでは部品の体へ直に撃つ `UPrimitiveComponent::LineTraceComponent` で確かめる（`Wasami.Secrets.MysteryCollectable`）。ワールドのトレースで確かめたいときは PIE で。
+- 出典: 18 記録の「既知の制約・注意点」、作業一覧の項目 12 のステップ 4（2026-09-20。調べるのにビルドとエディタの開き直し 4 回）。
+
 ### ヘッダーや UCLASS / UPROPERTY の変更が Live Coding で効かない
 
 - 対処: `python Tools/editor_cycle.py`（保存 → 閉じる → UBT → 開き直す）。尋ねずに走らせる。Live Coding で直したファイルは次のフルビルドで取り込まれる。

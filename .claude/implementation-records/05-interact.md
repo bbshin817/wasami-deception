@@ -7,13 +7,13 @@ sources:
   - Source/wasami_deception/Tests/WasamiInteractTests.cpp
   - Source/wasami_deception/Tests/WasamiTestInteractable.h
   - Source/wasami_deception/Tests/WasamiTestInteractable.cpp
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # 見て使う（視線の手のマークと左クリック）
 
 ## 役割
-本家 Dark Deception の「見て使う」仕組みを写したもの。プレイヤーがカメラの前 200 cm に使える物を捉えている間、画面の中央に手のマーク（本家の `UMG_Interact`）を出し、左クリック（本家の `Interact (Secondary)`）でその物の `InteractWithObject` を呼ぶ。使える物はインターフェース `IWasamiInteractable`（本家の `BP_InteractInterface`）を持つアクタ。作業一覧の項目 13 のステップ 1 で作った。プレイヤー側の処理（トレース・ティック・左クリック）は `AWasamiPlayerCharacter`（02 記録）にあり、この記録で流れをまとめる。使う側は障壁の拒否（`AWasamiZoneBarrier`、項目 13 のステップ 2）と Zone 2 の祭壇（`AWasamiRingStatue`、項目 13 のステップ 3。全回収の後の使用が欠片の画面を出す〈11 記録〉）。どちらも 08 記録。
+本家 Dark Deception の「見て使う」仕組みを写したもの。プレイヤーがカメラの前 200 cm に使える物を捉えている間、画面の中央に手のマーク（本家の `UMG_Interact`）を出し、左クリック（本家の `Interact (Secondary)`）でその物の `InteractWithObject` を呼ぶ。使える物はインターフェース `IWasamiInteractable`（本家の `BP_InteractInterface`）を持つアクタ。作業一覧の項目 13 のステップ 1 で作った。プレイヤー側の処理（トレース・ティック・左クリック）は `AWasamiPlayerCharacter`（02 記録）にあり、この記録で流れをまとめる。使う側は障壁の拒否（`AWasamiZoneBarrier`、項目 13 のステップ 2）と Zone 2 の祭壇（`AWasamiRingStatue`、項目 13 のステップ 3。全回収の後の使用が欠片の画面を出す〈11 記録〉）。どちらも 08 記録。ほかに秘密の壁・メモ・見て使う偽の部品（`AWasamiSecretWall`・`AWasamiMysteryCollectable`・`AWasamiFakeUseActor` と派生。18 記録）。
 
 ## 公開インターフェース
 - `IWasamiInteractable`（`UINTERFACE(BlueprintType)`）: `InteractWithObject(AActor* Interactee)`（BlueprintNativeEvent。`Interactee` はプレイヤー。本家の引数も Actor）、`StopInteractWithObject()`（同。クリックを離した）。既定はどちらも何もしない。本家の 3 つ目の `Use` は手に持つ物のもので、本作に手に持つ物は無いので持たない。
@@ -49,5 +49,6 @@ updated: 2026-09-19
 - テスト: `Wasami.Interact.Widget`（`UMG_Interact` の木とスロット）、`Wasami.Interact.Trace`（手のマークの出し入れ〈タグ・`Can Interact?`・200 cm〉、押しの `InteractWithObject` と離しの `StopInteractWithObject`、`Can Interact?` が偽の押しでも離しは前の当たりへ）。
 
 ## 変更履歴
+- 2026-09-20: 使う側に秘密の壁・メモ・見て使う偽の部品を足した（18 記録。作業一覧の項目 12 のステップ 3・4）
 - 2026-09-19: 使う側に障壁の拒否を足した（08 記録。作業一覧の項目 13 のステップ 2）
 - 2026-09-19: 初版。インターフェース `IWasamiInteractable`、手のマーク `UWasamiInteractWidget`、プレイヤーのトレース・ティック・左クリック（02 記録）、素材の取り込み `dd_ui.import_interact`、テスト 2 本（作業一覧の項目 13 のステップ 1）

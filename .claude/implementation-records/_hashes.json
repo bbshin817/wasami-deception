@@ -313,6 +313,10 @@
     "Source/wasami_deception/WasamiSecretRoomZone.cpp": "8e79b4319987a5658f554d84bf05b63c42c32802",
     "Source/wasami_deception/WasamiSecretWall.h": "23aeac2f61b1797ae60e8dfe427f93d4cd902193",
     "Source/wasami_deception/WasamiSecretWall.cpp": "6aa15ad0bff6a4ffed7eee23d6e26171ec7f4ecb",
-    "Source/wasami_deception/Tests/WasamiSecretsTests.cpp": "19b374c1adc3a397bc190833526ee37752fd4576"
+    "Source/wasami_deception/WasamiMysteryCollectable.h": "28e9e061d3c2d63dfa39e1d91b88575c444657f2",
+    "Source/wasami_deception/WasamiMysteryCollectable.cpp": "e0e6d45a7cdc84cbd89de1beedb411ee91e9750a",
+    "Source/wasami_deception/WasamiFakeUseActor.h": "06b9f5cd9d1fde636e4a81941bfe923d81b69878",
+    "Source/wasami_deception/WasamiFakeUseActor.cpp": "6145eea41d30951492d16f68c9e3e23216998eb9",
+    "Source/wasami_deception/Tests/WasamiSecretsTests.cpp": "9852b12290831d4e4eb4ebf5c86b160796be2cc9"
   }
 }
