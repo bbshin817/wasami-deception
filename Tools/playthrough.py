@@ -250,13 +250,62 @@ for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiDefib):
 print('JSON ' + json.dumps(out))
 """
 
-DEFIB_CLOCKS = """
+# Where a saw trap's blade box (Box, 08 record) is over its animation's loop, by the class: the loop's seconds, and
+# spans of the loop with the box's bounds over each in the actor's frame (cm, from the actor). Measured in PIE on
+# 2026-09-20 (the bounds and the mesh's position every frame for 25 s, the bounds in half-second bins, the neighbours
+# alike merged). The short ones' blades are up out of their slits for the first 3 s (above the floor from 0.19 s to
+# 2.85 s) and under it (the box's top 50 cm down) for the rest; the medium's and the long's slide to and fro.
+SAW_LOOPS = {
+    "WasamiSawTrapShort01": (5.9667, [(0.0, 3.0, (-110, -3, -237), (110, 3, 119)),
+                                      (3.0, 5.9667, (-76, -3, -209), (76, 3, -50))]),
+    "WasamiSawTrapShort02": (5.9667, [(0.0, 3.0, (-100, -3, -227), (100, 3, 109)),
+                                      (3.0, 5.9667, (-69, -3, -202), (69, 3, -57))]),
+    "WasamiSawTrap": (8.6333, [(0.0, 0.5, (229, -3, -90), (530, 3, 90)), (0.5, 1.0, (97, -3, -90), (405, 3, 90)),
+                               (1.0, 1.5, (-34, -3, -90), (266, 3, 90)), (1.5, 2.0, (-180, -3, -90), (119, 3, 90)),
+                               (2.0, 2.5, (-303, -3, -90), (-2, 3, 90)), (2.5, 3.0, (-445, -3, -90), (-144, 3, 90)),
+                               (3.0, 3.5, (-534, -3, -90), (-290, 3, 90)), (3.5, 4.0, (-534, -3, -90), (-354, 3, 90)),
+                               (4.0, 4.5, (-534, -3, -90), (-305, 3, 90)), (4.5, 5.0, (-473, -3, -90), (-170, 3, 90)),
+                               (5.0, 5.5, (-342, -3, -90), (-42, 3, 90)), (5.5, 6.0, (-198, -3, -90), (102, 3, 90)),
+                               (6.0, 6.5, (-74, -3, -90), (229, 3, 90)), (6.5, 7.0, (65, -3, -90), (364, 3, 90)),
+                               (7.0, 7.5, (206, -3, -90), (507, 3, 90)), (7.5, 8.0, (329, -3, -90), (543, 3, 90)),
+                               (8.0, 8.6333, (363, -3, -90), (543, 3, 90))]),
+    "WasamiSawTrapLong01": (5.4667, [(0.0, 0.5, (196, -2, -469), (693, 2, 268)), (0.5, 1.0, (-106, -2, -222), (665, 2, 268)),
+                                     (1.0, 1.5, (-415, -2, -222), (372, 2, 268)), (1.5, 2.0, (-698, -2, -224), (55, 2, 268)),
+                                     (2.0, 2.5, (-698, -2, -495), (-208, 2, 259)), (2.5, 3.0, (-565, -2, -432), (616, 2, -58)),
+                                     (3.0, 5.4667, (275, -2, -407), (621, 2, -57))]),
+}
+
+# Each saw trap's spans of SAW_LOOPS with the box's bounds in the world (boxes along the axes round the actor's).
+SAWS = """
+w = _need_game()
+loops = {loops!r}
+out = []
+for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiSawTrap):
+    loop = loops.get(a.get_class().get_name())
+    if not loop:
+        continue
+    t = a.get_actor_transform()
+    spans = []
+    for start, end, lo, hi in loop[1]:
+        ps = [t.transform_location(unreal.Vector(x, y, z)) for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
+        spans.append([start, end, [min(p.x for p in ps), min(p.y for p in ps), min(p.z for p in ps)],
+                      [max(p.x for p in ps), max(p.y for p in ps), max(p.z for p in ps)]])
+    out.append([a.get_actor_label(), loop[0], spans])
+print('JSON ' + json.dumps(out))
+"""
+
+# The defibrillators' clocks (Firing, and the seconds to the next fire or -1: AWasamiDefib::GetTimeToFire) and the saw
+# traps' (the animation's position in its loop).
+TRAP_CLOCKS = """
 w = _need_game()
 names = set({names!r})
 out = {{}}
 for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiDefib):
     if a.get_actor_label() in names:
         out[a.get_actor_label()] = [a.is_firing(), a.get_time_to_fire()]
+for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiSawTrap):
+    if a.get_actor_label() in names:
+        out[a.get_actor_label()] = a.get_component_by_class(unreal.SkeletalMeshComponent).get_position()
 print('JSON ' + json.dumps(out))
 """
 
@@ -386,17 +435,19 @@ class Cones:
 
 
 class Traps:
-    """Keeps the player out of the defibrillators' sparks (08 record), as a player would: with the player within 10 m, a
-    defibrillator charges for 2.25 s, fires, sparks for 1 s and charges again 1.25 s after the fire; the player in the
-    gap between its stands (Box) at a fire, or walking in while it sparks, dies. The player stops before a gap on the
-    way that it would be in at a fire or while the sparks are up, and goes on as they end (the next fire 2.5 s on).
-    Every walk has it. The saw traps are not watched: no section's way passes one (Zone 2's are in the maze and the
-    corridor's side way at (-4804, 1400), and the maze's shards but the one by its box are collected by hand)."""
+    """Keeps the player out of the defibrillators' sparks and the saw traps' blades (08 record), as a player would.
+    With the player within 10 m, a defibrillator charges for 2.25 s, fires, sparks for 1 s and charges again 1.25 s
+    after the fire; the player in the gap between its stands (Box) at a fire, or walking in while it sparks, dies. A saw
+    trap's blade box goes round its animation's loop (SAW_LOOPS), and the player in it dies: the short ones' blades come
+    up out of a slit in the floor (or a wall) for 3 s of every 6, and the one on the only way between Zone 2's maze and
+    its corridor (hospital_sawTrap_short_01_anim_Anim27, at (-4804, 1400)) is passed both ways (z2_corridor, z2_altar).
+    The player stops before a stretch of the way that it would be in at a fire, while the sparks are up or while a
+    blade's box covers some of it, and goes on as they end. Every walk has it."""
     CHARGE, SPARKS, PERIOD = 2.25, 1.0, 3.5  # the charge, the sparks after a fire, fire to fire (AWasamiDefib)
-    RADIUS = 75.0               # the player's capsule (50) and a margin, round the gap's box
+    RADIUS = 75.0               # the player's capsule (50) and a margin, round a gap's or a blade's box
     HALF = 88.0                 # the capsule's half height
     STEP = 25.0                 # cm between the samples along the way
-    LOOK_AHEAD = 300.0          # stop when a gap begins this near (a sprint stops within about 90 cm)
+    LOOK_AHEAD = 300.0          # stop when a stretch begins this near (a sprint stops within about 90 cm)
     FAST, SLOW = 650.0, 450.0   # cm/s: the soonest and the latest the player may be at a point of the way
     SLACK = 0.4                 # s: a step's editor calls, the keys going down again, the sprint's start
     CENTRE = 85.0               # the player's capsule centre over the navigation path
@@ -404,26 +455,34 @@ class Traps:
     def __init__(self, g):
         self.g = g
         self.world = None
-        self.boxes = {}
+        self.boxes = {}             # defibrillator: its gap's box
+        self.saws = {}              # saw trap: (its loop's seconds, [(start, end, lo, hi)] in the world)
         self.samples, self.stretches, self.at_sample = [], [], 0
         self.holding = False
 
-    def gaps(self, p):
-        names = []
-        for name, (lo, hi) in self.boxes.items():
-            if (lo[0] - self.RADIUS < p[0] < hi[0] + self.RADIUS and lo[1] - self.RADIUS < p[1] < hi[1] + self.RADIUS
-                    and lo[2] < p[2] + self.HALF and p[2] - self.HALF < hi[2]):
-                names.append(name)
-        return names
+    def near(self, lo, hi, p):
+        return (lo[0] - self.RADIUS < p[0] < hi[0] + self.RADIUS and lo[1] - self.RADIUS < p[1] < hi[1] + self.RADIUS
+                and lo[2] < p[2] + self.HALF and p[2] - self.HALF < hi[2])
+
+    def hits(self, p):
+        """The traps that could reach the player at p: a defibrillator's name with None, a saw's with the indices of
+        its loop's spans whose box covers p."""
+        out = {name: None for name, (lo, hi) in self.boxes.items() if self.near(lo, hi, p)}
+        for name, (_, spans) in self.saws.items():
+            covering = {k for k, (_, _, lo, hi) in enumerate(spans) if self.near(lo, hi, p)}
+            if covering:
+                out[name] = covering
+        return out
 
     def prepare(self, path):
-        """Samples the way from the player along the path and finds the stretches in a gap between the stands."""
+        """Samples the way from the player along the path and finds the stretches that a trap could reach."""
         s = self.g.status()
         if s.get("world") != self.world:
             self.world = s.get("world")
             self.boxes = {d[0]: (d[1], d[2]) for d in self.g.ed.json(DEFIBS)}
+            self.saws = {d[0]: (d[1], d[2]) for d in self.g.ed.json(SAWS.format(loops=SAW_LOOPS))}
         self.samples, self.stretches, self.at_sample = [], [], 0
-        if not self.boxes:
+        if not self.boxes and not self.saws:
             return
         here = s["player"]
         points = [[here[0], here[1], here[2] - self.CENTRE]] + path
@@ -435,24 +494,26 @@ class Traps:
                 t = k / n
                 p = [a[i] + (b[i] - a[i]) * t for i in range(3)]
                 p[2] += self.CENTRE
-                self.samples.append((arc + length * t, p[0], p[1], self.gaps(p)))
+                self.samples.append((arc + length * t, p[0], p[1], self.hits(p)))
             arc += length
         end = points[-1]
-        self.samples.append((arc, end[0], end[1], self.gaps([end[0], end[1], end[2] + self.CENTRE])))
-        for at, _, _, names in self.samples:
-            if not names:
+        self.samples.append((arc, end[0], end[1], self.hits([end[0], end[1], end[2] + self.CENTRE])))
+        for at, _, _, hits in self.samples:
+            if not hits:
                 continue
             if self.stretches and self.stretches[-1][1] >= at - 1.5 * self.STEP:
                 self.stretches[-1][1] = at
-                self.stretches[-1][2].update(names)
+                merged = self.stretches[-1][2]
+                for name, spans in hits.items():
+                    merged[name] = None if spans is None else merged.get(name, set()) | spans
             else:
-                self.stretches.append([at, at, set(names)])
+                self.stretches.append([at, at, dict(hits)])
         if self.stretches:
-            self.g.log("defibrillators on the way: %s" % ", ".join(
+            self.g.log("traps on the way: %s" % ", ".join(
                 "%.0f-%.0f cm %s" % (a, b, "/".join(sorted(n))) for a, b, n in self.stretches))
 
     def fires(self, firing, to_fire, until):
-        """The sparks' spans (s from now) up to until: the next fires and, while sparking, the one going."""
+        """A defibrillator's sparks' spans (s from now) up to until: the next fires and, while sparking, the one going."""
         if to_fire < 0:
             to_fire = self.CHARGE  # none coming yet: the charge starts as the player comes within 10 m
         spans = [(0.0, to_fire - (self.PERIOD - self.SPARKS))] if firing else []
@@ -462,29 +523,46 @@ class Traps:
             k += 1
         return spans
 
+    def cuts(self, name, indices, position, until):
+        """A saw's spans (s from now) up to until that its box covers some of the stretch, from its loop's position."""
+        loop, spans = self.saws[name]
+        out = []
+        for k in indices:
+            start, end = spans[k][0] - position, spans[k][1] - position
+            while end > 0.0:
+                start, end = start - loop, end - loop
+            while start < until:
+                if end > 0.0:
+                    out.append((max(0.0, start), end))
+                start, end = start + loop, end + loop
+        return out
+
     def hold(self, step):
         if not self.stretches:
             return False
         window = range(self.at_sample, min(len(self.samples), self.at_sample + 40))
         self.at_sample = min(window, key=lambda i: flat(self.samples[i][1:3], step["at"]))
         here = self.samples[self.at_sample][0]
-        near = [(start, end, names) for start, end, names in self.stretches
+        near = [(start, end, hits) for start, end, hits in self.stretches
                 if not (end < here or start <= here or start - here > self.LOOK_AHEAD)]  # not behind, inside or far
         blocking = set()
         if near:
-            clocks = self.g.ed.json(DEFIB_CLOCKS.format(names=sorted(set().union(*(n for _, _, n in near)))))
-            for start, end, names in near:
+            clocks = self.g.ed.json(TRAP_CLOCKS.format(names=sorted(set().union(*(h for _, _, h in near)))))
+            for start, end, hits in near:
                 t_in = (start - here) / self.FAST
                 t_out = (end - here) / self.SLOW + self.SLACK
-                for name in names:
+                for name, indices in hits.items():
                     if name not in clocks:
                         continue
-                    firing, to_fire = clocks[name]
-                    if any(a < t_out and t_in < b for a, b in self.fires(firing, to_fire, t_out)):
+                    if indices is None:
+                        spans = self.fires(*clocks[name], t_out)
+                    else:
+                        spans = self.cuts(name, indices, clocks[name], t_out)
+                    if any(a < t_out and t_in < b for a, b in spans):
                         blocking.add(name)
         if bool(blocking) != self.holding:
             self.holding = bool(blocking)
-            self.g.log(("waiting for %s to spark" % "/".join(sorted(blocking))) if blocking else "going on")
+            self.g.log(("waiting for %s" % "/".join(sorted(blocking))) if blocking else "going on")
         return self.holding
 
 
@@ -637,9 +715,9 @@ class Play:
              straight=False, snap=False, guard=None, escape=False):
         """Walks (Shift + W) along the navigation path to (x, y) until within reach, or until until(step) is true.
         Returns the last step. The view keeps the pitch unless one is given; snap turns it to the path at once. A guard
-        (Cones) stops the player, keys up, while guard.hold(step) is true, and so does the defibrillators' (Traps, on every
-        walk); the time held does not count to the timeout. escape: the step says whether the escape's black fade is up
-        ('escaped'), for an until."""
+        (Cones) stops the player, keys up, while guard.hold(step) is true, and so do the defibrillators and the saw traps
+        (Traps, on every walk); the time held does not count to the timeout. escape: the step says whether the escape's
+        black fade is up ('escaped'), for an until."""
         path = None if straight else self.nav_path(x, y, z)
         if not path:
             if not straight:
