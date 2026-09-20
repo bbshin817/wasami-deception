@@ -133,6 +133,14 @@
 - 確かめ方: リモート実行で `import wasami_tools` が通る。開き直した後の `list_toolsets`。
 - 出典: 01 記録の「登録」。
 
+### `WasamiDDTools` が `list_toolsets` に出るのに道具を 1 つも持たない（**未解決**）
+
+- 症状: `list_toolsets` に `wasami_tools.toolsets.dd.WasamiDDTools` は出るが説明が空で、`describe_toolset` が `{"version":"Unknown","description":"","tools":[]}` を返し、`call_tool` は `Tool '…import_dd_gimmicks' not found`。`WasamiDevTools`・`WasamiStageTools` は同じ呼び方で道具も説明も返る（2026-09-21）。
+- 原因: 未解明。クラス自体は登録されているのに、道具の一覧と説明・版だけが落ちている。
+- 対処: リモート実行で同じ関数を呼ぶ。`dd.py` の `_module` と同じく `paths`・`ue_props` と使う pipeline モジュールを `importlib.reload` してから `dd_gimmicks.import_all()`（か `import_doors_busted()` のような個々の取り込み）を呼べば、MCP と同じことができる。
+- 確かめ方: `python Tools/ue_remote.py <file.py>` の戻り値。
+- 出典: 進捗記録 `20260921-destruction-particles.md` のステップ 5。
+
 ### Python のツールセット（`WasamiDDTools` など）が `unreal.` の下に無い
 
 - 症状: リモート実行で `unreal.WasamiDDTools` が `AttributeError`。
