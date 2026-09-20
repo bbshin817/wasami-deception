@@ -47,7 +47,9 @@ updated: 2026-09-20
     - 行ずらし: `tx = T × Speed / 20`、`fr` = `tx / 32` の符号付きの小数部、行 `floor(UV.y × 32) / 32 + 10`、`floor(tx)` と `DotValue2` の乱数 2 つの平均 `n`（−1〜1）。`|n|` が `1 − Blockeffect × 0.1` を超えた行だけ `sign(n) × Amount` まで横にずらす（`ShiftUV`、0〜1 に切る）。
     - 格子のずれ: `ty = T × GridDistortionSpeed`。格子の数 `GridDistortionSize` と `round(frac(sin(ty × 2π)) × GridDistortionSize / 2)` の 2 つで `(UV, ty)` を切り、セルの番号を 32 bit の整数の乱数（`× 1664525 + 1013904223` の後に 3 成分を掛け合わせて足すのを 2 巡、上 16 bit ÷ 65536）にする。2 つの `min` の明るさ（0.3, 0.59, 0.11）を丸めてどちらの xy を使うかを選び、`× GridDistortionPower` だけ UV をずらす（`BlockUV`）。混ぜる量は 2 つの `max` の明るさ（`BlockWeight`）。
   - 場面 `PostProcessInput0` を 5 か所（そのまま・緑・青・行ずらし・格子）で読み、`GLITCH_MIX`: 赤はそのまま・緑と青は横から、を行ずらしと半々、それを格子の読みと `BlockWeight` で混ぜ、変わった分の `BlendingOpacity` 倍を場面に足す（0 未満は 0）。
-  - 写さない枝: 混ぜ方 0 以外（`BlendMode` の switch の 1〜20）、マスクの絵（Chameleon は白 `T_base_white_d`）、距離の混ぜ（Chameleon の `BlendDistance` 0 では全体）、ステンシルとカスタム深度（`isStencil`・`isCD` 0）、選択の色（`SelectionColor` の a 0）。シェーダーはずらしを場面の絵の UV、乱数をビューポートの UV で読むが、推定は両方ビューポートの UV（ビューが絵を満たすときは同じ）。
+  - 写さない枝（**2026-09-21 に、どれも Chameleon の `Glitch - Advanced` の値では素通りだと確かめた**。作業一覧の項目 28 のステップ 12）: 混ぜ方 0 以外（`BlendMode` の switch の 1〜20）、マスクの絵（白 `T_base_white_d` を拡縮 1 × 1 で読むので 1）、距離の混ぜ、ステンシルとカスタム深度（`CustomDepth`・`StencilBuffer` が偽 → `isCD`・`isStencil` 0）、選択の色（`SelectionColor` の a 0）。
+  - **距離の混ぜが素通りなのは `BlendDistance` 0 のためだけではない**（2026-09-21）: シェーダーは `saturate(pow(深さ ÷ (BlendDistance × 750), BlendDistanceSharpness))` を作り、`BlendDistanceLog` が 0 でなく正なら 1 から引く。材質の既定 +1 のままだと `深さ ÷ 0` = ∞ → 1 → **1 − 1 = 0 でグリッチが 1 画素も出ない**。`Set Advanced Effect Features` が `(BlendDistanceInvert を 0/1 にして − 0.5) × 2` を入れる（偽 → **−1**）ので引かず、全体に出る。後からこの枝を足すときは −1 を入れる。
+  - 残る違い（2026-09-21）: シェーダーはずらしの読み・行の番号・格子のセルを場面の絵の UV で、乱数と格子とマスクの UV をビューポートの UV で読むが、推定は全部ビューポートの UV（UE 5 の `SceneTexture` は UV をビューポートの UV で取り、中で場面の絵の UV に直す。UE 4 は場面の絵の UV で取る）。ビューが場面の絵を満たすときは同じで、パッケージの全画面は満たす。写した 4 つの枝は 293 行と命令ごとに突き合わせて同じだと確かめた。
 - 画面（木は本家の順に C++ で組み、アニメと `Delay` は画面のティックで進める。16 記録の `UMG_VignetteSides` と同じ作り）:
   - 書類の画面: `CanvasPanel_0`（1.2 倍・不透明度 0・当たりなし）→ `Image_297`（`WhiteSquareTexture` を赤に。画面の縁から少しはみ出す全面、不透明度 0）・`Image_89`（`extras_unlock_bg` 696×204 を中央に）・`Image_249`（絵 159×145 を中央の左 185 に）・`TextBlock_150`（helvetica-neue-bold 20、中央の左 90 から右へ）。`NewAnimation_1`（2.2 s）: 全体の拡縮 0 → 1.1（0.25 s）→ 1（0.4 s）、不透明度 0 → 1（0.25 s）…1（1.75 s）→ 0（2 s）、赤の閃き 0（0.15 s）→ 0.2（0.25 s）→ 0（0.6 s）。Construct: アニメ・`NEW EXTRAS UNLOCKED!`・乱数 0〜3 で `art_icon`・`diary_icon`・`sound_icon`・`movie_icon`（`SetBrushFromTexture(…, False)` で 159×145 のまま）・2 s で外す。
   - 秘密の部屋の画面: 木とアニメは同じで、絵が `T_MysteryRoom`、文字が 18 で中央の左 129・上 4。Construct: `DD_LVL2_15_V1_Secret_Mystery_Room_120818` を 0.5 で・`YOU FOUND A MYSTERIOUS ROOM`・2 s で外す。
@@ -103,13 +105,13 @@ updated: 2026-09-20
 - 使う側: 書類・秘密の部屋の区域・メモのアクタ（画面とグリッチ）。レベルの組み立て（`dd_level._flow`・`link_sequence_players`、`dd_sequence.place_all`）と迷路の後の書類（`AWasamiZone2Flow::PostmazeTransition`）。
 
 ## 既知の制約・注意点
-- グリッチは推定（大目標 1・2 の決め方。本家の画面とは見比べていない）。本家の絵と並べて詰めるのは作業一覧の項目 28。
+- グリッチは本家の画面とは見比べていないが、**式と値は 2026-09-21 に原作のシェーダーと Chameleon の値で裏を取った**（作業一覧の項目 28 のステップ 12。上の「写さない枝」と「残る違い」）。`Glitch Func` が入れるのも `Amount`・`Speed`・`Density`・`GridDistortion` の 3 つの 6 つだけで、`RandomSeed` 1・`Blockeffect` 1・`Pow1` 7・`Pow2` 3・`Pow3` 18 は材質の既定のまま。
 - 書類の画面が引く絵は乱数で、何を解放したかとは関わらない（本家どおり）。解放した EXTRAS を見る画面はタイトル画面の EXTRAS（2026-09-20 のユーザーの回答。作業一覧の項目 29）。
 - メモの画面の木の既定の紙 `sewer_note_01`（下水道のメモ）は取り込まない（Construct が `Texture` を入れる）。本家の `Virtual Cursor`（ゲームパッド）はほかの画面と同じく写さない（09 記録）。`SetInputMode_UIOnlyEx` に画面を渡すと焦点を持てない警告が出るのは本家どおり（15 記録）。
 - テストで画面の木を作るときは `TakeWidget()` の戻り値を持つ。リッチテキストはスレートの木と一緒に様式を放すので、持たないと `GetDefaultTextStyle` が ensure に当たる。
 - 書類はセーブの `Secrets` への書き込みを赤いシャードと同じくメモリの上だけで行い、ディスクへはチェックポイントの保存で書く（本家どおり）。チェックポイントの前に死んで開き直すと書類はまた出る。EXTRAS の解放は取った時にディスクへ書くので、取り直しても同じ番号が 1 つ残るだけ。
 - テストのワールドのプレイヤーのコントローラーはローカルのプレイヤーを持たないので、書類と区域の画面は作られず `PlayerController_0` のエラーが出る（テストは `AddExpectedError` で受ける）。
-- `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `fresnel` になり、コンパイル済みのシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（`Fresnel Setting` (1, 1, 1) の白い縁の光。2026-09-20、作業一覧の項目 31。01 記録）。
+- `MM_Shared_Secret_Folder` の親 `MM_Main_Substance_Fresnel` は前処理で `fresnel` になり、コンパイル済みのシェーダーの式で組んだ `M_DD_SubstanceFresnel` に載る（`Fresnel Setting` (1, 1, 1) の白い縁の光。2026-09-20、作業一覧の項目 31。01 記録）。**2026-09-21 に本家のインスタンスと突き合わせた**（作業一覧の項目 28 のステップ 12）: 本家が持つ値は `Fresnel Setting` (1, 1, 1, 1)・`Albedo` と `Packed` が `secret_file_01_D`・`Normal` が `flat_N` の 4 つだけで、本作の同名のインスタンスも同じ（`RefractionDepthBias` 0 と `OpacityMaskClipValue` 0.3333 は cook が消した屈折と不透明のマスクの枝の値で、不透明のこの材質では効かない）。親の発光も本家のベースパスの画素シェーダーと同じ Fresnel（指数 5・基底の反射率 0.04・写した法線）× `Fresnel Setting` の RGB。
 - おとりのエレベーターの `ActorSequence` は `ActorSequenceComponent` を使わずティックで写した（プラグイン `ActorSequence` をモジュールに足さず、キー 2 つの曲線は式で足りる）。変形のトラックが扉の相対の変形を丸ごと入れるので、扉の相対の変形を置き場で変えても使うと (±x, 0, 0) に戻る（本家も同じ。置いたものは変えていない）。
 - メモの `Plane` の当たりはエンジンの `Plane` の厚み 0 の箱（100 × 100 × 0）。エディタのワールドと PIE では見るトレースが止まるが、テストのワールドのトレースは静的メッシュの体を拾わないので、テストは `LineTraceComponent` で確かめる（症状索引）。
 - テストのワールドにはプレイヤーの画面が無いので、メモの画面が作られるかはテストで確かめられない（`GetLastNote` が null になることだけ）。画面の中身は `Wasami.Secrets.Widgets.MysteryNote`、PIE での読みは下の「確かめたこと」。
@@ -125,7 +127,12 @@ updated: 2026-09-20
 - 書類の `Unlock`（2026-09-20、項目 29 のステップ 6）: Zone 1 の ID 1 を取ると、ゲームモードのセーブとディスクの `ExtrasArt` が [19, 20] になり、タイトルの EXTRAS にその 2 枚が出る（19 記録の「確かめたこと」）。ディスクの `Secrets` は空のまま（チェックポイントまでは書かない）。
 - 画面の操作の注意: PIE でクリックの位置を変えるとカーソルの移動が視点を回すので、見て使う物を狙うときは、狙いを入れてから前のクリックと同じ位置を押す。
 
+## 確かめたこと（2026-09-21、PIE）
+
+- グリッチの見え方（作業一覧の項目 28 のステップ 12）: Zone 2 の秘密の部屋 (−4300, 0, 590) に立つと区域の重なりが効いて `BlendingOpacity` が 1 になり、MID の値が本家どおり（`Amount` 0.5・`Speed` 10・`Density` 30・`GridDistortionPower` 0.001・`Size` 10・`Speed` 1、`RandomSeed` 1・`Blockeffect` 1・`Pow` 7/3/18）。`HighResShot` で、行がまるごと横へずれる帯と緑・青の横ずれが出ること、`BlendingOpacity` を 0 にすると 1 つも出ないことを撮って確かめた。同じ絵で書類の白い縁の光も見える。
+
 ## 変更履歴
+- 2026-09-21: グリッチと書類の縁の光を原作のシェーダーと Chameleon の値で確かめ、本家どおりだと結論した（直しは無し。作業一覧の項目 28 のステップ 12、「写さない枝」・「残る違い」・「確かめたこと（2026-09-21）」）
 - 2026-09-20: 秘密の壁が開いた 0.5 s 後にワサミの声 `best` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）
 - 2026-09-20: 書類が EXTRAS を解放するところを PIE で確かめた（「確かめたこと」。作業一覧の項目 29 のステップ 6）
 - 2026-09-20: 書類の `Unlock` の EXTRAS を写した（`Collectables`・`Unlock`、セーブの `ExtrasArt`・`ExtrasSFX`〈06 記録〉、テスト `Wasami.Secrets.Collectable.Unlock`）。両ゾーンの書類に `Collectables` を入れた（01 記録。作業一覧の項目 29 のステップ 1）
