@@ -18,7 +18,7 @@ sources:
   - Source/wasami_deception/WasamiSpecialSpawnPoint.h
   - Source/wasami_deception/WasamiSpecialSpawnPoint.cpp
   - Source/wasami_deception/Tests/WasamiSpecialShardTests.cpp
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 特殊シャード（スタンオーブと赤いシャード）
@@ -89,7 +89,7 @@ updated: 2026-09-20
 | `/Game/DD/Meshes/Shared/power_orb` | オーブの本体（半径 約 44 cm の球。スロット 1 に `m_crystal_Inst3`〈本家の既定〉）。`dd_assets.static_mesh`（Nanite なし） |
 | `/Game/DD/Meshes/Ring_Assets/soul_shard` | 赤いシャードの本体（2.2 × 1.8 × 8.6 cm。本家は 20 倍で置く）。スロットの本家の既定 `m_crystal_Inst1` は作らない（赤いシャードが `m_crystal_Inst` を当てる） |
 | `/Game/Pipeline/Materials/M_DD_Crystal` | 本家の `m_crystal` の推定（下の「結晶の材質」） |
-| `/Game/DD/Materials/Fords_Materials/m_crystal`・`m_crystal_Inst3`・`m_crystal_Inst`・`m_crystal_Inst2` | 原作のパスの推定のインスタンスと、その子のオーブ用（橙: `color1` (0.526, 0.094, 0.047)・`emissive_col` (0.896, 0.226, 0)・`Fresnel Setting` (5, 0.592, 0)・`emissive_entensity` 29.9・`env_cubemap` `DefaultTextureCube`）と赤いシャード用（赤: `color1` (0.531, 0.009, 0)・`emissive_col` (0.156, 0, 0.013)・`emissive_entensity` 29.9）と Zone 2 の祭壇の球用（紫: `color1` (0.010, 0, 0.078)・`emissive_col` (0.133, 0, 0.391)・`emissive_entensity` 29・`emissive_speed` 0.15・`roughness` 0.01・`env_cubemap` `DefaultTextureCube`。ステージの取り込み `dd_stage` が `make_material` からここの `make_crystal` を呼んで作らせる。2026-09-20）。`color2` はどれも黒。既にあるインスタンスは同じパスのまま親を付け替え、ステージが入れていた `base_property_overrides` を外す |
+| `/Game/DD/Materials/Fords_Materials/m_crystal`・`m_crystal_Inst3`・`m_crystal_Inst`・`m_crystal_Inst2` | 原作のパスの推定のインスタンスと、その子のオーブ用（橙: `color1` (0.526, 0.094, 0.047)・`emissive_col` (0.896, 0.226, 0)・`Fresnel Setting` (5, 0.592, 0)・`emissive_entensity` 29.9・`env_cubemap` `DefaultTextureCube`）と赤いシャード用（赤: `color1` (0.531, 0.009, 0)・`emissive_col` (0.156, 0, 0.013)・`emissive_entensity` 29.9）と Zone 2 の祭壇の球用（紫: `color1` (0.010, 0, 0.078)・`emissive_col` (0.133, 0, 0.391)・`emissive_entensity` 29・`emissive_speed` 0.15・`roughness` 0.01・`env_cubemap` `DefaultTextureCube`。ステージの取り込み `dd_stage` が `make_material` からここの `make_crystal` を呼んで作らせる。2026-09-20）。`color2` はどれも黒。`distortion_normal` は 3 つとも `T_ShapeNormal`〈オーブと祭壇の球は明示、赤いシャードは親から〉）。既にあるインスタンスは同じパスのまま親を付け替え、ステージが入れていた `base_property_overrides` を外す |
 | `/Game/DD/Materials/Shared/M_PowerOrb` | オーブの地図の印。`dd_shards` の `M_DD_MapMark` のインスタンス、`Color` (1, 0.2903, 0) |
 | `/Game/Pipeline/Materials/M_DD_MapMarkMasked` | 形で切り抜く地図の印の推定のマスター: `Color` をベースカラーと自己発光に、`Mask`（`T_EnemyTriangle`）の R をマスクに（Masked、しきい 0.3333） |
 | `/Game/DD/Materials/Shared/M_Bonus_Shard`・`M_Enemy` | 赤いシャードと、赤いシャードが地図に出す敵の印。`M_DD_MapMarkMasked` のインスタンス、`Color` (1, 0, 0) |
@@ -105,11 +105,12 @@ updated: 2026-09-20
 
 ### 結晶の材質（`m_crystal`。グラフは cook で消えている）
 書き出しに残るのは出力の一部（金属・スペキュラ・自己発光。法線は未接続）、パラメータ、Noise 2 つの FeatureLevelSwitch、`BoundingBoxBased_0-1_UVW`、Custom を通して読むキューブ。コンパイル済みのシェーダー（`Tools/dd/cooked_shaders.py "Fords_Materials/m_crystal."` の SM5 のベースパス）を読んで、式をそのまま組んだ（不透明・ライトあり）:
-- 自己発光 = max(0, Noise(反射ベクトル × 0.75 + 時間 × `emissive_speed`。3D テクスチャのグラディエント・乱流・4 段・−0.5〜0.5) × `emissive_col` × `emissive_entensity` + Fresnel(指数 5、基底 0.04) × `Fresnel Setting` + `Additive Emissive`)
+- **法線 N**（反射と屈折の両方がこれを軸に取る）= TransformVector(接空間 → ワールド)(`distortion_normal` を UV × 0.1 で読んだ接空間の法線) + 頂点法線。**正規化しない**（シェーダーにも `rsq` が無い）。`distortion_normal` は親の既定も 3 つのインスタンスも `/Engine/EditorShapes/Textures/T_ShapeNormal` で、中身は 255 分の 1 の揺らぎしかない平らな法線なので、N はほぼ**頂点法線の 2 倍**になる。長さが 2 だと `reflect`・`refract` の結果は単位法線のときと別物（正面では反射が 7 倍の長さ）なので、平らでも省けない
+- 自己発光 = max(0, Noise(反射ベクトル（上の N を軸に、正規化せず）× 0.75 + 時間 × `emissive_speed`。3D テクスチャのグラディエント・乱流・4 段・−0.5〜0.5) × `emissive_col` × `emissive_entensity` + Fresnel(指数 5、基底 0.04) × `Fresnel Setting` + `Additive Emissive`)
 - t = Noise(ワールド位置 × `tile_ratio` − 時間 × `emissive_speed`。テクスチャのシンプレックス・乱流・4 段・0〜1) + バウンディングボックスの Z（0〜1）− 0.5
-- ベースカラー = saturate(lerp(`color2`, `color1`, t) + `env_cubemap` を refract(−カメラ, 法線, 0.66) の向きで × 0.5)（屈折は Custom `return refract(-V, N, 0.66);`）
+- ベースカラー = saturate(lerp(`color2`, `color1`, t) + `env_cubemap` を refract(−カメラ, 上の N, 0.66) の向きで × 0.5)（屈折は Custom `return refract(-V, N, 0.66);`。HLSL の `refract` は全反射（cos² < 0）で 0 を返し、シェーダーも同じ判定を持つ）
 - 金属 = t × 0.5、スペキュラ = t、粗さ = `roughness`（0.01）
-- 推定で外したもの: シェーダーは反射と屈折の向きを `distortion_normal`（UV × 0.1 で読む）で曲げるが、推定は頂点の法線で読む（`CRYSTAL_LEFT_OUT`）。本家の親の `env_cubemap` は既定が空なので、推定の親は `DefaultTextureCube` を既定にした（赤いシャードはこれを継ぐ）。
+- 推定で外したもの: **無し**（2026-09-21、作業一覧の項目 28 のステップ 13 で `distortion_normal` を入れ、`CRYSTAL_LEFT_OUT` は空になった）。本家の親の `env_cubemap` だけは既定が空なので、こちらの親は `DefaultTextureCube` を既定にした（赤いシャードはこれを継ぐ）。`T_ShapeNormal` はエディタの内容だが、本家も pak に cook して入れている（`pak_reference_2/Engine/Content/EditorShapes/Textures/`）ので `/Engine/` のパスのまま使う。
 
 ### 地図の印の色
 3 つとも書き出しは `Constant3Vector` を値なしで持つだけだが、コンパイル済みのシェーダーに定数が残っていた: `M_PowerOrb` (1, 0.2903, 0)、`M_Bonus_Shard`・`M_Enemy` (1, 0, 0)（`T_EnemyTriangle` の 1 チャンネルを 0.3333 で切る）。ついでに `M_Shard` の定数は (0.482481, 0, 1) と分かった（`dd_shards` は画面の実測で (0.70, 0.0071, 1.0) に合わせている。06 記録）。新しい 3 つはシェーダーの定数のままにし、タブレットでの見え方は見比べていない（作業一覧の項目 28 の後回し）。
@@ -158,6 +159,7 @@ updated: 2026-09-20
 - Zone 2 の祭壇の球 `m_crystal_Inst2` もここで作る（`CRYSTAL_INSTANCES`）。前処理が根 `m_crystal` を `crystal` に振り分け、ステージの取り込みは自分で作らずに `make_crystal` を呼ぶ（01 記録。2026-09-20、作業一覧の項目 31。それまではステージが汎用の `M_DD_Substance` で作り、白っぽかった）。`make_crystal` はマスター `M_DD_Crystal` から作り直すので、ステージの取り込みが結晶のインスタンスに当たるたびに走る（今は 1 つ）。
 
 ## 変更履歴
+- 2026-09-21: `M_DD_Crystal` が `distortion_normal` を読むようにした（反射と屈折の軸になる正規化しない法線。作業一覧の項目 28 のステップ 13）
 - 2026-09-20: `CRYSTAL_INSTANCES` に Zone 2 の祭壇の球 `m_crystal_Inst2` を足し、`make_crystal` が既にあるインスタンスの `base_property_overrides` を外すようにした（ステージの取り込みが呼ぶ。作業一覧の項目 31 のステップ 3）
 - 2026-09-19: PIE で両ゾーンを確かめ、台本の通しを流した（上の「PIE での確かめ」。ステップ 6）
 - 2026-09-19: 両ゾーンに本体と出現点を置いた（`dd_level._flow`。上の「配置」。ステップ 5）

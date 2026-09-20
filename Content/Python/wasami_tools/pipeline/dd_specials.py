@@ -48,10 +48,12 @@ ORB_CRYSTAL = "Materials/Fords_Materials/m_crystal_Inst3"
 # m_crystal_Inst2 is the altar's orb (ring_statue_orb, purple): the stage import has this module make it.
 CRYSTAL_INSTANCES = (ORB_CRYSTAL, "Materials/Fords_Materials/m_crystal_Inst",
                      "Materials/Fords_Materials/m_crystal_Inst2")
-# The parameters of m_crystal the estimate does without: distortion_normal only bends the vectors the reflection and the
-# refraction are read along (see _build_crystal).
-CRYSTAL_LEFT_OUT = ("distortion_normal",)
+# The parameters of m_crystal the estimate does without (none left: distortion_normal is read since 2026-09-21).
+CRYSTAL_LEFT_OUT = ()
 DEFAULT_CUBE = "/Engine/EngineResources/DefaultTextureCube"
+# distortion_normal's default in the original's master, which the orb's and the altar's orb's instances set again. The
+# original cooks it into its pak (Engine/Content/EditorShapes/Textures/T_ShapeNormal), so the path is kept as it is.
+SHAPE_NORMAL = "/Engine/EditorShapes/Textures/T_ShapeNormal"
 
 # The marks' colours, as the compiled shaders keep their Constant3Vector (their emissive colour; the export keeps the
 # node without its value). M_Shard's own is (0.482, 0, 1), which dd_shards set otherwise after measuring the tablet.
@@ -86,14 +88,32 @@ def _build_crystal(mat, d):
                 4 levels) + the bounding box's Z (0 … 1) − 0.5
       base      saturate(lerp(color2, color1, t) + env_cubemap along refract(−camera, normal, 0.66) × 0.5)
       metallic  t × 0.5; specular t; roughness roughness
-    The shader bends the vectors the reflection and the refraction are read along by distortion_normal (sampled at UV ×
-    0.1); the estimate reads them off the vertex normal."""
+    Both the reflection and the refraction are read about the same normal: distortion_normal (sampled at UV × 0.1)
+    turned into the world and added to the vertex normal, left unnormalized. T_ShapeNormal, what every instance puts
+    there, is flat to within a 255th, so the sum is twice the vertex normal: not the same vector a plain reflection
+    gives, which is why it is read as the shader has it rather than left out."""
     g = dd_stage._Graph(mat, checked=True)
     time = g.node(unreal.MaterialExpressionTime, -2400, 0)
     drift = g.multiply(time, "", g.scalar("emissive_speed", d["emissive_speed"], -2400, 100), "", -2200, 50)
 
-    # The glow: turbulent noise along the reflection.
+    # The normal both vectors are read about.
+    uv = g.multiply(g.node(unreal.MaterialExpressionTextureCoordinate, -3300, -750), "",
+                    dd_assets.constant(g, 0.1, -3300, -620), "", -3100, -700)
+    bump = g.texture("distortion_normal", unreal.load_asset(SHAPE_NORMAL),
+                     unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL, -2950, -800)
+    dd_assets.connect(uv, "", bump, "UVs")
+    to_world = g.node(unreal.MaterialExpressionTransform, -2700, -800)
+    to_world.set_editor_property("transform_source_type",
+                                 unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_TANGENT)
+    to_world.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
+    dd_assets.connect(bump, "", to_world, "")
+    bent = dd_assets.add(g, to_world, "", g.node(unreal.MaterialExpressionVertexNormalWS, -2700, -650), "",
+                         -2550, -750)
+
+    # The glow: turbulent noise along the reflection about that normal.
     reflection = g.node(unreal.MaterialExpressionReflectionVectorWS, -2400, -400)
+    reflection.set_editor_property("normalize_custom_world_normal", False)
+    dd_assets.connect(bent, "", reflection, "CustomWorldNormal")
     along = g.multiply(reflection, "", dd_assets.constant(g, 0.75, -2400, -300), "", -2200, -350)
     glow_at = dd_assets.add(g, along, "", drift, "", -2000, -300)
     glow = _noise(g, glow_at, unreal.NoiseFunction.NOISEFUNCTION_GRADIENT_TEX3D, -0.5, 0.5, -1800, -300)
@@ -130,7 +150,7 @@ def _build_crystal(mat, d):
         inputs.append(pin)
     refract.set_editor_property("inputs", inputs)
     dd_assets.connect(g.node(unreal.MaterialExpressionCameraVectorWS, -1650, 650), "", refract, "V")
-    dd_assets.connect(g.node(unreal.MaterialExpressionVertexNormalWS, -1650, 750), "", refract, "N")
+    dd_assets.connect(bent, "", refract, "N")
     cube = g.node(unreal.MaterialExpressionTextureSampleParameterCube, -1150, 650)
     cube.set_editor_property("parameter_name", "env_cubemap")
     cube.set_editor_property("texture", unreal.load_asset(DEFAULT_CUBE))

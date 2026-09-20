@@ -56,7 +56,7 @@
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "8658eb38a0c8d4d5b102630e7b0562f9a0d36cd8",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "5a6d5f8716c774423cd5082a305305a9d7936a25",
-    "Content/Python/wasami_tools/pipeline/dd_specials.py": "0078a32f406086a8d4706f042d75c9d416b7bf22",
+    "Content/Python/wasami_tools/pipeline/dd_specials.py": "bc2c43d426f3927a715e10cb363bdf2986956e8b",
     "Content/Python/wasami_tools/pipeline/dd_secrets.py": "e305e2a847f06e830a671d1ce8398d334c9fda53",
     "Source/wasami_deception/WasamiCascadeLibrary.h": "061975e535e2e5ffc14ec2a9cec97595a4513615",
     "Source/wasami_deception/WasamiCascadeLibrary.cpp": "b00106cf75a40b11b8c39de777ff8b3bbd269d72",
@@ -286,7 +286,7 @@
     "Source/wasami_deception/Tests/WasamiPauseTests.cpp": "84bbbb23572ba8b41749022060cc76d1706dae50"
   },
   "16-special-shards.md": {
-    "Content/Python/wasami_tools/pipeline/dd_specials.py": "0078a32f406086a8d4706f042d75c9d416b7bf22",
+    "Content/Python/wasami_tools/pipeline/dd_specials.py": "bc2c43d426f3927a715e10cb363bdf2986956e8b",
     "Source/wasami_deception/WasamiVignetteSidesWidget.h": "4310b83d8fb4e19cd4901698b299b9af469ce8dc",
     "Source/wasami_deception/WasamiVignetteSidesWidget.cpp": "caf456ce4c67c7272640a8853fdb4e729df251ad",
     "Source/wasami_deception/Tests/WasamiVignetteSidesTests.cpp": "3b94ae0915c18fc82d6b5cb4041f2b338c2379df",
