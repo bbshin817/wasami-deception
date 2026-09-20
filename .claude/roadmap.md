@@ -319,7 +319,7 @@
 - 根拠: `.claude/references/enemy-wasami-motions.md`、実装記録 07。
 - 依存: 7。
 - 規模: 1
-- 状態: 未着手。
+- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-chase-variations`）。計画の段階で、6 本は `AWasamiEnemy` の 0.5 s ごとの判断から `UWasamiEnemyAnimInstance::PlayOnce`（全身の 1 回再生）で流し、移動は止めずに追跡の速さ（本作は 430 cm/s）のまま、前方の空きは実際に進む距離（速さ × 流す秒数）を NavMesh のレイで見る、と決めた。
 
 ### 19. 曲と環境音・効果音の残り
 
