@@ -325,10 +325,10 @@
 
 - 目標: 病院の曲（通常・追跡・Nightmare）と環境音、まだ無い効果音を本家どおりに鳴らす。
 - 完了の条件: `BP_06_MusicPlayer`（Zone 1）・`BP_06_MusicPlayer_Zone2` の切り替えとフェードがコードどおり。レベルの `AudioComponent`（Zone 1 43・Zone 2 146）と `AmbientSound`・`AudioVolume` を配置どおりに置く。減衰は SoundCue と減衰設定の値どおり。捕獲の別室（項目 9 の `AWasamiCapture`。いまは無音）の音: 本家ホテルの捕獲の Matinee の `InterpTrackSound`（`Evil_Monkey_Scream`・`EN01_Toy_Monkey_Attck_Knife_v1`/`v4`。`pak_reference/_levels/01_Hotel.full.json` の `MonkeyJumpscare*` の `InterpData`）を時刻どおりに鳴らす。サルの声なので、WebGL 版（04 記録の `caught`: `enemy_scream` = `Evil_Monkey_Scream` を 1.0 で 1 回、13 記録）のように叫びだけにするかは、この項目で WebGL 版に倣って決める。捕獲の間は音を聞く位置が別室のカメラへ移るので、2D か別室の中で鳴らす（実装記録 07 の「既知の制約」）。
-- 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/06_Hospital/BP_06_MusicPlayer*.txt`（`BP_08_MusicPlayer` の派生）、`_soundcues.json`、`_levels/06_Hospital*.full.json`、実装記録 01（`UWasamiSoundCueLibrary`）。
+- 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/08_BearHouse/BP_08_MusicPlayer.txt`（`BP_06_MusicPlayer`・`_Zone2` の親。派生は曲を差し替えるだけで処理を持たないので、書き出しに `.txt` は無く `_assets/…/BP_06_MusicPlayer*.json` に音がある）、`_soundcues.json`、`_levels/06_Hospital*.full.json`、実装記録 01（`UWasamiSoundCueLibrary`）。
 - 依存: 6。
 - 規模: 2
-- 状態: 未着手。
+- 状態: **進行中（2026-09-20 から）**。進捗記録 `.claude/progress/20260920-audio.md`。曲は本家の `BP_08_MusicPlayer` を写した `AWasamiMusicPlayer` にして両ゾーンに置き、通常 2 本 + 追跡 1 本を鳴らす（病院に Nightmare の曲は無いので「通常・追跡・Nightmare」は通常・追跡の 2 種に読み替えた。記録の「決定事項」）。
 
 ### 20. 台詞と字幕（Bierce の台詞、WebGL 版のワサミの声）
 
