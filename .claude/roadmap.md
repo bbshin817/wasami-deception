@@ -315,11 +315,11 @@
 ### 26. 追跡中のランダムの動き
 
 - 目標: 2026-09-18 のユーザーの指示（上の「決めたこと」の「追跡中のランダムの動き」）。
-- 完了の条件: 追跡中は約 8 秒に 1 回、v3 の追いかける動き 6 本からランダムに流す（前方が空いているときだけ、速さは 800 cm/s のまま。`.claude/references/enemy-wasami-motions.md` の「追跡中のランダムの動き」。頻度と早回しの上限はテストにする）。PIE で追跡中に流れることを収録。
+- 完了の条件: 追跡中は約 8 秒に 1 回、v3 の追いかける動き 6 本からランダムに流す（前方が空いているときだけ、速さは追跡の速さ〈本作は 430 cm/s。2026-09-19 のユーザーの指示。`.claude/references/enemy-wasami-motions.md` の「追跡中のランダムの動き」の 800 cm/s は本家のナースの値〉のまま。頻度と早回しの上限はテストにする）。PIE で追跡中に流れることを収録。
 - 根拠: `.claude/references/enemy-wasami-motions.md`、実装記録 07。
 - 依存: 7。
 - 規模: 1
-- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-chase-variations`）。計画の段階で、6 本は `AWasamiEnemy` の 0.5 s ごとの判断から `UWasamiEnemyAnimInstance::PlayOnce`（全身の 1 回再生）で流し、移動は止めずに追跡の速さ（本作は 430 cm/s）のまま、前方の空きは実際に進む距離（速さ × 流す秒数）を NavMesh のレイで見る、と決めた。
+- 状態: **完了（2026-09-20）**。追跡している間、6〜10 s（平均 8 s）の乱数の間隔で機会が来て、6 本（`Chase_PickUp`・`Chase_Charge`・`Chase_VaultRoll`・`Chase_VaultLand`・`Chase_RunFast`・`Chase_Slide`）から直前と違う 1 本を等確率で引き、走り（430 cm/s のまま）の上に 1 回再生で重ねる（`FWasamiChaseVariations`・`AWasamiEnemy::UpdateChaseVariation`）。早回しは走りと同じ 0.6〜1.8 で挟み、前方の空きは体が進む距離（2.9〜6.3 m）を NavMesh のレイで見る。テスト 3 件を足して 148 件すべて成功。PIE で 4 回の追跡（計約 6 分）を収録し、間隔 6.49〜10.01 s（平均 8.02 s）で 6 本が 35 回流れ、壁へのめり込みが無いことを確かめた（実装記録 07）。
 
 ### 19. 曲と環境音・効果音の残り
 
@@ -426,3 +426,7 @@
 ### 項目 29（EXTRAS、2026-09-20 に閉じた記録 `20260920-extras`）
 
 - 2026-09-20: EXTRAS に並べる中身を仮にした（枠組みだけ先に作るというユーザーの回答どおり）。病院の書類が解放する絵 19〜22 は本作の絵（タイトルの顔・ポーズの 2 枚・ポータルのワサミ）、日記 10 と曲 10 は音も名前も空（押せるが鳴らない。曲 5〈本家は Zone 1 の曲 Cold Hearted〉も空）、クレジットは本作の数行（WASAMI DECEPTION / A DARK DECEPTION FAN GAME / ORIGINAL GAME / DARK DECEPTION / GLOWSTICK ENTERTAINMENT）。何を並べるかを決めてほしい（`UWasamiExtrasWidget` の `ArtTextures`・部品の値・`CreditsText` を差し替えるだけ。19 記録）。
+
+### 項目 26（追跡中のランダムの動き、2026-09-20 に閉じた記録 `20260920-chase-variations`）
+
+- 2026-09-20: `Chase_VaultLand` の足の滑り — 早回しの上限を走りと同じ 1.8 にしたので、動きの速さ 52 cm/s の `Chase_VaultLand` は追跡の速さ 430 に足りず（要るのは 6.1 倍）、流している 1.33 s の間に体が約 5.7 m 滑って進む（ほかの 5 本は上限の中に収まる）。PIE では低い障害物を片手で跳び越えて着地するように見えたのでそのままにした。気になるなら、この 1 本だけ 6 本から外すか、上限を上げる（例: 3.0）かを選べる。場所: `WasamiEnemyAnimInstance.h` の `RunRateMax` と `ChaseVariationSpeeds`、実装記録 07 の「既知の制約」。
