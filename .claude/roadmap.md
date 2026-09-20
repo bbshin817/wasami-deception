@@ -310,7 +310,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`、`_sequences/06_Hospital_Zone1_06Event.json`・`06_Hospital_Zone2_Capture.json`・`06_Hospital_Zone2_Cell.json`。
 - 依存: 6、7。
 - 規模: 2
-- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-cutscenes`）。計画の段階で、場面は既存の取り込み `dd_sequence` にトラック（SkeletalAnimation・Visibility・CameraShake・CameraAnim・Slomo・ComponentMaterial）を足して本家の LevelSequence として組み、Zone 2 の始まりは本家の配布版の道（救急車の到着 → 捕まる場面 → 独房）を写す、と決めた。
+- 状態: **完了（2026-09-20）**。場面は取り込み `dd_sequence` にトラック（骨のアニメ・可視・揺れ・スローモーション・部品の材質）を足して本家の LevelSequence として組み直し（CameraAnim は UE 5.8 に無いので落とす）、ナース 4 体は `AWasamiCutsceneNurse` で置いて本家のアニメを敵ワサミ v3 のクリップに読み替えた。流すのはゾーンの流れの `PlayCutscene`（視点をシネカメラへ 0.5 s で移し、スキップの画面 `UWasamiCutsceneWidget` を出して `OnFinished` を結ぶ）。Zone 1 は `05_ParkingLotCutscene` → `06_Hospital_Zone1_06Event`（10.53 s）→ `Transition06`、Zone 2 は本家の配布版の道（チェックポイント 7 で `PlayerStart_1` → 救急車の到着 6.77 s〈場面ではないので視点も入力もそのまま〉→ `Trigger_Arrive_CaptureScene` → 捕まる場面 26.23 s → 1 s → 独房の場面 74.07 s → `PlayerStart_Cell` で動けるようになり棘へ）。チェックポイント 7 で開き直すたびに 3 つを流し直す。P で飛ばせる（`SetPlaybackPosition(1e7, Jump)` → `OnFinished`）。PIE で 3 つを通して確かめた（実装記録 11 の「場面の通し」・01・09）。後回し 5 件（黒帯・ナースの演技・消えるときの材質・シネカメラの画角・`CameraAnim_Nurse_01`）は項目 28 の一覧にある。
 
 ### 26. 追跡中のランダムの動き
 
