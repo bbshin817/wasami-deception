@@ -12,13 +12,13 @@ sources:
   - Source/wasami_deception/WasamiMapTextureMultiFloor.cpp
   - Source/wasami_deception/Tests/WasamiMapMultiFloorTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
-updated: 2026-09-19
+updated: 2026-09-21
 ---
 
 # タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印と視界コーンの印）
 
 ## 役割
-本家の手持ちタブレット（`pak_reference` の `UI/Tablet/UMG_Tablet`）の画面と、それが使う素材。パワーの枠だけは、6 種のパワーを持つ最新版の `UMG_TabletPowers`（`pak_reference_2`）に倣う（何を出すかを決めるのは 04 記録のコンポーネント）。板そのものの出し入れとコンポーネントの構成はプレイヤー側（02 記録）にあり、ここは **画面の中身**（`UWasamiTabletWidget`）と **素材を原作データから作る仕組み**（`dd_tablet.py`）、**ミニマップの仕掛け**（Zone 2 の階ごとの地図: 本家の `BP_MapTexture_MultiFloor`・`BP_MapArea`。`AWasamiMapTextureMultiFloor`・`AWasamiMapArea`）、地図に写る **矢印**（本家の `BP_ArrowPointer`。`AWasamiArrowPointer`）を受け持つ。地図に写る見張りの視界コーンの扇と点は、アクタが 07 記録（`AWasamiViewcone`）、材質がここ（`make_viewcone_materials`）。
+本家の手持ちタブレット（`pak_reference` の `UI/Tablet/UMG_Tablet`）の画面と、それが使う素材。パワーの枠だけは、6 種のパワーを持つ最新版の `UMG_TabletPowers`（`pak_reference_2`）に倣う（何を出すかを決めるのは 04 記録のコンポーネント）。板そのものの出し入れとコンポーネントの構成はプレイヤー側（02 記録）にあり、ここは **画面の中身**（`UWasamiTabletWidget`）と **素材を原作データから作る仕組み**（`dd_tablet.py`）、**ミニマップの仕掛け**（Zone 2 の階ごとの地図: 本家の `BP_MapTexture_MultiFloor`・`BP_MapArea`。`AWasamiMapTextureMultiFloor`・`AWasamiMapArea`）、地図に写る **矢印**（本家の `BP_ArrowPointer`。`AWasamiArrowPointer`）を受け持つ。見張りの視界コーンの扇と点（本家と同じく地図には写らない。07 記録の「地図の印」）は、アクタが 07 記録（`AWasamiViewcone`）、材質がここ（`make_viewcone_materials`）。
 
 ## 公開インターフェース
 
@@ -121,8 +121,8 @@ updated: 2026-09-19
 - `M_DD_MapPlane`: `Texture` パラメータをそのままベースカラーに出す。**Unlit にしない**（キャプチャの `SCS_BaseColor` は GBuffer のベースカラーを読むので、Unlit だと何も写らない）。
 - `M_DD_MapScreen`: マテリアルドメイン User Interface、`Texture`（Linear Color サンプラ）を Final Color に、Opacity は定数 1（キャプチャの α は当てにならない）。
 - `M_DD_Arrow`（本家の `M_Arrow`。焼き込みのベースパス〈`python Tools/dd/cooked_shaders.py "Materials/Special/M_Arrow." --show 23`〉を読んだ式）: Masked（クリップは既定の 0.3333。シェーダーの `-0.3333` と同じ）。ベースカラーとエミッシブ = `Lerp(Color + 0.6, Color, sin(2π Time))`（`Sine` の周期 1。1 s ごとに色と白っぽい色の間を脈打つ。ベースカラーは 0〜1 に丸まる）、オパシティマスク = `T_Arrow` の R（パラメータでない `TextureSample`。本家も同じ）。スペキュラは既定の 0.5。キャプチャはベースカラーを読むので、地図にはこの色が写る。
-- `M_DD_MapSearch`（本家の `map_enemy_search_Mat`。焼き込みのベースパス〈`python Tools/dd/cooked_shaders.py "Miniboss/Tex/map_enemy_search_Mat." --show 5`〉を読んだ式）: 本家は Unlit・Translucent で、エミッシブの灰とオパシティがどちらも `0.5 × sqrt(map_enemy_search の α) × Opacity`（テクスチャの RGB は白、α が扇〈頂点から中ほどまで 0.85、遠い端へ薄れる〉）。**キャプチャの `SCS_BaseColor` は Unlit も Translucent も写さないので、本作は Default Lit・Masked**: その値をベースカラーとオパシティマスクに出し、クリップは 0.1（`VIEWCONE_CLIP`。α が 0.04 を切る遠い端で切れる。薄れはベースカラーが暗くなることで出る）。`Opacity`（既定 1）はコーンが点く・消えるときに 0〜1 で動く（07 記録）。**本家の地図ではこの扇も下の点も描かれない**（本家のキャプチャは `Translucency` が偽。07 記録の「地図の印」）ので、ここの Default Lit・Masked は本家の絵ではなく式の推定を写したもの。
-- `M_DD_DotCircle`（本家の `0_DotCircle_Mat`。M5VFXVOL2 の材質。`--show 13`）: 本家は Unlit・Translucent で、エミッシブとオパシティがどちらも関数の既定（半径 0.5・密度 2.333）の `RadialGradientExponential`（板の縁へ薄れる点）。扇と同じく Default Lit・Masked にし、その値をベースカラーとオパシティマスクへ、クリップ 0.1。
+- `M_DD_MapSearch`（本家の `map_enemy_search_Mat`。焼き込みのベースパス〈`python Tools/dd/cooked_shaders.py "Miniboss/Tex/map_enemy_search_Mat." --show 5`〉を読んだ式）: 本家は Unlit・Translucent で、エミッシブの灰とオパシティがどちらも `0.5 × sqrt(map_enemy_search の α) × Opacity`（テクスチャの RGB は白、α が扇〈頂点から中ほどまで 0.85、遠い端へ薄れる〉）。**本作も本家と同じ Unlit・Translucent**: その値をエミッシブとオパシティに出す。`Opacity`（既定 1）はコーンが点く・消えるときに 0〜1 で動く（07 記録）。**本家の地図ではこの扇も下の点も描かれない**（本家のキャプチャは `Translucency` が偽。07 記録の「地図の印」）ので、本作も地図に写さないことにした（2026-09-21 のユーザーの回答。項目 28 のステップ 9）。地図に写すために Default Lit・Masked（クリップ 0.1）にしていた推定は、写す必要が無くなったので本家の式のまま組み直した。
+- `M_DD_DotCircle`（本家の `0_DotCircle_Mat`。M5VFXVOL2 の材質。`--show 13`）: 本家は Unlit・Translucent で、エミッシブとオパシティがどちらも関数の既定（半径 0.5・密度 2.333）の `RadialGradientExponential`（板の縁へ薄れる点）。扇と同じく本家のまま Unlit・Translucent で、その値をエミッシブとオパシティへ。
 - `M_DD_Powers`: マテリアルドメイン User Interface・Translucent。UV を中心基準にし、`atan2(u, −v)` を 2π で割って 1 を足し `Frac` で 0〜1 の「12 時からの時計回りの角度」にし、`ceil(saturate(Percent − 角度))` のマスクで `EnabledPower`（灰色のアイコン）と `DisabledPower`（色つきのアイコン）を混ぜる。`Percent` 1 で全面が色つき。
 
 ## 作るアセット
@@ -137,7 +137,7 @@ updated: 2026-09-19
 | 音 | `Audio/SharedGameplay/05_Tablet_Woosh_v1_1`・`_v2_1`、`Audio/UI/UI_Select_V3`（Volume 0.7。値は SoundWave の書き出しから `dd_assets.sound` が入れる） | 3 |
 | ミニマップ | `UI/Minimap/T_NewMap`（レンダーターゲット 512 × 512 RGBA8）、`UI/Minimap/MM_Map_06_Zone01`・`MM_Map_06_Zone2` | 3 |
 | 地図の矢印 | `Materials/Special/M_Arrow`（`M_DD_Arrow` のインスタンス、`Color` は本家の既定 (0.48146, 0, 1, 1)）・`M_Arrow_Inst`（`M_Arrow` のインスタンス、`Color` (0.361042, 0, 1, 1)。本家の `BasePropertyOverrides` は値だけで上書きの印が無いので、上書きしない） | 2 |
-| 視界コーンの地図の印 | `Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat`（`M_DD_MapSearch` のインスタンス、`Opacity` は本家の既定 1）・`ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat`（`M_DD_DotCircle` のインスタンス）。本家はどちらもマテリアル（インスタンスでない）だが、グラフが消えているので矢印と同じく推定のマスターのインスタンスを本家のパスに置く | 2 |
+| 視界コーンの印（地図には出ない） | `Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat`（`M_DD_MapSearch` のインスタンス、`Opacity` は本家の既定 1）・`ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat`（`M_DD_DotCircle` のインスタンス）。本家はどちらもマテリアル（インスタンスでない）だが、グラフが消えているので矢印と同じく推定のマスターのインスタンスを本家のパスに置く。本家と同じく 1 枚も描かれない（07 記録の「地図の印」） | 2 |
 | パワーのアイコン | `Materials/MasterMaterials/MM_Powers_SpeedBoost`・`MM_Powers_Inst_Teleport`・`MM_Powers_Inst_Telepathy`・`MM_Powers_PrimalFear`・`MM_Powers_Inst_Telekinesis`・`MM_Powers_Vanish`（`M_DD_Powers` のインスタンス。`DisabledPower` = 色つき、`EnabledPower` = `_inactive`、`Percent` 1.0。名前は最新版のインスタンスのまま） | 6 |
 
 自前のマスターは `/Game/Pipeline/Materials/M_DD_MapPlane`・`M_DD_MapScreen`・`M_DD_Powers`・`M_DD_Arrow`・`M_DD_MapSearch`・`M_DD_DotCircle`（6）。どれも呼び直すと作り直す（既にあるものは読み込んで親とパラメータを入れ直す）。
@@ -190,6 +190,7 @@ updated: 2026-09-19
 - `UWidgetComponent` は `bTickWhenOffscreen` が false のままなので、画面がビューポートに映っていない間は描き直さない（下ろしている間は描画も止まる）。エディタを背面にして PIE を撮ると、この理由で地図が止まったままになる。
 
 ## 変更履歴
+- 2026-09-21: 視界コーンの印の材質 `M_DD_MapSearch`・`M_DD_DotCircle` を、本家と同じ Unlit・Translucent（エミッシブとオパシティ）に戻した。地図に写すための Default Lit・Masked（クリップ 0.1、`VIEWCONE_CLIP`）の推定は要らなくなった（本作も本家と同じく地図に出さない。作業一覧の項目 28 のステップ 9。07 記録）
 - 2026-09-19: 見張りの視界コーンの地図の印の材質（`map_enemy_search` と推定の `M_DD_MapSearch`・`M_DD_DotCircle`、本家のパスの `map_enemy_search_Mat`・`0_DotCircle_Mat`、`make_viewcone_materials`）を足した（作業一覧の項目 7 のステップ 5b）
 - 2026-09-19: Zone 2 の階ごとの地図（`AWasamiMapArea`・`AWasamiMapTextureMultiFloor`。本家の `BP_MapArea`・`BP_MapTexture_MultiFloor`）と `T_06_Zone2_02` の取り込みを足した。テスト `Wasami.MapMultiFloor.Actor`
 - 2026-09-18: 地図の矢印（`AWasamiArrowPointer`。本家の `BP_ArrowPointer`）と、その材質（`T_Arrow`・推定の `M_DD_Arrow`・`M_Arrow`・`M_Arrow_Inst`、`make_arrow_materials`）を足した。テスト `Wasami.ArrowPointer.Actor`

@@ -134,7 +134,7 @@ bool FWasamiMatronConesTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("its dot hidden"), Cone->GetDot()->IsVisible());
 		TestTrue(TEXT("its fan at 0 (the level places it)"), Cone->GetPlane()->GetRelativeLocation().IsZero());
 		TestTrue(TEXT("its fan shown"), Cone->GetPlane()->IsVisible());
-		TestTrue(TEXT("on the map"), Cone->ActorHasTag(TEXT("dd_minimap")));
+		TestFalse(TEXT("not on the map, as in the original"), Cone->ActorHasTag(TEXT("dd_minimap")));
 	}
 	return true;
 }

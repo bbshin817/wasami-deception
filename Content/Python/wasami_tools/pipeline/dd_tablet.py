@@ -104,13 +104,11 @@ POWER_ICONS = "UI/RingAltar_UI/Textures/"
 ARROW = "Materials/Special/M_Arrow"
 ARROW_INSTANCE = "Materials/Special/M_Arrow_Inst"
 ARROW_TEXTURE = "Materials/Special/T_Arrow"
-# The sentries' view cones on the map: the fan and the dot, both unlit translucent Materials in the original (their graphs
-# cooked away), as instances of our estimates.
+# The sentries' view cone marks: the fan and the dot, both unlit translucent Materials in the original (their graphs
+# cooked away), as instances of our estimates. Neither is ever drawn, in the original nor here (07 record).
 SEARCH = "Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search_Mat"
 SEARCH_TEXTURE = "Blueprints/06_Hospital/Miniboss/Tex/map_enemy_search"
 DOT = "ThirdParty/M5VFXVOL2/Materials/Master/0_DotCircle_Mat"
-# Where the view cone marks' masks are cut (theirs are the originals' opacities, which fade out to the edges).
-VIEWCONE_CLIP = 0.1
 
 
 def _tools():
@@ -307,10 +305,8 @@ def _build_search(mat):
     """map_enemy_search_Mat, read from its compiled base pass (Tools/dd/cooked_shaders.py
     "Miniboss/Tex/map_enemy_search_Mat." --show 5): unlit and translucent, its emissive grey and its opacity are both
     0.5 × sqrt(map_enemy_search's alpha) × `Opacity` (the texture's RGB is white; its alpha is the fan, 0.85 from the tip
-    to the middle, fading out to the far edge). The minimap's capture reads SCS_BaseColor, which an unlit or translucent
-    material does not write, so ours is lit and masked: that value as the base colour, and as the mask cut at
-    VIEWCONE_CLIP (the fan's alpha under 0.04; the fade shows as the base colour darkening)."""
-    mat.set_editor_property("opacity_mask_clip_value", VIEWCONE_CLIP)
+    to the middle, fading out to the far edge)."""
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     g = dd_stage._Graph(mat, checked=True)
     tex = g.node(unreal.MaterialExpressionTextureSample, -900, 0)
     tex.set_editor_property("texture", unreal.load_asset(asset(SEARCH_TEXTURE)))
@@ -318,29 +314,29 @@ def _build_search(mat):
     scalars, _ = dd_assets.parameter_defaults(SEARCH, 2)
     opacity = g.multiply(root, "", g.scalar("Opacity", scalars["Opacity"], -650, 250), "", -450, 100)
     value = g.multiply(opacity, "", dd_assets.constant(g, 0.5, -450, 250), "", -250, 100)
-    g.out(value, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    g.out(value, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    g.out(value, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    g.out(value, "", unreal.MaterialProperty.MP_OPACITY)
 
 
 def _build_dot(mat):
     """0_DotCircle_Mat (M5VFXVOL2), read from its compiled base pass (Tools/dd/cooked_shaders.py
     "Master/0_DotCircle_Mat." --show 13): unlit and translucent, its emissive grey and its opacity are both
     RadialGradientExponential with the function's defaults (radius 0.5, density 2.333), a dot fading out to the plane's
-    edge. Lit and masked for the capture as the fan: the gradient as the base colour and the mask cut at VIEWCONE_CLIP."""
-    mat.set_editor_property("opacity_mask_clip_value", VIEWCONE_CLIP)
+    edge."""
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     g = dd_stage._Graph(mat, checked=True)
     dot = dd_assets.radial_gradient(g, None, None, -600, 0)
-    g.out(dot, "RadialGradientExponential", unreal.MaterialProperty.MP_BASE_COLOR)
-    g.out(dot, "RadialGradientExponential", unreal.MaterialProperty.MP_OPACITY_MASK)
+    g.out(dot, "RadialGradientExponential", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    g.out(dot, "RadialGradientExponential", unreal.MaterialProperty.MP_OPACITY)
 
 
 def make_viewcone_materials():
-    """M_DD_MapSearch and M_DD_DotCircle (masked, lit), and map_enemy_search_Mat (with the original's Opacity default)
-    and 0_DotCircle_Mat as instances of them at the originals' paths, which AWasamiViewcone loads. Returns the two
-    instances' paths."""
-    masked = {"blend_mode": unreal.BlendMode.BLEND_MASKED}
-    search = dd_assets.material(SEARCH_MASTER, _build_search, **masked)
-    dot = dd_assets.material(DOT_MASTER, _build_dot, **masked)
+    """M_DD_MapSearch and M_DD_DotCircle (unlit and translucent, as the originals are), and map_enemy_search_Mat (with
+    the original's Opacity default) and 0_DotCircle_Mat as instances of them at the originals' paths, which
+    AWasamiViewcone loads. Returns the two instances' paths."""
+    translucent = {"blend_mode": unreal.BlendMode.BLEND_TRANSLUCENT}
+    search = dd_assets.material(SEARCH_MASTER, _build_search, **translucent)
+    dot = dd_assets.material(DOT_MASTER, _build_dot, **translucent)
     scalars, _ = dd_assets.parameter_defaults(SEARCH, 2)
     dd_assets.material_instance(asset(SEARCH), search, scalars=scalars)
     dd_assets.material_instance(asset(DOT), dot)

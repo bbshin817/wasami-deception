@@ -1542,7 +1542,7 @@ bool FWasamiEnemyActorSentryTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("20 degrees wide"), Cone->Angle, 20.f);
 	TestTrue(TEXT("turned on as it finishes initializing"), Cone->bAutoOn);
 	TestFalse(TEXT("shown as play begins"), Cone->IsHidden());
-	TestTrue(TEXT("on the map"), Cone->ActorHasTag(TEXT("dd_minimap")));
+	TestFalse(TEXT("not on the map, as in the original"), Cone->ActorHasTag(TEXT("dd_minimap")));
 	TestTrue(TEXT("its marks in the captures only"), Cone->GetPlane()->bVisibleInSceneCaptureOnly && Cone->GetDot()->bVisibleInSceneCaptureOnly);
 	TestTrue(TEXT("its fan along the cone"), Cone->GetPlane()->GetRelativeLocation().Equals(AWasamiViewconeNurse::NursePlaneLocation)
 		&& Cone->GetPlane()->GetRelativeScale3D().Equals(AWasamiViewconeNurse::NursePlaneScale));

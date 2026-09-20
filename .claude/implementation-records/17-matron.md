@@ -8,7 +8,7 @@ sources:
   - Source/wasami_deception/WasamiBossAnimInstance.h
   - Source/wasami_deception/WasamiBossAnimInstance.cpp
   - Source/wasami_deception/Tests/WasamiMatronTests.cpp
-updated: 2026-09-19
+updated: 2026-09-21
 ---
 
 # Zone 2 の Matron（ボスワサミ）

@@ -16,8 +16,6 @@
 
 namespace
 {
-	// The player's map capture draws the actors with this tag (AWasamiPlayerCharacter).
-	const FName ViewconeMinimapTag(TEXT("dd_minimap"));
 	const FName ViewconeOpacityName(TEXT("Opacity"));
 
 	/** Fade In's Visibility track: CurveFloat_0, two cubic keys whose auto tangents are flat. */
@@ -34,7 +32,7 @@ namespace
 		return Curve;
 	}
 
-	/** A plane that is only a mark for the map: no shadow, no collision, drawn in scene captures only. */
+	/** A plane the original keeps as a mark for the map: no shadow, no collision, drawn in scene captures only. */
 	UStaticMeshComponent* MakeMapPlane(AActor* Owner, const TCHAR* Name, USceneComponent* Parent, UStaticMesh* Mesh)
 	{
 		UStaticMeshComponent* Plane = Owner->CreateDefaultSubobject<UStaticMeshComponent>(Name);
@@ -60,7 +58,6 @@ AWasamiViewcone::AWasamiViewcone()
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	// Hidden until play begins (the class's bHidden).
 	SetHidden(true);
-	Tags.Add(ViewconeMinimapTag);
 
 	DefaultSceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("DefaultSceneRoot"));
 	RootComponent = DefaultSceneRoot;

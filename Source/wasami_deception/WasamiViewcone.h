@@ -49,11 +49,13 @@ protected:
  * finishes initializing (Initialize Finished) and, with bAutoOn?, turns the cone on. Turn On tells the carrier Start
  * Looking and sees a second later; Turn Off tells it Stop Looking and is blind at once.
  *
- * Its two planes are marks for the tablet's map, 1000 cm over the cone once play begins, which the player's map capture
- * draws (the original's Show Only takes every view cone; here the dd_minimap tag): Plane, the cone's fan
- * (map_enemy_search_Mat, its Opacity eased by the Fade In timeline as the cone turns on and off), and Plane1, a dot
- * (0_DotCircle_Mat). The original leaves them over the ceiling; here they are drawn in the captures only, as the map's
- * planes are. The materials are loaded when play begins (WasamiAssets.h).
+ * Its two planes are the original's marks for the tablet's map, 1000 cm over the cone once play begins: Plane, the
+ * cone's fan (map_enemy_search_Mat, its Opacity eased by the Fade In timeline as the cone turns on and off), and
+ * Plane1, a dot (0_DotCircle_Mat). Neither is ever drawn, as in the original: its map capture takes every view cone in
+ * Show Only, but the capture has Translucency off and both materials are unlit and translucent, so not one of them
+ * reaches the map. Here the cone carries no dd_minimap tag, which is what keeps them out of the capture, and the
+ * planes stay bVisibleInSceneCaptureOnly so they never show in the world either (the original hides them over the
+ * ceiling instead). The materials are loaded when play begins (WasamiAssets.h).
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiViewcone : public AActor
