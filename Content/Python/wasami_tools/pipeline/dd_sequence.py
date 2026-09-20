@@ -12,12 +12,15 @@ from wasami_tools.pipeline import dd_assets, paths, ue_props
 EAL = unreal.EditorAssetLibrary
 VERSION = 2   # the hospital is only in the latest version
 
-# The zones' level sequence actors the flow and the secret elevators (AWasamiFakeUseSequencePlayer, after
-# BP_FakeUseActor_SequencePlayer) play. The levels' other ones belong to the cut scenes (work list item 25).
+# The zones' level sequence actors the flow, the cut scenes (item 25) and the secret elevators
+# (AWasamiFakeUseSequencePlayer, after BP_FakeUseActor_SequencePlayer) play. The levels' other ones are the ambulance
+# taking off again at the escape, which nothing plays yet.
 SEQUENCE_ACTORS = {
     "Zone1": ("06_Hospital_Zone01_ElevatorArrive", "06_Hospital_Zone1_AmbulanceTakeOff",
-              "06_Hospital_Zone1_SecretElevator", "06_Hospital_Zone1_SecretElevator1_2"),
-    "Zone2": ("06_Hospital_Zone2_Spikes", "06_Hospital_Zone2_Cell_DoorPicked"),
+              "06_Hospital_Zone1_SecretElevator", "06_Hospital_Zone1_SecretElevator1_2",
+              "06_Hospital_Zone1_06Event"),
+    "Zone2": ("06_Hospital_Zone2_Spikes", "06_Hospital_Zone2_Cell_DoorPicked",
+              "06_Hospital_Zone2_AmbulanceArrive1_2", "06_Hospital_Zone2_Capture", "06_Hospital_Zone2_Cell"),
 }
 # Sequences without bindings, which the game plays through a player it makes (BP_DD_Functions' Basic DD Fade Out plays
 # Ballroom_Event_Fade at twice the speed).
@@ -35,8 +38,36 @@ TAG = "dd"   # dd_level.TAG: a level rebuild removes it
 SEQUENCE_TAG = "dd_sequence"
 SEQUENCE_FOLDER = "Hospital/Gameplay/Sequences"
 # Bound actors the level assembly does not place, placed here where the original has them: a TargetPoint an audio
-# track follows and the particle emitters a particle track fires.
-HELPER_CLASSES = {"TargetPoint": unreal.TargetPoint, "Emitter": unreal.Emitter}
+# track follows or a camera looks at, the particle emitters a particle track fires, and the cine cameras the cut
+# scenes look through (the original's placed ones override nothing, so they keep the class's settings; their focal
+# length, aperture and focus distance are what the sequences animate).
+HELPER_CLASSES = {"TargetPoint": unreal.TargetPoint, "Emitter": unreal.Emitter,
+                  "CineCameraActor": unreal.CineCameraActor}
+
+# The cut scenes' nurses, which the level assembly leaves out too: Zone 1's two BP_06_Nurse_Cutscene (a Character, so
+# its SkeletalMesh hangs under the capsule's centre) and Zone 2's two SkeletalMeshActors (their mesh at the actor).
+# Each is placed as an AWasamiCutsceneNurse, which carries the enemy Wasami's mesh under a scene root the transform
+# track moves; the value says whether its mesh hangs under a capsule's centre, as the original's Character has it.
+NURSE_CLASSES = {"BP_06_Nurse_Cutscene_C": True, "SkeletalMeshActor": False}
+NURSE_TAG = "dd_nurse"
+WASAMI_CLIP = "/Game/Wasami/Enemy/A_WasamiEnemy_%s"
+
+# The nurse animations the cut scenes play → the enemy Wasami's clip that stands in for it, and whether it is played
+# backwards (.claude/references/enemy-wasami-motions.md の「場面の代用」, 2026-09-18 のユーザーの回答「場面は残し、v3 の
+# 動きで代用」). The dialogue animations (Nurse_Hospital_Zone01_Event_40..47) are the cell scene's acting, which the
+# idle stands in for.
+NURSE_ANIMS = {
+    "ReaperNurse_Boss_Idle_01": ("Idle_Alert", False),      # the low stance the two take before they leap
+    "ReaperNurse_Fast_Jump_Up": ("Chase_VaultRoll", False),
+    "ReaperNurse_Fast_Jump_Up_Air": ("Run", False),
+    "ReaperNurse_Flip_Up": ("Chase_VaultRoll", False),
+    "ReaperNurse_Idle_Alert": ("Idle_Alert", False),
+    "Nurse_Hospital_Zone01_Event_39": ("Chase_Charge", False),   # the punch that takes the player
+    "nurse_idle_01": ("Idle", False),
+    "ReaperNurse_Walk_Back": ("Walk", True),                # backing away
+    "nurse_cloak": ("Walk", False),                         # she turns invisible; here she walks off
+}
+NURSE_ANIMS.update({"Nurse_Hospital_Zone01_Event_%d" % n: ("Idle", False) for n in range(40, 48)})
 
 # UE 4.24's UMovieScene defaults for what the export leaves out (60000 ticks a second, 30 frames).
 DEFAULT_TICK_RESOLUTION = (60000, 1)
@@ -60,6 +91,17 @@ CUBIC_TANGENT = {"RCTM_Auto": "AUTO", "RCTM_User": "USER", "RCTM_Break": "BREAK"
 # uses more of the Sequencer does not lose it silently.
 SECTION_KEYS = {"SectionRange", "EvalOptions", "Easing", "RowIndex", "OverlapPriority", "Signature"}
 AUDIO_KEYS = {"Sound", "StartFrameOffset", "bOverrideAttenuation", "AttenuationSettings"}
+ANIMATION_KEYS = {"Animation", "SlotName", "StartFrameOffset"}
+SHAKE_KEYS = {"ShakeClass", "PlayScale"}
+# The easing an export keeps: the functions (a built-in one at its default, Linear, in every one of these), the
+# durations the original's editor worked out from the overlaps (UE works those out again) and the author's own.
+EASING_KEYS = {"EaseIn", "EaseOut", "AutoEaseInDuration", "AutoEaseOutDuration",
+               "bManualEaseIn", "bManualEaseOut", "ManualEaseInDuration", "ManualEaseOutDuration"}
+
+
+def _cue_waves(pkg):
+    """The waves a SoundCue's export plays (its wave players' SoundWaveAssetPtr), which it has to be made after."""
+    return [e["props"]["SoundWaveAssetPtr"] for e in pkg["exports"] if e["props"].get("SoundWaveAssetPtr")]
 
 
 def _frame(n):
@@ -100,16 +142,27 @@ class _Builder:
         self.result = result
         self.sounds = {}
         self.attenuations = {}
+        self.shakes = {}
+        self.clips = {}
 
     # ---------------------------------------------------------------------------------------------- assets
     def sound(self, object_path):
+        """What an audio section plays, made under /Game/DD if it is not there yet: a wave, or a SoundCue with the
+        waves its players play first (the cut scenes' footsteps are cues)."""
         rel = dd_assets.game_rel(object_path)
         if rel not in self.sounds:
             target = dd_assets.asset_path(rel)
             if not EAL.does_asset_exist(target):
-                dd_assets.sound(rel, VERSION)
+                pkg = dd_assets.export_json(rel, VERSION)
+                if dd_assets.main_export(pkg, rel)["class"] == "SoundCue":
+                    for wave in _cue_waves(pkg):
+                        self.sound(wave)
+                    dd_assets.sound_cue(rel, VERSION)
+                    self.result["sound_cues"] += 1
+                else:
+                    dd_assets.sound(rel, VERSION)
+                    self.result["sounds"] += 1
                 EAL.save_asset(target, only_if_is_dirty=False)
-                self.result["sounds"] += 1
             self.sounds[rel] = unreal.load_asset(target)
         return self.sounds[rel]
 
@@ -119,6 +172,29 @@ class _Builder:
             self.attenuations[rel] = dd_assets.sound_attenuation(rel, VERSION)
             self.result["attenuations"] += 1
         return self.attenuations[rel]
+
+    def shake_class(self, object_path):
+        """The camera shake class a shake section plays, as a LegacyCameraShake Blueprint of the original's defaults."""
+        rel = dd_assets.game_rel(object_path)
+        if rel not in self.shakes:
+            self.shakes[rel] = unreal.load_asset(dd_assets.camera_shake(rel, VERSION)).generated_class()
+            self.result["camera_shakes"] += 1
+        return self.shakes[rel]
+
+    def clip(self, object_path):
+        """The enemy Wasami's clip that stands in for the nurse animation of an animation section, and whether it is
+        played backwards (NURSE_ANIMS)."""
+        name = object_path.split(".", 1)[0].rsplit("/", 1)[-1]
+        if name not in NURSE_ANIMS:
+            raise ValueError("no stand-in for the nurse animation %s (see NURSE_ANIMS and "
+                             ".claude/references/enemy-wasami-motions.md)" % name)
+        clip, reverse = NURSE_ANIMS[name]
+        if clip not in self.clips:
+            asset = unreal.load_asset(WASAMI_CLIP % clip)
+            if asset is None:
+                raise RuntimeError("%s is missing: run WasamiDDTools.import_wasami_enemy" % (WASAMI_CLIP % clip))
+            self.clips[clip] = asset
+        return self.clips[clip], reverse
 
     # ---------------------------------------------------------------------------------------------- channels
     def _defaults(self, channel, data, class_default):
@@ -139,8 +215,10 @@ class _Builder:
         interpolation, tangent mode and tangents, the default, and the extrapolation. The tangents are written after
         every key is in (adding a key recomputes the automatic ones by UE 5's rule, which is not UE 4.24's)."""
         data = data or {}
+        # TickResolution is the sequence's own rate, which UE 4.24's channel keeps beside its keys to work its tangents
+        # out in seconds; UE 5.8's takes it from the sequence, so it is read and left out.
         unknown = set(data) - {"Times", "Values", "DefaultValue", "bHasDefaultValue", "PreInfinityExtrap",
-                               "PostInfinityExtrap"}
+                               "PostInfinityExtrap", "TickResolution"}
         if unknown:
             raise ValueError("curve fields not handled: %s" % sorted(unknown))
         keys = []
@@ -172,6 +250,24 @@ class _Builder:
         self._defaults(channel, data, None)
         self.result["keys"] += len(data.get("Times", []))
 
+    def boolean(self, channel, data):
+        """A bool channel of a visibility section. The original's UE 4.24 track keys bHidden (its template inverts what
+        it reads before it hides the actor); UE 5.8's UMovieSceneVisibilitySection keys visibility itself
+        (MovieSceneVisibilitySystem: SetActorHiddenInGame(!value)), so the keys and the default go in inverted."""
+        data = data or {}
+        unknown = set(data) - {"Times", "Values", "DefaultValue", "bHasDefaultValue"}
+        if unknown:
+            raise ValueError("bool channel fields not handled: %s" % sorted(unknown))
+        for t, v in zip(data.get("Times", []), data.get("Values", [])):
+            channel.add_key(_frame(t), not bool(v), 0.0, unreal.MovieSceneTimeUnit.TICK_RESOLUTION)
+        # The export keeps DefaultValue only where it differs from the channel's own (false), and the flag on its own
+        # where it does not (Zone 2's nurses start not hidden, which is visible here).
+        if data.get("bHasDefaultValue", "DefaultValue" in data):
+            channel.set_default(not bool(data.get("DefaultValue", False)))
+        elif channel.has_default():
+            channel.remove_default()
+        self.result["keys"] += len(data.get("Times", []))
+
     def channels(self, section, props, table, particle=False):
         by_name = {str(c.channel_name): c for c in section.get_all_channels()}
         for export_name, (ue_name, class_default) in table.items():
@@ -190,32 +286,41 @@ class _Builder:
         if unknown:
             raise ValueError("%s: properties not handled: %s" % (export["name"], sorted(unknown)))
         easing = props.get("Easing") or {}
-        if set(easing) - {"EaseIn", "EaseOut"}:
+        if set(easing) - EASING_KEYS:
             raise ValueError("%s: easing not handled: %s" % (export["name"], easing))
         section = track.add_section()
         rng = props.get("SectionRange") or {"lower": {"type": "Open"}, "upper": {"type": "Open"}}
         lower, upper = rng["lower"], rng["upper"]
-        if lower["type"] not in ("Open", "Inclusive") or upper["type"] not in ("Open", "Exclusive"):
+        if lower["type"] not in ("Open", "Inclusive") or upper["type"] not in ("Open", "Exclusive", "Inclusive"):
             raise ValueError("%s: range %s" % (export["name"], rng))
         # The sequence's display rate is its tick resolution while this runs, so a frame here is a tick; a bounded
-        # range goes in at once ([start, end), as the export's inclusive-exclusive one).
-        if lower["type"] == "Inclusive" and upper["type"] == "Exclusive":
-            section.set_range(int(lower["value"]), int(upper["value"]))
+        # range goes in at once ([start, end), as the export's inclusive-exclusive one). UE's scripting writes an
+        # exclusive upper bound only, so an inclusive one (the cell's material section) goes in as the tick after it,
+        # which holds the same frames.
+        end = None if upper["type"] == "Open" else int(upper["value"]) + (upper["type"] == "Inclusive")
+        if lower["type"] == "Inclusive" and end is not None:
+            section.set_range(int(lower["value"]), end)
         else:
             if lower["type"] == "Open":
                 section.set_start_frame_bounded(False)
             else:
                 section.set_start_frame(int(lower["value"]))
-            if upper["type"] == "Open":
+            if end is None:
                 section.set_end_frame_bounded(False)
             else:
-                section.set_end_frame(int(upper["value"]))
+                section.set_end_frame(end)
         mode = (props.get("EvalOptions") or {}).get("CompletionMode", "EMovieSceneCompletionMode::ProjectDefault")
         section.set_completion_mode(_enum(unreal.MovieSceneCompletionMode,
                                           {"KeepState": "KEEP_STATE", "RestoreState": "RESTORE_STATE",
                                            "ProjectDefault": "PROJECT_DEFAULT"}[mode.split("::")[-1]]))
         section.set_row_index(int(props.get("RowIndex", 0)))
         section.set_overlap_priority(int(props.get("OverlapPriority", 0)))
+        # A manual ease is the author's own, so it goes in (the automatic ones are worked out from the overlaps again);
+        # set_ease_*_duration writes the duration and turns the manual flag on, as the original's has it.
+        if easing.get("bManualEaseIn"):
+            section.set_ease_in_duration(int(easing.get("ManualEaseInDuration", 0)))
+        if easing.get("bManualEaseOut"):
+            section.set_ease_out_duration(int(easing.get("ManualEaseOutDuration", 0)))
         self.result["sections"] += 1
         return section
 
@@ -266,6 +371,79 @@ class _Builder:
                 if sp.get("AttenuationSettings"):
                     section.set_attenuation_settings(self.attenuation(sp["AttenuationSettings"]))
                 self.channels(section, sp, AUDIO_CHANNELS)
+        elif cls == "MovieSceneSkeletalAnimationTrack":
+            track = add(unreal.MovieSceneSkeletalAnimationTrack)
+            for s in props.get("AnimationSections", []):
+                sec = pkg.get(s)
+                section = self.section(track, sec, {"Params"})
+                p = sec["props"]["Params"]
+                unknown = set(p) - ANIMATION_KEYS
+                if unknown:
+                    raise ValueError("%s: animation params not handled: %s" % (sec["name"], sorted(unknown)))
+                clip, reverse = self.clip(p["Animation"])
+                # The params struct is a value, so it is read, written and put back.
+                params = section.get_editor_property("params")
+                params.set_editor_property("animation", clip)
+                params.set_editor_property("slot_name", p.get("SlotName", "DefaultSlot"))
+                # Ticks, and this sequence keeps the original's tick resolution, so the original's offset carries over
+                # (it is an offset into another animation, but the stand-in is at least as long as the two we have).
+                params.set_editor_property("start_frame_offset", _frame(p.get("StartFrameOffset", 0)))
+                params.set_editor_property("reverse", reverse)
+                section.set_editor_property("params", params)
+        elif cls == "MovieSceneVisibilityTrack":
+            track = add(unreal.MovieSceneVisibilityTrack)
+            track.set_property_name_and_path(props["PropertyName"], props["PropertyPath"])
+            for s in props.get("Sections", []):
+                sec = pkg.get(s)
+                section = self.section(track, sec, {"BoolCurve"})
+                self.boolean(section.get_all_channels()[0], sec["props"].get("BoolCurve"))
+        elif cls == "MovieSceneCameraShakeTrack":
+            track = add(unreal.MovieSceneCameraShakeTrack)
+            for s in props.get("CameraShakeSections", []):
+                sec = pkg.get(s)
+                section = self.section(track, sec, {"ShakeData"})
+                data = sec["props"]["ShakeData"]
+                unknown = set(data) - SHAKE_KEYS
+                if unknown:
+                    raise ValueError("%s: shake data not handled: %s" % (sec["name"], sorted(unknown)))
+                shake = section.get_editor_property("shake_data")
+                shake.set_editor_property("shake_class", self.shake_class(data["ShakeClass"]))
+                shake.set_editor_property("play_scale", float(data.get("PlayScale", 1.0)))
+                section.set_editor_property("shake_data", shake)
+        elif cls == "MovieSceneSlomoTrack":
+            track = add(unreal.MovieSceneSlomoTrack)
+            for s in props.get("Sections", []):
+                sec = pkg.get(s)
+                section = self.section(track, sec, set(CURVE_CHANNELS))
+                self.channels(section, sec["props"], CURVE_CHANNELS)
+        elif cls == "MovieSceneComponentMaterialTrack":
+            track = add(unreal.MovieSceneComponentMaterialTrack)
+            # The export leaves MaterialIndex at 0 (the nurse's only slot); UE 5.8 wants that as a material info.
+            track.set_material_info(unreal.ComponentMaterialInfo(
+                material_slot_index=0, material_type=unreal.ComponentMaterialType.INDEXED_MATERIAL))
+            for s in props.get("Sections", []):
+                sec = pkg.get(s)
+                section = self.section(track, sec, {"ScalarParameterNamesAndCurves"})
+                for entry in sec["props"]["ScalarParameterNamesAndCurves"]:
+                    name = entry["ParameterName"]
+                    # A parameter's channel comes with the first key, which is then taken out again for the curve.
+                    # UE 5.8 asks for the parameter's info; the original's is a global one (it has no layers).
+                    info = unreal.MaterialParameterInfo(
+                        name=name, association=unreal.MaterialParameterAssociation.GLOBAL_PARAMETER, index=-1)
+                    section.add_scalar_parameter_key(info, _frame(0), 0.0, "", "",
+                                                     unreal.MovieSceneKeyInterpolation.AUTO)
+                    by_name = {str(c.channel_name): c for c in section.get_all_channels()}
+                    if name not in by_name:
+                        raise ValueError("%s: no channel %s (have %s)" % (sec["name"], name, sorted(by_name)))
+                    channel = by_name[name]
+                    for key in channel.get_keys():
+                        channel.remove_key(key)
+                    self.curve(channel, entry["ParameterCurve"], None)
+        elif cls == "MovieSceneCameraAnimTrack":
+            # UE 5.8 has no camera anim track (a CameraAnim is a UWasamiCameraAnim here), so the capture scene's
+            # CameraAnim_Nurse_01 is played by the zone's flow while the scene runs (item 25's step 4).
+            self.result["skipped_tracks"].append("%s: %s" % (pkg.rel, export["name"]))
+            return
         elif cls == "MovieSceneEventTrack":
             # UE 4.24's legacy event track calls the level Blueprint's functions of the key's name; the hospital's
             # level Blueprints have none (DisablePlayerInput / EnablePlayerInput are 00_Ballroom's), so nothing happens.
@@ -330,8 +508,9 @@ class _Builder:
 
 
 def _new_result():
-    return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "sounds": 0, "attenuations": 0,
-            "camera_shakes": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "missing": [],
+    return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "sounds": 0, "sound_cues": 0,
+            "attenuations": 0,
+            "camera_shakes": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
             "unlinked_players": [], "skipped_tracks": [], "missing_particles": []}
 
 
@@ -355,23 +534,39 @@ def _placed_name(references):
 
 
 def _helpers(eas, zone, names, existing, result):
-    """Places the bound TargetPoints and emitters the level assembly leaves out, as the original has them."""
+    """Places the bound actors the level assembly leaves out, as the original has them: the TargetPoints an audio track
+    follows, the emitters a particle track fires, and the cut scenes' nurses."""
     from wasami_tools.pipeline import dd_level
     by_name = {a["name"]: a for a in zone["actors"]}
     level = {}
     for name in names:
         a = by_name.get(name)
-        if name in existing or a is None or a["class"] not in HELPER_CLASSES or not a["world"]:
+        if name in existing or a is None or not a["world"]:
             continue
+        cls = a["class"]
         world = a["world"]
-        actor = eas.spawn_actor_from_class(HELPER_CLASSES[a["class"]], dd_level._vec(world["location"]),
-                                           dd_level._rot(world["quat_xyzw"]))
-        actor.set_actor_scale3d(dd_level._vec(world["scale"]))
-        if a["class"] == "Emitter":
-            missing = dd_level.set_emitter(actor, zone, name, level)
-            if missing:
-                result["missing_particles"].append("%s: %s" % (name, missing))
-        dd_level._tag(actor, name, SEQUENCE_FOLDER, SEQUENCE_TAG, "src:" + name)
+        if cls in HELPER_CLASSES:
+            actor = eas.spawn_actor_from_class(HELPER_CLASSES[cls], dd_level._vec(world["location"]),
+                                               dd_level._rot(world["quat_xyzw"]))
+            actor.set_actor_scale3d(dd_level._vec(world["scale"]))
+            if cls == "Emitter":
+                missing = dd_level.set_emitter(actor, zone, name, level)
+                if missing:
+                    result["missing_particles"].append("%s: %s" % (name, missing))
+            tags = ()
+        elif cls in NURSE_CLASSES:
+            actor = eas.spawn_actor_from_class(unreal.WasamiCutsceneNurse, dd_level._vec(world["location"]),
+                                               dd_level._rot(world["quat_xyzw"]))
+            actor.set_actor_scale3d(dd_level._vec(world["scale"]))
+            actor.set_under_capsule(NURSE_CLASSES[cls])
+            # The original's nurses wait hidden for the visibility track to show them.
+            if a["props"].get("bHidden"):
+                actor.set_actor_hidden_in_game(True)
+            tags = (NURSE_TAG,)
+            result["nurses"] += 1
+        else:
+            continue
+        dd_level._tag(actor, name, SEQUENCE_FOLDER, SEQUENCE_TAG, "src:" + name, *tags)
         existing[name] = actor
         result["helpers"] += 1
 
@@ -413,8 +608,13 @@ def place_all(eas, zone_name, zone, result=None):
         component_name = next((r.get("ObjectPath") for r in references if r.get("ObjectPath")), possessable["Name"])
         if parent is None:
             return None
-        return next((c for c in parent.get_components_by_class(unreal.ActorComponent)
-                     if c.get_name() == component_name), None)
+        found = next((c for c in parent.get_components_by_class(unreal.ActorComponent)
+                      if c.get_name() == component_name), None)
+        if found is None and parent.actor_has_tag(NURSE_TAG):
+            # A nurse the original makes a SkeletalMeshActor binds its 'SkeletalMeshComponent0', which the stand-in
+            # (whose only skinned mesh is named as the original's Character names it) does not have.
+            found = next(iter(parent.get_components_by_class(unreal.SkeletalMeshComponent)), None)
+        return found
 
     for name in wanted:
         rel, _ = packages[name]

@@ -310,7 +310,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`・`06_Hospital_Zone_02.txt`、`_sequences/06_Hospital_Zone1_06Event.json`・`06_Hospital_Zone2_Capture.json`・`06_Hospital_Zone2_Cell.json`。
 - 依存: 6、7。
 - 規模: 2
-- 状態: 進行中（2026-09-20 から。進捗記録 `20260920-cutscenes`）。計画の段階で、場面は既存の取り込み `dd_sequence` にトラック（SkeletalAnimation・Visibility・CameraShake・CameraAnim・Slomo・ComponentMaterial）を足して本家の LevelSequence として組み、Zone 2 の始まりは本家の配布版の道（救急車の到着 → 捕まる場面 → 独房）を写す、と決めた。
+- 状態: **完了（2026-09-20）**。場面は取り込み `dd_sequence` にトラック（骨のアニメ・可視・揺れ・スローモーション・部品の材質）を足して本家の LevelSequence として組み直し（CameraAnim は UE 5.8 に無いので落とす）、ナース 4 体は `AWasamiCutsceneNurse` で置いて本家のアニメを敵ワサミ v3 のクリップに読み替えた。流すのはゾーンの流れの `PlayCutscene`（視点をシネカメラへ 0.5 s で移し、スキップの画面 `UWasamiCutsceneWidget` を出して `OnFinished` を結ぶ）。Zone 1 は `05_ParkingLotCutscene` → `06_Hospital_Zone1_06Event`（10.53 s）→ `Transition06`、Zone 2 は本家の配布版の道（チェックポイント 7 で `PlayerStart_1` → 救急車の到着 6.77 s〈場面ではないので視点も入力もそのまま〉→ `Trigger_Arrive_CaptureScene` → 捕まる場面 26.23 s → 1 s → 独房の場面 74.07 s → `PlayerStart_Cell` で動けるようになり棘へ）。チェックポイント 7 で開き直すたびに 3 つを流し直す。P で飛ばせる（`SetPlaybackPosition(1e7, Jump)` → `OnFinished`）。PIE で 3 つを通して確かめた（実装記録 11 の「場面の通し」・01・09）。後回し 5 件（黒帯・ナースの演技・消えるときの材質・シネカメラの画角・`CameraAnim_Nurse_01`）は項目 28 の一覧にある。
 
 ### 26. 追跡中のランダムの動き
 
@@ -371,6 +371,7 @@
 - 目標: 大目標 1・2 で「見た目の詰めをしない」決め方のために後に回したものを、本家の実機の観察と原作の式で詰める。
 - 完了の条件: 下の「後回しの一覧」の各行が、本家どおりになったか、ユーザーがこのままでよいとした（本家どおりにできない行〈本家でその場面が出せない・本作の体では写せない〉は、理由を要確認に書いて閉じてよい）。計画の反復で一覧を見直し、大きいものは項目に立て直す（2026-09-20 から Claude が行う。上の大目標 3 の節の頭）。
 - 後回しの一覧（大目標 1・2 の作業が 1 件 1 行で足す: `- <日付>（項目 N）: <何を> — 今は <何にした>。本家での確かめ方: <実機の場面・原作のアセット>`）:
+  - 2026-09-20（項目 25）: 場面の上下の黒帯 — 今は出ない。スキップの画面が `Mat_ParameterCol` の `Cutscene Bars` を本家の曲線どおり動かすが、それを読む後処理の材質 `MM_CutsceneBars`（本家はプレイヤーコントローラーの `PostProcessComponent` に `MM_CutsceneBars_Inst` を付ける）をまだ作っていない。本家での確かめ方: `pak_reference_2/_assets/DDeception/Content/Materials/Special/PP/MM_CutsceneBars.json` の式（`Size` 0.2・`BorderTexture`・`ScreenPosition`）から材質を組み、プレイヤーコントローラーに付ける
   - 2026-09-18（項目 5）: 死亡画面のアニメの区間の `RestoreState`（Fade In・Death の終わりで元の値に戻すか）— 今は戻さない（最後の値のまま。WebGL 版の収録ではゲームオーバーのボタンが見えている）。タブレットの Count Shake（03 記録）は終わりで戻しているので、どちらかが UE 4.24 の振る舞いと違う。本家での確かめ方: 最新版で 1 回死に、死亡画面が Fade In の後も見えているかと、シャードを拾った後の数の位置（12 px 下に残るか）を収録する。
   - 2026-09-18（項目 5）: 死亡画面のボタンとヒントの書体 — 今はボタンの `helvetica-normal_Font` の既定の書体を helvetica の面に、ヒントは UE5 の `RobotoTiny` の `Light`。本家の Font は既定がエンジンの Roboto で helvetica は en-US の副書体、ヒントは UE 4.24 の RobotoTiny。本家での確かめ方: 最新版のゲームオーバーの画面を撮り、RESTART の字形とヒントの太さを比べる。
   - 2026-09-18（項目 6）: トンネルの扉が破られるときの破片 `Fracture_concrete_3` の煙と破片の見え方 — 今は材質 3 つ（`whispOne_Master_directional`・`_amb`・`DebrisMaster`）を推定し（実装記録 08）、GPU のエミッタ 2 つ（`Fragments`・`DustTrail`）は cook の焼き込みの表から分布を作り直して組んだ。cook の表はその 2 つで本家が使った値と合わず（`DustTrail` の色は表 1 → 0.36 に対し cook の GPU のデータ `ResourceData` は一定の 0.078、大きさは表の上限 1 に対し約 6 倍）、PIE では煙がほとんど見えない。本家での確かめ方: 最新版の Zone 1 で 06_DoorsLock から 25 s 待ち、扉が破られる所を収録する。cook の `ResourceData`（`Fracture_concrete_3.json` の型データ）から分布を組み直す手もある。
@@ -387,6 +388,10 @@
   - 2026-09-19（項目 11）: Matron（ボスワサミ）の大きさと動きの見え方 — 今は本家の長いコーンの高さ（z 676）に Idle の頭の骨が来る拡縮 6.111（高さ約 10.4 m。本家の Matron は頭の上が床から 1031 cm、本作は約 932 cm）、本家の待機 ↔ 警戒の切り替えのクリップ（各 0.8 s）の代わりに 0.95 s のクロスフェード、見つけた後の `spine_02` の LookAt（制限 90°）はそのまま（実装記録 17）。本家での確かめ方: 最新版の実機の Zone 2 の見張りの廊下で、机の後ろの Matron の頭の高さと長いコーンの位置、机の前へ入ったときの構えの移り方、見つかったときの Detected と上半身の向き。
   - 2026-09-20（項目 12）: 秘密の部屋のグリッチ（本家 Chameleon の `Glitch - Advanced`、材質 `M_GlitchHLSL`）と書類の材質の縁の光 — 今はグリッチをコンパイル済みシェーダーの主な枝（行の乱れ・RGB のずれ・行ずらし・格子のずれ）だけ写した `M_DD_ChameleonGlitch`（ずらしを場面の絵の UV でなくビューポートの UV で読む）、書類 `MM_Shared_Secret_Folder` は親 `MM_Main_Substance_Fresnel` をコンパイル済みシェーダーの式で組んだ `M_DD_SubstanceFresnel` の白い縁の光（2026-09-20 の項目 31。実装記録 01・18）。本家での確かめ方: 最新版の病院 Zone 2 の秘密の部屋（秘密の壁 (−3737, 12) を上げて入る）の出入りと、Zone 1 の秘密のエレベーターの奥の書類を撮って並べる。
   - 2026-09-20（項目 31）: 祭壇 `ring_statue` の真鍮の金属・欠片の紫の縁の光・祭壇の球の紫の渦の光の見え方 — 今は祭壇と欠片をコンパイル済みシェーダーの式どおり（`M_DD_Metal`・`M_DD_SubstanceFresnel`）、球を特殊シャードの結晶の推定（`M_DD_Crystal`）で組んだ（実装記録 01・16）。本家での確かめ方: 最新版の病院 Zone 2 の迷路の後の部屋の祭壇を、全回収の前（球つき）と欠片を取る前後で撮り、ホテルの祭壇とも並べる
+  - 2026-09-20（項目 25）: 場面のナースの演技（本家の専用のアニメ 10 種）— 今は敵ワサミのクリップへの読み替え（`dd_sequence.NURSE_ANIMS`: 構えは `Idle_Alert`、跳躍は `Chase_VaultRoll` → `Run`、殴るは `Chase_Charge`、待機と台詞の演技は `Idle`、後ずさりは `Walk` の逆再生、透明化は `Walk` で去る。`.claude/references/enemy-wasami-motions.md` の「場面の代用」）で、区間が余る所は繰り返し。本家での確かめ方: 最新版の病院の Zone 1 の途中の出来事・Zone 2 の捕まる場面と独房（ナースの動きの尺と歩幅）。
+  - 2026-09-20（項目 25）: 独房でナースが消えるときの材質の動き（`MovieSceneComponentMaterialTrack` の `Efficiency` 0 → 1）— 今はトラックを本家どおり組むが、敵ワサミの `BakedMaterial` にそのパラメータが無いので何も起きない（代わりに歩いて去る）。本家での確かめ方: 最新版の独房の場面の 23.9〜24.9 s。
+  - 2026-09-20（項目 25）: 場面のシネカメラ（`06_CineCamera`・`CineCameraActor_2`）の画角 — 今は UE 5.8 の `ACineCameraActor` の既定のまま（本家の置いたものは値を何も上書きしないので UE 4.24 の既定。焦点距離・絞り・焦点はシーケンスが動かす）。本家での確かめ方: 最新版の場面の画角とぼけ方。
+  - 2026-09-20（項目 25）: 捕まる場面のカメラアニメ `CameraAnim_Nurse_01`（本家は 20.53〜25.27 s の `MovieSceneCameraAnimTrack` でシネカメラに重ねる）— 今は流さない（UE 5.8 に camera anim のトラックが無く、この CameraAnim は Matinee の Move トラックだけで、`UWasamiCameraAnim` は位置と回転のトラックを持たないため。同じ区間に本家のカメラの揺れ `MovieSceneCameraShakeTrack` は入っている）。本家での確かめ方: 最新版の Zone 2 の捕まる場面の 20.5〜25.3 s（ナースに殴られる所）のカメラの揺れ方
 - 根拠: 各行に書く。
 - 依存: 大目標 2。
 - 規模: 3

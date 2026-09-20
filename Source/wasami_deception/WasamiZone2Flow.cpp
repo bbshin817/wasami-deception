@@ -32,22 +32,8 @@ namespace
 	const FLinearColor GarageArrow(1.f, 0.8941f, 0.f, 1.f);
 	// 01_Hotel's Change Color as it points the arrow at its exit portal.
 	const FLinearColor PortalArrow(1.f, 0.f, 0.016666f, 1.f);
-
-	/** Where a scene leaves an actor it moved (Sequencer makes the static ones movable to move them). */
-	void Leave(AActor* Actor, const FVector& Location, const FRotator& Rotation)
-	{
-		if (USceneComponent* Root = Actor ? Actor->GetRootComponent() : nullptr)
-		{
-			Root->SetMobility(EComponentMobility::Movable);
-			Actor->SetActorLocationAndRotation(Location, Rotation);
-		}
-	}
 }
 
-// 06_Hospital_Zone2_AmbulanceArrive1's last keys (the ambulance keeps its rotation) and 06_Hospital_Zone2_Cell's.
-const FVector AWasamiZone2Flow::AmbulanceArrived(-14157.71484375, -5025.021484375, 800.);
-const FVector AWasamiZone2Flow::FalseCeilingOpen(-0.037109375, 864.614990234375, 0.);
-const FRotator AWasamiZone2Flow::WallSwitchThrown(0., 0., 40.809776306152344);
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
 const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
 const FName AWasamiZone2Flow::Matron(TEXT("MnM_Matron_Idle_2"));
@@ -74,12 +60,13 @@ void AWasamiZone2Flow::BeginPlay()
 
 void AWasamiZone2Flow::StartAt(int32 Checkpoint)
 {
-	// Spawn (@22328): Load Progress By Level(7, 8). 7 is the ambulance's arrival in the original (Arrive Event → the
-	// capture → the cell); here the cell's scene is over already. 8 to 10 start at their player starts, which the game
-	// mode has put the player at. 0 opens the entrance (the game mode opens Zone 1 instead).
+	// Spawn (@22328): Load Progress By Level(7, 8). 7 is the ambulance's arrival (Arrive Event → the capture → the
+	// cell), which the original plays again whenever the level opens there, the spikes' death included. 8 to 10 start at
+	// their player starts, which the game mode has put the player at. 0 opens the entrance (the game mode opens Zone 1
+	// instead).
 	switch (Checkpoint)
 	{
-	case 7: SkippedScenesEnd(); OnCellCutsceneFinished(); break;
+	case 7: ArriveEvent(); break;
 	case 8: Enter(TEXT("Miniboss Start ")); MinibossTransition(); break;
 	case 9: Enter(TEXT("Maze Start")); MazeTransition(); break;
 	case 10: Enter(TEXT("Postmaze Start")); PostmazeTransition(); break;
@@ -87,35 +74,66 @@ void AWasamiZone2Flow::StartAt(int32 Checkpoint)
 	}
 }
 
-void AWasamiZone2Flow::SkippedScenesEnd()
+void AWasamiZone2Flow::ArriveEvent()
 {
-	// The arrival (Arrive Event plays 06_Hospital_Zone2_AmbulanceArrive1 in a packaged game) leaves the ambulance in the
-	// yard, and its end (Escape_AmbulanceArrive) destroys the blocker at its front. The capture leaves nothing. The
-	// cell's scene (Cell Cutscene Start, which moved the player to PlayerStart_Cell: the game mode starts them there)
-	// leaves the false ceiling slid open and the wall switch thrown; what else it moves goes back as it ends.
-	if (AActor* Ambulance = Source(TEXT("hospital_ambulance_new_arrive")))
+	Enter(TEXT("Arrive Event"));
+	// @24359: Is Packaged For Distribution tells the two apart. This game is played packaged, so it takes that path: the
+	// player to PlayerStart_1 and, 0.3 s on, 06_Hospital_Zone2_AmbulanceArrive1 played. The arrival is no cut scene —
+	// no view of its own, no skip screen and the player's input left alone — so they walk about the yard while the
+	// ambulance drives in, until they walk into Trigger_Arrive_CaptureScene. (An editor build goes straight to the
+	// capture instead, which this game has no use for.)
+	TeleportPlayerTo(TEXT("PlayerStart_1"));
+	After(ArriveSequenceDelay, [this]()
 	{
-		Leave(Ambulance, AmbulanceArrived, Ambulance->GetActorRotation());
-	}
+		PlaySequence(TEXT("06_Hospital_Zone2_AmbulanceArrive1_2"),
+			GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnEscapeAmbulanceArrive));
+		BindTrigger(TEXT("Trigger_Arrive_CaptureScene"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnArriveCaptureCutscene));
+	});
+}
+
+void AWasamiZone2Flow::OnEscapeAmbulanceArrive()
+{
+	Enter(TEXT("Escape_AmbulanceArrive"));
 	if (AActor* Blocker = Source(TEXT("Ambulance_Arrive_Blockers4")))
 	{
 		Blocker->Destroy();
 	}
-	if (AActor* Ceiling = Source(TEXT("hospital_zone_02_holdingCell_01_false_ceiling_11")))
+}
+
+void AWasamiZone2Flow::OnArriveCaptureCutscene()
+{
+	Enter(TEXT("Arrive_CaptureCutscene"));
+	// @25143: Disable Player Input first, then the view to CineCameraActor_2 over 0.5 s and 06_Hospital_Zone2_Capture
+	// played with its skip screen. The scene's own camera anim (CameraAnim_Nurse_01 over its 20.53 to 25.27 s) is left
+	// out for now: it is a Matinee move track, which UWasamiCameraAnim does not hold (item 28's list).
+	DisablePlayerInput(this);
+	PlayCutscene(TEXT("06_Hospital_Zone2_Capture"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellCutsceneStart),
+		TEXT("CineCameraActor_2"));
+}
+
+void AWasamiZone2Flow::OnCellCutsceneStart()
+{
+	Enter(TEXT("Cell Cutscene Start"));
+	// @3149: a 1 s wait, then 06_Hospital_Zone2_Cell played with its skip screen — whose bars do not slide in, as the
+	// capture's are up already — its OnFinished bound to Cell Cutscene Finished, and the player moved into the cell
+	// (PlayerStart_Cell), where the scene is about to show them. The scene takes no camera of its own: it animates the
+	// capture's CineCameraActor_2, which the view is on still, and its fade carries the black the capture ends on (the
+	// cell in sight at 7.43 s). BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn(0.5, 0.3) is item 19's.
+	After(CellSequenceDelay, [this]()
 	{
-		Leave(Ceiling, FalseCeilingOpen, Ceiling->GetActorRotation());
-	}
-	if (AActor* Switch = Source(TEXT("hospital_zone_02_holdingCell_01_wall_switch_14")))
-	{
-		Leave(Switch, Switch->GetActorLocation(), WallSwitchThrown);
-	}
+		PlayCutscene(TEXT("06_Hospital_Zone2_Cell"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellCutsceneFinished),
+			NAME_None, false);
+		TeleportPlayerTo(TEXT("PlayerStart_Cell"));
+	});
 }
 
 void AWasamiZone2Flow::OnCellCutsceneFinished()
 {
 	Enter(TEXT("Cell Cutscene Finished"));
-	// Enable Player Input (a level just opened has it). BP_06_MusicPlayer_Zone2_2's Regular Music fades in (item 19).
-	// The view blends back to the player over 2 s (the scenes being left out, it is the player's already).
+	// @23769: Enable Player Input, the view blended back from the scenes' cine camera to the player over 2 s, and
+	// BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn(2.5, 1) (item 19).
+	EnablePlayerInput(this);
+	SetPlayerViewTarget(UGameplayStatics::GetPlayerCharacter(this, 0), CellViewBlendTime);
 	PlaySequence(TEXT("06_Hospital_Zone2_Spikes"));
 	EnableDoorBreak(TEXT("BP_06_Hospital_DoorBreak_2"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellDoorBreak));
 	BindTrigger(TEXT("Trigger_Cell_Spikes"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnSpikesDeath));

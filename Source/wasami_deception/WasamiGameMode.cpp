@@ -606,9 +606,9 @@ const TCHAR* AWasamiGameMode::LevelForCheckpoint(int32 Checkpoint)
 
 FName AWasamiGameMode::PlayerStartTagFor(int32 Zone, int32 Checkpoint)
 {
-	// Zone 1's Spawn (@13483): 4 → 04_Start, 5 → 05_Start, 6 → 06_Start. Zone 2's (@22328): 7 → PlayerStart_Cell
-	// (the original's arrival starts at PlayerStart_1 and its cell's scene moves the player to PlayerStart_Cell; the scenes
-	// are left out, item 25), 8 → PlayerStart_MiniBoss, 9 → PlayerStart_Maze, 10 → PlayerStart_PostMaze.
+	// Zone 1's Spawn (@13483): 4 → 04_Start, 5 → 05_Start, 6 → 06_Start. Zone 2's (@22328): 7 → PlayerStart_1,
+	// where its Arrive Event moves the player for the ambulance's arrival (its cell's scene moves them on to
+	// PlayerStart_Cell), 8 → PlayerStart_MiniBoss, 9 → PlayerStart_Maze, 10 → PlayerStart_PostMaze.
 	if (Zone == 1)
 	{
 		switch (Checkpoint)
@@ -623,7 +623,7 @@ FName AWasamiGameMode::PlayerStartTagFor(int32 Zone, int32 Checkpoint)
 	{
 		switch (Checkpoint)
 		{
-		case 7: return TEXT("PlayerStart_Cell");
+		case 7: return TEXT("PlayerStart_1");
 		case 8: return TEXT("PlayerStart_MiniBoss");
 		case 9: return TEXT("PlayerStart_Maze");
 		case 10: return TEXT("PlayerStart_PostMaze");

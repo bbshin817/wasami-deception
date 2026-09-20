@@ -161,16 +161,24 @@ void AWasamiZone1Flow::On05AllShardsCollected()
 void AWasamiZone1Flow::On05ParkingLotCutscene()
 {
 	Enter(TEXT("05_ParkingLotCutscene"));
-	// The scene 06_Hospital_Zone1_06Event (item 25) is left out, so its end, 06_Transition, follows at once: 06 Transition
-	// and the music's bFadeOut false (item 19).
+	// The view over to 06_CineCamera, the skip screen up and 06_Hospital_Zone1_06Event played. The player keeps its
+	// input, as the original leaves it: the scene only takes its view. BP_06_MusicPlayer_2's bFadeOut true (item 19).
+	PlayCutscene(TEXT("06_Hospital_Zone1_06Event"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On06Transition),
+		TEXT("06_CineCamera"));
+}
+
+void AWasamiZone1Flow::On06Transition()
+{
 	Transition06();
+	// BP_06_MusicPlayer_2's bFadeOut false (item 19).
 }
 
 void AWasamiZone1Flow::Transition06()
 {
 	Enter(TEXT("06 Transition"));
 	DestroyAllShards(GetWorld());
-	// The view back on the player (SetViewTargetWithBlend), which it has not left with the scene left out.
+	// The view back on the player, with no blend at all (the scene left it on the cine camera).
+	SetPlayerViewTarget(UGameplayStatics::GetPlayerCharacter(this, 0), 0.f);
 	PlayFadeOut(TransitionFadeRate);
 	TeleportPlayerTo(TEXT("06_Start"));
 	Start06();

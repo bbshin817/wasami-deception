@@ -12,6 +12,7 @@ class AWasamiTriggerBox;
 class AWasamiZoneBarrier;
 class UCameraShakeBase;
 class ULevelSequence;
+class ULevelSequencePlayer;
 class USoundAttenuation;
 class USoundBase;
 
@@ -50,6 +51,15 @@ public:
 	 * that the next one starts with its own nurses.
 	 */
 	static void RemoveAllEnemies(UWorld* World);
+
+	/**
+	 * Disable Player Input (BP_DD_Functions): DisableInput on the player character with its controller, its movement
+	 * stopped at once, Has Input off and every camera shake of its camera stopped. The cutscenes start with it.
+	 */
+	static void DisablePlayerInput(const UObject* WorldContextObject);
+
+	/** Enable Player Input (BP_DD_Functions): EnableInput and Has Input back on. */
+	static void EnablePlayerInput(const UObject* WorldContextObject);
 
 	/** Destroys the level's shards that are left, without collecting them (06 Transition, Postmaze Transition). */
 	static void DestroyAllShards(UWorld* World);
@@ -112,9 +122,29 @@ protected:
 
 	/**
 	 * GetSequencePlayer → Play on the LevelSequenceActor placed from the original's actor of that name
-	 * ('06_Hospital_Zone01_ElevatorArrive'); the level build places them with their sequences (dd_sequence).
+	 * ('06_Hospital_Zone01_ElevatorArrive'); the level build places them with their sequences (dd_sequence). With
+	 * Finished given, the flow's event of that name is bound to the player's OnFinished, as the original binds it: how
+	 * a sequence that is no cut scene ends, taking neither the view nor the input (Zone 2's ambulance arrival, which
+	 * drives in while the player walks about).
 	 */
-	void PlaySequence(FName Source);
+	void PlaySequence(FName Source, FName Finished = NAME_None);
+
+	/** GetSequencePlayer on the LevelSequenceActor placed from the original's actor of that name, or null with a warning. */
+	ULevelSequencePlayer* SequencePlayer(FName Source) const;
+
+	/**
+	 * How the zones play a cutscene: the view to the cine camera placed from the original's actor of that name over
+	 * CutsceneViewBlendTime when one is given, Initialize Cutscene Widget (the skip screen; bSmoothTransition slides the
+	 * cinematic bars in), the sequence played, and its OnFinished bound to the flow's event of that name. Disable Player
+	 * Input is the caller's, as it is in the original (Zone 1's scene leaves the player looking on).
+	 */
+	void PlayCutscene(FName Source, FName Finished, FName Camera = NAME_None, bool bSmoothTransition = true);
+
+	/** SetViewTargetWithBlend(Target, BlendTime, VTBlend_Cubic, 0, no lock) on the player's controller. */
+	void SetPlayerViewTarget(AActor* Target, float BlendTime);
+
+	/** The blend the scenes cut to their cine camera over (and back to the player). */
+	static constexpr float CutsceneViewBlendTime = 0.5f;
 
 	/**
 	 * ClientPlayCameraShake(Shake, Scale, CameraLocal, no rotation) on the player's controller, the original's shake
@@ -173,6 +203,9 @@ protected:
 	TObjectPtr<AWasamiGameMode> Mode;
 
 private:
+	/** The flow's event of that name bound to the sequence player's OnFinished (BindDelegate + AddMulticastDelegate). */
+	void BindSequenceFinished(ULevelSequencePlayer* Player, FName Finished);
+
 	FName Section;
 	bool bArrowShards = true;
 	TOptional<FLinearColor> ArrowColor;

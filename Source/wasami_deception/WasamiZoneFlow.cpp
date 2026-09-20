@@ -1,9 +1,11 @@
 #include "WasamiZoneFlow.h"
 
 #include "Camera/CameraShakeBase.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/BrushComponent.h"
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/Volume.h"
@@ -18,10 +20,12 @@
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiCutsceneWidget.h"
 #include "WasamiDoorBreak.h"
 #include "WasamiDoubleDoors.h"
 #include "WasamiEnemy.h"
 #include "WasamiGameMode.h"
+#include "WasamiPlayerCharacter.h"
 #include "WasamiShard.h"
 #include "WasamiTriggerBox.h"
 #include "WasamiZone1Flow.h"
@@ -98,6 +102,37 @@ void AWasamiZoneFlow::RemoveAllEnemies(UWorld* World)
 	for (AActor* Enemy : Enemies)
 	{
 		Enemy->Destroy();
+	}
+}
+
+void AWasamiZoneFlow::DisablePlayerInput(const UObject* WorldContextObject)
+{
+	APlayerController* Controller = UGameplayStatics::GetPlayerController(WorldContextObject, 0);
+	if (ACharacter* Player = UGameplayStatics::GetPlayerCharacter(WorldContextObject, 0))
+	{
+		Player->DisableInput(Controller);
+		Player->GetCharacterMovement()->StopMovementImmediately();
+		if (AWasamiPlayerCharacter* WasamiPlayer = Cast<AWasamiPlayerCharacter>(Player))
+		{
+			WasamiPlayer->bHasInput = false;
+		}
+	}
+	if (APlayerCameraManager* Camera = UGameplayStatics::GetPlayerCameraManager(WorldContextObject, 0))
+	{
+		Camera->StopAllCameraShakes(false);
+	}
+}
+
+void AWasamiZoneFlow::EnablePlayerInput(const UObject* WorldContextObject)
+{
+	APlayerController* Controller = UGameplayStatics::GetPlayerController(WorldContextObject, 0);
+	if (ACharacter* Player = UGameplayStatics::GetPlayerCharacter(WorldContextObject, 0))
+	{
+		Player->EnableInput(Controller);
+		if (AWasamiPlayerCharacter* WasamiPlayer = Cast<AWasamiPlayerCharacter>(Player))
+		{
+			WasamiPlayer->bHasInput = true;
+		}
 	}
 }
 
@@ -212,16 +247,61 @@ void AWasamiZoneFlow::SaveCheckpoint(int32 Checkpoint)
 	}
 }
 
-void AWasamiZoneFlow::PlaySequence(FName Source)
+void AWasamiZoneFlow::PlaySequence(FName Source, FName Finished)
+{
+	if (ULevelSequencePlayer* Player = SequencePlayer(Source))
+	{
+		Player->Play();
+		BindSequenceFinished(Player, Finished);
+	}
+}
+
+void AWasamiZoneFlow::BindSequenceFinished(ULevelSequencePlayer* Player, FName Finished)
+{
+	if (Player && !Finished.IsNone())
+	{
+		FScriptDelegate Delegate;
+		Delegate.BindUFunction(this, Finished);
+		Player->OnFinished.AddUnique(Delegate);
+	}
+}
+
+ULevelSequencePlayer* AWasamiZoneFlow::SequencePlayer(FName Source) const
 {
 	ALevelSequenceActor* Actor = Cast<ALevelSequenceActor>(FindSource(GetWorld(), Source));
 	ULevelSequencePlayer* Player = Actor ? Actor->GetSequencePlayer() : nullptr;
 	if (!Player)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s: no level sequence actor %s"), *GetClass()->GetName(), *Source.ToString());
+	}
+	return Player;
+}
+
+void AWasamiZoneFlow::PlayCutscene(FName Source, FName Finished, FName Camera, bool bSmoothTransition)
+{
+	ULevelSequencePlayer* Player = SequencePlayer(Source);
+	if (!Player)
+	{
 		return;
 	}
+	if (!Camera.IsNone())
+	{
+		SetPlayerViewTarget(FindSource(GetWorld(), Camera), CutsceneViewBlendTime);
+	}
+	// Initialize Cutscene Widget, then Play; the screen binds Cutscene Over to OnFinished itself, and the flow's own
+	// event comes after it.
+	UWasamiCutsceneWidget::Show(this, Player, bSmoothTransition);
 	Player->Play();
+	BindSequenceFinished(Player, Finished);
+}
+
+void AWasamiZoneFlow::SetPlayerViewTarget(AActor* Target, float BlendTime)
+{
+	APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0);
+	if (Controller && Target)
+	{
+		Controller->SetViewTargetWithBlend(Target, BlendTime, EViewTargetBlendFunction::VTBlend_Cubic, 0.f, false);
+	}
 }
 
 void AWasamiZoneFlow::PlayCameraShake(const TSoftClassPtr<UCameraShakeBase>& Shake, float Scale)

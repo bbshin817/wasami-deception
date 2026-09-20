@@ -125,6 +125,12 @@ CELL_TEXTURES = (DUST, FLARE_WHITE, SQUIB_BASE, SQUIB_NORMAL)
 CELL_PARTICLES = (NURSE + "P_06_NurseSparks", BVFX + "Destruction/Fractures/V2/Fracture_dark_slow",
                   BVFX + "Impacts/LegacyFX/Small-Medium-Large/Concrete/Concrete_impact_large")
 CELL_NEEDS = (SMOKE_DUST + "Whisps_trans", SMOKE_DUST + "Whisps_trans2", FRAGMENTS + "DebrisMaster")
+# The cut scenes' particle systems, the emitters their sequences fire have as their templates (item 25): the dust Zone
+# 1's two nurses push off with as they leap (P_06_NursesJump, Smokey_impact_med2_2 and _med3) and what their landing
+# throws up (P_06_NursesLand, Concrete_impact_small_47 and _small2). Both draw the smoke and debris the doors broken in
+# and the cell bring (Whisps_trans and DebrisMaster), so those have to have been imported.
+CUTSCENE_PARTICLES = ("Particles/06_Hospital/P_06_NursesJump", "Particles/06_Hospital/P_06_NursesLand")
+CUTSCENE_NEEDS = (SMOKE_DUST + "Whisps_trans", FRAGMENTS + "DebrisMaster")
 # The parking lot's nurses stabbing at the tunnel's doors (AWasamiEnemy06Chase's Hit FX): the slam (20-Elevator_Slams, a
 # SoundCue of three of its waves, through 01_Lobby_Attenuation) and the dust (P_06_NurseDoorHit, whose one material,
 # Whisps_additive, is an additive instance of Whisps_trans, which import_doors_busted makes).
@@ -817,6 +823,15 @@ def import_cell():
     return result
 
 
+def import_cutscene_particles():
+    """The cut scenes' particle systems (the nurses' leap in Zone 1's mid-scene). The doors broken in
+    (import_doors_busted) have to have been imported. Returns how many of each."""
+    missing = [rel for rel in CUTSCENE_NEEDS if not EAL.does_asset_exist(dd_assets.asset_path(rel))]
+    if missing:
+        raise RuntimeError("missing %s: run import_doors_busted first" % ", ".join(missing))
+    return {"particle_systems": len([dd_particles.particle_system(rel, VERSION) for rel in CUTSCENE_PARTICLES])}
+
+
 def import_nurse_door_hit():
     """The parking lot's nurses' Hit FX: the slam's waves and SoundCue, the dust's material and particle system. The doors
     broken in (import_doors_busted) have to have been imported. Returns how many of each."""
@@ -923,14 +938,15 @@ def import_saw_traps():
 
 def import_all():
     """Imports the gimmicks' assets (the double doors', the zone barrier's, the speed barriers', the doors broken in,
-    the cell's, the nurses' stabs at the doors, the lifts', the garage lifts', the ring piece's, the portal's, the
-    defibrillators' and the saw traps'), then saves /Game/DD and /Game/Pipeline."""
+    the cell's, the nurses' stabs at the doors, the cut scenes', the lifts', the garage lifts', the ring piece's, the
+    portal's, the defibrillators' and the saw traps'), then saves /Game/DD and /Game/Pipeline."""
     result = {"double_door_" + key: count for key, count in import_double_doors().items()}
     result.update({"zone_barrier_" + key: count for key, count in import_zone_barrier().items()})
     result.update({"speed_barrier_" + key: count for key, count in import_speed_barrier().items()})
     result.update({"doors_busted_" + key: count for key, count in import_doors_busted().items()})
     result.update({"cell_" + key: count for key, count in import_cell().items()})
     result.update({"nurse_door_hit_" + key: count for key, count in import_nurse_door_hit().items()})
+    result.update({"cutscene_" + key: count for key, count in import_cutscene_particles().items()})
     result.update({"lift_" + key: count for key, count in import_lifts().items()})
     result.update({"garage_lift_" + key: count for key, count in import_garage_lift().items()})
     result.update({"ring_piece_" + key: count for key, count in import_ring_statue().items()})

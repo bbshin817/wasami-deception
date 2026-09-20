@@ -81,7 +81,7 @@ private:
 	void Start04();
 	/** 05_Persistent: the maze's shards wanted. */
 	void Persistent05();
-	/** 06 Transition: the leftover shards gone, the fade and the player at 06_Start. */
+	/** 06 Transition: the leftover shards gone, the view back on the player, the fade and the player at 06_Start. */
 	void Transition06();
 	/** 06_DoorsLock 25 s on: the nurses break the tunnel's doors in. */
 	void BreakDoorsIn();
@@ -112,6 +112,10 @@ private:
 
 	UFUNCTION()
 	void On05ParkingLotCutscene();
+
+	/** 06_Transition: 06_Hospital_Zone1_06Event's OnFinished (06 Transition, then the music's fade out off). */
+	UFUNCTION()
+	void On06Transition();
 
 	UFUNCTION()
 	void On06TunnelEnter();

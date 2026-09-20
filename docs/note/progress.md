@@ -44,6 +44,10 @@ OPTIONS では画質・解像度・明るさ・音量（曲・効果音・声）
 
 ![エレベーターの扉が開く](../../observations/ours/note/gif/11-elevator-arrive.gif)
 
+駐車場へ出ると場面が切り替わり、救急外来の入口にナースが 2 体跳び降りてきます。
+
+![駐車場でナースが跳び降りてくる](../../observations/ours/note/gif/39-cutscene-z1.gif)
+
 駐車場の奥のトンネルへ向かうと、扉が閉ざされ、しばらくすると破られます。
 
 ![トンネルの扉が破られる](../../observations/ours/note/gif/12-doors-busted.gif)
@@ -54,11 +58,21 @@ OPTIONS では画質・解像度・明るさ・音量（曲・効果音・声）
 
 ![リフトで上がり、Teleport で救急車の屋根へ](../../observations/ours/note/gif/13-garage-lift-teleport.gif)
 
-![救急車でトンネルを抜けて Zone 2 の独房へ](../../observations/ours/note/gif/14-ambulance-zone2.gif)
+![救急車でトンネルを抜けて Zone 2 へ](../../observations/ours/note/gif/14-ambulance-zone2.gif)
+
+### Zone 2 の始まり: 捕まって独房へ
+
+着いた先は病院の裏手。もう 1 台の救急車が入ってくるのを見ながら歩いていくと、ナースに捕まります。
+
+![ナースに捕まる](../../observations/ours/note/gif/40-cutscene-capture.gif)
+
+目が覚めると独房の中。ナースが壁のスイッチを引き、天井が開いて棘が下りてきます。場面は P で飛ばせます。
+
+![独房の天井が開いて棘が下りる](../../observations/ours/note/gif/41-cutscene-cell.gif)
 
 ### Zone 2: 独房から迷路へ
 
-Zone 2 は独房から。天井の棘が下りてくる前に、扉の鍵を外して逃げ出します（GIF は確かめのための命令で鍵を一度に外しています）。
+棘が下りきる前に、独房の扉の鍵を外して逃げ出します（GIF は確かめのための命令で鍵を一度に外しています）。
 
 ![独房の扉を破る](../../observations/ours/note/gif/15-cell-door.gif)
 
