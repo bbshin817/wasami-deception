@@ -20,6 +20,7 @@
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiBierceTalk.h"
 #include "WasamiCutsceneWidget.h"
 #include "WasamiDoorBreak.h"
 #include "WasamiDoubleDoors.h"
@@ -348,6 +349,24 @@ void AWasamiZoneFlow::PlayFadeOut(float PlayRate)
 		Player->SetPlayRate(PlayRate);
 		Player->Play();
 	}
+}
+
+void AWasamiZoneFlow::BierceTalk(const TSoftObjectPtr<USoundBase>& Sound, bool bAttenuate)
+{
+	AWasamiBierceTalk* Talker = AWasamiBierceTalk::Find(this);
+	if (!Talker)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no talker to speak %s"), *GetClass()->GetName(), *Sound.ToString());
+		return;
+	}
+	USoundBase* Line = Sound.LoadSynchronous();
+	if (!Line)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no line %s (run WasamiDDTools.import_dd_dialogue)"), *GetClass()->GetName(),
+			*Sound.ToString());
+		return;
+	}
+	Talker->Talk(Line, bAttenuate);
 }
 
 void AWasamiZoneFlow::PlaySoundAt(const TSoftObjectPtr<USoundBase>& Sound, const FVector& Location,

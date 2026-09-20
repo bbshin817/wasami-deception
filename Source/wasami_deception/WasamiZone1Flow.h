@@ -32,6 +32,13 @@ public:
 	static constexpr float ArrivalShakeSeconds = 7.f;
 	/** 05_Persistent's wait before it checks the shards (so a zone reopened with none left moves on). */
 	static constexpr float ShardCheckDelay = 1.f;
+	/** 04_Intercom: the announcement's volume (PlaySound2D) and how long after it Bierce speaks. */
+	static constexpr float IntercomVolume = 0.6f;
+	static constexpr float IntercomLineDelay = 13.f;
+	/** 04_DoorBreak: how long after the lift's doors open Bierce speaks. */
+	static constexpr float DoorBreakLineDelay = 1.f;
+	/** Bierce Nurse Quip's Random Bool With Weight: how often a nurse coming close is remarked on. */
+	static constexpr float NurseQuipChance = 0.2f;
 	/** 06 Transition's Basic DD Fade Out: Ballroom_Event_Fade at twice its rate (black for 1 s, clear 1.5 s later). */
 	static constexpr float TransitionFadeRate = 2.f;
 	/** 06_DoorsLock: how long the nurses take to break the doors in. */
@@ -77,6 +84,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<USoundBase> PortalSound;
 
+	/** 04_Intercom: the nurse's announcement over the intercom, and Bierce's Event_09 13 s after it. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> IntercomSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> IntercomLine;
+
+	/** 04_DoorBreak: Bierce's Event_10, a second after the lift's doors swing open. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> DoorBreakLine;
+
+	/** Bierce Nurse Quip: Bierce_TormentTherapy_Gameplay, the cue that picks one of the five remarks at random. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> NurseQuipCue;
+
 private:
 	/** The entrance's 00_Initial Start, for a new start: the stage's title card, the player held meanwhile. */
 	void InitialStart();
@@ -90,8 +112,13 @@ private:
 	void BreakDoorsIn();
 	/** Spawn at 6 and the end of 06 Transition: the parking lot's nurses and triggers, the tunnel as the goal. */
 	void Start06();
-	/** Spawn Nurses: BP_06_ReaperNurse at NurseSpawn_3, _1 and _2. */
+	/** Spawn Nurses: BP_06_ReaperNurse at NurseSpawn_3, _1 and _2, and then Setup Nurse Bierce Quips. */
 	void SpawnNurses();
+	/**
+	 * Setup Nurse Bierce Quips: Bierce Nurse Quip bound to the CloseBy of every nurse in the world. Spawn Nurses ends
+	 * with it, so those are the maze's three; the parking lot's come later (Spawn Nurses_06) and are not bound.
+	 */
+	void SetupNurseBierceQuips();
 	/** Spawn Nurses_06: BP_06_ReaperNurse_06_Chase at 06_NurseSpawn and 06_NurseSpawn2, kept as 06 Nurses. */
 	void SpawnNurses06();
 	/** bAttackDoor on each of 06 Nurses. */
@@ -103,6 +130,10 @@ private:
 	/** TriggerVolume_1's ActorBeginOverlap (bound from the level's start): a nurse sets the garage lift's NurseNear. */
 	UFUNCTION()
 	void OnNurseLiftTrigger(AActor* OverlappedActor, AActor* OtherActor);
+
+	/** Bierce Nurse Quip: one time in five, a remark as a nurse first comes after the player (its CloseBy). */
+	UFUNCTION()
+	void OnBierceNurseQuip();
 
 	UFUNCTION()
 	void On04Intercom();

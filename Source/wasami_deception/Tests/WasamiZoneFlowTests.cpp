@@ -22,6 +22,7 @@
 #include "../WasamiZone1Flow.h"
 #include "../WasamiZone2Flow.h"
 #include "../WasamiZoneBarrier.h"
+#include "Components/AudioComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/BrushComponent.h"
 #include "Components/LightComponent.h"
@@ -42,7 +43,9 @@
 #include "Particles/Emitter.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
+#include "WasamiTestBierceTalk.h"
 #include "UObject/UObjectIterator.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -120,6 +123,26 @@ namespace
 		Music->bFadeOut = bFadeOut;
 		Music->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		return Music;
+	}
+
+	/**
+	 * The level's one talker, placed from the original's BierceTalk_Blueprint_2: what Bierce Talk finds and speaks
+	 * through. It is the test's own kind, whose bSpeaking stands in for a line going: a test world's ticks do not
+	 * carry the audio device, so a component a Play has once started there keeps reporting itself as playing, and a
+	 * plain talker would wait out every line that follows for ever.
+	 */
+	AWasamiTestBierceTalk* SpawnTalker(UWorld* World)
+	{
+		AWasamiTestBierceTalk* Talker = World->SpawnActor<AWasamiTestBierceTalk>(FVector(0., 0., -130000.), FRotator::ZeroRotator);
+		Talker->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BierceTalk_Blueprint_2")));
+		return Talker;
+	}
+
+	/** What the talker was last given to say, by name, or nothing. */
+	FString Spoken(const AWasamiBierceTalk* Talker)
+	{
+		const USoundBase* Sound = Talker->GetAudioComponent()->Sound;
+		return Sound ? Sound->GetName() : FString();
 	}
 
 	/** Zone 2's altar ring_statue_2 (far below), whose Interact All Shards the ring piece's section binds. */
@@ -307,6 +330,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	GarageLift->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("hospital_garage_lift_anim_Anim_2")));
 	// BP_06_MusicPlayer_2, placed faded out as the level has it: the sections take the music away and give it back.
 	AWasamiMusicPlayer* Music = SpawnMusicPlayer<AWasamiMusicPlayer>(World, AWasamiZone1Flow::MusicPlayerSource, true);
+	const AWasamiTestBierceTalk* Talker = SpawnTalker(World);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -328,6 +352,8 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Walk(World, TEXT("04_Intercom"));
 	TestEqual(TEXT("the intercom, bound once the shake is over"), Flow->GetSection(), FName(TEXT("04_Intercom")));
 	TestFalse(TEXT("no such event"), Flow->CallEvent(TEXT("OnNothing")));
+	// The announcement is the flow's own PlaySound2D; Bierce waits it out (13 s), and says nothing meanwhile.
+	TestEqual(TEXT("Bierce silent over the announcement"), Spoken(Talker), FString());
 
 	// The lift door's lock wakes with the intercom; picked (67 presses at 1.5), it breaks the door open. The maze's
 	// trigger saves 5.
@@ -340,6 +366,12 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("picked: 04_DoorBreak"), Flow->GetSection(), FName(TEXT("04_DoorBreak")));
 	TestFalse(TEXT("the lift's doors unlocked"), LiftDoors->bLocked);
 	TestTrue(TEXT("and swinging open from the front"), LiftDoors->IsOpenFront() && LiftDoors->IsOpening());
+	// A second after the doors, Bierce's line on them; the announcement's own follows 13 s after the intercom.
+	TestEqual(TEXT("nothing said in that second"), Spoken(Talker), FString());
+	Advance(Wrapper, AWasamiZone1Flow::DoorBreakLineDelay + 0.1f);
+	TestEqual(TEXT("04_DoorBreak's line"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_10")));
+	Advance(Wrapper, AWasamiZone1Flow::IntercomLineDelay - AWasamiZone1Flow::DoorBreakLineDelay);
+	TestEqual(TEXT("04_Intercom's line, 13 s on"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_09")));
 	Walk(World, TEXT("BP_04_Trigger_Maze"));
 	TestEqual(TEXT("05_Persistent"), Flow->GetSection(), FName(TEXT("05_Persistent")));
 	TestFalse(TEXT("the maze's music comes in"), Music->bFadeOut);
@@ -363,6 +395,23 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 		TestTrue(TEXT("with CanSpawn"), Nurse->bCanSpawn);
 		TestEqual(TEXT("turned as the point"), Nurse->GetActorRotation().Yaw, 90., 1e-3);
 	}
+	// Setup Nurse Bierce Quips: each nurse's CloseBy reaches Bierce Nurse Quip, which speaks one first chase in five
+	// through the cue that picks the remark. Counted over a hundred, so that neither never nor always would pass.
+	int32 Quips = 0;
+	FString Quip;
+	for (int32 Try = 0; Try < 100; ++Try)
+	{
+		Talker->GetAudioComponent()->SetSound(nullptr);
+		MazeNurses[0]->OnCloseBy.Broadcast();
+		if (const FString Said = Spoken(Talker); !Said.IsEmpty())
+		{
+			++Quips;
+			Quip = Said;
+		}
+	}
+	TestEqual(TEXT("a nurse coming close is remarked on, through the cue"), Quip,
+		FString(TEXT("Bierce_TormentTherapy_Gameplay")));
+	TestTrue(*FString::Printf(TEXT("but not every time (%d of 100)"), Quips), Quips < 100);
 
 	// A shard left: its check 1 s on finds it. Gone: two checks 0.03 s apart count once, 0.05 s after the first.
 	Advance(Wrapper, AWasamiZone1Flow::ShardCheckDelay + 0.1f);

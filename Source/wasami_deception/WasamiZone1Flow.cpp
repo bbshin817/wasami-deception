@@ -2,6 +2,7 @@
 
 #include "Camera/CameraShakeBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
@@ -34,6 +35,10 @@ AWasamiZone1Flow::AWasamiZone1Flow()
 	DoorsBustedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/07_FunPlace/Boss/BP_07_CameraShake_Jump")));
 	TakeOffShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/06_Hospital/06_CameraShake_Zone1_AmbulanceTakeOff")));
 	PortalSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/21-Ballroom_portal_V2")));
+	IntercomSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom")));
+	IntercomLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_09")));
+	DoorBreakLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_10")));
+	NurseQuipCue = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Gameplay")));
 }
 
 void AWasamiZone1Flow::StartAt(int32 Checkpoint)
@@ -81,7 +86,8 @@ void AWasamiZone1Flow::InitialStart()
 			{
 				Player->bCanMove = true;
 			}
-			// Bierce's Bierce_TormentTherapy_Event_01 1 s on (item 20).
+			// The entrance's own Bierce_TormentTherapy_Event_01 goes here in the original; this game does not build
+			// that level, so its lines (Event_01..08) are not taken (implementation record 10-audio).
 		});
 	});
 }
@@ -106,7 +112,13 @@ void AWasamiZone1Flow::Start04()
 void AWasamiZone1Flow::On04Intercom()
 {
 	Enter(TEXT("04_Intercom"));
-	// The nurse's announcement (Nurse_Hospital_Zone01_Event_37_Intercom at 0.6) and Bierce 13 s on: the voices (item 20).
+	// The nurse's announcement, PlaySound2D as the original plays it (at 0.6, pitch 1), and Bierce over it 13 s on,
+	// once she has finished (the announcement runs 12.024 s).
+	if (USoundBase* Announcement = IntercomSound.LoadSynchronous())
+	{
+		UGameplayStatics::PlaySound2D(this, Announcement, IntercomVolume);
+	}
+	After(IntercomLineDelay, [this]() { BierceTalk(IntercomLine); });
 }
 
 void AWasamiZone1Flow::On04DoorBreak()
@@ -118,8 +130,9 @@ void AWasamiZone1Flow::On04DoorBreak()
 		Doors->bLocked = false;
 		Doors->OpenFront();
 	}
-	// Bierce 1 s on (item 20).
 	BindTrigger(TEXT("BP_04_Trigger_Maze"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On05Transition));
+	// The doors and the trigger first, and the Delay the event's other pin starts after them.
+	After(DoorBreakLineDelay, [this]() { BierceTalk(DoorBreakLine); });
 }
 
 void AWasamiZone1Flow::On05Transition()
@@ -252,7 +265,27 @@ void AWasamiZone1Flow::SpawnNurses()
 	{
 		SpawnEnemy(AWasamiEnemy::StaticClass(), Point);
 	}
-	// Setup Nurse Bierce Quips: Bierce's lines as a nurse first chases (its CloseBy): the item 20's voices.
+	SetupNurseBierceQuips();
+}
+
+void AWasamiZone1Flow::SetupNurseBierceQuips()
+{
+	// Get All Actors Of Class(BP_06_ReaperNurse): the three just spawned, as this ends Spawn Nurses.
+	TArray<AActor*> Nurses;
+	UGameplayStatics::GetAllActorsOfClass(this, AWasamiEnemy::StaticClass(), Nurses);
+	for (AActor* Nurse : Nurses)
+	{
+		CastChecked<AWasamiEnemy>(Nurse)->OnCloseBy.AddUniqueDynamic(this, &AWasamiZone1Flow::OnBierceNurseQuip);
+	}
+}
+
+void AWasamiZone1Flow::OnBierceNurseQuip()
+{
+	// Random Bool With Weight(0.2): Bierce keeps most of them to himself.
+	if (UKismetMathLibrary::RandomBoolWithWeight(NurseQuipChance))
+	{
+		BierceTalk(NurseQuipCue);
+	}
 }
 
 void AWasamiZone1Flow::SpawnNurses06()

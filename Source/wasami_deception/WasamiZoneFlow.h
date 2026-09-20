@@ -5,6 +5,7 @@
 #include "GameFramework/Actor.h"
 #include "WasamiZoneFlow.generated.h"
 
+class AWasamiBierceTalk;
 class AWasamiDoubleDoors;
 class AWasamiEnemy;
 class AWasamiMusicPlayer;
@@ -27,9 +28,10 @@ class USoundBase;
  * The flow moves the story on and plays what the level Blueprints play themselves: the level sequences placed in the
  * level, the fade, the camera shakes, sounds and the level's emitters; it wakes the door breaks and listens to them,
  * and locks, opens and destroys the double doors it names. It spawns the nurses at the level's target points as the
- * events do, and takes the zone's music away and gives it back (AWasamiMusicPlayer's bFadeOut and its fades). What the
- * events show or voice through other actors (the barrier, the loading screen, Bierce and the nurses' lines) is left to
- * the items that make those; each has its place in the event, marked by a comment.
+ * events do, and takes the zone's music away and gives it back (AWasamiMusicPlayer's bFadeOut and its fades). Bierce
+ * speaks through the level's one talker (BierceTalk), as the original's events do. What the events show through other
+ * actors (the barrier, the loading screen) is left to the items that make those; each has its place in the event,
+ * marked by a comment.
  */
 UCLASS(Abstract)
 class WASAMI_DECEPTION_API AWasamiZoneFlow : public AActor
@@ -173,6 +175,13 @@ protected:
 	 * clear again 3 s later) and played at PlayRate.
 	 */
 	void PlayFadeOut(float PlayRate);
+
+	/**
+	 * Bierce Talk (BP_DD_Functions): the level's one talker (AWasamiBierceTalk::Find, which is Get All Actors Of
+	 * Class's 0th) speaks What To Say. The hospital's calls are all Attenuate? False, so Bierce is heard the same
+	 * wherever the player is; a line still going is never cut short (the talker waits it out).
+	 */
+	void BierceTalk(const TSoftObjectPtr<USoundBase>& Sound, bool bAttenuate = false);
 
 	/** PlaySoundAtLocation(Sound, Location, no rotation, volume and pitch 1, from the start, Attenuation). */
 	void PlaySoundAt(const TSoftObjectPtr<USoundBase>& Sound, const FVector& Location,

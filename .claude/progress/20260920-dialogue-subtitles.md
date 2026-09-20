@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: ba43daf
 started: 2026-09-20 12:17
-updated: 2026-09-20 12:50
+updated: 2026-09-20 13:15
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -22,34 +22,22 @@ updated: 2026-09-20 12:50
 
 ## 調べたこと（2026-09-20 の計画の反復）
 
-### 本家の話し役（`BierceTalk_Blueprint`）
+### 本家の病院の台詞（残りは Zone 2 のぶん）
 
-`pak_reference_2/_bytecode/DDeception/Content/Blueprints/00_Ballroom/BierceTalk_Blueprint.txt`。アクタ 1 つに `AudioComponent` 1 つだけ。
+話し役は `AWasamiBierceTalk`（10 記録）、喋らせる口は流れの `BierceTalk(音, bAttenuate = false)`（11 記録）。波は `/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/`。**病院の呼びはすべて `Attenuate? = False`**。Zone 1 のぶんはステップ 3 で入れた（11 記録）。
 
-- `Talk(What To Say: SoundBase, Attenuate?: bool)`: `AudioComponent.bAllowSpatialization = Attenuate?` → `Halt` が真なら何もしない → 偽なら「`IsPlaying()` の間は 0.5 s の `Delay` で待つ」を繰り返し、空いたら `SetSound(What To Say)` → `Play(0.0)`。**前の台詞を切らず、終わるまで待ってから次を鳴らす**。
-- `Stop Talking()`: `AudioComponent.Stop()`。
-- レベル BP が呼ぶ口は 2 つ。(a) `BP_DD_Functions` の `Bierce Talk(What To Say, Attenuate?, WorldContext)` = `GetAllActorsOfClass(BierceTalk_Blueprint_C)` の 0 番目に `Talk` を投げる静的関数、(b) レベルが持つ `BierceTalk_Blueprint_2` の参照に直接 `Talk`。**病院の呼び出しは全部 `Attenuate? = False`**（画面の外でも同じ音量の 2D）。
+| きっかけ（Zone 2 のレベル BP のイベント） | 鳴らすもの |
+| --- | --- |
+| `Cell Cutscene Finished`（本家は 1 s 後の `Miniboss_BierceTalk` の結びと同じ所。11 記録の `OnCellCutsceneFinished`） | `Event_17` |
+| `Bierce Lift Quip`（`Setup Bierce Lift Quip` が全部の `AWasamiLift` の `OnPlayerOverlap` に仕掛ける。12 記録） | `Gameplay_07` |
+| `Maze Trigger Start`（`OnMazeTriggerStart` の 1 s 後） | `Gameplay_08` |
+| `Maze All Shards`（`OnMazeAllShards` の 2 s 後） | `Event_20` |
+| 欠片の回収（`OnRingPieceCollect` の `GarageBindDelay` 1 s の所） | `Event_21` |
+| `Postmaze_Trigger_Garage`（`OnPostmazeTriggerGarage` の 1 s 後） | `Event_22` |
+| `Miniboss_BierceTalk`（`OnMinibossBierceTalk`） | `Event_19` |
+| `Miniboss_BehindMatron`（`OnMinibossBehindMatron`） | Zone 2 に置いた `AmbientSound`（`Nurse_Hospital_Zone01_Event_48_Intercom`。`bAutoActivate` 偽。項目 19 で置いてある）を鳴らす |
 
-### 本家の病院の台詞（本作が作る Zone 1・Zone 2 のぶんだけ）
-
-波は `pak_reference_2/DDeception/Content/Audio/Dialogue/Bierce/Ch06/TT/*.ogg`（`_assets` に json、`_audio.json` に長さ。音量 2.0・`DD_SoundClass_Dialogue`）。
-
-| ゾーン | きっかけ（レベル BP のイベント） | 鳴らすもの |
-| --- | --- | --- |
-| 1 | `04_DoorBreak` | `Bierce_TormentTherapy_Event_10` |
-| 1 | `04_Intercom` | `PlaySound2D(Nurse_Hospital_Zone01_Event_37_Intercom, 音量 0.6, ピッチ 1)` → `Delay 13 s` → `Event_09` |
-| 1 | `Setup Nurse Bierce Quips` → `Bierce Nurse Quip` | `Bierce_TormentTherapy_Gameplay`（SoundCue。`SoundNodeRandom` が重み 1 で `Gameplay_05 / 02 / 04 / 01 / 03` の 5 本から 1 本。`DialogueAttenuation`）|
-| 2 | `Cell Cutscene Finished` | `Event_17` |
-| 2 | `Bierce Lift Quip`（`Setup Bierce Lift Quip` が仕掛ける） | `Gameplay_07` |
-| 2 | `Maze Trigger Start` | `Gameplay_08` |
-| 2 | `Maze All Shards` | `Event_20` |
-| 2 | 欠片の回収（`Collected Ring Piece` の流れ。HEAD TOWARDS THE GARAGE の後、`Delay 1 s`） | `Event_21` |
-| 2 | `Postmaze_Trigger_Garage` | `Event_22` |
-| 2 | `Miniboss_BierceTalk` | `Event_19` |
-| 2 | `Miniboss_BehindMatron` | Zone 2 に置いた `AmbientSound`（`Nurse_Hospital_Zone01_Event_48_Intercom`。`bAutoActivate` 偽。項目 19 で置いてある）を鳴らす |
-
-- Zone 1 の `Bierce Nurse Quip` は `Setup Nurse Bierce Quips` が全部の `BP_06_ReaperNurse` の `CloseBy` デリゲートに繋ぐもの（敵が近づいたら 1 言）。本作の敵は `AWasamiEnemy`（本家のナースを写したもの）なので、`CloseBy` 相当があるかをステップ 3 で確かめる（07 記録の `NurseNear` が近い）。
-- 本作が作らない入口 `06_Hospital` の `Event_01〜08`、ボス戦の `Event_11〜16`・`18B`・`23`・`24` は対象外。
+**上の秒数と結び先は本家の該当イベントを `Tools/dd/bp_flow.py` で読み直してから写す**（`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_02.txt`）。11 記録のイベントの説明にある「項目 20」の印がそのまま口。
 
 ### 字幕
 
@@ -68,8 +56,7 @@ UE の `USoundWave.Subtitles` に本家の文字列表 `Strings` の文言を名
 
 - [x] 1. **台詞の取り込み**（完了）: `dd_dialogue.py`（Bierce の波 15 本と一言の Cue、字幕は本家の文字列表 `Strings` の文言を名前の対応で）、`dd_assets.sound(subtitles=)`、ツール `WasamiDDTools.import_dd_dialogue`。取り込んだ中身と根拠は 10 記録の「台詞の取り込み」。
 - [x] 2. **話し役 `AWasamiBierceTalk`**（完了）: 本家の `BierceTalk_Blueprint` を写し（`Talk`・`StopTalking`・`bHalt`・0.5 s の待ち・`Find`）、`dd_level._flow` が両ゾーンに 1 つずつ置くようにした。中身と根拠は 10 記録の「話し役 `AWasamiBierceTalk`」。
-- [ ] 3. **Zone 1 の配線**（`04_DoorBreak` → `Event_10`、`04_Intercom` → ナースのインターコム 0.6 → 13 s → `Event_09`、敵が近づいたときの `Bierce Nurse Quip`）と、字幕が画面に出ることの確かめ
-  - 変更予定: `Source/wasami_deception/WasamiZone1Flow.cpp/.h`、`WasamiEnemy.cpp`（`CloseBy` 相当）
+- [x] 3. **Zone 1 の配線**（完了）: 流れに `BierceTalk` の口を足し、`04_DoorBreak`（1 s 後の `Event_10`）・`04_Intercom`（放送 0.6 → 13 s → `Event_09`）・`Setup Nurse Bierce Quips`（発見の 5 回に 1 回の一言）を埋めた。中身と根拠は 11 記録。
 - [ ] 4. **Zone 2 の配線**（`Event_17`・`Gameplay_07`・`Gameplay_08`・`Event_20`・`Event_21`・`Event_22`・`Event_19`、Matron の裏のインターコムの `AmbientSound` を鳴らす）
   - 変更予定: `Source/wasami_deception/WasamiZone2Flow.cpp/.h`
 - [ ] 5. **ワサミの声の取り込み**（mp3 15 本 → wav（ffmpeg）→ `SourceArt/Wasami/Voices/`（Git LFS）→ `/Game/Wasami/Voices/*`。`manifest.json` の字幕を `Subtitles` に、`DD_SoundClass_Dialogue` を当てる）
@@ -80,12 +67,12 @@ UE の `USoundWave.Subtitles` に本家の文字列表 `Strings` の文言を名
 
 ## 次にやること
 
-ステップ 3（Zone 1 の配線）。`AWasamiZone1Flow` から上の表のとおりに喋らせる:
+ステップ 4（Zone 2 の配線）。上の表のとおりに `AWasamiZone2Flow` から喋らせる。
 
-- `04_DoorBreak` → `Event_10`、`04_Intercom` → `PlaySound2D(Nurse_Hospital_Zone01_Event_37_Intercom, 音量 0.6, ピッチ 1)` → `Delay 13 s` → `Event_09`。どちらも `Talk(波, false)`。
-- `Setup Nurse Bierce Quips` → 全部の敵の「近づいた」通知に `Bierce_TormentTherapy_Gameplay`（Cue）を結ぶ。`AWasamiEnemy` に本家の `CloseBy` 相当があるかを先に確かめる（07 記録の `NurseNear` が近い）。本家の Zone 1 のレベル BP（`pak_reference_2/_bytecode/DDeception/Content/06_Hospital_Zone_01.txt`）の `Setup Nurse Bierce Quips`・`Bierce Nurse Quip` を `Tools/dd/bp_flow.py` で読んでから写す。
-- 話し役は `src:BierceTalk_Blueprint_2` のタグ（`AWasamiZoneFlow::FindSource`）か `AWasamiBierceTalk::Find` で引く。`AWasamiZoneFlow` に `MusicPlayer(Source)` と同じ形の取り出しを足すとよい。
-- 確かめ: PIE で Zone 1 を開き、扉の破壊とインターコムの台詞が鳴り、**字幕が画面に出る**こと（オプションの SUBTITLES が既定で入か、`UGameplayStatics::SetSubtitlesEnabled` を確かめる。15 記録）。
+- 本家の `06_Hospital_Zone_02.txt` の各イベントを `python Tools/dd/bp_flow.py <ファイル> <イベント名>` で読み、`Delay` の秒数と順序を写す（Zone 1 では `04_DoorBreak` に記録に無かった `Delay 1` があった）。
+- `Setup Bierce Lift Quip` は Zone 1 の `SetupNurseBierceQuips` と同じ形（全部の `AWasamiLift` の `OnPlayerOverlap` に結ぶ。12 記録）。重み付きの抽選があるかを本家で確かめる。
+- `Miniboss_BehindMatron` だけは話し役でなく、置いてある `AAmbientSound`（`src:` のタグ。`Source(...)` → `AAmbientSound::GetAudioComponent()->Play()`）。
+- テスト `Wasami.ZoneFlow.Zone2` に `SpawnTalker(World)` を足して、各区間で喋る波の名前を確かめる（**話し役はテストの `AWasamiTestBierceTalk` を使う**。下の「再開時の注意」）。
 
 ## 決定事項
 
@@ -105,6 +92,7 @@ UE の `USoundWave.Subtitles` に本家の文字列表 `Strings` の文言を名
 - 台詞の波と Cue は `/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/` と `/Game/DD/Audio/06_Hospital/` に取り込み済み（保存済み）。入れ直すときは `WasamiDDTools.import_dd_dialogue`。
 - 話し役は両ゾーンのレベルに置いて保存済み（道も焼き直した）。置き直すときは `place_flow("Zone1")`・`place_flow("Zone2")` → **レベルごとに `build_navigation` を単独の呼びで 2 回**（1 回目は開くだけ、十数秒おいて 2 回目で焼いて保存）。
 - 長時間処理: `python Tools/editor_cycle.py`（C++ のビルド。1 分ほど）と `place_flow` → `build_navigation`（3 分ほど）。
+- **テストで話し役を置くときは `AWasamiTestBierceTalk`（`Tests/WasamiTestBierceTalk.h`）を使う** — テストのワールドのティックは音声装置を回さないので、素の `AWasamiBierceTalk` だと `Play` した部品がいつまでも「鳴っている」ままになり、2 本目以降の台詞が永久に待たされる（ステップ 3 で 1 度踏んだ）。`Tests/WasamiZoneFlowTests.cpp` の `SpawnTalker`・`Spoken` がその形。
 - 自動テストは背面のエディタだと進まないので、走らせる前に `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)`、終わったら `True` に戻す（症状索引）。
 - 原本の場所: 本家の台詞 `pak_reference_2/DDeception/Content/Audio/Dialogue/Bierce/Ch06/TT/*.ogg`、ワサミの声 `C:\Users\User\Downloads\wasami-deseption\public\voices\*.mp3`。
 
@@ -112,6 +100,9 @@ UE の `USoundWave.Subtitles` に本家の文字列表 `Strings` の文言を名
 
 - check_records: OK（20 件）
 - C++ ビルド: ok（`Tools/editor_cycle.py`）
-- 自動テスト: `Automation RunTests Wasami` で 154 件すべて成功（`Wasami.Dialogue.Talk`・`Wasami.Dialogue.TalkStep` を含む）
-- エディタでの確認: `place_flow` は両ゾーンとも `bierceTalks` 1・`failed_settings` 0。両レベルの `WasamiBierceTalk` は本家の位置（Zone 1 (10560, −21175, 0)・Zone 2 (−10940, −865, 800)）・タグ `src:BierceTalk_Blueprint_2`・フォルダ `Hospital/Audio`・部品がルート・`bAutoActivate` 偽・`bHalt` 偽。道は Zone 1 が 2/2・Zone 2 が 29/29 のボリュームで焼けて保存済み、未保存のマップ無し。
-- PIE: 鳴らす側（ゾーンの流れ）がまだ無いので未実施（字幕が画面に出ることの確かめはステップ 3）。
+- 自動テスト: `Automation RunTests Wasami` で 154 件すべて成功（`Wasami.ZoneFlow.Zone1` の台詞 3 つ・`Wasami.Dialogue.Talk`・`Wasami.Dialogue.TalkStep` を含む）
+- PIE（Zone 1。`Wasami.Flow <イベント名>` で流れのイベントを呼び、`Tools/desktop.py shot` で画面を撮って確かめた）:
+  - `On04DoorBreak` → 1 s 後に話し役の部品が `Bierce_TormentTherapy_Event_10` を鳴らし、**字幕が画面下に出た**（"…visible to the eye, but they can't hide the sounds they make."）。`bAllowSpatialization` 偽。
+  - `On04Intercom` → 館内放送が鳴って字幕が出（"…an unruly patient on the loose… Lethal mercy is authorized!"）、13 s 後に `Event_09`（字幕「They could be anywhere! Stay alert!」）に変わった。
+  - `OnBierceNurseQuip` を 20 回 → 一言の Cue `Bierce_TormentTherapy_Gameplay` が鳴った。
+  - `UGameplayStatics::AreSubtitlesEnabled()` は真（設定の既定）。PIE は止めた。
