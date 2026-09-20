@@ -172,11 +172,14 @@ def sound_attenuation(rel, version=1):
     return asset
 
 
-def sound(rel, version=1):
+def sound(rel, version=1, subtitles=None):
     """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
     export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names), saved (the
     import task itself does not save, and a wave left unsaved is gone when the editor opens again). Returns the package
-    path."""
+    path.
+
+    subtitles: [(time in seconds, text)] to show while it plays (UE's own Subtitles, which the options' SUBTITLES turns
+    on and off); the dialogue passes the original's lines, which its waves do not carry themselves (dd_dialogue)."""
     ogg = content_file(rel, version, ".ogg")
     if not os.path.exists(ogg):
         raise FileNotFoundError(ogg)
@@ -205,6 +208,9 @@ def sound(rel, version=1):
             wave.set_editor_property(ue_props.snake(key), ue_props.value(props[key], wave.get_editor_property(ue_props.snake(key))))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
+    if subtitles is not None:
+        wave.set_editor_property("subtitles", [unreal.SubtitleCue(text=unreal.Text(text), time=float(time))
+                                               for time, text in subtitles])
     _write_sound_class(wave, props)
     EAL.save_asset(target, only_if_is_dirty=False)
     return target

@@ -1,14 +1,15 @@
 ---
-title: 曲と環境音（ゾーンの曲の切り替え）
+title: 曲と環境音と台詞（ゾーンの曲の切り替え・台詞の取り込み）
 sources:
   - Source/wasami_deception/WasamiMusicPlayer.h
   - Source/wasami_deception/WasamiMusicPlayer.cpp
   - Source/wasami_deception/Tests/WasamiMusicTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_audio.py
+  - Content/Python/wasami_tools/pipeline/dd_dialogue.py
 updated: 2026-09-20
 ---
 
-# 曲と環境音（ゾーンの曲の切り替え）
+# 曲と環境音と台詞（ゾーンの曲の切り替え・台詞の取り込み）
 
 ## 役割
 レベル自身が鳴らす音（曲・環境音・残響）と、本家の病院で鳴る効果音の洗い出し。曲は `AWasamiMusicPlayer`（本家 `pak_reference_2` の `Blueprints/06_Hospital/BP_06_MusicPlayer`。処理は親の `Blueprints/08_BearHouse/BP_08_MusicPlayer`）が、ゾーンの通常の曲・追跡の曲・上書きの曲の 3 つを持ち、0.5 s ごとに `bFadeOut`・`bOverrideMusic`・敵が追跡中かを見て 1 s でクロスフェードする。レベルにゾーンごとに 1 体置き、`bFadeOut` を触り Zone 2 の独房の場面で曲を下げ・戻すのはゾーンの流れ（11 記録）。作業一覧の項目 19 のステップ 1・2 で作った。
@@ -24,6 +25,7 @@ updated: 2026-09-20
 - `AWasamiMusicPlayerZone2`: 本家の `BP_06_MusicPlayer_Zone2`（`Regular Music` の曲だけを差し替えた子）。
 - `IWasamiEnemyInterface::Chasing()`（04 記録）: 本家の `DD_EnemyInterface` の `Chasing`。既定は偽、`AWasamiEnemy` は `IsChasing()`（07 記録）を返す。`IsIntenseMusic()` がこれを見る。
 - ツール `WasamiDDTools.import_dd_audio()`（`dd_audio.import_all`）: 曲 3 本（`MUSIC`）・環境音 2 本（`AMBIENCE`）・残響 2 つ（`REVERBS`）の取り込み。戻り値は `music`・`ambience`・`reverbs`。
+- ツール `WasamiDDTools.import_dd_dialogue()`（`dd_dialogue.import_all`）: 病院の台詞の取り込み。戻り値は `lines` 9・`quips` 5・`cues` 1・`intercom` 1。`dd_dialogue` の公開は `LINES`・`GAMEPLAY_CUE`・`GAMEPLAY_WAVES`・`INTERCOM`（取り込む波）、`strings()`（本家の文字列表の中身）、`subtitle_key(name)`（波の名前 → 文言の鍵）、`line(rel, entries)`（字幕付きで 1 本取り込む）。
 
 ## 内部構造と処理の流れ
 - 部品（本家の SCS）: `DefaultSceneRoot` → `RegularMusic`・`PanicMusic`・`OverrideMusic`（`UAudioComponent`。本家の名前は `Regular Music` など。どれも `bAutoActivate = false` で、フェードインまで鳴らない）。曲は `BeginPlay` でソフト参照から入れる（`WasamiAssets.h`）。本家の音量・減衰の上書きは無く、音量は SoundWave 自身の 0.35（通常）・0.3（追跡）。
@@ -59,6 +61,14 @@ updated: 2026-09-20
 - 埋めた 1 つ（敵の移動音）は 07 記録の「移動音」にある（`AWasamiEnemy::SkateAudio`・`UpdateSkateSound`、取り込みは `dd_enemy.import_move_sound`）。
 - 残るのは台詞だけ（項目 20）。館内放送（Zone 2）と放送の箱 `04_Intercom`（Zone 1）も鳴らす中身は台詞なので、置いてあるだけで鳴らす側は項目 20。
 
+## 台詞の取り込み（項目 20 のステップ 1）
+本家の病院の台詞は SoundWave そのもの（`pak_reference_2` の `Audio/Dialogue/Bierce/Ch06/TT/`。音量 2.0・`DD_SoundClass_Dialogue`）で、鳴らすのは本家の `BierceTalk_Blueprint` とレベル BP。本作が作る Zone 1・Zone 2 が鳴らす分だけを `dd_dialogue.py` で取り込む（入口 `06_Hospital` の `Event_01〜08` とボス戦の `Event_11〜16`・`18B`・`23`・`24` は作らないので取り込まない）。鳴らす側は次のステップ以降（話し役 `AWasamiBierceTalk` と両ゾーンの流れ。11 記録）。
+
+- `LINES` 9 本（ゾーンが直に喋らせる）: Zone 1 = `Event_10`（扉の破壊 `04_DoorBreak`）・`Event_09`（館内放送の 13 s 後 `04_Intercom`）、Zone 2 = `Event_17`（独房の場面の後）・`Gameplay_07`（リフト）・`Gameplay_08`（迷路の始まり）・`Event_20`（迷路のシャード全回収）・`Event_21`（欠片の回収の 1 s 後）・`Event_22`（ガレージ）・`Event_19`（Matron）。
+- `GAMEPLAY_WAVES` 5 本と `GAMEPLAY_CUE`: 近づいたナースが出す一言。Cue `Bierce_TormentTherapy_Gameplay` の `SoundNodeRandom` が重み 1 で `Gameplay_05 / 02 / 04 / 01 / 03` から 1 本選び、Cue 自身が `DialogueAttenuation`（`bAttenuate` 偽・`OmniRadius` 350・`FalloffDistance` 5000）を通す。本家に `Gameplay_06` は無い。
+- `INTERCOM` 1 本: Zone 1 の流れが `PlaySound2D`（音量 0.6）で鳴らす `Nurse_Hospital_Zone01_Event_37_Intercom`（12.024 s・2 ch・`SoundClassObject` 無し）。Zone 2 の館内放送は別の波で、`AmbientSound` として置いてある（上の「環境音と残響」）。
+- **字幕**: UE の仕組みそのまま（`USoundWave.Subtitles` に `{Text, Time}`。オプションの SUBTITLES が `UGameplayStatics::SetSubtitlesEnabled` を切り替える。15 記録）。本家の病院の台詞の波は `Subtitles` が空なので（字幕を持つのは本作が作らない入口のナースの分だけ）、本家の文字列表 `Blueprints/Main/Strings/Strings` の文言を**名前の対応**で 0 s に 1 つ入れる（`SUBTITLE_PREFIXES`・`SUBTITLE_KEYS`）: `Bierce_TormentTherapy_Event_NN` → `06_Cutscene_Zone_01_Bierce_NN`、`..._Gameplay_NN` → `06_Gameplay_Zone_01_Bierce_NN`、館内放送 → `06_Cutscene_Zone_01_Nurse_01`。第 4 章の下水の Bierce（字幕を持つ）が同じ対応で鍵を持ち、9 本すべて鳴らす場面と文言が合う（リフトの `Gameplay_07` =「handicap accessible nightmare」、Matron の `Event_19` =「find a way to get past her」など）。文字列表のアセットは作らず、`dd_level` の秘密の書き置きと同じく素の `unreal.Text` で入れる。
+
 ## 作るアセット
 - 曲 `/Game/DD/Audio/06_Hospital/Music/`（`dd_audio.import_music` → `WasamiDDTools.import_dd_audio`）。名前は本家のまま:
   - `DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING`（84.396 s・音量 0.35・ループ）
@@ -66,6 +76,7 @@ updated: 2026-09-20
   - `DD_-_Dark_Deception_-_Chapter_4_Hospital_-_Panic_Track_v1_2_-_LOOPING`（81.127 s・0.3・ループ）
   - どれも `SoundClassObject` は `/Game/DD/Audio/SoundMix/DD_SoundClass_Music`（`dd_assets.sound` が export から入れる。01 記録）。
 - 環境音 `/Game/DD/Audio/06_Hospital/`（`dd_audio.import_ambience`）: `DD_City_Ambience_Creepy_Loop`（30.272 s・ループ・`SoundClassObject` は `DD_SoundClass_SFX`）、`Nurse_Hospital_Zone01_Event_48_Intercom`（8.474 s・ループせず・`SoundClassObject` 無し = プロジェクトの既定のクラス）。
+- 台詞 `/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/`（`dd_dialogue.import_all` → `WasamiDDTools.import_dd_dialogue`）: `Bierce_TormentTherapy_Event_09`（2.926 s）・`_10`（5.039）・`_17`（3.251）・`_19`（3.529）・`_20`（2.235）・`_21`（3.367）・`_22`（3.901）、`Bierce_TormentTherapy_Gameplay_01`（1.811）・`_02`（2.868）・`_03`（4.679）・`_04`（5.387）・`_05`（3.274）・`_07`（4.249）・`_08`（5.689）。どれも音量 2.0・ピッチ 1・1 ch・`DD_SoundClass_Dialogue`・字幕 1 つ。Cue `Bierce_TormentTherapy_Gameplay`（`SoundClassObject` 無し・`AttenuationSettings` は `/Game/DD/Audio/Misc/DialogueAttenuation`）。館内放送 `/Game/DD/Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom`（12.024 s・音量 1・2 ch・クラス無し・字幕 1 つ）。
 - 残響 `/Game/DD/_Engine/EngineSounds/ReverbSettings/`（`dd_audio.import_reverbs` → `dd_assets.reverb_effect`）: `BunkerHall`（Gain 0.45・DecayTime 2.0…）、`ParkingLot`（Gain 0.8・DecayTime 1.65…）。エンジンの同名のアセットは使わず、本家の書き出しの値で作り直す（01 記録の `_Engine` の決まり）。
 
 ## 原作データの根拠
@@ -73,6 +84,7 @@ updated: 2026-09-20
 - 部品と曲: `pak_reference_2/_assets/.../BP_08_MusicPlayer.json`（3 つの `AudioComponent` の `bAutoActivate` 偽）、`BP_06_MusicPlayer.json`（`Regular Music` = Zone 1 通常・`Panic Music` = Panic）、`BP_06_MusicPlayer_Zone2.json`（`Regular Music` = Zone 2 通常）。`Override Music` はどちらも曲が空。
 - 置き場所: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`・`_02.full.json`（`BP_06_MusicPlayer_2` の `bFadeOut` 真も）。
 - インターフェース: `pak_reference_2/_bytecode/.../Characters/Shared/DD_EnemyInterface.txt` の `Chasing`。
+- 台詞: `pak_reference_2/_assets/DDeception/Content/Audio/Dialogue/Bierce/Ch06/TT/*.json`（音量 2.0・クラス・長さ）と `Bierce_TormentTherapy_Gameplay.json`（`SoundNodeRandom` の重みと 5 本の順、`DialogueAttenuation`）、`Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom.json`。鳴らす場面は `_bytecode/.../06_Hospital_Zone_01.txt`・`_02.txt` と `Blueprints/00_Ballroom/BierceTalk_Blueprint.txt`。文言は `_assets/.../Blueprints/Main/Strings/Strings.json` の `string_table`、字幕の入れ方の手本は `Audio/Dialogue/Bierce/Ch04/Bierce_Sewer_01.json`（`Subtitles` が `Strings` の `04_Sewer_BierceDialogue_01` を指す）。
 - 環境音と残響: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json` の `DD_City_Ambience_Creepy_Loop2.AudioComponent0`・`_3.AudioComponent0`・`AudioVolume2`・`AudioVolume_1`、`_02.full.json` の `Nurse_Hospital_Zone01_Event_48_Intercom_2.AudioComponent0`。残響の値は `pak_reference_2/_assets/Engine/Content/EngineSounds/ReverbSettings/BunkerHall.json`・`ParkingLot.json`。
 
 ## 依存関係
@@ -94,3 +106,4 @@ updated: 2026-09-20
 - 2026-09-20: `FadeRegularMusicIn` を足し、ゾーンの流れからの切り替えを繋いだ（ステップ 2）。
 - 2026-09-20: 環境音 2 つ・館内放送 1 つ・残響のボリューム 2 つを本家の値のまま置いた（ステップ 3）。
 - 2026-09-20: 残りの効果音を洗い出し、埋めた 1 つ（敵の移動音）と残り（台詞だけ）を書いた（ステップ 5）。
+- 2026-09-20: 病院の台詞の波 15 本と一言の Cue を字幕付きで取り込むようにした（`dd_dialogue.py`・`WasamiDDTools.import_dd_dialogue`。作業一覧の項目 20 のステップ 1）。

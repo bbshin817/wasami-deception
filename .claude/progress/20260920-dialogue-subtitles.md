@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: ba43daf
 started: 2026-09-20 12:17
-updated: 2026-09-20 12:17
+updated: 2026-09-20 13:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -53,13 +53,7 @@ updated: 2026-09-20 12:17
 
 ### 字幕
 
-- 本家は **UE の仕組みそのまま**: `USoundWave.Subtitles`（`{Text, Time}` の配列）にテキストを入れ、オプションの SUBTITLES が `SetSubtitlesEnabled` を切り替える。本作もすでに `WasamiSettingsSaveGame.cpp:68` が `UGameplayStatics::SetSubtitlesEnabled(bSubtitles)` を呼んでいる（項目 18）。**作り直さず、波に字幕を入れるだけ**。
-- 文言は `pak_reference_2/_datatables.json` の `/Game/Blueprints/Main/Strings/Strings`（`entries`、555 件）。病院ぶんは `06_` で始まる 127 件。名前の対応:
-  - `Bierce_TormentTherapy_Event_NN` ↔ `06_Cutscene_Zone_01_Bierce_NN`（`03B` ↔ `_03B`）
-  - `Bierce_TormentTherapy_Gameplay_NN` ↔ `06_Gameplay_Zone_01_Bierce_NN`
-  - `Nurse_Hospital_Zone01_Event_37_Intercom` ↔ `06_Cutscene_Zone_01_Nurse_01`（「Ladies, the hospital is now on complete lockdown! ...」）
-- **本家の病院の Bierce の波には `Subtitles` が入っていない**（`_strings.json` の `string_table_usage` で `06_` の 127 件のうち使われているのは、本作が作らない入口のナースの `06_Cutscene_Intro_*` 40 件だけ。第 4 章の下水の Bierce（`Bierce_Sewer_01` ↔ `04_Sewer_BierceDialogue_01`）は同じ名前の対応で入っている）。項目 20 の完了の条件が「字幕は `_strings.json` の文言」なので、**名前の対応で入れる**（下の「決定事項」「要確認」）。
-- `_datatables.json` を読むときは端末が CP932 なので `sys.stdout.buffer.write(....encode('utf-8'))` で出す（データは正しい UTF-8。`’`・`…` が化けて見えるのは端末のせい）。
+UE の `USoundWave.Subtitles` に本家の文字列表 `Strings` の文言を名前の対応で入れる（ステップ 1 で実装済み。詳しくは 10 記録の「台詞の取り込み」）。`_datatables.json` を読むときは端末が CP932 なので `sys.stdout.buffer.write(....encode('utf-8'))` で出す。
 
 ### WebGL 版のワサミの声
 
@@ -72,9 +66,7 @@ updated: 2026-09-20 12:17
 
 ## 計画
 
-- [ ] 1. **台詞の取り込み**（`dd_dialogue.py` を作る。Bierce の波 + `Gameplay` の SoundCue + ナースのインターコム、字幕を `Strings` から `Subtitles` へ）
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_dialogue.py`（新）、`dd_assets.py`（`sound` に字幕と `AttenuationSettings` を書く口を足す）、`toolsets/`（MCP から呼ぶ口）、`/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/*`・`/Game/DD/Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom`
-  - 確かめ: エディタで波の `Subtitles` と音量 2.0・`DD_SoundClass_Dialogue`、SoundCue の `SoundNodeRandom` の 5 本が本家の書き出しと一致する
+- [x] 1. **台詞の取り込み**（完了）: `dd_dialogue.py`（Bierce の波 15 本と一言の Cue、字幕は本家の文字列表 `Strings` の文言を名前の対応で）、`dd_assets.sound(subtitles=)`、ツール `WasamiDDTools.import_dd_dialogue`。取り込んだ中身と根拠は 10 記録の「台詞の取り込み」。
 - [ ] 2. **話し役 `AWasamiBierceTalk`**（本家の `BierceTalk_Blueprint` を写す。`Talk`・`StopTalking`・`bHalt`・0.5 s 待ち）と、レベルの流れから呼ぶ口。両ゾーンに 1 つずつ置く
   - 変更予定: `Source/wasami_deception/WasamiBierceTalk.h/.cpp`（新）、`Tests/`、`Content/Python/wasami_tools/pipeline/dd_level.py`（置く）
 - [ ] 3. **Zone 1 の配線**（`04_DoorBreak` → `Event_10`、`04_Intercom` → ナースのインターコム 0.6 → 13 s → `Event_09`、敵が近づいたときの `Bierce Nurse Quip`）と、字幕が画面に出ることの確かめ
@@ -89,7 +81,7 @@ updated: 2026-09-20 12:17
 
 ## 次にやること
 
-ステップ 1。`dd_assets.sound` に `Subtitles`（`/Game/Blueprints/Main/Strings/Strings` の文言を名前の対応で）と `AttenuationSettings` を書く口を足し、`dd_dialogue.py` で Bierce の Ch06/TT の波（Zone 1・2 が鳴らす 10 本 + `Gameplay` の 5 本）・SoundCue `Bierce_TormentTherapy_Gameplay`・`Nurse_Hospital_Zone01_Event_37_Intercom` を取り込む。
+ステップ 2。本家の `BierceTalk_Blueprint`（上の「本家の話し役」）を `AWasamiBierceTalk` に写す（`Talk(SoundBase, bAttenuate)`・`StopTalking()`・`bHalt`、鳴り終わるまで 0.5 s ごとに待って次を鳴らす）。`UAudioComponent` 1 つだけのアクタで、両ゾーンに 1 体ずつ置く（本家の置き場所は `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`・`_02.full.json` の `BierceTalk_Blueprint_2`。`dd_level._flow` に足してタグ `src:BierceTalk_Blueprint_2` で引けるように）。テストも。
 
 ## 決定事項
 
@@ -98,18 +90,21 @@ updated: 2026-09-20 12:17
 - 2026-09-20: **本家の入口 `06_Hospital` とボス戦の台詞は作らない** — 本作はそのレベルを作らない（CLAUDE.md）。
 - 2026-09-20: **WebGL 版の `voices/` の wav 55 本は使わず、`public/voices/` の mp3 15 本だけを使う** — mp3 が WebGL 版で実際に鳴っていたもので、`manifest.json` に字幕と長さがある。wav は切り出す前の素材で対応が取れない。
 
+- 2026-09-20: **`dd_assets.sound` に `AttenuationSettings` を書く口は足さない** — 取り込む 15 本のどれも書き出しに持たず（減衰を持つのは一言の Cue だけで、そちらは `dd_assets.sound_cue` が既に `DialogueAttenuation` を作って入れる）、使い道の無い口になるため。ワサミの声（ステップ 5）で波に減衰が要るなら、そのときに足す。
+
 ## 要確認（ユーザー）
 
 - 2026-09-20: 本家の病院の Bierce の台詞の波に字幕が入っていない（`Strings` に文言 127 件はあるが、波の `Subtitles` を使っているのは本作が作らない入口のナースの 40 件だけ。第 4 章の下水の Bierce には入っている） — 仮に **名前の対応（`Bierce_TormentTherapy_Event_NN` ↔ `06_Cutscene_Zone_01_Bierce_NN`）で字幕を入れる**。理由: 項目 20 の完了の条件が「字幕は `_strings.json` の文言」で、オプションに SUBTITLES がある以上、出ないほうが不自然。本家の実機で確かめるのは大目標 2 の決め方（見た目の詰めをしない）で控えている。場所: ステップ 1 の `dd_dialogue.py`。
 
 ## 再開時の注意
 
-- この反復は計画だけ（記録を作ってコミット）。エディタは触っていない。
-- 長時間処理はまだ無い。ステップ 1 で波を取り込むときは `dd_assets.sound` が保存まで行う（項目 19 で直した。保存しないとエディタを開き直したときに波が消える）。
+- 台詞の波と Cue は `/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/` と `/Game/DD/Audio/06_Hospital/` に取り込み済み（保存済み）。入れ直すときは `WasamiDDTools.import_dd_dialogue`。
+- 長時間処理はまだ無い。ステップ 2 は C++ なので `python Tools/editor_cycle.py` で閉じてビルドして開き直す。
 - 原本の場所: 本家の台詞 `pak_reference_2/DDeception/Content/Audio/Dialogue/Bierce/Ch06/TT/*.ogg`、ワサミの声 `C:\Users\User\Downloads\wasami-deseption\public\voices\*.mp3`。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（20 件。`--update` で 01・10 記録のハッシュを更新）
+- C++ ビルド: この項目ではまだ C++ を触っていない（ステップ 2 から）
+- エディタでの確認: `import_dd_dialogue` で `lines` 9・`quips` 5・`cues` 1・`intercom` 1。15 本すべて音量・ピッチ・チャンネル数・長さ・`SoundClassObject`・字幕 1 つが本家の書き出しと一致し、Cue は `SoundNodeRandom` の重み 1 × 5・波の順（05/02/04/01/03）・`DialogueAttenuation` が一致。`Content/DD/...` に保存済み。
+- PIE: 鳴らす側がまだ無いので未実施（字幕が画面に出ることの確かめはステップ 3）。

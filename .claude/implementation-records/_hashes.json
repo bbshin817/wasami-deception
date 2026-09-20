@@ -34,13 +34,13 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "1cd3c14effb0d16992bbe68d0170ceae8ec98f39",
+    "Content/Python/wasami_tools/toolsets/dd.py": "2e1e7883e4f27fa90effeda45d345549b6d00f8f",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "f9ebcebc9fb4b61ee5366300f93b92e191b45a06",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "5674c6fb9657e884700f49946b1cd6fa13152b12",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
-    "Content/Python/wasami_tools/pipeline/dd_assets.py": "6a64438aeefdf08af7cc9b757394b64c47dfae96",
+    "Content/Python/wasami_tools/pipeline/dd_assets.py": "5c0a3a3e33be8013b09103a9009acc8f96a56eb0",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "12fe905cda1b38498e493c44357aa86e6b25d2ed",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "603e458eae252ae28504ab63d38daba846602641",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "ecd33cbe9709b8dd86249ad4c7128dca64c484d3",
@@ -344,6 +344,7 @@
     "Source/wasami_deception/WasamiMusicPlayer.h": "6ba3db800e68f748001b8aaf5985f7534bdf5bbb",
     "Source/wasami_deception/WasamiMusicPlayer.cpp": "ab85bdbb858ca623b0d84b00f61b02250b31e3f1",
     "Source/wasami_deception/Tests/WasamiMusicTests.cpp": "33ae28a800d3afa474fbb6f03851881ce0f92577",
-    "Content/Python/wasami_tools/pipeline/dd_audio.py": "ffd9f485ab2c6d11a3ebd14ba8cf80734487b509"
+    "Content/Python/wasami_tools/pipeline/dd_audio.py": "ffd9f485ab2c6d11a3ebd14ba8cf80734487b509",
+    "Content/Python/wasami_tools/pipeline/dd_dialogue.py": "f96b35bf06e83054d037b2b6d5a8dc8ad6e4a91b"
   }
 }

@@ -85,6 +85,23 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_dialogue() -> dict[str, int]:
+        """Imports (or re-imports) the hospital's dialogue: the nine lines Bierce speaks over Zone 1 and Zone 2
+        (AWasamiBierceTalk), the five waves of the quips a nurse coming close sets off and the SoundCue that picks
+        between them (Bierce_TormentTherapy_Gameplay, through DialogueAttenuation), and the announcement Zone 1's flow
+        plays over the intercom. Every wave keeps the original's settings (volume 2.0, the Dialogue sound class) and
+        gets the line of the original's string table Strings as its subtitle, which the original's hospital waves do
+        not carry themselves. The entrance level's and the boss fight's lines are not imported.
+
+        Returns:
+            How many assets of each kind were made ('lines', 'quips', 'cues', 'intercom').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_dialogue").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_dd_ui() -> dict[str, int]:
         """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,
