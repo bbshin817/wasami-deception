@@ -12,6 +12,7 @@
 #include "WasamiGameMode.h"
 #include "WasamiGarageLift.h"
 #include "WasamiLoadingWidget.h"
+#include "WasamiMusicPlayer.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiZoneBarrier.h"
 
@@ -21,6 +22,8 @@ namespace
 	const FLinearColor ParkingLotArrow(1.f, 0.8002f, 0.f, 1.f);
 	const FLinearColor TunnelArrow(1.f, 0.8317f, 0.f, 1.f);
 }
+
+const FName AWasamiZone1Flow::MusicPlayerSource(TEXT("BP_06_MusicPlayer_2"));
 
 AWasamiZone1Flow::AWasamiZone1Flow()
 {
@@ -132,7 +135,7 @@ void AWasamiZone1Flow::Persistent05()
 	SpawnNurses();
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveCollectAllShards", "COLLECT ALL SHARDS"));
 	BindAllShardsCollected(GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On05AllShardsCollected));
-	// BP_06_MusicPlayer_2's bFadeOut false (item 19).
+	SetMusicFadeOut(false);
 	After(ShardCheckDelay, [this]()
 	{
 		if (Mode)
@@ -150,7 +153,7 @@ void AWasamiZone1Flow::On05AllShardsCollected()
 	SetArrowColor(ParkingLotArrow);
 	SetArrowTarget(Source(TEXT("06_CutsceneStart")));
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveReachParkingLot", "REACH THE PARKING LOT"));
-	// BP_06_MusicPlayer_2's bFadeOut true (item 19).
+	SetMusicFadeOut(true);
 	BindTrigger(TEXT("06_CutsceneStart"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On05ParkingLotCutscene));
 	if (AWasamiZoneBarrier* Barrier = ZoneBarrier(TEXT("BP_ZoneBarrier_2")))
 	{
@@ -162,15 +165,18 @@ void AWasamiZone1Flow::On05ParkingLotCutscene()
 {
 	Enter(TEXT("05_ParkingLotCutscene"));
 	// The view over to 06_CineCamera, the skip screen up and 06_Hospital_Zone1_06Event played. The player keeps its
-	// input, as the original leaves it: the scene only takes its view. BP_06_MusicPlayer_2's bFadeOut true (item 19).
+	// input, as the original leaves it: the scene only takes its view.
 	PlayCutscene(TEXT("06_Hospital_Zone1_06Event"), GET_FUNCTION_NAME_CHECKED(AWasamiZone1Flow, On06Transition),
 		TEXT("06_CineCamera"));
+	// The music out for the scene, which carries its own (@16827, once the sequence is playing and bound).
+	SetMusicFadeOut(true);
 }
 
 void AWasamiZone1Flow::On06Transition()
 {
 	Transition06();
-	// BP_06_MusicPlayer_2's bFadeOut false (item 19).
+	// And back on for the parking lot (@16774), which the player walks into as the transition's fade clears.
+	SetMusicFadeOut(false);
 }
 
 void AWasamiZone1Flow::Transition06()
@@ -276,6 +282,14 @@ void AWasamiZone1Flow::SetNursesAttackDoor(bool bAttack)
 	}
 }
 
+void AWasamiZone1Flow::SetMusicFadeOut(bool bFadeOut)
+{
+	if (AWasamiMusicPlayer* Music = MusicPlayer(MusicPlayerSource))
+	{
+		Music->bFadeOut = bFadeOut;
+	}
+}
+
 void AWasamiZone1Flow::OnNurseLiftTrigger(AActor* OverlappedActor, AActor* OtherActor)
 {
 	// Cast to BP_06_ReaperNurse: any nurse. NurseNear is never cleared (Check Lift Nurses, which would, is never called).
@@ -302,7 +316,7 @@ void AWasamiZone1Flow::On06ReachAmbulance()
 	SetArrowColor(TunnelArrow);
 	SetArrowTarget(Source(TEXT("Plane48_2")));
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGoodLuck", "GOOD LUCK"));
-	// BP_06_MusicPlayer_2's bFadeOut true (item 19).
+	SetMusicFadeOut(true);
 	for (const TCHAR* Blocker : {TEXT("BlockingVolume_Ambulance_4"), TEXT("BlockingVolume_Ambulance_2"),
 		TEXT("BlockingVolume_Ambulance_1"), TEXT("BlockingVolume_Ambulance_3")})
 	{

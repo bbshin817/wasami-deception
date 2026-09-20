@@ -33,6 +33,16 @@ public:
 	/** Cell Cutscene Finished: the view blends back from the scenes' cine camera to the player over 2 s. */
 	static constexpr float CellViewBlendTime = 2.f;
 
+	/**
+	 * The cell's scene ducks BP_06_MusicPlayer_Zone2_2's Regular Music to 0.3 over 0.5 s as it starts (Bierce speaks
+	 * through it) and brings it back to 1 over 2.5 s as it ends: the original's two FadeIn calls, which the flow makes
+	 * itself since bFadeOut is not what the scene uses.
+	 */
+	static constexpr float CellMusicFadeIn = 0.5f;
+	static constexpr float CellMusicVolume = 0.3f;
+	static constexpr float CellEndMusicFadeIn = 2.5f;
+	static constexpr float CellEndMusicVolume = 1.f;
+
 	/** Spikes_Death: the player dies 0.5 s after the spikes reach them. */
 	static constexpr float SpikesDeathDelay = 0.5f;
 
@@ -45,6 +55,9 @@ public:
 	/** This game's garage portal and the trigger by it, which the level build places (dd_level.PORTALS). */
 	static const FName GaragePortal;
 	static const FName EscapeTrigger;
+
+	/** BP_06_MusicPlayer_Zone2_2, this zone's music (placed with bFadeOut false, so the zone opens with its track). */
+	static const FName MusicPlayerSource;
 
 	/** The Matron over the miniboss corridor (the level's BP_06_Matron_MiniBoss), whom Activate MiniBoss Enemies wakes. */
 	static const FName Matron;
@@ -102,6 +115,8 @@ private:
 	void SpawnNurses();
 	/** Postmaze Transition: the ring piece as the goal. */
 	void PostmazeTransition();
+	/** BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn, as the cell's scene ducks the music and gives it back. */
+	void FadeCellMusicIn(float Duration, float Volume);
 
 	/** Escape_AmbulanceArrive: the arrival over, the blocker at the ambulance's front goes. */
 	UFUNCTION()

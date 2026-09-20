@@ -11,7 +11,7 @@ updated: 2026-09-20
 # 曲と環境音（ゾーンの曲の切り替え）
 
 ## 役割
-レベル自身が鳴らす音。いまは曲だけ: `AWasamiMusicPlayer`（本家 `pak_reference_2` の `Blueprints/06_Hospital/BP_06_MusicPlayer`。処理は親の `Blueprints/08_BearHouse/BP_08_MusicPlayer`）が、ゾーンの通常の曲・追跡の曲・上書きの曲の 3 つを持ち、0.5 s ごとに `bFadeOut`・`bOverrideMusic`・敵が追跡中かを見て 1 s でクロスフェードする。レベルにゾーンごとに 1 体置き、`bFadeOut` を触るのはゾーンの流れ（11 記録）。作業一覧の項目 19 のステップ 1 で作った。
+レベル自身が鳴らす音。いまは曲だけ: `AWasamiMusicPlayer`（本家 `pak_reference_2` の `Blueprints/06_Hospital/BP_06_MusicPlayer`。処理は親の `Blueprints/08_BearHouse/BP_08_MusicPlayer`）が、ゾーンの通常の曲・追跡の曲・上書きの曲の 3 つを持ち、0.5 s ごとに `bFadeOut`・`bOverrideMusic`・敵が追跡中かを見て 1 s でクロスフェードする。レベルにゾーンごとに 1 体置き、`bFadeOut` を触り Zone 2 の独房の場面で曲を下げ・戻すのはゾーンの流れ（11 記録）。作業一覧の項目 19 のステップ 1・2 で作った。
 
 環境音・残響・効果音はこの後のステップで足す（仕掛けやパワー、敵、UI の音は、それぞれを作る記録と取り込みの側にある）。
 
@@ -20,7 +20,7 @@ updated: 2026-09-20
 - `FWasamiMusicFades`: 3 つの部品（`Regular`・`Panic`・`Override`）の 1 回分と `IsSilent()`。
 - `FWasamiMusicDoOnce`: 本家の DoOnce ノード 1 つ。`Enter()`（通したら真。以後は Reset まで偽）・`Reset()`・`IsClosed()`。`FWasamiMusicDoOnce{true}` は Start Closed。
 - `FWasamiMusicState`: `Update(bFadeOut, bOverrideMusic, bIntense)` → `FWasamiMusicFades`。ワールド無しで試せる純粋な構造体で、5 つの DoOnce を持つ。
-- `AWasamiMusicPlayer`（`AActor`）: `bFadeOut`・`bOverrideMusic`（どちらも `EditAnywhere, BlueprintReadWrite`）、`Update()`（`BlueprintCallable`）、`IsIntenseMusic()`（`BlueprintPure`。本家の `Intense Music ?`）、`GetLastFades()`（直前の `Update` が流したフェード。テストと道具のため）、部品の取り出し `GetRegularMusic()`・`GetPanicMusic()`・`GetOverrideMusic()`。定数 `UpdateInterval` 0.5・`FadeDuration` 1.0・`FadeInVolume` 1.0。ソフト参照 `RegularMusicSound`・`PanicMusicSound`・`OverrideMusicSound`。
+- `AWasamiMusicPlayer`（`AActor`）: `bFadeOut`・`bOverrideMusic`（どちらも `EditAnywhere, BlueprintReadWrite`）、`Update()`（`BlueprintCallable`）、`IsIntenseMusic()`（`BlueprintPure`。本家の `Intense Music ?`）、`FadeRegularMusicIn(Duration, Volume)`（`BlueprintCallable`。`Regular Music` の `FadeIn(Duration, Volume, 0, Linear)` だけを流す。Zone 2 の独房の場面が使う）、`GetLastFades()`（直前の `Update` が流したフェード。テストと道具のため）、`GetLastRegularFadeInDuration()`・`GetLastRegularFadeInVolume()`（直前の `FadeRegularMusicIn`。まだ無ければ長さが負。同じくテストのため）、部品の取り出し `GetRegularMusic()`・`GetPanicMusic()`・`GetOverrideMusic()`。定数 `UpdateInterval` 0.5・`FadeDuration` 1.0・`FadeInVolume` 1.0。ソフト参照 `RegularMusicSound`・`PanicMusicSound`・`OverrideMusicSound`。
 - `AWasamiMusicPlayerZone2`: 本家の `BP_06_MusicPlayer_Zone2`（`Regular Music` の曲だけを差し替えた子）。
 - `IWasamiEnemyInterface::Chasing()`（04 記録）: 本家の `DD_EnemyInterface` の `Chasing`。既定は偽、`AWasamiEnemy` は `IsChasing()`（07 記録）を返す。`IsIntenseMusic()` がこれを見る。
 - ツール `WasamiDDTools.import_dd_audio()`（`dd_audio.import_all`）: 曲 3 本の取り込み。
@@ -51,7 +51,7 @@ updated: 2026-09-20
 - インターフェース: `pak_reference_2/_bytecode/.../Characters/Shared/DD_EnemyInterface.txt` の `Chasing`。
 
 ## 依存関係
-- 使う側: ゾーンの流れ（`AWasamiZone1Flow`・`AWasamiZone2Flow`。11 記録。ステップ 2 で `bFadeOut` を触る）、レベルの組み立て（`dd_level._flow`。01 記録）。
+- 使う側: ゾーンの流れ（`AWasamiZone1Flow`・`AWasamiZone2Flow`。11 記録）。`src:BP_06_MusicPlayer_2` / `src:BP_06_MusicPlayer_Zone2_2` のタグで引き（`AWasamiZoneFlow::MusicPlayer`）、Zone 1 は 5 か所で `bFadeOut` を上げ下げし（`SetMusicFadeOut`）、Zone 2 は独房の場面で `FadeRegularMusicIn` を 2 回呼び、脱出で `bFadeOut` を上げる。レベルの組み立て（`dd_level._flow`。01 記録）。
 - 見る側: `IWasamiEnemyInterface`（04 記録）の `Chasing` → `AWasamiEnemy::IsChasing()`（07 記録）。
 - 取り込み: `dd_assets.sound`（01 記録）。
 - エンジン: `UAudioComponent`（`FadeIn` / `FadeOut` / `IsPlaying`、`EAudioFaderCurve::Linear`）、`FTimerManager`、`TActorIterator`。
@@ -60,6 +60,9 @@ updated: 2026-09-20
 - `Override Music` は曲が空のまま（本家の病院も空）。`bOverrideMusic` の道だけ残してある。
 - 曲は 3D の減衰を持たない（本家も部品に減衰の上書きが無く、SoundWave 自身も素）ので、どこにいても同じ大きさで鳴る。置き場所は本家に合わせてあるだけ。
 - テストの `Wasami.Music.Actor` は `/Game/DD/Audio/06_Hospital/Music` の曲が取り込まれていることを前提にする（`import_dd_audio` を先に走らせる）。
+- **`bFadeOut` は一時停止の下では効かない**: `Update` は 0.5 s のタイマーなので、止めたゲームでは回らない。Zone 2 の脱出（11 記録の `OnEndTrigger`）が同じフレームで一時停止するため、そこで上げた `bFadeOut` は音にならず、スコア画面の下で曲は鳴り続ける。
+- `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
 ## 変更履歴
 - 2026-09-20: 初版（作業一覧の項目 19 のステップ 1。`AWasamiMusicPlayer` と曲 3 本の取り込み・配置）。
+- 2026-09-20: `FadeRegularMusicIn` を足し、ゾーンの流れからの切り替えを繋いだ（ステップ 2）。

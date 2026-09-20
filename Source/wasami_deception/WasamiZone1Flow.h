@@ -46,6 +46,9 @@ public:
 	/** The ambulance's shake as it leaves (ClientPlayCameraShake's scale). */
 	static constexpr float TakeOffShakeScale = 4.f;
 
+	/** BP_06_MusicPlayer_2, whose bFadeOut the sections raise and drop (the level places it true, so the zone opens silent). */
+	static const FName MusicPlayerSource;
+
 protected:
 	virtual void StartAt(int32 Checkpoint) override;
 
@@ -93,6 +96,9 @@ private:
 	void SpawnNurses06();
 	/** bAttackDoor on each of 06 Nurses. */
 	void SetNursesAttackDoor(bool bAttack);
+
+	/** BP_06_MusicPlayer_2's bFadeOut: the music fades out while it is on, and comes back as it is dropped. */
+	void SetMusicFadeOut(bool bFadeOut);
 
 	/** TriggerVolume_1's ActorBeginOverlap (bound from the level's start): a nurse sets the garage lift's NurseNear. */
 	UFUNCTION()

@@ -23,6 +23,7 @@
 #include "WasamiCutsceneWidget.h"
 #include "WasamiDoorBreak.h"
 #include "WasamiDoubleDoors.h"
+#include "WasamiMusicPlayer.h"
 #include "WasamiEnemy.h"
 #include "WasamiGameMode.h"
 #include "WasamiPlayerCharacter.h"
@@ -219,6 +220,16 @@ AWasamiZoneBarrier* AWasamiZoneFlow::ZoneBarrier(FName Source) const
 		UE_LOG(LogTemp, Warning, TEXT("%s: no zone barrier %s"), *GetClass()->GetName(), *Source.ToString());
 	}
 	return Barrier;
+}
+
+AWasamiMusicPlayer* AWasamiZoneFlow::MusicPlayer(FName Source) const
+{
+	AWasamiMusicPlayer* Music = Cast<AWasamiMusicPlayer>(FindSource(GetWorld(), Source));
+	if (!Music)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no music player %s"), *GetClass()->GetName(), *Source.ToString());
+	}
+	return Music;
 }
 
 void AWasamiZoneFlow::BindAllShardsCollected(FName Function)

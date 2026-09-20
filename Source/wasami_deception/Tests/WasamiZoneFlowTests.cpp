@@ -10,6 +10,7 @@
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
 #include "../WasamiMatron.h"
+#include "../WasamiMusicPlayer.h"
 #include "../WasamiPlayerCharacter.h"
 #include "../WasamiPortal.h"
 #include "../WasamiRingPiece.h"
@@ -109,6 +110,16 @@ namespace
 			ATargetPoint* Point = World->SpawnActor<ATargetPoint>(FVector(0., Y, -40000.), FRotator(0., 90., 0.));
 			Point->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
 		}
+	}
+
+	/** The zone's music player placed from the original's actor of that name, with bFadeOut as the level has it. */
+	template <typename T>
+	T* SpawnMusicPlayer(UWorld* World, FName Name, bool bFadeOut)
+	{
+		T* Music = World->SpawnActor<T>(FVector(0., 0., -110000.), FRotator::ZeroRotator);
+		Music->bFadeOut = bFadeOut;
+		Music->Tags.Add(AWasamiZoneFlow::SourceTag(Name));
+		return Music;
 	}
 
 	/** Zone 2's altar ring_statue_2 (far below), whose Interact All Shards the ring piece's section binds. */
@@ -294,6 +305,8 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	AWasamiGarageLiftZone1Special* GarageLift = World->SpawnActor<AWasamiGarageLiftZone1Special>(FVector(0., 0., -120000.),
 		FRotator::ZeroRotator);
 	GarageLift->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("hospital_garage_lift_anim_Anim_2")));
+	// BP_06_MusicPlayer_2, placed faded out as the level has it: the sections take the music away and give it back.
+	AWasamiMusicPlayer* Music = SpawnMusicPlayer<AWasamiMusicPlayer>(World, AWasamiZone1Flow::MusicPlayerSource, true);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 4);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 1);
@@ -302,6 +315,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("4: the lift arrives"), Flow->GetSection(), FName(TEXT("04_Start")));
+	TestTrue(TEXT("and does so in silence"), Music->bFadeOut);
 	TestTrue(TEXT("its sequence plays"), Arrival->GetSequencePlayer() && Arrival->GetSequencePlayer()->IsPlaying());
 	TestTrue(TEXT("the lift's doors locked"), LiftDoors->bLocked);
 	LiftDoors->OpenFront();
@@ -328,6 +342,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("and swinging open from the front"), LiftDoors->IsOpenFront() && LiftDoors->IsOpening());
 	Walk(World, TEXT("BP_04_Trigger_Maze"));
 	TestEqual(TEXT("05_Persistent"), Flow->GetSection(), FName(TEXT("05_Persistent")));
+	TestFalse(TEXT("the maze's music comes in"), Music->bFadeOut);
 	TestEqual(TEXT("checkpoint 5 saved"), SavedCheckpoint(), 5);
 	TestEqual(TEXT("the shards wanted"), Objective(Mode), FString(TEXT("COLLECT ALL SHARDS")));
 	// Spawn Nurses: a nurse at each of NurseSpawn_3, _1 and _2, turned as the point is.
@@ -359,6 +374,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Mode->CheckShards();
 	Advance(Wrapper, 0.03f);
 	TestEqual(TEXT("all collected"), Flow->GetSection(), FName(TEXT("05 All Shards Collected")));
+	TestTrue(TEXT("and the music goes"), Music->bFadeOut);
 	TestEqual(TEXT("the maze's nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestEqual(TEXT("to the parking lot"), Objective(Mode), FString(TEXT("REACH THE PARKING LOT")));
 	TestTrue(TEXT("the barrier broken"), !BarrierRef.IsValid() || BarrierRef->IsActorBeingDestroyed());
@@ -371,8 +387,11 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	// sends the engine's SetViewTarget into an endless ClientSetViewTarget: .claude/references/troubleshooting.md), so
 	// they are for the PIE run to see.
 	TestNull(TEXT("no fade yet"), MadePlayer(World, TEXT("Ballroom_Event_Fade")));
+	// The scene raises bFadeOut itself, which is seen by dropping it first (the section before raised it).
+	Music->bFadeOut = false;
 	Walk(World, TEXT("06_CutsceneStart"));
 	TestEqual(TEXT("the parking lot's scene"), Flow->GetSection(), FName(TEXT("05_ParkingLotCutscene")));
+	TestTrue(TEXT("which takes the music away"), Music->bFadeOut);
 	TestTrue(TEXT("it plays"), Event06->GetSequencePlayer() && Event06->GetSequencePlayer()->IsPlaying());
 	TestNull(TEXT("no fade while it runs"), MadePlayer(World, TEXT("Ballroom_Event_Fade")));
 	TestEqual(TEXT("and no nurse of 06"), Alive<AWasamiEnemy06Chase>(World, true).Num(), 0);
@@ -381,6 +400,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	Advance(Wrapper, 10.53f + 0.2f);
 	TestFalse(TEXT("the scene over"), Event06->GetSequencePlayer() && Event06->GetSequencePlayer()->IsPlaying());
 	TestEqual(TEXT("06"), Flow->GetSection(), FName(TEXT("06_Start")));
+	TestFalse(TEXT("the parking lot gives it back"), Music->bFadeOut);
 	const ULevelSequencePlayer* Fade = MadePlayer(World, TEXT("Ballroom_Event_Fade"));
 	TestTrue(TEXT("the fade plays"), Fade && Fade->IsPlaying());
 	TestEqual(TEXT("at twice its rate"), Fade ? Fade->GetPlayRate() : 0.f, AWasamiZone1Flow::TransitionFadeRate);
@@ -441,6 +461,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	// go on to).
 	Walk(World, TEXT("TriggerBox_06_AmbulanceTop"));
 	TestEqual(TEXT("06_ReachAmbulance"), Flow->GetSection(), FName(TEXT("06_ReachAmbulance")));
+	TestTrue(TEXT("the ambulance takes the music away"), Music->bFadeOut);
 	TestEqual(TEXT("checkpoint 7 saved"), SavedCheckpoint(), 7);
 	TestEqual(TEXT("good luck"), Objective(Mode), FString(TEXT("GOOD LUCK")));
 	TestTrue(TEXT("the ambulance's sides block"), Collides(AmbulanceSide));
@@ -510,6 +531,10 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	Matron->LongCone = LongCone;
 	Matron->ShortCone = ShortCone;
 	const TWeakObjectPtr<AWasamiMatron> WeakMatron(Matron);
+	// BP_06_MusicPlayer_Zone2_2, which the level places without bFadeOut: this zone opens with its track on, and the
+	// cell's scene ducks it and gives it back itself (Regular Music's FadeIn).
+	const AWasamiMusicPlayerZone2* Music = SpawnMusicPlayer<AWasamiMusicPlayerZone2>(World,
+		AWasamiZone2Flow::MusicPlayerSource, false);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 7);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -540,10 +565,16 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	// (PlayerStart_Cell, which this world has no more than the other starts), with the view left on the capture's camera.
 	TestEqual(TEXT("the capture over: Cell Cutscene Start"), Flow->GetSection(), FName(TEXT("Cell Cutscene Start")));
 	TestFalse(TEXT("which waits its 1 s"), Cell->GetSequencePlayer() && Cell->GetSequencePlayer()->IsPlaying());
+	TestTrue(TEXT("the music untouched until then"), Music->GetLastRegularFadeInDuration() < 0.f);
 	Advance(Wrapper, AWasamiZone2Flow::CellSequenceDelay + 0.05f);
 	TestTrue(TEXT("then the cell"), Cell->GetSequencePlayer() && Cell->GetSequencePlayer()->IsPlaying());
+	TestEqual(TEXT("with the music ducked under it"), Music->GetLastRegularFadeInVolume(), AWasamiZone2Flow::CellMusicVolume);
+	TestEqual(TEXT("over half a second"), Music->GetLastRegularFadeInDuration(), AWasamiZone2Flow::CellMusicFadeIn);
 	Advance(Wrapper, CellSeconds);
 	TestEqual(TEXT("out of the cell's scene"), Flow->GetSection(), FName(TEXT("Cell Cutscene Finished")));
+	TestEqual(TEXT("the music back up"), Music->GetLastRegularFadeInVolume(), AWasamiZone2Flow::CellEndMusicVolume);
+	TestEqual(TEXT("over 2.5 s"), Music->GetLastRegularFadeInDuration(), AWasamiZone2Flow::CellEndMusicFadeIn);
+	TestFalse(TEXT("and never faded out"), Music->bFadeOut);
 	TestTrue(TEXT("the spikes coming down"), Spikes->GetSequencePlayer() && Spikes->GetSequencePlayer()->IsPlaying());
 
 	// The cell's door lock (34 presses at 3.0) opens the door with its sequence.
@@ -741,6 +772,8 @@ bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
 	Portal->bMaskedPortalMaterial = true;
 	Portal->FinishSpawning(FTransform(FVector(0., 0., -40000.)));
 	Portal->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::GaragePortal));
+	const AWasamiMusicPlayerZone2* Music = SpawnMusicPlayer<AWasamiMusicPlayerZone2>(World,
+		AWasamiZone2Flow::MusicPlayerSource, false);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 10);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -771,6 +804,7 @@ bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
 	Walk(World, *AWasamiZone2Flow::EscapeTrigger.ToString());
 	TestEqual(TEXT("the escape"), Flow->GetSection(), FName(TEXT("EndTrigger")));
 	TestTrue(TEXT("the enemies removed"), !WeakSentry.IsValid() || WeakSentry->IsActorBeingDestroyed());
+	TestTrue(TEXT("the music taken away"), Music->bFadeOut);
 
 	// The hospital's Escape: checkpoint 0 saved with the time added and the counter back to 0 (no player here, so no
 	// pause and no screen).
@@ -879,6 +913,9 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 	SpawnZone1NursePlaces(World);
 	SpawnZone2NursePlaces(World);
 	SpawnRingStatue(World);
+	// Zone 1's music player, which 05_Persistent gives the music back on (both zones' are in this one world, and only
+	// Zone 1's sections touch theirs among the checkpoints below).
+	const AWasamiMusicPlayer* Music = SpawnMusicPlayer<AWasamiMusicPlayer>(World, AWasamiZone1Flow::MusicPlayerSource, true);
 	TestNull(TEXT("no flow outside the zones"), AWasamiZoneFlow::SpawnFor(SpawnMode(World, 4), 0));
 
 	// Each checkpoint's section, as a zone reopened there starts it.
@@ -903,6 +940,7 @@ bool FWasamiZoneFlowStartTest::RunTest(const FString& Parameters)
 		TestEqual(*What, Flow ? Flow->GetSection() : NAME_None, FName(Case.Section));
 		TestEqual(*(What + TEXT(": the objective")), Objective(Mode), FString(Case.Objective));
 	}
+	TestFalse(TEXT("05_Persistent gave the music back"), Music->bFadeOut);
 	AWasamiGameMode* Mode = SpawnMode(World, 10);
 	const AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
 	TestEqual(TEXT("zone 2 at 10"), Flow ? Flow->GetSection() : NAME_None, FName(TEXT("Postmaze Transition")));

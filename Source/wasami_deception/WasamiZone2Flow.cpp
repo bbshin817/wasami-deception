@@ -18,6 +18,7 @@
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
 #include "WasamiMatron.h"
+#include "WasamiMusicPlayer.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiPortal.h"
 #include "WasamiRingPieceWidget.h"
@@ -36,6 +37,7 @@ namespace
 
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
 const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
+const FName AWasamiZone2Flow::MusicPlayerSource(TEXT("BP_06_MusicPlayer_Zone2_2"));
 const FName AWasamiZone2Flow::Matron(TEXT("MnM_Matron_Idle_2"));
 const FName AWasamiZone2Flow::PostmazeFilePoint(TEXT("collec"));
 
@@ -111,6 +113,14 @@ void AWasamiZone2Flow::OnArriveCaptureCutscene()
 		TEXT("CineCameraActor_2"));
 }
 
+void AWasamiZone2Flow::FadeCellMusicIn(float Duration, float Volume)
+{
+	if (AWasamiMusicPlayer* Music = MusicPlayer(MusicPlayerSource))
+	{
+		Music->FadeRegularMusicIn(Duration, Volume);
+	}
+}
+
 void AWasamiZone2Flow::OnCellCutsceneStart()
 {
 	Enter(TEXT("Cell Cutscene Start"));
@@ -118,21 +128,24 @@ void AWasamiZone2Flow::OnCellCutsceneStart()
 	// capture's are up already — its OnFinished bound to Cell Cutscene Finished, and the player moved into the cell
 	// (PlayerStart_Cell), where the scene is about to show them. The scene takes no camera of its own: it animates the
 	// capture's CineCameraActor_2, which the view is on still, and its fade carries the black the capture ends on (the
-	// cell in sight at 7.43 s). BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn(0.5, 0.3) is item 19's.
+	// cell in sight at 7.43 s).
 	After(CellSequenceDelay, [this]()
 	{
 		PlayCutscene(TEXT("06_Hospital_Zone2_Cell"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellCutsceneFinished),
 			NAME_None, false);
 		TeleportPlayerTo(TEXT("PlayerStart_Cell"));
+		// And the zone's music ducked under the scene (@3688), which bFadeOut cannot do: a fade in to a lower volume.
+		FadeCellMusicIn(CellMusicFadeIn, CellMusicVolume);
 	});
 }
 
 void AWasamiZone2Flow::OnCellCutsceneFinished()
 {
 	Enter(TEXT("Cell Cutscene Finished"));
-	// @23769: Enable Player Input, the view blended back from the scenes' cine camera to the player over 2 s, and
-	// BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn(2.5, 1) (item 19).
+	// @23769: Enable Player Input, the music back up over 2.5 s, and the view blended back from the scenes' cine camera
+	// to the player over 2 s.
 	EnablePlayerInput(this);
+	FadeCellMusicIn(CellEndMusicFadeIn, CellEndMusicVolume);
 	SetPlayerViewTarget(UGameplayStatics::GetPlayerCharacter(this, 0), CellViewBlendTime);
 	PlaySequence(TEXT("06_Hospital_Zone2_Spikes"));
 	EnableDoorBreak(TEXT("BP_06_Hospital_DoorBreak_2"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellDoorBreak));
@@ -395,6 +408,14 @@ void AWasamiZone2Flow::OnEndTrigger()
 	// 21-Ballroom_portal_V2 and Remove All Enemies.
 	UGameplayStatics::PlaySound2D(this, EscapeSound.LoadSynchronous());
 	RemoveAllEnemies(GetWorld());
+	// The zone's music taken away as the level ends, where the original's ride to the boss fight takes it (@1423, with
+	// its GOOD LUCK and the loading screen 7 s on). Nothing is heard of it here: Escape pauses the game in this same
+	// frame, so no Update comes while the score screen is up and the track plays on under it, as the hotel's exit
+	// leaves its own; the fade falls when NEXT unpauses, in the second before the title opens.
+	if (AWasamiMusicPlayer* Music = MusicPlayer(MusicPlayerSource))
+	{
+		Music->bFadeOut = true;
+	}
 	// And the hospital's own portal: its Trigger_Escape calls Escape at once (06_Hospital @66935), which pauses the game,
 	// saves and puts up the score screen, as the hotel's EndTrigger does.
 	if (AWasamiGameMode* GameMode = GetMode())

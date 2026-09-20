@@ -151,6 +151,13 @@ bool AWasamiMusicPlayer::IsIntenseMusic() const
 	return false;
 }
 
+void AWasamiMusicPlayer::FadeRegularMusicIn(float Duration, float Volume)
+{
+	LastRegularFadeInDuration = Duration;
+	LastRegularFadeInVolume = Volume;
+	RegularMusic->FadeIn(Duration, Volume, 0.f, EAudioFaderCurve::Linear);
+}
+
 void AWasamiMusicPlayer::ApplyFade(UAudioComponent* Component, EWasamiMusicFade Fade)
 {
 	switch (Fade)

@@ -132,8 +132,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Music")
 	bool IsIntenseMusic() const;
 
+	/**
+	 * Regular Music's FadeIn(Duration, Volume, 0, Linear), which Zone 2's cell scene makes itself: bFadeOut can only
+	 * take all three away, and the scene wants the zone's track kept on under it, at a third of its volume.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Music")
+	void FadeRegularMusicIn(float Duration, float Volume);
+
 	/** What the last Update faded (none while nothing changed). For the tests and the tools. */
 	const FWasamiMusicFades& GetLastFades() const { return LastFades; }
+
+	/** The last FadeRegularMusicIn, or a negative duration when none has come. For the tests and the tools. */
+	float GetLastRegularFadeInDuration() const { return LastRegularFadeInDuration; }
+	float GetLastRegularFadeInVolume() const { return LastRegularFadeInVolume; }
 
 	UAudioComponent* GetRegularMusic() const { return RegularMusic; }
 	UAudioComponent* GetPanicMusic() const { return PanicMusic; }
@@ -173,6 +184,8 @@ private:
 
 	FWasamiMusicState State;
 	FWasamiMusicFades LastFades;
+	float LastRegularFadeInDuration = -1.f;
+	float LastRegularFadeInVolume = -1.f;
 	FTimerHandle UpdateTimer;
 };
 

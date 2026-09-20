@@ -7,6 +7,7 @@
 
 class AWasamiDoubleDoors;
 class AWasamiEnemy;
+class AWasamiMusicPlayer;
 class AWasamiGameMode;
 class AWasamiTriggerBox;
 class AWasamiZoneBarrier;
@@ -25,9 +26,10 @@ class USoundBase;
  *
  * The flow moves the story on and plays what the level Blueprints play themselves: the level sequences placed in the
  * level, the fade, the camera shakes, sounds and the level's emitters; it wakes the door breaks and listens to them,
- * and locks, opens and destroys the double doors it names. It spawns the nurses at the level's target points as the events do. What the events show or voice through other
- * actors (the barrier, the loading screen, Bierce and the nurses' lines, the music) is left to the items that make those;
- * each has its place in the event, marked by a comment.
+ * and locks, opens and destroys the double doors it names. It spawns the nurses at the level's target points as the
+ * events do, and takes the zone's music away and gives it back (AWasamiMusicPlayer's bFadeOut and its fades). What the
+ * events show or voice through other actors (the barrier, the loading screen, Bierce and the nurses' lines) is left to
+ * the items that make those; each has its place in the event, marked by a comment.
  */
 UCLASS(Abstract)
 class WASAMI_DECEPTION_API AWasamiZoneFlow : public AActor
@@ -106,6 +108,13 @@ protected:
 
 	/** The zone barrier placed from the original's actor of that name (BP_ZoneBarrier), or null with a warning. */
 	AWasamiZoneBarrier* ZoneBarrier(FName Source) const;
+
+	/**
+	 * The music player placed from the original's actor of that name (BP_06_MusicPlayer, BP_06_MusicPlayer_Zone2), or
+	 * null with a warning: what the sections raise and drop bFadeOut on, as the original's level Blueprint does through
+	 * its reference to the placed actor.
+	 */
+	AWasamiMusicPlayer* MusicPlayer(FName Source) const;
 
 	/** The game mode's All Shards Collected calls the flow's event of that name. */
 	void BindAllShardsCollected(FName Function);
