@@ -34,7 +34,7 @@
 | `wasami_deception.uproject`、`.mcp.json`、`Config/*.ini` | 00 |
 | `Source/wasami_deception.Target.cs`、`Source/wasami_deceptionEditor.Target.cs` | 00 |
 | `Source/wasami_deception/wasami_deception.Build.cs`、`wasami_deception.cpp`、`wasami_deception.h`、`WasamiAssets.h` | 00 |
-| `Tools/dd/prepare_stage.py`、`Tools/dd/cooked_shaders.py`、`Tools/dd/bp_flow.py`、`Tools/ue_remote.py`、`Tools/editor_cycle.py`、`Tools/console_session.py`、`Tools/desktop.py`、`Tools/desktop_agent.py`、`Tools/pie.py`、`Tools/check_unity_names.py`、`Tools/playthrough.py`、`Tools/video_probe.py`、`Tools/overnight.py`、`Tools/discord_notify.py` | 01 |
+| `Tools/dd/prepare_stage.py`、`Tools/dd/cooked_shaders.py`、`Tools/dd/bp_flow.py`、`Tools/ue_remote.py`、`Tools/editor_cycle.py`、`Tools/console_session.py`、`Tools/desktop.py`、`Tools/desktop_agent.py`、`Tools/pie.py`、`Tools/perf_probe.py`、`Tools/check_unity_names.py`、`Tools/playthrough.py`、`Tools/video_probe.py`、`Tools/overnight.py`、`Tools/discord_notify.py` | 01 |
 | `Content/Python/init_unreal.py`、`Content/Python/wasami_tools/**` | 01 |
 | `Source/wasami_deception/WasamiCascadeLibrary.*`、`Tests/WasamiCascadeTests.cpp`、`WasamiSoundCueLibrary.*`、`WasamiMaterialLibrary.*` | 01 |
 | `Source/wasami_deception/WasamiGameMode.*`、`WasamiPlayerCharacter.*` | 02 |
