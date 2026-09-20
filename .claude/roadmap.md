@@ -328,7 +328,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/08_BearHouse/BP_08_MusicPlayer.txt`（`BP_06_MusicPlayer`・`_Zone2` の親。派生は曲を差し替えるだけで処理を持たないので、書き出しに `.txt` は無く `_assets/…/BP_06_MusicPlayer*.json` に音がある）、`_soundcues.json`、`_levels/06_Hospital*.full.json`、実装記録 01（`UWasamiSoundCueLibrary`）。
 - 依存: 6。
 - 規模: 2
-- 状態: **進行中（2026-09-20 から）**。進捗記録 `.claude/progress/20260920-audio.md`。曲は本家の `BP_08_MusicPlayer` を写した `AWasamiMusicPlayer` にして両ゾーンに置き、通常 2 本 + 追跡 1 本を鳴らす（病院に Nightmare の曲は無いので「通常・追跡・Nightmare」は通常・追跡の 2 種に読み替えた。記録の「決定事項」）。
+- 状態: **完了（2026-09-20）**。曲（本家の `BP_08_MusicPlayer` を写した `AWasamiMusicPlayer`・`AWasamiMusicPlayerZone2`。0.5 s ごとの `Update` が `bFadeOut`・`bOverrideMusic`・敵の追跡で 1 s のクロスフェード）を両ゾーンに置き、ゾーンの流れが 8 か所で切り替えるようにした。環境音 2 つ・館内放送 1 つ・残響のボリューム 2 つを本家の値のまま置き（`AAmbientSound`・`AAudioVolume`）、捕獲の別室に本家の音（ホテルは t = 0 の `Evil_Monkey_Scream`、顔は 0.2 s の `LIVING_STATUE_Laughter_05` と 1.05 s の `Axe_Hit_03` を 2D で）を足し、残りの効果音を洗い出して見つかった 1 つ（敵の移動音 `DD_Rollerskating_Fast_V1_LOOP`。速さが音量とピッチになる）を埋めた（実装記録 10・07・11・01）。テストは `Wasami.Music.*`・`Wasami.Capture.Sound`・`Wasami.Enemy.Actor.Sound` ほか 152 件すべて成功。PIE の Zone 1 で、曲（無音 → 通常 → 追跡の Panic）・環境音と残響・捕獲の 3 本・敵の移動音（巡回 200 cm/s で音量 0.5、追跡 430 cm/s で 1.0・ピッチ 1.2225）が鳴ることを確かめた。**完了の条件の読み替え**: (1) 「通常・追跡・Nightmare」は通常・追跡の 2 種（本家の病院に Nightmare の曲は無く、`Override Music` も音が空）。(2) `AudioComponent`（Zone 1 43・Zone 2 146）のほとんどは置いた BP の部品で実装済みだったので、新しく置いたのは Zone 1 の環境音 2・残響 2 と Zone 2 の館内放送 1。(3) 捕獲は WebGL 版に倣って叫びだけにし、ナイフの刺突と重ねる小さい叫びは落とした（本作のワサミのクリップは刺突をせず、跳び込むのも 1 体）。(4) 館内放送と放送の箱 `04_Intercom` は置くだけ（鳴らす中身は台詞なので項目 20）。残った要確認 3 件は下の「未回答の要確認」。
 
 ### 20. 台詞と字幕（Bierce の台詞、WebGL 版のワサミの声）
 
@@ -426,6 +426,12 @@
 ### 項目 29（EXTRAS、2026-09-20 に閉じた記録 `20260920-extras`）
 
 - 2026-09-20: EXTRAS に並べる中身を仮にした（枠組みだけ先に作るというユーザーの回答どおり）。病院の書類が解放する絵 19〜22 は本作の絵（タイトルの顔・ポーズの 2 枚・ポータルのワサミ）、日記 10 と曲 10 は音も名前も空（押せるが鳴らない。曲 5〈本家は Zone 1 の曲 Cold Hearted〉も空）、クレジットは本作の数行（WASAMI DECEPTION / A DARK DECEPTION FAN GAME / ORIGINAL GAME / DARK DECEPTION / GLOWSTICK ENTERTAINMENT）。何を並べるかを決めてほしい（`UWasamiExtrasWidget` の `ArtTextures`・部品の値・`CreditsText` を差し替えるだけ。19 記録）。
+
+### 項目 19（曲と環境音・効果音の残り、2026-09-20 に閉じた記録 `20260920-audio`）
+
+- 2026-09-20: 捕獲で本家の音のうち写さなかったもの — `MonkeyJumpscare2` の 0.484 s（音量 1.7）と `MonkeyJumpscare3` の 2.437 s（1.5）のナイフの刺突 `EN01_Toy_Monkey_Attck_Knife_v4`・`_v1` と、`MonkeyJumpscare3` が 5 体の猿に重ねる小さい叫び 4 つ（音量 0.5、ピッチ 0.95〜1.1）。本作のワサミのクリップ（宙返り・滑り・歩き）は刺突をせず、跳び込むのも 1 体なので、鳴らす相手がいないと判断して落とした。刺突の音が欲しければ、どのクリップのどの時刻に当てるかを決める要がある。場所: `WasamiCapture.h` の `SoundTime`・`GetSound`（実装記録 07 の「捕獲の演出」の「音」）。
+- 2026-09-20: 敵の移動音を本家の波のままにしてよいか — 本家のナースはローラースケートで滑るので `DD_Rollerskating_Fast_V1_LOOP`（滑る音）を速さで鳴らすが、本作の敵ワサミは走って追う。大目標 2 の決め方（原作の素材をそのまま使う）どおり本家の波・値のまま入れてある。足音のような別の音に替えるなら、波と鳴らし方（速さで音量を上げるか、アニメの通知で 1 歩ずつ鳴らすか）を決める要がある。あわせて、ピッチの割り当ては本家のまま 400〜800 cm/s → 1.2〜1.5 なので、追跡 430 の本作では 1.2225 までしか上がらない。場所: `WasamiEnemy.h` の `MoveSound`・`MoveVolumeSpeed` ほか（実装記録 07 の「移動音」）。
+- 2026-09-20: Zone 2 の脱出で曲を引くか — 本家の Zone 2 は救急車でボス戦へ行くときに曲を引く（`06_Hospital_Zone_02` @1423）が、本作はホテルの出口に倣ったポータルで、ホテルは曲を触らない。いまは本家の病院に倣って `bFadeOut` を真にしてあるが、`Escape` が同じフレームでゲームを止めて曲の 0.5 s のタイマーが回らないので音にはならず、スコア画面の下で曲が鳴り続ける。聞こえる形で引くなら、止める前に部品を直にフェードアウトする要がある。場所: `WasamiZone2Flow.cpp` の `OnEndTrigger`（実装記録 10 の「既知の制約」・11）。
 
 ### 項目 26（追跡中のランダムの動き、2026-09-20 に閉じた記録 `20260920-chase-variations`）
 

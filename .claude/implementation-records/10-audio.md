@@ -11,9 +11,9 @@ updated: 2026-09-20
 # 曲と環境音（ゾーンの曲の切り替え）
 
 ## 役割
-レベル自身が鳴らす音。いまは曲だけ: `AWasamiMusicPlayer`（本家 `pak_reference_2` の `Blueprints/06_Hospital/BP_06_MusicPlayer`。処理は親の `Blueprints/08_BearHouse/BP_08_MusicPlayer`）が、ゾーンの通常の曲・追跡の曲・上書きの曲の 3 つを持ち、0.5 s ごとに `bFadeOut`・`bOverrideMusic`・敵が追跡中かを見て 1 s でクロスフェードする。レベルにゾーンごとに 1 体置き、`bFadeOut` を触り Zone 2 の独房の場面で曲を下げ・戻すのはゾーンの流れ（11 記録）。作業一覧の項目 19 のステップ 1・2 で作った。
+レベル自身が鳴らす音（曲・環境音・残響）と、本家の病院で鳴る効果音の洗い出し。曲は `AWasamiMusicPlayer`（本家 `pak_reference_2` の `Blueprints/06_Hospital/BP_06_MusicPlayer`。処理は親の `Blueprints/08_BearHouse/BP_08_MusicPlayer`）が、ゾーンの通常の曲・追跡の曲・上書きの曲の 3 つを持ち、0.5 s ごとに `bFadeOut`・`bOverrideMusic`・敵が追跡中かを見て 1 s でクロスフェードする。レベルにゾーンごとに 1 体置き、`bFadeOut` を触り Zone 2 の独房の場面で曲を下げ・戻すのはゾーンの流れ（11 記録）。作業一覧の項目 19 のステップ 1・2 で作った。
 
-レベルが自分で鳴らす環境音（`AmbientSound`）と残響のボリューム（`AudioVolume`）も、本家の置き場所と値のまま置く（ステップ 3）。ほかの効果音はこの後のステップで足す（仕掛けやパワー、敵、UI の音は、それぞれを作る記録と取り込みの側にある）。捕獲の音（ホテルの叫びと館のウォッチャーの笑い・斧）は 07 記録の「捕獲の演出」にあり、取り込みは `dd_enemy.import_capture_sounds`（ステップ 4）。
+レベルが自分で鳴らす環境音（`AmbientSound`）と残響のボリューム（`AudioVolume`）も、本家の置き場所と値のまま置く（ステップ 3）。ほかの効果音は、それぞれを作る記録と取り込みの側にある（仕掛け・パワー・敵・UI）。捕獲の音（ホテルの叫びと館のウォッチャーの笑い・斧）は 07 記録の「捕獲の演出」にあり、取り込みは `dd_enemy.import_capture_sounds`（ステップ 4）。本家の病院で鳴る音を洗い出して残りを埋めたのがステップ 5 で、結論は下の「残りの効果音」。
 
 ## 公開インターフェース
 - `EWasamiMusicFade`（`None` / `In` / `Out` / `OutIfPlaying`）: 1 回の `Update` が 1 つの部品に求めるフェード。`OutIfPlaying` は本家の `If Playing Fade Out`（鳴っているときだけ `FadeOut`）。
@@ -49,6 +49,16 @@ updated: 2026-09-20
   - `AudioVolume_1` (4480, −23450, 0)・拡縮 (13.989363, 17.642340, 7.914235): `ParkingLot`。
 - Zone 1 には放送の箱 `04_Intercom`（`Box` 部品）もあるが、鳴らす中身は台詞なので項目 20。
 
+## 残りの効果音（ステップ 5）
+本家の病院の両ゾーンで鳴る音を 3 つの筋から拾い、本作の `Content/DD` にある波と突き合わせた（台詞は項目 20 なので除く）。**穴は敵の移動音 1 つだけ**で、それを埋めて項目 19 を閉じた。洗い出しの筋と、そこから出た音の行き先:
+
+1. **レベルの `AudioComponent`**（Zone 1 = 43・Zone 2 = 146）。ほとんどは置かれた BP の SCS の部品なので、音は BP 側にある。持ち主で数えると Zone 1 は `BP_06_Defib` 23（`DD_TT_Defibrillator_Zap`。08 記録）・曲 3・`BP_Collectable` 2（`Bierce_Secret_Files_Pickup`。18 記録）・`BP_FakeUseActor_…_Elevator` 5（`DD_TT_Elevator_Doors_Open`。18 記録）・`BP_SpeedBarrier` 4 と `BP_ZoneBarrier` 1（`Barrier_Loop`。08・11 記録）・`BierceTalk` 1（台詞）・環境音 2・ガレージのリフト 2（`DD_TT_GarageLift_Up`・`_Down`。08 記録）。Zone 2 は defib 13・ガレージのリフト 2・曲 3・`BP_Collectable` 1・`BP_ZoneBarrier` 1・`BierceTalk` 1・館内放送 1・のこぎりの罠 73（`SFX_Matron_SawLoop`。08 記録）・リフト 15 × 2（`DD_TT_GarageLift_Down`・`DD_TT_Lift_Loop`）・ナース 6 × 3（`Audio` = `20-Elevator_Slams`、`Skate Audio` = `DD_Rollerskating_Fast_V1_LOOP`、`Talk Audio` = 台詞）。**ナースの `Skate Audio` 以外はすべて実装済み**だった。
+2. **レベル BP**（`_bytecode/…/06_Hospital_Zone_01.txt`・`_02.txt`）。台詞のほかは `21-Ballroom_portal_V2`（12 記録）・`DD_TT_Door_BustedOpen_02`（08 記録）・`DD_Needle_Trap_R1_V3`・`Ring_Piece_Pickup_v1` で、どれも実装済み。
+3. **置かれた BP とその親、プレイヤー・敵・ゲームモード**の `imports`（音のパスだけを拾い、親クラスをたどる）。本作に無いのは台詞の Cue 7 本（`Nurse_Hospital_Zone01_Detected`・`Laugh`・`Patrol`・`Pursuit`・`Stunned`・`Decloak`・`PillToss`）と Bierce・Malak の全回収の台詞（どれも項目 20）、それに `DD_Syringe_Stab_Impale_R1_V2` と `RL_bodyfall_…_Impact_10` の 2 本。後の 2 本はナースの `Jumpscare Handle`（その場で捕まえる演出）のもので、本作の捕獲は別室（07 記録の「捕獲の演出」）なので鳴らす相手がいない。
+
+- 埋めた 1 つ（敵の移動音）は 07 記録の「移動音」にある（`AWasamiEnemy::SkateAudio`・`UpdateSkateSound`、取り込みは `dd_enemy.import_move_sound`）。
+- 残るのは台詞だけ（項目 20）。館内放送（Zone 2）と放送の箱 `04_Intercom`（Zone 1）も鳴らす中身は台詞なので、置いてあるだけで鳴らす側は項目 20。
+
 ## 作るアセット
 - 曲 `/Game/DD/Audio/06_Hospital/Music/`（`dd_audio.import_music` → `WasamiDDTools.import_dd_audio`）。名前は本家のまま:
   - `DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING`（84.396 s・音量 0.35・ループ）
@@ -83,3 +93,4 @@ updated: 2026-09-20
 - 2026-09-20: 初版（作業一覧の項目 19 のステップ 1。`AWasamiMusicPlayer` と曲 3 本の取り込み・配置）。
 - 2026-09-20: `FadeRegularMusicIn` を足し、ゾーンの流れからの切り替えを繋いだ（ステップ 2）。
 - 2026-09-20: 環境音 2 つ・館内放送 1 つ・残響のボリューム 2 つを本家の値のまま置いた（ステップ 3）。
+- 2026-09-20: 残りの効果音を洗い出し、埋めた 1 つ（敵の移動音）と残り（台詞だけ）を書いた（ステップ 5）。

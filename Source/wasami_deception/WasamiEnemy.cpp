@@ -171,6 +171,9 @@ void AWasamiEnemy::BeginPlay()
 	Super::BeginPlay();
 	SkateAudio->AttenuationSettings = MoveAttenuation.LoadSynchronous();
 	SkateAudio->SetSound(MoveSound.LoadSynchronous());
+	// The original's Skate Audio holds the loop itself, so bAutoActivate starts it; ours loads the loop here, after
+	// that activation has already found no sound, and has to start it by hand.
+	SkateAudio->Play();
 	BeginNurse();
 }
 

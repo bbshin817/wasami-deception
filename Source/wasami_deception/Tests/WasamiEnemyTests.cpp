@@ -711,6 +711,7 @@ bool FWasamiEnemySoundTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("DD_Rollerskating_Fast_V1_LOOP"), Audio->Sound->GetName(), TEXT("DD_Rollerskating_Fast_V1_LOOP"));
 		TestTrue(TEXT("through MonkeyAttenuation"),
 			Audio->AttenuationSettings && Audio->AttenuationSettings->GetName() == TEXT("MonkeyAttenuation"));
+		TestTrue(TEXT("and running from the start"), Audio->IsPlaying());
 	}
 
 	// Update Skate Sound: a whole second of interpolation lands on the mapped value (InterpSpeed * DeltaTime >= 1).
