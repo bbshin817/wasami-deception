@@ -10,3 +10,5 @@
 *.glb filter=lfs diff=lfs merge=lfs -text
 # 本作の手作りの画像の原本（読み込み画面の紋章のシンボルなど。Tools/ が SourceArt/ から作る）
 SourceArt/**/*.png filter=lfs diff=lfs merge=lfs -text
+# 本作の手作りの声の原本（ワサミの声。Tools/dd/prepare_voices.py が WebGL 版の mp3 から作る）
+SourceArt/**/*.wav filter=lfs diff=lfs merge=lfs -text

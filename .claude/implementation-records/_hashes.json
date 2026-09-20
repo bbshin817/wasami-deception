@@ -34,13 +34,13 @@
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
     "Content/Python/wasami_tools/toolsets/__init__.py": "a43b31c3eba8986ab86864a8fa35c71de0fdc5a3",
-    "Content/Python/wasami_tools/toolsets/dd.py": "2e1e7883e4f27fa90effeda45d345549b6d00f8f",
+    "Content/Python/wasami_tools/toolsets/dd.py": "63a70cd93467a5d8cfe1f945549f82282deb1850",
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "f9ebcebc9fb4b61ee5366300f93b92e191b45a06",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
     "Content/Python/wasami_tools/pipeline/paths.py": "5674c6fb9657e884700f49946b1cd6fa13152b12",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
-    "Content/Python/wasami_tools/pipeline/dd_assets.py": "5c0a3a3e33be8013b09103a9009acc8f96a56eb0",
+    "Content/Python/wasami_tools/pipeline/dd_assets.py": "9d61ac2f94d421af795e653874190923088b3d9d",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "12fe905cda1b38498e493c44357aa86e6b25d2ed",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "eebedaab735e7a03f9b8402cb2d058f15edffa0f",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "ecd33cbe9709b8dd86249ad4c7128dca64c484d3",
@@ -349,6 +349,8 @@
     "Source/wasami_deception/Tests/WasamiBierceTalkTests.cpp": "6f936dfa9982b79c4d3f6c0df22b741d45994876",
     "Source/wasami_deception/Tests/WasamiTestBierceTalk.h": "c3b3b8eae599e2f5693484a1f4cccde787dac565",
     "Content/Python/wasami_tools/pipeline/dd_audio.py": "ffd9f485ab2c6d11a3ebd14ba8cf80734487b509",
-    "Content/Python/wasami_tools/pipeline/dd_dialogue.py": "9a02d67074b4c6f85fd4e465cb6245a1b30a226d"
+    "Content/Python/wasami_tools/pipeline/dd_dialogue.py": "9a02d67074b4c6f85fd4e465cb6245a1b30a226d",
+    "Content/Python/wasami_tools/pipeline/dd_voices.py": "ff1953d1cc1068e01254323ca759100556ae567f",
+    "Tools/dd/prepare_voices.py": "48c524014f376acb3c58c77e3167185060b30280"
   }
 }

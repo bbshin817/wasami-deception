@@ -1,0 +1,143 @@
+{
+  "normalization": {
+    "integratedLUFS": -23,
+    "truePeakDB": -6
+  },
+  "clips": [
+    {
+      "id": "greeting",
+      "category": "intro",
+      "url": "/voices/greeting.mp3",
+      "subtitle": "こんにちワサミ！",
+      "duration": 3.877732,
+      "truePeakDB": -8,
+      "source": "こんにちワサミ！.mp3"
+    },
+    {
+      "id": "calling",
+      "category": "patrol",
+      "url": "/voices/calling.mp3",
+      "subtitle": "おーい。",
+      "duration": 1.026871,
+      "truePeakDB": -9.9,
+      "source": "おーい(暗め).wav"
+    },
+    {
+      "id": "others",
+      "category": "patrol",
+      "url": "/voices/others.mp3",
+      "subtitle": "ほかのみんなは？",
+      "duration": 0.689569,
+      "truePeakDB": -9.3,
+      "source": "ほかのみんなは？.wav"
+    },
+    {
+      "id": "follow",
+      "category": "patrol",
+      "url": "/voices/follow.mp3",
+      "subtitle": "私と一緒に行きましょう。",
+      "duration": 1.034376,
+      "truePeakDB": -6.5,
+      "source": "私と一緒に行きましょう.wav"
+    },
+    {
+      "id": "remember",
+      "category": "patrol",
+      "url": "/voices/remember.mp3",
+      "subtitle": "覚えてます。",
+      "duration": 0.936939,
+      "truePeakDB": -6.9,
+      "source": "覚えてます.wav"
+    },
+    {
+      "id": "think",
+      "category": "patrol",
+      "url": "/voices/think.mp3",
+      "subtitle": "俺のことも想え。",
+      "duration": 0.861995,
+      "truePeakDB": -6.5,
+      "source": "俺のことも想え.wav"
+    },
+    {
+      "id": "found",
+      "category": "chase",
+      "url": "/voices/found.mp3",
+      "subtitle": "ここか！",
+      "duration": 0.622132,
+      "truePeakDB": -6.4,
+      "source": "ここか!.wav"
+    },
+    {
+      "id": "you",
+      "category": "chase",
+      "url": "/voices/you.mp3",
+      "subtitle": "オマエ・ジャ。",
+      "duration": 5.007098,
+      "truePeakDB": -6.1,
+      "source": "オマエ・ジャ.wav"
+    },
+    {
+      "id": "wait",
+      "category": "chase",
+      "url": "/voices/wait.mp3",
+      "subtitle": "ちょっと待ってね。",
+      "duration": 1.446621,
+      "truePeakDB": -6.4,
+      "source": "ちょっ　と待っ　てね.wav"
+    },
+    {
+      "id": "fast",
+      "category": "boost",
+      "url": "/voices/fast.mp3",
+      "subtitle": "はっや！",
+      "duration": 0.63712,
+      "truePeakDB": -9.6,
+      "source": "はっや!!.wav"
+    },
+    {
+      "id": "over",
+      "category": "caught",
+      "url": "/voices/over.mp3",
+      "subtitle": "あっ、終わりです。",
+      "duration": 0.727075,
+      "truePeakDB": -6.6,
+      "source": "あっ終わりです.wav"
+    },
+    {
+      "id": "fine",
+      "category": "respawn",
+      "url": "/voices/fine.mp3",
+      "subtitle": "まぁまぁ、そういう時だってあるか。",
+      "duration": 1.783923,
+      "truePeakDB": -7.6,
+      "source": "まぁまぁまぁまぁまぁ、そういう時だってあるか.wav"
+    },
+    {
+      "id": "well",
+      "category": "pickup",
+      "url": "/voices/well.mp3",
+      "subtitle": "非常にいい！",
+      "duration": 0.704558,
+      "truePeakDB": -11.2,
+      "source": "非常にいい!.wav"
+    },
+    {
+      "id": "safe",
+      "category": "ring",
+      "url": "/voices/safe.mp3",
+      "subtitle": "無事でしたか！",
+      "duration": 0.682086,
+      "truePeakDB": -8.5,
+      "source": "無事でしたか!.wav"
+    },
+    {
+      "id": "best",
+      "category": "win",
+      "url": "/voices/best.mp3",
+      "subtitle": "さいこう！",
+      "duration": 0.517188,
+      "truePeakDB": -8.6,
+      "source": "さいこう!.wav"
+    }
+  ]
+}

@@ -172,21 +172,14 @@ def sound_attenuation(rel, version=1):
     return asset
 
 
-def sound(rel, version=1, subtitles=None):
-    """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
-    export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names), saved (the
-    import task itself does not save, and a wave left unsaved is gone when the editor opens again). Returns the package
-    path.
-
-    subtitles: [(time in seconds, text)] to show while it plays (UE's own Subtitles, which the options' SUBTITLES turns
-    on and off); the dialogue passes the original's lines, which its waves do not carry themselves (dd_dialogue)."""
-    ogg = content_file(rel, version, ".ogg")
-    if not os.path.exists(ogg):
-        raise FileNotFoundError(ogg)
-    target = asset_path(rel)
+def _import_wave(file, target):
+    """Imports the sound file at file as the SoundWave target (the import task does not save, and a wave left unsaved
+    is gone when the editor opens again, so every caller saves). Returns the wave."""
+    if not os.path.exists(file):
+        raise FileNotFoundError(file)
     folder, name = paths.split(target)
     task = unreal.AssetImportTask()
-    task.filename = ogg
+    task.filename = file
     task.destination_path = folder
     task.destination_name = name
     task.replace_existing = True
@@ -197,7 +190,27 @@ def sound(rel, version=1, subtitles=None):
     wave = unreal.load_asset(target)
     if wave is None:
         raise RuntimeError("the sound did not import to %s" % target)
+    return wave
 
+
+def _write_subtitles(wave, subtitles):
+    """Puts [(time in seconds, text)] on the wave as UE's own Subtitles, which the options' SUBTITLES turns on and off.
+    None leaves what the wave came with."""
+    if subtitles is None:
+        return
+    wave.set_editor_property("subtitles", [unreal.SubtitleCue(text=unreal.Text(text), time=float(time))
+                                           for time, text in subtitles])
+
+
+def sound(rel, version=1, subtitles=None):
+    """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
+    export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names), saved.
+    Returns the package path.
+
+    subtitles: [(time in seconds, text)] to show while it plays; the dialogue passes the original's lines, which its
+    waves do not carry themselves (dd_dialogue)."""
+    target = asset_path(rel)
+    wave = _import_wave(content_file(rel, version, ".ogg"), target)
     props = main_export(export_json(rel, version), rel)["props"]
     for key, default in SOUND_DEFAULTS.items():
         wave.set_editor_property(ue_props.snake(key), float(props.get(key, default)))
@@ -208,10 +221,20 @@ def sound(rel, version=1, subtitles=None):
             wave.set_editor_property(ue_props.snake(key), ue_props.value(props[key], wave.get_editor_property(ue_props.snake(key))))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
-    if subtitles is not None:
-        wave.set_editor_property("subtitles", [unreal.SubtitleCue(text=unreal.Text(text), time=float(time))
-                                               for time, text in subtitles])
+    _write_subtitles(wave, subtitles)
     _write_sound_class(wave, props)
+    EAL.save_asset(target, only_if_is_dirty=False)
+    return target
+
+
+def sound_file(file, target, subtitles=None, sound_class=None):
+    """Imports this game's own sound file (a wav under SourceArt) as the SoundWave target, at UE's defaults (volume 1,
+    no looping), saved. Returns the package path.
+
+    subtitles: as in sound; sound_class: the SoundClass to play it through (none for the project's default)."""
+    wave = _import_wave(file, target)
+    _write_subtitles(wave, subtitles)
+    wave.set_editor_property("sound_class_object", sound_class)
     EAL.save_asset(target, only_if_is_dirty=False)
     return target
 

@@ -252,6 +252,23 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_wasami_voices() -> dict[str, int]:
+        """Imports (or re-imports) this game's own voices from SourceArt/Wasami/Voices (the WebGL version's clips of
+        the user's Wasami, decoded to wav by python Tools/dd/prepare_voices.py): the eleven lines the WebGL version
+        speaks, as SoundWaves /Game/Wasami/Voices/Wasami_<Id> through the original's Dialogue sound class. The five it
+        puts a subtitle up for (the greeting, the first shard, a boost made, the secret door, and an enemy spotting the
+        player) get the manifest's line as their subtitle; the enemies' patrol calls and the death screen's two get
+        none, as it speaks them with none. Where each is played is the scene that uses it.
+
+        Returns:
+            How many waves were made with a subtitle ('subtitled') and how many without ('silent').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_voices").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_wasami_enemy() -> dict[str, int]:
         """Imports (or re-imports) the enemy Wasami (WasamiEnemy) from this game's model in SourceArt: its skeletal
         mesh, skeleton and physics asset, its textures and material, and its animations named A_WasamiEnemy_<role>
