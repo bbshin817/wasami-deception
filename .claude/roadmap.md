@@ -337,7 +337,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/**/BierceTalk_Blueprint.txt`、`_audio.json`（`Audio/Dialogue/Bierce/Ch06/TT/*`）、WebGL 版 06・15 記録。
 - 依存: 7、17。
 - 規模: 2
-- 状態: 未着手。
+- 状態: **完了（2026-09-20）**。Bierce の波 15 本と一言の Cue を `/Game/DD/Audio/Dialogue/Bierce/Ch06/TT` に取り込み（字幕は本家の文字列表 `Strings` の文言を名前の対応で `USoundWave.Subtitles` に入れた）、話し役 `AWasamiBierceTalk`（本家の `BierceTalk_Blueprint`）を両ゾーンに置き、Zone 1 の 3 か所（扉の破壊・館内放送・発見の一言）と Zone 2 の 8 か所 + Matron の裏の放送を本家の秒数どおりに鳴らす。ワサミの声は WebGL 版が鳴らす 11 本を `/Game/Wasami/Voices` に取り込み、`WasamiVoice` の口から場面の 6 本（挨拶・初シャード・ブースト・秘密の壁・死亡画面の 2 本）と敵の 5 本（発見・巡回の呼びかけ 4 本）を鳴らす。実装記録 07・10・11。
 
 ### 21. 仕上げ（通しプレイ・性能・パッケージ）
 
@@ -422,6 +422,11 @@
 ### 項目 4（敵ワサミの素体、2026-09-18 に閉じた記録 `20260917-enemy-wasami-body`）
 
 - 2026-09-18（2026-09-20 のユーザーの回答: 保留）: 敵の足の運びに合わせた再生の速さ（2026-09-19 に巡回が 200・追跡が 430 になり、`Walk` は 1.11・`Run` は 0.70 で上限・下限に当たらない。下の歩きの滑りは 350 のときの話） — 仮に `Walk` = 速さ / 133 を 0.5〜2 倍、`Run` = 速さ / 450・`Run_Nightmare` = 速さ / 500 を 0.6〜1.8 倍にした。PIE では追跡の走りはほぼ滑らない（1 %）が、巡回 350 cm/s の歩きは上限 2 倍で足が速さの 24 % 滑る（上限を 2.6 にすれば滑らないが、1 秒に約 5 歩のせかせかした歩きになる）。理由: 本家はスケートで速さ 1、範囲は WebGL 版の値、分母は PIE で測った足の速さ。場所: `WasamiEnemyAnimInstance.h` の `TODO(仮): the play rate follows the speed`。
+
+### 項目 20（台詞と字幕、2026-09-20 に閉じた記録 `20260920-dialogue-subtitles`）
+
+- 2026-09-20: 本家の病院の Bierce の台詞の波に字幕が入っていない（`Strings` に文言 127 件はあるが、波の `Subtitles` を使っているのは本作が作らない入口のナースの 40 件だけ。第 4 章の下水の Bierce には入っている） — 仮に **名前の対応（`Bierce_TormentTherapy_Event_NN` ↔ `06_Cutscene_Zone_01_Bierce_NN`）で字幕を入れた**。理由: 項目 20 の完了の条件が「字幕は `_strings.json` の文言」で、オプションに SUBTITLES がある以上、出ないほうが不自然。本家の実機で確かめるのは大目標 2 の決め方（見た目の詰めをしない）で控えた。場所: `Content/Python/wasami_tools/pipeline/dd_dialogue.py`（10 記録の「台詞の取り込み」）。
+- 2026-09-20: 敵の呼びかけの間隔を **本家の 3〜10 s ではなく WebGL 版の 14〜26 s** にした — 本家のナースは巡回・追跡・透明の 3 本を状態で使い分けるが、本作の呼びかけは 4 本しかなく、3〜10 s では同じ声がすぐ繰り返す。場所: `WasamiEnemy.h` の `CallInterval`（07 記録の「声」）。
 
 ### 項目 29（EXTRAS、2026-09-20 に閉じた記録 `20260920-extras`）
 
