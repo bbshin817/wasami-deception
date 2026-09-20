@@ -14,7 +14,7 @@ sources:
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
   - Source/wasami_deception/WasamiAssets.h
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 全体像
@@ -65,6 +65,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
   - `[/Script/WindowsTargetPlatform.WindowsTargetSettings]`: DX12 / SM6、音声 48 kHz。
   - `[/Script/Engine.CollisionProfile]`（2026-09-16）: 独自のオブジェクトチャンネル **`Teleport`**（`ECC_GameTraceChannel1`、既定の応答 **Overlap**）。本家の旧版 `DefaultEngine.ini` の値（最新版は既定 Ignore。テレポーテーションは旧版に従う）。テレポートの照準が病院のゾーンをこのチャンネルで探す（04 記録）。旧版のもう 1 つの `Malak`（`ECC_GameTraceChannel2`、Block）は別の章の敵のものなので写していない。チャンネルの設定はエディタの起動時に読まれる。
   - `[/Script/NavigationSystem.RecastNavMesh]` と `[/Script/NavigationSystem.NavigationSystemV1]`（2026-09-19）: 本家の最新版の `DefaultEngine.ini` のナビの設定を写した。`RuntimeGeneration=DynamicModifiersOnly`（道は読み込みのときに作り、動く修飾子だけを実行中に直す）・`bForceRebuildOnLoad=True`（エディタはレベルを読むたびに作り直す。ゲームは `DynamicModifiersOnly` なので形からは作らず、保存した道をそのまま使う。01 記録の「ナビゲーション」）・`bFixedTilePoolSize=True`・`ObservedPathsTickInterval=1`・`bAutoDestroyWhenNoNavigation=False`、セルの大きさ 10 cm（UE 5 はタイルの解像度ごとに持つので `NavMeshResolutionParams[0..2]` の 3 つとも `CellSize=10`。`CellHeight` 10・`AgentMaxStepHeight` 35 は UE 4.24 の既定で、UE 5 が古い NavMesh から埋めるのと同じ）、エージェント `Default` 1 つ（半径 40・高さ 144・`DefaultQueryExtent` (50, 50, 250)。本家のレベルの `RecastNavMesh-Default` も `AgentRadius` 40・`AgentMaxHeight` 144。UE 5 は `AgentMaxHeight` を `AgentHeight` と呼び、エージェントから入れる）、`bSkipAgentHeightCheckWhenPickingNavData=True`。探索の上限 `DefaultMaxSearchNodes` は両方とも既定の 2048 のままで、セル 10 cm では約 20 m より遠い 2 点の道が途中までになることがある（本家も同じ。01 記録の「ナビゲーション」）。設定はエディタの起動時に読まれる。
+  - `[SystemSettings]`（2026-09-21）: `fx.Cascade.UseVelocityForMotionBlur=0`。原作（UE 4.21・4.24）にはこの切り替えが無く、Required モジュールの `bUseVelocityForMotionBlur` は原作のどのアセットにも立っていない（＝すべて false）。UE 5 は既定を CVar `fx.Cascade.UseVelocityForMotionBlur`（既定 true）に移し、モジュールが`bOverrideUseVelocityForMotionBlur` で上書きしないときはそちらを使う（`UParticleModuleRequired::ShouldUseVelocityForMotionBlur`）ので、GPU のエミッタの `ResourceData`・`EmitterInfo` が原作の cook と食い違っていた。本作の Cascade はすべて原作のものなので、モジュールごとに上書きせずここで原作の既定に戻す。CVar はエンジンの起動時に読まれ、`UParticleModuleTypeDataGpu::Build`（エディタでの読み込みごと）がその値を焼き込む。
   - `[/Script/PythonScriptPlugin.PythonScriptPluginSettings]`: `bRemoteExecution=True`（`Tools/ue_remote.py` が使う。ローカルのマルチキャストのみ）、`bDeveloperMode=True`（`Intermediate/PythonStub/unreal.py` が出る）。
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
