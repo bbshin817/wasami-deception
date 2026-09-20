@@ -16,13 +16,14 @@ MM_Telepathy_Inst.
                                 estimated masters of Vanish's puff (M_LoopingSmoke1_Sheet) and vignette
                                 (MM_WobblyVignette), whose graphs are cooked away; instances of them sit at the original's
                                 paths
-  M_DD_Telepathy                the estimated master of the telepathy's marker (MM_Telepathy's graph is cooked away);
+  M_DD_Telepathy                the master of the telepathy's marker, its graph read back off MM_Telepathy's compiled
+                                shaders (the cook drops the graph, but a UI material keeps a shader map too);
                                 MM_Telepathy is an instance of it and MM_Telepathy_Inst an instance of that, as the
                                 original's
   M_DD_KyWall02, M_DD_KyAura7, M_DD_KyShockWave02, M_DD_KyStarDust
-                                estimated masters of the telekinesis's force field (P_ky_forceField_Telekinesis), whose
-                                graphs are cooked away; the original's paths hold instances of them, and the original's
-                                instances are instances of those
+                                the masters of the telekinesis's force field (P_ky_forceField_Telekinesis), their
+                                graphs read back off the original's compiled shaders; the original's paths hold
+                                instances of them, and the original's instances are instances of those
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the powers follow except the teleport (pak_reference).
 """
@@ -160,7 +161,8 @@ WOBBLE_GAIN = 0.67
 SMOKE_FADE_LENGTH = 64.0
 SMOKE_FADE_OFFSET = 0.0
 
-# The telepathy's marker (pak_reference_2): the original's master and its instance, and the master holding our estimate.
+# The telepathy's marker (pak_reference_2): the original's master and its instance, and the master holding its graph,
+# read back off MM_Telepathy's compiled shaders (step 11b5, observations/README.md).
 TELEPATHY = "Blueprints/Main/Powers/Telepathy/MM_Telepathy"
 TELEPATHY_INST = "Blueprints/Main/Powers/Telepathy/MM_Telepathy_Inst"
 TELEPATHY_MASTER = "/Game/Pipeline/Materials/M_DD_Telepathy"
@@ -501,8 +503,8 @@ def _build_telepathy(mat):
 
 
 def make_telepathy_materials():
-    """The telepathy's marker: the estimated master, MM_Telepathy as an instance of it with the original's parameter
-    values, and MM_Telepathy_Inst as an instance of MM_Telepathy with its own."""
+    """The telepathy's marker: the master holding the original's graph, MM_Telepathy as an instance of it with the
+    original's parameter values, and MM_Telepathy_Inst as an instance of MM_Telepathy with its own."""
     master = dd_assets.material(TELEPATHY_MASTER, _build_telepathy, domain=unreal.MaterialDomain.MD_UI,
                                 blend_mode=unreal.BlendMode.BLEND_ADDITIVE)
     scalars, vectors = dd_assets.parameter_defaults(TELEPATHY, 2)
@@ -765,7 +767,7 @@ def _build_star_dust(mat, d):
     dd_assets.depth_faded_opacity(g, faded, g.scalar("fadeValue", d["fadeValue"], -100, 150), 100, 50)
 
 
-# (the original's material, the master holding our estimate, its builder, the original's instances of it)
+# (the original's material, the master holding its graph, its builder, the original's instances of it)
 TELEKINESIS_MATERIALS = (
     ("M_ky_wall02_4x4_two", "M_DD_KyWall02", _build_wall02, ()),
     ("M_ky_aura7", "M_DD_KyAura7", _build_aura7, ("MI_ky_aura7c",)),
@@ -775,7 +777,8 @@ TELEKINESIS_MATERIALS = (
 
 
 def make_telekinesis_materials():
-    """The force field's materials (dd_assets.estimated_materials). Returns the package paths."""
+    """The force field's four materials, their graphs read off the original's compiled shaders
+    (dd_assets.estimated_materials makes the master and the instances). Returns the package paths."""
     return [a.get_path_name() for a in dd_assets.estimated_materials(KY09 + "Materials/", TELEKINESIS_MATERIALS, 2)]
 
 

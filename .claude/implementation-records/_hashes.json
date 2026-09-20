@@ -46,7 +46,7 @@
     "Content/Python/wasami_tools/pipeline/dd_level.py": "eebedaab735e7a03f9b8402cb2d058f15edffa0f",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "ecd33cbe9709b8dd86249ad4c7128dca64c484d3",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "7cc22fba63f063b2d87e935abbec6527899ff631",
-    "Content/Python/wasami_tools/pipeline/dd_powers.py": "c40b56dc8cb97f99cbd7f7ac827045d7e19fe1b5",
+    "Content/Python/wasami_tools/pipeline/dd_powers.py": "ad611ed6d8835c1b718cd8898a9a2f8c960404b9",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "5391c9799741f3d785d71d1bb8ff7bf300490dca",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "ad53a501459d4099b631ef02af23ec56a3cd997f",
