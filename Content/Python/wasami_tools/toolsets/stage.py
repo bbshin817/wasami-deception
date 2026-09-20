@@ -125,7 +125,9 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         BP_07_Zone1_SecretWall, with its
         mesh and brick; WasamiMysteryCollectable, BP_MysteryCollectable, with its texture, texts and paper;
         WasamiFakeUseSequencePlayer, BP_FakeUseActor_SequencePlayer, its Sequence set to the level's sequence actor;
-        WasamiFakeUseElevator, BP_FakeUseActor_06_HospitalZone1_Elevator, with its doors; after import_dd_secrets), and
+        WasamiFakeUseElevator, BP_FakeUseActor_06_HospitalZone1_Elevator, with its doors; after import_dd_secrets), the
+        zone's music player (WasamiMusicPlayer, BP_06_MusicPlayer, and WasamiMusicPlayerZone2,
+        BP_06_MusicPlayer_Zone2, Zone 1's with its bFadeOut true as the original places it; after import_dd_audio), and
         this game's garage portal (WasamiPortal) with the trigger by it that the zone leaves
         by, in again where the original places them, each tagged
         'src:<the original's name>' for the zone's flow and fixed to the ambulance or the spikes it moves with, taking
@@ -136,17 +138,17 @@ class WasamiStageTools(unreal.ToolsetDefinition):
         Args:
             zone: 'Zone1' (6 trigger boxes, 9 volumes, 2 navigation volumes, 9 target points, 1 door break, 62 double
                 doors, 1 emitter, 1 barrier, 1 shard checker, 1 garage lift, 23 defibrillators, 4 speed barriers, 2 special shards, 21 spawn points,
-                9 secrets: 2 files, 2 secret elevators, 5 decoys) or 'Zone2' (9 trigger
+                9 secrets: 2 files, 2 secret elevators, 5 decoys, 1 music player) or 'Zone2' (9 trigger
                 boxes with the portal's, 10 volumes, 59 navigation volumes, 10 target points, 1 door break, 1 double door,
                 1 barrier, 1 shard checker, 15 lifts, 2 garage lifts, 6 sentries, 1 altar, 1 ring piece, 13
                 defibrillators, 74 saw traps, 2 special shards, 20 spawn points, 6 secrets: 1 file, the room, its wall,
-                3 notes, 1 portal).
+                3 notes, 1 music player, 1 portal).
             map_path: Package path of the level; the zone's own is used when this is empty.
 
         Returns:
             'removed', 'removed_lights', 'triggers', 'volumes', 'navVolumes', 'targetPoints', 'doorBreaks', 'doubleDoors', 'emitters',
             'zoneBarriers', 'shardCheckers', 'lifts', 'garageLifts', 'sentries', 'ringStatues', 'ringPieces', 'defibs',
-            'speedBarriers', 'sawTraps', 'specialShards', 'specialSpawnPoints', 'secrets', 'portals', 'attached',
+            'speedBarriers', 'sawTraps', 'specialShards', 'specialSpawnPoints', 'secrets', 'musicPlayers', 'portals', 'attached',
             'sequencePlayers' (the secret elevators given their sequence) and 'failed_settings' (listed in the output
             log).
         """

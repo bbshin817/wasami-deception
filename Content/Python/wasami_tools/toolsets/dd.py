@@ -67,6 +67,22 @@ class WasamiDDTools(unreal.ToolsetDefinition):
 
     @toolset_registry.tool_call
     @staticmethod
+    def import_dd_audio() -> dict[str, int]:
+        """Imports (or re-imports) what the hospital's levels play by themselves: the music the zones' music players
+        (WasamiMusicPlayer) crossfade — Zone 1's and Zone 2's regular tracks and the panic track they share — with the
+        original SoundWaves' own settings (looping, volume and the Music sound class). The moving parts', the powers',
+        the enemies' and the UI's sounds come with import_dd_gimmicks, import_dd_powers, import_wasami_enemy and
+        import_dd_ui.
+
+        Returns:
+            How many assets of each kind were made ('music').
+        """
+        _module("dd_stage")
+        _module("dd_assets")
+        return _module("dd_audio").import_all()
+
+    @toolset_registry.tool_call
+    @staticmethod
     def import_dd_ui() -> dict[str, int]:
         """Imports (or re-imports) what the death screen (WasamiDeathScreenWidget) shows and plays: the life icon and
         YOU ARE DEAD, the menu's font (helvetica-normal), and the life-lost sound and the game-over music. Its vignette,

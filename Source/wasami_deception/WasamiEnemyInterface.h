@@ -45,9 +45,14 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Enemy")
 	bool NoTelepathy() const;
 
+	/** Chasing: the enemy is after the player. The music player (AWasamiMusicPlayer) asks every enemy this. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Enemy")
+	bool Chasing() const;
+
 protected:
 	virtual void SetState_Implementation(EWasamiEnemyState State, bool bByOrb) {}
 	virtual EWasamiEnemyState GetState_Implementation() const { return EWasamiEnemyState::Patrol; }
 	virtual void PlayerVanish_Implementation() {}
 	virtual bool NoTelepathy_Implementation() const { return false; }
+	virtual bool Chasing_Implementation() const { return false; }
 };

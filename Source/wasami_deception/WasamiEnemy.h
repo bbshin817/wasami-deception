@@ -257,6 +257,8 @@ protected:
 	 */
 	virtual void BeginNurse();
 
+	virtual bool Chasing_Implementation() const override { return IsChasing(); }
+
 	virtual void SetState_Implementation(EWasamiEnemyState NewState, bool bByOrb) override;
 	// The nurse's Get State always answers Patrol (it does not read State), and its No Telepathy false.
 	virtual EWasamiEnemyState GetState_Implementation() const override { return EWasamiEnemyState::Patrol; }

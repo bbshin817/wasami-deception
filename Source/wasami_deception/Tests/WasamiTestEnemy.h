@@ -41,11 +41,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Test")
 	bool bNoTelepathy = false;
 
+	/** Chasing's answer (the music player looks at it). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Test")
+	bool bChasing = false;
+
 protected:
 	virtual void SetState_Implementation(EWasamiEnemyState NewState, bool bByOrb) override;
 	virtual EWasamiEnemyState GetState_Implementation() const override { return State; }
 	virtual void PlayerVanish_Implementation() override { ++PlayerVanishCount; }
 	virtual bool NoTelepathy_Implementation() const override { return bNoTelepathy; }
+	virtual bool Chasing_Implementation() const override { return bChasing; }
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Test")
 	TObjectPtr<UCapsuleComponent> Capsule;

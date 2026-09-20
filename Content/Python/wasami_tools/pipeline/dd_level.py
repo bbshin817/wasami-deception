@@ -2,7 +2,7 @@
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
 zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers,
-Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points, the secrets (the files, the mysterious room with its wall and notes, the secret and decoy elevators) and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points, the secrets (the files, the mysterious room with its wall and notes, the secret and decoy elevators), the zone's music player and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
 import math
@@ -217,6 +217,13 @@ ELEVATOR_DOOR_MESHES = {"static_mesh": "/Game/Meshes/06_Hospital/hospital_elevat
 NOTE_STRINGS = "Blueprints/Main/Strings/Strings"
 SECRET_LIGHT_FOLDER = "Hospital/Lights/" + COLLECTABLE_CLASS
 SECRET_FOLDER = "Hospital/Gameplay/Secrets"
+# The zones' music players (BP_06_MusicPlayer and BP_06_MusicPlayer_Zone2 -> AWasamiMusicPlayer and
+# AWasamiMusicPlayerZone2): one in either zone, which the flow fades out and back in. The classes hold their tracks
+# (the zone's regular one and the panic one they share); the only value a placed one has of its own is Zone 1's
+# bFadeOut, true, so that the level opens in silence until its flow drops it.
+MUSIC_PLAYER_CLASSES = {"BP_06_MusicPlayer_C": "WasamiMusicPlayer",
+                        "BP_06_MusicPlayer_Zone2_C": "WasamiMusicPlayerZone2"}
+MUSIC_PLAYER_PROPS = {"bFadeOut": "fade_out", "bOverrideMusic": "override_music"}
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
 FLOW_FOLDER = "Hospital/Gameplay/Flow"
@@ -815,7 +822,7 @@ def link_sequence_players(eas, zone):
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the Matron
-    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points and the secrets (SECRET_CLASSES), each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points, the secrets (SECRET_CLASSES) and the music player (MUSIC_PLAYER_CLASSES), each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS). The secret elevators' sequences are
     set afterwards (link_sequence_players)."""
     placed = []
@@ -828,12 +835,14 @@ def _flow(eas, stage, zone, counts, failures):
         special = a["class"] in SPECIAL_SHARD_CLASSES or a["class"] in SPECIAL_SPAWN_POINT_CLASSES
         enemy = a["class"] in (SENTRY_CLASS, MATRON_CLASS) or a["class"] in MATRON_CONE_CLASSES
         secret = a["class"] in SECRET_CLASSES
+        music = a["class"] in MUSIC_PLAYER_CLASSES
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
                                                  TARGET_POINT_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
                                                  DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
-                              and not doors and not emitter and not special and not enemy and not secret):
+                              and not doors and not emitter and not special and not enemy and not secret
+                              and not music):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -967,6 +976,16 @@ def _flow(eas, stage, zone, counts, failures):
             if unwritten:
                 failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
             counts["secrets"] += 1
+        elif music:
+            actor = eas.spawn_actor_from_class(getattr(unreal, MUSIC_PLAYER_CLASSES[a["class"]]), _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            for key, name in MUSIC_PLAYER_PROPS.items():
+                if key in a["props"]:
+                    actor.set_editor_property(name, bool(a["props"][key]))
+            unwritten = sorted(set(a["props"]) - set(MUSIC_PLAYER_PROPS))
+            if unwritten:
+                failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
+            counts["musicPlayers"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -1033,7 +1052,7 @@ def _flow(eas, stage, zone, counts, failures):
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
     checkers, lifts, garage lifts, sentries, the Matron with her view cones, altar, ring piece, defibrillators, speed barriers, saw traps, special shards with their spawn
-    points and secrets in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
+    points, secrets and music player in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
     secret file lights an earlier build placed on their own), leaving the rest of the level and its baked lighting as they are (none of them is in
     the baked lighting: the doors, the lifts, the altar, the defibrillators' stands, the saw traps, the special shards, the secrets and the
     barriers', the piece's, the traps' and the files' lights are movable), and saves the level."""
@@ -1052,7 +1071,7 @@ def place_flow(zone="Zone1", map_path=""):
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
               "matrons": 0, "viewcones": 0, "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
-              "specialSpawnPoints": 0, "secrets": 0, "portals": 0, "attached": 0}
+              "specialSpawnPoints": 0, "secrets": 0, "musicPlayers": 0, "portals": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)

@@ -139,7 +139,7 @@ updated: 2026-09-20
 
 ### `AWasamiTestEnemy : AActor`（`Tests/WasamiTestEnemy.h`）
 敵（M4）の代わりの仮の的。テストと PIE の確認だけに使う。
-- ルートはカプセル（半径 34・半高 118.058〈病院のナース〉、プロファイル `Pawn`、ゲームでも見える）、タグ `Enemy`、`IWasamiEnemyInterface` を実装し、`SetStateCount`・`State`・`bLastByOrb`・`PlayerVanishCount` を数える。`bNoTelepathy` が `NoTelepathy` の答え。
+- ルートはカプセル（半径 34・半高 118.058〈病院のナース〉、プロファイル `Pawn`、ゲームでも見える）、タグ `Enemy`、`IWasamiEnemyInterface` を実装し、`SetStateCount`・`State`・`bLastByOrb`・`PlayerVanishCount` を数える。`bNoTelepathy` が `NoTelepathy` の答え、`bChasing` が `Chasing` の答え（曲のテスト。10 記録）。
 - static `SpawnTestEnemy(WorldContext, Location)`（BlueprintCallable。PIE の Python からも出せる）。
 
 ### `UWasamiCameraAnim : UDataAsset`（`WasamiCameraAnim.h`）
@@ -169,6 +169,7 @@ updated: 2026-09-20
 - `GetState()` … 既定は `Patrol`。
 - `PlayerVanish()` … Vanish を使った瞬間に全敵へ 1 回。既定は何もしない。
 - `NoTelepathy()` … true ならテレパシーに映らない。既定は false。
+- `Chasing()` … その敵がプレイヤーを追っているか。既定は false（`AWasamiEnemy` は `IsChasing()` を返す）。曲の切り替え（`AWasamiMusicPlayer::IsIntenseMusic`。10 記録）が全敵に尋ねる。
 - `EWasamiEnemyState : uint8` … `Patrol`・`Pursue`・`Stun`・`Teleport`（本家の `Enum_EnemyStates`。表示名の表で値 2 が欠けているが、値 2 が Stun として使われている）。
 
 ### `IWasamiTelekinesisInterface`（`UWasamiTelekinesisInterface`）
