@@ -105,7 +105,9 @@ def import_all():
     if EAL.does_asset_exist(dd_enemy.MASTER):
         master = unreal.load_asset(dd_enemy.MASTER)
     else:
-        master = dd_assets.material(dd_enemy.MASTER, lambda mat: dd_enemy._build_master(mat, textures))
+        noise = dd_enemy.import_cloak_noise()
+        master = dd_assets.material(dd_enemy.MASTER, lambda mat: dd_enemy._build_master(mat, textures, noise),
+                                    blend_mode=unreal.BlendMode.BLEND_MASKED)
         EAL.save_loaded_asset(master, only_if_is_dirty=False)
     instance = dd_assets.material_instance(MATERIAL, master,
                                            textures={p: t.get_path_name().split(".")[0] for p, t in textures.items()})

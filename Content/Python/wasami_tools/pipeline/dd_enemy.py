@@ -133,6 +133,22 @@ CAPTURE_ANIMATIONS = ("Backflip", "sliding_rool", "Stylish_Walk")
 REFERENCE_ANIMATION = "run_fast_2"
 RETARGET_TOLERANCE = (0.5, 0.002)  # degrees and metres the reference may stray from the measured mapping
 
+# The cloak the original's nurse dissolves into: M_06_Nurse_Body over the Basic Stealth System's M_BSS_Character1,
+# whose graph (and its material function MF_BSS_Energy1's) the cook took away, read back from its compiled shaders
+# (_build_cloak). The two noises are the original's own textures, of the latest version (the hospital is only there).
+# The cut scenes' material track drives Efficiency (dd_sequence); nothing else does, so the enemy is solid in play.
+CLOAK_NOISE = {"Fast": "ThirdParty/BasicStealthSystem/Textures/BSS_Noise2",
+               "Slow": "ThirdParty/BasicStealthSystem/Textures/BSS_Noise1"}
+CLOAK_NOISE_SPEED = {"Fast": (0.08, 0.07), "Slow": (0.02, -0.05)}   # how far each noise pans a second
+CLOAK_NOISE_VERSION = 2
+# M_06_Nurse_Body's own values. (The original splits them: M_BSS_Character1 holds a master's defaults, which are
+# another game's, and the nurse's instance overrides all of them. This game has the one Wasami material and the nurse
+# is the only thing that cloaks, so the values that are used are the defaults.)
+CLOAK_SCALARS = {"Efficiency": 0.0, "BestEfficiency": 1.0, "WorstEfficiency": 0.0,
+                 "FringeSize": 0.1, "GlowIntensity": 25.0}
+CLOAK_GLOW_COLOR = (1.0, 0.0, 0.0, 1.0)
+CLOAK_MASK_CLIP = 0.3333          # the nurse's OpacityMaskClipValue (its BlendMode is Masked as well)
+
 # The glb's embedded pictures: (the glTF material's texture, our parameter and texture name, sRGB, compression, LOD
 # group). The metallic-roughness map is 4096² (the others 2048²) and stays so: the streaming loads the mips drawn.
 TEXTURES = (
@@ -553,10 +569,79 @@ def _extract_textures(source=SOURCE, prepared_dir=PREPARED_DIR, folder=FOLDER, p
     return out
 
 
-def _build_master(mat, textures):
+def _cloak_noise(g, which, noise, y):
+    """One of the cloak's two noises, panned as the original pans it, sampled at the mesh's own UVs (the shader adds
+    Time * speed to TEXCOORD0 and nothing else, so the Panner keeps UE's default coordinate)."""
+    speed = CLOAK_NOISE_SPEED[which]
+    panner = g.node(unreal.MaterialExpressionPanner, -1700, y)
+    panner.set_editor_property("speed_x", speed[0])
+    panner.set_editor_property("speed_y", speed[1])
+    sample = g.node(unreal.MaterialExpressionTextureSample, -1450, y)
+    sample.set_editor_property("texture", unreal.load_asset(noise[which]))
+    sample.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+    g.link(panner, "", sample, "UVs")
+    return sample
+
+
+def _build_cloak(g, noise):
+    """The stealth dissolve the original's nurse vanishes into, read back from M_BSS_Character1's compiled shaders:
+
+        n     = saturate(Fast.r * 3 - Slow.r)                      each noise panned by CLOAK_NOISE_SPEED
+        keep  = n > lerp(WorstEfficiency, BestEfficiency, Efficiency)     the opacity mask, clipped at 0.3333
+        glow  = n < (Efficiency > 0 ? Efficiency + FringeSize : 0)        the fringe over the edge that is going
+        emissive = (glow ? GlowColor : black) * GlowIntensity
+
+    So Efficiency 0 leaves the body whole and 1 takes it away, with a red rim over the edge in between. Which noise is
+    tripled the shader does not say (a texture slot carries no name), but only this reading holds together: with both
+    textures sRGB, as the original has them, the other one leaves half the body missing at Efficiency 0 and a good part
+    of it standing at 1. The original multiplies the emissive texture where there is no glow; the Wasami has none, so
+    that side is black (implementation record 07)."""
+    fast = _cloak_noise(g, "Fast", noise, 700)
+    slow = _cloak_noise(g, "Slow", noise, 900)
+    three = g.node(unreal.MaterialExpressionConstant, -1450, 550)
+    three.set_editor_property("r", 3.0)
+    scaled = g.multiply(fast, "R", three, "", -1200, 600)
+    n = g.node(unreal.MaterialExpressionSaturate, -1000, 700)
+    g.link(g.binary(unreal.MaterialExpressionSubtract, scaled, "", slow, "R", -1100, 700), "", n, "")
+
+    zero = g.node(unreal.MaterialExpressionConstant, -1450, 1100)
+    zero.set_editor_property("r", 0.0)
+    one = g.node(unreal.MaterialExpressionConstant, -1450, 1200)
+    one.set_editor_property("r", 1.0)
+    scalars = {name: g.scalar(name, value, -1700, 1100 + 120 * i)
+               for i, (name, value) in enumerate(sorted(CLOAK_SCALARS.items()))}
+    # The mask: gone where the noise has fallen to the efficiency (an If, whose equal side goes with the greater one).
+    edge = g.lerp(scalars["WorstEfficiency"], "", scalars["BestEfficiency"], "", scalars["Efficiency"], "", -1000, 1100)
+    mask = g.node(unreal.MaterialExpressionIf, -700, 1000)
+    g.link(edge, "", mask, "A")
+    g.link(n, "", mask, "B")
+    for pin, value in (("A > B", zero), ("A == B", zero), ("A < B", one)):
+        g.link(value, "", mask, pin)
+    g.out(mask, "", unreal.MaterialProperty.MP_OPACITY_MASK)
+    # The fringe: the band of width FringeSize just past the edge, and only while the body is going.
+    band = g.binary(unreal.MaterialExpressionAdd, scalars["Efficiency"], "", scalars["FringeSize"], "", -1200, 1500)
+    rim = g.node(unreal.MaterialExpressionIf, -1000, 1450)
+    g.link(scalars["Efficiency"], "", rim, "A")
+    g.link(zero, "", rim, "B")
+    for pin, value in (("A > B", band), ("A == B", zero), ("A < B", zero)):
+        g.link(value, "", rim, pin)
+    black = g.const3((0.0, 0.0, 0.0, 1.0), -1000, 1750)
+    glow = g.vector("GlowColor", CLOAK_GLOW_COLOR, -1000, 1650)
+    colour = g.node(unreal.MaterialExpressionIf, -700, 1500)
+    g.link(rim, "", colour, "A")
+    g.link(n, "", colour, "B")
+    for pin, value, value_pin in (("A > B", glow, "RGB"), ("A == B", black, ""), ("A < B", black, "")):
+        g.link(value, value_pin, colour, pin)
+    g.out(g.multiply(colour, "", scalars["GlowIntensity"], "", -450, 1500), "",
+          unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+
+def _build_master(mat, textures, noise):
     """glTF's metallic-roughness material with every factor at 1 (the glb's): the base colour, metallic from B and
-    roughness from G of the metallic-roughness map, and the normal map."""
+    roughness from G of the metallic-roughness map, and the normal map, over the nurse's cloak (_build_cloak, which
+    is why the material is masked)."""
     mat.set_editor_property("used_with_skeletal_mesh", True)
+    mat.set_editor_property("opacity_mask_clip_value", CLOAK_MASK_CLIP)
     g = dd_stage._Graph(mat, checked=True)
     tcs = unreal.MaterialSamplerType
     base = g.texture("BaseColor", textures["BaseColor"], tcs.SAMPLERTYPE_COLOR, -600, -300)
@@ -566,6 +651,7 @@ def _build_master(mat, textures):
     g.out(packed, "G", unreal.MaterialProperty.MP_ROUGHNESS)
     normal = g.texture("Normal", textures["Normal"], tcs.SAMPLERTYPE_NORMAL, -600, 300)
     g.out(normal, "RGB", unreal.MaterialProperty.MP_NORMAL)
+    _build_cloak(g, noise)
 
 
 def _import_model(material, prepared=None, folder=FOLDER, mesh_path=MESH, anim_prefix=ANIM_PREFIX, roles=None):
@@ -604,6 +690,11 @@ def import_capture_sounds():
     return [dd_assets.sound(rel, CAPTURE_SOUND_VERSION) for rel in CAPTURE_SOUNDS]
 
 
+def import_cloak_noise():
+    """The two noises the cloak dissolves through, as the original has them. Returns {which: package path}."""
+    return {which: dd_assets.texture(rel, CLOAK_NOISE_VERSION) for which, rel in CLOAK_NOISE.items()}
+
+
 def import_enemy_audio():
     """The loop the enemy moves to and the attenuations it moves and speaks through. Returns the wave's package
     path."""
@@ -619,7 +710,9 @@ def import_all():
     for role, (seconds, (dx, dz)) in report.items():
         unreal.log("enemy: %s%s %.3f s, pelvis moved x %.2f m z %.2f m" % (ANIM_PREFIX, role, seconds, dx, dz))
     textures = _extract_textures()
-    master = dd_assets.material(MASTER, lambda mat: _build_master(mat, textures))
+    noise = import_cloak_noise()
+    master = dd_assets.material(MASTER, lambda mat: _build_master(mat, textures, noise),
+                                blend_mode=unreal.BlendMode.BLEND_MASKED)
     instance = dd_assets.material_instance(MATERIAL, master,
                                            textures={p: t.get_path_name().split(".")[0] for p, t in textures.items()})
     mesh, anims = _import_model(instance)
@@ -627,4 +720,5 @@ def import_all():
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     EAL.save_directory(FOLDER, only_if_is_dirty=True, recursive=True)
     sounds = import_capture_sounds() + [import_enemy_audio()]
-    return {"textures": len(textures), "materials": 2, "meshes": 1, "animations": len(report), "sounds": len(sounds)}
+    return {"textures": len(textures) + len(noise), "materials": 2, "meshes": 1, "animations": len(report),
+            "sounds": len(sounds)}

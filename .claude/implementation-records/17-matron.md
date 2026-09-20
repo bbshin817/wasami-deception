@@ -36,7 +36,7 @@ updated: 2026-09-21
 
 ### 取り込み（`import_all`）
 1. `dd_enemy._extract_textures(SOURCE, PREPARED_DIR, FOLDER, "T_WasamiBoss_")`: 敵と同じ設定で `T_WasamiBoss_<BaseColor|MetallicRoughness|Normal>`。
-2. 材質: 敵のマスター `M_DD_WasamiGltf` を読み（無ければ `dd_enemy._build_master` で作る）、インスタンス `MI_WasamiBoss` にテクスチャ 3 枚を入れる。マスターは作り直さない（敵の取り込みのもの）。
+2. 材質: 敵のマスター `M_DD_WasamiGltf` を読み（無ければ `dd_enemy._build_master` に `dd_enemy.import_cloak_noise()` を渡して Masked で作る。07 記録の「消える材質」）、インスタンス `MI_WasamiBoss` にテクスチャ 3 枚を入れる。マスターは作り直さない（敵の取り込みのもの）。Matron は消えないので `Efficiency` は 0 のまま。
 3. `dd_enemy._import_model(instance, prepared_file(), FOLDER, MESH, "A_WasamiBoss_", 役)`: `PL_Wasami_Skeletal` で `/Game/Wasami/Boss` へ置き換えで取り込み、スロットにインスタンスを入れ、3 役のアニメがあるかを確かめる。インスタンスとメッシュとフォルダを保存する。
 
 ### Matron のアクタ（`AWasamiMatron`。本家の `BP_06_Matron_MiniBoss`）

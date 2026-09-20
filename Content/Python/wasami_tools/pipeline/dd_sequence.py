@@ -65,7 +65,10 @@ NURSE_ANIMS = {
     "Nurse_Hospital_Zone01_Event_39": ("Chase_Charge", False),   # the punch that takes the player
     "nurse_idle_01": ("Idle", False),
     "ReaperNurse_Walk_Back": ("Walk", True),                # backing away
-    "nurse_cloak": ("Walk", False),                         # she turns invisible; here she walks off
+    # She turns invisible where she stands (the cell scene never moves her: its transform track holds one key of
+    # zeroes). The Wasami has no cloaking of its own, so the idle stands in while the material takes her away
+    # (dd_enemy's cloak, item 28's step 14b); until that cloak existed she walked off instead.
+    "nurse_cloak": ("Idle", False),
 }
 NURSE_ANIMS.update({"Nurse_Hospital_Zone01_Event_%d" % n: ("Idle", False) for n in range(40, 48)})
 # The stand-ins that are one action rather than a cycle. A section the original holds a single take in slows these to

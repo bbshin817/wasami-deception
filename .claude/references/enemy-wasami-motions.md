@@ -68,7 +68,7 @@
 |---|---|---|
 | Zone 1 の途中の出来事（`06_Hospital_Zone1_06Event`、2 体、約 10 s） | 構え `ReaperNurse_Boss_Idle_01` → 跳び上がる `Fast_Jump_Up`（+ `_Air`）→ 宙返りで上へ `Flip_Up` | 構え → `Idle_5`、跳んで去る → `Parkour_Vault_with_Roll` か `Vault_and_Land` の後に `Running` で去る |
 | Zone 2 の始まり・捕まる（`06_Hospital_Zone2_Capture`、約 26 s） | 待ち構え `ReaperNurse_Idle_Alert` → 殴る `Nurse_Hospital_Zone01_Event_39` | 待ち構え → `Idle_5`、殴る → `Male_Head_Down_Charge` |
-| Zone 2 の独房（`06_Hospital_Zone2_Cell`、約 74 s） | 待機 `nurse_idle_01`、台詞の演技 `Event_40`〜`47`、後ずさり `ReaperNurse_Walk_Back`、透明化 `nurse_cloak` | 待機と台詞の間 → `Idle_11`、後ずさり → `Walking` の逆再生、透明化 → `Walking` で去る |
+| Zone 2 の独房（`06_Hospital_Zone2_Cell`、約 74 s） | 待機 `nurse_idle_01`、台詞の演技 `Event_40`〜`47`、後ずさり `ReaperNurse_Walk_Back`、透明化 `nurse_cloak` | 待機と台詞の間 → `Idle_11`、後ずさり → `Walking` の逆再生、透明化 → `Idle_11`（材質の `Efficiency` で消えるので、その場に立つ。2026-09-21、項目 28 のステップ 14b。それまでは `Walking` で歩き去らせていた） |
 
 ## ボスワサミ（`boss_wasami.glb`。Matron の代わり）
 

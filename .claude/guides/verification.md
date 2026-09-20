@@ -74,6 +74,7 @@ Simple Mod Menu（`dd-sml` + 本体 v3.1.3。ユーザーが用意したもの�
 
 - PIE の開始・停止・プレイヤーの配置・コンソールコマンドは `python Tools/pie.py`（`.claude/guides/observation.md`）。
 - 静止画は MCP の `EditorToolset.EditorAppToolset.CaptureViewport`（カメラの位置と向きを渡せる）か、PIE 中のコンソールコマンド `HighResShot 1280x720`（`Saved/Screenshots/WindowsEditor/` に出る）。
+- **狙った所を確実に撮るなら `SceneCapture2D`**（2026-09-21、項目 28 のステップ 14b）。ビューポートを画面から撮る方法は、出力ログの小窓が重なる・`slomo` を下げるとレベルストリーミングが戻らない・プレイヤーを置き直すと壁の外に出る、で当てにならなかった。エディタのワールドに `SceneCapture2D` を建て、`TextureRenderTarget2D`（**`RTF_RGBA8`**。浮動小数だと `export_render_target` が EXR を書く）と `SCS_FINAL_COLOR_LDR` を入れ、`capture_scene()` → `unreal.RenderingLibrary.export_render_target` で PNG にする。遮られない向きは `unreal.SystemLibrary.line_trace_single`（当たらなければ `None`）で選ぶ。場面のナースのように `hidden` 真で置かれたアクタは、撮る間だけ偽にして戻す。
 - 比べる相手は原作の収録と、WebGL 版の画面（`.claude/references/webgl/`、`docs/screenshots/`）。**同じ場所・同じ向き**で撮って並べる。ステージの位置は原作データの配置（`pak_reference_2/_levels/06_Hospital_Zone_0*.scene.json` の `world.location`、PlayerStart やトリガー）から取る。
 - 撮った画像は会話に貼る前に縮小する（`CaptureViewport` の戻り値は base64 で大きいので、ファイルに保存してから縮小して読む）。
 

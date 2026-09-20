@@ -227,9 +227,29 @@ Zone 2 のミニボスの廊下（「GET PAST THE NURSES」）の高い所（Z �
 
 ### 取り込み
 1. `_extract_textures`: glb に埋め込まれた PNG を `Intermediate/Pipeline/wasami/enemy/T_WasamiEnemy_<BaseColor|MetallicRoughness|Normal>.png` に書き出し、`dd_stage.import_texture` で取り込む（`TEXTURES`: 色は sRGB・`TEXTUREGROUP_Character`、金属と粗さは線形・`TEXTUREGROUP_CharacterSpecular`、法線は `TC_Normalmap`・`TEXTUREGROUP_CharacterNormalMap` で緑を反転〈glTF は Y 上向き〉）。4096² はそのまま（ストリーミングが描く分の mip だけ載せる）。引数 `source`・`prepared_dir`・`folder`・`prefix` で別のモデルのものを取り込める（ボスワサミの `dd_boss` が使う。17 記録）。
-2. `M_DD_WasamiGltf`（`dd_assets.material` + `_build_master`）: glTF の metallic-roughness の係数 1 の形。色 → Base Color、金属と粗さの B → Metallic、G → Roughness、法線 → Normal。片面、`used_with_skeletal_mesh`。`MI_WasamiEnemy` はそのインスタンスでテクスチャ 3 枚を入れる。
+2. `M_DD_WasamiGltf`（`dd_assets.material` + `_build_master`）: glTF の metallic-roughness の係数 1 の形。色 → Base Color、金属と粗さの B → Metallic、G → Roughness、法線 → Normal。片面、`used_with_skeletal_mesh`。下の「消える材質」を重ねるので **Masked**・`OpacityMaskClipValue` 0.3333。`MI_WasamiEnemy` はそのインスタンスでテクスチャ 3 枚を入れる。`import_cloak_noise` が本家のノイズ 2 枚を取り込む（`CLOAK_NOISE`、最新版）。
 3. `ensure_skeletal_pipeline`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を `PL_Wasami_Skeletal` に写し、種類ごとのフォルダなし、`use_source_name_for_asset` 偽・`asset_name` 空（こうするとメッシュは glTF のメッシュの節の名前〈節が無名なら `<ファイル>_node_<番号>`。2026-09-18 に `dd_skeletal` で分かった〉、スケルトンと物理アセットはその `_Skeleton`・`_PhysicsAsset`、アニメは glTF のアニメの名前そのままになる。Interchange の `ImplementUseSourceNameForAssetOption`）、材質とテクスチャの取り込みなし、スタティックメッシュなし、Nanite なし、物理アセットあり、モーフなし、アニメあり・30 Hz で焼く（引数 `pipeline`・`sample_rate` で別の管を別の速さで作れる。本家の骨入りのメッシュの `dd_skeletal` が `PL_DD_Skeletal` を 24 Hz で作る。01・12 記録）。
 4. `_import_model`: 前処理した glb（メッシュと節の名前を `SK_WasamiEnemy` にしてある）を `/Game/Wasami/Enemy` に置き換えで取り込み（既にあるアセットは同じオブジェクトに書き戻す。**ファイル名はどのアセットとも違う `WasamiEnemy.glb`**: UE 5.8 の `InterchangeManager.cpp` は、置き換えの取り込みでファイル名と同じ名前のアセットが行き先にあると、そのアセットだけの再取り込みに変える。2026-09-18 まで `SK_WasamiEnemy.glb` だったので、2 回目からはメッシュだけが置き換わりアニメは最初の取り込みのままだった）、スロット 1（`BakedMaterial`）に `MI_WasamiEnemy` を入れ、`ROLES` のアニメが全部あるかを確かめる。取り込みは呼び出しの中で終わる。引数 `prepared`・`folder`・`mesh_path`・`anim_prefix`・`roles` で別のモデルを取り込める（`dd_boss` が使う）。
+
+### 消える材質（`_build_cloak`・`_cloak_noise`。項目 28 のステップ 14b、2026-09-21）
+
+本家のナースは独房の場面で溶けるように消える。本家の材質 `M_06_Nurse_Body` は Basic Stealth System の `M_BSS_Character1` のインスタンスで、親の式も材質関数 `MF_BSS_Energy1` の式も cook で消えているので、コンパイル済みシェーダー（`python Tools/dd/cooked_shaders.py "M_BSS_Character1."`、`32_ps_5_0.txt` がマスク・`21_ps_5_0.txt` が発光）から読み直した。
+
+```
+n     = saturate(Fast.r * 3 - Slow.r)            Fast = BSS_Noise2 を毎秒 (0.08, 0.07)、Slow = BSS_Noise1 を毎秒 (0.02, -0.05) 流す
+edge  = lerp(WorstEfficiency, BestEfficiency, Efficiency)
+mask  = If(edge, n, A>B → 0, A==B → 0, A<B → 1)  ＝ n > edge のところだけ残す。`OpacityMaskClipValue` 0.3333
+rim   = If(Efficiency, 0, A>B → Efficiency + FringeSize, それ以外 → 0)
+emis  = If(rim, n, A>B → GlowColor, それ以外 → 黒) * GlowIntensity
+```
+
+`If` の等しい側の 1e-5 は UE の既定そのまま。`Efficiency` 0 で体は丸ごと残り、1 で丸ごと消え、その間は消えていく縁だけが光る。
+
+- **どちらのノイズを 3 倍するかはシェーダーに無い**（テクスチャのスロットに名前が無い）。2 枚とも sRGB（本家の `_textures.json`）なので、逆に読むと `Efficiency` 0 で体の半分が欠け、1 でも 6 割が残る。3 倍が `BSS_Noise2` のときだけ 0 で全部残り 1 で全部消えるので、こちらに決めた。
+- 本家は光らないところに発光テクスチャを掛けるが、ワサミのモデルには発光テクスチャが無いので黒にした。
+- 値は本家の**インスタンス** `M_06_Nurse_Body` のもの（`CLOAK_SCALARS`・`CLOAK_GLOW_COLOR`）をマスターの既定にした: `Efficiency` 0・`BestEfficiency` 1・`WorstEfficiency` 0・`FringeSize` 0.1・`GlowIntensity` 25・`GlowColor` 赤 (1, 0, 0, 1)。本家は親（別のゲームの既定。0.02・15・青）と分けているが、本作の材質は 1 つで、消えるのはナースの代役だけなので分けない。
+- 本家では**遊びの中のナースも消える**（`BP_06_ReaperNurse` の `Cloak` が `SetScalarParameterValueOnMaterials('Efficiency', …)` を呼ぶ）。本作はまだ場面のシーケンスの材質トラックしか動かさないので、遊びの中の敵ワサミは `Efficiency` 0 のまま丸ごと見える。
+- 検証（2026-09-21）: Zone 2 の独房の代役に `Efficiency` 0 / 0.25 / 0.5 / 0.75 / 1 を入れて `SceneCapture2D` で撮り、0 で穴なし・間は赤い縁・1 で完全に消えるのを確かめた。
 
 ## 作るアセット
 
