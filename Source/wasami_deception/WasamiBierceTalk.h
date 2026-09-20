@@ -35,9 +35,10 @@ WASAMI_DECEPTION_API EWasamiTalkStep WasamiTalkStep(bool bHalt, bool bPlaying, b
  * speaks Bierce's lines. It is an AmbientSound child there — an actor rooted on a single AudioComponent0 that starts
  * itself off (bAutoActivate false) and plays through DialogueAttenuation — and its graph is three things:
  *
- *  - Talk(What To Say, Attenuate?): puts Attenuate? on the component's bAllowSpatialization (the hospital's calls are
- *    all False, so its lines are heard the same everywhere), and then, unless Halt is on, plays What To Say as soon as
- *    the component is free — waiting half a second at a time while a line is still going. It never cuts a line short.
+ *  - Talk(What To Say, Attenuate?): puts Attenuate? on the component's bAllowSpatialization (every hospital call is
+ *    False but Zone 2's line as the maze starts, so its lines are heard the same everywhere bar that one), and then,
+ *    unless Halt is on, plays What To Say as soon as the component is free — waiting half a second at a time while a
+ *    line is still going. It never cuts a line short.
  *  - Stop Talking(): the component's Stop(), and nothing else; a Delay already running is left alone.
  *  - Halt: while it is on, Talk says nothing. The hospital never raises it.
  *

@@ -9,6 +9,7 @@
 #include "../WasamiGameMode.h"
 #include "../WasamiGarageLift.h"
 #include "../WasamiHitFX.h"
+#include "../WasamiLift.h"
 #include "../WasamiMatron.h"
 #include "../WasamiMusicPlayer.h"
 #include "../WasamiPlayerCharacter.h"
@@ -43,6 +44,7 @@
 #include "Particles/Emitter.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Sound/AmbientSound.h"
 #include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
 #include "WasamiTestBierceTalk.h"
@@ -584,6 +586,26 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	// cell's scene ducks it and gives it back itself (Regular Music's FadeIn).
 	const AWasamiMusicPlayerZone2* Music = SpawnMusicPlayer<AWasamiMusicPlayerZone2>(World,
 		AWasamiZone2Flow::MusicPlayerSource, false);
+	AWasamiTestBierceTalk* Talker = SpawnTalker(World);
+	// Two of the maze's lifts, whose Player Overlap Setup Bierce Lift Quip binds (far below and apart).
+	TArray<AWasamiLift*> Lifts;
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		Lifts.Add(World->SpawnActor<AWasamiLift>(FVector(0., 2000. + 1000. * Index, -40000.), FRotator::ZeroRotator));
+	}
+	// The announcement behind the Matron, as the level places it: an AmbientSound of the original's wave, its
+	// AudioComponent left off until Miniboss_BehindMatron plays it.
+	const FTransform IntercomAt(FVector(0., -8000., -39500.));
+	AAmbientSound* Intercom = World->SpawnActorDeferred<AAmbientSound>(AAmbientSound::StaticClass(), IntercomAt);
+	Intercom->GetAudioComponent()->bAutoActivate = false;
+	Intercom->GetAudioComponent()->SetSound(LoadObject<USoundBase>(nullptr,
+		TEXT("/Game/DD/Audio/06_Hospital/Nurse_Hospital_Zone01_Event_48_Intercom")));
+	Intercom->FinishSpawning(IntercomAt);
+	Intercom->Tags.Add(AWasamiZoneFlow::SourceTag(AWasamiZone2Flow::BehindMatronIntercom));
+	if (!TestNotNull(TEXT("the intercom's wave"), Intercom->GetAudioComponent()->GetSound()))
+	{
+		return false;
+	}
 
 	AWasamiGameMode* Mode = SpawnMode(World, 7);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -635,9 +657,15 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("picked: Cell_DoorBreak"), Flow->GetSection(), FName(TEXT("Cell_DoorBreak")));
 	TestTrue(TEXT("the door swings open"), DoorPicked->GetSequencePlayer() && DoorPicked->GetSequencePlayer()->IsPlaying());
-	Advance(Wrapper, 1.1f);
+	// A second after the cell's scene, Bierce's line on it, and only then his trigger down the corridor.
+	TestEqual(TEXT("Bierce silent in that second"), Spoken(Talker), FString());
+	Advance(Wrapper, AWasamiZone2Flow::CellLineDelay + 0.1f);
+	TestEqual(TEXT("the cell's line"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_17")));
+	Talker->GetAudioComponent()->SetSound(nullptr);
 	Walk(World, TEXT("Miniboss_BierceTalk"));
 	TestEqual(TEXT("Bierce's trigger, bound 1 s on"), Flow->GetSection(), FName(TEXT("Miniboss_BierceTalk")));
+	TestEqual(TEXT("its line"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_19")));
+	Talker->GetAudioComponent()->SetSound(nullptr);
 	TestFalse(TEXT("the sentry not looking in the cell"), Sentry->GetViewcone()->IsInitialized());
 	TestFalse(TEXT("nor the Matron"), Matron->IsActivated() || LongCone->IsInitialized() || ShortCone->IsInitialized());
 
@@ -648,10 +676,18 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("and then the Matron: her Switch"), Matron->IsActivated());
 	TestTrue(TEXT("her cones hers"), LongCone->GetOwner() == Matron && ShortCone->GetOwner() == Matron);
 	TestTrue(TEXT("and looking"), LongCone->IsInitialized() && ShortCone->IsInitialized());
+	TestEqual(TEXT("the section's own line, the same one"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_19")));
 	TestEqual(TEXT("checkpoint 8 saved"), SavedCheckpoint(), 8);
 	TestEqual(TEXT("past the nurses, with the original's space"), Objective(Mode), FString(TEXT("Get past the nurses ")));
 	TestTrue(TEXT("the arrow clear"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(0.f, 0.f, 0.f, 0.f)));
 	TestNull(TEXT("and without a target"), Flow->GetArrowTarget());
+
+	// Behind her: the announcement, which is the level's own AmbientSound and not a line of Bierce's.
+	TestFalse(TEXT("the intercom silent until then"), Intercom->GetAudioComponent()->IsPlaying());
+	Walk(World, TEXT("Trigger_Miniboss_BehindMatron"));
+	TestEqual(TEXT("behind the Matron"), Flow->GetSection(), FName(TEXT("Miniboss_BehindMatron")));
+	TestTrue(TEXT("the announcement plays"), Intercom->GetAudioComponent()->IsPlaying());
+	Talker->GetAudioComponent()->SetSound(nullptr);
 
 	Walk(World, TEXT("Trigger_MazeStart"));
 	TestEqual(TEXT("checkpoint 9 saved"), SavedCheckpoint(), 9);
@@ -679,6 +715,25 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 		TestEqual(TEXT("turned as the point"), Nurse->GetActorRotation().Yaw, 90., 1e-3);
 	}
 
+	// A second after the maze starts: Bierce's line on it — the hospital's one line spoken with Attenuate? on, so that
+	// it is heard from where the talker stands — and Setup Bierce Lift Quip on the lifts.
+	TestEqual(TEXT("Bierce silent in that second"), Spoken(Talker), FString());
+	Advance(Wrapper, AWasamiZone2Flow::MazeLineDelay + 0.1f);
+	TestEqual(TEXT("the maze's line"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Gameplay_08")));
+	TestTrue(TEXT("heard from the talker"), Talker->GetAudioComponent()->bAllowSpatialization);
+	// Bierce Lift Quip: the first lift the player steps on, a second on, and no other (its DoOnce).
+	Talker->GetAudioComponent()->SetSound(nullptr);
+	Lifts[0]->OnPlayerOverlap.Broadcast();
+	TestEqual(TEXT("nothing said at once"), Spoken(Talker), FString());
+	Advance(Wrapper, AWasamiZone2Flow::LiftQuipDelay + 0.1f);
+	TestEqual(TEXT("the lifts' remark"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Gameplay_07")));
+	TestFalse(TEXT("unattenuated again"), Talker->GetAudioComponent()->bAllowSpatialization);
+	Talker->GetAudioComponent()->SetSound(nullptr);
+	Lifts[1]->OnPlayerOverlap.Broadcast();
+	Lifts[0]->OnPlayerOverlap.Broadcast();
+	Advance(Wrapper, AWasamiZone2Flow::LiftQuipDelay + 0.1f);
+	TestEqual(TEXT("but the once"), Spoken(Talker), FString());
+
 	Mode->CheckShards();
 	Advance(Wrapper, 0.1f);
 	TestEqual(TEXT("checkpoint 10 saved"), SavedCheckpoint(), 10);
@@ -696,6 +751,10 @@ bool FWasamiZoneFlowZone2Test::RunTest(const FString& Parameters)
 	Advance(Wrapper, 0.02f);
 	TestEqual(TEXT("to the ring piece"), Objective(Mode), FString(TEXT("COLLECT THE RING PIECE")));
 	TestTrue(TEXT("its colour"), Flow->GetArrowColor().IsSet() && Flow->GetArrowColor()->Equals(FLinearColor(1.f, 0.8941f, 0.f, 1.f), 1e-4f));
+	// Two seconds after the maze's last shard: Bierce's line on it.
+	TestEqual(TEXT("Bierce silent meanwhile"), Spoken(Talker), FString());
+	Advance(Wrapper, AWasamiZone2Flow::MazeAllShardsLineDelay + 0.1f);
+	TestEqual(TEXT("the line once every shard is taken"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_20")));
 
 	// The cell's spikes kill 0.5 s after they reach the player, who is hit at once.
 	Walk(World, TEXT("Trigger_Cell_Spikes"));
@@ -740,6 +799,7 @@ bool FWasamiZoneFlowRingPieceTest::RunTest(const FString& Parameters)
 	AWasamiDoubleDoors* Doors = World->SpawnActor<AWasamiDoubleDoors>(FVector(0., 6000., -40000.), FRotator::ZeroRotator);
 	Doors->Tags.Add(AWasamiZoneFlow::SourceTag(TEXT("BP_06_DoubleDoors2")));
 	Doors->bLocked = true;
+	const AWasamiTestBierceTalk* Talker = SpawnTalker(World);
 
 	AWasamiGameMode* Mode = SpawnMode(World, 10);
 	AWasamiZoneFlow* Flow = AWasamiZoneFlow::SpawnFor(Mode, 2);
@@ -792,10 +852,15 @@ bool FWasamiZoneFlowRingPieceTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("the garage not bound at once"), Garage->OnTrigger.IsBound());
 	Advance(Wrapper, AWasamiZone2Flow::GarageBindDelay - 0.1f);
 	TestFalse(TEXT("nor before 1 s"), Garage->OnTrigger.IsBound());
+	TestEqual(TEXT("nor has Bierce spoken"), Spoken(Talker), FString());
 	Advance(Wrapper, 0.2f);
 	TestTrue(TEXT("bound by 1 s"), Garage->OnTrigger.IsBound());
+	TestEqual(TEXT("with his line on the piece"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_21")));
 	Walk(World, TEXT("Postmaze_Trigger_Garage"));
 	TestEqual(TEXT("the garage"), Flow->GetSection(), FName(TEXT("Postmaze_Trigger_Garage")));
+	// And his line in the garage, a second on.
+	Advance(Wrapper, AWasamiZone2Flow::GarageLineDelay + 0.1f);
+	TestEqual(TEXT("the garage's line"), Spoken(Talker), FString(TEXT("Bierce_TormentTherapy_Event_22")));
 
 	UGameplayStatics::DeleteGameInSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex);
 	return true;

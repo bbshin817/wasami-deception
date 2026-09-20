@@ -18,7 +18,7 @@ from wasami_tools.pipeline import dd_assets
 VERSION = 2
 
 TT = "Audio/Dialogue/Bierce/Ch06/TT/"
-# What the zones speak directly (AWasamiBierceTalk.Talk, always unattenuated):
+# What the zones speak directly (AWasamiBierceTalk.Talk, unattenuated but for Gameplay_08):
 #   Zone 1: Event_10 as a nurse breaks a door in (04_DoorBreak), Event_09 13 s after the intercom (04_Intercom).
 #   Zone 2: Event_17 after the cell cutscene, Gameplay_07 by the lift, Gameplay_08 as the maze starts, Event_20 once
 #           every shard of the maze is taken, Event_21 after the ring piece, Event_22 in the garage, Event_19 at the

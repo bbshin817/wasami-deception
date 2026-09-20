@@ -8,7 +8,7 @@ sources:
   - Source/wasami_deception/WasamiGarageLift.cpp
   - Source/wasami_deception/Tests/WasamiGarageLiftTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_skeletal.py
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # リフト（Zone 2 の乗ると上がる床・角のリフト・ガレージリフト）

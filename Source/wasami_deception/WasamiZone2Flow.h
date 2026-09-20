@@ -46,8 +46,23 @@ public:
 	/** Spikes_Death: the player dies 0.5 s after the spikes reach them. */
 	static constexpr float SpikesDeathDelay = 0.5f;
 
-	/** Ring Piece Collect 's Delay before the garage's trigger is bound (and Bierce talks). */
+	/** Ring Piece Collect 's Delay, after which Bierce speaks (Event_21) and the garage's trigger is bound. */
 	static constexpr float GarageBindDelay = 1.f;
+
+	/** Cell Cutscene Finished's Delay, after which Bierce speaks (Event_17) and Miniboss_BierceTalk is bound. */
+	static constexpr float CellLineDelay = 1.f;
+
+	/** Maze Trigger Start's Delay, after which Bierce speaks (Gameplay_08) and Setup Bierce Lift Quip runs. */
+	static constexpr float MazeLineDelay = 1.f;
+
+	/** Bierce Lift Quip's Delay: the remark comes a second after the player first rides a lift. */
+	static constexpr float LiftQuipDelay = 1.f;
+
+	/** Maze All Shards' Delay before Bierce speaks (Event_20). */
+	static constexpr float MazeAllShardsLineDelay = 2.f;
+
+	/** Postmaze_Trigger_Garage's Delay before Bierce speaks (Event_22). */
+	static constexpr float GarageLineDelay = 1.f;
 
 	/** ReceiveBeginPlay: Mat_ParameterCol's Portal Extra Brightness in this zone (the garage's portal glows by it). */
 	static constexpr float PortalExtraBrightness = 40.f;
@@ -61,6 +76,12 @@ public:
 
 	/** The Matron over the miniboss corridor (the level's BP_06_Matron_MiniBoss), whom Activate MiniBoss Enemies wakes. */
 	static const FName Matron;
+
+	/**
+	 * Miniboss_BehindMatron: the announcement heard behind her is the level's own AmbientSound (the level build places
+	 * it without bAutoActivate, implementation record 10), whose AudioComponent the event plays.
+	 */
+	static const FName BehindMatronIntercom;
 
 	/** Postmaze Transition's secret file: a BP_Collectable of this ID at the target point collec's transform. */
 	static const FName PostmazeFilePoint;
@@ -99,6 +120,34 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<USoundBase> EscapeSound;
 
+	/** Cell Cutscene Finished: Bierce's Event_17, a second after the cell's scene. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> CellLine;
+
+	/** Miniboss_BierceTalk and Miniboss Transition : Bierce's Event_19, on the way to the Matron's corridor. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> MinibossLine;
+
+	/** Bierce Lift Quip: Gameplay_07, his remark on the lifts. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> LiftQuipLine;
+
+	/** Maze Trigger Start: Gameplay_08, the hospital's one line spoken with Attenuate? on (heard from the talker). */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> MazeLine;
+
+	/** Maze All Shards: Event_20, two seconds after the maze's last shard. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> MazeAllShardsLine;
+
+	/** Ring Piece Collect : Event_21, a second after the piece's screen closes. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> RingPieceLine;
+
+	/** Postmaze_Trigger_Garage: Event_22, a second after the player is in the garage. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> GarageLine;
+
 private:
 	/**
 	 * Arrive Event: the player at PlayerStart_1 and, 0.3 s on, the ambulance's arrival played, which takes neither the
@@ -113,6 +162,11 @@ private:
 	void MazeTransition();
 	/** Spawn Nurses: BP_06_ReaperNurse_Zone2 at NurseSpawn_4, _1 and _2. */
 	void SpawnNurses();
+	/**
+	 * Setup Bierce Lift Quip: Bierce Lift Quip bound to the Player Overlap of every lift in the level (AWasamiLift,
+	 * implementation record 12). Maze Trigger Start runs it a second in, with its own line.
+	 */
+	void SetupBierceLiftQuips();
 	/** Postmaze Transition: the ring piece as the goal. */
 	void PostmazeTransition();
 	/** BP_06_MusicPlayer_Zone2_2's Regular Music FadeIn, as the cell's scene ducks the music and gives it back. */
@@ -151,6 +205,10 @@ private:
 	UFUNCTION()
 	void OnMazeTriggerStart();
 
+	/** Bierce Lift Quip: a DoOnce — the first lift the player steps on gets the remark, a second on, and no other. */
+	UFUNCTION()
+	void OnBierceLiftQuip();
+
 	UFUNCTION()
 	void OnMazeAllShards();
 
@@ -172,4 +230,7 @@ private:
 	 */
 	UFUNCTION()
 	void OnEndTrigger();
+
+	/** Bierce Lift Quip's DoOnce, which its remark passes once. */
+	bool bLiftQuipSaid = false;
 };

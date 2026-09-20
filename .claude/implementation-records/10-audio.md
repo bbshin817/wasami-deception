@@ -78,7 +78,7 @@ updated: 2026-09-20
 ## 話し役 `AWasamiBierceTalk`（項目 20 のステップ 2）
 本家の `BierceTalk_Blueprint`（`Blueprints/00_Ballroom`）を写したもの。本家は `AmbientSound` の子で、部品は `AudioComponent0` 1 つだけ（それがアクタの根。`bAutoActivate` 偽・`AttenuationSettings` は `DialogueAttenuation`）。本作は `AActor` にその部品を同じ値で作る（`bStopWhenOwnerDestroyed`・`bShouldRemainActiveIfDropped` 真・`Movable` も親の `AAmbientSound` のまま。減衰は `BeginPlay` でソフト参照から入れる）。本家の BP の既定の音（舞踏場の台詞）は使わないので入れない。
 
-- `Talk(What To Say, Attenuate?)`: 本家はまず両方をウーバーグラフのフレームに書き（＝ `Halt` で止まる呼びでも `PendingSound` と `bAllowSpatialization` は変わる）、部品の `bAllowSpatialization` に `Attenuate?` を入れてから `Halt` を見る。`Halt` が真なら何もしない。偽なら「部品が鳴っていれば `Delay 0.5` で待ち、空いたら `SetSound` → `Play(0)`」。**前の台詞は絶対に切らない**。病院の呼びはすべて `Attenuate? = False`（画面の外でも同じ音量の 2D）。
+- `Talk(What To Say, Attenuate?)`: 本家はまず両方をウーバーグラフのフレームに書き（＝ `Halt` で止まる呼びでも `PendingSound` と `bAllowSpatialization` は変わる）、部品の `bAllowSpatialization` に `Attenuate?` を入れてから `Halt` を見る。`Halt` が真なら何もしない。偽なら「部品が鳴っていれば `Delay 0.5` で待ち、空いたら `SetSound` → `Play(0)`」。**前の台詞は絶対に切らない**。病院の呼びは Zone 2 の迷路の始まりの `Gameplay_08` だけが `Attenuate? = True`（話し役の居る所から聞こえる）で、ほかはすべて `False`（画面の外でも同じ音量の 2D）。
 - `StopTalking()`: 部品の `Stop()` だけ。走っている待ちは止めない（本家のまま）。
 - 待ちの写し方: Blueprint の `Delay` は**走っている間の再入を無視する**ので、待ちの最中の `Talk` は待ちを増やさず、`PendingSound` だけが置き換わる（＝待ちが明けたときに鳴るのは最後に頼まれた台詞）。これを `WasamiTalkStep` の `AlreadyWaiting` として写し、待ちは 0.5 s の単発タイマー `WaitTimer` の繰り返しで作る。タイマーの戻りは `Halt` の手前ではなくループの中（本家の `Delay` の戻り先 @15）に入るので、待っている間に `Halt` が上がっても鳴る。
 - 置き場所（`dd_level._flow` の `BIERCE_TALK_CLASS`。01 記録）: 両ゾーンの `BierceTalk_Blueprint_2` — Zone 1 (10560, −21175, 0)、Zone 2 (−10940, −865, 800)。置かれた値の上書きは無い。フォルダは `Hospital/Audio`、タグは `src:BierceTalk_Blueprint_2`。

@@ -1,6 +1,7 @@
 #include "WasamiZone2Flow.h"
 
 #include "Camera/CameraShakeBase.h"
+#include "Components/AudioComponent.h"
 #include "Components/LightComponent.h"
 #include "Engine/Light.h"
 #include "EngineUtils.h"
@@ -8,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialParameterCollection.h"
+#include "Sound/AmbientSound.h"
 #include "Sound/SoundBase.h"
 #include "WasamiAssets.h"
 #include "WasamiBlackFadeWidget.h"
@@ -17,6 +19,7 @@
 #include "WasamiEnemyZone2.h"
 #include "WasamiGameMode.h"
 #include "WasamiHitFX.h"
+#include "WasamiLift.h"
 #include "WasamiMatron.h"
 #include "WasamiMusicPlayer.h"
 #include "WasamiPlayerCharacter.h"
@@ -39,6 +42,7 @@ const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
 const FName AWasamiZone2Flow::EscapeTrigger(TEXT("Wasami_EscapeTrigger"));
 const FName AWasamiZone2Flow::MusicPlayerSource(TEXT("BP_06_MusicPlayer_Zone2_2"));
 const FName AWasamiZone2Flow::Matron(TEXT("MnM_Matron_Idle_2"));
+const FName AWasamiZone2Flow::BehindMatronIntercom(TEXT("Nurse_Hospital_Zone01_Event_48_Intercom_2"));
 const FName AWasamiZone2Flow::PostmazeFilePoint(TEXT("collec"));
 
 AWasamiZone2Flow::AWasamiZone2Flow()
@@ -48,6 +52,13 @@ AWasamiZone2Flow::AWasamiZone2Flow()
 	RingPiecePickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/RingStatue/Ring_Piece_Pickup_v1")));
 	EscapeSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/21-Ballroom_portal_V2")));
 	ParameterCollection = TSoftObjectPtr<UMaterialParameterCollection>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Special/Mat_ParameterCol")));
+	CellLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_17")));
+	MinibossLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_19")));
+	LiftQuipLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Gameplay_07")));
+	MazeLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Gameplay_08")));
+	MazeAllShardsLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_20")));
+	RingPieceLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_21")));
+	GarageLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_22")));
 }
 
 void AWasamiZone2Flow::BeginPlay()
@@ -151,9 +162,10 @@ void AWasamiZone2Flow::OnCellCutsceneFinished()
 	EnableDoorBreak(TEXT("BP_06_Hospital_DoorBreak_2"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellDoorBreak));
 	BindTrigger(TEXT("Trigger_Cell_Spikes"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnSpikesDeath));
 	BindTrigger(TEXT("BP_MiniBoss_Trigger"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnMinibossTriggerTransition));
-	After(1.f, [this]()
+	After(CellLineDelay, [this]()
 	{
-		// Bierce_TormentTherapy_Event_17 (item 20).
+		// @2987: Bierce Talk(Event_17, False), and then the trigger bound.
+		BierceTalk(CellLine);
 		BindTrigger(TEXT("Miniboss_BierceTalk"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnMinibossBierceTalk));
 	});
 }
@@ -185,7 +197,9 @@ void AWasamiZone2Flow::OnSpikesDeath()
 void AWasamiZone2Flow::OnMinibossBierceTalk()
 {
 	Enter(TEXT("Miniboss_BierceTalk"));
-	// Bierce_TormentTherapy_Event_19 (item 20).
+	// @24311: Bierce Talk(Event_19, False), and nothing else. The line is the same as the section's own below: whichever
+	// comes first is heard, and the talker waits the other out (it never cuts a line short).
+	BierceTalk(MinibossLine);
 }
 
 void AWasamiZone2Flow::OnMinibossTriggerTransition()
@@ -200,7 +214,8 @@ void AWasamiZone2Flow::MinibossTransition()
 	Enter(TEXT("Miniboss Transition "));
 	// The achievement's 06_NurseAlert set to 0 (achievements are not in this game).
 	ActivateMinibossEnemies();
-	// Bierce_TormentTherapy_Event_19 (item 20).
+	// @4587: Talk(Event_19, False) straight after them, before the arrow.
+	BierceTalk(MinibossLine);
 	SetArrowShards(false);
 	SetArrowColor(MinibossArrow);
 	SetArrowTarget(nullptr);
@@ -226,7 +241,17 @@ void AWasamiZone2Flow::ActivateMinibossEnemies()
 void AWasamiZone2Flow::OnMinibossBehindMatron()
 {
 	Enter(TEXT("Miniboss_BehindMatron"));
-	// Nurse_Hospital_Zone01_Event_48_Intercom_2's AudioComponent plays (item 20).
+	// @22264: Nurse_Hospital_Zone01_Event_48_Intercom_2's AudioComponent Play(0) — the announcement is the level's own
+	// AmbientSound, not a line of Bierce's, and it is placed without bAutoActivate, so this is what starts it.
+	const AAmbientSound* Intercom = Cast<AAmbientSound>(Source(BehindMatronIntercom));
+	if (UAudioComponent* Audio = Intercom ? Intercom->GetAudioComponent() : nullptr)
+	{
+		Audio->Play(0.f);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no intercom %s"), *GetClass()->GetName(), *BehindMatronIntercom.ToString());
+	}
 }
 
 void AWasamiZone2Flow::OnMazeTriggerStart()
@@ -234,8 +259,35 @@ void AWasamiZone2Flow::OnMazeTriggerStart()
 	Enter(TEXT("Maze Trigger Start"));
 	MazeTransition();
 	SaveCheckpoint(9);
-	// 1 s on: Bierce_TormentTherapy_Gameplay_08 and Setup Bierce Lift Quip, which binds every AWasamiLift's
-	// OnPlayerOverlap (BP_06_LiftBase's Player Overlap) to Bierce Lift Quip (item 20).
+	After(MazeLineDelay, [this]()
+	{
+		// @2926: Talk(Gameplay_08, True) — the hospital's one attenuated line, heard from where the talker stands — and
+		// then Setup Bierce Lift Quip.
+		BierceTalk(MazeLine, true);
+		SetupBierceLiftQuips();
+	});
+}
+
+void AWasamiZone2Flow::SetupBierceLiftQuips()
+{
+	// Get All Actors Of Class(BP_06_LiftBase): every lift of the maze, its Player Overlap bound to Bierce Lift Quip.
+	TArray<AActor*> Lifts;
+	UGameplayStatics::GetAllActorsOfClass(this, AWasamiLift::StaticClass(), Lifts);
+	for (AActor* Lift : Lifts)
+	{
+		CastChecked<AWasamiLift>(Lift)->OnPlayerOverlap.AddUniqueDynamic(this, &AWasamiZone2Flow::OnBierceLiftQuip);
+	}
+}
+
+void AWasamiZone2Flow::OnBierceLiftQuip()
+{
+	// @14266: a DoOnce before the Delay, so only the first lift stepped on is remarked on.
+	if (bLiftQuipSaid)
+	{
+		return;
+	}
+	bLiftQuipSaid = true;
+	After(LiftQuipDelay, [this]() { BierceTalk(LiftQuipLine); });
 }
 
 void AWasamiZone2Flow::MazeTransition()
@@ -262,7 +314,8 @@ void AWasamiZone2Flow::OnMazeAllShards()
 	Enter(TEXT("Maze All Shards"));
 	SaveCheckpoint(10);
 	PostmazeTransition();
-	// 2 s on: Bierce_TormentTherapy_Event_20 (item 20).
+	// @2879: the event's other pin, a Delay of 2 s that the save and Postmaze Transition start before.
+	After(MazeAllShardsLineDelay, [this]() { BierceTalk(MazeAllShardsLine); });
 }
 
 void AWasamiZone2Flow::PostmazeTransition()
@@ -357,8 +410,9 @@ void AWasamiZone2Flow::OnRingPieceCollect()
 	}
 	After(GarageBindDelay, [this]()
 	{
-		// Bierce_TormentTherapy_Event_21 (item 20). The original also binds Postmaze_Trigger_Ambulance, on the
-		// ambulance's roof, to the ride to the boss fight; this game leaves by the garage's portal instead.
+		// @43: Talk(Event_21, False), and then the trigger bound. The original also binds Postmaze_Trigger_Ambulance, on
+		// the ambulance's roof, to the ride to the boss fight; this game leaves by the garage's portal instead.
+		BierceTalk(RingPieceLine);
 		BindTrigger(TEXT("Postmaze_Trigger_Garage"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnPostmazeTriggerGarage));
 	});
 }
@@ -366,11 +420,10 @@ void AWasamiZone2Flow::OnRingPieceCollect()
 void AWasamiZone2Flow::OnPostmazeTriggerGarage()
 {
 	Enter(TEXT("Postmaze_Trigger_Garage"));
-	// The original points the arrow at the ambulance (GET ON TOP OF THE AMBULANCE) and has Bierce talk 1 s on (item
-	// 20). This game opens the garage's portal here, as the hotel opens its exit once the ring piece is taken
-	// (01_Hotel @43247 to @43565: the arrow red at the portal, Lock/Unlock(False, False), without its sound and
-	// shake), and binds the trigger by it. The objective is the hotel's 'Get back to the portal.', in the hospital's
-	// capitals, the player not having been to it.
+	// The original points the arrow at the ambulance (GET ON TOP OF THE AMBULANCE); this game opens the garage's portal
+	// here, as the hotel opens its exit once the ring piece is taken (01_Hotel @43247 to @43565: the arrow red at the
+	// portal, Lock/Unlock(False, False), without its sound and shake), and binds the trigger by it. The objective is
+	// the hotel's 'Get back to the portal.', in the hospital's capitals, the player not having been to it.
 	AWasamiPortal* Portal = Cast<AWasamiPortal>(Source(GaragePortal));
 	if (Portal)
 	{
@@ -385,6 +438,8 @@ void AWasamiZone2Flow::OnPostmazeTriggerGarage()
 	SetArrowTarget(Portal);
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGetToPortal", "GET TO THE PORTAL"));
 	BindTrigger(EscapeTrigger, GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnEndTrigger));
+	// @218: Talk(Event_22, False) a second on, as the original has it over its own way out.
+	After(GarageLineDelay, [this]() { BierceTalk(GarageLine); });
 }
 
 void AWasamiZone2Flow::OnEndTrigger()

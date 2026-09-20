@@ -141,7 +141,7 @@ private:
  * stands on it and comes back down when none does. LiftCollision1 is taken away when play begins.
  *
  * The player walking onto the floor (LiftCollisionOverlap's begin overlap) calls Player Overlap, which Zone 2's level
- * Blueprint binds on every lift to Bierce's remark on them (the work list's item 20).
+ * Blueprint binds on every lift to Bierce's remark on them (AWasamiZone2Flow's Setup Bierce Lift Quip).
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiLift : public AWasamiLiftBase
