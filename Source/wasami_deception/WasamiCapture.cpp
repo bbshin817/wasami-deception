@@ -14,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
 #include "Math/InterpCurve.h"
+#include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
 #include "WasamiEnemy.h"
@@ -350,6 +351,9 @@ AWasamiCapture::AWasamiCapture()
 	BodyMesh = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
 	WallMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Plane")));
 	WallMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Engine/EngineDebugMaterials/BlackUnlitMaterial")));
+	ScreamSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/01_Hotel/Evil_Monkey_Scream")));
+	LaughSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/LIVING_STATUE_Laughter_05")));
+	HitSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/Axe_Hit_03")));
 }
 
 void AWasamiCapture::OnConstruction(const FTransform& Transform)
@@ -449,6 +453,45 @@ AWasamiCapture* AWasamiCapture::StartCapture(const UObject* WorldContextObject, 
 	return Room;
 }
 
+int32 AWasamiCapture::NumSounds(int32 InChoice)
+{
+	return InChoice == FaceChoice ? 2 : 1;
+}
+
+float AWasamiCapture::SoundTime(int32 InChoice, int32 Index)
+{
+	if (InChoice != FaceChoice)
+	{
+		// Every hotel Matinee opens with its scream (MonkeyJumpscare, 2 and 3's InterpTrackSound_0 at t = 0).
+		return 0.f;
+	}
+	return Index == 0 ? WatcherAnimDelay : WatcherAnimDelay + WatcherHitDelay;
+}
+
+USoundBase* AWasamiCapture::GetSound(int32 InChoice, int32 Index) const
+{
+	if (InChoice == FaceChoice)
+	{
+		return Index == 0 ? LaughSound.LoadSynchronous() : Index == 1 ? HitSound.LoadSynchronous() : nullptr;
+	}
+	return Index == 0 ? ScreamSound.LoadSynchronous() : nullptr;
+}
+
+float AWasamiCapture::GetSoundDelay(int32 Index) const
+{
+	return SoundTimers.IsValidIndex(Index) ? FMath::Max(GetWorldTimerManager().GetTimerRemaining(SoundTimers[Index]), 0.f) : 0.f;
+}
+
+void AWasamiCapture::PlayCaptureSound(int32 Index)
+{
+	if (USoundBase* Sound = GetSound(Choice, Index))
+	{
+		// The Matinee key's and the watcher's own multipliers, both 1. A UI sound, as PlaySound2D makes it: the death
+		// screen pauses the game while the axe's hit is still going.
+		UGameplayStatics::PlaySound2D(this, Sound, 1.f, 1.f);
+	}
+}
+
 void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoice)
 {
 	Mode = InMode;
@@ -538,6 +581,24 @@ void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoic
 	FTimerManager& Timers = GetWorldTimerManager();
 	Timers.SetTimer(FadeTimer, this, &AWasamiCapture::StartFade, FMath::Max(FadeStart, KINDA_SMALL_NUMBER), false);
 	Timers.SetTimer(DeathTimer, this, &AWasamiCapture::EndCapture, GetDeathDelay(), false);
+
+	// The Matinee's sound track (the hotel) and the Gold Watcher's PlaySound2D calls (the face). Their times are the
+	// original's own, which the scene's rate does not touch: the hotel's is at t = 0 and the watcher's two come of
+	// Delays, as this room's fade and death do.
+	SoundTimers.Reset();
+	SoundTimers.SetNum(NumSounds(Choice));
+	for (int32 Index = 0; Index < SoundTimers.Num(); ++Index)
+	{
+		const float At = SoundTime(Choice, Index);
+		if (At <= 0.f)
+		{
+			PlayCaptureSound(Index);
+		}
+		else
+		{
+			Timers.SetTimer(SoundTimers[Index], FTimerDelegate::CreateUObject(this, &AWasamiCapture::PlayCaptureSound, Index), At, false);
+		}
+	}
 }
 
 void AWasamiCapture::Tick(float DeltaSeconds)

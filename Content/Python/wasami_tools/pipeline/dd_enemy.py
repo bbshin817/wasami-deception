@@ -14,6 +14,9 @@
   imported  /Game/Wasami/Enemy: SK_WasamiEnemy with SK_WasamiEnemy_Skeleton and SK_WasamiEnemy_PhysicsAsset,
             A_WasamiEnemy_<role>, T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
             material). The mesh faces +Y, as UE's mannequins do.
+
+The capture's sounds come from here too (CAPTURE_SOUNDS): they are the original's own waves, not this game's model, but
+they belong to what the enemy does when it catches the player (AWasamiCapture).
 """
 import copy
 import math
@@ -36,6 +39,16 @@ PHYSICS_ASSET = MESH + "_PhysicsAsset"
 ANIM_PREFIX = "A_WasamiEnemy_"
 MATERIAL = FOLDER + "/MI_WasamiEnemy"
 MASTER = "/Game/Pipeline/Materials/M_DD_WasamiGltf"
+
+# What the capture plays (AWasamiCapture, which names them by their paths under /Game/DD): the scream every one of
+# 01_Hotel's jumpscare Matinees opens with, and the laugh and the axe hit of 03_Manor's Gold Watcher kill the face
+# follows. All three are the old version's (pak_reference).
+CAPTURE_SOUNDS = (
+    "Audio/01_Hotel/Evil_Monkey_Scream",
+    "Audio/03_Manor/LIVING_STATUE_Laughter_05",
+    "Audio/03_Manor/Axe_Hit_03",
+)
+CAPTURE_SOUND_VERSION = 1
 PIPELINE_VERSION = "1"  # bump when ensure_skeletal_pipeline's settings change
 
 ROOT_BONE = "pelvis"
@@ -574,9 +587,14 @@ def _import_model(material, prepared=None, folder=FOLDER, mesh_path=MESH, anim_p
     return mesh, anims
 
 
+def import_capture_sounds():
+    """The waves the capture plays, with the original's own settings (dd_assets.sound). Returns their package paths."""
+    return [dd_assets.sound(rel, CAPTURE_SOUND_VERSION) for rel in CAPTURE_SOUNDS]
+
+
 def import_all():
-    """Prepares and imports the enemy Wasami, then saves /Game/Wasami/Enemy and the master. Returns how many of each
-    kind, and logs each animation's length and how far its pelvis was moved."""
+    """Prepares and imports the enemy Wasami and the capture's sounds, then saves /Game/Wasami/Enemy and the master.
+    Returns how many of each kind, and logs each animation's length and how far its pelvis was moved."""
     report = prepare()
     for role, (seconds, (dx, dz)) in report.items():
         unreal.log("enemy: %s%s %.3f s, pelvis moved x %.2f m z %.2f m" % (ANIM_PREFIX, role, seconds, dx, dz))
@@ -588,4 +606,5 @@ def import_all():
     for asset in [master, instance, mesh]:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     EAL.save_directory(FOLDER, only_if_is_dirty=True, recursive=True)
-    return {"textures": len(textures), "materials": 2, "meshes": 1, "animations": len(report)}
+    sounds = import_capture_sounds()
+    return {"textures": len(textures), "materials": 2, "meshes": 1, "animations": len(report), "sounds": len(sounds)}

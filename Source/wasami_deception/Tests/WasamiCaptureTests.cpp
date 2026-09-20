@@ -18,6 +18,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -440,6 +441,65 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("capture 2: down on the floor by the fade"), Floor->GetView()->GetRelativeLocation().Z < 60.);
 	Floor->Destroy();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiCaptureSoundTest, "Wasami.Capture.Sound",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiCaptureSoundTest::RunTest(const FString& Parameters)
+{
+	// The Matinees' one scream at t = 0, and the Gold Watcher's laugh and axe hit, the last of them before its death.
+	const AWasamiCapture* Defaults = GetDefault<AWasamiCapture>();
+	for (int32 Choice = 0; Choice < AWasamiCapture::NumHotelChoices; ++Choice)
+	{
+		const FString What = FString::Printf(TEXT("capture %d: "), Choice);
+		TestEqual(What + TEXT("one sound"), AWasamiCapture::NumSounds(Choice), 1);
+		TestEqual(What + TEXT("as the Matinee opens"), AWasamiCapture::SoundTime(Choice, 0), 0.f);
+		const USoundBase* Scream = Defaults->GetSound(Choice, 0);
+		TestTrue(What + TEXT("Evil_Monkey_Scream"), Scream && Scream->GetName() == TEXT("Evil_Monkey_Scream"));
+	}
+	TestEqual(TEXT("the face's two"), AWasamiCapture::NumSounds(AWasamiCapture::FaceChoice), 2);
+	TestEqual(TEXT("the laugh with the grab"), AWasamiCapture::SoundTime(AWasamiCapture::FaceChoice, 0), AWasamiCapture::WatcherAnimDelay);
+	TestEqual(TEXT("the axe 0.85 s on"), AWasamiCapture::SoundTime(AWasamiCapture::FaceChoice, 1), 1.05f, 1e-6f);
+	TestTrue(TEXT("both before the death screen"), AWasamiCapture::SoundTime(AWasamiCapture::FaceChoice, 1) < AWasamiCapture::FaceDeathDelay);
+	const USoundBase* Laugh = Defaults->GetSound(AWasamiCapture::FaceChoice, 0);
+	const USoundBase* Hit = Defaults->GetSound(AWasamiCapture::FaceChoice, 1);
+	TestTrue(TEXT("LIVING_STATUE_Laughter_05"), Laugh && Laugh->GetName() == TEXT("LIVING_STATUE_Laughter_05"));
+	TestTrue(TEXT("Axe_Hit_03"), Hit && Hit->GetName() == TEXT("Axe_Hit_03"));
+	TestNull(TEXT("no third"), Defaults->GetSound(AWasamiCapture::FaceChoice, 2));
+
+	// A room playing each: the hotel's goes with the capture, the face's two wait on their timers.
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 1.f / 60.f;
+	for (int32 Choice = 0; Choice < AWasamiCapture::NumChoices; ++Choice)
+	{
+		AWasamiCapture* Room = World->SpawnActor<AWasamiCapture>(AWasamiCapture::StaticClass(), FTransform(AWasamiCapture::RoomLocation));
+		if (!TestNotNull(TEXT("the room"), Room))
+		{
+			return false;
+		}
+		Room->Start(nullptr, nullptr, Choice);
+		const FString What = FString::Printf(TEXT("capture %d: "), Choice);
+		const bool bFace = Choice == AWasamiCapture::FaceChoice;
+		TestEqual(What + TEXT("the first sound played or waiting"), Room->GetSoundDelay(0),
+			bFace ? AWasamiCapture::WatcherAnimDelay : 0.f, Step);
+		for (float Time = 0.f; Time < AWasamiCapture::FaceDeathDelay; Time += Step)
+		{
+			Wrapper.TickTestWorld(Step);
+		}
+		for (int32 Index = 0; Index < AWasamiCapture::NumSounds(Choice); ++Index)
+		{
+			TestEqual(*FString::Printf(TEXT("%ssound %d played by 1.15 s"), *What, Index), Room->GetSoundDelay(Index), 0.f);
+		}
+		Room->Destroy();
+	}
 	return true;
 }
 

@@ -11,6 +11,7 @@ class UCameraShakeBase;
 class UMaterialInterface;
 class UPointLightComponent;
 class USkeletalMesh;
+class USoundBase;
 class USkeletalMeshComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
@@ -163,6 +164,24 @@ public:
 	/** When DeathEvent comes (s, from Start). */
 	float GetDeathDelay() const { return Choice == FaceChoice ? FaceDeathDelay : DeathDelay; }
 
+	/**
+	 * How many sounds a capture plays, and when (s, from Start; every one at volume 1 and pitch 1, as the original has
+	 * them). The hotel's three Matinees all open with InterpTrackSound_0's Evil_Monkey_Scream at t = 0; their other
+	 * sound tracks are left out, having nothing here to go with — the knife stabs of MonkeyJumpscare2 (0.484 s) and
+	 * MonkeyJumpscare3 (2.437 s), which the Wasami's clips do not make, and the four small screams MonkeyJumpscare3
+	 * lays under the five monkeys that jump in with its own. The face follows BP_03_Watcher's kill (@1474):
+	 * PlaySound2D(LIVING_STATUE_Laughter_05) with the grab at WatcherAnimDelay, PlaySound2D(Axe_Hit_03) after its
+	 * WatcherHitDelay.
+	 */
+	static int32 NumSounds(int32 Choice);
+	static float SoundTime(int32 Choice, int32 Index);
+
+	/** The Index-th sound of the capture Choice, loaded, or null. */
+	USoundBase* GetSound(int32 Choice, int32 Index) const;
+
+	/** How long (s) until the Index-th sound is played; 0 once it has been, or before Start. */
+	float GetSoundDelay(int32 Index) const;
+
 	/** The scene time at Time (s, from Start): StartRate times as fast at first, easing back to 1 over RateEaseTime. */
 	float SceneTime(float Time) const;
 
@@ -188,6 +207,20 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
 	TSoftObjectPtr<UMaterialInterface> WallMaterial;
+
+	/**
+	 * What the capture plays, all 2D: the listener follows the view, which is up in the room, and the original plays
+	 * the watcher's two through PlaySound2D as well. The hotel Matinees' Evil_Monkey_Scream, and the Gold Watcher's
+	 * LIVING_STATUE_Laughter_05 and Axe_Hit_03.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
+	TSoftObjectPtr<USoundBase> ScreamSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
+	TSoftObjectPtr<USoundBase> LaughSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
+	TSoftObjectPtr<USoundBase> HitSound;
 
 	/** TODO(仮): the scene's rate at first, and how long (s) it takes to ease back to 1 (exponentially). */
 	UPROPERTY(EditAnywhere, Category = "Wasami|Capture")
@@ -266,6 +299,9 @@ private:
 	/** Puts the clip, the Wasami, the camera and the face light where they are Time into the capture. */
 	void UpdateScene(float Time, float DeltaSeconds);
 
+	/** Plays the Index-th sound of the capture going on (the timers Start sets, and t = 0 at once). */
+	void PlayCaptureSound(int32 Index);
+
 	void StartFade();
 	void EndCapture();
 
@@ -307,4 +343,6 @@ private:
 	float FadeDuration = 0.f;
 	FTimerHandle FadeTimer;
 	FTimerHandle DeathTimer;
+	/** One per sound of the capture going on (NumSounds); the ones due at t = 0 stay unset. */
+	TArray<FTimerHandle> SoundTimers;
 };
