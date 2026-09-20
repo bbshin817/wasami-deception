@@ -18,7 +18,7 @@ sources:
   - Source/wasami_deception/WasamiCutsceneNurse.h
   - Source/wasami_deception/WasamiCutsceneNurse.cpp
   - Source/wasami_deception/Tests/WasamiCutsceneNurseTests.cpp
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # ゾーンの進行（トリガー・区間の流れ・扉の破壊）
@@ -103,7 +103,7 @@ updated: 2026-09-20
 - `StartAt`（本家 `Spawn` @22328、`Load Progress By Level(7, 8)`）: 7 → `ArriveEvent`（救急車の到着 → 捕まる場面 → 独房の場面。本家はこのレベルを 7 で開くたびに流す = 棘で死んで開き直しても、また到着から始まる）、8 → `Miniboss Start ` → `MinibossTransition`、9 → `Maze Start` → `MazeTransition`、10 → `Postmaze Start` → `PostmazeTransition`（本家の `… Start` の PlayerStart への移動はゲームモード）。
 - `ArriveEvent`（`Arrive Event`、本家 @24359）: 本家は `IsPackagedForDistribution` で分かれ、配布版だけ救急車の到着を流す（エディタ版は到着を飛ばして捕まる場面から）。本作はパッケージして遊ぶので配布版の道を写す: `TeleportPlayerTo("PlayerStart_1")` → 0.3 s 後に `PlaySequence("06_Hospital_Zone2_AmbulanceArrive1_2", OnEscapeAmbulanceArrive)`（6.77 s）と `Trigger_Arrive_CaptureScene` → `OnArriveCaptureCutscene` の結び。**到着は場面ではない**（視点もスキップの画面も無く、入力もそのまま）ので、救急車が入ってくる間もプレイヤーは庭を歩ける。
 - `OnEscapeAmbulanceArrive`（`Escape_AmbulanceArrive`、本家 @25446）: 救急車の前の `Ambulance_Arrive_Blockers4` を消す。
-- `OnArriveCaptureCutscene`（`Arrive_CaptureCutscene`、本家 @25441）: `DisablePlayerInput` → `PlayCutscene("06_Hospital_Zone2_Capture", OnCellCutsceneStart, "CineCameraActor_2")`（26.23 s。視点を 0.5 s でシネカメラへ、スキップの画面つき）。場面のカメラアニメ `CameraAnim_Nurse_01`（20.53〜25.27 s）は流していない（項目 28 の後回しの一覧）。
+- `OnArriveCaptureCutscene`（`Arrive_CaptureCutscene`、本家 @25441）: `DisablePlayerInput` → `PlayCutscene("06_Hospital_Zone2_Capture", OnCellCutsceneStart, "CineCameraActor_2")`（26.23 s。視点を 0.5 s でシネカメラへ、スキップの画面つき）。場面のカメラアニメ `CameraAnim_Nurse_01`（20.53〜25.27 s）は流れでは何もしない: 取り込みが場面の変換トラックに足している（01 記録の `dd_sequence.bake_location`。項目 28 のステップ 14d）。
 - `OnCellCutsceneStart`（`Cell Cutscene Start`、本家 @3149）: 1 s 待って `PlayCutscene("06_Hospital_Zone2_Cell", OnCellCutsceneFinished, カメラなし, bSmoothTransition = 偽)`（74.07 s）→ `TeleportPlayerTo("PlayerStart_Cell")`。**視点は切り替えない**（本家も切り替えない。場面が捕まる場面と同じ `CineCameraActor_2` を動かし、視点はそこに載ったまま）。帯を滑らせないのは捕まる場面の帯がもう出ているから。捕まる場面が残す黒（フェードの最後のキーが 1 で `KeepState`）はこの場面の頭のフェードが引き継ぎ、7.43 s で晴れて独房が見える。独房の扉・壁のスイッチ・偽の天井・棘も場面が動かす（状態を残す区間は `KeepState`、ほかは既定の RestoreState）。移動の後に `FadeCellMusicIn(0.5, 0.3)`（本家 @3688 の `Regular Music.FadeIn(0.5, 0.3, 0, Linear)`）: 場面の下で曲を 0.3 まで下げる。`bFadeOut` では 3 本とも消えてしまうので、流れが曲のプレーヤーの `FadeRegularMusicIn` を直に呼ぶ（10 記録）。
 - `BeginPlay`（本家 `ReceiveBeginPlay` @23216）: `Mat_ParameterCol` の `Portal Extra Brightness` を 40 にして（ガレージのポータルの材質がこれで光る。08 記録）、基底の `BeginPlay`（本家の `Setup`）へ。
 - `OnCellCutsceneFinished`（本家 @23769）: `EnablePlayerInput`、視点を 2 s でプレイヤーへ戻す `SetPlayerViewTarget`（場面のシネカメラから）、`PlaySequence("06_Hospital_Zone2_Spikes")`（棘が下りてくる。70 s）、`EnableDoorBreak("BP_06_Hospital_DoorBreak_2", OnCellDoorBreak)`、`Trigger_Cell_Spikes` → `OnSpikesDeath`、`BP_MiniBoss_Trigger` → `OnMinibossTriggerTransition`、1 s 後（`CellLineDelay`）に `BierceTalk(CellLine)`（`Event_17`）を喋ってから `Miniboss_BierceTalk` → `OnMinibossBierceTalk` を結ぶ（本家 @23769〜@3057、台詞は @2987）。入力を戻した直後に `FadeCellMusicIn(2.5, 1)`（本家 @23769）で曲を戻す（視点を戻すより前）。**棘の箱（`Trigger_Cell_Spikes`。棘に付いて下りる）は開いてから約 19.2 s で独房の床に立つプレイヤーの頭に届く**（箱の下端 = 518 + 棘の Z、棘は 0 s に −150 から毎秒約 9.91 cm）ので、その間に鍵（Zone 2 の 3.0 で 34 回）を外して出る。

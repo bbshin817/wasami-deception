@@ -117,8 +117,9 @@ void AWasamiZone2Flow::OnArriveCaptureCutscene()
 {
 	Enter(TEXT("Arrive_CaptureCutscene"));
 	// @25143: Disable Player Input first, then the view to CineCameraActor_2 over 0.5 s and 06_Hospital_Zone2_Capture
-	// played with its skip screen. The scene's own camera anim (CameraAnim_Nurse_01 over its 20.53 to 25.27 s) is left
-	// out for now: it is a Matinee move track, which UWasamiCameraAnim does not hold (item 28's list).
+	// played with its skip screen. The scene's own camera anim (CameraAnim_Nurse_01 over its 20.53 to 25.27 s) needs
+	// nothing here: its move carries the cine camera, and the pipeline adds it to the scene's transform track, which
+	// UE 5.8 has no camera anim track for (item 28's step 14d, 01 record's dd_sequence.bake_location).
 	DisablePlayerInput(this);
 	PlayCutscene(TEXT("06_Hospital_Zone2_Capture"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnCellCutsceneStart),
 		TEXT("CineCameraActor_2"));

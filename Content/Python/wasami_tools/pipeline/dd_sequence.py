@@ -5,6 +5,8 @@ placed (tag 'src:<the original's name>'), and the LevelSequenceActors that play 
 The original's level Blueprints play those actors (GetSequencePlayer → Play); AWasamiZoneFlow finds them by the same
 tag. A binding points at the level's actor by its path in the map, so rebuilding the level (new actor names) has to
 rebuild the sequences too, which dd_level.build does last."""
+import math
+
 import unreal
 
 from wasami_tools.pipeline import dd_assets, paths, ue_props
@@ -91,6 +93,19 @@ AUDIO_CHANNELS = {"SoundVolume": ("Volume", 1.0), "PitchMultiplier": ("Pitch", 1
 CURVE_CHANNELS = {"FloatCurve": ("None", None)}   # a float property's and a fade's, without a default
 PARTICLE_CHANNELS = {"ParticleKeys": ("None", None)}
 
+# The transform channels a camera anim is added to (see bake_location), and the six axes UInterpTrackMove splits a
+# Matinee move track into, in the order it makes them. The export leaves the first axis' MoveAxis out, as its default.
+LOCATION_CHANNELS = ("Translation", "Translation[1]", "Translation[2]")
+ROTATION_CHANNELS = ("Rotation", "Rotation[1]", "Rotation[2]")
+MOVE_AXES = ("AXIS_TranslationX", "AXIS_TranslationY", "AXIS_TranslationZ",
+             "AXIS_RotationX", "AXIS_RotationY", "AXIS_RotationZ")
+CAMERA_ANIM_KEYS = {"CameraAnim", "PlayRate", "PlayScale", "BlendInTime", "BlendOutTime", "bLooping",
+                    "bRandomStartTime", "Duration"}
+# A key's interpolation -> how the curve between it and the next one is evaluated; anything else is a cubic of the
+# tangents saved with the keys (a Matinee curve and a section's channel are evaluated the same way).
+MATINEE_INTERP = {"CIM_Constant": "constant", "CIM_Linear": "linear"}
+CHANNEL_INTERP = {"RCIM_Constant": "constant", "RCIM_Linear": "linear"}
+
 INTERP = {"RCIM_Linear": "LINEAR", "RCIM_Constant": "CONSTANT"}
 CUBIC_TANGENT = {"RCTM_Auto": "AUTO", "RCTM_User": "USER", "RCTM_Break": "BREAK", "RCTM_SmartAuto": "SMART_AUTO"}
 
@@ -125,6 +140,86 @@ def _enum(cls, member):
     return getattr(cls, member)
 
 
+def _matinee_keys(points):
+    """A Matinee curve's points (FInterpCurvePoint<float>, keyed in seconds) as (x, value, arrive, leave, how)."""
+    return [(float(p["InVal"]), float(p["OutVal"]), float(p.get("ArriveTangent", 0.0)),
+             float(p.get("LeaveTangent", 0.0)), MATINEE_INTERP.get(p.get("InterpMode", ""), "cubic"))
+            for p in points]
+
+
+def _channel_keys(data):
+    """A section channel's keys (a rich curve's Times and Values, keyed in ticks) in the same form."""
+    keys = []
+    for t, v in zip((data or {}).get("Times", []), (data or {}).get("Values", [])):
+        tangent = v.get("Tangent") or {}
+        keys.append((float(t), float(v["Value"]), float(tangent.get("ArriveTangent", 0.0)),
+                     float(tangent.get("LeaveTangent", 0.0)), CHANNEL_INTERP.get(v.get("InterpMode", ""), "cubic")))
+    return keys
+
+
+def _eval(keys, x, default=0.0):
+    """A curve's value at x and its slope there, in the keys' own unit. UE evaluates FInterpCurve<float> and a rich
+    curve channel alike: outside the keys it holds the end value, the key before the segment says how the segment is
+    read, and a cubic one is a Hermite of the tangents saved with the keys, scaled by the gap between them
+    (FInterpCurve::Eval, FMath::CubicInterp and FMath::CubicInterpDerivative)."""
+    if not keys:
+        return default, 0.0
+    if x <= keys[0][0]:
+        return keys[0][1], 0.0
+    if x >= keys[-1][0]:
+        return keys[-1][1], 0.0
+    index = max(i for i in range(len(keys) - 1) if keys[i][0] <= x)
+    lo, hi = keys[index], keys[index + 1]
+    diff = hi[0] - lo[0]
+    if diff <= 0.0 or lo[4] == "constant":
+        return lo[1], 0.0
+    alpha = (x - lo[0]) / diff
+    if lo[4] == "linear":
+        return lo[1] + (hi[1] - lo[1]) * alpha, (hi[1] - lo[1]) / diff
+    p0, p1, t0, t1 = lo[1], hi[1], lo[3] * diff, hi[2] * diff
+    a2 = alpha * alpha
+    a3 = a2 * alpha
+    value = (2 * a3 - 3 * a2 + 1) * p0 + (a3 - 2 * a2 + alpha) * t0 + (a3 - a2) * t1 + (3 * a2 - 2 * a3) * p1
+    slope = ((6 * a2 - 6 * alpha) * p0 + (3 * a2 - 4 * alpha + 1) * t0 + (3 * a2 - 2 * alpha) * t1
+             + (6 * alpha - 6 * a2) * p1) / diff
+    return value, slope
+
+
+def _rotate(rotation, vector):
+    """A vector turned by an FRotator (roll, pitch, yaw in degrees), as FRotationMatrix::TransformVector turns it."""
+    roll, pitch, yaw = (math.radians(a) for a in rotation)
+    sp, cp = math.sin(pitch), math.cos(pitch)
+    sy, cy = math.sin(yaw), math.cos(yaw)
+    sr, cr = math.sin(roll), math.cos(roll)
+    axes = ((cp * cy, cp * sy, sp),
+            (sr * sp * cy - cr * sy, sr * sp * sy + cr * cy, -sr * cp),
+            (-(cr * sp * cy + sr * sy), cy * sr - cr * sp * sy, cr * cp))
+    return tuple(sum(vector[i] * axes[i][j] for i in range(3)) for j in range(3))
+
+
+def _camera_anim_move(object_path):
+    """The translation of the original's CameraAnim: the three translation axes of its Matinee move track, as curves
+    keyed in seconds. The rotation axes are read only to be sure the anim is one of these (bake_location leaves them
+    out)."""
+    rel = dd_assets.game_rel(object_path)
+    pkg = dd_assets.export_json(rel, VERSION)
+    by_path = {(e["outer"] + "." if e["outer"] else "") + e["name"]: e for e in pkg["exports"]}
+    group = by_path[dd_assets.main_export(pkg, rel)["props"]["CameraInterpGroup"]]
+    axes = {}
+    for track_path in group["props"].get("InterpTracks", []):
+        track = by_path[track_path]
+        if track["class"] != "InterpTrackMove":
+            raise ValueError("%s: camera anim track %s not handled" % (rel, track["class"]))
+        for sub_path in track["props"].get("SubTracks", []):
+            sub = by_path[sub_path]
+            axes[sub["props"].get("MoveAxis", MOVE_AXES[0])] = _matinee_keys(
+                (sub["props"].get("FloatTrack") or {}).get("Points", []))
+    missing = [a for a in MOVE_AXES if a not in axes]
+    if missing:
+        raise ValueError("%s: the camera anim's move track has no %s" % (rel, ", ".join(missing)))
+    return [axes[a] for a in MOVE_AXES[:3]]
+
+
 class _Package:
     """The original's sequence package: its exports by path ('<asset>.MovieScene_0.<track>.<section>')."""
 
@@ -154,6 +249,8 @@ class _Builder:
         self.shakes = {}
         self.clips = {}
         self.lengths = {}
+        # What the binding being written adds to its transform track, from its camera anim track (camera_anim).
+        self.offset = None
 
     # ---------------------------------------------------------------------------------------------- assets
     def sound(self, object_path):
@@ -296,6 +393,87 @@ class _Builder:
             else:
                 self.curve(channel, props.get(export_name), class_default)
 
+    # ------------------------------------------------------------------------------------------- camera anim
+    def camera_anim(self, pkg, path):
+        """What a binding's MovieSceneCameraAnimTrack adds to its transform track: the section's range in ticks and
+        the CameraAnim's three translation curves (bake_location adds them)."""
+        export = pkg.get(path)
+        sections = export["props"].get("CameraAnimSections", [])
+        if len(sections) != 1:
+            raise ValueError("%s: %d camera anim sections" % (export["name"], len(sections)))
+        sec = pkg.get(sections[0])
+        props = sec["props"]
+        unknown = set(props) - SECTION_KEYS - {"AnimData"}
+        if unknown:
+            raise ValueError("%s: properties not handled: %s" % (sec["name"], sorted(unknown)))
+        data = props["AnimData"]
+        unknown = set(data) - CAMERA_ANIM_KEYS
+        if unknown:
+            raise ValueError("%s: camera anim data not handled: %s" % (sec["name"], sorted(unknown)))
+        # The original's one section names the anim and leaves the rest at its defaults, which is what the bake takes
+        # it for: played once from the start of the section, at its own rate and scale, without a blend.
+        left = {k: v for k, v in data.items() if k != "CameraAnim"}
+        if left:
+            raise ValueError("%s: camera anim data other than the defaults: %s" % (sec["name"], left))
+        rng = props.get("SectionRange") or {}
+        if (rng.get("lower") or {}).get("type") != "Inclusive" or (rng.get("upper") or {}).get("type") != "Exclusive":
+            raise ValueError("%s: camera anim range %s" % (sec["name"], rng))
+        return {"start": int(rng["lower"]["value"]), "end": int(rng["upper"]["value"]),
+                "curves": _camera_anim_move(data["CameraAnim"])}
+
+    def bake_location(self, pkg, props):
+        """A copy of a transform section's properties with the camera anim's offset added to its location channels.
+
+        UE 4.24 plays a camera anim on a bound camera as an additive animation: what the anim's move track has at the
+        time is an offset in the camera's own space, which is turned by the rotation the transform track has just set
+        and added to the location it has just set (FMovieSceneAdditiveCameraAnimationTrackExecutionToken ->
+        FCameraAnimationHelper::ApplyOffset, which UE 5.8 still has). UE 5.8 has no camera anim track, so that sum is
+        keyed here instead: the location channels are keyed again over the section's range, at the anim's own key
+        times and wherever the transform track has a key of its own, and hold the anim's last key to the end of the
+        section (the Sequencer's camera anim instance does not stop itself, and a Matinee curve holds its last key).
+        Each key carries the slope of the sum there, so the easing the anim was keyed with survives.
+
+        The anim's rotation is left out. This camera carries the original's look-at tracking (item 28's step 14c),
+        which turns it towards the actor it follows every frame, over whatever the transform track or the anim sets -
+        in the original as here, only the offset's translation is ever seen. The keys put in at the edges of the
+        section carry the value and the slope the channel already has there, so the segments outside keep their shape.
+        """
+        start, end, curves = self.offset["start"], self.offset["end"], self.offset["curves"]
+        ticks = pkg.ticks_per_second
+        location = [_channel_keys(props.get(c)) for c in LOCATION_CHANNELS]
+        rotation = [_channel_keys(props.get(c)) for c in ROTATION_CHANNELS]
+        defaults = [float((props.get(c) or {}).get("DefaultValue", TRANSFORM_CHANNELS[c][1]))
+                    for c in LOCATION_CHANNELS + ROTATION_CHANNELS]
+        times = {start - 1, start, end - 1, end}
+        times |= {start + int(round(key[0] * ticks)) for curve in curves for key in curve}
+        times |= {int(key[0]) for keys in location + rotation for key in keys}
+        baked = []
+        for tick in sorted(t for t in times if start - 1 <= t <= end):
+            base = [_eval(location[i], tick, defaults[i]) for i in range(3)]
+            if start <= tick < end:
+                anim = [_eval(curves[i], (tick - start) / ticks) for i in range(3)]
+                turn = [_eval(rotation[i], tick, defaults[3 + i])[0] for i in range(3)]
+                world = _rotate(turn, [value for value, _ in anim])
+                # The offset's own speed, in the unit a channel's tangents are in (a tick).
+                speed = _rotate(turn, [slope / ticks for _, slope in anim])
+            else:
+                world = speed = (0.0, 0.0, 0.0)
+            baked.append((tick, [(base[i][0] + world[i], base[i][1] + speed[i]) for i in range(3)]))
+        patched = dict(props)
+        for i, name in enumerate(LOCATION_CHANNELS):
+            data = dict(props.get(name) or {})
+            keys = {int(t): v for t, v in zip(data.get("Times", []), data.get("Values", []))}
+            for tick, values in baked:
+                if tick in keys and not start <= tick < end:
+                    continue      # a key of the original's just outside the section stands as it is
+                value, slope = values[i]
+                keys[tick] = {"Value": value, "InterpMode": "RCIM_Cubic", "TangentMode": "RCTM_User",
+                              "Tangent": {"ArriveTangent": slope, "LeaveTangent": slope}}
+            data["Times"] = sorted(keys)
+            data["Values"] = [keys[t] for t in data["Times"]]
+            patched[name] = data
+        return patched
+
     # ---------------------------------------------------------------------------------------------- sections
     def section(self, track, export, handled):
         """A new section on the track with the export's range, completion mode, row and priority; `handled` lists the
@@ -377,7 +555,8 @@ class _Builder:
             for s in props.get("Sections", []):
                 sec = pkg.get(s)
                 section = self.section(track, sec, set(TRANSFORM_CHANNELS))
-                self.channels(section, sec["props"], TRANSFORM_CHANNELS)
+                self.channels(section, self.bake_location(pkg, sec["props"]) if self.offset else sec["props"],
+                              TRANSFORM_CHANNELS)
         elif cls == "MovieSceneFloatTrack":
             track = add(unreal.MovieSceneFloatTrack)
             track.set_property_name_and_path(props["PropertyName"], props["PropertyPath"])
@@ -484,9 +663,11 @@ class _Builder:
                         channel.remove_key(key)
                     self.curve(channel, entry["ParameterCurve"], None)
         elif cls == "MovieSceneCameraAnimTrack":
-            # UE 5.8 has no camera anim track (a CameraAnim is a UWasamiCameraAnim here), so the capture scene's
-            # CameraAnim_Nurse_01 is played by the zone's flow while the scene runs (item 25's step 4).
-            self.result["skipped_tracks"].append("%s: %s" % (pkg.rel, export["name"]))
+            # UE 5.8 has no camera anim track, and UWasamiCameraAnim (item 24) holds a CameraAnim's post-process and
+            # field of view tracks, not a Matinee move track. The capture scene's CameraAnim_Nurse_01 is a move track
+            # alone, which build reads before the binding's tracks go in and bake_location adds to its transform
+            # track (item 28's step 14d).
+            self.result["camera_anims"] += 1
             return
         elif cls == "MovieSceneEventTrack":
             # UE 4.24's legacy event track calls the level Blueprint's functions of the key's name; the hospital's
@@ -541,8 +722,13 @@ class _Builder:
             proxy = bindings.get(ob["ObjectGuid"])
             if proxy is None:
                 continue
-            for path in ob.get("Tracks", []):
+            tracks = ob.get("Tracks", [])
+            # A camera anim of the binding's is added to its transform track, so it is read before the tracks go in.
+            self.offset = next((self.camera_anim(pkg, p) for p in tracks
+                                if pkg.get(p)["class"] == "MovieSceneCameraAnimTrack"), None)
+            for path in tracks:
                 self.track(pkg, proxy, path)
+            self.offset = None
         for path in ms.get("MasterTracks", []):
             self.track(pkg, seq, path)
         seq.set_display_rate(display)
@@ -554,7 +740,7 @@ class _Builder:
 def _new_result():
     return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "sounds": 0, "sound_cues": 0,
             "attenuations": 0,
-            "camera_shakes": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
+            "camera_shakes": 0, "camera_anims": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
             "unlinked_players": [], "skipped_tracks": [], "missing_particles": []}
 
 
