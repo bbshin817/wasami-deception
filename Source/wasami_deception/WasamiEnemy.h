@@ -7,8 +7,11 @@
 #include "WasamiEnemyInterface.h"
 #include "WasamiEnemy.generated.h"
 
+class UAudioComponent;
 class UMaterialInterface;
 class USkeletalMesh;
+class USoundAttenuation;
+class USoundBase;
 class USphereComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
@@ -118,6 +121,16 @@ public:
 	static constexpr float RandomPointAcceptance = 50.f;
 	// Sphere's radius (on CollisionCylinder, at its centre).
 	static constexpr float SphereRadius = 54.92805862426758f;
+	// Skate Audio's own settings and what Update Skate Sound rides on the speed (cm/s): the volume maps 0 to
+	// MoveVolumeSpeed onto 0 to 1 and follows at MoveVolumeInterp, the pitch maps MoveVolumeSpeed to MovePitchSpeed onto
+	// MoveMinPitch to MoveMaxPitch and follows at MovePitchInterp.
+	static constexpr float MoveVolume = 0.f;
+	static constexpr float MoveVolumeSpeed = 400.f;
+	static constexpr float MoveVolumeInterp = 5.f;
+	static constexpr float MovePitchSpeed = 800.f;
+	static constexpr float MoveMinPitch = 1.2f;
+	static constexpr float MoveMaxPitch = 1.5f;
+	static constexpr float MovePitchInterp = 2.f;
 
 	/**
 	 * Spawns one whose capsule centre is at Location, turned to Yaw, with CanSpawn set as the hospital's level script
@@ -127,6 +140,18 @@ public:
 	static AWasamiEnemy* SpawnEnemy(const UObject* WorldContextObject, FVector Location, float Yaw = 0.0f, bool bSentry = false);
 
 	virtual void OnConstruction(const FTransform& Transform) override;
+
+	virtual void Tick(float DeltaSeconds) override;
+
+	/** Skate Audio: the loop the enemy moves to, which its speed gives its volume and pitch. */
+	UAudioComponent* GetSkateAudio() const { return SkateAudio; }
+
+	/**
+	 * Update Skate Sound (the nurse's tick): the move loop's volume follows how fast the enemy goes (silent when it
+	 * stands, full at MoveVolumeSpeed) and its pitch rises with the speed over that, each through an FInterpTo so the
+	 * sound does not jump as the speed does.
+	 */
+	void UpdateSkateSound(float DeltaSeconds);
 
 	/** Set Walk State: the movement's top speed is Normal Speed when bNormal, else Skate Speed. */
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
@@ -314,8 +339,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TObjectPtr<UStaticMeshComponent> MapMark;
 
+	/**
+	 * Skate Audio: on CollisionCylinder, playing from the start (the loop is PlayWhenSilent, so it goes on while it
+	 * cannot be heard) at MoveVolume and MoveMinPitch, through MonkeyAttenuation.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	TObjectPtr<UAudioComponent> SkateAudio;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<USkeletalMesh> MeshAsset;
+
+	/** DD_Rollerskating_Fast_V1_LOOP and the attenuation the nurse plays it through. */
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
+	TSoftObjectPtr<USoundBase> MoveSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
+	TSoftObjectPtr<USoundAttenuation> MoveAttenuation;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<UStaticMesh> MapMarkMesh;

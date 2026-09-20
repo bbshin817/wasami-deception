@@ -18,6 +18,9 @@ MEL = unreal.MaterialEditingLibrary
 # sound class (SoundClassObject) is written by _write_sound_class.
 SOUND_DEFAULTS = {"Volume": 1.0, "Pitch": 1.0}
 SOUND_FLAGS = {"bLooping": False}
+# What the export names only when it is not UE's default, so it is written only when it is there: the enemy's move loop
+# is PlayWhenSilent (it starts at volume 0 and rises, and a restarting virtualization would never let it be heard).
+SOUND_ENUMS = ("VirtualizationMode",)
 
 # The engine's own content the original uses ('/Engine/VREditor/Sounds/UI/Teleport_Committed') is exported under
 # Engine/Content and lives under /Game/DD/_Engine here (UE 5.8's copies are not known to be the same).
@@ -197,6 +200,9 @@ def sound(rel, version=1):
         wave.set_editor_property(ue_props.snake(key), float(props.get(key, default)))
     for key, default in SOUND_FLAGS.items():
         wave.set_editor_property(ue_props.snake(key), bool(props.get(key, default)))
+    for key in SOUND_ENUMS:
+        if key in props:
+            wave.set_editor_property(ue_props.snake(key), ue_props.value(props[key], wave.get_editor_property(ue_props.snake(key))))
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
     _write_sound_class(wave, props)

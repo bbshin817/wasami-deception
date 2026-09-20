@@ -15,8 +15,9 @@
             A_WasamiEnemy_<role>, T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
             material). The mesh faces +Y, as UE's mannequins do.
 
-The capture's sounds come from here too (CAPTURE_SOUNDS): they are the original's own waves, not this game's model, but
-they belong to what the enemy does when it catches the player (AWasamiCapture).
+The enemy's own sounds come from here too: the loop it moves to (MOVE_SOUND) and what the capture plays
+(CAPTURE_SOUNDS). They are the original's own waves, not this game's model, but they belong to what the enemy does
+(AWasamiEnemy, AWasamiCapture).
 """
 import copy
 import math
@@ -49,6 +50,13 @@ CAPTURE_SOUNDS = (
     "Audio/03_Manor/Axe_Hit_03",
 )
 CAPTURE_SOUND_VERSION = 1
+
+# The loop the enemy moves to (AWasamiEnemy's Skate Audio, the nurse's), through the attenuation the original gives it
+# (dd_gimmicks makes the same one for the doors; making it again is harmless). The hospital is only in the latest
+# version, so this one is pak_reference_2's.
+MOVE_SOUND = "Audio/06_Hospital/DD_Rollerskating_Fast_V1_LOOP"
+MOVE_ATTENUATION = "Audio/Misc/MonkeyAttenuation"
+MOVE_SOUND_VERSION = 2
 PIPELINE_VERSION = "1"  # bump when ensure_skeletal_pipeline's settings change
 
 ROOT_BONE = "pelvis"
@@ -592,6 +600,12 @@ def import_capture_sounds():
     return [dd_assets.sound(rel, CAPTURE_SOUND_VERSION) for rel in CAPTURE_SOUNDS]
 
 
+def import_move_sound():
+    """The loop the enemy moves to and the attenuation it plays through. Returns the wave's package path."""
+    dd_assets.sound_attenuation(MOVE_ATTENUATION, MOVE_SOUND_VERSION)
+    return dd_assets.sound(MOVE_SOUND, MOVE_SOUND_VERSION)
+
+
 def import_all():
     """Prepares and imports the enemy Wasami and the capture's sounds, then saves /Game/Wasami/Enemy and the master.
     Returns how many of each kind, and logs each animation's length and how far its pelvis was moved."""
@@ -606,5 +620,5 @@ def import_all():
     for asset in [master, instance, mesh]:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     EAL.save_directory(FOLDER, only_if_is_dirty=True, recursive=True)
-    sounds = import_capture_sounds()
+    sounds = import_capture_sounds() + [import_move_sound()]
     return {"textures": len(textures), "materials": 2, "meshes": 1, "animations": len(report), "sounds": len(sounds)}

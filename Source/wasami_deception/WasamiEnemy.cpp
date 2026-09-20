@@ -2,6 +2,7 @@
 
 #include "Blueprint/AIAsyncTaskBlueprintProxy.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
@@ -16,6 +17,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Materials/MaterialInterface.h"
 #include "NavigationSystem.h"
+#include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiAssets.h"
 #include "WasamiCapture.h"
@@ -79,6 +82,8 @@ int32 FWasamiChaseVariations::DrawClip()
 AWasamiEnemy::AWasamiEnemy()
 {
 	Tags.Add(EnemyTag);
+	// The nurse's ReceiveTick, which is only its Update Skate Sound here.
+	PrimaryActorTick.bCanEverTick = true;
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 	bUseControllerRotationYaw = false;
 
@@ -120,7 +125,16 @@ AWasamiEnemy::AWasamiEnemy()
 	MapMark->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 	MapMark->SetCanEverAffectNavigation(false);
 
+	// Skate Audio: on the capsule, no transform of its own, and playing from the start at no volume — Update Skate Sound
+	// raises it with the speed.
+	SkateAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("Skate Audio"));
+	SkateAudio->SetupAttachment(GetCapsuleComponent());
+	SkateAudio->SetVolumeMultiplier(MoveVolume);
+	SkateAudio->SetPitchMultiplier(MoveMinPitch);
+
 	MeshAsset = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
+	MoveSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_Rollerskating_Fast_V1_LOOP")));
+	MoveAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Misc/MonkeyAttenuation")));
 	MapMarkMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Plane")));
 	MapMarkMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Shared/M_Enemy")));
 }
@@ -155,7 +169,26 @@ void AWasamiEnemy::OnConstruction(const FTransform& Transform)
 void AWasamiEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	SkateAudio->AttenuationSettings = MoveAttenuation.LoadSynchronous();
+	SkateAudio->SetSound(MoveSound.LoadSynchronous());
 	BeginNurse();
+}
+
+void AWasamiEnemy::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	UpdateSkateSound(DeltaSeconds);
+}
+
+void AWasamiEnemy::UpdateSkateSound(float DeltaSeconds)
+{
+	const float Speed = GetVelocity().Size();
+	SkateAudio->SetVolumeMultiplier(FMath::FInterpTo(SkateAudio->VolumeMultiplier,
+		FMath::GetMappedRangeValueClamped(FVector2f(0.f, MoveVolumeSpeed), FVector2f(0.f, 1.f), Speed),
+		DeltaSeconds, MoveVolumeInterp));
+	SkateAudio->SetPitchMultiplier(FMath::FInterpTo(SkateAudio->PitchMultiplier,
+		FMath::GetMappedRangeValueClamped(FVector2f(MoveVolumeSpeed, MovePitchSpeed), FVector2f(MoveMinPitch, MoveMaxPitch), Speed),
+		DeltaSeconds, MovePitchInterp));
 }
 
 void AWasamiEnemy::BeginNurse()

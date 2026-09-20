@@ -16,6 +16,7 @@
 #include "Misc/AutomationTest.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
 #include "Tests/AutomationCommon.h"
 #include "UObject/StrongObjectPtr.h"
@@ -668,6 +669,77 @@ bool FWasamiEnemyActorDefaultsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemySoundTest, "Wasami.Enemy.Actor.Sound",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemySoundTest::RunTest(const FString& Parameters)
+{
+	// Skate Audio (BP_06_ReaperNurse's): on the capsule with no transform of its own, playing from the start at no
+	// volume and the low pitch.
+	const AWasamiEnemy* Enemy = GetDefault<AWasamiEnemy>();
+	const UAudioComponent* Skate = Enemy->GetSkateAudio();
+	if (!TestNotNull(TEXT("the Skate Audio"), Skate))
+	{
+		return false;
+	}
+	TestTrue(TEXT("on the capsule"), Skate->GetAttachParent() == Enemy->GetCapsuleComponent());
+	TestTrue(TEXT("with no transform of its own"), Skate->GetRelativeTransform().Equals(FTransform::Identity));
+	TestTrue(TEXT("it plays from the start"), Skate->bAutoActivate);
+	TestEqual(TEXT("silent at first"), Skate->VolumeMultiplier, 0.f);
+	TestEqual(TEXT("the low pitch"), Skate->PitchMultiplier, 1.2f);
+	for (const UClass* Nurse : {AWasamiEnemy06Chase::StaticClass(), AWasamiEnemySentry::StaticClass(), AWasamiEnemyZone2::StaticClass()})
+	{
+		const AWasamiEnemy* Default = CastChecked<AWasamiEnemy>(Nurse->GetDefaultObject());
+		TestNotNull(FString::Printf(TEXT("%s has the Skate Audio too"), *Nurse->GetName()), Default->GetSkateAudio());
+	}
+
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	AWasamiEnemy* Spawned = AWasamiEnemy::SpawnEnemy(Wrapper.GetTestWorld(), FVector::ZeroVector);
+	if (!TestNotNull(TEXT("an enemy"), Spawned))
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UAudioComponent* Audio = Spawned->GetSkateAudio();
+	if (TestNotNull(TEXT("the spawned Skate Audio"), Audio) && TestNotNull(TEXT("the move loop"), Audio->Sound.Get()))
+	{
+		TestEqual(TEXT("DD_Rollerskating_Fast_V1_LOOP"), Audio->Sound->GetName(), TEXT("DD_Rollerskating_Fast_V1_LOOP"));
+		TestTrue(TEXT("through MonkeyAttenuation"),
+			Audio->AttenuationSettings && Audio->AttenuationSettings->GetName() == TEXT("MonkeyAttenuation"));
+	}
+
+	// Update Skate Sound: a whole second of interpolation lands on the mapped value (InterpSpeed * DeltaTime >= 1).
+	UCharacterMovementComponent* Movement = Spawned->GetCharacterMovement();
+	struct FSpeedCase { float Speed; float Volume; float Pitch; };
+	const FSpeedCase Cases[] = {
+		{0.f, 0.f, 1.2f},        // standing: silent, the low pitch
+		{200.f, 0.5f, 1.2f},     // half of the volume's range, still under the pitch's
+		{400.f, 1.f, 1.2f},      // full volume where the pitch starts to rise
+		{800.f, 1.f, 1.5f},      // the chase: full volume and the high pitch
+		{2000.f, 1.f, 1.5f},     // clamped over it
+	};
+	for (const FSpeedCase& Case : Cases)
+	{
+		Movement->Velocity = FVector(Case.Speed, 0., 0.);
+		Spawned->UpdateSkateSound(1.f);
+		TestEqual(FString::Printf(TEXT("the volume at %.0f cm/s"), Case.Speed), Audio->VolumeMultiplier, Case.Volume, 1e-4f);
+		TestEqual(FString::Printf(TEXT("the pitch at %.0f cm/s"), Case.Speed), Audio->PitchMultiplier, Case.Pitch, 1e-4f);
+	}
+
+	// It follows, it does not jump: a small step of a tick moves part of the way only.
+	Movement->Velocity = FVector::ZeroVector;
+	Spawned->UpdateSkateSound(0.0625f);
+	TestTrue(TEXT("the volume eases back down"), Audio->VolumeMultiplier > 0.f && Audio->VolumeMultiplier < 1.f);
+
+	Wrapper.ForwardErrorMessages(this);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorChoiceTest, "Wasami.Enemy.Actor.Choice",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
@@ -1037,7 +1109,11 @@ bool FWasamiEnemyActorChase06Test::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const UAudioComponent* Audio = Nurse->FindComponentByClass<UAudioComponent>();
+	// Its own Audio, not the move loop every enemy has (Skate Audio).
+	TArray<UAudioComponent*> Audios;
+	Nurse->GetComponents(Audios);
+	UAudioComponent** Found = Audios.FindByPredicate([](const UAudioComponent* C) { return C->GetName() == TEXT("Audio"); });
+	const UAudioComponent* Audio = Found ? *Found : nullptr;
 	TestTrue(TEXT("its slam"), Audio && Audio->Sound && Audio->Sound->GetName() == TEXT("20-Elevator_Slams"));
 	TestTrue(TEXT("Chasing always answers true"), Nurse->IsChasing());
 	TestFalse(TEXT("it does not see the player"), Nurse->CanSeePlayer());
