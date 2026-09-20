@@ -166,17 +166,18 @@ TELEPATHY_INST = "Blueprints/Main/Powers/Telepathy/MM_Telepathy_Inst"
 TELEPATHY_MASTER = "/Game/Pipeline/Materials/M_DD_Telepathy"
 TELEPATHY_NOISE_A = "ThirdParty/AdvancedMagicFX13/Textures/T_ky_noise16"
 TELEPATHY_NOISE_B = "ThirdParty/AdvancedMagicFX09/Textures/T_ky_noise"
-# The export keeps the samples' Panners (Panner_0, Panner_1) without their speeds, and nothing of how the noises and
-# the radial gradient make the opacity. Step 11b5 fitted the gain and the texture coordinate's tiling to the latest
-# version's recorded markers (observations/README.md, "Telepathy の印の見直し"): the UI's additive blend adds
-# sRGB(opacity) to the screen, and the recorded markers add a soft cloud of opacity about 0.02 (at most about 0.07)
-# whose detail is coarser than the noises at a tiling of 1.
-# TODO(仮): the speeds only fit how fast the recorded cloud changes (their direction is not known); the gain (0.38 to
-# 0.42 fit) and the tiling (0.5 to 0.7) are fitted, not the original's values.
-TELEPATHY_PAN_A = (0.05, -0.1)
-TELEPATHY_PAN_B = (-0.04, -0.15)
-TELEPATHY_GAIN = 0.4
-TELEPATHY_UV_TILING = 0.6
+# The Panners' speeds (Panner_0 on the T_ky_noise16 sample, Panner_1 on the T_ky_noise one) and the opacity, read
+# off the original's compiled shaders (_build_telepathy): both noises stream straight down the marker's V, and the
+# opacity is 2 x (gradient - T_ky_noise.G) x (T_ky_noise16.R x T_ky_noise.R x 10 + 0.05), saturated. The gradient is
+# RadialGradientExponential at a Radius of 0.5 and a Density of 1, which UE 4.24's defaults were; UE 5.8 defaults the
+# density to 2.33 (observations/README.md, step 11b5), so the call feeds both.
+TELEPATHY_PAN_A = (0.0, 0.5)
+TELEPATHY_PAN_B = (0.0, 0.4)
+TELEPATHY_SPECKLE_GAIN = 10.0
+TELEPATHY_SPECKLE_BIAS = 0.05
+TELEPATHY_OPACITY_SCALE = 2.0
+TELEPATHY_GRADIENT_RADIUS = 0.5
+TELEPATHY_GRADIENT_DENSITY = 1.0
 # MM_Telepathy_Inst's values its parent has (its Size is not one of MM_Telepathy's parameters, and
 # RefractionDepthBias is the engine's, which a UI material does not use).
 TELEPATHY_INST_SCALARS = ("Speed",)
@@ -453,17 +454,23 @@ def _build_wobbly_vignette(mat):
 
 
 def _build_telepathy(mat):
-    """MM_Telepathy (pak_reference_2), estimated (see TELEPATHY_*). The cook kept its settings (the UI domain,
-    additive), its emissive colour (the Color parameter's RGB, red), the parameters Tiling and Speed, a sample of
-    T_ky_noise16 (linear) at Panner_0 and one of T_ky_noise at Panner_1, and a RadialGradientExponential call, of 21
-    expressions (the ExponentialDensity it lists is the gradient's own). The estimate: both noises read at TexCoord 0
-    (tiled TELEPATHY_UV_TILING) × Tiling, panning by Time × Speed, and an opacity of saturate((the noises' R summed) ×
-    the gradient × a gain). UI additive blending adds the colour × the opacity (× the widget's opacity)."""
-    g = dd_stage._Graph(mat)
-    g.out(g.vector("Color", (1.0, 0.0, 0.0, 1.0), -600, -350), "RGB", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    """MM_Telepathy (pak_reference_2), read off the original's compiled shaders (Tools/dd/cooked_shaders.py: a UI
+    material's shader map holds one Slate pixel shader per Slate shader type, all the same material; shader 3 is the
+    shortest). The cook's expressions (the UI domain, additive; the emissive colour the Color parameter's RGB, red;
+    the parameters Tiling and Speed; a sample of T_ky_noise16 (linear) at Panner_0 and one of T_ky_noise at Panner_1;
+    a RadialGradientExponential call, whose own ExponentialDensity the material lists too) are the pieces; the code is
+    how they are put together:
+      opacity = saturate(2 x (the gradient - T_ky_noise.G) x (T_ky_noise16.R x T_ky_noise.R x 10 + 0.05))
+    with both noises read at TexCoord 0 x Tiling and panning by Time x Speed, straight down the marker's V at 0.5
+    (noise16) and 0.4 (noise) - no tiling of the coordinate itself - and the gradient 1 - exp(-(1 - 2 d)^2) where the
+    sample is inside its radius, RadialGradientExponential at a Radius of 0.5 and a Density of 1. Which sample is
+    which comes off the shader map: its two texture uniform expressions carry the texture reference indexes 0 and 1,
+    which the cook's Expressions array fills in its own order (TextureSample_0, T_ky_noise16, before TextureSample_1),
+    and the shader reads the .R of the first and the .R and .G of the second. UI additive blending adds
+    sRGB(the colour x the opacity x the widget's opacity) to the screen."""
+    g = dd_stage._Graph(mat, checked=True)
+    g.out(g.vector("Color", (1.0, 0.0, 0.0, 1.0), -600, -350), "RGB", MP.MP_EMISSIVE_COLOR)
     coords = g.node(unreal.MaterialExpressionTextureCoordinate, -1700, 0)
-    coords.set_editor_property("u_tiling", TELEPATHY_UV_TILING)
-    coords.set_editor_property("v_tiling", TELEPATHY_UV_TILING)
     tiled = g.multiply(coords, "", g.scalar("Tiling", 1.0, -1700, 100), "", -1500, 50)
     time = g.node(unreal.MaterialExpressionTime, -1700, 250)
     flow = g.multiply(time, "", g.scalar("Speed", 1.0, -1700, 350), "", -1500, 300)
@@ -480,13 +487,17 @@ def _build_telepathy(mat):
         sample.set_editor_property("sampler_type", sampler)
         dd_assets.connect(pan, "", sample, "UVs")
         noises.append(sample)
-    smoke = g.binary(unreal.MaterialExpressionAdd, noises[0], "R", noises[1], "R", -850, 50)
+    speckle = g.multiply(noises[0], "R", noises[1], "R", -850, 50)
+    lit = g.multiply(speckle, "", dd_assets.constant(g, TELEPATHY_SPECKLE_GAIN, -850, 150), "", -700, 50)
+    grain = dd_assets.add(g, lit, "", dd_assets.constant(g, TELEPATHY_SPECKLE_BIAS, -700, 150), "", -550, 50)
     gradient = dd_assets.function_call(g, "Gradient/RadialGradientExponential", -1100, 450)
-    shaped = g.multiply(smoke, "", gradient, "RadialGradientExponential", -650, 150)
-    gained = g.multiply(shaped, "", g.scalar("Gain", TELEPATHY_GAIN, -850, 300), "", -450, 200)
-    clamped = g.node(unreal.MaterialExpressionSaturate, -300, 200)
-    dd_assets.connect(gained, "", clamped, "")
-    g.out(clamped, "", unreal.MaterialProperty.MP_OPACITY)
+    dd_assets.connect(dd_assets.constant(g, TELEPATHY_GRADIENT_RADIUS, -1300, 500), "", gradient, "Radius")
+    dd_assets.connect(dd_assets.constant(g, TELEPATHY_GRADIENT_DENSITY, -1300, 600), "", gradient, "Density")
+    holes = g.binary(unreal.MaterialExpressionSubtract, gradient, "RadialGradientExponential", noises[1], "G",
+                     -700, 350)
+    cloud = g.multiply(grain, "", holes, "", -450, 150)
+    scaled = g.multiply(cloud, "", dd_assets.constant(g, TELEPATHY_OPACITY_SCALE, -450, 300), "", -300, 150)
+    g.out(dd_assets.single(g, unreal.MaterialExpressionSaturate, scaled, "", -150, 150), "", MP.MP_OPACITY)
 
 
 def make_telepathy_materials():
