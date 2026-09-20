@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: ca4891f
 started: 2026-09-21 06:53
-updated: 2026-09-21 23:30
+updated: 2026-09-21 08:50
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -28,30 +28,25 @@ updated: 2026-09-21 23:30
 - [x] 4. 独房の粒子 4 材質は焼き込みのシェーダーと命令まで一致（直すところ無し）。`Fracture_dark_slow` は `Whisps_trans2`（`whispOne_Master_directional`）を使うので、`_lit_particle` が半透明のライティングの値を cook の書き出しから写すようにした（08 記録）
 - [x] 5. ナースの扉突きの塵 `P_06_NurseDoorHit` の材質を原作のデータで直した。whisp の `Base`（と `_directional` の `Normal`）は段階を混ぜる SubUV ではなく素の `TextureSampleParameter2D`、落としていた `Radius` はカメラの近くの薄め（`SphereMask` hardness 10 % の `1 −`）だった（01・08 記録）
 - [x] 6. 破片の材質 `DebrisMaster` を原作のデータで直した。2 枚の SubUV は段階を混ぜ（書き出しが `bBlend` を書いていない = 既定の真）、色は `Base Map` × 粒子の色を **掛けてから** `Desat` で灰色に寄せ、不透明度には落としていた `DepthFade`（10）が付く。原作がつなぐ `ParticleMacroUV` は作らない（`ParticleSubUV` は UV を取らない）（08 記録）
-- [ ] 7. 除細動器の放電 `P_06_Defib` の `thander`（`M_ky_spark02_4x4`）を原作のデータで確かめて直す
-  - 変更予定: `/Game/DD/.../P_06_Defib`、`M_ky_spark02_4x4`
+- [x] 7. 除細動器の放電の稲妻の材質 `M_ky_spark02_4x4` を原作のデータで確かめた。書き出しが残す分（設定・パラメータ 7・`baseTex` の SubUV・マスクの素のサンプル 2・`changeThunder` のスイッチ 3 つと入力の型・Emissive が Add）と焼き込み（親 = スイッチ偽、`MI_ky_spark02_4x5` = 真）は推定の式・命令と一致し、直したのは glow のスイッチの形だけ（01・08 記録）
 - [ ] 8. PIE で 4 か所を通して確かめ、実装記録 07・08 と作業一覧を直して項目 33 を閉じる
   - 変更予定: `.claude/implementation-records/07-*`・`08-*`、`.claude/roadmap.md`、`.claude/references/handover.md`
 
-## 残りのステップに効くこと（ステップ 1〜5 で分かった）
+## 残りのステップに効くこと（ステップ 1〜7 で分かった）
 
-- 項目 33 の残りの対象（`P_06_Defib`）に **GPU のエミッタは無い**ので、ステップ 7 は材質の話だけ。
-- **cook の書き出しは 367 の材質のどれにも `BaseColor`・`Opacity`・`Roughness`・`OpacityMask` を持たない**（一律に落ちる）。その 4 つが無いことは「つないでいない」の証拠にならない。**ただし残った式（`Expressions`）の型と設定は当てになる**（`TextureSampleParameter2D` / `ParticleSubUV` / `TextureSampleParameterSubUV` が書き分けられている）ので、**式の正本は「書き出しに残る式の型 → 焼き込みのシェーダー」の順**（`python Tools/dd/cooked_shaders.py "<パスの一部>." --show N`）。
-- 材質インスタンスの焼き込みは親と同じ式なので（`Whisps_additive` は静的な置き換えを持つが uniform の並びは親と同じ）、**マスターの式はどちらのシェーダーからでも読める**。ベースパスは影のパスより多くを見せる（色・法線も出る）。
-- 半透明のライティングの値は `_lit_particle` が書き出しから写す。ライティングありの半透明の材質を足すときは `_lit_particle(mat, <原作のパス>)` を呼ぶだけでよい。
+- ステップ 8 で見るのは 4 か所: トンネルの扉の破片（Zone 1 のエレベーター前。ステップ 3 で撮った）・Zone 2 の独房の粒子と棘の黒い塵・ナースの扉突きの塵・除細動器の放電（Zone 1 の `BP_06_Defib12` の手前 `(6207, −12597)` からヨー 180 で 2.25 s ごと。08 記録の検証）。
+- 材質の式を読む順（書き出しに残る式 → 焼き込みのシェーダー）と、cook がどの材質でも落とす入力は、01 記録の「cook のシェーダーを読む」に移した。
 
 ## 次にやること
 
-ステップ 7。除細動器の放電 `P_06_Defib` の `thander`（材質 `M_ky_spark02_4x4`）を、書き出しに残る式の型 → 焼き込みのシェーダー（`python Tools/dd/cooked_shaders.py "<パスの一部>." --show N`）の順で確かめて直す。組み立ては `dd_gimmicks.import_defib`（`Tools/ue_remote.py` から。MCP の `describe_toolset` は `WasamiDDTools` の道具を返さない）。
+ステップ 8。PIE で 4 か所の見え方を確かめ、実装記録 07・08 と作業一覧（項目 33 と、項目 28 の後回しの一覧のうち今回で消えた行）と handover を直して項目 33 を閉じ、進捗記録を消す。
 
 ## 決定事項
 
 - 2026-09-21: 本家の収録には頼らない（作業一覧の大目標 3 の節の頭。移動が遅すぎて該当の場面に届かない）。コードで決まらなかったものだけをステップ 8 で 1 回の収録にまとめるか、決まらない理由を書いて閉じる。
 - 2026-09-21: 原作が engine の材質関数を呼んでいても、**その中身を展開した本作の式と焼き込みの命令が同じなら展開したままにする**（`M_Radial_Gradient` の `Gradient/RadialGradient`）。UE 5.8 の関数の中身は Python から読めず、写すと 4.21 との違いを持ち込みかねない。焼き込みと一致している方を正とする。
 - 2026-09-21: 原作が定数をつないでいる入力でも、**焼き込みで既定値に畳まれているならつながない**（`Squib_one` の `Metallic` = 0）。
-- 2026-09-21: **書き出しに残る式の型を、推定より先に読む**。`whispOne_Master_directional`・`_amb` の `Base` を段階を混ぜる SubUV だと推定していたが、書き出しは `TextureSampleParameter2D` と書いていて、焼き込みも 1 画素につき 1 回しか読んでいなかった（`Squib_one` の法線は `ParticleSubUV`、`DebrisMaster` の 2 枚は `TextureSampleParameterSubUV` と書き分けられている）。
-
-- 2026-09-21: **書き出しが書いていない既定値は UE の既定に倣う**（`TextureSampleParameterSubUV` の `bBlend` = 真）。**原作がつないでいても、コンパイラが落とす入力は作らない**（`TextureSampleParameterSubUV` の `Coordinates`: `ParticleSubUV` は UV を取らず、焼き込みのどれにもマクロ UV の式が無い）。
+- 2026-09-21: **焼き込みが同じでも、書き出しが式の型を書いている所は書き出しに合わせる**（`M_ky_spark02_4x4` の 3 つ目のスイッチは真の側が Multiply・偽の側が Add なので、0 を混ぜる形をやめて「粒子の色 × 形」と「それ + `outColor` × G」を選ぶ形にした）。
 
 ## 要確認（ユーザー）
 
@@ -66,6 +61,6 @@ updated: 2026-09-21 23:30
 
 ## 検証
 
-- check_records: OK（2026-09-21。ステップ 6 で 01・08 記録のハッシュを更新）
+- check_records: OK（2026-09-21。ステップ 7 で 01・08 記録のハッシュを更新）
 - C++ ビルド: この項目は C++ を変えない
-- エディタでの確認: ステップ 1〜3 で GPU の 5 エミッタの差が消え、PIE（Zone 1）で扉の破片が出るのを見た。ステップ 4 で `import_dd_gimmicks` を通し、7 つのマスター材質の設定が cook の書き出しと一致するのを読み出して確かめた（`M_DD_WhispDirectional`・`M_DD_WhispAmb`・`M_DD_Debris`・`M_DD_Squib`・`M_DD_NurseSparks`・`M_DD_BvfxSpark`・`M_DD_BvfxRadialGradient`）。ログに材質のコンパイルのエラーは無い。**見え方はまだ PIE で見ていない**（4 か所ともステップ 8 の通しで見る）。ステップ 6 では `import_doors_busted` を通し（音 1・テクスチャ 6・材質 9・粒子 1）、`M_DD_Debris` を組み直して再コンパイルした（式 9 = 想定どおり。ログに材質のエラーは無く、アセットの検証も通った）。**UE 5.8 の Python は材質の式の一覧を出さない**（`Material.expression_collection` も `editor_only_data.expressions` も無い）ので、組み上がりは式の数とログで確かめる。
+- エディタでの確認: ステップ 1〜3 で GPU の 5 エミッタの差が消え、PIE（Zone 1）で扉の破片が出るのを見た。ステップ 4〜6 で 7 つのマスター材質の設定が cook の書き出しと一致するのを読み出して確かめた。ステップ 7 は `import_defib` を通し（減衰 1・音 2・テクスチャ 2・メッシュ 2・材質 3・粒子 1）、`M_DD_KySpark02` を組み直した（式 37 = 想定どおり、パラメータ・混ぜ方・両面・用途も書き出しどおり。ログに材質のエラーは無く、アセットの検証も通った）。**UE 5.8 の Python は材質の式の一覧も `ParticleSystem.Emitters` も読めない**ので、組み上がりは式の数とログ、粒子は書き出しで確かめる。**見え方はまだ PIE で見ていない**（4 か所ともステップ 8 の通しで見る）。

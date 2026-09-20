@@ -191,10 +191,11 @@ PORTAL_LEFT_OUT = ("Albedo_1",)
 # The defibrillators (AWasamiDefib, after Blueprints/06_Hospital/BP_06_Defib): the charge's hum (DD_TT_Defibrillator_Zap,
 # through MonkeyAttenuation, which the double doors bring), the crackle as the player is hit (Electric_Sparks_08) and the
 # discharge (P_06_Defib). Of the system's 18 emitters the original draws four: thander, the lightning (MI_ky_spark02_4x5,
-# an instance of M_ky_spark02_4x4, whose graph the cook took away: estimated off its compiled shaders), and three that
-# only send events (the engine's DefaultParticle). The other 14 have their one LOD level off, so they are made without
-# their materials (DEFIB_UNDRAWN): nothing draws them, and theirs would be estimates of what no one sees. The meshes of
-# the two of them that are mesh emitters are made, as a mesh emitter's type data has to have one. The stands' mesh and
+# an instance of M_ky_spark02_4x4, whose graph the cook took away: read back off its export and the compiled shaders of
+# both sides of its switch), and three that only send events (the engine's DefaultParticle). The other 14 have their one
+# LOD level off, so they are made without their materials (DEFIB_UNDRAWN): nothing draws them, and theirs would be
+# estimates of what no one sees. The meshes of the two of them that are mesh emitters are made, as a mesh emitter's
+# type data has to have one. The stands' mesh and
 # material come with the stage's assets, the camera shake as it fires (BP_Portal_CameraShake) with the portal's.
 KY09 = "ThirdParty/AdvancedMagicFX09/"
 DEFIB_SOUNDS = ("Audio/06_Hospital/DD_TT_Defibrillator_Zap", "Audio/07_FunPlace/Electric_Sparks_08")
@@ -698,14 +699,14 @@ def _panned_sample(g, tex, uvs, speed, x, y):
 
 
 def _build_spark02(mat, d):
-    """M_ky_spark02_4x4 (the defibrillator's lightning: MI_ky_spark02_4x5 on P_06_Defib's thander), read off the
-    original's compiled shaders (Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/M_ky_spark02_4x4." --show 5,
-    changeThunder off, and "AdvancedMagicFX09/Materials/MI_ky_spark02_4x5." --show 5, the instance's own shader map with
-    it on: the translucent base pass pixel shaders of sprites). The cook's expressions (translucent, unlit, two-sided, for
-    sprites, beam trails and mesh particles; the parameters coreHardness, coreDensity, alphaDensity, hilightDetailPower,
-    coreHilightPower, outColor and coreColor; a SubUV sample of baseTex - T_ky_spark02_4x4, linear: R a spiky ring, G its
-    glow, B four lightning bolts - its two frames blended; two samples of T_ky_maskRGB3 - sRGB - at Panners; the static
-    switch changeThunder, three times) are the pieces; the code is how they are put together, with scratch the R of
+    """M_ky_spark02_4x4 (the defibrillator's lightning: MI_ky_spark02_4x5 on P_06_Defib's thander). The cook kept its
+    settings (translucent, unlit, two-sided, for sprites, beam trails and mesh particles), the parameters coreHardness,
+    coreDensity, alphaDensity, hilightDetailPower, coreHilightPower, outColor and coreColor, a SubUV sample of baseTex -
+    T_ky_spark02_4x4, linear: R a spiky ring, G its glow, B four lightning bolts - two plain samples of T_ky_maskRGB3
+    (sRGB, no SamplerType written) at Panners, and the three changeThunder switches with the inputs that survived; what
+    it took away is read off the compiled translucent base pass pixel shader of sprites, with the switch off (the
+    master, Tools/dd/cooked_shaders.py "AdvancedMagicFX09/Materials/M_ky_spark02_4x4." --show 5) and with it on (the
+    instance's own shader map, "AdvancedMagicFX09/Materials/MI_ky_spark02_4x5." --show 5), scratch being the R of
     maskRGB3 at TexCoord 0 x 4 panned (0.3, 1) and bubble its B panned (-0.2, -0.2), as M_ky_shockWave02_4x4's:
       shape     the texture's B with changeThunder on (the bolts), its R off (the ring)
       sparks    (scratch x bubble x hilightDetailPower) x ((scratch + bubble) x hilightDetailPower) x coreHilightPower
@@ -713,16 +714,15 @@ def _build_spark02(mat, d):
       emissive  coreColor x sparks + the particle's colour x shape (off, + outColor x the texture's G), not clamped:
                 MI_ky_spark02_4x5's coreColor is (7, 0, 0), red sparks along the bolts
       opacity   (shape x the particle's alpha)^alphaDensity (off, (R + G) x the alpha), faded over 30 cm (a constant,
-                1/30 in the code, not a parameter); the engine saturates it"""
+                1/30 in the code, not a parameter); the engine saturates it
+    The third switch is the glow's: its export holds a Multiply on the true side and an Add on the false one, so it
+    picks between the particle's colour x shape and that plus the glow (the glow could as well sit with the sparks -
+    the cook kept neither multiply - but both orders compile to the same code, and the sparks are what the emissive's
+    Add is given first)."""
     dd_assets.particle_material(mat, beam_trails=True, two_sided=True)
     g = dd_stage._Graph(mat, checked=True)
-    tex = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, -1900, -300)
-    tex.set_editor_property("parameter_name", "baseTex")
-    tex.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(SPARK02_TEXTURE)))
-    tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    tex = _sub_uv(g, "baseTex", SPARK02_TEXTURE, unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR, -1900, -300)
     shape = g.switch("changeThunder", tex, "B", tex, "R", -1600, -300)
-    glow = g.multiply(g.vector("outColor", d["outColor"], -1600, -650), "RGB", tex, "G", -1400, -600)
-    glow_off = g.switch("changeThunder", dd_assets.constant(g, 0.0, -1400, -700), "", glow, "", -1200, -650)
     ring_alpha = dd_assets.add(g, tex, "R", tex, "G", -1600, 900)
     alpha = g.switch("changeThunder", tex, "B", ring_alpha, "", -1400, 850)
 
@@ -744,9 +744,10 @@ def _build_spark02(mat, d):
     sparks = g.multiply(detail, "", core, "", -600, 100)
     tinted = g.multiply(g.vector("coreColor", d["coreColor"], -600, -250), "RGB", sparks, "", -400, 0)
     particle = g.node(unreal.MaterialExpressionParticleColor, -1200, 750)
-    lit = g.multiply(particle, "RGB", shape, "", -400, -300)
-    emissive = dd_assets.add(g, dd_assets.add(g, lit, "", tinted, "", -200, -150), "", glow_off, "", 0, -300)
-    g.out(emissive, "", MP.MP_EMISSIVE_COLOR)
+    lit = g.multiply(particle, "RGB", shape, "", -1050, -450)
+    glow = g.multiply(g.vector("outColor", d["outColor"], -1050, -750), "RGB", tex, "G", -850, -700)
+    plain = g.switch("changeThunder", lit, "", dd_assets.add(g, lit, "", glow, "", -650, -600), "", -450, -450)
+    g.out(dd_assets.add(g, tinted, "", plain, "", -200, -250), "", MP.MP_EMISSIVE_COLOR)
     thick = g.power(g.multiply(alpha, "", particle, "A", -1000, 850), "",
                     g.scalar("alphaDensity", d["alphaDensity"], -1000, 1000), "", -750, 900)
     dd_assets.depth_faded_opacity(g, thick, dd_assets.constant(g, 30.0, -550, 1000), -350, 900)

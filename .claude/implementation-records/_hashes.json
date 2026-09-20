@@ -52,7 +52,7 @@
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "7e1ed4946f7c09e8db0f295e8f7121f6976ecc96",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "031db342426b0c3c55efbf97c508ee3a6b53aa57",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "58aa0f3f90539f9dd43975b410b91dc1fa737d38",
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "ad158033273e726dba3606f2de1db0c9c45ca8e9",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "67a1d24546526223229a1ac9f682a7f1e57bf49e",
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "9152be4681c984e45f037f5dba0a0579a82d5809",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
@@ -238,7 +238,7 @@
     "Source/wasami_deception/WasamiSawTrap.cpp": "62a755d586c87b30e277c019d18ca8cee7e0bee9",
     "Source/wasami_deception/Tests/WasamiSawTrapTests.cpp": "7a8c955ea200cf4c4c5d042c1cc9b7d8bd42f24c",
     "Tools/dd/prepare_portal_logo.py": "178abe50daff82d674d0835b51aedb656f633cc7",
-    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "58aa0f3f90539f9dd43975b410b91dc1fa737d38"
+    "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "ad158033273e726dba3606f2de1db0c9c45ca8e9"
   },
   "12-lifts.md": {
     "Source/wasami_deception/WasamiLift.h": "cbe5fca0a6e400ca4734ec82ce1e621d0ef185ff",
