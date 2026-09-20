@@ -15,7 +15,7 @@
     "Source/wasami_deception/WasamiAssets.h": "ce58a1da02b8dcef85eed5ff87af6431b800cd26"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "56301805a3fcba6c69c192dce36c2d7d4578696a",
+    "Tools/dd/prepare_stage.py": "c76f67b31b9beec0ba47b5df92ce000a1fdbc129",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "7c25a3166fefd04a63cb38bc6cfab05bd8210627",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
@@ -45,7 +45,7 @@
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "c748094d4401fcc053bdaeb6ef9811159a616fca",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "12fe905cda1b38498e493c44357aa86e6b25d2ed",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "eebedaab735e7a03f9b8402cb2d058f15edffa0f",
-    "Content/Python/wasami_tools/pipeline/dd_sequence.py": "55a405c0c9ca7db3ec5d4c3de452b580eb7b6cb9",
+    "Content/Python/wasami_tools/pipeline/dd_sequence.py": "cdc546ed76b812f82d13b8808b8718ea84de9899",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "94ddeb42a5f66826025013d326e855db7cd1b4f4",
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "ad611ed6d8835c1b718cd8898a9a2f8c960404b9",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "5391c9799741f3d785d71d1bb8ff7bf300490dca",

@@ -128,6 +128,13 @@ CLASS_MATERIALS = ("/Game/Materials/06_Hospital/M_06_Hospital_MetalPanel_04.M_06
 # an Enum_Collectables, and ID), each item's fields by their names without the editor's suffix (Type_5_<guid> → Type)
 # and an enum by its number (Enum_Collectables::NewEnumerator2 → 2). The actors' other lists and maps are left out.
 KEEP_ACTOR_LISTS = {"BP_Collectable_C": ("Collectables",)}
+# A cine camera's own settings sit on its CineCameraComponent and in the actor's LookatTrackingSettings, neither of
+# which the scalar props above reach. The cut scenes are framed for them: the hospital's two cameras put a
+# 36 x 20.25 mm filmback against UE's 23.7 mm default (86.0 deg and 90.2 deg across, not 63.2 and 65.6), take the
+# aspect ratio constraint off, and turn to follow a target point. Left out are the values UE works out again from
+# these (CineCameraComponent.cpp RecalcDerivedData: FieldOfView, AspectRatio, Filmback.SensorAspectRatio and the
+# read-only CurrentFocusDistance) and the component's own attachment and transform, which the placement carries.
+CAMERA_DERIVED_PROPS = ("FieldOfView", "AspectRatio", "SensorAspectRatio", "CurrentFocusDistance", "AttachParent")
 STRUCT_FIELD_SUFFIX = re.compile(r"_\d+_[0-9A-F]{32}$")
 ENUM_VALUE = re.compile(r"^\w+::NewEnumerator(\d+)$")
 KEEP_COMPONENT_PROPS = ("bVisible", "bHiddenInGame", "CastShadow", "bCastDynamicShadow", "bCastStaticShadow",
@@ -217,6 +224,27 @@ def plain_struct(item):
         m = ENUM_VALUE.match(value) if isinstance(value, str) else None
         out[STRUCT_FIELD_SUFFIX.sub("", key)] = int(m.group(1)) if m else value
     return out
+
+
+def camera_settings(by_path, own, actor_of):
+    """A CineCameraActor's own settings: its component's (without the derived ones) and its look-at tracking, with the
+    actors they name (ActorToTrack) by their names in the map."""
+    def named(value):
+        if isinstance(value, dict):
+            return {k: actor_of(v) if k == "ActorToTrack" and isinstance(v, str) else named(v)
+                    for k, v in value.items()}
+        return value
+
+    component = {}
+    for key, value in ((by_path.get(own.get("CameraComponent") or "") or {}).get("props") or {}).items():
+        if key in CAMERA_DERIVED_PROPS or key.startswith("Relative"):
+            continue
+        if isinstance(value, dict):
+            value = {k: v for k, v in value.items() if k not in CAMERA_DERIVED_PROPS}
+            if not value:
+                continue
+        component[key] = named(value)
+    return {"component": component, "lookAt": named(dict(own.get("LookatTrackingSettings") or {}))}
 
 
 def world_of(entry):
@@ -592,6 +620,8 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
             actor_world.setdefault(actor, world_of(e))
 
     def actor_of(path):
+        if ":PersistentLevel." in path:              # a full object path (a cine camera's ActorToTrack)
+            path = prefix + path.split(":PersistentLevel.", 1)[1]
         return path[len(prefix):].split(".")[0] if path.startswith(prefix) else path
 
     # ---------------------------------------------------------------- meshes
@@ -705,6 +735,8 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
             if k in own:
                 props[k] = [plain_struct(x) for x in own[k]]
         entry = {"name": name, "class": cls, "world": actor_world.get(name), "props": props}
+        if cls == "CineCameraActor":
+            entry["camera"] = camera_settings(by_path, own, actor_of)
         root = (by_path.get(own.get("RootComponent") or "") or {}).get("props") or {}
         if root.get("AttachParent"):
             entry["attachParent"] = actor_of(root["AttachParent"])   # moves with it (the ambulances, the spikes)

@@ -39,8 +39,9 @@ SEQUENCE_TAG = "dd_sequence"
 SEQUENCE_FOLDER = "Hospital/Gameplay/Sequences"
 # Bound actors the level assembly does not place, placed here where the original has them: a TargetPoint an audio
 # track follows or a camera looks at, the particle emitters a particle track fires, and the cine cameras the cut
-# scenes look through (the original's placed ones override nothing, so they keep the class's settings; their focal
-# length, aperture and focus distance are what the sequences animate).
+# scenes look through (the flow makes one the view target, so what it sees is what the player sees). A cine camera
+# carries the original's own settings (prepare_stage's camera_settings), which are what the scenes are framed for:
+# the sequences animate only the focal length, the aperture and the focus distance.
 HELPER_CLASSES = {"TargetPoint": unreal.TargetPoint, "Emitter": unreal.Emitter,
                   "CineCameraActor": unreal.CineCameraActor}
 
@@ -576,12 +577,33 @@ def _placed_name(references):
     return None
 
 
+def _cine_camera(actor, camera, failures):
+    """The original's own settings onto a placed cine camera: its component's, and its look-at tracking minus the actor
+    it aims at, which is placed by this same pass and so is resolved after it. Returns that actor's name."""
+    ue_props.apply(actor.get_cine_camera_component(), camera.get("component") or {}, failures=failures)
+    look = dict(camera.get("lookAt") or {})
+    tracked = look.pop("ActorToTrack", None)
+    if look:
+        settings = actor.get_editor_property("lookat_tracking_settings")
+        ue_props.apply(settings, look, failures=failures)
+        actor.set_editor_property("lookat_tracking_settings", settings)
+    return tracked
+
+
+def _look_at(actor, target):
+    """The actor a placed cine camera turns to follow."""
+    settings = actor.get_editor_property("lookat_tracking_settings")
+    settings.set_editor_property("actor_to_track", target)
+    actor.set_editor_property("lookat_tracking_settings", settings)
+
+
 def _helpers(eas, zone, names, existing, result):
     """Places the bound actors the level assembly leaves out, as the original has them: the TargetPoints an audio track
-    follows, the emitters a particle track fires, and the cut scenes' nurses."""
+    follows, the emitters a particle track fires, the cut scenes' cine cameras and their nurses."""
     from wasami_tools.pipeline import dd_level
     by_name = {a["name"]: a for a in zone["actors"]}
     level = {}
+    tracking = []
     for name in names:
         a = by_name.get(name)
         if name in existing or a is None or not a["world"]:
@@ -596,6 +618,12 @@ def _helpers(eas, zone, names, existing, result):
                 missing = dd_level.set_emitter(actor, zone, name, level)
                 if missing:
                     result["missing_particles"].append("%s: %s" % (name, missing))
+            elif cls == "CineCameraActor":
+                failures = []
+                tracked = _cine_camera(actor, a.get("camera") or {}, failures)
+                result["missing"] += ["%s: %s" % (name, f) for f in failures]
+                if tracked:
+                    tracking.append((actor, tracked))
             tags = ()
         elif cls in NURSE_CLASSES:
             actor = eas.spawn_actor_from_class(unreal.WasamiCutsceneNurse, dd_level._vec(world["location"]),
@@ -612,6 +640,11 @@ def _helpers(eas, zone, names, existing, result):
         dd_level._tag(actor, name, SEQUENCE_FOLDER, SEQUENCE_TAG, "src:" + name, *tags)
         existing[name] = actor
         result["helpers"] += 1
+    for actor, name in tracking:
+        if name in existing:
+            _look_at(actor, existing[name])
+        else:
+            result["missing"].append("%s looks at %s, which is not placed" % (actor.get_actor_label(), name))
 
 
 def place_all(eas, zone_name, zone, result=None):
