@@ -34,13 +34,18 @@ public:
 	static constexpr float SwitchRate = 1.f;
 	/** The Detected montage's PlayMontageNotify, whose Notify Begin tells the sentries (s from the montage's start). */
 	static constexpr float ReinforcementTime = 1.0948f;
-	// TODO(仮): the boss's size. The placed Matron's long cone (her eyes, read so) is 676.26 cm up and her mesh's origin
-	// 107.22 cm under the floor (the root's -50.22 and the mesh's -57); SK_WasamiBoss's head bone in Idle's first frame
-	// is 128.2 cm up at scale 1 (dd_boss), so this scale puts it at the cone. The original draws SK_Matron at 5.
-	static constexpr double EyeHeight = 676.2613525390625;
-	static constexpr double MeshOriginHeight = -107.2183837890625;
-	static constexpr double IdleHeadHeight = 128.2;
-	static constexpr double MeshScale = (EyeHeight - MeshOriginHeight) / IdleHeadHeight;
+	// The boss's size, silhouette to silhouette in the pose each one idles in. The original draws SK_Matron at 5, and
+	// its Idle (DD_Matron_Zone_02_Idle, the clip the level pins on the component and the ABP's first state) leans her
+	// far over her desk: skinned from SK_Matron.psk, her first frame stands 171.5432 cm tall at scale 1 (the saws left
+	// out: the level draws that slot with M_Transparent), against 227.5971 for her reference pose. SK_WasamiBoss's own
+	// A_WasamiBoss_Idle stands 166.3942 cm at its first frame, so this scale puts its top where hers is: 750.50 cm over
+	// the floor, with her mesh's origin 107.22 cm under it (the root's -50.22 and the mesh's -57). Her head bone then
+	// sits at 561.94 cm and the boss's at 553.62. Reference pose to reference pose (as the enemy Wasami is grown) would
+	// be 6.694 and stand a third taller than she looks, because the boss barely stoops while idling.
+	static constexpr double OriginalMeshScale = 5.;
+	static constexpr double OriginalIdleTopHeight = 171.5432;
+	static constexpr double IdleTopHeight = 166.3942;
+	static constexpr double MeshScale = OriginalIdleTopHeight * OriginalMeshScale / IdleTopHeight;
 
 	/** Activate: Switch every second from now on, and her cones hers and initialized. */
 	UFUNCTION(BlueprintCallable, Category = "Matron")

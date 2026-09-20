@@ -147,8 +147,10 @@ bool FWasamiMatronActorTest::RunTest(const FString& Parameters)
 	// The class.
 	const AWasamiMatron* Defaults = GetDefault<AWasamiMatron>();
 	TestTrue(TEXT("tagged Enemy"), Defaults->ActorHasTag(TEXT("Enemy")));
-	TestEqual(TEXT("the boss's head at the long cone"), AWasamiMatron::MeshScale, (676.2613525390625 + 107.2183837890625) / 128.2, 1e-9);
-	TestTrue(TEXT("about 6.1 times"), FMath::IsNearlyEqual(AWasamiMatron::MeshScale, 6.111, 1e-3));
+	TestEqual(TEXT("the boss idles as tall as the Matron does"), AWasamiMatron::MeshScale, 171.5432 * 5. / 166.3942, 1e-9);
+	TestTrue(TEXT("about 5.15 times"), FMath::IsNearlyEqual(AWasamiMatron::MeshScale, 5.1547, 1e-4));
+	TestTrue(TEXT("its top 750.50 cm over the floor"),
+		FMath::IsNearlyEqual(166.3942 * AWasamiMatron::MeshScale - 107.2183837890625, 750.50, 0.01));
 	TestTrue(TEXT("the mesh drawn at that size"), Defaults->GetMesh()->GetRelativeScale3D().Equals(FVector(AWasamiMatron::MeshScale)));
 	TestTrue(TEXT("the mesh has no collision"), Defaults->GetMesh()->GetCollisionEnabled() == ECollisionEnabled::NoCollision);
 	TestFalse(TEXT("nor is it on the navigation"), Defaults->GetMesh()->CanEverAffectNavigation());

@@ -48,7 +48,7 @@ updated: 2026-09-21
 ### アニメの再生（`UWasamiBossAnimInstance`。本家の `Matron_MiniBoss_AnimBP`）
 敵の `UWasamiEnemyAnimInstance`（07 記録）と同じ 3 つの分け方: エンジンを使わない状態 `FWasamiBossAnimState` → ゲームスレッドの `NativeUpdateAnimation` が標本の一覧を作る → 代理 `FWasamiBossAnimInstanceProxy` の `Evaluate`（ワーカースレッド）が混ぜる。クリップの姿勢を混ぜる所は敵と共用（`WasamiEnemyAnim::BlendPoses`）。クリップはゲームのワールドのときだけ読む（エディタのレベルでは参照姿勢）。
 - **毎フレーム読むもの**（本家のイベントグラフ）: 持ち主が `AWasamiMatron` なら `bAlert` = `bMode`・`bSpotted`、プレイヤーがいれば `Location` = その位置（既定は本家の (100, 0, 0)）。
-- **状態機械 Idle ↔ Alert**: 本家は `Idle` →（`bAlert`、0.5 s）→ `Alert Transition`（切り替えのクリップ 0.8 s）→（残り 0.05 s 未満、0.2 s）→ `Alert`、`Alert` →（NOT `bAlert`、0.6 s）→ `Idle Transition`（0.8 s）→（残り 0.05 s 未満、0.2 s）→ `Idle`、どれも HermiteCubic。本作は切り替えのクリップが無いので、1 回のクロスフェード（`FWasamiStateBlend`）で直接もう一方へ移り、長さは本家の変化の全体（切り替えのクリップが残り 0.05 s になるまでの 0.75 s + 0.2 s = 0.95 s、`ChangeTime`。`TODO(仮)`）、曲線は HermiteCubic。本家の切り替えの状態は先へしか進めないので、変化は終わるまで折り返さない（終わってから次を始める）。最初の更新は移らない（本家の `bSkipFirstUpdateTransition`）ので Idle から始まる。入った状態のクリップは 0 から（変化が終わってから入るので、入る側の重みは必ず 0）。重み 0 の側は進めない。Idle（11.3 s）と Alert（4.0 s）はループ。**本家どおり、プレイヤーが遠い（`bMode` 真、長いコーン）ときが Alert、近い（`CloseArea` の中）ときが Idle。**
+- **状態機械 Idle ↔ Alert**: 本家は `Idle` →（`bAlert`、0.5 s）→ `Alert Transition`（切り替えのクリップ 0.8 s）→（残り 0.05 s 未満、0.2 s）→ `Alert`、`Alert` →（NOT `bAlert`、0.6 s）→ `Idle Transition`（0.8 s）→（残り 0.05 s 未満、0.2 s）→ `Idle`、どれも HermiteCubic。本作は切り替えのクリップが無いので、1 回のクロスフェード（`FWasamiStateBlend`）で直接もう一方へ移り、長さは本家の変化の全体（切り替えのクリップが残り 0.05 s になるまでの 0.75 s + 0.2 s = 0.95 s、`ChangeTime`）、曲線は HermiteCubic。**長さと曲線は本家の値で、代えているのは切り替えのクリップだけ**（2026-09-21 に ABP の `BakedStateMachines` で確かめた。原本にそれに当たるアニメが無い）。本家の切り替えの状態は先へしか進めないので、変化は終わるまで折り返さない（終わってから次を始める）。最初の更新は移らない（本家の `bSkipFirstUpdateTransition`）ので Idle から始まる。入った状態のクリップは 0 から（変化が終わってから入るので、入る側の重みは必ず 0）。重み 0 の側は進めない。Idle（11.3 s）と Alert（4.0 s）はループ。**本家どおり、プレイヤーが遠い（`bMode` 真、長いコーン）ときが Alert、近い（`CloseArea` の中）ときが Idle。**
 - **`DefaultSlot` の Detected**（本家のモンタージュ: ブレンドインはモンタージュの既定 0.25 s・Cubic、自動のブレンドアウトなし）: `PlayDetected` で 0 から流し、重みを 0.25 s で上げ（Cubic）、時刻を進めて最後の姿勢で止める。重みの分だけ状態機械の上に乗る（1 になれば状態機械は見えない。状態機械は下で進み続ける）。
 - **LookAt**（本家: `spine_02`、`LookAt_Axis` (0, 1, 0) を骨の空間でなく部品の空間で、上の軸なし、補間なし、制限 90°、アルファは `bSpotted` の真偽で入り 0.5 s〈Cubic〉・出 0 s）: 代理の `Evaluate` で、混ぜた姿勢を部品の空間にして `spine_02` の変形を読み、`Location` を部品の空間へ移し（エンジンの `FBoneSocketTarget` の骨の無いときと同じく世界の位置と読む）、`AnimationCore::SolveAim(骨, 的, +Y, false, 上, 90)` の回転を骨の回転の前に掛け、`LocalBlendCSBoneTransforms` でアルファの分だけ混ぜて局所に戻す（エンジンの `FAnimNode_LookAt` と同じ手順。モジュールの非公開の依存に `AnimationCore`）。部品の +Y はボスの正面。
 - 本家の ModifyBone（のこぎり 2 つの骨を拡縮 0）はボスに無い骨なので作らない。
@@ -57,8 +57,10 @@ updated: 2026-09-21
 - レベルの組み立て（`build_dd_stage_level` / `place_dd_flow Zone2`）が、本家の `MnM_Matron_Idle_2` を `AWasamiMatron` で根 (−6900.98, −1023.26, −50.22)・ヨー 90（前は −X）に置き、`SkeletalMesh` を相対 (3.0, −98.0, −57.0)、`CloseArea` を相対 (−27.38, 617.40, 234.0)・拡縮 (56.44, 10.05, 9.58)（机の前の帯）にする。コーンは `BP_06_Miniboss_viewcone_Matron_Long` を `AWasamiViewconeMatronLong` で (−7067.35, −1025.0, 676.26)・ヨー 180、扇 `Plane` を相対 (1673.83, 0, 0)・拡縮 (35.18, 32.04, 1)、`_Short_5` を `AWasamiViewconeMatronShort` で (−6630.76, −1025.0, 518.37)・ヨー 180・ピッチ −20、扇を相対 (659.98, 0, 0)・拡縮 (13.34, 17.79, 1)。Matron の `LongCone`・`ShortCone` にこの 2 つを入れる。3 つともフォルダ `Hospital/Gameplay/Enemies`、タグ `src:<本家の名前>`。
 - Zone 2 の流れの `ActivateMinibossEnemies`（保存 8 の廊下の箱と、8 で開いたとき）が見張りの `Activate` の後に、名前 `AWasamiZone2Flow::Matron`（`MnM_Matron_Idle_2`）で引いた Matron の `Activate` を呼ぶ。迷路の始まり（`Trigger_MazeStart`）の `RemoveAllEnemies` がタグ `Enemy` で Matron を消す（コーンは本家どおり残って見続ける。持ち主の参照は壊れた Matron を指したまま残るが、本家の BP の実行系は壊れた〈Pending Kill の〉相手への呼び出しを飛ばし〈`ProcessContextOpcode` の `IsValid`〉、本作のコーンも `IsValid` で飛ばすので、見つけても何も起きない。07 記録）。
 
-### 大きさ（`AWasamiMatron::MeshScale`。`TODO(仮)`）
-本家の長いコーンの高さ（z 676.26。Matron の目の高さと読む）に、ボスの `Idle` の最初のコマの `head` の骨（拡縮 1 で 128.2 cm）が来る拡縮: (676.26 + 107.22) / 128.2 ≈ **6.111**（107.22 cm はメッシュの原点が床より下にある分: Matron の根の z −50.22 と部品の相対 z −57）。高さ約 10.4 m、頭の上は床から約 932 cm（本家の Matron は 1031 cm）。本家は `SK_Matron` を 5 倍で描く。PIE（2026-09-19）で、メッシュの範囲の上端は床から約 860 cm で部屋の天井の下にあり、机の後ろに立って天井・机・壁を突き抜けない。
+### 大きさ（`AWasamiMatron::MeshScale`）
+**待機の姿勢の見える高さどうしで合わせる**（2026-09-21、作業一覧の項目 28 のステップ 11）。本家は `SK_Matron` を 5 倍で描き、レベルはその部品に `DD_Matron_Zone_02_Idle` を指している（ABP の最初の状態でもある）。この Idle は机へ大きく身を乗り出す姿勢で、**基準姿勢の 227.5971 cm に対して最初のコマは 171.5432 cm**（`python Tools/dd/psa_pose.py <…>/SK_Matron.psk <…>/MiniBoss/DD_Matron_Zone_02_Idle.psa --scale 5 --origin -107.2184 --bone head`。材質のスロット 0 だけ＝のこぎりは本家がスロット 1 を `M_Transparent` で上書きして消している）。ボスの `A_WasamiBoss_Idle` の最初のコマは 166.3942 cm なので、拡縮 = 171.5432 × 5 / 166.3942 ≈ **5.1547**。これで見える上端が本家と同じ**床から 750.50 cm**に来る（メッシュの原点は床の 107.22 cm 下 = 根の z −50.22 + 部品の相対 z −57。下端は本家も本作も床下 109.22 cm に潜り、床に隠れる）。頭の骨は本家 561.94 cm に対して本作 553.62 cm（1.5 % 差）。
+- 敵ワサミ（07 記録）は**基準姿勢どうし**で合わせているが、Matron に同じことをすると 6.694 になり、本家の見た目より 3 割高くなる。本家は待機で身を屈めるのに、ボスワサミの Idle はほぼ立ったままだから（170.0 cm の基準姿勢に対して 166.4 cm）。
+- 2026-09-19 の 6.111（長いコーンの z 676.26 を目の高さと読んだ仮の値）は、本家より 2 割大きかった（上端 909.7 cm・頭の骨 676.3 cm）。長いコーンは頭の骨（561.94 cm）と頭の上（750.50 cm）の間にあり、目の高さではない。
 
 ### PIE で確かめたこと（2026-09-19、Zone 2 をチェックポイント 8 で）
 - 見張りと一緒に起き、長いコーンが点く。`CloseArea` に入ると 1 s の内に短いコーンへ替わり、出ると長いコーンへ戻る。長いコーンに見つかると、見張り 6 体が跳び降りて追い、プレイヤーを捕まえる（収録。死亡 → 残りライフの画面まで）。
@@ -84,7 +86,7 @@ updated: 2026-09-21
 
 ## 原作データの根拠
 - 役: 本家の `Matron_MiniBoss_AnimBP`（`pak_reference_2/_assets/DDeception/Content/Animation/Enemies/Nurse/Matron/MiniBoss/`）の状態機械の `Idle`（13.33 s ループ）・`Alert`（8.0 s ループ）と、`BP_06_Matron_MiniBoss` の `Player Spotted` が流す `DD_Matron_Zone_02_Detected_Montage`（1.3333 s、自動のブレンドアウトなし）。本作のアニメの割り当ては `.claude/references/enemy-wasami-motions.md` の「ボスワサミ」。
-- 大きさの材料: 本家の `SK_Matron`（`pak_reference_2/_meshes_gltf/Animation/Enemies/Nurse/Matron/SK_Matron.gltf`）は高さ 2.276 m、基準姿勢の `head` の骨 1.819 m。レベルの `SkeletalMesh` の拡縮 5、メッシュの原点は床から −107 cm（Matron の根 z −50.22 + 部品の相対 z −57）。長い視界コーンは z 676（Matron の前 166 cm）。
+- 大きさの材料: 本家の `SK_Matron`（`pak_reference_2/_anims_psa/Animation/Enemies/Nurse/Matron/SK_Matron.psk`。glTF は `_meshes_gltf/…/SK_Matron.gltf`）を `DD_Matron_Zone_02_Idle.psa` の姿勢でスキニングした高さ（上の「大きさ」）。レベルの `SkeletalMesh` は拡縮 5・`OverrideMaterials` のスロット 1 が `M_Transparent`、メッシュの原点は床から −107.2184 cm（Matron の根 z −50.2184 + 部品の相対 z −57。床は z 0 で、机 `hospital_matron_desk_8` が z 0.008、`PlayerStart_MiniBoss` のカプセルが z 92）。長い視界コーンは z 676（Matron の前 166 cm）。姿勢ごとの見える上端（拡縮 5・原点込み、床から cm）: Idle 750.50〜777.54、Alert（`DD_Matron_Zone_02_Idle_Alert`）841.22〜863.08、Detected 839.72〜958.03、基準姿勢 1030.77。
 
 ## 依存関係
 - `pipeline/dd_enemy.py`（`BONES`・`RATE`・`_content_frames`・`_sample`・`_key`・`_extract_textures`・`_build_master`・`_import_model`・`MASTER`）、`gltf.py`、`dd_assets.material_instance`。
@@ -95,9 +97,11 @@ updated: 2026-09-21
 - 敵ワサミを取り込み直してマスター `M_DD_WasamiGltf` を作り直しても、`MI_WasamiBoss` はテクスチャを上書きしているので変わらない。
 - 本家の `Idle` ↔ `Alert` の間の切り替えのクリップ（各 0.8 s）に当たるものは原本に無い（1 回のクロスフェードで代える。上の「アニメの再生」）。
 - 発見の声（本家の Detected のモンタージュの 0.111 s の `AnimNotify_PlaySound` = `Matron_ReinforcementCall_01`）は鳴らさない。作業一覧の項目 20（敵の声は WebGL 版のワサミの声に替える）で足す。
-- LookAt の軸は部品の +Y（本家と同じ）なので、プレイヤーが真下に近いと上半身が大きく前へ倒れる（制限 90°）。見た目は PIE で見る。
+- LookAt の軸は部品の +Y（本家と同じ）なので、プレイヤーが真下に近いと上半身が大きく前へ倒れる（制限 90°）。見た目は PIE で見る。LookAt の値（骨・軸・制限 90°・アルファの入り 0.5 s Cubic と出 0 s）は 2026-09-21 に ABP と照らして本家どおりだと確かめた。
+- **姿勢ごとの高さの変わり方が本家と逆**: 本家の Matron は警戒で身を起こして高くなる（Idle 750.50 cm → Alert 841.22 cm）が、ボスワサミの `Alert` はやや屈むので低くなる（拡縮 5.1547 で 750.50 cm → 711.72 cm）。原本のアニメの都合で、直せない。
 
 ## 変更履歴
+- 2026-09-21: 大きさを本家の待機の姿勢から決め直した（6.111 → 5.1547。上の「大きさ」）。切り替えの 0.95 s と LookAt が本家の値であることを ABP で確かめ、`TODO(仮)` を外した（作業一覧の項目 28 のステップ 11）
 - 2026-09-19: 作業一覧の項目 11 を閉じた（ステップ 5）。発見の声 `Matron_ReinforcementCall_01`（本家のモンタージュの 0.111 s）は鳴らさず、項目 20（敵の声）へ回した
 - 2026-09-19: PIE で確かめた（大きさ・コーンの切り替え・見つかると 6 体が追う・隠れて渡れる道が無いこと）。コーンが壊れた持ち主・親へ送る呼び出しを `IsValid` で飛ばすようにし（07 記録）、テスト `Wasami.Matron.Removed` を足した（作業一覧の項目 11 のステップ 4）
 - 2026-09-19: Zone 2 に置いた（組み立ての `_flow` が Matron とコーン 2 つを本家の位置・部品の変形で置き、Matron のコーンの参照を入れる）。Zone 2 の `ActivateMinibossEnemies` が Matron の `Activate` を呼ぶ（作業一覧の項目 11 のステップ 3）

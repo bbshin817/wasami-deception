@@ -36,8 +36,8 @@ namespace WasamiBossAnim
 	inline constexpr float TransitionClipLength = 0.8f;
 	inline constexpr float TransitionTimeLeft = 0.05f;
 	inline constexpr float TransitionOutTime = 0.2f;
-	// TODO(仮): the model has no transition clips, so a change is one crossfade to the other state, as long as the
-	// original's whole change: its transition clip until 0.05 s is left, then the 0.2 s crossfade (0.95 s).
+	// The model has no transition clips, so a change is one crossfade to the other state; its length is the original's
+	// whole change, its transition clip until 0.05 s is left and then the 0.2 s crossfade out (0.95 s).
 	inline constexpr float ChangeTime = TransitionClipLength - TransitionTimeLeft + TransitionOutTime;
 	inline constexpr EAlphaBlendOption ChangeBlend = EAlphaBlendOption::HermiteCubic;
 	// DD_Matron_Zone_02_Detected_Montage in DefaultSlot: blending in over the montage's default 0.25 s, Cubic, and

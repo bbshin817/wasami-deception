@@ -5,6 +5,7 @@ sources:
   - Tools/dd/prepare_loader.py
   - Tools/dd/cooked_shaders.py
   - Tools/dd/bp_flow.py
+  - Tools/dd/psa_pose.py
   - Tools/ue_remote.py
   - Tools/editor_cycle.py
   - Tools/console_session.py
@@ -151,6 +152,11 @@ updated: 2026-09-21
 - **静的スイッチを上書きするインスタンス**（`bHasStaticPermutationResource`）は自分のシェーダーマップを持つ（`MI_ky_starDust_sq`）。持たないもの（`MI_ky_aura7c`・`MI_ky_shockWave02_4x4_nonD`）は親のものを使う。
 - **`cb3` の表**（ユニフォームの式。パラメータを CPU で畳んだもの）は `FIELDS` の書き方で読む。`FoldedMath` は A・B・演算〈1 バイト〉・値の型〈int32〉の順、`TrigMath` は X・Y・演算（sin・cos・…・atan2。2026-09-19 に直した。それまでは `FoldedMath` の演算をいつも `+` と印字し、`TrigMath` を持つ材質は表を出さなかった）。
 - 消えた定数も数値で残る（例: `M_ky_starDust` の `Rotator` の回転は cos 0.000796・sin 1 = 既定の速さ 0.25 × 時刻 6.28）。**推定の材質を作る・直す前に、まずここで式を読む**（`.claude/guides/original-fidelity.md`）。
+
+### 本家のメッシュをアニメの姿勢で測る（`Tools/dd/psa_pose.py`）
+- **本家の見た目の大きさは、基準姿勢でなく流しているアニメの姿勢で決まる**（2026-09-21 に見つけた。作業一覧の項目 28 のステップ 11）。`_meshes_gltf` の glTF は基準姿勢しか持たないが、`_anims_psa` の psk・psa（CUE4Parse の ActorX）には骨のキーがそのまま入っている。`python Tools/dd/psa_pose.py <mesh.psk> [<clip.psa>]` が psk の頂点を psa の姿勢でスキニングし、UE の座標（cm・Z up）で外接の範囲を、コマ 0 と最高のコマについて印字する。
+- `--material N`（既定 0）は数える材質のスロット。**本家は見せない部品を、置いた側の `OverrideMaterials` で透明な材質（`M_Transparent`）にして消すことがある**ので、スロットを分けないと高さを読み違える（Matron の `BP_06_Matron_MiniBoss` はスロット 1 = のこぎり）。`--scale`・`--origin` にレベルの拡縮とメッシュの原点の高さを渡すと、置かれたとおりの高さも出る。`--bone` で骨の位置、`--step`・`--frames` でコマの刻みと全コマの表示。
+- psk・psa の読み方: チャンクの頭は `ID[20] + flag + dsize + dcount`、`REFSKELT`・`BONENAMES` は 120 バイト（名前 64・フラグ・子の数・親・四元数 4・位置 3・長さ・大きさ 3）、`ANIMKEYS` は 32 バイト（位置 3・四元数 4・時刻）。**根以外の骨の四元数は共役で入っている**（戻さないと姿勢が壊れる。glTF の基準姿勢と突き合わせて確かめた）。`ANIMINFO` の 128+24 バイト目が 1 秒のコマ数。
 
 ### ブループリントを流れで読む（`Tools/dd/bp_flow.py`）
 - 原作の逆アセンブル（`pak_reference*/_bytecode/**/*.txt`）は番地の順に並ぶので、ユーバーグラフの処理はあちこちへ飛ぶ。`python Tools/dd/bp_flow.py <file.txt> <イベント名 | 番地>` が入口から `Jump`・`JumpIfNot`・`PushExecutionFlow` と `Delay` などの再開先（`LatentActionInfo` の `SkipOffsetConst`）をたどり、届く基本ブロックだけを 1 文 1 行（`this.X`・`cast<C>(..)`・`switch(..){..}`・`resume@L..`）で印字する。`--list` は関数とユーバーグラフの入口の一覧。ユーバーグラフでない関数（`Get Lives` など）は本体を先頭から読む（2026-09-18、作業一覧の項目 5 のステップ 2。`.claude/references/game-flow/`）。
@@ -458,6 +464,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - 2026-09-18: `dd_ui.py` にポップアップ（`UWasamiPopUpWidget`）の素材（ポーズの窓の枠 3 枚と `UI_Window_PopUp_V3`）を足した（09 記録。作業一覧の項目 5 のステップ 6）
 - 2026-09-18: レベルの組み立ての PlayerStart に `PlayerStartTag`（本家の名前）を入れるようにした（`dd_level._player_starts`）。組み立て直さず、両ゾーンのレベルの既存の PlayerStart にも同じ値を入れて保存した（作業一覧の項目 5 のステップ 5）
 - 2026-09-18: 死亡画面の素材の取り込み（`pipeline/dd_ui.py`、`WasamiDDTools.import_dd_ui`）を足した。フォントの取り込みを `dd_tablet.import_font` から `dd_assets.font(face_rel, version)` に移した（09 記録）
+- 2026-09-21: `Tools/dd/psa_pose.py` を足した（本家のメッシュをアニメの姿勢でスキニングして測る。上の「本家のメッシュをアニメの姿勢で測る」。作業一覧の項目 28 のステップ 11）
 - 2026-09-18: `Tools/dd/bp_flow.py` を足した（原作のブループリントのバイトコードを入口から制御の流れで読む。上の「ブループリントを流れで読む」。作業一覧の項目 5 のステップ 2）
 - 2026-09-18: Discord の反復の報告・終わりのまとめ・開始の投稿で、`###` の節の見出しの直後の空行をなくした（ユーザーの指示「Discordフォーマットの見出し4の後の改行は不要です」。見出し 4 はサンプルの `####`）。
 - 2026-09-18: 成果の無い反復（状態ファイルもコミットも無い）を Discord の反復の報告で `⚠️ 反復 #<n> 終了（成果なし）` と「結果」の行で出し、`claude -p` がバックグラウンドの作業を打ち切った文言があれば「原因」の行も出すようにした（`run_problems`・`BG_CUTOFF_PATTERN`）。終わりのまとめの「やったこと」にも入れる。反復が調査のサブエージェント 3 本を待つと書いて応答を終え、600 秒で打ち切られたのに、exit 0 のふつうの報告に見えたため（ユーザーの指摘。症状索引、`.claude/guides/autonomy.md` の「無人モード」）。
