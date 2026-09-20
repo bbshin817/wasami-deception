@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 72d9cb4
 started: 2026-09-20 14:43
-updated: 2026-09-20 16:05
+updated: 2026-09-20 15:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -25,22 +25,23 @@ updated: 2026-09-20 16:05
 - [x] 1. 計画（この記録を作る） … 2026-09-20 完了。
 - [x] 2. 通しを頭から流して、止まる箇所を洗う … 2026-09-20 完了。12 区間のうち**止まったのは `z2_cell` の頭（Zone 2 の到着）だけ**。下の「ステップ 2・3 で分かったこと」。
 - [x] 3. 止まる箇所を直した（台本に区間 `z2_arrive` を足した） … 2026-09-20 完了。下の「ステップ 2・3 で分かったこと」。
-- [ ] 4. **通しをもう 1 回、頭から最後まで流して通ることを確かめる**（収録と、人に見せる連番のグリッド） ← 次
-- [ ] 5. 性能の計測（Zone 1）: 1080p 相当で `stat unit`・`stat fps`・`stat RHI`・`stat memory`、代表の 3 か所（リフトの到着・迷路・駐車場）。測り方（PIE の解像度の合わせ方・値の取り方）はこのステップで決めて記録に書く
+- [x] 4. 通しをもう 1 回、頭から最後まで流した … 2026-09-20 完了。**13 区間すべてが通り（終了コード 0）、タイトルから脱出の後のタイトルまで 408 s（6 分 48 秒）**。下の「ステップ 4 の通し」。
+- [ ] 5. **性能の計測（Zone 1）** ← 次: 1080p 相当で `stat unit`・`stat fps`・`stat RHI`・`stat memory`、代表の 3 か所（リフトの到着・迷路・駐車場）。測り方（PIE の解像度の合わせ方・値の取り方）はこのステップで決めて記録に書く
 - [ ] 6. 性能の計測（Zone 2）と判断: 目安（1080p で 60 fps 前後・VRAM 5 GB まで・エディタの常駐 RAM 20 GB まで）に対してどうか。外れていれば対処を次のステップに分ける（対処は**エディタにだけ効く場所**。製品の品質は落とさない）
 - [ ] 7. パッケージの下ごしらえの確認だけ行う: 既定のマップとゲームモード（`Config/DefaultEngine.ini`）、`/Game` の外（`Intermediate/Pipeline/`）を指す参照が無いか、原作のロゴとキャラクターのモデルが入っていないか。**パッケージ（クック・ビルド）の実行そのものは配布の話なので無人モードでは行わず、要確認に書く**
 - [ ] 8. 締め: 実装記録（00 に性能の計測、01 に台本の直し）・`handover.md` の「現状と次の一歩」・`roadmap.md`（項目 21 を完了、**大目標 2 を「達成（2026-09-20）」、大目標 3 を「進行中」**）・note の記事 `docs/note/progress.md` と note 本体、`check_records.py --update`、進捗記録を消して最後のコミットに含める。状態ファイルは `continue`（`done` に「大目標 2 を達成し、大目標 3 へ移った」）
 
-## ステップ 2・3 で分かったこと（2026-09-20）
+## ステップ 4 の通し（2026-09-20）
 
-- 止まったのは 1 か所だけで、ゲーム側の不具合ではなく台本が古かった（項目 25 で入った Zone 2 の到着を知らず、独房から始まる前提だった）。ステップ 3 で台本に区間 `z2_arrive` を足して直した（実装記録 01）。
-- 区間の時間（ステップ 2・3 の計測）: title 17.0 s / z1_arrive 27.9 / pause 18.5 / z1_maze 30.1 / z1_shards 6.2（ここまで頭から 99.7 s）、z1_parking 18.4 / z1_ambulance 33.0、**z2_arrive 128.4**（囲いが消えるまで 5 s、中庭の歩き 26 s、2 つの場面と視点の戻り 98 s）、z2_cell 14.5 / z2_corridor 41.0 / z2_maze 1.0 / z2_altar 24.3 / z2_escape 38.1。**頭から最後までは 6 分ほど**の見込み。
-- z1_maze の死亡 → 05 の開き直しは 13 s。ライフは 3 → 2 に減り、z1_shards のシャードの回収の間に 3 に戻った（回収でライフが増える）。
-- 台本は `z2_corridor` の途中で 1 回「キーが届かない」を自分で直した（ビューポートを押し直す仕組みが働いた）。止まりはしない。
+- `run --from title --to z2_escape --setup --shots --record through_21.mkv --record-seconds 500` が**終了コード 0**。ログは `Intermediate/Overnight/through_21f.log`、収録は `Intermediate/DesktopAgent/shots/through_21.mkv`、区間ごとの絵は同じ場所の `pt_*.png`（27 枚）。
+- 区間の時間（括弧はステップ 2・3 の前回）: title 13.8 s(17.0) / z1_arrive 25.5(27.9) / pause 18.9(18.5) / z1_maze 27.7(30.1) / z1_shards 6.4(6.2) / z1_parking 17.2(18.4) / z1_ambulance 45.5(33.0) / **z2_arrive 128.5**(128.4) / z2_cell 14.5(14.5) / z2_corridor 41.0(41.0) / z2_maze 1.2(1.0) / z2_altar 26.4(24.3) / z2_escape 38.7(38.1)。**合計 408.4 s**。
+- 止まった箇所は無い。台本が自分で直したのは 2 か所（前回と同じ性質）: z1_ambulance の車庫で 1 回「stuck: path again」（経路を引き直して進んだ。z1_ambulance が前回より 12 s 長いのはこれ）、z2_corridor で 1 回「キーが届かない → ビューポートを押し直す」。
+- スコア画面の結果（`pt_z2_escape_results.png`）: TIME 5:25（ゲーム内の時間。台本の 408 s はレベルの読み込みとメニューを含む）、SOUL SHARDS 679、BONUS 0/2、SECRETS 0/4、LIVES LOST 1、SHARD STREAK 500、TOTAL 819、**FINAL RANK A**。
+- 通しで確かめた流れ: タイトルの NEW GAME → Zone 1 の 04 到着・鍵開け → 一時停止のメニュー（感度・QUIT TO TITLE・RESUME）→ 迷路で捕まって死亡・05 から再開（ライフ 3→2）→ シャード全回収（ライフ 3 に戻る）→ 駐車場 → 救急車の屋根 → Zone 2 の中庭・捕まる場面・独房 → 通路（Vanish で見張りの前を抜ける）→ 迷路 → 祭壇のリングの欠片 → ガレージのポータル → スコア画面（You Escaped!・FINAL RANK）→ 5 s でタイトル（セーブは空、RESUME 無し）。
 
 ## 次にやること
 
-ステップ 4。`python Tools/pie.py start` → `python Tools/desktop.py start` → `python Tools/playthrough.py run --from title --to z2_escape --setup --shots --record through_21.mkv --record-seconds 500`（`--setup` が要る）で頭から最後まで 1 回通し、13 区間すべてが通ることと合計の時間を記録に書く。終わったら `python Tools/pie.py stop` と、残った ffmpeg の停止（`taskkill //PID <pid> //F`）。人に見せる連番のグリッドは撮れた絵から選ぶ。
+ステップ 5（性能の計測・Zone 1）。測り方をこのステップで決めて記録に書く: PIE の解像度を 1080p 相当に合わせ（`r.SetRes 1920x1080f` は PIE では効かないので、新しいエディタの窓〈`Wasami.Pie` 相当が無ければ PIE の窓の大きさ〉か `r.ScreenPercentage` で合わせる案を先に試す）、`stat unit`・`stat fps`・`stat RHI`・`stat memory` を代表の 3 か所（リフトの到着 cp 4・迷路 cp 5・駐車場 cp 6）で読む。読み取りは画面の数字ではなく、コンソールの `stat` の出力か `Tools/pie.py cmd` で取れる値を優先する（数字を目で読むなら `Tools/desktop.py shot` の切り出し）。目安は `.claude/guides/performance.md`（1080p で 60 fps 前後・VRAM 5 GB まで・エディタの常駐 RAM 20 GB まで）。台本の区間（`z1_arrive`・`z1_maze`・`z1_parking`）で場所へ運ぶと速い。
 
 ## 決定事項
 
