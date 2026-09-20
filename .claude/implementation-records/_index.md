@@ -6,7 +6,7 @@
 
 | 記録 | 内容 |
 | --- | --- |
-| [00-overview.md](00-overview.md) | 全体像。モジュールとビルド、プラグイン、`Config/` の設定（露出・静的ライティング・レイトレース・既定のマップとゲームモード・Python）、灯の焼き込み（原作と同じ High 品質）と実機との比較、作業の流れ |
+| [00-overview.md](00-overview.md) | 全体像。モジュールとビルド、プラグイン、`Config/` の設定（露出・静的ライティング・レイトレース・既定のマップとゲームモード・Python）、灯の焼き込み（原作と同じ High 品質）と実機との比較、両ゾーンの性能の計測（1080p 相当・Epic の fps とメモリ、測り方）、作業の流れ |
 | [01-stage-pipeline.md](01-stage-pipeline.md) | 取り込みの仕組み。病院ステージの前処理 `Tools/dd/prepare_stage.py`（テレポートのゾーンを含む）、レベルの組み立て（シャードの配置と、道〈NavMesh〉を焼いて保存する `build_navigation` を含む）、ツールセット `WasamiDDTools` / `WasamiStageTools` / `WasamiDevTools`、本家のアセットを原作データから作り直す仕組み（Cascade のパーティクルを組む `UWasamiCascadeLibrary`、SoundCue を組む `UWasamiSoundCueLibrary`、材質のインスタンスの静的マスクを書く `UWasamiMaterialLibrary` の C++ の道具を含む）、本作の素材（`SourceArt/`）の取り込み、リモート実行とエディタの開き直し |
 | [02-player.md](02-player.md) | プレイヤーとゲームモード。カプセルとカメラ、Enhanced Input（テレポートへ渡す左クリックとホイールを含む）、歩き・ダッシュ・ブースト、速さに連動する FOV、頭の揺れ、180° ターン、タブレットの出し入れとミニマップのキャプチャ |
 | [03-tablet.md](03-tablet.md) | タブレットの画面（`UWasamiTabletWidget`。パワーの枠の出し分けと弾み、シャードの回収の Count Shake）、素材の取り込み（`dd_tablet.py`）、ミニマップの仕掛け（Zone 2 の階ごとの地図 `AWasamiMapTextureMultiFloor`・`AWasamiMapArea`: 本家の `BP_MapTexture_MultiFloor`・`BP_MapArea`。いる階の地図の絵とシャードの印を出す）と地図の矢印（`AWasamiArrowPointer`: 本家の `BP_ArrowPointer`。最も近いシャードかゾーンの的を指す）、見張りの視界コーンの地図の印の材質 |
