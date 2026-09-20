@@ -2,7 +2,7 @@
 placed meshes (the teleport's zones among them, with their own collision), the lights, the reflection captures, the
 fog, the sky light, the post process volumes, the player starts, the minimap's map plane, the soul shards, what the
 zones' flow names (trigger boxes, blocking and trigger volumes, door breaks, double doors, emitters, zone barriers,
-Zone 2's altar and ring piece), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points, the secrets (the files, the mysterious room with its wall and notes, the secret and decoy elevators), the zone's music player and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
+Zone 2's altar and ring piece), the levels' own sound (the ambient sounds and the reverb volumes), Zone 2's lifts, the traps (defibrillators, speed barriers, saw traps), the special shards and their spawn points, the secrets (the files, the mysterious room with its wall and notes, the secret and decoy elevators), the zone's music player and the level sequences the flow plays (dd_sequence). Every actor it places carries the tag 'dd', which
 a rebuild removes first."""
 import json
 import math
@@ -167,7 +167,8 @@ FLOW_EMITTERS = ("Fracture_concrete_5",)
 # places the level Blueprints name (DoorLocation, the sounds' and cameras' places). Every one is placed.
 TARGET_POINT_CLASS = "TargetPoint"
 VOLUME_CLASSES = {"BlockingVolume": unreal.BlockingVolume, "TriggerVolume": unreal.TriggerVolume,
-                  "NavMeshBoundsVolume": unreal.NavMeshBoundsVolume, "NavModifierVolume": unreal.NavModifierVolume}
+                  "NavMeshBoundsVolume": unreal.NavMeshBoundsVolume, "NavModifierVolume": unreal.NavModifierVolume,
+                  "AudioVolume": unreal.AudioVolume}
 # The navigation's volumes: the original's bounds where the navmesh is made, and (Zone 2) its modifiers, each with the
 # class's own area (NavArea_Null: the level writes no AreaClass). The navmesh's settings are the project's
 # (Config/DefaultEngine.ini's RecastNavMesh and NavigationSystemV1, as the original's).
@@ -224,6 +225,19 @@ SECRET_FOLDER = "Hospital/Gameplay/Secrets"
 MUSIC_PLAYER_CLASSES = {"BP_06_MusicPlayer_C": "WasamiMusicPlayer",
                         "BP_06_MusicPlayer_Zone2_C": "WasamiMusicPlayerZone2"}
 MUSIC_PLAYER_PROPS = {"bFadeOut": "fade_out", "bOverrideMusic": "override_music"}
+# The levels' own AmbientSounds (Zone 1's two city loops outside the windows and over the parking lot, Zone 2's
+# intercom, which its flow speaks through — item 20): an AAmbientSound where the original has it, its AudioComponent
+# written from the level export (the sound under /Game/DD, the volume, the pitch, the low pass filter, the box
+# attenuation it overrides and bAutoActivate). The component is the actor's root in the original as it is here, so the
+# placement's world transform is its own; the rest of its RelativeLocation and RelativeScale3D would set it twice.
+AMBIENT_SOUND_CLASS = "AmbientSound"
+AMBIENT_SOUND_COMPONENT = "AudioComponent0"
+AMBIENT_SOUND_SKIP = ("Sound", "RelativeLocation", "RelativeRotation", "RelativeScale3D")
+# Zone 1's AudioVolumes (the corridor by the lobby and the parking lot): a brush volume like the rest, with the
+# ReverbSettings the export names (its ReverbEffect one of the engine's presets, rebuilt under /Game/DD/_Engine by
+# dd_audio.import_reverbs). The volume's own values are not in the stage data, so they come from the level export.
+AUDIO_VOLUME_CLASS = "AudioVolume"
+AUDIO_FOLDER = "Hospital/Audio"
 DEFAULT_BRUSH_BOX = [-100.0, -100.0, -100.0, 100.0, 100.0, 100.0]
 FLOW_TAG = "dd_flow"
 FLOW_FOLDER = "Hospital/Gameplay/Flow"
@@ -819,10 +833,39 @@ def link_sequence_players(eas, zone):
     return linked, missing
 
 
+def set_ambient_sound(actor, zone, name, level, failures):
+    """An AmbientSound placed from the original's of that name: its AudioComponent's settings from the level export,
+    the sound it plays loaded from under /Game/DD."""
+    props = dict(_level_props(zone, "%s.%s" % (name, AMBIENT_SOUND_COMPONENT), level))
+    comp = actor.get_editor_property("audio_component")
+    path = props.get("Sound")
+    wave = unreal.load_asset(dd_assets.asset_path(dd_assets.game_rel(path))) if path else None
+    if path and wave is None:
+        failures.append("%s: no sound %s (run WasamiDDTools.import_dd_audio)" % (name, path))
+    comp.set_editor_property("sound", wave)
+    ue_props.apply(comp, props, skip=AMBIENT_SOUND_SKIP, failures=failures)
+
+
+def set_audio_volume(actor, zone, name, level, failures):
+    """An AudioVolume placed from the original's of that name: its Settings from the level export, the reverb preset
+    loaded from under /Game/DD/_Engine."""
+    props = dict(_level_props(zone, name, level).get("Settings") or {})
+    settings = actor.get_editor_property("settings")
+    path = props.pop("ReverbEffect", None)
+    if path:
+        effect = unreal.load_asset(dd_assets.asset_path(path.split(".", 1)[0]))
+        if effect is None:
+            failures.append("%s: no reverb %s (run WasamiDDTools.import_dd_audio)" % (name, path))
+        settings.set_editor_property("reverb_effect", effect)
+    ue_props.apply(settings, props, failures=failures)
+    actor.set_editor_property("settings", settings)
+
+
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the Matron
-    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points, the secrets (SECRET_CLASSES) and the music player (MUSIC_PLAYER_CLASSES), each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
+    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points, the secrets (SECRET_CLASSES), the music player (MUSIC_PLAYER_CLASSES), the ambient sounds (AMBIENT_SOUND_CLASS) and
+    the reverb volumes (AUDIO_VOLUME_CLASS), each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS). The secret elevators' sequences are
     set afterwards (link_sequence_players)."""
     placed = []
@@ -836,13 +879,14 @@ def _flow(eas, stage, zone, counts, failures):
         enemy = a["class"] in (SENTRY_CLASS, MATRON_CLASS) or a["class"] in MATRON_CONE_CLASSES
         secret = a["class"] in SECRET_CLASSES
         music = a["class"] in MUSIC_PLAYER_CLASSES
+        ambient = a["class"] == AMBIENT_SOUND_CLASS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
                                                  TARGET_POINT_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
                                                  DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
                               and not doors and not emitter and not special and not enemy and not secret
-                              and not music):
+                              and not music and not ambient):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -986,6 +1030,12 @@ def _flow(eas, stage, zone, counts, failures):
             if unwritten:
                 failures.append("%s: its own values %s are not written" % (a["name"], unwritten))
             counts["musicPlayers"] += 1
+        elif ambient:
+            actor = eas.spawn_actor_from_class(unreal.AmbientSound, _vec(world["location"]), _rot(world["quat_xyzw"]))
+            set_ambient_sound(actor, zone, a["name"], level, failures)
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["ambientSounds"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -999,10 +1049,15 @@ def _flow(eas, stage, zone, counts, failures):
             comp = actor.get_editor_property("brush_component")
             _set_mobility(comp, {"Mobility": a.get("brushMobility")})
             _set_brush_collision(comp, a.get("brushCollision") or {})
-            counts["navVolumes" if a["class"] in NAV_VOLUME_CLASSES else "volumes"] += 1
+            if a["class"] == AUDIO_VOLUME_CLASS:
+                set_audio_volume(actor, zone, a["name"], level, failures)
+                counts["audioVolumes"] += 1
+            else:
+                counts["navVolumes" if a["class"] in NAV_VOLUME_CLASSES else "volumes"] += 1
         actor.set_actor_scale3d(_vec(world["scale"]))
         lift = a["class"] in LIFT_CLASSES or a["class"] in GARAGE_LIFT_CLASSES
         folder = (LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES
+                  else AUDIO_FOLDER if ambient or a["class"] == AUDIO_VOLUME_CLASS
                   else ENEMY_FOLDER if enemy
                   else TRAP_FOLDER if a["class"] in (DEFIB_CLASS, SPEED_BARRIER_CLASS) or a["class"] in SAW_TRAP_CLASSES
                   else SPECIAL_SHARD_FOLDER if special
@@ -1052,7 +1107,7 @@ def _flow(eas, stage, zone, counts, failures):
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
     checkers, lifts, garage lifts, sentries, the Matron with her view cones, altar, ring piece, defibrillators, speed barriers, saw traps, special shards with their spawn
-    points, secrets and music player in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
+    points, secrets, music player, ambient sounds and reverb volumes in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
     secret file lights an earlier build placed on their own), leaving the rest of the level and its baked lighting as they are (none of them is in
     the baked lighting: the doors, the lifts, the altar, the defibrillators' stands, the saw traps, the special shards, the secrets and the
     barriers', the piece's, the traps' and the files' lights are movable), and saves the level."""
@@ -1071,7 +1126,8 @@ def place_flow(zone="Zone1", map_path=""):
               "targetPoints": 0, "doorBreaks": 0,
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
               "matrons": 0, "viewcones": 0, "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
-              "specialSpawnPoints": 0, "secrets": 0, "musicPlayers": 0, "portals": 0, "attached": 0}
+              "specialSpawnPoints": 0, "secrets": 0, "musicPlayers": 0, "ambientSounds": 0, "audioVolumes": 0,
+              "portals": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)

@@ -135,6 +135,23 @@ def sound_concurrency(rel, version=1):
     return asset
 
 
+def reverb_effect(rel, version=1):
+    """A ReverbEffect with the original's settings ('/Engine/EngineSounds/ReverbSettings/BunkerHall'), saved; the
+    presets the hospital's AudioVolumes name are the engine's, so they are rebuilt under /Game/DD/_Engine from the
+    export as the rest of the engine's content is. Returns the asset."""
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        asset = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        asset = _tools().create_asset(name, folder, unreal.ReverbEffect, unreal.ReverbEffectFactory())
+    failures = ue_props.apply(asset, main_export(export_json(rel, version), rel)["props"])
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    EAL.save_asset(target, only_if_is_dirty=False)
+    return asset
+
+
 def sound_attenuation(rel, version=1):
     """A SoundAttenuation asset with the original's settings ('Audio/01_Hotel/01_Lobby_Attenuation'); UE 5.8's defaults
     for what the export leaves out are UE 4.24's (FSoundAttenuationSettings, FBaseAttenuationSettings). Returns the
@@ -154,8 +171,9 @@ def sound_attenuation(rel, version=1):
 
 def sound(rel, version=1):
     """Imports the original's /Game/<rel>.ogg (or an engine sound's) as a SoundWave under /Game/DD and writes the
-    export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names). Returns the
-    package path."""
+    export's Volume, Pitch, looping and ConcurrencySet onto it (making the concurrency assets it names), saved (the
+    import task itself does not save, and a wave left unsaved is gone when the editor opens again). Returns the package
+    path."""
     ogg = content_file(rel, version, ".ogg")
     if not os.path.exists(ogg):
         raise FileNotFoundError(ogg)
@@ -182,6 +200,7 @@ def sound(rel, version=1):
     concurrency = [sound_concurrency(game_rel(p), version) for p in props.get("ConcurrencySet", [])]
     wave.set_editor_property("concurrency_set", concurrency)
     _write_sound_class(wave, props)
+    EAL.save_asset(target, only_if_is_dirty=False)
     return target
 
 

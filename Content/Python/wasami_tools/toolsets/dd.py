@@ -70,12 +70,14 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     def import_dd_audio() -> dict[str, int]:
         """Imports (or re-imports) what the hospital's levels play by themselves: the music the zones' music players
         (WasamiMusicPlayer) crossfade — Zone 1's and Zone 2's regular tracks and the panic track they share — with the
-        original SoundWaves' own settings (looping, volume and the Music sound class). The moving parts', the powers',
-        the enemies' and the UI's sounds come with import_dd_gimmicks, import_dd_powers, import_wasami_enemy and
-        import_dd_ui.
+        original SoundWaves' own settings (looping, volume and the Music sound class); what the levels' AmbientSounds
+        play (Zone 1's city ambience, Zone 2's intercom); and the engine reverb presets Zone 1's AudioVolumes name
+        (BunkerHall, ParkingLot), rebuilt under /Game/DD/_Engine from the original's exports. The moving parts', the
+        powers', the enemies' and the UI's sounds come with import_dd_gimmicks, import_dd_powers, import_wasami_enemy
+        and import_dd_ui.
 
         Returns:
-            How many assets of each kind were made ('music').
+            How many assets of each kind were made ('music', 'ambience', 'reverbs').
         """
         _module("dd_stage")
         _module("dd_assets")
