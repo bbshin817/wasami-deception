@@ -157,6 +157,16 @@ public:
 	float GetFadeStart() const { return FadeStart; }
 	float GetFadeDuration() const { return FadeDuration; }
 
+	/**
+	 * How black the screen is Alpha of the way through the fade (0 to 1). The Matinees' InterpTrackFade holds two
+	 * auto-clamped keys, 0 and 1, whose tangents both come out 0 (Matinee auto-sets its tangents with stationary
+	 * endpoints), so the cubic between them is 3a² - 2a³ — not the camera manager's straight line.
+	 */
+	static float FadeCurve(float Alpha);
+
+	/** How black the screen is now (0 to 1): 0 before the fade, 1 once it is through, and held there. */
+	float GetFadeAmount() const { return FadeAmount; }
+
 	/** Where the clip started (s into it), and how fast the Matinee's camera goes on the scene's time. */
 	float GetClipStart() const { return ClipStart; }
 	float GetMatineeRate() const { return MatineeRate; }
@@ -303,6 +313,10 @@ private:
 	void PlayCaptureSound(int32 Index);
 
 	void StartFade();
+
+	/** Puts the screen's black at Amount (0 to 1) and keeps it there, as the Matinee's bPersistFade does. */
+	void ApplyFade(float Amount);
+
 	void EndCapture();
 
 	UPROPERTY(VisibleAnywhere, Category = "Wasami|Capture")
@@ -341,6 +355,10 @@ private:
 	bool bAimSet = false;
 	float FadeStart = 0.f;
 	float FadeDuration = 0.f;
+	/** The fade going on: how far into it (s) and how black the screen is now. */
+	float FadeTime = 0.f;
+	float FadeAmount = 0.f;
+	bool bFading = false;
 	FTimerHandle FadeTimer;
 	FTimerHandle DeathTimer;
 	/** One per sound of the capture going on (NumSounds); the ones due at t = 0 stay unset. */

@@ -112,6 +112,17 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Capture_2 black at MonkeyJumpscare3's share"), AWasamiCapture::FadeEndShare(1), 2.7699680f / 3.0683897f, 1e-5f);
 	TestEqual(TEXT("Capture_3 fades at MonkeyJumpscare2's share"), AWasamiCapture::FadeStartShare(2), 1.9206896f / 2.4642830f, 1e-5f);
 	TestEqual(TEXT("its length"), AWasamiCapture::MatineeLength(2), 2.4642830f, 1e-5f);
+
+	// The InterpTrackFade's two auto-clamped keys: flat at both ends, half way at the middle, and steepest there.
+	TestEqual(TEXT("the fade opens clear"), AWasamiCapture::FadeCurve(0.f), 0.f);
+	TestEqual(TEXT("and ends black"), AWasamiCapture::FadeCurve(1.f), 1.f);
+	TestEqual(TEXT("half way at the middle"), AWasamiCapture::FadeCurve(0.5f), 0.5f, 1e-6f);
+	TestEqual(TEXT("flat where it starts"), AWasamiCapture::FadeCurve(0.02f), 3.f * 0.02f * 0.02f - 2.f * 0.02f * 0.02f * 0.02f, 1e-6f);
+	TestTrue(TEXT("slower than a straight line at first"), AWasamiCapture::FadeCurve(0.25f) < 0.25f - 0.05f);
+	TestTrue(TEXT("and faster than one past the middle"), AWasamiCapture::FadeCurve(0.75f) > 0.75f + 0.05f);
+	TestTrue(TEXT("never running back"), AWasamiCapture::FadeCurve(0.4f) < AWasamiCapture::FadeCurve(0.6f));
+	TestEqual(TEXT("clear before it opens"), AWasamiCapture::FadeCurve(-1.f), 0.f);
+	TestEqual(TEXT("black after it is through"), AWasamiCapture::FadeCurve(2.f), 1.f);
 	TestEqual(TEXT("the face after the Gold Watcher's 0.2, 0.85 and 0.1 s"), AWasamiCapture::FaceDeathDelay, 1.15f, 1e-6f);
 
 	struct FCase
@@ -441,6 +452,52 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("capture 2: down on the floor by the fade"), Floor->GetView()->GetRelativeLocation().Z < 60.);
 	Floor->Destroy();
+
+	// The black comes on over the fade on the Matinee's curve, where the camera manager's own fade is a straight line.
+	AWasamiCapture* Fading = World->SpawnActor<AWasamiCapture>(AWasamiCapture::StaticClass(), FTransform(AWasamiCapture::RoomLocation));
+	Fading->Start(nullptr, nullptr, 0);
+	const float Fade = Fading->GetFadeDuration();
+	if (TestTrue(TEXT("the fade takes a while"), Fade > 0.f))
+	{
+		// Up to just before the fade in coarse steps, then 64 to a fade's length through it.
+		constexpr float Coarse = 0.02f;
+		for (float Time = 0.f; Time + Coarse < Fading->GetFadeStart(); Time += Coarse)
+		{
+			Wrapper.TickTestWorld(Coarse);
+		}
+		TestEqual(TEXT("the screen clear until the fade"), Fading->GetFadeAmount(), 0.f);
+
+		const float Fine = Fade / 64.f;
+		TArray<float> Amounts;
+		while (Amounts.Num() < 192 && (Amounts.Num() == 0 || Amounts.Last() < 1.f))
+		{
+			Wrapper.TickTestWorld(Fine);
+			Amounts.Add(Fading->GetFadeAmount());
+		}
+		const int32 First = Amounts.IndexOfByPredicate([](float Amount) { return Amount > 0.f; });
+		const int32 Black = Amounts.IndexOfByPredicate([](float Amount) { return Amount >= 1.f; });
+		if (TestTrue(TEXT("black in the end"), First != INDEX_NONE && Black > First))
+		{
+			const int32 Span = Black - First;
+			TestTrue(FString::Printf(TEXT("over the fade's own length (%d of 64 steps)"), Span), Span >= 60 && Span <= 68);
+			bool bForward = true;
+			for (int32 Index = First; Index < Black; ++Index)
+			{
+				bForward &= Amounts[Index] <= Amounts[Index + 1] && Amounts[Index] <= 1.f;
+			}
+			TestTrue(TEXT("never running back"), bForward);
+			// 3a² - 2a³ against the straight line: 0.156 at a quarter through, 0.844 at three.
+			TestTrue(FString::Printf(TEXT("easing in (%.3f a quarter through)"), Amounts[First + Span / 4]),
+				Amounts[First + Span / 4] < 0.21f);
+			TestTrue(FString::Printf(TEXT("and out (%.3f at three quarters)"), Amounts[First + 3 * Span / 4]),
+				Amounts[First + 3 * Span / 4] > 0.79f);
+			TestEqual(TEXT("half way at the middle"), Amounts[First + Span / 2], 0.5f, 0.05f);
+		}
+		// Held black from there.
+		Wrapper.TickTestWorld(0.1f);
+		TestEqual(TEXT("and held black"), Fading->GetFadeAmount(), 1.f);
+	}
+	Fading->Destroy();
 	return true;
 }
 

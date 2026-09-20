@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 2399e97
 started: 2026-09-21 05:29
-updated: 2026-09-21 06:10
+updated: 2026-09-21 05:55
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -43,7 +43,7 @@ updated: 2026-09-21 06:10
 
 | 項目 | 原作の値 | 本作 | 対応 |
 | --- | --- | --- | --- |
-| 暗転の曲線 | `InterpTrackFade_0` の 2 キーは `CIM_CurveAutoClamped` で**接線が両端 0** → 三次エルミート = smoothstep | `StartCameraFade` の**直線**（`StartFade` に TODO(仮) つき） | ステップ 2 |
+| ~~暗転の曲線~~ | ~~2 キーは接線 0 の自動クランプ → `3a² − 2a³`~~ | ~~`StartCameraFade` の直線~~ | ステップ 2 で済み |
 | 被写界深度 | `JumpscareCam` が `FocalDistance` 142.943→10（0.128 で保持を抜け 0.2248 で到達）・`FocalRegion` 571.429→100（0→0.2315）・`FarBlurSize` 16.152・Near/FarTransitionRegion は既定（300/500）を上書き。方式は 01_Hotel の **bUnbound な `PostProcessVolume_1`** が `DOFM_Gaussian`・`Fstop` 4.0 を敷き、カメラは方式を上書きしないので **Gaussian** | **何も入れていない** | ステップ 3 |
 | 顔の灯 | `jumpscarelight`・`jumpscarelight_5`: 猿の頭のソケット `Monkey_Head_TopSHJnt` に付く点光源 2 灯、強さ **15**・届く距離 **15**・影なし・ソケット系で ±4.416/8.515/11.875 と ±4.399/8.324/11.747（猿のスケール 4 なので世界では ±17.7 / 34.1 / 47.2 cm） | 1 灯の仮（強さ 300・届く距離 200・頭 +(50,0,30)） | ステップ 4 |
 
@@ -59,10 +59,8 @@ updated: 2026-09-21 06:10
 ## 計画
 
 - [x] 1. 原作の 6 本と関係アクタの値を全部書き出し、突き合わせ表を作る（上の表。残りのステップもここで立て直した）
-- [ ] 2. 暗転を原作の曲線にする ← 次
-  - `StartFade` の `StartCameraFade`（直線）をやめ、Matinee と同じ三次エルミート（両端の接線 0 = smoothstep）で毎フレーム `SetManualCameraFade` する。終わったら黒を保持（`bPersistFade` = 保持つき）。顔（`FadeDuration` 0）は即黒のまま
-  - 変更予定: `Source/wasami_deception/WasamiCapture.h`・`.cpp`、`Tests/WasamiCaptureTests.cpp`（曲線の値の検査）
-- [ ] 3. 被写界深度を入れる
+- [x] 2. 暗転を原作の曲線にした（`FadeCurve` = `3a² − 2a³`、`Tick` から毎フレーム `SetManualCameraFade`。実装記録 07 の「暗転」）
+- [ ] 3. 被写界深度を入れる ← 次
   - UE 5.8 の Gaussian 系（`FocalRegion`・`Near/FarTransitionRegion`・`FarBlurSize`）は **Mobile 専用**（`Engine/Source/Runtime/Engine/Classes/Engine/Scene.h` の 2363〜 が `Lens|Mobile Depth of Field`）で desktop では効かない。cinematic の `DepthOfFieldFocalDistance` + `Fstop` に写す
   - 仮の対応: `FocalDistance` = 原作の（焦点 + 領域 ÷ 2）（= 428.66 → 60 cm。Gaussian のはっきり写る帯の中央）× カメラの倍率 `FrameScale`、`Fstop` = 4.0（`PostProcessVolume_1` の値）。時刻は原作のキーのまま（Matinee の時間で評価）
   - 変更予定: `WasamiCapture.h`・`.cpp`、`Tests/WasamiCaptureTests.cpp`
@@ -74,7 +72,7 @@ updated: 2026-09-21 06:10
 
 ## 次にやること
 
-ステップ 2（暗転の曲線）。`Source/wasami_deception/WasamiCapture.cpp` の `StartFade`（709 行の手前）が `StartCameraFade` で直線に暗くしている。原作の 2 キーは接線 0 の `CIM_CurveAutoClamped` なので `FMath::CubicInterp(0, 0, 1, 0, alpha)`（= smoothstep）で毎フレーム `SetManualCameraFade(Amount, FLinearColor::Black, false)` に置き換える。暗転の始まりと長さ（`FadeStart`・`FadeDuration`）は今の計算のまま。
+ステップ 3（被写界深度）。上の計画の仮のとおり、`JumpscareCam` の DOF を `View`（`UCameraComponent`）の `PostProcessSettings` に入れる: `bOverride_DepthOfFieldFocalDistance` と `DepthOfFieldFocalDistance`（原作の焦点トラックの値 + 領域トラックの値 ÷ 2 を Matinee の時間で評価し、寄りの倍率 `FrameScale` を掛ける）、`DepthOfFieldFstop` = 4.0。原作のトラックは `FocalDistance` 142.943→10（0.128 で保持を抜け 0.2248 で到達）・`FocalRegion` 571.429→100（0→0.2315）で、どちらも `01_Hotel.full.json` の `JumpscareCam` の `InterpTrackFloatProp`。時刻は場面の早回しに乗せず Matinee の時間（`SceneTime * MatineeRate`）で読む。顔（ゴールドウォッチャー）は DOF を持たないので入れない。
 
 ## 決定事項
 
@@ -88,11 +86,12 @@ updated: 2026-09-21 06:10
 
 ## 再開時の注意
 
-- 長時間処理は無い。ステップ 2〜4 は C++ の変更なので、書き終えたら `python Tools/editor_cycle.py` でビルドして開き直す（尋ねずに走らせてよい）。
+- 長時間処理は無い。ステップ 3・4 は C++ の変更なので、書き終えたら `python Tools/editor_cycle.py` でビルドして開き直す（尋ねずに走らせてよい。ビルドは 100 秒ほど）。
 - 本作の捕獲の実装は `Source/wasami_deception/WasamiCapture.h`・`.cpp`、説明は実装記録 07 の「捕獲の演出」。テストは `Source/wasami_deception/Tests/WasamiCaptureTests.cpp`。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（20 件、ステップ 2 で実行）
+- C++ ビルド: OK（`Tools/editor_cycle.py`、ステップ 2）
+- Automation: `Wasami.Capture` の 5 件が通った（ステップ 2。`UnrealEditor-Cmd -ExecCmds="Automation RunTests Wasami.Capture;quit" -Unattended -NullRHI` はエディタを開いたままでも走る）
+- エディタでの確認（PIE の 4 本通し）: ステップ 5 でまとめて行う

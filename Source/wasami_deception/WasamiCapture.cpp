@@ -606,6 +606,13 @@ void AWasamiCapture::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	Elapsed += DeltaSeconds;
 	UpdateScene(Elapsed, DeltaSeconds);
+	if (bFading)
+	{
+		FadeTime += DeltaSeconds;
+		const float Alpha = FadeTime / FMath::Max(FadeDuration, KINDA_SMALL_NUMBER);
+		ApplyFade(FadeCurve(Alpha));
+		bFading = Alpha < 1.f;
+	}
 }
 
 void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
@@ -675,15 +682,29 @@ void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
 	FaceLight->SetRelativeLocation(Head + FaceLightOffset);
 }
 
+float AWasamiCapture::FadeCurve(float Alpha)
+{
+	return FMath::CubicInterp(0.f, 0.f, 1.f, 0.f, FMath::Clamp(Alpha, 0.f, 1.f));
+}
+
 void AWasamiCapture::StartFade()
 {
-	// TODO(仮): the Matinee's fade eases (auto-clamped keys); the camera manager's is linear. The Gold Watcher's
-	// UMG_BlackFade_3 is black at once. Held black until the level opens again.
+	// The Matinee's fade eases in and out of its two keys, which the camera manager's own fade cannot do: black by
+	// hand each frame instead, on the Matinee's curve. The Gold Watcher's UMG_BlackFade_3 is black at once (0 long).
+	// Held black from there until the level opens again, as bPersistFade does.
+	FadeTime = 0.f;
+	bFading = FadeDuration > 0.f;
+	ApplyFade(bFading ? 0.f : 1.f);
+}
+
+void AWasamiCapture::ApplyFade(float Amount)
+{
+	FadeAmount = Amount;
 	if (APlayerController* Controller = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		if (APlayerCameraManager* Camera = Controller->PlayerCameraManager)
 		{
-			Camera->StartCameraFade(FadeDuration > 0.f ? 0.f : 1.f, 1.f, FadeDuration, FLinearColor::Black, false, true);
+			Camera->SetManualCameraFade(Amount, FLinearColor::Black, false);
 		}
 	}
 }
@@ -696,6 +717,12 @@ void AWasamiCapture::EndCapture()
 	{
 		Timers.ClearTimer(FadeTimer);
 		StartFade();
+	}
+	// The Matinees are all black by the death screen; nothing ticks the last frames of the fade in after this.
+	if (bFading)
+	{
+		bFading = false;
+		ApplyFade(1.f);
 	}
 	SetActorTickEnabled(false);
 
