@@ -51,6 +51,8 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 | `AllToolsets` | エンジン同梱のツールセット一式（アクタ・アセット・マテリアル・シーケンサなど） |
 | `LiveCodingToolset` | MCP から Live Coding のコンパイルを走らせる |
 
+道具の 3 つ（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）は `ModelingToolsEditorMode` と同じく `"TargetAllowList": ["Editor"]` を付けてある（2026-09-20）。`ModelContextProtocol` は Runtime のモジュールを 2 つ持つので、付けないと製品のビルドに MCP が同梱される。ゲームのモジュールはどれにも依存していないので、製品から外して困らない。
+
 `.mcp.json` は Claude Code の接続先（`http://127.0.0.1:8000/mcp`、HTTP）。ポートの衝突については `.claude/guides/unreal-workflow.md`。
 
 ## 設定（`Config/`）
@@ -67,6 +69,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
 - **`DefaultGame.ini`**: CommonUI の設定とプロジェクト ID に、`[/Script/EngineSettings.GeneralProjectSettings]` の `ProjectVersion=1.0.0`（タイトルの右上の版の文字。2026-09-20 のユーザーの回答。14 記録）。
+  - **`[/Script/UnrealEd.ProjectPackagingSettings]` の節は置かない**（2026-09-20 に理由をファイルにも書いた）。UE 5.8 のクックは、マップの一覧（`MapsToCook`・`[AllMaps]`）も `DirectoriesToAlwaysCook` も無いときだけ「`/Game` を全部入れる」経路に落ちる（`CookOnTheFlyServer.cpp` の `bCookAllByDefault = true` と、`CollectFilesToCook` の終わりの `if (bCookAll || (bCookAllByDefault && NumFilesAddedByCommandLineOrGameCallback == 0))`）。本作は **C++ が `/Game` のパスを直に名指しして読むアセットが 237 個**あり、そのうち 195 個はどのマップからも参照されていない（アセットレジストリから辿れない）ので、Project Settings の「Maps to Cook」「Directories to Always Cook」を埋めるとその数え上げが 0 でなくなって全部入れる経路が消え、195 個が黙って落ちる。絞る必要が出たら `bCookAll=True` にする。`/Game` の 1134 パッケージのうち、3 つのマップか C++ の名指しから辿れるのは 1106（残り 28 は `Pipeline/Debug` の検証用の材質 17 など）。
 - **`DefaultEditor.ini`**: テンプレートのまま。
 
 ## 露出（2026-09-16）
@@ -173,3 +176,4 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - 2026-09-19: 依存に `AIModule`・`GameplayTasks`・`NavigationSystem` を足した（敵の判断。作業一覧の項目 7 のステップ 2）
 - 2026-09-19: 非公開の依存に `EngineSettings` を、`DefaultGame.ini` に `ProjectVersion`（仮に 0.1.0）を足した（タイトルの版の文字。作業一覧の項目 17 のステップ 2）
 - 2026-09-19: 非公開の依存に `AnimationCore` を足した（Matron の LookAt。作業一覧の項目 11 のステップ 2）
+- 2026-09-20: パッケージの下ごしらえを確かめた（作業一覧の項目 21 のステップ 7）。道具のプラグイン 3 つを Editor ターゲット限定にし、パッケージ設定を空のままにする理由を `DefaultGame.ini` に書いた。クックとビルドは配布の話なので行っていない

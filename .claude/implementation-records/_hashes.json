@@ -1,9 +1,9 @@
 {
   "00-overview.md": {
-    "wasami_deception.uproject": "0f6eeeb069413c61c7e744c3d5df63f67944e65d",
+    "wasami_deception.uproject": "a2af4bff9156893997564463ebbdf04d2e64fb06",
     ".mcp.json": "d2e3ee5c9642aabc67459c39080c1497ba12eaec",
     "Config/DefaultEngine.ini": "5a2a650d65e3213a28ffc5e359254fbc57a3a75d",
-    "Config/DefaultGame.ini": "cc1cb0848569758b3537c3e9a815e0bea0fee5de",
+    "Config/DefaultGame.ini": "78b8baa80c8b83073dc9f26dc88a8793e0af0607",
     "Config/DefaultInput.ini": "a919105de6016a7a1094346d603c99a3274d5083",
     "Config/DefaultEditor.ini": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
     "Config/DefaultEditorPerProjectUserSettings.ini": "d8862707d73e7faf99ca9c07d761499418a11371",
