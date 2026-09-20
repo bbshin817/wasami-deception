@@ -461,6 +461,145 @@ bool FWasamiEnemyAnimClipsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyAnimChaseVariationsTest, "Wasami.Enemy.Anim.ChaseVariations",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyAnimChaseVariationsTest::RunTest(const FString& Parameters)
+{
+	// 追跡中のランダムの動き (the item 26): the six clips Chase_PickUp to Chase_Slide.
+	TestEqual(TEXT("six variations"), WasamiEnemyAnim::NumChaseVariations, 6);
+	TestEqual(TEXT("from Chase_PickUp"), WasamiEnemyAnim::FirstChaseVariation, static_cast<int32>(WasamiEnemyClip::ChasePickUp));
+	for (int32 Variation = 0; Variation < WasamiEnemyAnim::NumChaseVariations; ++Variation)
+	{
+		const TCHAR* const Name = WasamiEnemyAnim::ClipNames[WasamiEnemyAnim::FirstChaseVariation + Variation];
+		TestTrue(FString::Printf(TEXT("%s is a chase clip"), Name), FString(Name).StartsWith(TEXT("Chase_")));
+	}
+
+	// The play rate holds the clip's feet to the chase's speed: its own speed (its forward move over its length, in
+	// enemy-wasami-motions.md) grown with the mesh, within the run's limits.
+	const float Chase = AWasamiEnemy::MaxSpeed;
+	const TArray<float> Lengths = ImportedLengths();
+	for (int32 Variation = 0; Variation < WasamiEnemyAnim::NumChaseVariations; ++Variation)
+	{
+		const int32 Clip = WasamiEnemyAnim::FirstChaseVariation + Variation;
+		const TCHAR* const Name = WasamiEnemyAnim::ClipNames[Clip];
+		const float Wanted = Chase / (WasamiEnemyAnim::ChaseVariationSpeeds[Variation] * Grown);
+		const float Rate = WasamiEnemyAnim::ChaseVariationRate(Clip, Chase);
+		TestEqual(FString::Printf(TEXT("the rate of %s"), Name), Rate,
+			FMath::Clamp(Wanted, WasamiEnemyAnim::RunRateMin, WasamiEnemyAnim::RunRateMax), 1e-4f);
+		// How far the body moves while it plays, which is the clearance a chance asks for ahead of it: 2.9 to 6.3 m.
+		const float Moves = Chase * Lengths[Clip] / Rate;
+		TestTrue(FString::Printf(TEXT("%s carries the body %.0f cm"), Name, Moves), Moves > 250.f && Moves < 700.f);
+	}
+	// Chase_Slide keeps up at 1.66, Chase_Charge is faster than the chase and plays at 0.78, and Chase_VaultLand, far
+	// too slow for it, plays at the limit while the body slides through the rest.
+	TestEqual(TEXT("the rate of Chase_Slide"), WasamiEnemyAnim::ChaseVariationRate(WasamiEnemyClip::ChaseSlide, Chase), 1.665f, 1e-2f);
+	TestEqual(TEXT("the rate of Chase_Charge"), WasamiEnemyAnim::ChaseVariationRate(WasamiEnemyClip::ChaseCharge, Chase), 0.777f, 1e-2f);
+	TestEqual(TEXT("Chase_VaultLand plays at the limit"),
+		WasamiEnemyAnim::ChaseVariationRate(WasamiEnemyClip::ChaseVaultLand, Chase), WasamiEnemyAnim::RunRateMax);
+	TestTrue(TEXT("which is under what it would want"),
+		Chase / (WasamiEnemyAnim::ChaseVariationSpeeds[WasamiEnemyClip::ChaseVaultLand - WasamiEnemyAnim::FirstChaseVariation] * Grown)
+			> WasamiEnemyAnim::RunRateMax);
+	// A body barely moving holds at the low limit, and a clip that is no variation, or no speed, plays as it is.
+	TestEqual(TEXT("a crawl holds at the low limit"), WasamiEnemyAnim::ChaseVariationRate(WasamiEnemyClip::ChaseCharge, 10.f),
+		WasamiEnemyAnim::RunRateMin);
+	TestEqual(TEXT("the run is no variation"), WasamiEnemyAnim::ChaseVariationRate(WasamiEnemyClip::Run, Chase), 1.f);
+	TestEqual(TEXT("standing still"), WasamiEnemyAnim::ChaseVariationRate(WasamiEnemyClip::ChaseSlide, 0.f), 1.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyChaseChancesTest, "Wasami.Enemy.Chase.Chances",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyChaseChancesTest::RunTest(const FString& Parameters)
+{
+	// The chances of 追跡中のランダムの動き, moved on by the decisions (every 0.5 s).
+	constexpr float Decision = AWasamiEnemy::DecisionInterval;
+	constexpr int32 First = WasamiEnemyAnim::FirstChaseVariation;
+	constexpr int32 Count = WasamiEnemyAnim::NumChaseVariations;
+	TestEqual(TEXT("the gaps start at 6 s"), FWasamiChaseVariations::MinGap, 6.f);
+	TestEqual(TEXT("and end at 10 (about eight on average)"), FWasamiChaseVariations::MaxGap, 10.f);
+
+	FWasamiChaseVariations Chances;
+	Chances.Init(20260920);
+	TestEqual(TEXT("no chance without a chase"), Chances.Advance(false, Decision), static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("and no wait"), Chances.GetWait(), FWasamiChaseVariations::NotChasing);
+
+	// The decision a chase begins with draws its first gap; the chance comes on the first decision past it.
+	TestEqual(TEXT("the first decision of a chase plays nothing"), Chances.Advance(true, Decision), static_cast<int32>(INDEX_NONE));
+	const float FirstGap = Chances.GetWait();
+	TestTrue(FString::Printf(TEXT("a gap of %.2f s"), FirstGap),
+		FirstGap >= FWasamiChaseVariations::MinGap && FirstGap <= FWasamiChaseVariations::MaxGap);
+	int32 Clip = INDEX_NONE;
+	float Waited = 0.f;
+	while (Clip == INDEX_NONE && Waited < FWasamiChaseVariations::MaxGap + Decision)
+	{
+		Clip = Chances.Advance(true, Decision);
+		Waited += Decision;
+	}
+	TestTrue(TEXT("one of the six comes"), Clip >= First && Clip < First + Count);
+	TestTrue(FString::Printf(TEXT("on the first decision past the gap (%.2f s)"), Waited),
+		Waited >= FirstGap && Waited < FirstGap + Decision);
+
+	// Nothing played (the way ahead was blocked): the chance stands open and the next decision draws again.
+	TestEqual(TEXT("the chance stands open"), Chances.GetWait(), 0.f);
+	const int32 Open = Chances.Advance(true, Decision);
+	TestTrue(TEXT("which draws one of the six again"), Open >= First && Open < First + Count);
+	TestEqual(TEXT("nothing has played yet"), Chances.GetLast(), static_cast<int32>(INDEX_NONE));
+
+	// Played: the next chance is a gap away and the draws go around this clip. A chance let go (Skip) is a gap away
+	// too, and leaves the clip to go around as it was.
+	Chances.Played(Open);
+	TestEqual(TEXT("the clip played"), Chances.GetLast(), Open);
+	TestTrue(TEXT("the next chance is a gap away"), Chances.GetWait() >= FWasamiChaseVariations::MinGap
+		&& Chances.GetWait() <= FWasamiChaseVariations::MaxGap);
+	Chances.Advance(true, FWasamiChaseVariations::MaxGap);
+	Chances.Skip();
+	TestEqual(TEXT("a chance let go changes nothing but the wait"), Chances.GetLast(), Open);
+	TestTrue(TEXT("which is a gap away too"), Chances.GetWait() >= FWasamiChaseVariations::MinGap
+		&& Chances.GetWait() <= FWasamiChaseVariations::MaxGap);
+
+	// Over many chances: each of the six comes up, never twice in a row, and the gaps average about 8 s.
+	int32 Draws[Count] = {};
+	int32 Repeats = 0;
+	int32 OutOfRange = 0;
+	float GapSum = 0.f;
+	constexpr int32 Many = 2000;
+	for (int32 Chance = 0; Chance < Many; ++Chance)
+	{
+		const int32 Before = Chances.GetLast();
+		// A decision long past the chance, so that every turn of the loop draws one.
+		const int32 Drawn = Chances.Advance(true, FWasamiChaseVariations::MaxGap);
+		if (Drawn < First || Drawn >= First + Count)
+		{
+			++OutOfRange;
+			continue;
+		}
+		Repeats += Drawn == Before ? 1 : 0;
+		++Draws[Drawn - First];
+		Chances.Played(Drawn);
+		const float Gap = Chances.GetWait();
+		OutOfRange += Gap < FWasamiChaseVariations::MinGap || Gap > FWasamiChaseVariations::MaxGap ? 1 : 0;
+		GapSum += Gap;
+	}
+	TestEqual(TEXT("every draw is one of the six, every gap 6 to 10 s"), OutOfRange, 0);
+	TestEqual(TEXT("never the clip before"), Repeats, 0);
+	for (int32 Variation = 0; Variation < Count; ++Variation)
+	{
+		TestTrue(FString::Printf(TEXT("%s comes up (%d of %d)"), WasamiEnemyAnim::ClipNames[First + Variation],
+			Draws[Variation], Many), Draws[Variation] > Many / Count / 2);
+	}
+	TestEqual(TEXT("about 8 s apart"), GapSum / Many, 8.f, 0.15f);
+
+	// The chase is over: the chances stop with it, and the next chase waits a whole gap and may open with any of the six.
+	Chances.Advance(false, Decision);
+	TestEqual(TEXT("no wait once the chase is over"), Chances.GetWait(), FWasamiChaseVariations::NotChasing);
+	TestEqual(TEXT("nor a clip to go around"), Chances.GetLast(), static_cast<int32>(INDEX_NONE));
+	Chances.Advance(true, Decision);
+	TestTrue(TEXT("the next chase waits a whole gap"), Chances.GetWait() >= FWasamiChaseVariations::MinGap);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorDefaultsTest, "Wasami.Enemy.Actor.Defaults",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
@@ -973,6 +1112,82 @@ bool FWasamiEnemyActorChase06Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("then Patrol"), Nurse->GetCurrentState() == EWasamiEnemyState::Patrol);
 	TickTo(Now + Step);
 	TestTrue(TEXT("and chasing again"), Nurse->PointOfInterest.Equals(Player->GetActorLocation(), 1e-3));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorChaseVariationTest, "Wasami.Enemy.Actor.ChaseVariation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyActorChaseVariationTest::RunTest(const FString& Parameters)
+{
+	// A game world without navigation data (as Actor.Choice): the engine's NavMesh ray is blocked by default, so no
+	// chance ever finds its way ahead clear and each stands open. What plays is seen in PIE (the item 26's step 2).
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	constexpr float Step = 0.0625f;
+	float Now = 0.f;
+	auto TickTo = [&Wrapper, &Now](float Time)
+	{
+		while (Now < Time - Step / 2.f)
+		{
+			Wrapper.TickTestWorld(Step);
+			Now += Step;
+		}
+	};
+
+	const FVector InFront(1000., 0., 500.);
+	ACharacter* Player = World->SpawnActor<ACharacter>(InFront, FRotator::ZeroRotator);
+	APlayerController* Controller = World->SpawnActor<APlayerController>(FVector::ZeroVector, FRotator::ZeroRotator);
+	AWasamiEnemy* Enemy = AWasamiEnemy::SpawnEnemy(World, FVector(0., 0., 500.), 0.f);
+	if (!TestNotNull(TEXT("the player"), Player) || !TestNotNull(TEXT("a controller"), Controller)
+		|| !TestNotNull(TEXT("a spawned enemy"), Enemy))
+	{
+		return false;
+	}
+	Controller->SetPawn(Player);
+	Enemy->GetCharacterMovement()->GravityScale = 0.f;
+	const UWasamiEnemyAnimInstance* Anim = Enemy->GetEnemyAnim();
+	if (!TestNotNull(TEXT("its animation"), Anim))
+	{
+		return false;
+	}
+	TestTrue(TEXT("an enemy may play a variation"), Enemy->CanPlayChaseVariation());
+	TestFalse(TEXT("no way ahead is clear without navigation"), Enemy->IsWayAheadClear(100.f));
+	TestEqual(TEXT("no chances before the chase"), Enemy->GetChaseVariations().GetWait(), FWasamiChaseVariations::NotChasing);
+
+	// The decisions chase from 1.125 s (Actor.Choice), so the first chance has come by 10 s after it. Nothing plays,
+	// as nothing clears the way, and the chance stands open.
+	TickTo(1.125f + FWasamiChaseVariations::MaxGap + AWasamiEnemy::DecisionInterval);
+	TestTrue(TEXT("chasing"), Enemy->IsChasing());
+	TestEqual(TEXT("a chance stands open"), Enemy->GetChaseVariations().GetWait(), 0.f);
+	TestEqual(TEXT("with nothing played"), Enemy->GetChaseVariations().GetLast(), static_cast<int32>(INDEX_NONE));
+	TestFalse(TEXT("and nothing playing over the run"), Anim->IsPlayingOnce());
+
+	// A stun drops the chances; the chase they start over with waits a whole gap.
+	IWasamiEnemyInterface::Execute_SetState(Enemy, EWasamiEnemyState::Stun, false);
+	TickTo(Now + AWasamiEnemy::DecisionInterval + Step);
+	TestTrue(TEXT("stunned"), Enemy->IsStunRunning());
+	TestEqual(TEXT("no chances while stunned"), Enemy->GetChaseVariations().GetWait(), FWasamiChaseVariations::NotChasing);
+
+	// The parking lot's nurses take no chance while they stab at the doors.
+	const FTransform At(FRotator::ZeroRotator, FVector(0., 500., 500.));
+	AWasamiEnemy06Chase* Nurse = World->SpawnActorDeferred<AWasamiEnemy06Chase>(AWasamiEnemy06Chase::StaticClass(), At,
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!TestNotNull(TEXT("a spawned nurse"), Nurse))
+	{
+		return false;
+	}
+	Nurse->bCanSpawn = true;
+	Nurse->FinishSpawning(At);
+	Nurse->GetCharacterMovement()->GravityScale = 0.f;
+	TestTrue(TEXT("a nurse of the parking lot may"), Nurse->CanPlayChaseVariation());
+	Nurse->bAttackDoor = true;
+	TestFalse(TEXT("but not while it stabs at the doors"), Nurse->CanPlayChaseVariation());
 	return true;
 }
 

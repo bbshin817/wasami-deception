@@ -55,6 +55,25 @@ namespace WasamiEnemyAnim
 		return INDEX_NONE;
 	}
 
+	const float ChaseVariationSpeeds[NumChaseVariations] = {
+		326.f,  // Chase_PickUp: 4.02 m over 1.233 s
+		407.f,  // Chase_Charge: 2.17 m over 0.533 s
+		220.f,  // Chase_VaultRoll: 4.61 m over 2.100 s
+		52.f,   // Chase_VaultLand: 1.24 m over 2.400 s
+		189.f,  // Chase_RunFast: 3.46 m over 1.833 s
+		190.f,  // Chase_Slide: 3.35 m over 1.767 s
+	};
+
+	float ChaseVariationRate(int32 Clip, float Speed)
+	{
+		const int32 Variation = Clip - FirstChaseVariation;
+		if (Variation < 0 || Variation >= NumChaseVariations || !(Speed > 0.f))
+		{
+			return 1.f;
+		}
+		return FMath::Clamp(Speed / (ChaseVariationSpeeds[Variation] * StrideScale), RunRateMin, RunRateMax);
+	}
+
 	FSoftObjectPath ClipPath(int32 Clip)
 	{
 		check(Clip >= 0 && Clip < WasamiEnemyClip::Num);

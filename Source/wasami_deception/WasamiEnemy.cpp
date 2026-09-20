@@ -32,6 +32,50 @@ namespace
 	const FVector NurseMarkScale(2.5238659381866455, 2.5238659381866455, 10.);
 }
 
+void FWasamiChaseVariations::Init(int32 Seed)
+{
+	*this = FWasamiChaseVariations();
+	Random.Initialize(Seed);
+}
+
+int32 FWasamiChaseVariations::Advance(bool bChasing, float Seconds)
+{
+	if (!bChasing)
+	{
+		// The next chase starts over: a whole gap before its first chance, which may draw any of the six.
+		Wait = NotChasing;
+		Last = INDEX_NONE;
+		return INDEX_NONE;
+	}
+	if (Wait < 0.f)
+	{
+		Wait = DrawGap();
+		return INDEX_NONE;
+	}
+	Wait = FMath::Max(Wait - Seconds, 0.f);
+	return Wait > 0.f ? INDEX_NONE : DrawClip();
+}
+
+void FWasamiChaseVariations::Played(int32 Clip)
+{
+	Last = Clip;
+	Wait = DrawGap();
+}
+
+int32 FWasamiChaseVariations::DrawClip()
+{
+	// Each of the six is as likely as the rest, but never the one played before: the draw goes among the other five and
+	// the clip steps over it.
+	const bool bAvoidLast = Last != INDEX_NONE;
+	int32 Clip = WasamiEnemyAnim::FirstChaseVariation
+		+ Random.RandRange(0, WasamiEnemyAnim::NumChaseVariations - (bAvoidLast ? 2 : 1));
+	if (bAvoidLast && Clip >= Last)
+	{
+		++Clip;
+	}
+	return Clip;
+}
+
 AWasamiEnemy::AWasamiEnemy()
 {
 	Tags.Add(EnemyTag);
@@ -126,6 +170,7 @@ void AWasamiEnemy::BeginNurse()
 
 	// BP_06_ReaperNurse: Generate Random Point, then Make Choice every half second.
 	GenerateRandomPoint();
+	ChaseVariations.Init(FMath::Rand());
 	GetWorldTimerManager().SetTimer(DecisionTimer, this, &AWasamiEnemy::MakeChoice, DecisionInterval, true);
 }
 
@@ -172,25 +217,74 @@ void AWasamiEnemy::MakeChoice()
 	if (State == EWasamiEnemyState::Stun)
 	{
 		StartStun();
-		return;
 	}
 	// The pill throw (bThrowing) is not made. A sequence: first what it saw before, then what it sees now; its last
 	// step, the invisibility past 1500 cm from the player (Cloak), is not made either.
-	if (bSeenPlayerRecently)
-	{
-		ChasePlayer();
-		// RetriggerableDelay(3): each chase starts it over, so the player is forgotten only when the decisions stop
-		// chasing (a stun) or Player Vanish clears Seen Player Recently.
-		GetWorldTimerManager().SetTimer(ForgetTimer, this, &AWasamiEnemy::ForgetPlayer, ForgetSeconds, false);
-	}
 	else
 	{
-		NotSeeingPlayer();
+		if (bSeenPlayerRecently)
+		{
+			ChasePlayer();
+			// RetriggerableDelay(3): each chase starts it over, so the player is forgotten only when the decisions stop
+			// chasing (a stun) or Player Vanish clears Seen Player Recently.
+			GetWorldTimerManager().SetTimer(ForgetTimer, this, &AWasamiEnemy::ForgetPlayer, ForgetSeconds, false);
+		}
+		else
+		{
+			NotSeeingPlayer();
+		}
+		if (CanSeePlayer())
+		{
+			bSeenPlayerRecently = true;
+		}
 	}
-	if (CanSeePlayer())
+	// Not the nurse's: this game's chase variations (the item 26), which every decision moves on.
+	UpdateChaseVariation();
+}
+
+void AWasamiEnemy::UpdateChaseVariation()
+{
+	const int32 Clip = ChaseVariations.Advance(IsChasing() && State != EWasamiEnemyState::Stun, DecisionInterval);
+	if (Clip == INDEX_NONE)
 	{
-		bSeenPlayerRecently = true;
+		return;
 	}
+	UWasamiEnemyAnimInstance* Anim = GetEnemyAnim();
+	// A chance is let go when there is nothing to play it with, when something else plays once (the parking lot's stab
+	// at the doors, or a variation still running) or when this enemy may not.
+	if (!Anim || Anim->IsPlayingOnce() || !CanPlayChaseVariation())
+	{
+		ChaseVariations.Skip();
+		return;
+	}
+	// The chase's speed, which the variation does not change (the user's instruction of 2026-09-18), and the rate that
+	// keeps the clip's feet with it. The clips are in-place forms, so the body moves this far while it plays.
+	const float Speed = GetCharacterMovement()->MaxWalkSpeed;
+	const float Rate = WasamiEnemyAnim::ChaseVariationRate(Clip, Speed);
+	const float Seconds = Rate > 0.f ? Anim->GetAnimState().GetLength(Clip) / Rate : 0.f;
+	if (Seconds <= 0.f)
+	{
+		// The clip has not loaded (the editor's level): nothing to play.
+		ChaseVariations.Skip();
+		return;
+	}
+	if (!IsWayAheadClear(Speed * Seconds))
+	{
+		// The chance stays open: the next decision draws again, and one of them plays as soon as the way clears.
+		return;
+	}
+	Anim->PlayOnce(FName(WasamiEnemyAnim::ClipNames[Clip]), Rate);
+	ChaseVariations.Played(Clip);
+}
+
+bool AWasamiEnemy::IsWayAheadClear(float Distance) const
+{
+	// A NavMesh ray from where it stands (the nav agent's own place) straight ahead: true only when nothing blocks it,
+	// so that a variation never carries the body into a wall. The engine's ray is blocked by default.
+	const FVector Start = GetNavAgentLocation();
+	FVector Hit;
+	return !UNavigationSystemV1::NavigationRaycast(GetWorld(), Start, Start + GetActorForwardVector() * Distance, Hit,
+		nullptr, GetController());
 }
 
 void AWasamiEnemy::StartStun()

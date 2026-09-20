@@ -53,6 +53,9 @@ public:
 
 	virtual bool IsChasing() const override { return true; }
 
+	/** Not while it stabs at the doors (the item 26): the stab has the body, and it is not running anywhere. */
+	virtual bool CanPlayChaseVariation() const override { return Super::CanPlayChaseVariation() && !bAttackDoor; }
+
 	virtual float GetTimeToStunStart() const override { return 0.f; }
 
 	/** Hit FX: the dust in front of it, Audio (a slam) and the shake about it. */

@@ -112,6 +112,24 @@ namespace WasamiEnemyAnim
 	inline constexpr float WalkRateMax = 2.f;
 	inline constexpr float RunRateMin = 0.6f;
 	inline constexpr float RunRateMax = 1.8f;
+
+	// 追跡中のランダムの動き (the item 26): the clips a chase draws from, Chase_PickUp to Chase_Slide.
+	inline constexpr int32 FirstChaseVariation = WasamiEnemyClip::ChasePickUp;
+	inline constexpr int32 NumChaseVariations = WasamiEnemyClip::ChaseSlide - WasamiEnemyClip::ChasePickUp + 1;
+
+	/**
+	 * How fast each variation carries the body at the mesh's own size (cm/s): the clip's forward move over its length
+	 * (enemy-wasami-motions.md), in WasamiEnemyClip's order from FirstChaseVariation. The importer took that move out of
+	 * the clips (they are in-place forms), so this is how fast the body has to go for their feet not to slide.
+	 */
+	extern WASAMI_DECEPTION_API const float ChaseVariationSpeeds[NumChaseVariations];
+
+	/**
+	 * The play rate that keeps the variation Clip's feet with a body running at Speed (cm/s): its own speed, grown with
+	 * the mesh, within the run's limits — one too slow for the chase (Chase_VaultLand) plays at RunRateMax and the body
+	 * slides through the rest (the user's answer of 2026-09-18: the limit is ours to pick). 1 for any other clip.
+	 */
+	WASAMI_DECEPTION_API float ChaseVariationRate(int32 Clip, float Speed);
 }
 
 /**

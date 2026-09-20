@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "WasamiEnemyAnimInstance.h"
 #include "WasamiEnemyInterface.h"
 #include "WasamiEnemy.generated.h"
 
@@ -14,6 +15,53 @@ class UStaticMeshComponent;
 class UWasamiEnemyAnimInstance;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiEnemyCloseBy);
+
+/**
+ * 追跡中のランダムの動き (the item 26, the user's instruction of 2026-09-18): while the enemy chases, a chance to play
+ * one of the six chase clips (Chase_PickUp to Chase_Slide) comes every 6 to 10 s — about every eight, the frequency
+ * asked for — and each chance draws one of them, never the one played before. The enemy's decisions (Make Choice, every
+ * half second) move the wait on; a chance it cannot take is either let go (Skip: something else plays once) or left
+ * open until the way ahead clears.
+ */
+struct WASAMI_DECEPTION_API FWasamiChaseVariations
+{
+	/** The gap between two chances (s), drawn anew for each. */
+	static constexpr float MinGap = 6.f;
+	static constexpr float MaxGap = 10.f;
+	/** What the wait is while no chase asks for chances. */
+	static constexpr float NotChasing = -1.f;
+
+	/** Starts the draws: the same Seed makes the same chances (0 is the seed, as FRandomStream takes it). */
+	void Init(int32 Seed);
+
+	/**
+	 * Moves the wait on by Seconds. Answers the clip a chance has come for (a WasamiEnemyClip from ChasePickUp to
+	 * ChaseSlide), or INDEX_NONE. The clip is drawn at each answer, so a chance left open — the caller plays nothing
+	 * and calls neither Played nor Skip — may come out as another one. A chase that has just begun waits a whole gap
+	 * before its first chance, and may open with any of the six.
+	 */
+	int32 Advance(bool bChasing, float Seconds);
+
+	/** The clip Advance answered was played: the next chance is a gap away, and the next draw goes around this clip. */
+	void Played(int32 Clip);
+
+	/** The chance is let go without playing anything: the next one is a gap away. */
+	void Skip() { Wait = DrawGap(); }
+
+	/** What is left until the next chance (s): 0 while one stands open, NotChasing while there is no chase. */
+	float GetWait() const { return Wait; }
+	/** The clip the last chance played, or INDEX_NONE (also before the first chance of a chase). */
+	int32 GetLast() const { return Last; }
+
+private:
+	float DrawGap() { return Random.FRandRange(MinGap, MaxGap); }
+	/** One of the six at random, never Last. */
+	int32 DrawClip();
+
+	float Wait = NotChasing;
+	int32 Last = INDEX_NONE;
+	FRandomStream Random;
+};
 
 /**
  * The enemy Wasami, after Dark Deception's hospital nurse BP_06_ReaperNurse and its parent BP_DD_Character_Base
@@ -113,6 +161,19 @@ public:
 	/** The Sphere that catches the player. */
 	USphereComponent* GetSphere() const { return Sphere; }
 
+	/** 追跡中のランダムの動き (the item 26): the chances of the chase it is in, and what the last one played. */
+	const FWasamiChaseVariations& GetChaseVariations() const { return ChaseVariations; }
+
+	/** Whether a chase variation may play now: the parking lot's nurses do not while they stab at the doors. */
+	virtual bool CanPlayChaseVariation() const { return true; }
+
+	/**
+	 * The way straight ahead of it is clear over Distance (cm), by a NavMesh ray from where it stands. The engine's ray
+	 * is blocked by default, so without navigation data nothing is clear and no variation plays.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	bool IsWayAheadClear(float Distance) const;
+
 	/** The map's mark (the nurse's StaticMesh), which the minimap shows only while a bonus shard's reveal adds it. */
 	UStaticMeshComponent* GetMapMark() const { return MapMark; }
 
@@ -202,8 +263,16 @@ protected:
 	virtual void PlayerVanish_Implementation() override { bSeenPlayerRecently = false; }
 	virtual bool NoTelepathy_Implementation() const override { return false; }
 
-	/** Every DecisionInterval: the stun, or the chase and what it has seen. */
+	/** Every DecisionInterval: the stun, or the chase and what it has seen, and then a chase variation's chance. */
 	void MakeChoice();
+	/**
+	 * 追跡中のランダムの動き (the item 26): moves the chances on by a decision. A chance that has come plays its clip
+	 * over the chase, at the rate that keeps its feet with the chase's speed (WasamiEnemyAnim::ChaseVariationRate), when
+	 * nothing else plays once, this enemy may (CanPlayChaseVariation) and the way ahead is clear for as far as the body
+	 * moves while it plays (the clips are in-place forms: the movement is never stopped, so the body carries on at the
+	 * chase's speed). A chance whose way is blocked stays open; the rest are let go.
+	 */
+	void UpdateChaseVariation();
 	/**
 	 * The stun's DoOnce: stops the movement and sets State back to Patrol StunSeconds on, unless it already runs. Make
 	 * Choice starts it, and the 06 nurse's tick (whose own DoOnce does the same; the first to start ends the stun).
@@ -262,4 +331,5 @@ private:
 	bool bDetectionClosed = false;
 	// The Sphere's DoOnce around the capture.
 	bool bCatchClosed = false;
+	FWasamiChaseVariations ChaseVariations;
 };
