@@ -27,6 +27,10 @@ SOUND_ENUMS = ("VirtualizationMode",)
 ENGINE_REL = "/Engine/"
 ENGINE_FOLDER = "_Engine"
 
+# The fallback face every Font the original made carries. UE 5.8's copy is the original's file (UE 4.24's
+# Engine/Content/EngineFonts/Faces/DroidSansFallback.ttf), so the engine's own asset is used, not an import.
+FALLBACK_FACE = "/Engine/EngineFonts/Faces/DroidSansFallback.DroidSansFallback"
+
 # UCameraAnim's defaults for what its export leaves out (UE4's UCameraAnim constructor; the blend weight is zeroed).
 CAMERA_ANIM_DEFAULTS = {"AnimLength": 3.0, "BaseFOV": 90.0, "BasePostProcessBlendWeight": 0.0}
 # UE4's legacy tonemapper settings, which UE 5 dropped; the CameraAnims only switch them on at their neutral defaults.
@@ -467,9 +471,12 @@ def texture(rel, version=1):
 
 def font(face_rel, version=1):
     """Imports the original's /Game/<face_rel>.ttf as a font face under /Game/DD and makes the runtime Font asset its UMG
-    texts use (<face_rel>_Font) with the face as its Default typeface. (The original's Font keeps the engine's Roboto as
-    the default and the face as an en-US sub-typeface; the face is what an English game shows.) Returns the Font's
-    package path."""
+    texts use (<face_rel>_Font) with the face as its Default typeface, over the original's fallback typeface (the
+    engine's DroidSansFallback, what a character the face has not falls back to). (The original's Font keeps the
+    engine's Roboto as the default and the face as an en-US sub-typeface; the face is what an English game shows, and
+    this game's texts are English whatever the machine's culture. Its helvetica-normal_Font lists a second fallback
+    entry, RobotoRegular, which Slate never reaches: a typeface it cannot find the asked name in gives its first
+    entry.) Returns the Font's package path."""
     ttf = content_file(face_rel, version, ".ttf")
     if not os.path.exists(ttf):
         raise FileNotFoundError(ttf)
@@ -496,9 +503,11 @@ def font(face_rel, version=1):
     # FCompositeFont's members are not exposed to Python, so the typeface goes in as the struct's own text form.
     composite = unreal.CompositeFont()
     composite.import_text('(DefaultTypeface=(Fonts=((Name="Default",Font=(FontFaceAsset=FontFace\'"%s"\','
-                          'LoadingPolicy=LazyLoad,SubFaceIndex=0)))),FallbackTypeface=(Typeface=(Fonts=),'
-                          'ScalingFactor=1.000000),SubTypefaces=,bEnableAscentDescentOverride=True)'
-                          % paths.object_path(face_path))
+                          'LoadingPolicy=LazyLoad,SubFaceIndex=0)))),FallbackTypeface=(Typeface=(Fonts='
+                          '((Name="Fallback",Font=(FontFaceAsset=FontFace\'"%s"\',LoadingPolicy=LazyLoad,'
+                          'SubFaceIndex=0)))),ScalingFactor=1.000000),SubTypefaces=,'
+                          'bEnableAscentDescentOverride=True)'
+                          % (paths.object_path(face_path), FALLBACK_FACE))
     font_asset.set_editor_property("composite_font", composite)
     return font_path
 
