@@ -274,6 +274,23 @@ namespace
 	}
 
 	const FName HeadBone(TEXT("head"));
+
+	// A bone where the mesh's bind pose puts it, in the mesh's own frame.
+	FTransform RefBoneTransform(const USkeletalMesh* Mesh, const FName& Bone)
+	{
+		FTransform Pose = FTransform::Identity;
+		if (!Mesh)
+		{
+			return Pose;
+		}
+		const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+		const TArray<FTransform>& Bones = Ref.GetRefBonePose();
+		for (int32 Index = Ref.FindBoneIndex(Bone); Index != INDEX_NONE; Index = Ref.GetParentIndex(Index))
+		{
+			Pose = Pose * Bones[Index];
+		}
+		return Pose;
+	}
 }
 
 const FVector AWasamiCapture::RoomLocation(0., 0., 50000.);
@@ -290,11 +307,19 @@ const FVector AWasamiCapture::CameraOffset(
 	AWasamiCapture::HotelCameraOffset.Y * AWasamiCapture::FrameScale,
 	AWasamiCapture::WasamiTop / 2. + (AWasamiCapture::HotelCameraOffset.Z - AWasamiCapture::MonkeyHeadBase) * AWasamiCapture::FrameScale);
 const FColor AWasamiCapture::LightColor(255, 236, 142, 255);
+const double AWasamiCapture::WasamiHeadBase = 144.2648884628 * AWasamiEnemy::MeshScale;
+const double AWasamiCapture::WasamiHeadTop = AWasamiEnemy::WasamiHeadTop * AWasamiEnemy::MeshScale;
+const double AWasamiCapture::FaceScale =
+	(AWasamiCapture::WasamiHeadTop - AWasamiCapture::WasamiHeadBase) / (AWasamiCapture::MonkeyHeadTop - AWasamiCapture::MonkeyHeadBase);
+const FVector AWasamiCapture::FaceLightPlaces[AWasamiCapture::NumFaceLights] = {
+	FVector(2.752, 11.505, 157.419),
+	FVector(-2.589, 11.505, 157.576),
+};
 const float AWasamiCapture::WatcherKill3Length = 1.0187135934829712f;
 
 AWasamiCapture::AWasamiCapture()
 {
-	// Ticks from Start: the clip, the Wasami's rush, the camera and the face light each frame.
+	// Ticks from Start: the clip, the Wasami's rush and the camera each frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
@@ -321,18 +346,27 @@ AWasamiCapture::AWasamiCapture()
 	Light->SetMobility(EComponentMobility::Movable);
 	Light->SetRelativeLocation(HotelLightOffset * SceneScale);
 	Light->SetIntensityUnits(ELightUnits::Unitless);
-	Light->SetIntensity(LightIntensity);
-	Light->SetAttenuationRadius(LightRadius);
-	Light->SetSourceRadius(LightSourceRadius);
+	Light->SetIntensity(LightIntensity * SceneScale * SceneScale);
+	Light->SetAttenuationRadius(LightRadius * SceneScale);
+	Light->SetSourceRadius(LightSourceRadius * SceneScale);
 	Light->SetLightFColor(LightColor);
 
-	// The face's light (its strength and reach from the properties at Start).
-	FaceLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("FaceLight"));
-	FaceLight->SetupAttachment(Root);
-	FaceLight->SetMobility(EComponentMobility::Movable);
-	FaceLight->SetIntensityUnits(ELightUnits::Unitless);
-	FaceLight->SetCastShadows(false);
-	FaceLight->SetLightFColor(LightColor);
+	// jumpscarelight and _5 on the eyes, riding the head bone as the monkey's ride its Head_Top socket. Their places
+	// come with the mesh (OnConstruction); their reach goes by the head's size and their strength by the square of it,
+	// and their own scale undoes the mesh's so they stand at world scale, as the original's 0.25 does against its 4.
+	for (int32 Index = 0; Index < NumFaceLights; ++Index)
+	{
+		UPointLightComponent* Eye = CreateDefaultSubobject<UPointLightComponent>(*FString::Printf(TEXT("FaceLight%d"), Index));
+		Eye->SetupAttachment(Body, HeadBone);
+		Eye->SetMobility(EComponentMobility::Movable);
+		Eye->SetRelativeScale3D(FVector(1. / AWasamiEnemy::MeshScale));
+		Eye->SetIntensityUnits(ELightUnits::Unitless);
+		Eye->SetIntensity(FaceLightIntensity * FaceScale * FaceScale);
+		Eye->SetAttenuationRadius(FaceLightRadius * FaceScale);
+		Eye->SetCastShadows(false);
+		Eye->SetLightFColor(LightColor);
+		FaceLights.Add(Eye);
+	}
 
 	// jumpscareblock and its fellows: black unlit planes without shadows, here facing in on every side.
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(WallNormals); ++Index)
@@ -360,6 +394,7 @@ void AWasamiCapture::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	Body->SetSkeletalMeshAsset(BodyMesh.LoadSynchronous());
+	PlaceFaceLights();
 	UStaticMesh* Plane = WallMesh.LoadSynchronous();
 	UMaterialInterface* Black = WallMaterial.LoadSynchronous();
 	for (UStaticMeshComponent* Wall : Walls)
@@ -546,9 +581,6 @@ void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoic
 		Body->PlayAnimation(Clip, bFace);
 		Body->SetPlayRate(0.f);
 	}
-	FaceLight->SetIntensity(FaceLightIntensity);
-	FaceLight->SetAttenuationRadius(FaceLightRadius);
-
 	// The first frame as it is at t = 0, the pose worked out now for the camera to look at.
 	Elapsed = 0.f;
 	bAimSet = false;
@@ -637,9 +669,8 @@ void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
 	}
 	Body->SetRelativeLocation(BodyAt);
 
-	// The bones where the pose last put them, in the room's frame.
+	// The room's frame, which the bones' places come back into.
 	const FTransform& RoomTransform = GetActorTransform();
-	const FVector Head = RoomTransform.InverseTransformPosition(Body->GetSocketLocation(HeadBone));
 
 	FVector Location;
 	FQuat Rotation;
@@ -655,6 +686,7 @@ void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
 			EvaluateWatcherCamera(Time - WatcherAnimDelay, Move, Turn);
 		}
 		Location = FaceCameraOffset + Base.RotateVector(Move);
+		const FVector Head = RoomTransform.InverseTransformPosition(Body->GetSocketLocation(HeadBone));
 		Location.X = FMath::Max(Location.X, Head.X + FaceGap);
 		Rotation = Base * Turn.Quaternion();
 	}
@@ -687,7 +719,16 @@ void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
 		Rotation = Aim.Quaternion() * Rest.Quaternion().Inverse() * HotelTurn.Quaternion();
 	}
 	View->SetRelativeLocationAndRotation(Location, Rotation);
-	FaceLight->SetRelativeLocation(Head + FaceLightOffset);
+}
+
+void AWasamiCapture::PlaceFaceLights()
+{
+	// FaceLightPlaces are in the mesh's frame and the lights ride the head bone, so they go through its bind pose.
+	const FTransform Bind = RefBoneTransform(Body->GetSkeletalMeshAsset(), HeadBone);
+	for (int32 Index = 0; Index < FaceLights.Num(); ++Index)
+	{
+		FaceLights[Index]->SetRelativeLocation(Bind.InverseTransformPosition(FaceLightPlaces[Index]));
+	}
 }
 
 float AWasamiCapture::FadeCurve(float Alpha)

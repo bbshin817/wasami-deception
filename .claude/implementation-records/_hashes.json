@@ -151,9 +151,9 @@
     "Source/wasami_deception/WasamiEnemyAnimInstance.cpp": "3a5fa1b9a3101128fb4326ec4fba9e77b61e05a7",
     "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "df49d9994944faa0d60e03475f597bd90fea08b7",
     "Source/wasami_deception/Tests/WasamiTestListener.h": "1d0a05da143bdeda21999960ec9ccb1001db2708",
-    "Source/wasami_deception/WasamiCapture.h": "22dbc5b2e29074c19cf0a1761c105a86073c14d9",
-    "Source/wasami_deception/WasamiCapture.cpp": "e002962f48c59eb279beca078a27355004bdb888",
-    "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "9fe167cc594929a8b942c065493619005c34b267",
+    "Source/wasami_deception/WasamiCapture.h": "8ef8d2984d2c402ca091b846700918110b85423a",
+    "Source/wasami_deception/WasamiCapture.cpp": "00b74f1439387d0a3a5bec5b4cbf76ad4b1e1c2b",
+    "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "39782b7b3947170a6ecf25955aefa70d7ee3a50f",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112"
   },

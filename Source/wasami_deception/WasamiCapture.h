@@ -128,12 +128,48 @@ public:
 	 */
 	static float HotelFocalDistance(float MatineeTime);
 
-	/** ceilinglights_80: 1500 (Unitless), radius 500, source radius 24.715, colour (255, 236, 142), the export's
-	 *  [B, G, R, A] turned round. */
+	/**
+	 * ceilinglights_80: 1500 (Unitless), radius 500, source radius 24.715, colour (255, 236, 142), the export's
+	 * [B, G, R, A] turned round. The room is the hotel's scene at SceneScale, so its lengths are put down at
+	 * SceneScale and its strength at the square of it: a light that much nearer in a room that much smaller lays the
+	 * same light on the Wasami as the hotel's does on the monkey (it falls as one over the distance squared).
+	 */
 	static constexpr float LightIntensity = 1500.f;
 	static constexpr float LightRadius = 500.f;
 	static constexpr float LightSourceRadius = 24.715225219726562f;
 	static const FColor LightColor;
+
+	/**
+	 * jumpscarelight and jumpscarelight_5, the two the hotel's monkey wears on its eyes (no Matinee touches them):
+	 * point lights on its Monkey_Head_TopSHJnt socket, 15 (Unitless) and 15 cm of reach each, no shadows, scaled 0.25
+	 * against the monkey's 4 so they stand at world scale. In the monkey's mesh they sit (±17.7, 47.5, -34.1) from
+	 * that joint at its scale 4 — across, forward and down — which is 3.8 cm out from its face, level with its eyes.
+	 */
+	static constexpr int32 NumFaceLights = 2;
+	static constexpr float FaceLightIntensity = 15.f;
+	static constexpr float FaceLightRadius = 15.f;
+
+	/** SK_WasamiEnemy's head in its bind pose, from its head joint up to head_end, at AWasamiEnemy::MeshScale. */
+	static const double WasamiHeadBase;
+	static const double WasamiHeadTop;
+
+	/**
+	 * How big the Wasami's head is beside the monkey's (33.0 cm against 98.5). The eye lights' reach goes by it and
+	 * their strength by the square of it, so their glow covers as much of this face as the original's does of the
+	 * monkey's, as bright.
+	 */
+	static const double FaceScale;
+
+	/**
+	 * TODO(仮): where those two sit on the Wasami's face, in SK_WasamiEnemy's bind pose (its mesh's frame, +Y
+	 * forward). No pair of joints carries the monkey's places over — its head_end leans 1.8 cm off the midline and
+	 * the two faces are shaped differently — so the shape of the heads does it: across and up they are where the
+	 * monkey's are in the box its own head fills (0.631 and 0.366 across, 0.511 and 0.517 up, both boxes taken from
+	 * the head joint up); forward they stand 0.93 out of the face they land on (10.57 there), the monkey's own 0.945
+	 * of clearance shrunk by the heads' ratio. That puts them on the eye sockets either side of the nose, which is as
+	 * near the eyes as the model can say — they are painted in its one baked texture, and it has no eye joints.
+	 */
+	static const FVector FaceLightPlaces[NumFaceLights];
 
 	/**
 	 * The Matinee a hotel choice is paired with (0 MonkeyJumpscare, 1 MonkeyJumpscare2, 2 MonkeyJumpscare3). TODO(仮):
@@ -227,7 +263,7 @@ public:
 	USkeletalMeshComponent* GetBody() const { return Body; }
 	UCameraComponent* GetView() const { return View; }
 	UPointLightComponent* GetLight() const { return Light; }
-	UPointLightComponent* GetFaceLight() const { return FaceLight; }
+	const TArray<TObjectPtr<UPointLightComponent>>& GetFaceLights() const { return FaceLights; }
 	const TArray<TObjectPtr<UStaticMeshComponent>>& GetWalls() const { return Walls; }
 
 	/** JumpscareShake (import_dd_camera_shakes). */
@@ -312,28 +348,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Wasami|Capture")
 	float FaceGap = 40.f;
 
-	/**
-	 * TODO(仮): a light on the Wasami's face, which the ceiling light leaves dark under its hair (the hotel's monkey has
-	 * two small lights of its own, jumpscarelight and _5, for its eyes): FaceLightOffset from its head bone, in the
-	 * room's frame, the ceiling light's colour, no shadows.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Wasami|Capture")
-	FVector FaceLightOffset = FVector(50., 0., 30.);
-
-	UPROPERTY(EditAnywhere, Category = "Wasami|Capture")
-	float FaceLightIntensity = 300.f;
-
-	UPROPERTY(EditAnywhere, Category = "Wasami|Capture")
-	float FaceLightRadius = 200.f;
-
 	virtual void Tick(float DeltaSeconds) override;
 
 protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
-	/** Puts the clip, the Wasami, the camera and the face light where they are Time into the capture. */
+	/** Puts the clip, the Wasami and the camera where they are Time into the capture. */
 	void UpdateScene(float Time, float DeltaSeconds);
+
+	/** Puts the eye lights on the face, their places turned into the head bone's own frame by the bind pose. */
+	void PlaceFaceLights();
 
 	/** Plays the Index-th sound of the capture going on (the timers Start sets, and t = 0 at once). */
 	void PlayCaptureSound(int32 Index);
@@ -357,8 +382,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Wasami|Capture")
 	TObjectPtr<UPointLightComponent> Light;
 
+	/** The eyes' two lights, on the head bone as the monkey's are on its own. */
 	UPROPERTY(VisibleAnywhere, Category = "Wasami|Capture")
-	TObjectPtr<UPointLightComponent> FaceLight;
+	TArray<TObjectPtr<UPointLightComponent>> FaceLights;
 
 	/** The black planes: floor, ceiling, back, front, left, right, each facing in. */
 	UPROPERTY(VisibleAnywhere, Category = "Wasami|Capture")

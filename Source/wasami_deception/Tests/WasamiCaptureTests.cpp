@@ -217,15 +217,34 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("some 111 cm in front, 3 cm to the side, 177 cm up"), View->GetRelativeLocation().Equals(FVector(110.99, 3.38, 177.21), 0.05));
 	TestTrue(TEXT("looking back at the Wasami"), View->GetForwardVector().Equals(FVector::BackwardVector, 1e-4));
 	TestEqual(TEXT("its field of view"), View->FieldOfView, 90.f);
+	// ceilinglights_80 in a room shrunk to SceneScale: its lengths at that scale and its strength at the square of it,
+	// which lays the same light on the Wasami as the hotel's does on the monkey.
 	const UPointLightComponent* Light = Room->GetLight();
-	TestEqual(TEXT("the ceiling light's intensity"), Light->Intensity, 1500.f);
+	TestEqual(TEXT("the room's scale"), AWasamiCapture::SceneScale, 0.878024, 1e-6);
+	TestEqual(TEXT("the ceiling light's intensity"), Light->Intensity, 1500.f * 0.878024f * 0.878024f, 0.1f);
 	TestTrue(TEXT("unitless"), Light->IntensityUnits == ELightUnits::Unitless);
-	TestEqual(TEXT("its radius"), Light->AttenuationRadius, 500.f);
+	TestEqual(TEXT("its radius"), Light->AttenuationRadius, 500.f * 0.878024f, 0.01f);
+	TestEqual(TEXT("its source radius"), Light->SourceRadius, 24.715225f * 0.878024f, 0.01f);
 	TestTrue(TEXT("its colour"), Light->LightColor == FColor(255, 236, 142, 255));
 	TestTrue(TEXT("above the Wasami"), Light->GetRelativeLocation().Z > AWasamiCapture::WasamiTop);
-	const UPointLightComponent* FaceLight = Room->GetFaceLight();
-	TestFalse(TEXT("the face's light casts no shadow"), FaceLight->CastShadows);
-	TestTrue(TEXT("the face's light in the ceiling light's colour"), FaceLight->LightColor == FColor(255, 236, 142, 255));
+
+	// jumpscarelight and _5 on the eyes: 15 and 15 cm on a head a third of the monkey's, so the reach goes by that
+	// and the strength by its square.
+	TestEqual(TEXT("the head's scale"), AWasamiCapture::FaceScale, 0.334672, 1e-6);
+	TestEqual(TEXT("two lights on the face"), Room->GetFaceLights().Num(), AWasamiCapture::NumFaceLights);
+	for (int32 Index = 0; Index < Room->GetFaceLights().Num(); ++Index)
+	{
+		const UPointLightComponent* Eye = Room->GetFaceLights()[Index];
+		TestFalse(TEXT("the face's light casts no shadow"), Eye->CastShadows);
+		TestTrue(TEXT("the face's light in the ceiling light's colour"), Eye->LightColor == FColor(255, 236, 142, 255));
+		TestTrue(TEXT("unitless"), Eye->IntensityUnits == ELightUnits::Unitless);
+		TestEqual(TEXT("its reach at the head's scale"), Eye->AttenuationRadius, 15.f * 0.334672f, 1e-3f);
+		TestEqual(TEXT("its strength at the square of it"), Eye->Intensity, 15.f * 0.334672f * 0.334672f, 1e-3f);
+		// Where the eye sockets are in the mesh's own frame, however the head bone it rides is turned.
+		const FVector At = Room->GetBody()->GetComponentTransform().InverseTransformPosition(Eye->GetComponentLocation());
+		TestTrue(TEXT("on the face where the monkey's are"), At.Equals(AWasamiCapture::FaceLightPlaces[Index], 0.05));
+		TestTrue(TEXT("outside the face it lights"), At.Y > 11.4 && At.Y < 12.1);
+	}
 
 	// Six black planes facing in, the camera and the slide's start inside them.
 	TestEqual(TEXT("six planes"), Room->GetWalls().Num(), 6);
@@ -443,6 +462,13 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 		double LeastX = TNumericLimits<double>::Max();
 		bool bInside = true;
 		bool bKeptAway = true;
+		bool bEyesRide = true;
+		// The eye lights hang off the head bone, so they keep their distance from it through the whole clip.
+		TArray<double> EyeFromHead;
+		for (const UPointLightComponent* Eye : Room->GetFaceLights())
+		{
+			EyeFromHead.Add((Eye->GetComponentLocation() - Room->GetBody()->GetSocketLocation(TEXT("head"))).Size());
+		}
 		const float Until = FMath::Min(Room->GetFadeStart(), 1.1f);
 		for (float Time = 0.f; Time < Until; Time += Step)
 		{
@@ -452,8 +478,13 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 			MostMove = FMath::Max(MostMove, (At - StartLocation).Size());
 			LeastX = FMath::Min(LeastX, At.X);
 			bInside &= At.Z > 0. && At.X > -1500. && At.X < 500. && FMath::Abs(At.Y) < 1000.;
-			const FVector Head = Room->GetActorTransform().InverseTransformPosition(Room->GetBody()->GetSocketLocation(TEXT("head")));
+			const FVector HeadAt = Room->GetBody()->GetSocketLocation(TEXT("head"));
+			const FVector Head = Room->GetActorTransform().InverseTransformPosition(HeadAt);
 			bKeptAway &= At.X >= Head.X + 20.;
+			for (int32 Eye = 0; Eye < Room->GetFaceLights().Num(); ++Eye)
+			{
+				bEyesRide &= FMath::IsNearlyEqual((Room->GetFaceLights()[Eye]->GetComponentLocation() - HeadAt).Size(), EyeFromHead[Eye], 1.);
+			}
 		}
 		TestTrue(What + FString::Printf(TEXT("turned %.1f° from where it started"), MostTurn), MostTurn > 5.);
 		TestTrue(What + FString::Printf(TEXT("moved %.0f cm"), MostMove), MostMove > 20.);
@@ -465,8 +496,9 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 			TestTrue(What + FString::Printf(TEXT("the camera pushed %.0f cm in at the face"), Room->FaceCameraOffset.X - LeastX),
 				Room->FaceCameraOffset.X - LeastX > 40.);
 		}
-		const FVector Head = Room->GetActorTransform().InverseTransformPosition(Room->GetBody()->GetSocketLocation(TEXT("head")));
-		TestTrue(What + TEXT("the face's light by the head"), Room->GetFaceLight()->GetRelativeLocation().Equals(Head + Room->FaceLightOffset, 30.));
+		TestTrue(What + TEXT("the eye lights ride the head"), bEyesRide);
+		TestTrue(What + FString::Printf(TEXT("as far from it as the bind pose puts them (%.1f cm)"), EyeFromHead.Num() > 0 ? EyeFromHead[0] : 0.),
+			EyeFromHead.Num() == AWasamiCapture::NumFaceLights && EyeFromHead[0] > 20. && EyeFromHead[0] < 35.);
 		if (!bFace)
 		{
 			// The pull is through long before the fade (0.2315 s of the Matinee, sooner still on the scene's time).
