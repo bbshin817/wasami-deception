@@ -83,7 +83,7 @@ updated: 2026-09-20
 - `LINES` 9 本（ゾーンが直に喋らせる）: Zone 1 = `Event_10`（扉の破壊 `04_DoorBreak`）・`Event_09`（館内放送の 13 s 後 `04_Intercom`）、Zone 2 = `Event_17`（独房の場面の後）・`Gameplay_07`（リフト）・`Gameplay_08`（迷路の始まり）・`Event_20`（迷路のシャード全回収）・`Event_21`（欠片の回収の 1 s 後）・`Event_22`（ガレージ）・`Event_19`（Matron）。
 - `GAMEPLAY_WAVES` 5 本と `GAMEPLAY_CUE`: 近づいたナースが出す一言。Cue `Bierce_TormentTherapy_Gameplay` の `SoundNodeRandom` が重み 1 で `Gameplay_05 / 02 / 04 / 01 / 03` から 1 本選び、Cue 自身が `DialogueAttenuation`（`bAttenuate` 偽・`OmniRadius` 350・`FalloffDistance` 5000）を通す。本家に `Gameplay_06` は無い。
 - `INTERCOM` 1 本: Zone 1 の流れが `PlaySound2D`（音量 0.6）で鳴らす `Nurse_Hospital_Zone01_Event_37_Intercom`（12.024 s・2 ch・`SoundClassObject` 無し）。Zone 2 の館内放送は別の波で、`AmbientSound` として置いてある（上の「環境音と残響」）。
-- **字幕**: UE の仕組みそのまま（`USoundWave.Subtitles` に `{Text, Time}`。オプションの SUBTITLES が `UGameplayStatics::SetSubtitlesEnabled` を切り替える。15 記録）。本家の病院の台詞の波は `Subtitles` が空なので（字幕を持つのは本作が作らない入口のナースの分だけ）、本家の文字列表 `Blueprints/Main/Strings/Strings` の文言を**名前の対応**で 0 s に 1 つ入れる（`SUBTITLE_PREFIXES`・`SUBTITLE_KEYS`）: `Bierce_TormentTherapy_Event_NN` → `06_Cutscene_Zone_01_Bierce_NN`、`..._Gameplay_NN` → `06_Gameplay_Zone_01_Bierce_NN`、館内放送 → `06_Cutscene_Zone_01_Nurse_01`。第 4 章の下水の Bierce（字幕を持つ）が同じ対応で鍵を持ち、9 本すべて鳴らす場面と文言が合う（リフトの `Gameplay_07` =「handicap accessible nightmare」、Matron の `Event_19` =「find a way to get past her」など）。文字列表のアセットは作らず、`dd_level` の秘密の書き置きと同じく素の `unreal.Text` で入れる。
+- **字幕**: UE の仕組みそのまま（`USoundWave.Subtitles` に `{Text, Time}`。オプションの SUBTITLES が `UGameplayStatics::SetSubtitlesEnabled` を切り替える。15 記録）。本家の病院の台詞の波は `Subtitles` が空なので（字幕を持つのは本作が作らない入口のナースの分だけ）、本家の文字列表 `Blueprints/Main/Strings/Strings` の文言を**名前の対応**で 0 s に 1 つ入れる（`SUBTITLE_PREFIXES`・`SUBTITLE_KEYS`）: `Bierce_TormentTherapy_Event_NN` → `06_Cutscene_Zone_01_Bierce_NN`、`..._Gameplay_NN` → `06_Gameplay_Zone_01_Bierce_NN`、館内放送 → `06_Cutscene_Zone_01_Nurse_01`。第 4 章の下水の Bierce（字幕を持つ）が同じ対応で鍵を持ち、9 本すべて鳴らす場面と文言が合う（リフトの `Gameplay_07` =「handicap accessible nightmare」、Matron の `Event_19` =「find a way to get past her」など）。文字列表のアセットは作らず、`dd_level` の秘密の書き置きと同じく素の `unreal.Text` で入れる。**2026-09-21 のユーザーの回答でこのまま追認**（オプションに SUBTITLES がある以上、出ないほうが不自然）。
 
 ## 話し役 `AWasamiBierceTalk`（項目 20 のステップ 2）
 本家の `BierceTalk_Blueprint`（`Blueprints/00_Ballroom`）を写したもの。本家は `AmbientSound` の子で、部品は `AudioComponent0` 1 つだけ（それがアクタの根。`bAutoActivate` 偽・`AttenuationSettings` は `DialogueAttenuation`）。本作は `AActor` にその部品を同じ値で作る（`bStopWhenOwnerDestroyed`・`bShouldRemainActiveIfDropped` 真・`Movable` も親の `AAmbientSound` のまま。減衰は `BeginPlay` でソフト参照から入れる）。本家の BP の既定の音（舞踏場の台詞）は使わないので入れない。
@@ -115,7 +115,7 @@ updated: 2026-09-20
   - `fast` … `UWasamiPowerComponent::UseSpeedBoost` の頭（04 記録）。
   - `best` … `AWasamiSecretWall` の最初の使用から 0.5 s 後（18 記録）。本家は秘密の壁で何も喋らず、Bierce が喋るのは書類のほう。
   - `fine`・`over` … 死亡画面の `LifeLost` の段（ライフが残るとき、`Life_Lost` と一緒）と `GameOver` の段（`66_-_Game_Over` と一緒）。どちらも字幕なしで、音量 1（09 記録）。ゲームオーバーの 1.25 s 後の笑い声は鳴らさない。
-  - `found` と巡回の 4 本 … 敵の `Talk`（`AWasamiEnemy` の `TalkAudio`。07 記録）。`Say` の 2D ではなく敵の口から `AgathaAttenuation` 越しに鳴る。発見はゲームモードの `TakeFoundVoice()` が全体で 12 s に 1 回に絞り、巡回の 4 本は 14〜26 s ごと。
+  - `found` と巡回の 4 本 … 敵の `Talk`（`AWasamiEnemy` の `TalkAudio`。07 記録）。`Say` の 2D ではなく敵の口から `AgathaAttenuation` 越しに鳴る。発見はゲームモードの `TakeFoundVoice()` が全体で 12 s に 1 回に絞り、巡回の 4 本は 14〜26 s ごと（本家は 3〜10 s だが、本家のナースが巡回・追跡・透明の 3 本を状態で使い分けるのに対し本作は 4 本しか無く、短いと同じ声がすぐ繰り返す。WebGL 版の値。**2026-09-21 のユーザーの回答でこのまま追認**）。
 - 死亡画面だけは `Say` ではなく画面自身の `PlaySound`（= `PlaySound2D`）で鳴らす。ゲームを止めた下で鳴る UI の音で、字幕も要らないため。
 
 ## 作るアセット
@@ -150,7 +150,7 @@ updated: 2026-09-20
 - `Override Music` は曲が空のまま（本家の病院も空）。`bOverrideMusic` の道だけ残してある。
 - 曲は 3D の減衰を持たない（本家も部品に減衰の上書きが無く、SoundWave 自身も素）ので、どこにいても同じ大きさで鳴る。置き場所は本家に合わせてあるだけ。
 - テストの `Wasami.Music.Actor` は `/Game/DD/Audio/06_Hospital/Music` の曲が取り込まれていることを前提にする（`import_dd_audio` を先に走らせる）。
-- **`bFadeOut` は一時停止の下では効かない**: `Update` は 0.5 s のタイマーなので、止めたゲームでは回らない。Zone 2 の脱出（11 記録の `OnEndTrigger`）が同じフレームで一時停止するため、そこで上げた `bFadeOut` は音にならず、スコア画面の下で曲は鳴り続ける。
+- **`bFadeOut` は一時停止の下では効かない**: `Update` は 0.5 s のタイマーなので、止めたゲームでは回らない。Zone 2 の脱出（11 記録の `OnEndTrigger`）が同じフレームで一時停止するため、そこで上げた `bFadeOut` は音にならず、スコア画面の下で曲は鳴り続ける。**2026-09-21 のユーザーの回答で「聞こえる形で引く」と決まった**ので、止める前に部品を直にフェードアウトする（作業一覧の項目 35）。
 - 館内放送（Zone 2 の `Nurse_Hospital_Zone01_Event_48_Intercom_2`）は `bAutoActivate` 偽のまま置いてあるだけで、鳴らす側がまだ無い（本家はレベル BP が鳴らす。台詞なので項目 20）。
 - 話し役の待ちの戻り（`Resume`）には「待ちは無い」を値で渡す（`Step(false, false)`）。`FTimerManager::IsTimerActive` は**自分のコールバックの最中も真**なので、そこで `IsWaiting()` を見ると待ちの回が自分を「もう待っている」と誤り、台詞が二度と鳴らない（症状索引の「タイマーのコールバックの中で `IsTimerActive` が真を返す」）。
 - 話し役は音声装置の無い自動テストでは鳴っている状態を作れない（`UAudioComponent::Play` は装置が無いと何もしない）ので、`IsSpeaking()` を `virtual` にして `AWasamiTestBierceTalk` が差し替える。待ちの分岐そのものは純粋な `WasamiTalkStep` でも試す。
@@ -159,6 +159,7 @@ updated: 2026-09-20
 - `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
 ## 変更履歴
+- 2026-09-21: 有人セッションで要確認 3 件に回答をもらった。台詞の字幕の**名前の対応**と敵の呼びかけの間隔**14〜26 s** はこのまま追認、Zone 2 の脱出は**聞こえる形で曲を引く**（止める前に部品を直にフェードアウトする。作業一覧の項目 35）
 - 2026-09-20: 初版（作業一覧の項目 19 のステップ 1。`AWasamiMusicPlayer` と曲 3 本の取り込み・配置）。
 - 2026-09-20: `FadeRegularMusicIn` を足し、ゾーンの流れからの切り替えを繋いだ（ステップ 2）。
 - 2026-09-20: 環境音 2 つ・館内放送 1 つ・残響のボリューム 2 つを本家の値のまま置いた（ステップ 3）。

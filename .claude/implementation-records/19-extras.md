@@ -86,6 +86,7 @@ updated: 2026-09-20
 - 収録のグリッド: `Intermediate/DesktopAgent/shots/extras_step6_{doors,collect,title,maximize}.png`（git の外）。
 
 ## 変更履歴
+- 2026-09-21: 有人セッションのユーザーの回答で、EXTRAS は**曲の欄だけ埋める**ことにした（本作で実際に鳴っている曲を名前つきで並べ、余る欄は減らす）。日記 10 は空のまま、絵 19〜22 とクレジットは今のまま（作業一覧の項目 35）
 - 2026-09-20: 作業一覧の項目 29 を閉じた（PIE で書類 → タイトルの EXTRAS まで通して確かめた。上の「確かめたこと」。ステップ 6）
 - 2026-09-20: 画面本体 `UWasamiExtrasWidget`（本家 `UMG_Extras`: 区分 5 つ・スイッチャーの頁 5 つ・`FadeIn`・`Credits_Scroll`・`Check If Playing`・BACK と `FadeMusic`、クレジットの様式の表、仮の中身）と `Show`、テスト `Wasami.Extras.Screen` を足した（作業一覧の項目 29 のステップ 4）
 - 2026-09-20: 初版。並べる部品（絵・動画・音のボタン・再生バー）と大きく見る画面を足した（作業一覧の項目 29 のステップ 3）

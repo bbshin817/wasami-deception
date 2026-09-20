@@ -69,7 +69,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
 - **`DefaultGame.ini`**: CommonUI の設定とプロジェクト ID に、`[/Script/EngineSettings.GeneralProjectSettings]` の `ProjectVersion=1.0.0`（タイトルの右上の版の文字。2026-09-20 のユーザーの回答。14 記録）。
-  - **`[/Script/UnrealEd.ProjectPackagingSettings]` の節は置かない**（2026-09-20 に理由をファイルにも書いた）。UE 5.8 のクックは、マップの一覧（`MapsToCook`・`[AllMaps]`）も `DirectoriesToAlwaysCook` も無いときだけ「`/Game` を全部入れる」経路に落ちる（`CookOnTheFlyServer.cpp` の `bCookAllByDefault = true` と、`CollectFilesToCook` の終わりの `if (bCookAll || (bCookAllByDefault && NumFilesAddedByCommandLineOrGameCallback == 0))`）。本作は **C++ が `/Game` のパスを直に名指しして読むアセットが 237 個**あり、そのうち 195 個はどのマップからも参照されていない（アセットレジストリから辿れない）ので、Project Settings の「Maps to Cook」「Directories to Always Cook」を埋めるとその数え上げが 0 でなくなって全部入れる経路が消え、195 個が黙って落ちる。絞る必要が出たら `bCookAll=True` にする。`/Game` の 1134 パッケージのうち、3 つのマップか C++ の名指しから辿れるのは 1106（残り 28 は `Pipeline/Debug` の検証用の材質 17 など）。
+  - **`[/Script/UnrealEd.ProjectPackagingSettings]` の節は置かない**（2026-09-20 に理由をファイルにも書いた）。UE 5.8 のクックは、マップの一覧（`MapsToCook`・`[AllMaps]`）も `DirectoriesToAlwaysCook` も無いときだけ「`/Game` を全部入れる」経路に落ちる（`CookOnTheFlyServer.cpp` の `bCookAllByDefault = true` と、`CollectFilesToCook` の終わりの `if (bCookAll || (bCookAllByDefault && NumFilesAddedByCommandLineOrGameCallback == 0))`）。本作は **C++ が `/Game` のパスを直に名指しして読むアセットが 237 個**あり、そのうち 195 個はどのマップからも参照されていない（アセットレジストリから辿れない）ので、Project Settings の「Maps to Cook」「Directories to Always Cook」を埋めるとその数え上げが 0 でなくなって全部入れる経路が消え、195 個が黙って落ちる。絞る必要が出たら `bCookAll=True` にする。`/Game` の 1134 パッケージのうち、3 つのマップか C++ の名指しから辿れるのは 1106（残り 28 は `Pipeline/Debug` の検証用の材質 17 など）。**2026-09-21 のユーザーの回答で、使っていない原作の題字 `/Game/DD/UI/Menu/TitleCards/chapter_ui_title_tormenttherapy` と `Pipeline/Debug` の材質 17 個は消す**（クックの前に。作業一覧の項目 35）。
 - **`DefaultEditor.ini`**: テンプレートのまま。
 
 ## 露出（2026-09-16）
@@ -163,7 +163,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - **どこも GPU 律速**（GPU ms ≒ Frame ms、GameThread は 9.5〜11.3 ms で余裕がある）。720p 相当に落とすと両ゾーンの重い場所が 72〜79 fps まで上がるので、フレーム時間のほとんどは画素にかかっている（1080p にすると +8〜9 ms）。描画数は Zone 1 のほうが多く（DrawCalls 約 1000。Zone 2 は 450〜580）、プリミティブは見通しの利く場所（Z1 駐車場 816k、Z2 見張りの廊下 884k）で増える。
 - **メモリは両ゾーンとも目安内**: GPU メモリ 2871〜4111 MB（予算 4893〜5198 MB）、`nvidia-smi` のカード全体で 3980〜5348 MB / 6144 MB、エディタの常駐 RAM 3.0〜3.3 GB（目安 20 GB）、システムの空き 13.8〜14 GB。Zone 2 のほうが軽い。
 - **fps は 46〜60（平均 52 ほど）で、目安の「1080p で 60 前後」に 10〜20 % 届かない**。ただし PIE の数字にはエディタ自身の描画が載るので、パッケージした本編が同じ数字になるとは限らない（実測にはクックが要り、クックは配布の話なので無人モードでは行わない）。
-- **対処は入れていない**。逼迫を避ける設定はエディタにだけ効く場所に置く決まり（`.claude/guides/performance.md` の大原則 2）で、エディタ側を軽くしても製品の fps は動かない。製品の fps を上げるには `Config/DefaultEngine.ini` の描画設定か製品の既定のスケーラビリティを下げることになり、「最終的に遊べるゲームの品質を損なってはならない」に反する。選択肢（このままにする / クックして本編を測る / 製品に画質の選択肢を用意する）はユーザーの判断待ち（作業一覧の「未回答の要確認」）。
+- **対処は入れていない**。逼迫を避ける設定はエディタにだけ効く場所に置く決まり（`.claude/guides/performance.md` の大原則 2）で、エディタ側を軽くしても製品の fps は動かない。製品の fps を上げるには `Config/DefaultEngine.ini` の描画設定か製品の既定のスケーラビリティを下げることになり、「最終的に遊べるゲームの品質を損なってはならない」に反する。**2026-09-21 のユーザーの回答は「クックして本編の fps を測る」**（作業一覧の項目 36）。`Development` の Win64 でパッケージし、PIE を測った 7 か所と同じ場所を `stat unit` / `stat fps` で測って上の表に本編の列を足す。そこで 1080p・60 前後に届かなければ、製品に画質の選択肢（解像度スケールか品質プリセット）を用意する項目を立てる。
 - 参考: 2026-09-16 の開始地点だけの計測（上の「灯の焼き込み」の終わり）は、ビューポートの画素のまま測った数字なので、この表とは比べられない。
 
 ## 作業の流れ
@@ -183,6 +183,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
+- 2026-09-21: 有人セッションで性能の要確認に回答をもらい、**クックして本編の fps を測る**ことにした（項目 36）。使っていない原作の題字と `Pipeline/Debug` の材質 17 個は**クックの前に消す**（項目 35）
 - 2026-09-20: `ProjectVersion` を 1.0.0 にした（ユーザーの回答。仮の 0.1.0 から）
 - 2026-09-16: 初版（現行の構成・設定を記録）
 - 2026-09-19: `DefaultEngine.ini` に本家のナビの設定（`RecastNavMesh`・`NavigationSystemV1`）を足した（作業一覧の項目 7 のステップ 1）
