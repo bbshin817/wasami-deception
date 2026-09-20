@@ -654,6 +654,14 @@
 - 対処: エディタの Python で `register_slate_post_tick_callback` に `player.add_movement_input(forward, 1.0, False)` を入れて前進させ、その間に `desktop.py shot`。UI を含む絵はエージェントの `shot`。
 - 出典: `.claude/guides/verification.md`（2026-09-16）。
 
+### `HighResShot` の解像度をビューポートと違う縦横比にすると、無い影が写る
+
+- 症状: PIE で `HighResShot 640x360` を撮ると、トンネルの床に**画面いっぱいの真っ黒な帯**が写る（実機の絵にも `HighResShot 1039x1025` にも無い）。`r.VolumetricFog 0` や `showflag.DynamicShadows 0` を足すと消えるので、フォグと影の不具合に見える。
+- 原因: ビューポートは正方形に近い（`Tools/pie.py state` の窓で 1039x1025）のに 16:9 で撮ると、水平の画角を保ったまま縦の画角と縦横比が変わる。ボリューメトリック フォグの履歴と影の設定はその解像度のものが無いまま描かれる。**明るさを測る台本は数字を返すので、絵を並べるまで気づかない。**
+- 対処: PIE の絵は**ビューポートと同じ大きさ**で撮る（`unreal.WidgetLayoutLibrary.get_viewport_size` で読んでから `HighResShot <w>x<h> filename=<名前>`。出力は `Saved/Screenshots/WindowsEditor/`）。**コンソールで入れた `r.` の値は PIE を終えても残る**ので、比べる回ごとに戻す値（`r.VolumetricFog 1` など）を明示的に送る。
+- 確かめ方: 同じ止めた 1 コマを 2 つの解像度で撮って並べる。
+- 出典: 進捗記録 `20260920-deferred-look-polish.md`（2026-09-21、ステップ 15）。
+
 ### PIE の連写に別の視界やアウトライナーが写る（エディタの窓が最大化されている）
 
 - 症状: `observations/tools/telekinesis_burst.sh` などの決め打ちの枠（画面の (1826, 205)〜(2978, 859)）で撮った連写に、右端にアウトライナーの一覧が写り、視界も違う（廊下のはずが壁の大写しになる）。明るさや模様の測りはそれらしい数字を返すので、**絵を見るまで気づかない**。
