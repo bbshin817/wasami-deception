@@ -26,6 +26,7 @@
 #include "../WasamiEnemyAnimInstance.h"
 #include "../WasamiEnemySentry.h"
 #include "../WasamiEnemyZone2.h"
+#include "../WasamiGameMode.h"
 #include "../WasamiLift.h"
 #include "../WasamiPowerTypes.h"
 #include "../WasamiPrimalPower.h"
@@ -33,6 +34,7 @@
 #include "../WasamiTelepathyTracker.h"
 #include "../WasamiVanishPower.h"
 #include "../WasamiViewcone.h"
+#include "../WasamiVoice.h"
 #include "WasamiTestListener.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -601,6 +603,86 @@ bool FWasamiEnemyChaseChancesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyVoiceCallsTest, "Wasami.Enemy.Voice.Calls",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiEnemyVoiceCallsTest::RunTest(const FString& Parameters)
+{
+	// 巡回中と硬直中の呼びかけ: a call every 14 to 26 s (the WebGL version's vocal), each one of the four rounds voices.
+	using Idle = FWasamiEnemyIdleVoices;
+	TestEqual(TEXT("the gaps start at 14 s"), Idle::MinGap, 14.f);
+	TestEqual(TEXT("and end at 26 (about twenty on average)"), Idle::MaxGap, 26.f);
+	TestEqual(TEXT("the four rounds voices"), Idle::Num, 4);
+	TestEqual(TEXT("from Calling"), Idle::First, static_cast<int32>(EWasamiVoice::Calling));
+
+	Idle Calls;
+	Calls.Init(20260920);
+	int32 Draws[Idle::Num] = {};
+	int32 OutOfRange = 0;
+	float GapSum = 0.f;
+	constexpr int32 Many = 2000;
+	for (int32 Call = 0; Call < Many; ++Call)
+	{
+		const float Gap = Calls.DrawGap();
+		OutOfRange += Gap < Idle::MinGap || Gap > Idle::MaxGap ? 1 : 0;
+		GapSum += Gap;
+		const int32 Voice = static_cast<int32>(Calls.DrawVoice());
+		if (Voice < Idle::First || Voice >= Idle::First + Idle::Num)
+		{
+			++OutOfRange;
+			continue;
+		}
+		++Draws[Voice - Idle::First];
+	}
+	TestEqual(TEXT("every gap is 14 to 26 s and every voice one of the four"), OutOfRange, 0);
+	TestEqual(TEXT("about 20 s apart"), GapSum / Many, 20.f, 0.4f);
+	for (int32 Voice = 0; Voice < Idle::Num; ++Voice)
+	{
+		TestTrue(FString::Printf(TEXT("the voice %d comes up (%d of %d)"), Idle::First + Voice, Draws[Voice], Many),
+			Draws[Voice] > Many / Idle::Num / 2);
+	}
+	// The same seed says the same things.
+	Idle Same;
+	Same.Init(20260920);
+	Calls.Init(20260920);
+	TestEqual(TEXT("the same seed draws the same gap"), Same.DrawGap(), Calls.DrawGap());
+	TestEqual(TEXT("and the same voice"), static_cast<int32>(Same.DrawVoice()), static_cast<int32>(Calls.DrawVoice()));
+
+	// 発見の声: the game mode lets one Found through every 12 s, whichever enemy asks.
+	TestEqual(TEXT("a Found every 12 s"), AWasamiGameMode::FoundVoiceGap, 12.f);
+	FTestWorldWrapper Wrapper;
+	if (!Wrapper.CreateTestWorld(EWorldType::Game) || !Wrapper.BeginPlayInTestWorld())
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	UWorld* World = Wrapper.GetTestWorld();
+	AWasamiGameMode* Mode = World->GetAuthGameMode<AWasamiGameMode>();
+	if (!TestNotNull(TEXT("the project's game mode"), Mode))
+	{
+		Wrapper.ForwardErrorMessages(this);
+		return false;
+	}
+	// The world's settings clamp a tick to 0.4 s however long a step is asked for, so the time is let by in small ones.
+	auto LetBy = [&Wrapper](float Seconds)
+	{
+		constexpr float Step = 0.25f;
+		for (float Left = Seconds; Left > 0.f; Left -= Step)
+		{
+			Wrapper.TickTestWorld(FMath::Min(Left, Step));
+		}
+	};
+	TestTrue(TEXT("the first Found of a run goes"), Mode->TakeFoundVoice());
+	TestFalse(TEXT("a second at once does not"), Mode->TakeFoundVoice());
+	LetBy(AWasamiGameMode::FoundVoiceGap - 1.f);
+	TestFalse(TEXT("nor one a second short of the gap"), Mode->TakeFoundVoice());
+	LetBy(1.5f);
+	TestTrue(TEXT("one past the gap goes"), Mode->TakeFoundVoice());
+	TestFalse(TEXT("and closes it again"), Mode->TakeFoundVoice());
+	Wrapper.ForwardErrorMessages(this);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiEnemyActorDefaultsTest, "Wasami.Enemy.Actor.Defaults",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
@@ -687,10 +769,23 @@ bool FWasamiEnemySoundTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("it plays from the start"), Skate->bAutoActivate);
 	TestEqual(TEXT("silent at first"), Skate->VolumeMultiplier, 0.f);
 	TestEqual(TEXT("the low pitch"), Skate->PitchMultiplier, 1.2f);
+	// Talk Audio (the nurse's): on the capsule as well, holding no sound of its own and waiting for Talk to give it one,
+	// and saying no subtitle itself (Talk puts the line up for as long as it can be read).
+	const UAudioComponent* Talk = Enemy->GetTalkAudio();
+	if (!TestNotNull(TEXT("the Talk Audio"), Talk))
+	{
+		return false;
+	}
+	TestTrue(TEXT("on the capsule"), Talk->GetAttachParent() == Enemy->GetCapsuleComponent());
+	TestTrue(TEXT("with no transform of its own"), Talk->GetRelativeTransform().Equals(FTransform::Identity));
+	TestFalse(TEXT("it waits to be spoken through"), Talk->bAutoActivate);
+	TestNull(TEXT("with nothing to say"), Talk->Sound.Get());
+	TestTrue(TEXT("and no subtitle of its own"), Talk->bSuppressSubtitles);
 	for (const UClass* Nurse : {AWasamiEnemy06Chase::StaticClass(), AWasamiEnemySentry::StaticClass(), AWasamiEnemyZone2::StaticClass()})
 	{
 		const AWasamiEnemy* Default = CastChecked<AWasamiEnemy>(Nurse->GetDefaultObject());
 		TestNotNull(FString::Printf(TEXT("%s has the Skate Audio too"), *Nurse->GetName()), Default->GetSkateAudio());
+		TestNotNull(FString::Printf(TEXT("and %s's Talk Audio"), *Nurse->GetName()), Default->GetTalkAudio());
 	}
 
 	FTestWorldWrapper Wrapper;
@@ -712,6 +807,30 @@ bool FWasamiEnemySoundTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("through MonkeyAttenuation"),
 			Audio->AttenuationSettings && Audio->AttenuationSettings->GetName() == TEXT("MonkeyAttenuation"));
 		TestTrue(TEXT("and running from the start"), Audio->IsPlaying());
+	}
+
+	// Talk: the voice is set on the Talk Audio and played through AgathaAttenuation. A line that is still sounding
+	// keeps an unforced one from starting; a forced one goes over it.
+	UAudioComponent* Speech = Spawned->GetTalkAudio();
+	if (TestNotNull(TEXT("the spawned Talk Audio"), Speech))
+	{
+		TestTrue(TEXT("through AgathaAttenuation"),
+			Speech->AttenuationSettings && Speech->AttenuationSettings->GetName() == TEXT("AgathaAttenuation"));
+		TestNotNull(TEXT("the found line is said"), Spawned->Talk(EWasamiVoice::Found, true, AWasamiEnemy::FoundVolume));
+		if (TestNotNull(TEXT("which is on it"), Speech->Sound.Get()))
+		{
+			TestEqual(TEXT("Wasami_Found"), Speech->Sound->GetName(), TEXT("Wasami_Found"));
+		}
+		TestEqual(TEXT("at its full volume"), Speech->VolumeMultiplier, AWasamiEnemy::FoundVolume);
+		TestTrue(TEXT("and sounding"), Speech->IsPlaying());
+		TestNull(TEXT("a rounds voice does not cut it off"),
+			Spawned->Talk(EWasamiVoice::Calling, false, AWasamiEnemy::IdleVolume));
+		TestEqual(TEXT("which still sounds"), Speech->Sound->GetName(), TEXT("Wasami_Found"));
+		TestNotNull(TEXT("a forced one goes over it"),
+			Spawned->Talk(EWasamiVoice::Calling, true, AWasamiEnemy::IdleVolume));
+		TestEqual(TEXT("Wasami_Calling"), Speech->Sound->GetName(), TEXT("Wasami_Calling"));
+		TestEqual(TEXT("a little under full"), Speech->VolumeMultiplier, AWasamiEnemy::IdleVolume);
+		Speech->Stop();
 	}
 
 	// Update Skate Sound: a whole second of interpolation lands on the mapped value (InterpSpeed * DeltaTime >= 1).

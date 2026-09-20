@@ -387,6 +387,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 
 ## 変更履歴
 - 2026-09-20: `import_wasami_enemy` が捕獲の音 3 本（`dd_enemy.CAPTURE_SOUNDS`・`import_capture_sounds`。本家の版 1 の波）も取り込むようにした（作業一覧の項目 19 のステップ 4。07 記録）
+- 2026-09-20: `import_wasami_enemy` が敵の声の減衰（`dd_enemy.TALK_ATTENUATION`・`ENEMY_ATTENUATIONS`。`AgathaAttenuation`）も取り込むようにした（`import_move_sound` を `import_enemy_audio` に改名。作業一覧の項目 20 のステップ 7。07 記録）
 - 2026-09-20: `import_wasami_enemy` が敵の移動音（`dd_enemy.MOVE_SOUND`・`import_move_sound`。`DD_Rollerskating_Fast_V1_LOOP` と減衰 `MonkeyAttenuation`）も取り込むようにし、`dd_assets.sound` が `SOUND_ENUMS`（いまは `VirtualizationMode`）を書き出しにあるときだけ写すようにした（作業一覧の項目 19 のステップ 5。07 記録）
 - 2026-09-20: 台詞の取り込み `WasamiDDTools.import_dd_dialogue`（`pipeline/dd_dialogue.py`。病院の台詞の波 15 本と一言の Cue 1 つ）を足し、`dd_assets.sound` に字幕（`subtitles`）を書く口を足した（作業一覧の項目 20 のステップ 1。10 記録）
 - 2026-09-20: 取り込み `import_dd_audio` に環境音 2 本と残響 2 つ（`dd_assets.reverb_effect`）を足し、組み立ての `_flow` が `AmbientSound`（`set_ambient_sound`）と `AudioVolume`（`set_audio_volume`。`VOLUME_CLASSES`）もフォルダ `Hospital/Audio` に置くようにして、両ゾーンに `place_dd_flow` で置き直して道を焼いた。`dd_assets.sound` が取り込んだ波を保存するようにした（取り込みだけでは保存されず、エディタを開き直すと消えていた）（作業一覧の項目 19 のステップ 3。10 記録）

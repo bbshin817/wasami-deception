@@ -23,6 +23,8 @@
 #include "WasamiAssets.h"
 #include "WasamiCapture.h"
 #include "WasamiEnemyAnimInstance.h"
+#include "WasamiGameMode.h"
+#include "WasamiVoice.h"
 #include "WasamiZoneFlow.h"
 
 namespace
@@ -79,6 +81,22 @@ int32 FWasamiChaseVariations::DrawClip()
 	return Clip;
 }
 
+void FWasamiEnemyIdleVoices::Init(int32 Seed)
+{
+	*this = FWasamiEnemyIdleVoices();
+	Random.Initialize(Seed);
+}
+
+float FWasamiEnemyIdleVoices::DrawGap()
+{
+	return Random.FRandRange(MinGap, MaxGap);
+}
+
+EWasamiVoice FWasamiEnemyIdleVoices::DrawVoice()
+{
+	return static_cast<EWasamiVoice>(First + Random.RandRange(0, Num - 1));
+}
+
 AWasamiEnemy::AWasamiEnemy()
 {
 	Tags.Add(EnemyTag);
@@ -132,9 +150,18 @@ AWasamiEnemy::AWasamiEnemy()
 	SkateAudio->SetVolumeMultiplier(MoveVolume);
 	SkateAudio->SetPitchMultiplier(MoveMinPitch);
 
+	// Talk Audio: on the capsule as well and with nothing to say yet, so it waits for Talk rather than starting itself.
+	// The waves' own subtitles would go only while the clip sounds — under a second — so they are suppressed here and
+	// WasamiVoice puts them up for the time the WebGL version gave them.
+	TalkAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("Talk Audio"));
+	TalkAudio->SetupAttachment(GetCapsuleComponent());
+	TalkAudio->bAutoActivate = false;
+	TalkAudio->bSuppressSubtitles = true;
+
 	MeshAsset = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
 	MoveSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_Rollerskating_Fast_V1_LOOP")));
 	MoveAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Misc/MonkeyAttenuation")));
+	TalkAttenuation = TSoftObjectPtr<USoundAttenuation>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Misc/AgathaAttenuation")));
 	MapMarkMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Plane")));
 	MapMarkMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Shared/M_Enemy")));
 }
@@ -174,6 +201,7 @@ void AWasamiEnemy::BeginPlay()
 	// The original's Skate Audio holds the loop itself, so bAutoActivate starts it; ours loads the loop here, after
 	// that activation has already found no sound, and has to start it by hand.
 	SkateAudio->Play();
+	TalkAudio->AttenuationSettings = TalkAttenuation.LoadSynchronous();
 	BeginNurse();
 }
 
@@ -208,6 +236,54 @@ void AWasamiEnemy::BeginNurse()
 	GenerateRandomPoint();
 	ChaseVariations.Init(FMath::Rand());
 	GetWorldTimerManager().SetTimer(DecisionTimer, this, &AWasamiEnemy::MakeChoice, DecisionInterval, true);
+	// Then Random Dialogue, which runs on its own from here (the original starts it in the same BeginPlay, after the
+	// game mode; the sentry, whose BeginPlay is empty, has no call until it drops on the player).
+	IdleVoices.Init(FMath::Rand());
+	ScheduleIdleVoice();
+}
+
+void AWasamiEnemy::ScheduleIdleVoice()
+{
+	// Random Dialogue's Delay(RandomFloatInRange), drawn anew each time round.
+	GetWorldTimerManager().SetTimer(IdleVoiceTimer, this, &AWasamiEnemy::SayIdleVoice, IdleVoices.DrawGap(), false);
+}
+
+void AWasamiEnemy::SayIdleVoice()
+{
+	// The original picks Zone01_Pursuit through a chase and Zone01_Laugh while cloaked; this game has only the four
+	// rounds voices, so a chase says nothing here (its found line is Chase Player's) and a stun speaks as the rounds do.
+	if (!IsChasing() || IsStunned())
+	{
+		// Not forced: a line still sounding is left to finish, and this call is simply lost, as the original's is.
+		Talk(IdleVoices.DrawVoice(), false, IdleVolume);
+	}
+	ScheduleIdleVoice();
+}
+
+float AWasamiEnemy::GetIdleVoiceWait() const
+{
+	return FMath::Max(GetWorldTimerManager().GetTimerRemaining(IdleVoiceTimer), 0.f);
+}
+
+UAudioComponent* AWasamiEnemy::Talk(EWasamiVoice Id, bool bForce, float Volume)
+{
+	// Talk (@10483): without bForce a line that is still sounding keeps this one from starting at all; with it the
+	// sound is set and played over whatever was there.
+	if (!bForce && TalkAudio->IsPlaying())
+	{
+		return nullptr;
+	}
+	USoundBase* Sound = WasamiVoice::Load(Id);
+	if (!Sound)
+	{
+		return nullptr;
+	}
+	TalkAudio->SetVolumeMultiplier(Volume);
+	TalkAudio->SetSound(Sound);
+	TalkAudio->Play();
+	// The component says nothing itself (bSuppressSubtitles): the line goes up for as long as it can be read.
+	WasamiVoice::ShowSubtitle(this, Id);
+	return TalkAudio;
 }
 
 void AWasamiEnemy::SetWalkState(bool bNormal)
@@ -327,7 +403,8 @@ void AWasamiEnemy::StartStun()
 {
 	// A DoOnce, opened again when the stun ends. Stopping the movement also aborts the AI's path (the nav movement's
 	// StopActiveMovement), and no decision asks for another until the stun ends. Cloak(False) (the nurse's invisibility,
-	// not made) and its stunned line (Talk, the item 20's voices) are left out.
+	// not made) is left out, and so is its stunned line, Zone01_Stunned, which this game has no voice for: a stun goes on
+	// saying the rounds voices (Say Idle Voice).
 	if (!bStunRunning)
 	{
 		bStunRunning = true;
@@ -383,11 +460,19 @@ void AWasamiEnemy::ChasePlayer()
 	SetWalkState(false);
 	// AI MoveTo the target; its success and failure do nothing.
 	UAIBlueprintHelperLibrary::CreateMoveToProxyObject(this, this, FVector::ZeroVector, GetPlayerTarget(), ChaseAcceptance, false);
-	// A DoOnce that Reset Detection opens: the Detected line (Talk, the item 20's voices) and CloseBy. The pill throw 5 s
-	// after the first chase is not made.
+	// A DoOnce that Reset Detection opens: the Detected line and CloseBy. The pill throw 5 s after the first chase is
+	// not made.
 	if (!bDetectionClosed)
 	{
 		bDetectionClosed = true;
+		// Talk(Zone01_Detected, True) as this game's Wasami, forced over a rounds voice. The original leaves every nurse
+		// to say it; here the game mode holds them to one between them (どの敵からでも 12 s に 1 回まで), and where there is
+		// no game mode of this game's (a test world's own) it is simply said.
+		AWasamiGameMode* Mode = Cast<AWasamiGameMode>(UGameplayStatics::GetGameMode(this));
+		if (!Mode || Mode->TakeFoundVoice())
+		{
+			Talk(EWasamiVoice::Found, true, FoundVolume);
+		}
 		OnCloseBy.Broadcast();
 	}
 }

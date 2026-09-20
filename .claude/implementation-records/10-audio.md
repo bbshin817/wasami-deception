@@ -115,7 +115,7 @@ updated: 2026-09-20
   - `fast` … `UWasamiPowerComponent::UseSpeedBoost` の頭（04 記録）。
   - `best` … `AWasamiSecretWall` の最初の使用から 0.5 s 後（18 記録）。本家は秘密の壁で何も喋らず、Bierce が喋るのは書類のほう。
   - `fine`・`over` … 死亡画面の `LifeLost` の段（ライフが残るとき、`Life_Lost` と一緒）と `GameOver` の段（`66_-_Game_Over` と一緒）。どちらも字幕なしで、音量 1（09 記録）。ゲームオーバーの 1.25 s 後の笑い声は鳴らさない。
-  - `found` と巡回の 4 本 … 敵（07 記録。ステップ 7）。
+  - `found` と巡回の 4 本 … 敵の `Talk`（`AWasamiEnemy` の `TalkAudio`。07 記録）。`Say` の 2D ではなく敵の口から `AgathaAttenuation` 越しに鳴る。発見はゲームモードの `TakeFoundVoice()` が全体で 12 s に 1 回に絞り、巡回の 4 本は 14〜26 s ごと。
 - 死亡画面だけは `Say` ではなく画面自身の `PlaySound`（= `PlaySound2D`）で鳴らす。ゲームを止めた下で鳴る UI の音で、字幕も要らないため。
 
 ## 作るアセット
@@ -154,7 +154,8 @@ updated: 2026-09-20
 - 館内放送（Zone 2 の `Nurse_Hospital_Zone01_Event_48_Intercom_2`）は `bAutoActivate` 偽のまま置いてあるだけで、鳴らす側がまだ無い（本家はレベル BP が鳴らす。台詞なので項目 20）。
 - 話し役の待ちの戻り（`Resume`）には「待ちは無い」を値で渡す（`Step(false, false)`）。`FTimerManager::IsTimerActive` は**自分のコールバックの最中も真**なので、そこで `IsWaiting()` を見ると待ちの回が自分を「もう待っている」と誤り、台詞が二度と鳴らない（症状索引の「タイマーのコールバックの中で `IsTimerActive` が真を返す」）。
 - 話し役は音声装置の無い自動テストでは鳴っている状態を作れない（`UAudioComponent::Play` は装置が無いと何もしない）ので、`IsSpeaking()` を `virtual` にして `AWasamiTestBierceTalk` が差し替える。待ちの分岐そのものは純粋な `WasamiTalkStep` でも試す。
-- ワサミの声の字幕は**波のものを止めて `WasamiVoice` が出し直す**（下の「ワサミの声を鳴らす口」）。波のままだと UE の `FSubtitleManager` が音の終わりで消すので、0.5〜0.7 s の声は読む間が無い。**`Say` を通さずに波をそのまま鳴らすと、短いままの字幕が出る**。
+- ワサミの声の字幕は**波のものを止めて `WasamiVoice` が出し直す**（下の「ワサミの声を鳴らす口」）。波のままだと UE の `FSubtitleManager` が音の終わりで消すので、0.5〜0.7 s の声は読む間が無い。**`Say` を通さずに波をそのまま鳴らすと、短いままの字幕が出る**（自前の部品で鳴らすなら `bSuppressSubtitles` を真にして `ShowSubtitle` を呼ぶ。敵の `Talk` がその形）。
+- **字幕の長さは実時間で数える**: `UWorld::AudioTimeSeconds` は `slomo` の時間の伸縮を受けない（`LevelTick.cpp`「Audio always plays at real-time regardless of time dilation」）。`slomo 0.1` にしても字幕は 2.4 s の実時間で消えるので、PIE で撮るときは収録して後からコマを見る。
 - `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
 ## 変更履歴
@@ -166,3 +167,4 @@ updated: 2026-09-20
 - 2026-09-20: 話し役 `AWasamiBierceTalk` を作り、両ゾーンに 1 体ずつ置くようにした（項目 20 のステップ 2）。
 - 2026-09-20: ワサミの声 11 本を `/Game/Wasami/Voices` に取り込むようにした（`Tools/dd/prepare_voices.py`・`dd_voices.py`・`WasamiDDTools.import_wasami_voices`。項目 20 のステップ 5）。
 - 2026-09-20: 鳴らす口 `WasamiVoice` を作り、2D の 6 本（`greeting`・`well`・`fast`・`best`・`fine`・`over`）を場面に付けた（項目 20 のステップ 6）。
+- 2026-09-20: 残りの 5 本（`found` と巡回の 4 本）を敵に付けた（項目 20 のステップ 7。中身は 07 記録の「声」）。

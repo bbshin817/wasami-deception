@@ -109,6 +109,17 @@ public:
 	/** The zone's flow spawned when play began, or null outside the zones. */
 	AWasamiZoneFlow* GetZoneFlow() const { return ZoneFlow; }
 
+	/**
+	 * 発見の声 (the item 20): whether the enemy that has just seen the player may say so, taking the turn where it
+	 * may. Not the original's, whose nurses each say their own Detected line: どの敵からでも FoundVoiceGap に 1 回まで
+	 * (the WebGL version's rule, its record 15), so a corridor of them that all see the player at once says it once.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	bool TakeFoundVoice();
+
+	/** How long a Found keeps every enemy quiet (s). */
+	static constexpr float FoundVoiceGap = 12.f;
+
 	/** Pause Time Counter and Unpause Time Counter: the gate the tick counts through. */
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void PauseTimeCounter();
@@ -284,6 +295,8 @@ private:
 	int32 StartCheckpoint = 0;
 	bool bNewStart = false;
 	bool bStartPrepared = false;
+	/** When Take Found Voice last let one through (the world's time), a gap before play so the first one goes. */
+	float LastFoundVoice = -FoundVoiceGap;
 	FTimerHandle ShardRemovalTimer;
 	FTimerHandle CheckShardsTimer;
 	FTimerHandle FinishedLevelTimer;

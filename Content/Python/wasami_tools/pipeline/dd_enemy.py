@@ -56,6 +56,10 @@ CAPTURE_SOUND_VERSION = 1
 # version, so this one is pak_reference_2's.
 MOVE_SOUND = "Audio/06_Hospital/DD_Rollerskating_Fast_V1_LOOP"
 MOVE_ATTENUATION = "Audio/Misc/MonkeyAttenuation"
+# What the enemy's lines play through (AWasamiEnemy's Talk Audio, the nurse's, which holds no sound of its own: Talk
+# gives it one as the enemy speaks, this game's Wasami voices).
+TALK_ATTENUATION = "Audio/Misc/AgathaAttenuation"
+ENEMY_ATTENUATIONS = (MOVE_ATTENUATION, TALK_ATTENUATION)
 MOVE_SOUND_VERSION = 2
 PIPELINE_VERSION = "1"  # bump when ensure_skeletal_pipeline's settings change
 
@@ -600,9 +604,11 @@ def import_capture_sounds():
     return [dd_assets.sound(rel, CAPTURE_SOUND_VERSION) for rel in CAPTURE_SOUNDS]
 
 
-def import_move_sound():
-    """The loop the enemy moves to and the attenuation it plays through. Returns the wave's package path."""
-    dd_assets.sound_attenuation(MOVE_ATTENUATION, MOVE_SOUND_VERSION)
+def import_enemy_audio():
+    """The loop the enemy moves to and the attenuations it moves and speaks through. Returns the wave's package
+    path."""
+    for rel in ENEMY_ATTENUATIONS:
+        dd_assets.sound_attenuation(rel, MOVE_SOUND_VERSION)
     return dd_assets.sound(MOVE_SOUND, MOVE_SOUND_VERSION)
 
 
@@ -620,5 +626,5 @@ def import_all():
     for asset in [master, instance, mesh]:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     EAL.save_directory(FOLDER, only_if_is_dirty=True, recursive=True)
-    sounds = import_capture_sounds() + [import_move_sound()]
+    sounds = import_capture_sounds() + [import_enemy_audio()]
     return {"textures": len(textures), "materials": 2, "meshes": 1, "animations": len(report), "sounds": len(sounds)}

@@ -5,6 +5,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "WasamiEnemyAnimInstance.h"
 #include "WasamiEnemyInterface.h"
+#include "WasamiVoice.h"
 #include "WasamiEnemy.generated.h"
 
 class UAudioComponent;
@@ -63,6 +64,34 @@ private:
 
 	float Wait = NotChasing;
 	int32 Last = INDEX_NONE;
+	FRandomStream Random;
+};
+
+/**
+ * 巡回中と硬直中の呼びかけ (the item 20, the WebGL version's vocal — its record 15): while the enemy is not chasing,
+ * one of the four rounds voices sounds every MinGap to MaxGap seconds. The original's Random Dialogue (its BeginPlay
+ * starts it, and it runs on whatever the nurse is doing) draws 3 to 10 s and lets its Talk pick the line from the
+ * state — Zone01_Patrol, _Pursuit or _Laugh; this game has the four rounds clips and no others, so it keeps the WebGL
+ * version's longer gap and draws among the four.
+ */
+struct WASAMI_DECEPTION_API FWasamiEnemyIdleVoices
+{
+	static constexpr float MinGap = 14.f;
+	static constexpr float MaxGap = 26.f;
+	/** The four, which EWasamiVoice keeps together. */
+	static constexpr int32 First = static_cast<int32>(EWasamiVoice::Calling);
+	static constexpr int32 Num = static_cast<int32>(EWasamiVoice::Remember) - First + 1;
+
+	/** Starts the draws: the same Seed makes the same calls (0 is the seed, as FRandomStream takes it). */
+	void Init(int32 Seed);
+
+	/** How long until the next call (s), drawn anew for each. */
+	float DrawGap();
+
+	/** The voice of a call: one of the four, each as likely as the rest (the WebGL version draws them alike). */
+	EWasamiVoice DrawVoice();
+
+private:
 	FRandomStream Random;
 };
 
@@ -145,6 +174,27 @@ public:
 
 	/** Skate Audio: the loop the enemy moves to, which its speed gives its volume and pitch. */
 	UAudioComponent* GetSkateAudio() const { return SkateAudio; }
+
+	/** Talk Audio: what the enemy speaks through, empty until it says something. */
+	UAudioComponent* GetTalkAudio() const { return TalkAudio; }
+
+	/** What the WebGL version gave the voices: the found line at its full volume, the rounds a little under. */
+	static constexpr float FoundVolume = 1.f;
+	static constexpr float IdleVolume = 0.9f;
+
+	/**
+	 * Talk (the nurse's): the voice sounds from the enemy through the Talk Audio, and where the wave carries a subtitle
+	 * it goes up for as long as WasamiVoice gives it (the clips are too short to read while they sound). bForce cuts off
+	 * whatever the enemy is saying; without it a line still sounding keeps this one from starting at all. Answers the
+	 * component it plays through, or null where nothing was said.
+	 */
+	UAudioComponent* Talk(EWasamiVoice Id, bool bForce, float Volume = 1.f);
+
+	/** 巡回中と硬直中の呼びかけ (the item 20): the draws of this enemy's calls. */
+	const FWasamiEnemyIdleVoices& GetIdleVoices() const { return IdleVoices; }
+
+	/** How long until this enemy's next call (s); 0 where none is waiting (the sentry before it drops). */
+	float GetIdleVoiceWait() const;
 
 	/**
 	 * Update Skate Sound (the nurse's tick): the move loop's volume follows how fast the enemy goes (silent when it
@@ -259,6 +309,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	void ChasePlayer();
 
+	/**
+	 * Random Dialogue (the nurse's, with this game's voices): says one of the four rounds voices and waits for the next
+	 * call. The original's loop speaks whatever the nurse is doing; this one keeps quiet through a chase, which has the
+	 * found line of its own, and speaks on the rounds and through a stun (the WebGL version's rule).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Enemy")
+	void SayIdleVoice();
+
 	/** Not Seeing Player: walks to the Point Of Interest, or else to the random point. */
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	void NotSeeingPlayer();
@@ -306,6 +364,9 @@ protected:
 	 */
 	void StartStun();
 	void EndStun();
+	/** Random Dialogue's Delay: the next call, a gap away. */
+	void ScheduleIdleVoice();
+
 	/** The retriggerable delay's end: Seen Player Recently false and Reset Detection. */
 	void ForgetPlayer();
 	/** Reset Detection: the next Chase Player sends CloseBy again. */
@@ -346,6 +407,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TObjectPtr<UAudioComponent> SkateAudio;
 
+	/**
+	 * Talk Audio: on CollisionCylinder as well, with no sound of its own (Talk gives it one) and not playing until it
+	 * does, through AgathaAttenuation. Its own subtitles are suppressed, as Talk puts them up itself.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	TObjectPtr<UAudioComponent> TalkAudio;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<USkeletalMesh> MeshAsset;
 
@@ -355,6 +423,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<USoundAttenuation> MoveAttenuation;
+
+	/** AgathaAttenuation, the one the nurse speaks through (occluded, natural sound out to 80 m). */
+	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
+	TSoftObjectPtr<USoundAttenuation> TalkAttenuation;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Enemy")
 	TSoftObjectPtr<UStaticMesh> MapMarkMesh;
@@ -367,10 +439,12 @@ private:
 	FTimerHandle DecisionTimer;
 	FTimerHandle StunTimer;
 	FTimerHandle ForgetTimer;
+	FTimerHandle IdleVoiceTimer;
 	bool bStunRunning = false;
 	// Chase Player's DoOnce around CloseBy.
 	bool bDetectionClosed = false;
 	// The Sphere's DoOnce around the capture.
 	bool bCatchClosed = false;
 	FWasamiChaseVariations ChaseVariations;
+	FWasamiEnemyIdleVoices IdleVoices;
 };

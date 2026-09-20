@@ -365,6 +365,18 @@ void AWasamiGameMode::ShowDeathScreen(AActor* Cause)
 	UWasamiDeathScreenWidget::Show(this, DeathScreenLevelFor(CurrentZone(), bCausedByPlayer));
 }
 
+bool AWasamiGameMode::TakeFoundVoice()
+{
+	// The world's time, which starts over with each play, so the first Found of a run always goes through.
+	const float Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	if (Now - LastFoundVoice < FoundVoiceGap)
+	{
+		return false;
+	}
+	LastFoundVoice = Now;
+	return true;
+}
+
 void AWasamiGameMode::PauseTimeCounter()
 {
 	bTimeCounting = false;
