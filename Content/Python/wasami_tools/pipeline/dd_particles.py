@@ -11,7 +11,8 @@ re-bakes a table from a distribution object). Distributions the cook could not b
 it kept anyway are made as objects with their exported values. A GPU emitter (ParticleModuleTypeDataGpu) is the
 exception: the editor builds its simulation from its modules' distribution objects (UParticleEmitter::Build →
 CompileModule, which reads ColorOverLife.Distribution and the like without checking), so each of its tables without one
-gets the object it was baked from, as near as the table tells (_table_distribution).
+gets the object it was baked from, as near as the table tells (_table_distribution). Its colour, size and sub-image
+index come from the simulation the cook saved instead (_gpu_resource), which is what the original draws.
 
 Values are written in UE's text form by the properties' own names. What a package leaves out is at the class defaults
 (the export holds what differs from them), except where UE 5.8 reads the old package differently (DETAIL_EPIC)."""
@@ -40,6 +41,24 @@ NOT_WRITTEN = ("CurveEdSetup", "bIsDirty")
 # A GPU emitter's simulation data (ParticleModuleTypeDataGpu), which the cook saves and the editor builds from the
 # emitter's modules (UParticleEmitter::Build → UParticleModuleTypeDataGpu::Build, run by UpdateModuleLists).
 BUILT = ("EmitterInfo", "ResourceData")
+
+# An FColor of an exported quantized curve reads B, G, R, A; the curve's channels are named R, G, B, A.
+COLOR_CHANNEL = (2, 1, 0, 3)
+# The modules whose CompileModule writes each of a GPU emitter's quantized curves, in the order a LOD level lists them,
+# and the class of the last of them the saved curve can be read back into. The last one to run sets the curve; any
+# other one composes with what is already there (ColorScaleOverLife scales the colour built so far), and a saved curve
+# cannot be split between two modules, so a GPU emitter with one is raised on rather than guessed at.
+GPU_COLOR_MODULES = ("ParticleModuleColor", "ParticleModuleColor_Seeded", "ParticleModuleColorOverLife",
+                     "ParticleModuleColorScaleOverLife")
+GPU_SIZE_MODULES = ("ParticleModuleSize", "ParticleModuleSize_Seeded", "ParticleModuleSizeMultiplyLife",
+                    "ParticleModuleSizeScale")
+# UParticleModuleSize::CompileModule only sets the size curve to a constant 1 (a particle's own size is the spawn
+# module's), so an emitter whose last size module is that one has nothing to read the saved curve back into.
+GPU_SIZE_CONSTANT = ("ParticleModuleSize", "ParticleModuleSize_Seeded")
+GPU_SIZE_PROPERTY = {"ParticleModuleSizeMultiplyLife": "LifeMultiplier", "ParticleModuleSizeScale": "SizeScale"}
+# EParticleSubUVInterpMethod's values that make UParticleModuleSubUV::CompileModule feed SubImageIndex into the
+# simulation; under any other one the channel stays at zero and the module's own value is never read.
+SUBUV_LINEAR = ("PSUVIM_Linear", "PSUVIM_Linear_Blend")
 
 # EParticleDetailMode's bits. UE 5 added Epic (FParticleSystemCustomVersion::AddEpicDetailMode); an emitter saved before
 # that gets Epic where it has High when it loads (UParticleEmitter::PostLoad). The original's packages are older, and the
@@ -161,6 +180,33 @@ def _table_distribution(raw, vector):
     return "Distribution%sUniformCurve" % kind, {"ConstantCurve": {"Points": points}}
 
 
+def _quantized_channel(resource, curve, channel):
+    """One channel of a quantized curve of a GPU emitter's saved simulation ('Color' or 'Misc') as the values it stands
+    for: Bias + Scale * c / 255, the way the simulation reads it back (FComposableDistribution::QuantizeVector4). A
+    channel whose Scale is 0 is a constant at Bias, and so is every channel of a curve with no samples - the build
+    leaves the samples of a one-entry curve alone, so what the cook saved there is an older build's leftovers."""
+    scale = (resource.get("%sScale" % curve) or [0.0] * 4)[channel]
+    bias = (resource.get("%sBias" % curve) or [0.0] * 4)[channel]
+    samples = resource.get("Quantized%sSamples" % curve) or []
+    if not scale or not samples:
+        return [bias]
+    return [bias + scale * s[COLOR_CHANNEL[channel]] / 255.0 for s in samples]
+
+
+def _channel_distribution(channels, vector):
+    """The distribution object (its class and values) that builds one or more channels of a quantized curve back: a
+    constant when every channel holds one value, else a curve through the samples, evenly over 0..1 (the life the
+    simulation reads the curve over). A channel of one value beside longer ones is that value all along."""
+    count = max(len(c) for c in channels)
+    kind = "Vector" if vector else "Float"
+    one = (lambda values: values) if vector else (lambda values: values[0])
+    if count == 1:
+        return "Distribution%sConstant" % kind, {"Constant": one([c[0] for c in channels])}
+    points = [{"InVal": i / (count - 1.0), "OutVal": one([c[min(i, len(c) - 1)] for c in channels])}
+              for i in range(count)]
+    return "Distribution%sConstantCurve" % kind, {"ConstantCurve": {"Points": points}}
+
+
 def _box(values):
     """An exported FBox: min, max, and IsValid packed into a float's bytes (its low byte; the rest is padding)."""
     if len(values) != 7:
@@ -203,22 +249,100 @@ class _Build:
         self.target = target or dd_assets.asset_path(rel)
 
     def _gpu_distributions(self):
-        """For each module of a GPU emitter, the distribution object of each baked table that has none, added to the
-        exports (named Baked<property>, after what the module's own default subobjects are not called)."""
+        """Every GPU emitter's modules, which the editor builds the simulation from at every load: each baked table
+        without a distribution object gets the one it was baked from, and then the simulation the cook saved is read
+        back into the modules it was built from (_gpu_resource)."""
         for lod in [e for e in self.exports.values() if e["class"] == "ParticleLODLevel"]:
             p = lod["props"]
             type_data = self.exports.get(p.get("TypeDataModule") or "")
             if type_data is None or type_data["class"] != "ParticleModuleTypeDataGpu":
                 continue
-            for key in [p["RequiredModule"], p["SpawnModule"]] + list(p.get("Modules", ())):
+            modules = [p["RequiredModule"], p["SpawnModule"]] + list(p.get("Modules", ()))
+            for key in modules:
                 for prop, raw in self.exports[key]["props"].items():
                     if not isinstance(raw, dict) or "Table" not in raw or raw.get("Distribution"):
                         continue
                     # A vector's entries are 3 values (6 with a low and a high), a float's 1 (or 2).
                     cls, values = _table_distribution(raw, raw["Table"].get("EntryStride", 0) in (3, 6))
-                    name = "Baked" + prop
-                    self.exports["%s.%s" % (key, name)] = {"name": name, "outer": key, "class": cls, "props": values}
-                    raw["Distribution"] = "%s.%s" % (key, name)
+                    self._gpu_distribution(key, prop, cls, values)
+            self._gpu_resource(type_data["props"], modules)
+
+    def _gpu_distribution(self, key, prop, cls, values):
+        """One module property's distribution object, added to the exports (named Baked<property>, after what the
+        module's own default subobjects are not called) and pointed at by the property."""
+        name = "Baked" + prop
+        self.exports["%s.%s" % (key, name)] = {"name": name, "outer": key, "class": cls, "props": values}
+        self.exports[key]["props"].setdefault(prop, {})["Distribution"] = "%s.%s" % (key, name)
+
+    def _gpu_owner(self, modules, group, wanted, what):
+        """The module of a GPU emitter's LOD level whose distributions one of the quantized curves is read back into:
+        the last of the modules that write it (their CompileModule runs in the order the level lists them), which has
+        to be one that sets the curve rather than composing with what is already there."""
+        found = [(self.exports[key]["class"], key) for key in modules if self.exports[key]["class"] in group]
+        if not found:
+            return None, None
+        cls, key = found[-1]
+        if cls not in wanted:
+            raise ValueError("%s: %s of a GPU emitter is composed by %s, which the saved simulation cannot be split "
+                             "between" % (self.rel, what, cls))
+        return cls, key
+
+    def _gpu_resource(self, type_data, modules):
+        """A GPU emitter's colour, size and sub-image index from the simulation the cook saved (ResourceData), which is
+        what the original draws: UParticleModuleTypeDataGpu::Build is editor-only, so a cooked game reads the saved
+        simulation and never looks at the modules again. Where the two disagree - BallisticsVFX's do, their modules
+        being of another version than the cook - the saved one is the original's look, and the module gets the
+        distribution the editor builds it back from (it rebuilds the simulation at every load, so writing the saved
+        values onto the module would do nothing).
+
+        Quantized to 8 bits over the curve's own range, the saved curve is the value the game reads, so reading it back
+        loses nothing; only the editor's own resampling (OptimizeLookupTable) rounds a corner of a curve it did not
+        sample on by a step or two."""
+        resource = type_data.get("ResourceData")
+        if not resource:
+            return
+
+        def read_back(key, prop, channels, vector):
+            """One property from the saved simulation - unless the cook kept the module's own distribution object,
+            which is the value the original's own build read, so the editor builds the same simulation from it. Only a
+            property the cook left as a baked table alone can be of another version than the simulation: the GPU path
+            never reads the table, so it was never baked again."""
+            ref = (self.exports[key]["props"].get(prop) or {}).get("Distribution")
+            if ref and ref != "%s.Baked%s" % (key, prop):
+                return
+            self._gpu_distribution(key, prop, *_channel_distribution(channels, vector))
+
+        # The colour curve is R:G:B from ColorOverLife and A from AlphaOverLife.
+        _, key = self._gpu_owner(modules, GPU_COLOR_MODULES, ("ParticleModuleColorOverLife",), "the colour")
+        if key is None:
+            raise ValueError("%s: a GPU emitter with no colour module to read the saved simulation back into"
+                             % self.rel)
+        read_back(key, "ColorOverLife", [_quantized_channel(resource, "Color", c) for c in (0, 1, 2)], True)
+        read_back(key, "AlphaOverLife", [_quantized_channel(resource, "Color", 3)], False)
+
+        # The misc curve is R:SizeX G:SizeY B:SubImageIndex. The size is the curve times the largest a particle gets,
+        # which the build stores as its inverse; an axis a multiply-life module does not multiply reads back as the
+        # constant 1 its mask leaves, which builds the same simulation. Z is never read (the curve keeps X and Y).
+        max_size = [1.0 / v if v else 1.0
+                    for v in (type_data.get("EmitterInfo") or {}).get("InvMaxSize") or (1.0, 1.0)]
+        size = [[v / max_size[c] for v in _quantized_channel(resource, "Misc", c)] for c in (0, 1)]
+        cls, key = self._gpu_owner(modules, GPU_SIZE_MODULES,
+                                   tuple(GPU_SIZE_PROPERTY) + GPU_SIZE_CONSTANT, "the size")
+        if cls in GPU_SIZE_PROPERTY:
+            read_back(key, GPU_SIZE_PROPERTY[cls], size + [size[0]], True)
+        elif any(len(c) > 1 or abs(c[0] - 1.0) > 1e-3 for c in size):
+            raise ValueError("%s: a GPU emitter whose saved size curve is %s with no module to read it back into"
+                             % (self.rel, [c[:4] for c in size]))
+
+        index = _quantized_channel(resource, "Misc", 2)
+        _, key = self._gpu_owner(modules, ("ParticleModuleSubUV",), ("ParticleModuleSubUV",), "the sub-image index")
+        required = self.exports[modules[0]]["props"]
+        method = required.get("InterpolationMethod", "PSUVIM_None")
+        if key is not None and method in SUBUV_LINEAR:
+            read_back(key, "SubImageIndex", [index], False)
+        elif len(index) > 1 or index[0]:
+            raise ValueError("%s: a GPU emitter whose saved sub-image index is %s with no module to read it back into "
+                             "(%s)" % (self.rel, index[:4], method))
 
     # ------------------------------------------------------------------------------------------ values
     def _object(self, value):

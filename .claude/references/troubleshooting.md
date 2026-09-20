@@ -567,7 +567,9 @@
 ### GPU のエミッタを持つ粒子を組み直すと `FinishParticleSystem` の中で `EXCEPTION_ACCESS_VIOLATION reading address 0x10`
 
 - 原因: エディタは GPU のエミッタ（`ParticleModuleTypeDataGpu`）のシミュレーションを、モジュールの分布オブジェクトから作る（`UParticleEmitter::Build` → `CompileModule`。`UParticleModuleColorOverLife` は `ColorOverLife.Distribution->IsA` を確かめずに読む）。cook は分布を焼き込みの表だけにしていて、オブジェクトが無い。GPU のエミッタの `EmitterInfo`・`ResourceData` もこの組み立てが作るもの（書き出しの値は書かない）。
-- 対処: `dd_particles` が GPU のエミッタのモジュールに、表から分布オブジェクトを作る（`_table_distribution`: 1 つなら定数か一様、複数なら表の点を通る直線の曲線）。**ただし cook の表は GPU のエミッタでは作り直されていないことがあり**（`Fracture_concrete_3` の DustTrail は、表の色が 1 → 0.36 なのに cook の `ResourceData` は一定の 0.078、大きさも表の上限 1 に対して約 6 倍）、見え方は本家とずれる（作業一覧の後回しの一覧）。
+- 対処: `dd_particles` が GPU のエミッタのモジュールに、表から分布オブジェクトを作る（`_table_distribution`: 1 つなら定数か一様、複数なら表の点を通る直線の曲線）。
+- **ただし cook の表は GPU のエミッタでは作り直されていないことがある**（`Fracture_concrete_3` の DustTrail は、表の色が 1 → 0.36 なのに cook の `ResourceData` は一定の 0.078、大きさも表の上限 1 に対して約 6 倍）。GPU の経路は表を読まないので、cook は表だけを古い版のまま残せる。**cook の `ResourceData` が正本**（`UParticleModuleTypeDataGpu::Build` は丸ごと `#if WITH_EDITOR`。cook されたゲームは組み直さず、保存された値だけを読んで描く）。
+- 対処: `dd_particles._gpu_resource` が、色・アルファ・大きさ・SubUV の分布を cook の `ResourceData` から作り直す（2026-09-21。色とアルファ → `ColorOverLife` の 2 つ、大きさ → `SizeMultiplyLife` の `LifeMultiplier`〈misc の R・G ÷ 最大の大きさ。`EmitterInfo.InvMaxSize` の逆数〉、SubUV → `SubUV` の `SubImageIndex`〈misc の B〉）。**cook が分布オブジェクトを残している所はそのまま**にする（それが本家の組み立てが読んだ値そのものなので、同じシミュレーションが出る）。量子化は 8 ビットだがゲームが読む値そのものなので、読み戻しで失うものは無い。エディタの `OptimizeLookupTable` が標本点の外の角を 1〜2 段だけ丸める。
 - 出典: 作業一覧の項目 6 のステップ 4b（エディタの開き直し 1 回）。
 
 ### 粒子が出て 1 秒ほどで `Array index out of bounds: 127 into an array of size 127`（PIE・エディタが落ちる）
