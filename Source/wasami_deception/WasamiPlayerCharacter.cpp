@@ -5,6 +5,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ChildActorComponent.h"
+#include "Components/PostProcessComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
@@ -20,6 +21,7 @@
 #include "InputMappingContext.h"
 #include "InputModifiers.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInterface.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "WasamiArrowPointer.h"
@@ -50,6 +52,9 @@ namespace
 
 	// Update Bob stops the head bob at or below this speed (cm/s).
 	constexpr float BobMinSpeed = 1.f;
+
+	// The weight DD_PlayerController's PostProcess gives MM_CutsceneBars_Inst.
+	constexpr float CutsceneBarsWeight = 1.f;
 
 	// The tablet, from the original's BP_DD_PlayerCharacter. Its TabletInterp / Timeline_1 move the plate between
 	// these two heights in the camera's space and turn it the right way up as it comes; the X and Y stay put.
@@ -160,6 +165,7 @@ AWasamiPlayerCharacter::AWasamiPlayerCharacter()
 	// The pipeline's assets, loaded at BeginPlay (WasamiAssets.h says why not here).
 	TabletMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2")));
 	MinimapTarget = TSoftObjectPtr<UTextureRenderTarget2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Minimap/T_NewMap")));
+	CutsceneBarsMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Special/PP/MM_CutsceneBars_Inst")));
 	ShardActorClass = AWasamiShard::StaticClass();
 	MinimapActorClasses = {AWasamiPowerOrb::StaticClass(), AWasamiBonusShard::StaticClass()};
 	TabletUpSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1")));
@@ -212,6 +218,17 @@ void AWasamiPlayerCharacter::BeginPlay()
 			InteractWidget->AddToViewport(0);
 		}
 		InteractWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	// DD_PlayerController's PostProcess: the cutscene bars at a weight of 1, unbound, waiting on Cutscene Bars (0
+	// outside a cutscene, where the material leaves the picture alone).
+	if (UMaterialInterface* Bars = CutsceneBarsMaterial.LoadSynchronous())
+	{
+		CutsceneBars = NewObject<UPostProcessComponent>(this, TEXT("PostProcess"));
+		CutsceneBars->bEnabled = true;
+		CutsceneBars->bUnbound = true;
+		CutsceneBars->SetupAttachment(GetRootComponent());
+		CutsceneBars->RegisterComponent();
+		CutsceneBars->AddOrUpdateBlendable(Bars, CutsceneBarsWeight);
 	}
 	GetWorldTimerManager().SetTimer(FOVTimer, this, &AWasamiPlayerCharacter::UpdateFOV, FOVTimerRate, true);
 	GetWorldTimerManager().SetTimer(TabletScreenTimer, this, &AWasamiPlayerCharacter::UpdateTabletScreen, ScreenRefreshRate, true);

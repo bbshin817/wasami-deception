@@ -29,7 +29,7 @@ updated: 2026-09-20
   - 頭の揺れ: `WalkShakeClass` / `RunShakeClass`（`TSoftClassPtr`。既定は `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake` と `_RunShake` の `_C`）。
   - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E、左クリックの見て使う、手のマークが見る）、`ShardActorClass`（画面が数え、地図に写すシャードのクラス。既定は `AWasamiShard`〈06 記録〉。空なら 0 を出す）、`MinimapActorClasses`（地図がいつも写すほかのクラス。既定は特殊シャードのオーブ `AWasamiPowerOrb` と赤いシャード `AWasamiBonusShard`〈16 記録〉。本家の `Show Only` の一覧も `BP_PowerOrb`・`BP_BonusShard` をクラスで持つ）。
   - 素材（ソフト参照。`BeginPlay` で読む。00 記録の決まり）: `TabletMesh`（`/Game/DD/Meshes/Player/Tablet/tablet_new_pCube2`）、`MinimapTarget`（`/Game/DD/UI/Minimap/T_NewMap`）、`TabletUpSound`（`/Game/DD/Audio/SharedGameplay/05_Tablet_Woosh_v2_1`）、`TabletDownSound`（`_v1_1`）、`ResizeMapSound`（`/Game/DD/Audio/UI/UI_Select_V3`）。
-  - コンポーネント: `Tablet`（板のスタティックメッシュ）、`TabletScreen`（`UWidgetComponent`、`UWasamiTabletWidget`）、`MinimapCapture`（`USceneCaptureComponent2D`）、`ArrowPointer`（`UChildActorComponent`、名前は本家の `BP_ArrowPointer`。地図の矢印 `AWasamiArrowPointer` を持つ。03 記録）、`Powers`（`UWasamiPowerComponent`）、`Chameleon`（名前は `FX`。`UWasamiChameleonComponent`、`GetChameleon()`。本家の子アクタ `FX` の Chameleon。本家は Z +2000・拡縮 (5,5,1) に置くが、範囲なしのボリュームなので位置は絵に関係せず、アクタコンポーネントにした。中身は 04 記録）。
+  - コンポーネント: `Tablet`（板のスタティックメッシュ）、`TabletScreen`（`UWidgetComponent`、`UWasamiTabletWidget`）、`MinimapCapture`（`USceneCaptureComponent2D`）、`ArrowPointer`（`UChildActorComponent`、名前は本家の `BP_ArrowPointer`。地図の矢印 `AWasamiArrowPointer` を持つ。03 記録）、`Powers`（`UWasamiPowerComponent`）、`Chameleon`（名前は `FX`。`UWasamiChameleonComponent`、`GetChameleon()`。本家の子アクタ `FX` の Chameleon。本家は Z +2000・拡縮 (5,5,1) に置くが、範囲なしのボリュームなので位置は絵に関係せず、アクタコンポーネントにした。中身は 04 記録）、`CutsceneBars`（名前は `PostProcess`。`BeginPlay` が作る無限〈`bUnbound`〉の `UPostProcessComponent` で、場面の上下の黒帯 `MM_CutsceneBars_Inst` を重み 1 で持つ。`GetCutsceneBars()`。本家は `DD_PlayerController` の `PostProcess` が持つが、本作はプレイヤーコントローラーの派生を持たないのでプレイヤーが持つ〈範囲なしのボリュームなのでどちらでも同じで、どちらもレベルの間ずっといる〉。帯の材質と `Mat_ParameterCol` の `Cutscene Bars` は 09 記録）。
 
 ## 内部構造と処理の流れ
 
@@ -97,6 +97,7 @@ updated: 2026-09-20
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-20: 場面の黒帯の後処理ボリューム `CutsceneBars`（`MM_CutsceneBars_Inst`）をプレイヤーに足した（作業一覧の項目 28 のステップ 5。09 記録）
 - 2026-09-20: ゲームモードに `IsNewStart()`（Zone 1 をセーブの 0 で開いた）と、ゾーンを見分けるレベル名 `LevelName`（空なら今のレベル。テスト用）を足した。中身は 06・11 記録（作業一覧の項目 30 のステップ 3）
 - 2026-09-20: ゲームモードのデバッグのコンソールコマンドに `Wasami.ChapterPortal`（ステージ OP を出すだけ。09 記録）を足した（作業一覧の項目 30 のステップ 1）
 - 2026-09-20: ゲームモードに `TakeFoundVoice()`（敵の発見の声を全体で 12 s に 1 回に絞る関門。`FoundVoiceGap`。中身は 07 記録の「声」）を足した（作業一覧の項目 20 のステップ 7）

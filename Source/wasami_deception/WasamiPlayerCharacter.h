@@ -10,10 +10,12 @@ class AWasamiGameMode;
 class UCameraComponent;
 class UChildActorComponent;
 class UCameraShakeBase;
+class UMaterialInterface;
 class UInputAction;
 class UInputMappingContext;
 class USceneCaptureComponent2D;
 class USoundBase;
+class UPostProcessComponent;
 class USpringArmComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
@@ -146,6 +148,9 @@ public:
 	/** The original's Chameleon FX. */
 	UWasamiChameleonComponent* GetChameleon() const { return Chameleon; }
 
+	/** The cutscene bars' volume, made at BeginPlay. */
+	UPostProcessComponent* GetCutsceneBars() const { return CutsceneBars; }
+
 	/** Walking Speed (cm/s). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player|Movement")
 	float WalkingSpeed = 300.f;
@@ -238,6 +243,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
 	TSoftObjectPtr<UStaticMesh> TabletMesh;
 
+	/**
+	 * MM_CutsceneBars_Inst: the black bars over a cutscene, which read Mat_ParameterCol's Cutscene Bars
+	 * (UWasamiCutsceneWidget animates it). The original hangs the same instance on DD_PlayerController's PostProcess at
+	 * a weight of 1; this game has no player controller of its own, so the player carries it — an unbound volume is
+	 * the same either way, and both live as long as the level does.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
+	TSoftObjectPtr<UMaterialInterface> CutsceneBarsMaterial;
+
 	/** T_NewMap: what the minimap's scene capture draws into. */
 	UPROPERTY(EditAnywhere, Category = "Player|Tablet")
 	TSoftObjectPtr<UTextureRenderTarget2D> MinimapTarget;
@@ -284,6 +298,10 @@ protected:
 	/** FX: the Chameleon's unbound post-process, which the speed boost shakes. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player|Powers")
 	TObjectPtr<UWasamiChameleonComponent> Chameleon;
+
+	/** PostProcess: DD_PlayerController's unbound volume carrying the cutscene bars (BeginPlay makes it). */
+	UPROPERTY(Transient)
+	TObjectPtr<UPostProcessComponent> CutsceneBars;
 
 private:
 	void CreateInput();

@@ -63,6 +63,11 @@ and the sounds' locks, the buttons' frame (the ring altar's equipped frame), the
 graph read from its compiled shader). What the original lists in it — its art, music, diaries and movies — is left out;
 the screen shows stand-ins.
 
+The cutscene screen (UWasamiCutsceneWidget, after UI/Main/UMG_CutsceneWidget): the black bars above and below
+(MM_CutsceneBars and its instance, the post process the player carries; its graph is read from its compiled shader),
+which the widget slides in and out through Mat_ParameterCol's Cutscene Bars, and the black the bars are
+(T_Black). The collection comes with the gimmicks (dd_gimmicks).
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -225,6 +230,90 @@ INVERSE_TWO_PI = 0.159155
 # M_07_Spark and M_07_Spark2: white, with the texture's red as the opacity (their compiled shaders); the widget's tint
 # colours them.
 SPARKS = (("Materials/07_FunPlace/M_07_Spark", STAR_01), ("Materials/07_FunPlace/M_07_Spark2", STAR_12))
+
+
+# ------------------------------------------------------------------------------------------------ the cutscene screen
+# MM_CutsceneBars, the post process DD_PlayerController carries (its MM_CutsceneBars_Inst at a weight of 1) over every
+# cutscene: the black bars above and below, whose height is Mat_ParameterCol's Cutscene Bars (UWasamiCutsceneWidget's
+# Start and End animate it 0 -> 1 over a second and back). The cook took the graph away but for the collection
+# parameter, the BreakOutFloat2Components call, the BorderTexture sample at a ScreenPosition and the Lerp on the
+# emissive colour; its compiled shader (Tools/dd/cooked_shaders.py "MM_CutsceneBars." --show 1) is what the graph below
+# follows: with the viewport UV's Y and a bar height of Cutscene Bars x 0.128205 (the bars 16:9 takes to 2.39:1),
+#   mask = smoothstep(saturate(Y / height)) x (1 - smoothstep(saturate((Y - (1 - height)) / height)))
+# to the power of 50000, which crushes both ramps into an edge a pixel wide (the latest version's recording, 1440 rows
+# high, shows 184 and 183 rows of bar with no bleed at all: observations/README.md), picks the scene
+# (PostProcessInput0) over BorderTexture (T_Black).
+# The instance's Size (0.2) and VerticalBoxing (0) are left out: the shader's uniforms hold neither, so the graph they
+# belonged to is gone and the height is the constant above.
+CUTSCENE_BARS = "Materials/Special/PP/MM_CutsceneBars"
+CUTSCENE_BARS_INSTANCE = "Materials/Special/PP/MM_CutsceneBars_Inst"
+CUTSCENE_BARS_BORDER = "ThirdParty/Chameleon/Textures/T_Black"
+# Mat_ParameterCol and its scalar (the collection comes with the gimmicks, WasamiDDTools.import_dd_gimmicks).
+CUTSCENE_BARS_COLLECTION = "Materials/Special/Mat_ParameterCol"
+CUTSCENE_BARS_PARAMETER = "Cutscene Bars"
+CUTSCENE_BARS_HEIGHT = 0.128205
+CUTSCENE_BARS_EDGE = 50000.0
+
+
+def _build_cutscene_bars(mat):
+    g = dd_stage._Graph(mat, checked=True)
+    collection = g.node(unreal.MaterialExpressionCollectionParameter, -1800, 150)
+    collection.set_editor_property("collection", unreal.load_asset(dd_assets.asset_path(CUTSCENE_BARS_COLLECTION)))
+    collection.set_editor_property("parameter_name", CUTSCENE_BARS_PARAMETER)
+    height = g.multiply(collection, "", dd_assets.constant(g, CUTSCENE_BARS_HEIGHT, -1800, 280), "", -1600, 200)
+
+    screen = g.node(unreal.MaterialExpressionScreenPosition, -1800, -200)
+    row = dd_assets.channel(g, screen, "ViewportUV", "G", -1600, -200)
+
+    # The top bar: 0 at the screen's top, 1 where the bar ends.
+    top = dd_assets.single(g, unreal.MaterialExpressionSaturate, g.binary(
+        unreal.MaterialExpressionDivide, row, "", height, "", -1400, -200), "", -1250, -200)
+    # The bottom bar: 0 where it starts (1 - the height), 1 at the screen's bottom.
+    start = dd_assets.single(g, unreal.MaterialExpressionOneMinus, height, "", -1400, 200)
+    below = g.binary(unreal.MaterialExpressionSubtract, row, "", start, "", -1250, 100)
+    bottom = dd_assets.single(g, unreal.MaterialExpressionSaturate, g.binary(
+        unreal.MaterialExpressionDivide, below, "", height, "", -1100, 100), "", -950, 100)
+
+    picture = g.multiply(_smooth_step(g, top, -1050, -200), "",
+                         dd_assets.single(g, unreal.MaterialExpressionOneMinus,
+                                          _smooth_step(g, bottom, -800, 100), "", -650, 100), "", -450, -100)
+    mask = g.power(picture, "", dd_assets.constant(g, CUTSCENE_BARS_EDGE, -450, 50), "", -300, -100)
+
+    border = g.texture("BorderTexture", unreal.load_asset(dd_assets.asset_path(CUTSCENE_BARS_BORDER)),
+                       unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -800, -500)
+    g.link(screen, "ViewportUV", border, "UVs")
+    scene = g.node(unreal.MaterialExpressionSceneTexture, -800, -700)
+    scene.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
+    picture_rgb = g.node(unreal.MaterialExpressionComponentMask, -550, -700)   # the Lerp takes float3s
+    for channel, on in (("r", True), ("g", True), ("b", True), ("a", False)):
+        picture_rgb.set_editor_property(channel, on)
+    g.link(scene, "Color", picture_rgb, "")
+    g.out(g.lerp(border, "RGB", picture_rgb, "", mask, "", -100, -400), "", MP.MP_EMISSIVE_COLOR)
+
+
+def _smooth_step(g, value, x, y):
+    """SmoothStep(0, 1, value): the shader's (3 - 2t) t t."""
+    e = g.node(unreal.MaterialExpressionSmoothStep, x, y)
+    e.set_editor_property("const_min", 0.0)
+    e.set_editor_property("const_max", 1.0)
+    g.link(value, "", e, "Value")
+    return e
+
+
+def make_cutscene_bars():
+    """The bars' black texture, and MM_CutsceneBars and its instance at the original's paths (saved). Mat_ParameterCol
+    has to have been made (import_dd_gimmicks). Returns how many of each."""
+    dd_assets.texture(CUTSCENE_BARS_BORDER, VERSION)   # the package path, already saved by the import
+    bars = dd_assets.material(dd_assets.asset_path(CUTSCENE_BARS), _build_cutscene_bars,
+                              domain=unreal.MaterialDomain.MD_POST_PROCESS)
+    scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(CUTSCENE_BARS_INSTANCE, VERSION)
+    scalars = {k: v for k, v in scalars.items() if k not in ("Size", "VerticalBoxing")}
+    instance = dd_assets.material_instance(dd_assets.asset_path(CUTSCENE_BARS_INSTANCE), bars, scalars=scalars,
+                                           vectors=vectors, textures=textures, static_masks=masks,
+                                           static_switches=switches)
+    for asset in (bars, instance):
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return {"textures": 1, "materials": 2}
 
 
 def _build_radial(mat):
@@ -445,7 +534,7 @@ def import_extras():
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
     screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's, the title screen's, the
-    options screen's, the pause menu's, the stage's title card's and the extras screen's, then saves /Game/DD."""
+    options screen's, the pause menu's, the stage's title card's and the extras screen's, and the cutscene screen's bars, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
               "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
@@ -471,5 +560,7 @@ def import_all():
         result["chapter_portal_" + key] = count
     for key, count in import_extras().items():
         result["extras_" + key] = count
+    for key, count in make_cutscene_bars().items():
+        result["cutscene_" + key] = count
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     return result
