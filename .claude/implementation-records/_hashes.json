@@ -19,6 +19,7 @@
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "7c25a3166fefd04a63cb38bc6cfab05bd8210627",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
+    "Tools/dd/gpu_emitters.py": "48e923a2c2dce85de2a2288f748e7bc963c4f29c",
     "Tools/dd/psa_pose.py": "e079c0000b53bf1646d8722775df2226ae315f31",
     "Tools/ue_remote.py": "9a6739f5c4e6f8888ae3773262661a3d08453df3",
     "Tools/editor_cycle.py": "2fa7b4c81d572b8745f4e6d906157776a087a022",

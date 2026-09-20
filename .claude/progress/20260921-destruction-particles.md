@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: ca4891f
 started: 2026-09-21 06:53
-updated: 2026-09-21 06:53
+updated: 2026-09-21 07:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -24,12 +24,11 @@ updated: 2026-09-21 06:53
 
 ## 計画
 
-- [ ] 1. 原作の GPU のエミッタの `ResourceData` を読んで本作の粒子と突き合わせる表を作る（調査）
-  - 変更予定: `.claude/progress/20260921-destruction-particles.md`（表は記録の中）、要れば `Tools/dd/` に読み出しの小道具
+- [x] 1. 原作の GPU のエミッタの `ResourceData` を読んで本作の粒子と突き合わせる表を作った（`Tools/dd/gpu_emitters.py`。下の表）
 - [ ] 2. `dd_particles` が GPU のエミッタの分布を焼き込みの表でなく `ResourceData` から組むようにする
   - 変更予定: `Content/Python/wasami_tools/pipeline/dd_particles.py`、`.claude/references/troubleshooting.md` の GPU のエミッタの項
-- [ ] 3. `Fracture_concrete_3`（トンネルの扉の破片）を組み直して PIE で見る
-  - 変更予定: `/Game/DD/.../Fracture_concrete_3`、材質 3 つ（`whispOne_Master_directional`・`_amb`・`DebrisMaster`）
+- [ ] 3. GPU のエミッタを持つ 3 つのシステムを組み直し、`gpu_emitters.py --ours` の差が消えたことを確かめて PIE で見る。`fx.Cascade.UseVelocityForMotionBlur=0` も入れる
+  - 変更予定: `/Game/DD/.../Fracture_concrete_3`・`Concrete_impact_large`・`P_06_NursesLand`、`Config/DefaultEngine.ini`
 - [ ] 4. Zone 2 の独房の粒子 4 材質と棘の黒い塵 `Fracture_dark_slow` を原作のデータと突き合わせる
   - 変更予定: `/Game/DD/...` の材質 4 つ・`Fracture_dark_slow`
 - [ ] 5. ナースの扉突きの塵 `P_06_NurseDoorHit`（材質 `Whisps_trans` の推定）を原作のデータで確かめて直す
@@ -39,14 +38,38 @@ updated: 2026-09-21 06:53
 - [ ] 7. PIE で 4 か所を通して確かめ、実装記録 07・08 と作業一覧を直して項目 33 を閉じる
   - 変更予定: `.claude/implementation-records/07-*`・`08-*`、`.claude/roadmap.md`、`.claude/references/handover.md`
 
+## GPU のエミッタの突き合わせ（ステップ 1 の結果）
+
+本作の `/Game/DD` の 1005 のパーティクルシステムのうち **GPU のエミッタを持つのは 3 つ・5 エミッタだけ**（エディタで全走査した）。項目 33 の対象 4 行のうち GPU のエミッタがあるのは 1（トンネルの扉の破片）と 2 の `Concrete_impact_large` だけで、`Fracture_dark_slow`・`P_06_NurseSparks`・`P_06_NurseDoorHit`・`P_06_Defib` には無い（＝それらはステップ 4〜6 の材質の話）。差は `python Tools/dd/gpu_emitters.py <名前> --ours` で出る（`*` の行）。
+
+| システム / エミッタ | 行 | 原作（cook の `ResourceData`） | 本作（UE 5.8 が分布から組んだもの） |
+| --- | --- | --- | --- |
+| Fracture_concrete_3 / Fragments | 色 | 一定 (0.205, 0.205, 0.205) | 一定の白 (1, 1, 1) |
+| 〃 | アルファ | 16 点。0.53 まで 1 を保って 0 へ | 2 点。直線で 1 → 0 |
+| Fracture_concrete_3 / DustTrail | 色 | 一定 0.0784 | 1.0 → 0.36 |
+| 〃 | アルファ | 2.2408 → 0.3869（8 点） | 1.0 → 0.3869（64 点） |
+| 〃 | 大きさ | 600 → 3853.6（6.4 倍に育つ） | 439.6 → 603.7 |
+| 〃 | SubUV | 1 → 63（8×8 の 64 枚に合う） | 1 → 127（2 周する） |
+| Concrete_impact_large / ConcreteBits | 色 | 一定 (0.0902, 0.0863, 0.0863) | 一定の白 |
+| 〃 | アルファ | 16 点。保ってから 0 へ | 2 点。直線 |
+| Concrete_impact_large / Sparks | 色 | 一定の HDR 橙 (10, 3.20271, 1.76228) | 青白 165 → 橙 0.865 の減衰 |
+| 〃 | アルファ | 16 点。0.8 まで 1 を保って 0 へ | 128 点。1 → 0 |
+| P_06_NursesLand / ConcreteBits | 色・アルファ | 一定 (0.3178, 0.3039, 0.3039)・アルファ 1 | **一致**（cook の 16 点は死んだ残骸） |
+| 上の 5 つすべて | bUseVelocityForMotionBlur | False | True（UE 5 の CVar の既定） |
+
+**どれも原作のデータで決まる。本家の収録は要らない。** ほかの行（`MiscBias`・`SimulationAttrCurve*`・衝突・軌道・`InvMaxSize`・`MaxLifetime`・`MaxParticleCount` など）はすべて一致している。
+
 ## 次にやること
 
-ステップ 1。`pak_reference_2` の対象 4 つの cook の JSON から、GPU のエミッタ（`ParticleModuleTypeDataGpu`）の `props.ResourceData` と `props.EmitterInfo` を読み出し、本作の今の粒子（`/Game/DD/...`）の値と並べた表をこの記録に作る。どの行が原作のデータで決まり、どれが決まらないか（＝収録にまとめる候補）をここで決める。
+ステップ 2。`dd_particles` の `_gpu_distributions` を、GPU のエミッタのときだけ焼き込みの表でなく cook の `ResourceData` から分布を作るように変える（色とアルファ → `ColorOverLife` モジュールの 2 つ、大きさ → `SizeMultiplyLife` の `LifeMultiplier`（misc の R・G ÷ `MaxSize`）、SubUV → `SubUV` モジュールの `SubImageIndex`（misc の B））。`Scale` が 0 の面は一定、量子化の並びが空なら一定。当てにするモジュールが 1 つでないときは例外にする。
 
 ## 決定事項
 
-- 2026-09-21: 原作の cook の JSON には GPU のエミッタの `ResourceData` が**そのまま入っている**（`Fracture_concrete_3` の `ParticleModuleTypeDataGpu_0` で確認: `QuantizedColorSamples` 8 点・`QuantizedMiscSamples` 256 点・`ColorScale`/`ColorBias`/`MiscScale`/`MiscBias`/`SubImageSize`/`SizeBySpeed`/`RotationRateScale`/`DragCoefficientBias`/`ScreenAlignment` ほか）。これが GPU のエミッタの見え方の正本なので、焼き込みの表（`_table_distribution`）でなくこちらから組む。`DustTrail` の色が表 1 → 0.36 に対し cook は一定の 0.078 という既知のずれも、`ColorBias` = 0.0784 として実際に入っていた。
+- 2026-09-21: 原作の cook の JSON には GPU のエミッタの `ResourceData` がそのまま入っている（`Tools/dd/gpu_emitters.py` が読む）。`DustTrail` の色が表 1 → 0.36 に対し cook は一定の 0.0784 という既知のずれも、`ColorBias` として実際に入っていた。
 - 2026-09-21: 本家の収録には頼らない（作業一覧の大目標 3 の節の頭。移動が遅すぎて該当の場面に届かない）。コードで決まらなかったものだけをステップ 7 で 1 回の収録にまとめるか、決まらない理由を書いて閉じる。
+- 2026-09-21: **GPU のエミッタは `ResourceData` が正本**。`UParticleModuleTypeDataGpu::Build` は丸ごと `#if WITH_EDITOR` なので、cook されたゲームは組み直さず保存された `ResourceData` を読んで描く。モジュールの焼き込みの表と食い違っていても、原作の見え方は `ResourceData` の側（原作の BallisticsVFX の 2 つは実際に食い違っていて、表の側が別の版に見える。`P_06_NursesLand` のような本家製のものは一致する）。
+- 2026-09-21: `ResourceData` をアセットに書いても無駄。**UE 5.8 は読み込みのたびに組み直す**（`UParticleEmitter::PostLoad` → `UpdateModuleLists` → `Build`）ので、分布の側を `ResourceData` から作って組み直させる。量子化（8 ビット）を経た値がゲームの使う値そのものなので、量子化の並びを合わせれば足りる。
+- 2026-09-21: `bUseVelocityForMotionBlur` は原作（UE 4.21・4.24）に無い項目で、UE 5 の CVar `fx.Cascade.UseVelocityForMotionBlur`（既定 true）から来る。本作の Cascade はすべて原作のものなので、`Config/DefaultEngine.ini` の `[SystemSettings]` で 0 にする（ステップ 3）。モジュールごとの上書きにはしない。
 
 ## 要確認（ユーザー）
 
@@ -54,11 +77,11 @@ updated: 2026-09-21 06:53
 
 ## 再開時の注意
 
-- 長時間処理はまだ無い。エディタは起動していなくてよい（ステップ 1 は `pak_reference_2` の JSON を読むだけ）。
-- ステップ 3 以降は `python Tools/dd/prepare_stage.py` と `dd_particles` の作り直し（エディタの Python）が要る。GPU のエミッタの表を書き換えたら、エディタで `Values` の数と `EntryCount × EntryStride` を比べて確かめる（症状索引「粒子が出て 1 秒ほどで `Array index out of bounds`」）。
+- 長時間処理はまだ無い。ステップ 2 の確かめには動いているエディタが要る（`python Tools/dd/gpu_emitters.py <名前> --ours`）。
+- 組み直しは `WasamiDDTools.import_dd_gimmicks`・`import_dd_cutscenes`（`dd_gimmicks.py` の `BURST`・`CELL_PARTICLES`・`CUTSCENE_PARTICLES`）から。GPU のエミッタの表を書き換えたら、エディタで `Values` の数と `EntryCount × EntryStride` を比べて確かめる（症状索引「粒子が出て 1 秒ほどで `Array index out of bounds`」）。
 
 ## 検証
 
-- check_records: 未実行
+- check_records: OK（2026-09-21。`Tools/dd/gpu_emitters.py` を 01 記録に足した）
 - C++ ビルド: 未実行（この項目は C++ を変えない見込み）
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- エディタでの確認（取り込み・組み立て・PIE）: `gpu_emitters.py --ours` で 5 つの GPU のエミッタを読み出した（ステップ 1）。組み直しと PIE はこれから

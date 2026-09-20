@@ -5,6 +5,7 @@ sources:
   - Tools/dd/prepare_loader.py
   - Tools/dd/cooked_shaders.py
   - Tools/dd/bp_flow.py
+  - Tools/dd/gpu_emitters.py
   - Tools/dd/psa_pose.py
   - Tools/ue_remote.py
   - Tools/editor_cycle.py
@@ -162,6 +163,14 @@ updated: 2026-09-21
 - 原作の逆アセンブル（`pak_reference*/_bytecode/**/*.txt`）は番地の順に並ぶので、ユーバーグラフの処理はあちこちへ飛ぶ。`python Tools/dd/bp_flow.py <file.txt> <イベント名 | 番地>` が入口から `Jump`・`JumpIfNot`・`PushExecutionFlow` と `Delay` などの再開先（`LatentActionInfo` の `SkipOffsetConst`）をたどり、届く基本ブロックだけを 1 文 1 行（`this.X`・`cast<C>(..)`・`switch(..){..}`・`resume@L..`）で印字する。`--list` は関数とユーバーグラフの入口の一覧。ユーバーグラフでない関数（`Get Lives` など）は本体を先頭から読む（2026-09-18、作業一覧の項目 5 のステップ 2。`.claude/references/game-flow/`）。
 - 呼び出しだけの文は逆アセンブルに `@` が付かないので、そこへの飛び先は直前の番地の次の文と推して `L~<直前の番地>` と印を付ける（`Delay` の再開先 15 は `@5 ComputedJump` の次の呼び出し、のように合う）。
 - 名前の後ろに空白がある入口（Zone 2 の `Miniboss Start `）は名前で引けないので、`--list` の番地で引く。`Temp_bool_IsClosed_Variable` と `Has_Been_Initd` の組は `DoOnce`、`push` を並べてから続くのは `Sequence`（最後に積んだものから戻る）。
+
+### GPU のエミッタの組み立てを読む（`Tools/dd/gpu_emitters.py`）
+- GPU のエミッタ（`ParticleModuleTypeDataGpu`）だけは、見え方がモジュールでなく**エディタが組んだ `FGPUSpriteEmitterInfo`・`FGPUSpriteResourceData`** に入る（`UParticleModuleTypeDataGpu::Build`。中身は丸ごと `#if WITH_EDITOR`）。cook されたゲームは組み直さず保存された `ResourceData` を読んで描くだけなので、**cook の `ResourceData` が原作の見え方の正本**（モジュールの焼き込みの表が何と言っていても）。
+- `python Tools/dd/gpu_emitters.py <パスの一部> [--pak 1|2] [--ours] [--full] [--samples N]` が、書き出し（`_assets/.../*.json`）のその名前を含むパーティクルシステムをすべて読み、GPU のエミッタごとに `ResourceData` と `EmitterInfo` を印字する。`--ours` を付けると、動いているエディタ（`Tools/ue_remote.py`）から本作の `/Game/DD/...` を UE 5.8 が組んだものを取り、違う行に `*` を付けて並べる。書き出しに無いメンバーは構造体の既定値として比べる（UE のタグ付きの直列化は既定と違うものだけを書く）。
+- 量子化された曲線は `Bias + Scale × c/255` の FColor の並び（色は RGB:色 A:アルファ、misc は R:SizeX G:SizeY B:SubImageIndex〈大きさは世界の単位＝相対の大きさ × MaxSize〉、simulation attr は R:抗力 G:ベクトル場 B:反発）。`--samples` の数だけ間引いて出す。エディタの側は `UWasamiCascadeLibrary.get_property_text`（Python の反射はこの 2 つを protected として断る）の文を読んで解く。
+- **UE 5.8 は読み込みのたびに `ResourceData` を組み直す**（`UParticleEmitter::PostLoad` → `UpdateModuleLists` → `Build`）。アセットに `ResourceData` を書いても次の読み込みで消えるので、合わせるならモジュールの分布の側を直す。
+- `FComposableDistribution::QuantizeVector4` は組んだ曲線が 1 点（一定）のとき `Quantized*Samples` を**消さずに**返す。だから cook のデータに前の組み立ての残骸が残っていることがある（`P_06_NursesLand` の `ConcreteBits`: `ColorScale` が (0,0,0,0) なのに 16 点）。`Scale` が 0 の面のその並びは使われない死んだデータ。
+- `bUseVelocityForMotionBlur` は UE 5 で入った CVar `fx.Cascade.UseVelocityForMotionBlur`（既定 **true**）から来る（`UParticleModuleRequired::ShouldUseVelocityForMotionBlur`）。原作（UE 4.21・4.24）にこの項目は無く、cook の `ResourceData` はすべて False。
 
 ### 取り込み（`pipeline/dd_stage.py`）
 - `ensure_mesh_pipeline()`: `/Interchange/Pipelines/DefaultGLTFAssetsPipeline` を複製した `/Game/Pipeline/Interchange/PL_DD_StaticMesh`。種類ごとのサブフォルダなし、マテリアルとテクスチャを取り込まない、当たりの自動生成なし。
