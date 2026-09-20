@@ -138,6 +138,11 @@ public:
 	// Make Choice's timer (K2_SetTimer, looping) and the stun's Delay.
 	static constexpr float DecisionInterval = 0.5f;
 	static constexpr float StunSeconds = 17.f;
+	/**
+	 * A stun that never ends, for a nurse whose Make Choice does not run at all (the sentry before it spots the player):
+	 * the original leaves State at Stun for good and its ABP holds nurse_stunned, which loops while bStunned.
+	 */
+	static constexpr float IndefiniteStunSeconds = 1.e9f;
 	// Can See Player: the player within this angle (degrees) of its front, at any distance.
 	static constexpr float ViewAngle = 100.f;
 	// The RetriggerableDelay after Chase Player that forgets the player.
@@ -226,7 +231,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	float GetStunTimeLeft() const;
 
-	/** How long a stun set now waits before its 17 s start: to the next decision (the 06 nurse's next tick: none). */
+	/**
+	 * How long a stun set now waits before its 17 s start: to the next decision (the 06 nurse's next tick: none, the
+	 * sentry before it spots: IndefiniteStunSeconds, as its decisions never run).
+	 */
 	virtual float GetTimeToStunStart() const;
 
 	/** The mesh's animation (PlayOnce and the rest), or null before it starts. */

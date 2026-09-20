@@ -48,6 +48,16 @@ public:
 	/** Chasing answers its own Chasing (true once spotted, and for good), not Seen Player Recently. */
 	virtual bool IsChasing() const override { return bChasing; }
 
+	/**
+	 * Before it spots the player its Make Choice never runs (BeginNurse is empty), so a stun set then never ends: the
+	 * original's sentry keeps State at Stun and holds the stun's pose until it spots the player and Make Choice, its
+	 * first decision, starts the 17 s.
+	 */
+	virtual float GetTimeToStunStart() const override
+	{
+		return bChasing ? Super::GetTimeToStunStart() : IndefiniteStunSeconds;
+	}
+
 	/** Offset: how long its cone waits before it first looks (10 s for three of the six). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
 	float Offset = 0.f;

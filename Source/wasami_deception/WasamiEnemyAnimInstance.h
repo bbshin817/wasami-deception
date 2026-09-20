@@ -171,10 +171,17 @@ struct WASAMI_DECEPTION_API FWasamiStateBlend
  */
 struct WASAMI_DECEPTION_API FWasamiStunPlayback
 {
+	/** A stun this long or longer never ends: the fall holds its pose until SetTimeLeft or the stun is over. */
+	static constexpr float IndefiniteSeconds = 1.e8f;
+
 	void Start(float Duration, float InFallLength, float InGetUpLength);
 	/** Moves on; true when this crosses into the get-up. */
 	bool Advance(float DeltaSeconds);
+	/** Puts the get-up back, so that it ends TimeLeft from now: for a stun that had no end when it started. */
+	void SetTimeLeft(float TimeLeft);
 
+	/** The stun has no end yet (the sentry stunned before it spots the player). */
+	bool IsIndefinite() const { return GetUpStart >= IndefiniteSeconds; }
 	bool IsGettingUp() const { return Elapsed >= GetUpStart; }
 	/** The time in the fall, or in the get-up once getting up (each held at its end). */
 	float GetClipTime() const;

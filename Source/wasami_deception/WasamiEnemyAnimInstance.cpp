@@ -197,6 +197,11 @@ void FWasamiStunPlayback::Start(float Duration, float InFallLength, float InGetU
 	GetUpStart = FMath::Max(FallLength, Duration - GetUpLength);
 }
 
+void FWasamiStunPlayback::SetTimeLeft(float TimeLeft)
+{
+	GetUpStart = FMath::Max(FallLength, Elapsed + TimeLeft - GetUpLength);
+}
+
 bool FWasamiStunPlayback::Advance(float DeltaSeconds)
 {
 	const bool bWasGettingUp = IsGettingUp();
@@ -290,6 +295,12 @@ void FWasamiEnemyAnimState::Update(const FWasamiEnemyAnimInputs& Inputs, float D
 		StunFall = DrawStunFall();
 		StunPlayback.Start(Inputs.StunDuration, Lengths[StunFall], Lengths[GetUpAfter(StunFall)]);
 		StopOnce(StunBlendTime);
+	}
+	if (Inputs.bStunned && StunPlayback.IsIndefinite() && Inputs.StunDuration < FWasamiStunPlayback::IndefiniteSeconds)
+	{
+		// The stun had no end as it started (the sentry on its shelf) and now has one: the sentry spotted the player and
+		// its first decision started the 17 s. The get-up goes back to ending with them.
+		StunPlayback.SetTimeLeft(Inputs.StunDuration);
 	}
 	Stun.Update(Inputs.bStunned, StunBlendTime, DeltaSeconds);
 	if (Inputs.bStunned && StunPlayback.Advance(DeltaSeconds))

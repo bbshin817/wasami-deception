@@ -228,6 +228,22 @@ bool FWasamiEnemyAnimStunTest::RunTest(const FString& Parameters)
 	Short.Advance(3.f);
 	TestEqual(TEXT("and has not got up when it ends"), Short.GetClipTime(), 3.f - Fall, 1e-5f);
 
+	// A stun with no end (the sentry stunned on its perch): the fall holds its pose until the 17 s start.
+	FWasamiStunPlayback Waiting;
+	Waiting.Start(AWasamiEnemy::IndefiniteStunSeconds + AWasamiEnemy::StunSeconds, Fall, GetUp);
+	TestTrue(TEXT("the stun has no end"), Waiting.IsIndefinite());
+	for (int32 Step = 0; Step < 200; ++Step)
+	{
+		TestFalse(TEXT("it never gets up on its own"), Waiting.Advance(0.25f));
+	}
+	TestEqual(TEXT("lying at the fall's end"), Waiting.GetClipTime(), Fall);
+	Waiting.SetTimeLeft(AWasamiEnemy::StunSeconds);
+	TestFalse(TEXT("given its 17 s, it has an end"), Waiting.IsIndefinite());
+	TestEqual(TEXT("the get-up ends with them"), Waiting.GetUpStart, 50.f + AWasamiEnemy::StunSeconds - GetUp, 1e-3f);
+	Waiting.Advance(AWasamiEnemy::StunSeconds - GetUp - 0.01f);
+	TestFalse(TEXT("still lying just before"), Waiting.IsGettingUp());
+	TestTrue(TEXT("then up"), Waiting.Advance(0.02f));
+
 	// The fall is drawn at random from the two (the user's choice, 2026-09-18); a missing one gives way to the other.
 	FWasamiEnemyAnimInputs Stunned;
 	Stunned.bStunned = true;
@@ -336,6 +352,40 @@ bool FWasamiEnemyAnimStunTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the fall holds where it was"), Cut.GetClipTime(Cut.StunFall), CutFall - 0.1f, 1e-5f);
 	TestEqual(TEXT("still"), Cut.GetClipRate(Cut.StunFall), 0.f);
 	TestEqual(TEXT("under the idle"), Cut.GetClipWeight(WasamiEnemyClip::Idle), 0.8f, 1e-5f);
+
+	// The sentry's stun, which has no end until it spots the player and its 17 s start.
+	FWasamiEnemyAnimState Perch;
+	Perch.Init(Lengths, 3);
+	FWasamiEnemyAnimInputs Waits;
+	Waits.bStunned = true;
+	Waits.StunDuration = AWasamiEnemy::IndefiniteStunSeconds + AWasamiEnemy::StunSeconds;
+	Perch.Update(Waits, 0.125f);
+	const int32 PerchFall = Perch.StunFall;
+	for (int32 Step = 0; Step < 160; ++Step)
+	{
+		Perch.Update(Waits, 0.25f);
+		TestEqual(TEXT("it lies on, past the 17 s"), Perch.StunGetUpStarted, static_cast<int32>(INDEX_NONE));
+	}
+	TestEqual(TEXT("holding the fall's end"), Perch.GetClipTime(PerchFall), Lengths[PerchFall]);
+	TestEqual(TEXT("and its weight"), Perch.GetClipWeight(PerchFall), 1.f);
+
+	// Spotted: Make Choice starts the 17 s and the get-up goes back to ending with them.
+	Waits.StunDuration = AWasamiEnemy::StunSeconds;
+	const float Lying = Perch.StunPlayback.Elapsed;
+	Perch.Update(Waits, 0.25f);
+	TestFalse(TEXT("the stun has an end now"), Perch.StunPlayback.IsIndefinite());
+	TestEqual(TEXT("the get-up ends with the 17 s"), Perch.StunPlayback.GetUpStart,
+		Lying + AWasamiEnemy::StunSeconds - Lengths[WasamiEnemyAnim::GetUpAfter(PerchFall)], 1e-3f);
+	int32 PerchCrossings = 0;
+	for (int32 Step = 0; Step < 68; ++Step)
+	{
+		Waits.StunDuration = FMath::Max(0.f, Waits.StunDuration - 0.25f);
+		Perch.Update(Waits, 0.25f);
+		PerchCrossings += Perch.StunGetUpStarted != INDEX_NONE ? 1 : 0;
+	}
+	TestEqual(TEXT("it gets up once, 17 s on"), PerchCrossings, 1);
+	TestEqual(TEXT("the get-up holds its end"), Perch.GetClipTime(WasamiEnemyAnim::GetUpAfter(PerchFall)),
+		Lengths[WasamiEnemyAnim::GetUpAfter(PerchFall)]);
 	return true;
 }
 
@@ -1551,8 +1601,19 @@ bool FWasamiEnemyActorSentryTest::RunTest(const FString& Parameters)
 		Cone->GetPlane()->GetRelativeLocation().Equals(AWasamiViewconeNurse::NursePlaneLocation + AWasamiViewcone::PlaneLift));
 	TestTrue(TEXT("with the dot"), Cone->GetDot()->GetRelativeLocation().Equals(AWasamiViewcone::DotLocation));
 
+	// Stunned before it spots the player, the stun has no end: nothing sets State back while Make Choice does not run.
+	// (The original's sentry does take Primal Fear and holds its stun the same way: orig-sentry-stun2 keeps swaying with
+	// nurse_stunned's 2.63 s for the whole 19.8 s of the recording.)
+	IWasamiEnemyInterface::Execute_SetState(Sentry, EWasamiEnemyState::Stun, false);
+	TestTrue(TEXT("stunned on its perch"), Sentry->IsStunned());
+	TestFalse(TEXT("its 17 s have not started"), Sentry->IsStunRunning());
+	TestTrue(TEXT("and will not while it watches"), Sentry->GetTimeToStunStart() >= AWasamiEnemy::IndefiniteStunSeconds);
+
 	// Its BeginPlay is empty: it does not decide (Not Seeing Player would walk at 200).
 	TickTo(1.f);
+	TestTrue(TEXT("a second on, still stunned"), Sentry->IsStunned());
+	TestTrue(TEXT("with no end for the animation"), Sentry->GetStunTimeLeft() >= AWasamiEnemy::IndefiniteStunSeconds);
+	IWasamiEnemyInterface::Execute_SetState(Sentry, EWasamiEnemyState::Patrol, false);
 	TestFalse(TEXT("not looking before Activate"), Cone->IsInitialized());
 	TestEqual(TEXT("not deciding"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 430.f);
 
@@ -1630,6 +1691,8 @@ bool FWasamiEnemyActorSentryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("its cone destroyed"), !WeakCone.IsValid() || WeakCone->IsActorBeingDestroyed());
 	TestNull(TEXT("and gone from it"), Sentry->GetViewcone());
 	TestTrue(TEXT("chasing"), Sentry->IsChasing());
+	TestTrue(TEXT("now a stun would end: its decisions run"),
+		Sentry->GetTimeToStunStart() < AWasamiEnemy::IndefiniteStunSeconds);
 	TickTo(Spotted + 2.f * Step);
 	TestTrue(TEXT("leaping 400 cm/s toward the spot and 500 up"), Sentry->GetCharacterMovement()->Velocity.Equals(FVector(400., 0., 500.), 1.));
 	TestEqual(TEXT("not deciding yet"), Sentry->GetCharacterMovement()->MaxWalkSpeed, 430.f);
