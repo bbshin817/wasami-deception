@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: ca4891f
 started: 2026-09-21 06:53
-updated: 2026-09-21 08:45
+updated: 2026-09-21 09:40
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -25,8 +25,7 @@ updated: 2026-09-21 08:45
 ## 計画
 
 - [x] 1〜3. GPU のエミッタ（3 システム・5 エミッタ）を cook の `ResourceData` に合わせた。突き合わせの道具 `Tools/dd/gpu_emitters.py` を作り（ステップ 1）、`dd_particles._gpu_resource` が色・アルファ・大きさ・SubUV を cook の `ResourceData` から組むようにし（ステップ 2。01 記録）、3 つを組み直して差が消えたことを確かめ、`Config/DefaultEngine.ini` の `[SystemSettings]` に `fx.Cascade.UseVelocityForMotionBlur=0` を入れて PIE で扉の破片を見た（ステップ 3。00 記録）
-- [ ] 4. Zone 2 の独房の粒子 4 材質と棘の黒い塵 `Fracture_dark_slow` を原作のデータと突き合わせる
-  - 変更予定: `/Game/DD/...` の材質 4 つ・`Fracture_dark_slow`
+- [x] 4. 独房の粒子 4 材質は焼き込みのシェーダーと命令まで一致（直すところ無し）。`Fracture_dark_slow` は `Whisps_trans2`（`whispOne_Master_directional`）を使うので、`_lit_particle` が半透明のライティングの値を cook の書き出しから写すようにした（08 記録）
 - [ ] 5. ナースの扉突きの塵 `P_06_NurseDoorHit`（材質 `Whisps_trans` の推定）を原作のデータで確かめて直す
   - 変更予定: `/Game/DD/.../P_06_NurseDoorHit` と材質
 - [ ] 6. 除細動器の放電 `P_06_Defib` の `thander`（`M_ky_spark02_4x4`）を原作のデータで確かめて直す
@@ -34,24 +33,21 @@ updated: 2026-09-21 08:45
 - [ ] 7. PIE で 4 か所を通して確かめ、実装記録 07・08 と作業一覧を直して項目 33 を閉じる
   - 変更予定: `.claude/implementation-records/07-*`・`08-*`、`.claude/roadmap.md`、`.claude/references/handover.md`
 
-## GPU のエミッタの結果（ステップ 1〜3。ここは済み）
+## 残りのステップに効くこと（ステップ 1〜4 で分かった）
 
-本作の `/Game/DD` の 1005 のパーティクルシステムのうち **GPU のエミッタを持つのは 3 つ・5 エミッタだけ**（`Fracture_concrete_3` の `Fragments`・`DustTrail`、`Concrete_impact_large` の `ConcreteBits`・`Sparks`、`P_06_NursesLand` の `ConcreteBits`）。項目 33 の残りの対象（`Fracture_dark_slow`・`P_06_NurseSparks`・`P_06_NurseDoorHit`・`P_06_Defib`）には GPU のエミッタが無いので、ステップ 4〜6 は材質の話だけ。
-
-`python Tools/dd/gpu_emitters.py <名前> --ours` の差（`*` の行）は、組み直した後は次の 2 種類だけ残る。**どちらも直さない**（下の決定事項）:
-
-- 量子化の角の 1〜3 段（255 分の）のずれ。`OptimizeLookupTable` の丸めで、見え方は同じ。
-- `P_06_NursesLand` の `ConcreteBits` の `QuantizedColorSamples` 16 点（本作は空）。
+- 項目 33 の残りの対象（`P_06_NurseDoorHit`・`P_06_Defib`）に **GPU のエミッタは無い**ので、ステップ 5・6 は材質の話だけ。
+- **cook の書き出しは 367 の材質のどれにも `BaseColor`・`Opacity`・`Roughness`・`OpacityMask` を持たない**（一律に落ちる）。その 4 つが無いことは「つないでいない」の証拠にならない。**式の正本は焼き込みのシェーダー**（`python Tools/dd/cooked_shaders.py "<パスの一部>." --show N`）で、残りの設定は書き出しの `props` で確かめる。
+- 半透明のライティングの値は `_lit_particle` が書き出しから写すようになった。ライティングありの半透明の材質を足すときは `_lit_particle(mat, <原作のパス>)` を呼ぶだけでよい。
 
 ## 次にやること
 
-ステップ 4。Zone 2 の独房の粒子 4 材質（`M_06_NurseSparks`・`M_Spark`・`M_Radial_Gradient`・`Squib_one`）と棘の黒い塵 `Fracture_dark_slow` を、原作の cook の材質（`Tools/dd/cooked_shaders.py`）とアセットの値で突き合わせ、推定で組んだところを直す。組み直しは `WasamiDDTools.import_dd_gimmicks`。
+ステップ 5。ナースの扉突きの塵 `P_06_NurseDoorHit` の材質（推定の `Whisps_trans` に加算を上書きしている）を、焼き込みのシェーダーと書き出しの `props` で確かめて直す。組み直しは `WasamiDDTools.import_dd_gimmicks`。
 
 ## 決定事項
 
 - 2026-09-21: 本家の収録には頼らない（作業一覧の大目標 3 の節の頭。移動が遅すぎて該当の場面に届かない）。コードで決まらなかったものだけをステップ 7 で 1 回の収録にまとめるか、決まらない理由を書いて閉じる。
-- 2026-09-21: 読み戻した曲線は、エディタの `OptimizeLookupTable` が標本点の外の角を 1〜3 段（255 分の数）丸める。量子化の並びがそこだけ数ずれても直さない（見え方は同じで、原作自身がその丸めを通った値）。
-- 2026-09-21: `P_06_NursesLand` の `ConcreteBits` が持つ `QuantizedColorSamples` 16 点は**原作の死んだデータ**なので、本作が空でも直さない。cook には `ColorScale` が無く（＝(0,0,0,0)）、色もアルファも一定（`ColorBias` (0.3178, 0.3039, 0.3039, 1)）。`FComposableDistribution::QuantizeVector4` は引き当ての表が 1 点のとき早く返り、**前の標本を消さない**ので、原作では色が一定になる前の曲線が残ったまま cook に入った。本作は初めから一定なので標本が空になるが、`FParticleCurveTexture::AddCurve` は空の配列をそのまま受け（割り当て 0）、`ColorScale` が 0 なので描かれる色は同じ。
+- 2026-09-21: 原作が engine の材質関数を呼んでいても、**その中身を展開した本作の式と焼き込みの命令が同じなら展開したままにする**（`M_Radial_Gradient` の `Gradient/RadialGradient`）。UE 5.8 の関数の中身は Python から読めず、写すと 4.21 との違いを持ち込みかねない。焼き込みと一致している方を正とする。
+- 2026-09-21: 原作が定数をつないでいる入力でも、**焼き込みで既定値に畳まれているならつながない**（`Squib_one` の `Metallic` = 0）。
 
 ## 要確認（ユーザー）
 
@@ -68,4 +64,4 @@ updated: 2026-09-21 08:45
 
 - check_records: OK（2026-09-21。`fx.Cascade.UseVelocityForMotionBlur` を 00 記録に足した）
 - C++ ビルド: この項目は C++ を変えない
-- エディタでの確認: 3 つの GPU のシステムを組み直し、`gpu_emitters.py --ours` で 5 エミッタとも `bUseVelocityForMotionBlur` の差が消えたのを確かめた。PIE（Zone 1）で扉の破片 `Fracture_concrete_3` を出し、塵が 0.2 秒ほどで視界を覆って 1.4 秒ほどで晴れるのを見た（`Intermediate/Overnight/shots/z1_doors_burst.png`）。ログに粒子のエラーは無い。Zone 2 の独房の `Concrete_impact_large` はステップ 7 の通しで見る。
+- エディタでの確認: ステップ 1〜3 で GPU の 5 エミッタの差が消え、PIE（Zone 1）で扉の破片が出るのを見た。ステップ 4 で `import_dd_gimmicks` を通し、7 つのマスター材質の設定が cook の書き出しと一致するのを読み出して確かめた（`M_DD_WhispDirectional`・`M_DD_WhispAmb`・`M_DD_Debris`・`M_DD_Squib`・`M_DD_NurseSparks`・`M_DD_BvfxSpark`・`M_DD_BvfxRadialGradient`）。ログに材質のコンパイルのエラーは無い。**見え方はまだ PIE で見ていない**（Zone 2 の独房・棘の塵はステップ 7 の通しで見る）。

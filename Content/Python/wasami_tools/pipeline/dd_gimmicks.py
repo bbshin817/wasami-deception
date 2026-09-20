@@ -409,15 +409,37 @@ def make_portal_materials():
     return [a.get_path_name() for a in made]
 
 
-def _lit_particle(mat, responsive_aa=False, spherical_normals=False):
-    """The settings the cook kept on BallisticsVFX's smoke and debris: lit translucency (volumetric, directional), for
-    sprites."""
+# The lit translucency's values the cook keeps on BallisticsVFX's smoke and debris (their names -> UE 5.8's). A
+# material that leaves one out had UE 4.21's default, which UE 5.8 shares, so _lit_particle leaves it alone.
+LIT_PARTICLE_VALUES = (("TranslucencyDirectionalLightingIntensity", "translucency_directional_lighting_intensity"),
+                       ("TranslucentMultipleScatteringExtinction", "translucent_multiple_scattering_extinction"),
+                       ("TranslucentSelfShadowSecondDensityScale", "translucent_self_shadow_second_density_scale"),
+                       ("TranslucentSelfShadowSecondOpacity", "translucent_self_shadow_second_opacity"),
+                       ("TranslucentShadowDensityScale", "translucent_shadow_density_scale"))
+
+
+def _lit_particle(mat, rel):
+    """The settings the cook kept on BallisticsVFX's smoke and debris at the original's /Game/<rel>: lit translucency
+    (volumetric directional) with that material's own scattering and self-shadow values, for sprites, and its
+    responsive AA, spherical particle normals and separate translucency as the cook has them."""
+    props = dd_assets.main_export(dd_assets.export_json(rel, VERSION), rel)["props"]
+    mode = props.get("TranslucencyLightingMode")
+    if mode != "TLM_VolumetricDirectional":
+        raise RuntimeError("%s lights its translucency as %s, not TLM_VolumetricDirectional" % (rel, mode))
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
     mat.set_editor_property("translucency_lighting_mode",
                             unreal.TranslucencyLightingMode.TLM_VOLUMETRIC_DIRECTIONAL)
     mat.set_editor_property("used_with_particle_sprites", True)
-    mat.set_editor_property("enable_responsive_aa", responsive_aa)
-    mat.set_editor_property("generate_spherical_particle_normals", spherical_normals)
+    mat.set_editor_property("enable_responsive_aa", bool(props.get("bEnableResponsiveAA", False)))
+    mat.set_editor_property("generate_spherical_particle_normals",
+                            bool(props.get("bGenerateSphericalParticleNormals", False)))
+    # UE 4.21's bEnableSeparateTranslucency off is UE 5.8's translucency drawn before the depth of field.
+    if not props.get("bEnableSeparateTranslucency", True):
+        mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    for key, name in LIT_PARTICLE_VALUES:
+        if key in props:
+            value = props[key]
+            mat.set_editor_property(name, unreal.LinearColor(*value) if isinstance(value, list) else float(value))
 
 
 def _sub_uv(g, param, rel, sampler, blend, x, y):
@@ -437,14 +459,15 @@ def _flattened(g, normal, pin, amount, x, y):
 
 
 def _build_whisp_directional(mat, d):
-    """whispOne_Master_directional, estimated. The cook kept its settings (translucent, lit volumetric directional, for
-    sprites), the parameters Base Overlay, FlattenNormal, Fade Distance, Opacity, Radius, Master Opacity and the
+    """whispOne_Master_directional, estimated. The cook kept its settings (translucent, lit volumetric directional with
+    its own scattering and self-shadow values, spherical particle normals, no separate translucency, for sprites), the
+    parameters Base Overlay, FlattenNormal, Fade Distance, Opacity, Radius, Master Opacity and the
     textures Base and Normal, the static switch MacroUVNoise and the bool Normal Map, of 36 expressions. Its compiled
     shadow pass reads the opacity: Base's alpha x Opacity x the particle's alpha, faded into the depth over Fade
     Distance, x Master Opacity (Radius fades it only within a few centimetres of the camera, which is not made, nor the
     macro UV noise). The estimate adds a colour of Base's RGB x Base Overlay x the particle's colour, and Normal eased
     flat by FlattenNormal."""
-    _lit_particle(mat)
+    _lit_particle(mat, SMOKE_DUST + "whispOne_Master_directional")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
     base = _sub_uv(g, "Base", WHISP_BASE, st.SAMPLERTYPE_COLOR, True, -1300, 0)
@@ -461,14 +484,14 @@ def _build_whisp_directional(mat, d):
 
 
 def _build_whisp_amb(mat, d):
-    """whispOne_Master_amb, estimated. The cook kept its settings (translucent, lit volumetric directional, for
-    sprites), the parameters ColourOverlay, FlattenNormal, Opacity, Fade Distance, Radius, Hardness, the texture Base, a
+    """whispOne_Master_amb, estimated. The cook kept its settings (translucent, lit volumetric directional with its own
+    scattering and self-shadow values, spherical particle normals, for sprites), the parameters ColourOverlay, FlattenNormal, Opacity, Fade Distance, Radius, Hardness, the texture Base, a
     SubUV sample of whisp_One_512_8x8_Normal and the static switch CamFade, of 24 expressions. Its one instance
     (whispOne_Master_amb_Inst) turns CamFade off, which the estimate leaves out with Radius and Hardness (taken as that
     fade's): a colour of Base's RGB x ColourOverlay x the particle's colour, the normal eased flat by FlattenNormal, and
     an opacity of Base's alpha x Opacity x the particle's alpha, faded into the depth over Fade Distance (as
     whispOne_Master_directional's)."""
-    _lit_particle(mat)
+    _lit_particle(mat, SMOKE_DUST + "whispOne_Master_amb")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
     base = _sub_uv(g, "Base", WHISP_BASE, st.SAMPLERTYPE_COLOR, True, -1300, 0)
@@ -491,7 +514,7 @@ def _build_debris(mat, d):
     spherical particle normals, for sprites), the parameter Desat, SubUV samples of Base Map (Stones2x2) and Normal
     Map (Gravel2x2_normal) and its normal (Normal Map's RGB), of 10 expressions. The estimate: a colour of Base Map's
     RGB desaturated by Desat x the particle's colour, and an opacity of Base Map's alpha x the particle's alpha."""
-    _lit_particle(mat, responsive_aa=True, spherical_normals=True)
+    _lit_particle(mat, FRAGMENTS + "DebrisMaster")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
     base = _sub_uv(g, "Base Map", DEBRIS_BASE, st.SAMPLERTYPE_COLOR, False, -1100, 0)
@@ -573,16 +596,9 @@ def _build_radial_gradient(mat, d):
     g.out(g.multiply(shape, "", particle, "A", -450, 200), "", MP.MP_OPACITY)
 
 
-# The lit translucency's values Squib_one's export sets away from UE's defaults (its names → UE 5.8's).
-SQUIB_LIGHTING = (("TranslucencyDirectionalLightingIntensity", "translucency_directional_lighting_intensity"),
-                  ("TranslucentShadowDensityScale", "translucent_shadow_density_scale"),
-                  ("TranslucentSelfShadowSecondDensityScale", "translucent_self_shadow_second_density_scale"),
-                  ("TranslucentSelfShadowSecondOpacity", "translucent_self_shadow_second_opacity"))
-
-
 def _build_squib(mat, d):
-    """Squib_one (BallisticsVFX), estimated. The cook kept its settings (translucent, lit volumetric directional,
-    spherical particle normals, for sprites, and its translucent lighting and shadow values), the parameters Base,
+    """Squib_one (BallisticsVFX), estimated. The cook kept its settings (translucent, lit volumetric directional with its own
+    scattering and self-shadow values, spherical particle normals, for sprites), the parameters Base,
     FlattenNormal, Fade Distance, Opacity and MasterOpacity, the static switch Cam close fade? (on), a SubUV sample of
     Squib_one_normal and a FlattenNormal call, of 23 expressions. Its compiled translucent base pass
     (Tools/dd/cooked_shaders.py "SmokeDust/Squib_one." --show 28) is what the graph follows: a base colour of Base's RGB
@@ -590,10 +606,7 @@ def _build_squib(mat, d):
     blended frames eased flat by FlattenNormal, and an opacity of Base's alpha x the particle's alpha x Opacity, faded
     into the depth over Fade Distance, faded near the camera (none at 25 cm, whole at 250: a CameraDepthFade of 225
     from 25; the switch, which nothing turns off, is not made) and x MasterOpacity."""
-    _lit_particle(mat, spherical_normals=True)
-    props = dd_assets.main_export(dd_assets.export_json(SMOKE_DUST + "Squib_one", VERSION), SMOKE_DUST + "Squib_one")
-    for key, name in SQUIB_LIGHTING:
-        mat.set_editor_property(name, float(props["props"][key]))
+    _lit_particle(mat, SMOKE_DUST + "Squib_one")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
     base = g.texture("Base", unreal.load_asset(dd_assets.asset_path(SQUIB_BASE)), st.SAMPLERTYPE_COLOR, -1300, 0)
