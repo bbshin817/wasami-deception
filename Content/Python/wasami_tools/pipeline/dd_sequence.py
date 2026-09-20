@@ -68,6 +68,9 @@ NURSE_ANIMS = {
     "nurse_cloak": ("Walk", False),                         # she turns invisible; here she walks off
 }
 NURSE_ANIMS.update({"Nurse_Hospital_Zone01_Event_%d" % n: ("Idle", False) for n in range(40, 48)})
+# The stand-ins that are one action rather than a cycle. A section the original holds a single take in slows these to
+# fill it once instead of repeating the action (play_rate below); the cycles loop, as the original's own cycles do.
+ONE_SHOT_CLIPS = {"Chase_Charge", "Chase_VaultRoll"}
 
 # UE 4.24's UMovieScene defaults for what the export leaves out (60000 ticks a second, 30 frames).
 DEFAULT_TICK_RESOLUTION = (60000, 1)
@@ -129,6 +132,8 @@ class _Package:
             self.by_path[(e["outer"] + "." if e["outer"] else "") + e["name"]] = e
         self.asset = dd_assets.main_export(pkg, rel)["props"]
         self.movie_scene = self.by_path[self.asset["MovieScene"]]["props"]
+        rate = _rate(self.movie_scene.get("TickResolution"), DEFAULT_TICK_RESOLUTION)
+        self.ticks_per_second = rate.numerator / float(rate.denominator)
 
     def get(self, path):
         return self.by_path[path]
@@ -144,6 +149,7 @@ class _Builder:
         self.attenuations = {}
         self.shakes = {}
         self.clips = {}
+        self.lengths = {}
 
     # ---------------------------------------------------------------------------------------------- assets
     def sound(self, object_path):
@@ -195,6 +201,15 @@ class _Builder:
                 raise RuntimeError("%s is missing: run WasamiDDTools.import_wasami_enemy" % (WASAMI_CLIP % clip))
             self.clips[clip] = asset
         return self.clips[clip], reverse
+
+    def nurse_length(self, object_path):
+        """The nurse animation's own length (SequenceLength), which tells a section that loops a cycle from one that
+        holds a single take."""
+        rel = dd_assets.game_rel(object_path)
+        if rel not in self.lengths:
+            pkg = dd_assets.export_json(rel, VERSION)
+            self.lengths[rel] = float(dd_assets.main_export(pkg, rel)["props"]["SequenceLength"])
+        return self.lengths[rel]
 
     # ---------------------------------------------------------------------------------------------- channels
     def _defaults(self, channel, data, class_default):
@@ -324,6 +339,30 @@ class _Builder:
         self.result["sections"] += 1
         return section
 
+    def play_rate(self, params, pkg, sec, p, clip):
+        """The original plays every one of these at 1, and a section that outlasts its animation loops it (UE 4.24
+        and 5.8 alike). So the original's sections come in two kinds: one loops a cycle (its animation is shorter than
+        the section), the other holds a single take (the animation fills the section, sometimes cut short). A stand-in
+        is a different length, so a single take would come out looped - the capture scene's punch (1.633 s, the nurse
+        animation's own length) would charge three times over with the 0.533 s stand-in. Keep which of the two kinds a
+        section is: slow a stand-in down to fill a single-take section once, and leave a looping one at 1. Only the
+        stand-ins that are one action (ONE_SHOT_CLIPS) are slowed; a cycle standing in for a take of acting is left to
+        loop, which reads as the idle it is (the cell's 11 s of dialogue would otherwise crawl at a sixth speed)."""
+        if clip.get_name() not in {WASAMI_CLIP.rsplit("/", 1)[-1] % c for c in ONE_SHOT_CLIPS}:
+            return
+        rng = sec["props"].get("SectionRange") or {}
+        bounds = (rng.get("lower") or {}), (rng.get("upper") or {})
+        if bounds[0].get("type") != "Inclusive" or bounds[1].get("type") != "Exclusive":
+            return
+        seconds = (int(bounds[1]["value"]) - int(bounds[0]["value"])) / pkg.ticks_per_second
+        offset = p.get("StartFrameOffset", 0) / pkg.ticks_per_second
+        left = clip.get_play_length() - offset
+        if seconds <= self.nurse_length(p["Animation"]) - offset and 0.0 < left < seconds:
+            # The variant is a value too, so it is read, written and put back.
+            rate = params.get_editor_property("play_rate")
+            rate.set_fixed_play_rate(left / seconds)
+            params.set_editor_property("play_rate", rate)
+
     def track(self, pkg, owner, path):
         """One track of the package onto `owner` (a binding proxy, or the sequence for a master track)."""
         export = pkg.get(path)
@@ -389,6 +428,7 @@ class _Builder:
                 # (it is an offset into another animation, but the stand-in is at least as long as the two we have).
                 params.set_editor_property("start_frame_offset", _frame(p.get("StartFrameOffset", 0)))
                 params.set_editor_property("reverse", reverse)
+                self.play_rate(params, pkg, sec, p, clip)
                 section.set_editor_property("params", params)
         elif cls == "MovieSceneVisibilityTrack":
             track = add(unreal.MovieSceneVisibilityTrack)
