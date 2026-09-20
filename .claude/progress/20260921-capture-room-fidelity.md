@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 2399e97
 started: 2026-09-21 05:29
-updated: 2026-09-21 05:55
+updated: 2026-09-21 06:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -44,7 +44,7 @@ updated: 2026-09-21 05:55
 | 項目 | 原作の値 | 本作 | 対応 |
 | --- | --- | --- | --- |
 | ~~暗転の曲線~~ | ~~2 キーは接線 0 の自動クランプ → `3a² − 2a³`~~ | ~~`StartCameraFade` の直線~~ | ステップ 2 で済み |
-| 被写界深度 | `JumpscareCam` が `FocalDistance` 142.943→10（0.128 で保持を抜け 0.2248 で到達）・`FocalRegion` 571.429→100（0→0.2315）・`FarBlurSize` 16.152・Near/FarTransitionRegion は既定（300/500）を上書き。方式は 01_Hotel の **bUnbound な `PostProcessVolume_1`** が `DOFM_Gaussian`・`Fstop` 4.0 を敷き、カメラは方式を上書きしないので **Gaussian** | **何も入れていない** | ステップ 3 |
+| ~~被写界深度~~ | ~~焦点 142.943→10・領域 571.429→100、Gaussian・Fstop 4.0~~ | ~~何も入れていない~~ | ステップ 3 で済み |
 | 顔の灯 | `jumpscarelight`・`jumpscarelight_5`: 猿の頭のソケット `Monkey_Head_TopSHJnt` に付く点光源 2 灯、強さ **15**・届く距離 **15**・影なし・ソケット系で ±4.416/8.515/11.875 と ±4.399/8.324/11.747（猿のスケール 4 なので世界では ±17.7 / 34.1 / 47.2 cm） | 1 灯の仮（強さ 300・届く距離 200・頭 +(50,0,30)） | ステップ 4 |
 
 ### C. 理由を書いて閉じる
@@ -60,11 +60,8 @@ updated: 2026-09-21 05:55
 
 - [x] 1. 原作の 6 本と関係アクタの値を全部書き出し、突き合わせ表を作る（上の表。残りのステップもここで立て直した）
 - [x] 2. 暗転を原作の曲線にした（`FadeCurve` = `3a² − 2a³`、`Tick` から毎フレーム `SetManualCameraFade`。実装記録 07 の「暗転」）
-- [ ] 3. 被写界深度を入れる ← 次
-  - UE 5.8 の Gaussian 系（`FocalRegion`・`Near/FarTransitionRegion`・`FarBlurSize`）は **Mobile 専用**（`Engine/Source/Runtime/Engine/Classes/Engine/Scene.h` の 2363〜 が `Lens|Mobile Depth of Field`）で desktop では効かない。cinematic の `DepthOfFieldFocalDistance` + `Fstop` に写す
-  - 仮の対応: `FocalDistance` = 原作の（焦点 + 領域 ÷ 2）（= 428.66 → 60 cm。Gaussian のはっきり写る帯の中央）× カメラの倍率 `FrameScale`、`Fstop` = 4.0（`PostProcessVolume_1` の値）。時刻は原作のキーのまま（Matinee の時間で評価）
-  - 変更予定: `WasamiCapture.h`・`.cpp`、`Tests/WasamiCaptureTests.cpp`
-- [ ] 4. 灯を原作の値にする
+- [x] 3. 被写界深度を入れた（`HotelFocalDistance`・`DofFocal*`・`DofFstop`。はっきり写る帯の中央 × `FrameScale` で 502.6 → 70.3 cm、`Fstop` 4.0。顔の 4 本目は上書きを外す。実装記録 07 の「被写界深度」）
+- [ ] 4. 灯を原作の値にする ← 次
   - 顔の灯を `jumpscarelight`・`_5` の 2 灯に置き換える（強さ 15・届く距離 15・影なし）。位置は猿の頭のソケット系の値を本作の `head` の骨へ写す（軸の対応が決まらなければ左右 ±17.7・前 と 上 の仮を理由つきで書く）。1 灯の仮（`FaceLightOffset`・`FaceLightIntensity`・`FaceLightRadius`）は捨てる
   - 天井灯の届く距離と強さを場面の倍率（0.878）に合わせるかを決める（今は位置だけ倍率、距離・強さは原作のまま）
   - 変更予定: `WasamiCapture.h`・`.cpp`、`Tests/WasamiCaptureTests.cpp`
@@ -72,16 +69,21 @@ updated: 2026-09-21 05:55
 
 ## 次にやること
 
-ステップ 3（被写界深度）。上の計画の仮のとおり、`JumpscareCam` の DOF を `View`（`UCameraComponent`）の `PostProcessSettings` に入れる: `bOverride_DepthOfFieldFocalDistance` と `DepthOfFieldFocalDistance`（原作の焦点トラックの値 + 領域トラックの値 ÷ 2 を Matinee の時間で評価し、寄りの倍率 `FrameScale` を掛ける）、`DepthOfFieldFstop` = 4.0。原作のトラックは `FocalDistance` 142.943→10（0.128 で保持を抜け 0.2248 で到達）・`FocalRegion` 571.429→100（0→0.2315）で、どちらも `01_Hotel.full.json` の `JumpscareCam` の `InterpTrackFloatProp`。時刻は場面の早回しに乗せず Matinee の時間（`SceneTime * MatineeRate`）で読む。顔（ゴールドウォッチャー）は DOF を持たないので入れない。
+ステップ 4（灯）。2 つある:
+
+1. **顔の灯**: 今の 1 灯の仮（`FaceLightOffset` (50,0,30)・`FaceLightIntensity` 300・`FaceLightRadius` 200）を捨て、原作の `jumpscarelight`・`jumpscarelight_5` の 2 灯にする。どちらも猿の頭のソケット `Monkey_Head_TopSHJnt` に付く点光源で、**強さ 15・届く距離 15・影なし**、ソケットからの相対は ±4.416/8.515/11.875 と ±4.399/8.324/11.747（猿のスケール 4 なので世界では ±17.7 / 34.1 / 47.2 cm）。本作の `head` の骨へ写すとき軸の対応（猿の骨の向き ↔ ワサミの `head`）が決まらなければ、左右 ±17.7・前・上の仮を理由つきで書く。値は `pak_reference/_levels/01_Hotel.full.json` の `jumpscarelight`・`_5`。
+2. **天井灯**: 届く距離 500・強さ 1500 を場面の倍率 `SceneScale` 0.878 に合わせるか決める（今は位置だけ倍率で、距離・強さは原作のまま＝被写体が 30 % ほど明るい）。要確認に残っている件。
+
+変更予定: `Source/wasami_deception/WasamiCapture.h`・`.cpp`、`Source/wasami_deception/Tests/WasamiCaptureTests.cpp`、実装記録 07 の「灯」「顔の灯」。
 
 ## 決定事項
 
 - 2026-09-21: 本家の実機の収録は**最後の手段**にする — 大目標 3 の節の頭（2026-09-21 のユーザーの回答）。ステップ 1 で全部コードから決まったので、今のところ収録は要らない。
-- 2026-09-21: 原作の被写界深度は Gaussian（レベル全体に敷かれた `PostProcessVolume_1` が方式を決め、カメラは焦点だけ上書き）。UE 5.8 の desktop に Gaussian は無いので cinematic に写す（上のステップ 3 の仮）。値をそのまま入れると焦点 10 cm で顔までぼけるため、はっきり写る帯（焦点〜焦点＋領域）の中央を焦点にする。
+- 2026-09-21: 被写界深度は cinematic の焦点距離に写して入れた（理由は実装記録 07 の「被写界深度」へ移した）。
 
 ## 要確認（ユーザー）
 
-- 被写界深度の写し方（ステップ 3 の仮）: 原作の Gaussian（焦点 10 cm・はっきり写る帯 100 cm・遠景のぼけ 16 px）は UE 5.8 の desktop に無い。帯の中央（60 cm）を cinematic の焦点にし、絞りは原作のレベルの 4.0 にする。原作は背景（ホテルの実部屋）を潰すためのぼけだが、本作の部屋は黒いので効き目はワサミの体にだけ出る。入れない選択もある。
+- 被写界深度の写し方（ステップ 3 で入れた仮）: 原作の Gaussian（焦点 10 cm・はっきり写る帯 100 cm・遠景のぼけ 16 px）は UE 5.8 の desktop に無い。帯の中央 60 cm × `FrameScale` を cinematic の焦点（502.6 → 70.3 cm）にし、絞りは原作のレベルの 4.0 にした。原作のぼけは背景（ホテルの実部屋）を潰すためのもので、本作の部屋は黒いので効き目はワサミの体にだけ出る（f/4・FOV 90 では弱い）。**絞りを強める（f/1.4 など）か、入れないか**の選択もある。
 - 天井灯の届く距離（500）と強さ（1500）を場面の倍率 0.878 に合わせるか（合わせないと被写体が 30 % ほど明るい）。ステップ 4 で仮に決める。
 
 ## 再開時の注意
@@ -91,7 +93,7 @@ updated: 2026-09-21 05:55
 
 ## 検証
 
-- check_records: OK（20 件、ステップ 2 で実行）
-- C++ ビルド: OK（`Tools/editor_cycle.py`、ステップ 2）
-- Automation: `Wasami.Capture` の 5 件が通った（ステップ 2。`UnrealEditor-Cmd -ExecCmds="Automation RunTests Wasami.Capture;quit" -Unattended -NullRHI` はエディタを開いたままでも走る）
+- check_records: OK（20 件、ステップ 3 で実行）
+- C++ ビルド: OK（`Tools/editor_cycle.py`、ステップ 3）
+- Automation: `Wasami.Capture` の 5 件が通った（ステップ 3。`UnrealEditor-Cmd "<uproject>" -ExecCmds="Automation RunTests Wasami.Capture;quit" -Unattended -NullRHI -NoSound -NoSplash` はエディタを開いたままでも走る。**結果は標準出力ではなく `Saved/Logs/wasami_deception_2.log` の `LogAutomationController` に出る**）
 - エディタでの確認（PIE の 4 本通し）: ステップ 5 でまとめて行う

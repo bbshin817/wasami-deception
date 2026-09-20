@@ -511,6 +511,9 @@ void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoic
 		MatineeRate = 0.f;
 		BodyStart = FVector(-FaceRushDistance, 0., 0.);
 		View->SetFieldOfView(WatcherFieldOfView);
+		// 03_Watcher_Kill3 is a camera anim on the player's own camera, with no depth of field of its own.
+		View->PostProcessSettings.bOverride_DepthOfFieldFocalDistance = false;
+		View->PostProcessSettings.bOverride_DepthOfFieldFstop = false;
 	}
 	else
 	{
@@ -532,6 +535,10 @@ void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoic
 			BodyStart = -BodyPlacement().TransformVector(Travel);
 		}
 		View->SetFieldOfView(FieldOfView);
+		// PostProcessVolume_1's Fstop under the Matinee's focal distance, which UpdateScene pulls each frame.
+		View->PostProcessSettings.bOverride_DepthOfFieldFocalDistance = true;
+		View->PostProcessSettings.bOverride_DepthOfFieldFstop = true;
+		View->PostProcessSettings.DepthOfFieldFstop = DofFstop;
 	}
 	if (Clip)
 	{
@@ -658,6 +665,7 @@ void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
 		// following the Wasami goes on top as the turn, seen from where the camera starts, from the Wasami standing at
 		// the mark (AimRest) to where it is.
 		const float Matinee = FMath::Min(Scene * MatineeRate, MatineeLength(Choice));
+		View->PostProcessSettings.DepthOfFieldFocalDistance = HotelFocalDistance(Matinee);
 		FVector HotelAt, HotelFrom;
 		FRotator HotelTurn, HotelTurnFrom;
 		EvaluateHotelCamera(Choice, Matinee, HotelAt, HotelTurn);
@@ -685,6 +693,16 @@ void AWasamiCapture::UpdateScene(float Time, float DeltaSeconds)
 float AWasamiCapture::FadeCurve(float Alpha)
 {
 	return FMath::CubicInterp(0.f, 0.f, 1.f, 0.f, FMath::Clamp(Alpha, 0.f, 1.f));
+}
+
+float AWasamiCapture::HotelFocalDistance(float MatineeTime)
+{
+	// Auto-clamped keys whose tangents all come out 0 — the two tracks' ends are stationary, and the focal distance's
+	// middle key sits on its hold, which clamps it — so each pair eases along FadeCurve's cubic, held at either end.
+	const float Near = FMath::Lerp(DofFocalNear, DofFocalNearEnd,
+		FadeCurve((MatineeTime - DofFocalNearHold) / (DofFocalNearTime - DofFocalNearHold)));
+	const float Depth = FMath::Lerp(DofFocalDepth, DofFocalDepthEnd, FadeCurve(MatineeTime / DofFocalDepthTime));
+	return float((Near + Depth * 0.5f) * FrameScale);
 }
 
 void AWasamiCapture::StartFade()

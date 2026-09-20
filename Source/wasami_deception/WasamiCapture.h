@@ -102,6 +102,32 @@ public:
 	/** JumpscareCam's field of view (the CameraComponent's default; the Matinee's FOVAngle track has no keys). */
 	static constexpr float FieldOfView = 90.f;
 
+	/**
+	 * JumpscareCam's depth of field, the same in all three Matinees (InterpTrackFloatProp_1 and _2 on its
+	 * CameraComponent.PostProcessSettings): the focal distance holds at 142.943 cm to 0.128 s and falls to 10 by
+	 * 0.2248 s, the focal region 571.429 to 100 by 0.2315 s — the near edge of the band that stays sharp, and how
+	 * deep it is. The method is not the camera's own: 01_Hotel's bUnbound PostProcessVolume_1 lays DOFM_Gaussian and
+	 * an Fstop of 4 over the whole level, and the Matinee's camera overrides neither.
+	 */
+	static constexpr float DofFocalNear = 142.94285583496094f;
+	static constexpr float DofFocalNearEnd = 10.f;
+	static constexpr float DofFocalNearHold = 0.12800943851470947f;
+	static constexpr float DofFocalNearTime = 0.22483110427856445f;
+	static constexpr float DofFocalDepth = 571.4285888671875f;
+	static constexpr float DofFocalDepthEnd = 100.f;
+	static constexpr float DofFocalDepthTime = 0.23150849342346191f;
+	static constexpr float DofFstop = 4.f;
+
+	/**
+	 * Where the hotel choices' camera focuses MatineeTime in (cm from the camera, in this room's scale). UE 5.8 has no
+	 * Gaussian depth of field off mobile (Scene.h keeps the focal region, the transition regions and the blur sizes
+	 * under Lens|Mobile Depth of Field), so the two tracks go to the cinematic focal distance instead. TODO(仮): the
+	 * middle of the band the original holds sharp (the near edge plus half the depth, 428.66 cm at the start and 60 cm
+	 * once it is through), grown by FrameScale as this room's camera is. The original's blur is there to put the hotel
+	 * room behind the monkey away; this room is black already, so what is left of it falls on the Wasami alone.
+	 */
+	static float HotelFocalDistance(float MatineeTime);
+
 	/** ceilinglights_80: 1500 (Unitless), radius 500, source radius 24.715, colour (255, 236, 142), the export's
 	 *  [B, G, R, A] turned round. */
 	static constexpr float LightIntensity = 1500.f;

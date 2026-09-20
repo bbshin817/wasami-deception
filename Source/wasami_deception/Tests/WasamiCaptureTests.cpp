@@ -376,6 +376,22 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 	AWasamiCapture::EvaluateHotelCamera(1, 2.93878173828125f, Location, Rotation);
 	TestTrue(TEXT("and its own lunge at the end"), Location.Equals(FVector(4587.26416015625, 1072.32763671875, 7085.09912109375), 1e-2));
 
+	// JumpscareCam's focus pull: the middle of the band the Matinee holds sharp, grown by FrameScale.
+	TestEqual(TEXT("the focus out at the far wall at first"), AWasamiCapture::HotelFocalDistance(0.f), 502.593f, 0.01f);
+	TestEqual(TEXT("the near edge held to 0.128 s while the band closes in"),
+		AWasamiCapture::HotelFocalDistance(AWasamiCapture::DofFocalDepthTime * 0.5f), 364.408f, 0.01f);
+	TestEqual(TEXT("the near edge still where it was at the end of its hold"),
+		AWasamiCapture::HotelFocalDistance(AWasamiCapture::DofFocalNearHold), 342.545f, 0.01f);
+	TestEqual(TEXT("on the Wasami by 0.2315 s"), AWasamiCapture::HotelFocalDistance(AWasamiCapture::DofFocalDepthTime), 70.349f, 0.01f);
+	TestEqual(TEXT("and held there for the rest of the Matinee"), AWasamiCapture::HotelFocalDistance(3.f), 70.349f, 0.01f);
+	TestEqual(TEXT("held before it starts too"), AWasamiCapture::HotelFocalDistance(-1.f), 502.593f, 0.01f);
+	bool bPullsIn = true;
+	for (float Time = 0.f; Time < AWasamiCapture::DofFocalDepthTime; Time += 0.005f)
+	{
+		bPullsIn &= AWasamiCapture::HotelFocalDistance(Time) > AWasamiCapture::HotelFocalDistance(Time + 0.005f);
+	}
+	TestTrue(TEXT("pulling in the whole way, never back out"), bPullsIn);
+
 	// 03_Watcher_Kill3 from rest: 82 cm on, 29 cm up, looking 25° down.
 	FVector Move;
 	FRotator Turn;
@@ -410,6 +426,17 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 		TestTrue(What + TEXT("the camera where it starts"), StartLocation.Equals(bFace ? Room->FaceCameraOffset : Room->CameraStart, 1e-3));
 		TestTrue(What + TEXT("looking back at the Wasami"), View->GetForwardVector().X < -0.8);
 		TestEqual(What + TEXT("its field of view"), View->FieldOfView, bFace ? AWasamiCapture::WatcherFieldOfView : AWasamiCapture::FieldOfView);
+		// The hotel's depth of field on the camera itself; the watcher's kill has none.
+		const FPostProcessSettings& Post = View->PostProcessSettings;
+		TestTrue(What + TEXT("the depth of field is the hotel's alone"), (Post.bOverride_DepthOfFieldFocalDistance != 0) == !bFace);
+		if (!bFace)
+		{
+			TestTrue(What + TEXT("PostProcessVolume_1's Fstop"), Post.bOverride_DepthOfFieldFstop != 0
+				&& FMath::IsNearlyEqual(Post.DepthOfFieldFstop, AWasamiCapture::DofFstop));
+			TestEqual(What + TEXT("focused out where the Matinee starts"), Post.DepthOfFieldFocalDistance,
+				AWasamiCapture::HotelFocalDistance(0.f), 0.01f);
+		}
+		const float FocusAtStart = Post.DepthOfFieldFocalDistance;
 
 		double MostTurn = 0.;
 		double MostMove = 0.;
@@ -440,6 +467,13 @@ bool FWasamiCaptureCameraTest::RunTest(const FString& Parameters)
 		}
 		const FVector Head = Room->GetActorTransform().InverseTransformPosition(Room->GetBody()->GetSocketLocation(TEXT("head")));
 		TestTrue(What + TEXT("the face's light by the head"), Room->GetFaceLight()->GetRelativeLocation().Equals(Head + Room->FaceLightOffset, 30.));
+		if (!bFace)
+		{
+			// The pull is through long before the fade (0.2315 s of the Matinee, sooner still on the scene's time).
+			TestEqual(What + TEXT("the focus pulled in on the Wasami by then"), Post.DepthOfFieldFocalDistance,
+				AWasamiCapture::HotelFocalDistance(AWasamiCapture::DofFocalDepthTime), 0.01f);
+			TestTrue(What + FString::Printf(TEXT("from %.0f cm out"), FocusAtStart), FocusAtStart > Post.DepthOfFieldFocalDistance + 100.f);
+		}
 		Room->Destroy();
 	}
 
