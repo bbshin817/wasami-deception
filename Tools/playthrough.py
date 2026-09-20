@@ -118,6 +118,8 @@ if w is not None:
         l = player.get_actor_location()
         r = unreal.GameplayStatics.get_player_controller(w, 0).get_control_rotation()
         s['player'] = [round(l.x, 1), round(l.y, 1), round(l.z, 1), round(r.yaw, 1), round(r.pitch, 1)]
+        # Has Input: the scenes turn it off while they play (AWasamiZoneFlow::DisablePlayerInput)
+        s['input'] = bool(player.get_editor_property('has_input')) if isinstance(player, unreal.WasamiPlayerCharacter) else True
 print('JSON ' + json.dumps(s))
 """ % MARK
 
@@ -216,6 +218,7 @@ escaped = {escape!r} and any(f.get_editor_property('hold') for f in unreal.Widge
     w, unreal.WasamiBlackFadeWidget, False))
 print('JSON ' + json.dumps({{'at': [l.x, l.y, l.z], 'index': index, 'left': flat(goal), 'turn': turn,
                              'time': unreal.GameplayStatics.get_time_seconds(w),
+                             'input': bool(player.get_editor_property('has_input')),
                              'captured': len(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.WasamiCapture)) > 0,
                              'paused': unreal.GameplayStatics.is_game_paused(w),
                              'objective': str(mode.get_editor_property('current_objective')),
@@ -1037,7 +1040,7 @@ def select_power(g, name):
 
 def z1_ambulance(g):
     """06: past the doors that lock behind, into the tunnel, up the garage lift, Teleportation onto the ambulance's roof,
-    the ride and the loading screen to Zone 2's cell. Starts running at once: the nurses are on the way."""
+    the ride and the loading screen to Zone 2's yard. Starts running at once: the nurses are on the way."""
     g.walk(7210, -22255, reach=60.0, snap=True)
     g.shot("z1_ambulance_doors")
     g.walk(10375, -21600, reach=80.0)
@@ -1067,8 +1070,49 @@ def z1_ambulance(g):
     time.sleep(4.0)
     g.shot("z1_ambulance_ride")
     g.wait_new_world(ZONE2, timeout=60)
-    g.expect("Zone 2's cell (7)", lambda s: s.get("checkpoint") == 7)
-    g.shot("z2_cell")
+    g.expect("Zone 2's yard (7)", lambda s: s.get("checkpoint") == 7)
+    g.shot("z2_arrive")
+
+
+# The wall that pens the player on the ambulance's roof until it has driven in (Escape_AmbulanceArrive destroys it).
+ARRIVE_BLOCKER = """
+w = _need_game()
+print('JSON ' + json.dumps(any(a.get_actor_label() == 'Ambulance_Arrive_Blockers4'
+                               for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.BlockingVolume))))
+"""
+
+# Zone 2's yard has no navigation mesh, so the way to Trigger_Arrive_CaptureScene is walked straight from point to
+# point: off the roof (the lane's floor is at 800, 250 cm down), out of the blockers' pen, along the lane past the
+# ambulance parked in it (x -14472 to -14026, y -5180 to -4868), up the corridor at x -12400 and east into the trigger
+# (x -11600 +- 32, y -1360 to -640). From the floor's traces and capsule sweeps in PIE (2026-09-20).
+YARD_WAY = [(-21800.0, -5035.0), (-21800.0, -4600.0), (-12400.0, -4600.0), (-12400.0, -1200.0)]
+CELL_AT = (-14574.0, 1694.0)   # PlayerStart_Cell, where the cell's scene puts the player
+# The capture (26.23 s), a second, the cell (74.07 s) and the view blended back to the player over 2 s (11 record).
+ARRIVE_SCENES, CELL_VIEW_BLEND = 103.0, 2.0
+
+
+def z2_arrive(g):
+    """Zone 2's yard (7): the player rides in on the ambulance's roof, penned by Ambulance_Arrive_Blockers4 until it is
+    there (6.8 s), and walks down the lane and up the corridor into Trigger_Arrive_CaptureScene, which takes the input
+    away for the capture and the cell scenes (about 101 s) and leaves the player in the cell."""
+    g.expect("Zone 2's yard (7)", lambda s: s.get("checkpoint") == 7 and s.get("player"))
+    g.shot("z2_arrive_roof")
+    g.wait_for("the ambulance in (Ambulance_Arrive_Blockers4 gone)", lambda s: not g.ed.json(ARRIVE_BLOCKER), 30.0,
+               every=0.3)
+    g.shot("z2_arrive_yard")
+    for x, y in YARD_WAY:
+        g.walk(x, y, reach=90.0, straight=True)
+    step = g.walk(-11600.0, -1000.0, reach=45.0, straight=True, timeout=30.0, until=lambda st: not st["input"])
+    if step["input"]:
+        raise Failed("Trigger_Arrive_CaptureScene did not begin the capture (%s)" % g.brief())
+    g.log("the capture began at (%.0f, %.0f)" % (step["at"][0], step["at"][1]))
+    time.sleep(2.0)  # the view moves to CineCameraActor_2 over 0.5 s, the skip screen slides in
+    g.shot("z2_arrive_capture")
+    g.wait_for("the cell with the input back (both scenes over)",
+               lambda s: s.get("input") and s.get("player") and flat(s["player"][:2], CELL_AT) < 500.0,
+               ARRIVE_SCENES + 60.0, every=1.0)
+    time.sleep(CELL_VIEW_BLEND)
+    g.shot("z2_arrive_cell")
 
 
 DOOR_BREAK = """
@@ -1233,10 +1277,23 @@ def z2_escape(g):
         raise Failed("the title did not open with the save emptied and 3 lives (%s)" % g.brief(s))
 
 
-SECTIONS = [title, z1_arrive, pause, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_cell, z2_corridor, z2_maze, z2_altar, z2_escape]
+SECTIONS = [title, z1_arrive, pause, z1_maze, z1_shards, z1_parking, z1_ambulance, z2_arrive, z2_cell, z2_corridor,
+            z2_maze, z2_altar, z2_escape]
+
+# Where a PlayerStart of that tag is and how it faces (the flow's TeleportPlayerTo).
+PLAYER_START = """
+w = _need_game()
+at = None
+for a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.PlayerStart):
+    if str(a.get_editor_property('player_start_tag')) == {tag!r}:
+        l, r = a.get_actor_location(), a.get_actor_rotation()
+        at = [l.x, l.y, l.z, r.yaw]
+print('JSON ' + json.dumps(at))
+"""
 
 # How a section run alone begins: the save's checkpoint (None: the save started over; KEEP: as it is) and the level
-# opened again, then console commands.
+# opened again, then the player put at a PlayerStart (a fourth item, for a place the checkpoint does not open at) and
+# console commands.
 KEEP = "keep"
 SETUPS = {
     "title": (KEEP, TITLE, []),
@@ -1246,7 +1303,10 @@ SETUPS = {
     "z1_shards": (5, ZONE1, []),
     "z1_parking": (5, ZONE1, ["Wasami.CollectShards"]),
     "z1_ambulance": (6, ZONE1, []),
-    "z2_cell": (7, ZONE2, []),
+    "z2_arrive": (7, ZONE2, []),
+    # 7 opens in the yard, where z2_arrive begins: the cell is where its two scenes leave the player, so a run of
+    # z2_cell alone is put there and given the flow's event that ends them (the input back, the spikes, the lock).
+    "z2_cell": (7, ZONE2, ["Wasami.Flow OnCellCutsceneFinished"], "PlayerStart_Cell"),
     "z2_corridor": (8, ZONE2, []),
     "z2_maze": (9, ZONE2, []),
     "z2_altar": (10, ZONE2, []),
@@ -1258,7 +1318,7 @@ NO_WARMUP = {"z1_ambulance", "z2_cell"}
 
 
 def setup(g, name):
-    checkpoint, level, commands = SETUPS[name]
+    checkpoint, level, commands, *rest = SETUPS[name]
     if checkpoint is None:
         g.console("Wasami.ResetSave")
     elif checkpoint != KEEP:
@@ -1266,6 +1326,11 @@ def setup(g, name):
     g.mark_world()
     g.console("open " + level)
     g.wait_new_world(level, mark=False, warmup=0.0 if name in NO_WARMUP else 2.0)
+    if rest and rest[0]:
+        at = g.ed.json(PLAYER_START.format(tag=rest[0]))
+        if not at:
+            raise Failed("no PlayerStart tagged %s in %s" % (rest[0], level))
+        g.place(at[0], at[1], at[2], yaw=at[3])
     if commands:
         g.console(*commands)
         time.sleep(1.0)
