@@ -69,9 +69,23 @@ sleep 20; python Tools/desktop.py shot --scale 0.25 --name obs-title.png   # タ
 | どの画面でも下 | Console Command の欄 (1890, 977) |
 | Active Enemy | Find All (1327, 860)・Refresh (1637, 860)・Remove All (1947, 860)。一覧は Find All の後に出る |
 | Maps（1 枚目） | TORMENT THERAPY (2033, 523) |
-| Maps（病院） | 上の段: STARTING POINT (1350, 310)・NEEDLE ROOM (1697, 310)・X-RAY ROOM (2047, 310)・CHECKPOINT 4 (2393, 310)。中の段: **ZONE 1 STARTING POINT (1343, 523)**・**ZONE 1 (1697, 523)**・PARKING LOT (2047, 523)・TUNNEL (2393, 523)。下の段: CHECKPOINT 9 (1343, 733)・**ZONE 2 (1697, 733)**・COLLECTING RING PIECE (2047, 733)・BOSS FIGHT CUTSCENE (2393, 733)。RETURN (1880, 880) |
+| Maps（病院） | 上の段: STARTING POINT (1350, 310)・NEEDLE ROOM (1697, 310)・X-RAY ROOM (2047, 310)・CHECKPOINT 4 (2393, 310)。中の段: **ZONE 1 STARTING POINT (1343, 523)**・**ZONE 1 (1697, 523)**・PARKING LOT (2047, 523)・**TUNNEL (2393, 523)**。下の段: CHECKPOINT 9 (1343, 733)・**ZONE 2 (1697, 733)**・COLLECTING RING PIECE (2047, 733)・BOSS FIGHT CUTSCENE (2393, 733)。RETURN (1880, 880) |
 | 警告「WOULD YOU LIKE TO CONTINUE ON …?」 | YES は文の長さで上下する（見出しが 1 行のとき (1657, 760)、2 行に折り返すとき〈BOSS FIGHT CUTSCENE〉(1657, 813)）。**撮って位置を確かめてから押す**。読み込みは約 25 秒 |
 | W-Editor が開いてしまった | 何も動かさずに Close (1270, 1387)。`ls -la --time-style=full-iso "$LOCALAPPDATA/SimpleModMenu/Saved/Transformation/World/"` で書き込みの有無を見て、あれば記録に書く（消さない・戻さない） |
+
+- **Maps の並びは本家のチェックポイントの索引そのまま**（2026-09-21、項目 28 のステップ 16 に確かめた。名前は 1 始まりの番号なので索引とは 1 ずれる）。**どのレベルのどこで開くかは `.claude/implementation-records/06-game-flow-save.md` の `PlayerStartTagFor` で引ける**。
+
+| Maps の名前 | 索引 | レベル | PlayerStart（原作の位置） |
+| --- | --- | --- | --- |
+| STARTING POINT / NEEDLE ROOM / X-RAY ROOM / CHECKPOINT 4 | 0〜3 | `06_Hospital`（入口。本作では作らない） | — |
+| ZONE 1 STARTING POINT | 4 | `06_Hospital_Zone_01` | `04_Start` (−25, 3735) |
+| ZONE 1 | 5 | 同上 | `05_Start` (15, 385) |
+| PARKING LOT | 6 | 同上 | `06_Start` (5620, −23410)。**ナースの湧き点 `06_NurseSpawn`(3375, −23105)・`06_NurseSpawn2` が 22 m。以前 3 回とも 2〜4 s で死んだ** |
+| **TUNNEL** | **7** | **`06_Hospital_Zone_02`** | `PlayerStart_1` (−22545, −5035, 1262) = **救急車の屋根**。開くたびに到着 6.77 s → （`Trigger_Arrive_CaptureScene` (−11600, −1000) を踏むと）捕まる場面 26.23 s → 独房の場面 74.07 s が流れる（11 記録の `StartAt`） |
+| CHECKPOINT 9 | 8 | 同上 | `PlayerStart_MiniBoss` (−10501, −2516)。Matron の机の区間 |
+| ZONE 2 | 9 | 同上 | `PlayerStart_Maze` (−3373, 0) |
+| COLLECTING RING PIECE | 10 | 同上 | `PlayerStart_PostMaze` (−1680, 0) |
+
 
 - **コンソールの操作**
   - 手順: 欄 (1890, 977) を 1 回押す → `python Tools/desktop.py type "slomo 0.25"` → `key enter` → Logs (990, 853) を押す → `M` で閉じる。欄に焦点を残さないよう、11a はこの順で閉じた。
@@ -112,8 +126,11 @@ cp Intermediate/DesktopAgent/shots/orig-<項目>-a.mkv observations/original/
   - 一瞬の演出は `slomo 0.25` にして撮る。効いたかどうかは、演出の長さで確かめる（テレキネシスは 1.3 s → 4.7 s に延びる）。
   - 長く撮るもの（回転の周期など）は、`--fps 10 --region L T R B` で範囲を絞る。
 - **視点**: `look --dx N --dy N`（相対）で動かす。**ゲーム中は `click` しない。** カーソルが絶対座標へ動き、その分だけ視点が回る。
-  - **送られるカウントの合計は `dx × burst`**（`dx` を `steps` 等分し、各段を `burst` 回送るため）。`--burst 8` なら `--dx 100` で 800 カウント（画面の約 550 px 分）。**小さい値は平滑化に食われて 0 になる**ので、`--dy` は ±200 以上でないと縦が動かないことがある（2026-09-20）。
-  - **回転量を測るときは `--burst` を付ける**（例: `look --dx 2057 --steps 17 --burst 11`。1 個 7〜12 カウント）。本家はマウスの平滑化がオンで、16 ms おきの大きな入力では合計が崩れる。レベルに入った直後は往復を数回送って慣らしてから測る（症状索引）。
+  - **送られるカウントの合計は `dx`**（`desktop_agent.do_look` は 1 回のイベントを `dx // steps // burst` にして `steps × burst` 回送る。`--burst` は 1 イベントを小さくするためのもので、合計は増えない。2026-09-21 に実装を読んで直した。それまでこの文書は「`dx × burst`」と書いていて、項目 28 のステップ 16 の観察はこれで向きを外し続けた）。
+  - **整数の割り算で丸められる**ので、**`dx` は `steps × burst` の倍数にする**（`--dx 250 --steps 6 --burst 11` は 250//66 = 3 → 実際は 198 カウントしか送られない）。
+  - **1° ≒ 5.2 カウント**（2026-09-21、最新版・既定の感度。360° ≒ 1870 カウント）。よく使う形: 45° = `look --dx 231 --steps 3 --burst 11`、90° = `look --dx 462 --steps 6 --burst 11`、180° = `look --dx 924 --steps 6 --burst 11`。
+  - **小さい値は平滑化に食われて 0 になる**ので、`--dy` は ±200 以上でないと縦が動かないことがある（2026-09-20）。1 イベントは 7〜12 カウントに収めると崩れにくい。本家はマウスの平滑化がオンで、16 ms おきの大きな入力では合計が崩れる。レベルに入った直後は往復を数回送って慣らしてから測る（症状索引）。
+  - **知らない場所に降りたら、まず 360° の一覧を 1 枚作る**（2026-09-21）: `for i in 0..7: shot --scale 0.22 --name p_$i.png; look --dx 231 --steps 3 --burst 11` の後、PIL で 4×2 に貼って 1 枚にする。絵を 1 枚ずつ読むより速く、出口を見落とさない。
   - 回転の確かめ方: 前後の `shot` の位相相関（ずれ 0 px なら 1 周）。壁ばかりの向きは相関が弱いので、Zone 1 の待合の廊下で測る。
   - 左クリックが要るとき（テレポートの確定など）は、画面の中央 (1720, 720) を押す。
 - **歩く**: `hold w --ms 3000` で進む。赤い両開き扉は、押しても左クリックしても開かなかった（11a）。
