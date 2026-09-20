@@ -3,7 +3,11 @@ title: 曲と環境音と台詞（ゾーンの曲の切り替え・台詞の取�
 sources:
   - Source/wasami_deception/WasamiMusicPlayer.h
   - Source/wasami_deception/WasamiMusicPlayer.cpp
+  - Source/wasami_deception/WasamiBierceTalk.h
+  - Source/wasami_deception/WasamiBierceTalk.cpp
   - Source/wasami_deception/Tests/WasamiMusicTests.cpp
+  - Source/wasami_deception/Tests/WasamiBierceTalkTests.cpp
+  - Source/wasami_deception/Tests/WasamiTestBierceTalk.h
   - Content/Python/wasami_tools/pipeline/dd_audio.py
   - Content/Python/wasami_tools/pipeline/dd_dialogue.py
 updated: 2026-09-20
@@ -25,6 +29,8 @@ updated: 2026-09-20
 - `AWasamiMusicPlayerZone2`: 本家の `BP_06_MusicPlayer_Zone2`（`Regular Music` の曲だけを差し替えた子）。
 - `IWasamiEnemyInterface::Chasing()`（04 記録）: 本家の `DD_EnemyInterface` の `Chasing`。既定は偽、`AWasamiEnemy` は `IsChasing()`（07 記録）を返す。`IsIntenseMusic()` がこれを見る。
 - ツール `WasamiDDTools.import_dd_audio()`（`dd_audio.import_all`）: 曲 3 本（`MUSIC`）・環境音 2 本（`AMBIENCE`）・残響 2 つ（`REVERBS`）の取り込み。戻り値は `music`・`ambience`・`reverbs`。
+- `EWasamiTalkStep`（`Nothing` / `Play` / `Wait` / `AlreadyWaiting`）と `WasamiTalkStep(bHalt, bPlaying, bWaiting)`: 本家のウーバーグラフに 1 回入ったときの行き先。ワールド無しで試せる純粋な関数。
+- `AWasamiBierceTalk`（`AActor`）: `bHalt`（`EditAnywhere, BlueprintReadWrite`）、`Talk(WhatToSay, bAttenuate)`・`StopTalking()`（どちらも `BlueprintCallable`）、`Find(WorldContext)`（静的。本家の `BP_DD_Functions` の `Bierce Talk` = `GetAllActorsOfClass` の 0 番目）、`GetAudioComponent()`、`GetPendingSound()`・`IsWaiting()`・`GetLastStep()`（テストのため）。定数 `WaitInterval` 0.5。ソフト参照 `Attenuation`。`IsSpeaking()` は `protected virtual`（音声装置の無い自動テストで鳴っている状態を作るため。`AWasamiTestBierceTalk`）。
 - ツール `WasamiDDTools.import_dd_dialogue()`（`dd_dialogue.import_all`）: 病院の台詞の取り込み。戻り値は `lines` 9・`quips` 5・`cues` 1・`intercom` 1。`dd_dialogue` の公開は `LINES`・`GAMEPLAY_CUE`・`GAMEPLAY_WAVES`・`INTERCOM`（取り込む波）、`strings()`（本家の文字列表の中身）、`subtitle_key(name)`（波の名前 → 文言の鍵）、`line(rel, entries)`（字幕付きで 1 本取り込む）。
 
 ## 内部構造と処理の流れ
@@ -69,6 +75,15 @@ updated: 2026-09-20
 - `INTERCOM` 1 本: Zone 1 の流れが `PlaySound2D`（音量 0.6）で鳴らす `Nurse_Hospital_Zone01_Event_37_Intercom`（12.024 s・2 ch・`SoundClassObject` 無し）。Zone 2 の館内放送は別の波で、`AmbientSound` として置いてある（上の「環境音と残響」）。
 - **字幕**: UE の仕組みそのまま（`USoundWave.Subtitles` に `{Text, Time}`。オプションの SUBTITLES が `UGameplayStatics::SetSubtitlesEnabled` を切り替える。15 記録）。本家の病院の台詞の波は `Subtitles` が空なので（字幕を持つのは本作が作らない入口のナースの分だけ）、本家の文字列表 `Blueprints/Main/Strings/Strings` の文言を**名前の対応**で 0 s に 1 つ入れる（`SUBTITLE_PREFIXES`・`SUBTITLE_KEYS`）: `Bierce_TormentTherapy_Event_NN` → `06_Cutscene_Zone_01_Bierce_NN`、`..._Gameplay_NN` → `06_Gameplay_Zone_01_Bierce_NN`、館内放送 → `06_Cutscene_Zone_01_Nurse_01`。第 4 章の下水の Bierce（字幕を持つ）が同じ対応で鍵を持ち、9 本すべて鳴らす場面と文言が合う（リフトの `Gameplay_07` =「handicap accessible nightmare」、Matron の `Event_19` =「find a way to get past her」など）。文字列表のアセットは作らず、`dd_level` の秘密の書き置きと同じく素の `unreal.Text` で入れる。
 
+## 話し役 `AWasamiBierceTalk`（項目 20 のステップ 2）
+本家の `BierceTalk_Blueprint`（`Blueprints/00_Ballroom`）を写したもの。本家は `AmbientSound` の子で、部品は `AudioComponent0` 1 つだけ（それがアクタの根。`bAutoActivate` 偽・`AttenuationSettings` は `DialogueAttenuation`）。本作は `AActor` にその部品を同じ値で作る（`bStopWhenOwnerDestroyed`・`bShouldRemainActiveIfDropped` 真・`Movable` も親の `AAmbientSound` のまま。減衰は `BeginPlay` でソフト参照から入れる）。本家の BP の既定の音（舞踏場の台詞）は使わないので入れない。
+
+- `Talk(What To Say, Attenuate?)`: 本家はまず両方をウーバーグラフのフレームに書き（＝ `Halt` で止まる呼びでも `PendingSound` と `bAllowSpatialization` は変わる）、部品の `bAllowSpatialization` に `Attenuate?` を入れてから `Halt` を見る。`Halt` が真なら何もしない。偽なら「部品が鳴っていれば `Delay 0.5` で待ち、空いたら `SetSound` → `Play(0)`」。**前の台詞は絶対に切らない**。病院の呼びはすべて `Attenuate? = False`（画面の外でも同じ音量の 2D）。
+- `StopTalking()`: 部品の `Stop()` だけ。走っている待ちは止めない（本家のまま）。
+- 待ちの写し方: Blueprint の `Delay` は**走っている間の再入を無視する**ので、待ちの最中の `Talk` は待ちを増やさず、`PendingSound` だけが置き換わる（＝待ちが明けたときに鳴るのは最後に頼まれた台詞）。これを `WasamiTalkStep` の `AlreadyWaiting` として写し、待ちは 0.5 s の単発タイマー `WaitTimer` の繰り返しで作る。タイマーの戻りは `Halt` の手前ではなくループの中（本家の `Delay` の戻り先 @15）に入るので、待っている間に `Halt` が上がっても鳴る。
+- 置き場所（`dd_level._flow` の `BIERCE_TALK_CLASS`。01 記録）: 両ゾーンの `BierceTalk_Blueprint_2` — Zone 1 (10560, −21175, 0)、Zone 2 (−10940, −865, 800)。置かれた値の上書きは無い。フォルダは `Hospital/Audio`、タグは `src:BierceTalk_Blueprint_2`。
+- 喋らせる側は両ゾーンの流れ（ステップ 3・4。11 記録）。本家のレベル BP の呼び口は 2 つあり（`BP_DD_Functions` の `Bierce Talk` と、レベルが持つアクタの参照）、どちらも同じ 1 体に届く。
+
 ## 作るアセット
 - 曲 `/Game/DD/Audio/06_Hospital/Music/`（`dd_audio.import_music` → `WasamiDDTools.import_dd_audio`）。名前は本家のまま:
   - `DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING`（84.396 s・音量 0.35・ループ）
@@ -85,11 +100,13 @@ updated: 2026-09-20
 - 置き場所: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json`・`_02.full.json`（`BP_06_MusicPlayer_2` の `bFadeOut` 真も）。
 - インターフェース: `pak_reference_2/_bytecode/.../Characters/Shared/DD_EnemyInterface.txt` の `Chasing`。
 - 台詞: `pak_reference_2/_assets/DDeception/Content/Audio/Dialogue/Bierce/Ch06/TT/*.json`（音量 2.0・クラス・長さ）と `Bierce_TormentTherapy_Gameplay.json`（`SoundNodeRandom` の重みと 5 本の順、`DialogueAttenuation`）、`Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom.json`。鳴らす場面は `_bytecode/.../06_Hospital_Zone_01.txt`・`_02.txt` と `Blueprints/00_Ballroom/BierceTalk_Blueprint.txt`。文言は `_assets/.../Blueprints/Main/Strings/Strings.json` の `string_table`、字幕の入れ方の手本は `Audio/Dialogue/Bierce/Ch04/Bierce_Sewer_01.json`（`Subtitles` が `Strings` の `04_Sewer_BierceDialogue_01` を指す）。
+- 話し役: `pak_reference_2/_bytecode/DDeception/Content/Blueprints/00_Ballroom/BierceTalk_Blueprint.txt`（`Talk` → ウーバーグラフ @213 の `bAllowSpatialization` → @254 の `Halt` → @15 の `IsPlaying` と `Delay 0.5`〈戻り先 @15〉→ @130 の `SetSound` → @171 の `Play(0.0)`、`Stop Talking` → @269 の `Stop`）と `_assets/…/BierceTalk_Blueprint.json`（親が `AmbientSound`、`AudioComponent0` の `bAutoActivate` 偽・`AttenuationSettings` = `DialogueAttenuation`）。置き場所は `_levels/06_Hospital_Zone_01.full.json`・`_02.full.json` の `BierceTalk_Blueprint_2`。`Halt` を上げる呼びは病院のどこにも無い。
 - 環境音と残響: `pak_reference_2/_levels/06_Hospital_Zone_01.full.json` の `DD_City_Ambience_Creepy_Loop2.AudioComponent0`・`_3.AudioComponent0`・`AudioVolume2`・`AudioVolume_1`、`_02.full.json` の `Nurse_Hospital_Zone01_Event_48_Intercom_2.AudioComponent0`。残響の値は `pak_reference_2/_assets/Engine/Content/EngineSounds/ReverbSettings/BunkerHall.json`・`ParkingLot.json`。
 
 ## 依存関係
 - 使う側: ゾーンの流れ（`AWasamiZone1Flow`・`AWasamiZone2Flow`。11 記録）。`src:BP_06_MusicPlayer_2` / `src:BP_06_MusicPlayer_Zone2_2` のタグで引き（`AWasamiZoneFlow::MusicPlayer`）、Zone 1 は 5 か所で `bFadeOut` を上げ下げし（`SetMusicFadeOut`）、Zone 2 は独房の場面で `FadeRegularMusicIn` を 2 回呼び、脱出で `bFadeOut` を上げる。レベルの組み立て（`dd_level._flow`。01 記録）。
 - 見る側: `IWasamiEnemyInterface`（04 記録）の `Chasing` → `AWasamiEnemy::IsChasing()`（07 記録）。
+- 話し役を使う側: 両ゾーンの流れ（11 記録。`src:BierceTalk_Blueprint_2` のタグか `AWasamiBierceTalk::Find`）。減衰 `/Game/DD/Audio/Misc/DialogueAttenuation`（`dd_gimmicks` が取り込む。08 記録）。
 - 取り込み: `dd_assets.sound`（01 記録）。
 - エンジン: `UAudioComponent`（`FadeIn` / `FadeOut` / `IsPlaying`、`EAudioFaderCurve::Linear`）、`FTimerManager`、`TActorIterator`。
 
@@ -99,6 +116,8 @@ updated: 2026-09-20
 - テストの `Wasami.Music.Actor` は `/Game/DD/Audio/06_Hospital/Music` の曲が取り込まれていることを前提にする（`import_dd_audio` を先に走らせる）。
 - **`bFadeOut` は一時停止の下では効かない**: `Update` は 0.5 s のタイマーなので、止めたゲームでは回らない。Zone 2 の脱出（11 記録の `OnEndTrigger`）が同じフレームで一時停止するため、そこで上げた `bFadeOut` は音にならず、スコア画面の下で曲は鳴り続ける。
 - 館内放送（Zone 2 の `Nurse_Hospital_Zone01_Event_48_Intercom_2`）は `bAutoActivate` 偽のまま置いてあるだけで、鳴らす側がまだ無い（本家はレベル BP が鳴らす。台詞なので項目 20）。
+- 話し役の待ちの戻り（`Resume`）には「待ちは無い」を値で渡す（`Step(false, false)`）。`FTimerManager::IsTimerActive` は**自分のコールバックの最中も真**なので、そこで `IsWaiting()` を見ると待ちの回が自分を「もう待っている」と誤り、台詞が二度と鳴らない（症状索引の「タイマーのコールバックの中で `IsTimerActive` が真を返す」）。
+- 話し役は音声装置の無い自動テストでは鳴っている状態を作れない（`UAudioComponent::Play` は装置が無いと何もしない）ので、`IsSpeaking()` を `virtual` にして `AWasamiTestBierceTalk` が差し替える。待ちの分岐そのものは純粋な `WasamiTalkStep` でも試す。
 - `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
 ## 変更履歴
@@ -107,3 +126,4 @@ updated: 2026-09-20
 - 2026-09-20: 環境音 2 つ・館内放送 1 つ・残響のボリューム 2 つを本家の値のまま置いた（ステップ 3）。
 - 2026-09-20: 残りの効果音を洗い出し、埋めた 1 つ（敵の移動音）と残り（台詞だけ）を書いた（ステップ 5）。
 - 2026-09-20: 病院の台詞の波 15 本と一言の Cue を字幕付きで取り込むようにした（`dd_dialogue.py`・`WasamiDDTools.import_dd_dialogue`。作業一覧の項目 20 のステップ 1）。
+- 2026-09-20: 話し役 `AWasamiBierceTalk` を作り、両ゾーンに 1 体ずつ置くようにした（項目 20 のステップ 2）。

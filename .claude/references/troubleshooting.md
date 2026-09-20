@@ -278,6 +278,13 @@
 - 対処: 継がない。ポストプロセスは `UPostProcessComponent` を作って持つ（`UWasamiChameleonComponent`）、カメラシェイクは Blueprint として作る（`WasamiDDTools`）、Cascade は `UParticleEmitter::Build` を `UpdateModuleLists` 経由で呼ぶ。`UParticleModule` は `Within=ParticleSystem` で、外へ出すときは `GetTransientOuterForRename` が一時的なシステムを外側にする。
 - 出典: 02 記録・04 記録・01 記録の「既知の制約」、進捗記録 `20260916-tablet-powers.md`（ステップ 3 で一度ビルドが落ちた）。
 
+### タイマーのコールバックの中で `IsTimerActive` が真を返す（空くまで待つループが自分を「待ち中」と誤る）
+
+- 症状: 「鳴り終わるまで 0.5 s ごとに待つ」ループを単発タイマーで組むと、タイマーが明けた回が「もう待ちが走っている」と判断して何もせず、以後は二度と鳴らない（2026-09-20、`AWasamiBierceTalk` の自動テスト `Wasami.Dialogue.Talk` が落ちた）。
+- 原因: `FTimerManager::IsTimerActive` は `Status != Paused` を返すので、**自分のコールバックの最中（`Executing`）も真**。
+- 対処: コールバックからループへ戻る入り口には「待ちは無い」を値で渡す（`AWasamiBierceTalk::Step(bLookAtHalt, bWaiting)`。`Resume` は `Step(false, false)`、外からの `Talk` だけ `IsWaiting()` を見る）。
+- 出典: 10 記録の「話し役 `AWasamiBierceTalk`」（作業一覧の項目 20 のステップ 2）。
+
 ### ファイルを足したらビルドが落ちた: 無名名前空間の名前の衝突・C4458
 
 - 症状: 変えていないファイルで再定義や曖昧な参照のエラー、または `warning C4458: declaration of 'Slot' hides class member`（警告がエラー扱い）。

@@ -233,6 +233,9 @@ MUSIC_PLAYER_PROPS = {"bFadeOut": "fade_out", "bOverrideMusic": "override_music"
 AMBIENT_SOUND_CLASS = "AmbientSound"
 AMBIENT_SOUND_COMPONENT = "AudioComponent0"
 AMBIENT_SOUND_SKIP = ("Sound", "RelativeLocation", "RelativeRotation", "RelativeScale3D")
+# The zones' talker (BierceTalk_Blueprint -> AWasamiBierceTalk — item 20): one in either zone, which the flow speaks
+# Bierce's lines through. It has no value of its own in the level (the class holds them), only where it stands.
+BIERCE_TALK_CLASS = "BierceTalk_Blueprint_C"
 # Zone 1's AudioVolumes (the corridor by the lobby and the parking lot): a brush volume like the rest, with the
 # ReverbSettings the export names (its ReverbEffect one of the engine's presets, rebuilt under /Game/DD/_Engine by
 # dd_audio.import_reverbs). The volume's own values are not in the stage data, so they come from the level export.
@@ -864,7 +867,8 @@ def set_audio_volume(actor, zone, name, level, failures):
 def _flow(eas, stage, zone, counts, failures):
     """The trigger boxes, brush volumes (the navigation's too), target points, door breaks, the double doors, the emitters
     the flow names, the zone barriers, the zone shard checkers, the lifts, the garage lifts, the sentries, the Matron
-    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points, the secrets (SECRET_CLASSES), the music player (MUSIC_PLAYER_CLASSES), the ambient sounds (AMBIENT_SOUND_CLASS) and
+    with her view cones (her references to them set), the altar, the ring piece, the defibrillators, the speed barriers, the saw traps, the special shards with their spawn points, the secrets (SECRET_CLASSES), the music player (MUSIC_PLAYER_CLASSES), the ambient sounds (AMBIENT_SOUND_CLASS), the
+    talker (BIERCE_TALK_CLASS) and
     the reverb volumes (AUDIO_VOLUME_CLASS), each where the original has it, and fixed to what it moves with (an ambulance, the spikes) when that
     is in the level; and this game's garage portal and the trigger by it (PORTALS). The secret elevators' sequences are
     set afterwards (link_sequence_players)."""
@@ -880,13 +884,14 @@ def _flow(eas, stage, zone, counts, failures):
         secret = a["class"] in SECRET_CLASSES
         music = a["class"] in MUSIC_PLAYER_CLASSES
         ambient = a["class"] == AMBIENT_SOUND_CLASS
+        talker = a["class"] == BIERCE_TALK_CLASS
         if not a["world"] or (a["class"] not in (TRIGGER_CLASS, DOOR_BREAK_CLASS, BARRIER_CLASS, SHARD_CHECKER_CLASS,
                                                  TARGET_POINT_CLASS, STATUE_CLASS, RING_PIECE_CLASS,
                                                  DEFIB_CLASS, SPEED_BARRIER_CLASS)
                               and a["class"] not in VOLUME_CLASSES and a["class"] not in LIFT_CLASSES
                               and a["class"] not in GARAGE_LIFT_CLASSES and a["class"] not in SAW_TRAP_CLASSES
                               and not doors and not emitter and not special and not enemy and not secret
-                              and not music and not ambient):
+                              and not music and not ambient and not talker):
             continue
         world = a["world"]
         if a["class"] == TRIGGER_CLASS:
@@ -1036,6 +1041,12 @@ def _flow(eas, stage, zone, counts, failures):
             if a["props"]:
                 failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
             counts["ambientSounds"] += 1
+        elif talker:
+            actor = eas.spawn_actor_from_class(unreal.WasamiBierceTalk, _vec(world["location"]),
+                                               _rot(world["quat_xyzw"]))
+            if a["props"]:
+                failures.append("%s: its own values %s are not written" % (a["name"], sorted(a["props"])))
+            counts["bierceTalks"] += 1
         elif emitter:
             actor = eas.spawn_actor_from_class(unreal.Emitter, _vec(world["location"]), _rot(world["quat_xyzw"]))
             missing = set_emitter(actor, zone, a["name"], level)
@@ -1057,7 +1068,7 @@ def _flow(eas, stage, zone, counts, failures):
         actor.set_actor_scale3d(_vec(world["scale"]))
         lift = a["class"] in LIFT_CLASSES or a["class"] in GARAGE_LIFT_CLASSES
         folder = (LIFT_FOLDER if lift else NAV_FOLDER if a["class"] in NAV_VOLUME_CLASSES
-                  else AUDIO_FOLDER if ambient or a["class"] == AUDIO_VOLUME_CLASS
+                  else AUDIO_FOLDER if ambient or talker or a["class"] == AUDIO_VOLUME_CLASS
                   else ENEMY_FOLDER if enemy
                   else TRAP_FOLDER if a["class"] in (DEFIB_CLASS, SPEED_BARRIER_CLASS) or a["class"] in SAW_TRAP_CLASSES
                   else SPECIAL_SHARD_FOLDER if special
@@ -1107,7 +1118,7 @@ def _flow(eas, stage, zone, counts, failures):
 def place_flow(zone="Zone1", map_path=""):
     """Puts the zone's trigger boxes, brush volumes (the navigation's too), target points, door breaks, double doors, emitters, zone barriers, zone shard
     checkers, lifts, garage lifts, sentries, the Matron with her view cones, altar, ring piece, defibrillators, speed barriers, saw traps, special shards with their spawn
-    points, secrets, music player, ambient sounds and reverb volumes in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
+    points, secrets, music player, ambient sounds, talker and reverb volumes in again, the secret elevators' sequences set (and takes out the barrier, ring piece, speed barrier, saw trap, special shard and
     secret file lights an earlier build placed on their own), leaving the rest of the level and its baked lighting as they are (none of them is in
     the baked lighting: the doors, the lifts, the altar, the defibrillators' stands, the saw traps, the special shards, the secrets and the
     barriers', the piece's, the traps' and the files' lights are movable), and saves the level."""
@@ -1127,7 +1138,7 @@ def place_flow(zone="Zone1", map_path=""):
               "doubleDoors": 0, "emitters": 0, "zoneBarriers": 0, "shardCheckers": 0, "lifts": 0, "garageLifts": 0, "sentries": 0,
               "matrons": 0, "viewcones": 0, "ringStatues": 0, "ringPieces": 0, "defibs": 0, "speedBarriers": 0, "sawTraps": 0, "specialShards": 0,
               "specialSpawnPoints": 0, "secrets": 0, "musicPlayers": 0, "ambientSounds": 0, "audioVolumes": 0,
-              "portals": 0, "attached": 0}
+              "bierceTalks": 0, "portals": 0, "attached": 0}
     old += lights
     if old:
         eas.destroy_actors(old)
@@ -1153,7 +1164,8 @@ def build(zone="Zone1", map_path=""):
                              "mapPlane", "mapAreas", "shards", "triggers", "volumes", "navVolumes", "targetPoints", "doorBreaks",
                              "doubleDoors", "emitters", "zoneBarriers",
                              "shardCheckers", "lifts", "garageLifts", "sentries", "matrons", "viewcones", "ringStatues", "ringPieces", "defibs",
-                             "speedBarriers", "sawTraps", "specialShards", "specialSpawnPoints", "secrets", "portals",
+                             "speedBarriers", "sawTraps", "specialShards", "specialSpawnPoints", "secrets",
+                             "musicPlayers", "ambientSounds", "audioVolumes", "bierceTalks", "portals",
                              "attached")}
     failures = []
     _meshes(eas, stage, z, counts, failures)
