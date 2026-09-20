@@ -442,14 +442,19 @@ def _lit_particle(mat, rel):
             mat.set_editor_property(name, unreal.LinearColor(*value) if isinstance(value, list) else float(value))
 
 
-def _sub_uv(g, param, rel, sampler, blend, x, y):
-    """A SubUV sample (the frame the emitter's SubUV module picks; blended between frames for its Linear_Blend) of
-    param, by default the texture rel."""
+def _sub_uv(g, param, rel, sampler, x, y):
+    """A SubUV sample of param, by default the texture rel: the frame the emitter's SubUV module picks, blended into
+    the next one. The original's SubUV samples never write bBlend, whose default is true, and a Linear emitter's lerp
+    is 0, so only a Linear_Blend one (and only on CPU sprites, GPU ones carry no lerp) sees the blend.
+
+    The original connects a ParticleMacroUV to these samples' Coordinates, which we leave out: the compiler drops that
+    input (TextureSampleParameterSubUV compiles to ParticleSubUV, which takes no UVs), and no compiled shader of
+    DebrisMaster holds macro UV maths - they all sample at the vertex factory's SubUV interpolants."""
     e = g.node(unreal.MaterialExpressionTextureSampleParameterSubUV, x, y)
     e.set_editor_property("parameter_name", param)
     e.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(rel)))
     e.set_editor_property("sampler_type", sampler)
-    e.set_editor_property("blend", blend)
+    e.set_editor_property("blend", True)
     return e
 
 
@@ -528,21 +533,27 @@ def _build_whisp_amb(mat, d):
 
 
 def _build_debris(mat, d):
-    """DebrisMaster, estimated. The cook kept its settings (translucent, lit volumetric directional, responsive AA,
-    spherical particle normals, for sprites), the parameter Desat, SubUV samples of Base Map (Stones2x2) and Normal
-    Map (Gravel2x2_normal) and its normal (Normal Map's RGB), of 10 expressions. The estimate: a colour of Base Map's
-    RGB desaturated by Desat x the particle's colour, and an opacity of Base Map's alpha x the particle's alpha."""
+    """DebrisMaster. The cook kept its settings (translucent, lit volumetric directional, responsive AA, spherical
+    particle normals, for sprites), the parameter Desat, SubUV samples of Base Map (Stones2x2) and Normal Map
+    (Gravel2x2_normal) and its normal (Normal Map's RGB), of 10 expressions. Its compiled translucent base pass
+    (Tools/dd/cooked_shaders.py "Fragments/DebrisMaster." --show 5) gives what the cook took: a base colour of Base
+    Map's RGB x the particle colour's, desaturated by Desat (the multiply comes first, so the grey is the luminance of
+    the tinted debris, not of the texture), and an opacity of Base Map's alpha x the particle's, faded into the depth
+    over 10 (the same pass without a scene depth, the translucent shadow --show 3, fades over 10 from 1000000)."""
     _lit_particle(mat, FRAGMENTS + "DebrisMaster")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
-    base = _sub_uv(g, "Base Map", DEBRIS_BASE, st.SAMPLERTYPE_COLOR, False, -1100, 0)
+    base = _sub_uv(g, "Base Map", DEBRIS_BASE, st.SAMPLERTYPE_COLOR, -1100, 0)
     particle = g.node(unreal.MaterialExpressionParticleColor, -1100, 300)
-    grey = g.node(unreal.MaterialExpressionDesaturation, -850, 0)
-    dd_assets.connect(base, "RGB", grey, "")
-    dd_assets.connect(g.scalar("Desat", d["Desat"], -1050, 200), "", grey, "Fraction")
-    g.out(g.multiply(grey, "", particle, "RGB", -650, 0), "", MP.MP_BASE_COLOR)
-    g.out(g.multiply(base, "A", particle, "A", -650, 200), "", MP.MP_OPACITY)
-    normal = _sub_uv(g, "Normal Map", DEBRIS_NORMAL, st.SAMPLERTYPE_NORMAL, False, -1100, 500)
+    grey = g.node(unreal.MaterialExpressionDesaturation, -600, 0)
+    dd_assets.connect(g.multiply(base, "RGB", particle, "RGB", -850, 0), "", grey, "")
+    dd_assets.connect(g.scalar("Desat", d["Desat"], -850, 200), "", grey, "Fraction")
+    g.out(grey, "", MP.MP_BASE_COLOR)
+    fade = g.node(unreal.MaterialExpressionDepthFade, -400, 300)
+    dd_assets.connect(g.multiply(base, "A", particle, "A", -650, 300), "", fade, "Opacity")
+    dd_assets.connect(dd_assets.constant(g, 10.0, -650, 450), "", fade, "FadeDistance")
+    g.out(fade, "", MP.MP_OPACITY)
+    normal = _sub_uv(g, "Normal Map", DEBRIS_NORMAL, st.SAMPLERTYPE_NORMAL, -1100, 550)
     g.out(normal, "RGB", MP.MP_NORMAL)
 
 

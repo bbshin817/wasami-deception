@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: ca4891f
 started: 2026-09-21 06:53
-updated: 2026-09-21 23:15
+updated: 2026-09-21 23:30
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -27,8 +27,7 @@ updated: 2026-09-21 23:15
 - [x] 1〜3. GPU のエミッタ（3 システム・5 エミッタ）を cook の `ResourceData` に合わせた。突き合わせの道具 `Tools/dd/gpu_emitters.py` を作り（ステップ 1）、`dd_particles._gpu_resource` が色・アルファ・大きさ・SubUV を cook の `ResourceData` から組むようにし（ステップ 2。01 記録）、3 つを組み直して差が消えたことを確かめ、`Config/DefaultEngine.ini` の `[SystemSettings]` に `fx.Cascade.UseVelocityForMotionBlur=0` を入れて PIE で扉の破片を見た（ステップ 3。00 記録）
 - [x] 4. 独房の粒子 4 材質は焼き込みのシェーダーと命令まで一致（直すところ無し）。`Fracture_dark_slow` は `Whisps_trans2`（`whispOne_Master_directional`）を使うので、`_lit_particle` が半透明のライティングの値を cook の書き出しから写すようにした（08 記録）
 - [x] 5. ナースの扉突きの塵 `P_06_NurseDoorHit` の材質を原作のデータで直した。whisp の `Base`（と `_directional` の `Normal`）は段階を混ぜる SubUV ではなく素の `TextureSampleParameter2D`、落としていた `Radius` はカメラの近くの薄め（`SphereMask` hardness 10 % の `1 −`）だった（01・08 記録）
-- [ ] 6. 破片の材質 `DebrisMaster` を原作のデータで確かめて直す（ステップ 5 で見つかった: 原作の `Base Map`・`Normal Map` は `TextureSampleParameterSubUV` で、本作は段階を混ぜず〈原作の書き出しは `bBlend` を書いていない = 既定の真〉、原作がつなぐ `ParticleMacroUV` の UV も作っていない。焼き込み `Tools/dd/cooked_shaders.py "Fragments/DebrisMaster."` の標本の数で混ぜているかを決める）
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_gimmicks.py` の `_build_debris`・`_sub_uv`、`/Game/Pipeline/Materials/M_DD_Debris`
+- [x] 6. 破片の材質 `DebrisMaster` を原作のデータで直した。2 枚の SubUV は段階を混ぜ（書き出しが `bBlend` を書いていない = 既定の真）、色は `Base Map` × 粒子の色を **掛けてから** `Desat` で灰色に寄せ、不透明度には落としていた `DepthFade`（10）が付く。原作がつなぐ `ParticleMacroUV` は作らない（`ParticleSubUV` は UV を取らない）（08 記録）
 - [ ] 7. 除細動器の放電 `P_06_Defib` の `thander`（`M_ky_spark02_4x4`）を原作のデータで確かめて直す
   - 変更予定: `/Game/DD/.../P_06_Defib`、`M_ky_spark02_4x4`
 - [ ] 8. PIE で 4 か所を通して確かめ、実装記録 07・08 と作業一覧を直して項目 33 を閉じる
@@ -43,7 +42,7 @@ updated: 2026-09-21 23:15
 
 ## 次にやること
 
-ステップ 6。破片の材質 `DebrisMaster` の 2 枚のテクスチャ（`Base Map`・`Normal Map`）を、焼き込みの標本の数と書き出しの `ParticleMacroUV` の接続で確かめて直す。組み直しは `dd_gimmicks.import_doors_busted`（`Tools/ue_remote.py` から。MCP の `describe_toolset` は `WasamiDDTools` の道具を返さない）。
+ステップ 7。除細動器の放電 `P_06_Defib` の `thander`（材質 `M_ky_spark02_4x4`）を、書き出しに残る式の型 → 焼き込みのシェーダー（`python Tools/dd/cooked_shaders.py "<パスの一部>." --show N`）の順で確かめて直す。組み立ては `dd_gimmicks.import_defib`（`Tools/ue_remote.py` から。MCP の `describe_toolset` は `WasamiDDTools` の道具を返さない）。
 
 ## 決定事項
 
@@ -51,6 +50,8 @@ updated: 2026-09-21 23:15
 - 2026-09-21: 原作が engine の材質関数を呼んでいても、**その中身を展開した本作の式と焼き込みの命令が同じなら展開したままにする**（`M_Radial_Gradient` の `Gradient/RadialGradient`）。UE 5.8 の関数の中身は Python から読めず、写すと 4.21 との違いを持ち込みかねない。焼き込みと一致している方を正とする。
 - 2026-09-21: 原作が定数をつないでいる入力でも、**焼き込みで既定値に畳まれているならつながない**（`Squib_one` の `Metallic` = 0）。
 - 2026-09-21: **書き出しに残る式の型を、推定より先に読む**。`whispOne_Master_directional`・`_amb` の `Base` を段階を混ぜる SubUV だと推定していたが、書き出しは `TextureSampleParameter2D` と書いていて、焼き込みも 1 画素につき 1 回しか読んでいなかった（`Squib_one` の法線は `ParticleSubUV`、`DebrisMaster` の 2 枚は `TextureSampleParameterSubUV` と書き分けられている）。
+
+- 2026-09-21: **書き出しが書いていない既定値は UE の既定に倣う**（`TextureSampleParameterSubUV` の `bBlend` = 真）。**原作がつないでいても、コンパイラが落とす入力は作らない**（`TextureSampleParameterSubUV` の `Coordinates`: `ParticleSubUV` は UV を取らず、焼き込みのどれにもマクロ UV の式が無い）。
 
 ## 要確認（ユーザー）
 
@@ -65,6 +66,6 @@ updated: 2026-09-21 23:15
 
 ## 検証
 
-- check_records: OK（2026-09-21。`fx.Cascade.UseVelocityForMotionBlur` を 00 記録に足した）
+- check_records: OK（2026-09-21。ステップ 6 で 01・08 記録のハッシュを更新）
 - C++ ビルド: この項目は C++ を変えない
-- エディタでの確認: ステップ 1〜3 で GPU の 5 エミッタの差が消え、PIE（Zone 1）で扉の破片が出るのを見た。ステップ 4 で `import_dd_gimmicks` を通し、7 つのマスター材質の設定が cook の書き出しと一致するのを読み出して確かめた（`M_DD_WhispDirectional`・`M_DD_WhispAmb`・`M_DD_Debris`・`M_DD_Squib`・`M_DD_NurseSparks`・`M_DD_BvfxSpark`・`M_DD_BvfxRadialGradient`）。ログに材質のコンパイルのエラーは無い。**見え方はまだ PIE で見ていない**（Zone 2 の独房・棘の塵はステップ 7 の通しで見る）。
+- エディタでの確認: ステップ 1〜3 で GPU の 5 エミッタの差が消え、PIE（Zone 1）で扉の破片が出るのを見た。ステップ 4 で `import_dd_gimmicks` を通し、7 つのマスター材質の設定が cook の書き出しと一致するのを読み出して確かめた（`M_DD_WhispDirectional`・`M_DD_WhispAmb`・`M_DD_Debris`・`M_DD_Squib`・`M_DD_NurseSparks`・`M_DD_BvfxSpark`・`M_DD_BvfxRadialGradient`）。ログに材質のコンパイルのエラーは無い。**見え方はまだ PIE で見ていない**（4 か所ともステップ 8 の通しで見る）。ステップ 6 では `import_doors_busted` を通し（音 1・テクスチャ 6・材質 9・粒子 1）、`M_DD_Debris` を組み直して再コンパイルした（式 9 = 想定どおり。ログに材質のエラーは無く、アセットの検証も通った）。**UE 5.8 の Python は材質の式の一覧を出さない**（`Material.expression_collection` も `editor_only_data.expressions` も無い）ので、組み上がりは式の数とログで確かめる。
