@@ -21,6 +21,7 @@
 #include "WasamiGameMode.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiTabletWidget.h"
+#include "WasamiVoice.h"
 
 namespace
 {
@@ -268,6 +269,12 @@ void AWasamiShard::Collect(bool bNoSound)
 		if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
 		{
 			Instance->RememberCollectedShard(PreviousLocation);
+			// Not the original's: the WebGL version's well on the run's first shard, where there are more to take
+			// (its record 04). Shards To Be Removed counts them, so a respawn's shards do not say it again.
+			if (Instance->GetShardsToBeRemoved().Num() == 1 && Screen->GetShardCount() > 0)
+			{
+				WasamiVoice::Say(this, EWasamiVoice::Well);
+			}
 		}
 	}
 	// The original destroys the shard and then plays the sound in the same frame; here the sound goes first, while the

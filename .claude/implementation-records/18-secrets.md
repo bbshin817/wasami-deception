@@ -33,7 +33,7 @@ updated: 2026-09-20
 - `UWasamiMysteryNoteWidget`（`UMG_MysteryNote`）: `Show(WorldContext, Texture, Texts, bLoreNote)`（`AddToViewport(2)`）・`Begin`/`Advance`・`PressNextPage`・`PressClose`・`GetCurrentText`・`GetPageText`・`Evaluate*`。
 - `AWasamiCollectable`（本家 `BP_Collectable`）: `ID`（セーブの `Secrets` の番号）・`Collectables`（解放する EXTRAS。`FWasamiCollectableEntry` の配列、06 記録）・`FileMesh`（`secret_file` のソフト参照）・`Collect()`（取る。DoOnce）・`Unlock()`・`IsTaken`・`GetBouncePosition`・`EvaluateBounce`/`BounceHeight`/`BounceYaw`・部品の取得。
 - `AWasamiSecretRoomZone`（`BP_SecretRoomZone`）: `NotifyPlayerOverlap(bBegin)`（箱の重なりがプレイヤーのときだけ呼ぶ）・`GetGlitchOpacity`・`HasShownBanner`・`GetWhispers`・`GetGlitch`/`GetGlitchMaterial`。
-- `AWasamiSecretWall`（`BP_03_SecretWall1` と子 `BP_07_Zone1_SecretWall` の既定値）: `IWasamiInteractable`（05 記録）・`Height`（275）・`IsUsed`/`IsMoving`/`GetMoveUpPosition`/`GetOGHeight`/`GetInterpHeight`・`EvaluateMoveUp`。
+- `AWasamiSecretWall`（`BP_03_SecretWall1` と子 `BP_07_Zone1_SecretWall` の既定値）: `IWasamiInteractable`（05 記録）・`Height`（275）・`IsUsed`/`IsMoving`/`GetMoveUpPosition`/`GetOGHeight`/`GetInterpHeight`・`EvaluateMoveUp`・`VoiceDelay`（0.5。本家に無いワサミの声までの待ち）。
 - `AWasamiMysteryCollectable`（`BP_MysteryCollectable`）: `IWasamiInteractable`・`Texture`（ソフト参照）・`Texts`・`bLoreNote`（`Lore Note`）・`GetLastNote`・`GetPlane`。
 - `AWasamiFakeUseActor`（`BP_FakeUseActor`）: `IWasamiInteractable`・`bInactive`・`OnUsed`（`Used`）・`Activate()`・`IsUsed`・`GetBox`。派生 `AWasamiFakeUseSequencePlayer`（`_SequencePlayer`）: `Sequence`（レベルの `ALevelSequenceActor`）。派生 `AWasamiFakeUseElevator`（`BP_FakeUseActor_06_HospitalZone1_Elevator`）: `EvaluateDoors`・`DoorsStart`/`DoorsEnd`/`SequenceLength`/`DoorTravel`・`IsPlaying`/`GetSequencePosition`・部品の取得（`GetRightDoor` = `StaticMesh`・`GetLeftDoor` = `StaticMesh1`）。
 - テスト `Wasami.Secrets.Widgets.Collectables`・`.Secret`・`.MysteryNote`、`Wasami.Secrets.Collectable.Parts`・`.Collect`・`.Save`・`.Unlock`、`Wasami.Secrets.SecretRoomZone`、`Wasami.Secrets.SecretWall`、`Wasami.Secrets.MysteryCollectable`、`Wasami.Secrets.FakeUse.Actor`・`.SequencePlayer`・`.Elevator`。
@@ -66,7 +66,7 @@ updated: 2026-09-20
   - 本家の Chameleon は毎ティック `InitChameleon` → `Glitch Func` → `Set Advanced Effect Features` で `Glitch - Advanced` を MID に入れ直すので、区域が構造体を書き換えると次のフレームで効く。ここは値を入れた時に MID へ直接書く（同じ見え方で 1 フレーム早い）。`Glitch - Advanced` のほかの項目（`BlendMode` 0・白いマスク 1 × 1・`BlendDistance` 0・鋭さ 10・カスタム深度とステンシルなし）は推定の材質が持つ枝そのものなので入れない。Chameleon の後処理は `Unbound` 真・重み 1・優先度 0。
 - 秘密の壁 `AWasamiSecretWall`: 部品は `DefaultSceneRoot`（Movable）→ `StaticMesh`（100 倍・タグ `interact`・重なりを作らない・道の外〈子の `bCanEverAffectNavigation` 偽〉・UE の `BlockAllDynamic`・Movable。メッシュと材質はレベルの組み立てが入れる: 親の材質 `M_03_Manor_PaintedWall_01`、子の `M_07_TP_Stonewall_01`、Zone 2 の置いた壁の `M_06_Hospital_Brick_01`）。`Height` は子の 275（親は 0）。
   - BeginPlay: `OG Height` = 根の z、`InterpHeight` = `Height` + 根の z。
-  - `InteractWithObject` → DoOnce → メッシュのタグを消す（`Array_Clear` を 2 回）→ `PlaySoundAtLocation(Sliding_Wall, アクタ, 0.65, 1, 0, 01_Lobby_Attenuation)` → `Move Up` を速さ 0.7 で頭から。ティックで位置を進め（タイムラインの長さは既定の 5 s。書き出しに `TimelineLength` が無い）、`Alpha`（0 → 1 を 3 s・線形、後は 1）で z を `Lerp(OG Height, InterpHeight, Alpha)`（掃引なし）。3 / 0.7 = 4.29 s で上がりきり、7.14 s でティックを止める（`Finished` は何もしない）。
+  - `InteractWithObject` → DoOnce → メッシュのタグを消す（`Array_Clear` を 2 回）→ `PlaySoundAtLocation(Sliding_Wall, アクタ, 0.65, 1, 0, 01_Lobby_Attenuation)` → `Move Up` を速さ 0.7 で頭から。ティックで位置を進め（タイムラインの長さは既定の 5 s。書き出しに `TimelineLength` が無い）、`Alpha`（0 → 1 を 3 s・線形、後は 1）で z を `Lerp(OG Height, InterpHeight, Alpha)`（掃引なし）。3 / 0.7 = 4.29 s で上がりきり、7.14 s でティックを止める（`Finished` は何もしない）。本家に無いものとして、最初の使用から **0.5 s 後にワサミの声 `best`**（`VoiceDelay` の単発タイマー → `SayBest`。WebGL 版が隠し扉の 0.5 s 後に鳴らしていたもの。10 記録の「ワサミの声を鳴らす口」）。
 - メモ `AWasamiMysteryCollectable`: 部品は `DefaultSceneRoot` → `Plane`（エンジンの `/Engine/BasicShapes/Plane` と `BasicShapeMaterial`〈エンジンのものなのでコンストラクタで引く〉、相対 (0, −0.0001, 215.42)・ロール 90 で立て・拡縮 (0.64, 1, 1)、タグ `interact`、UE の `BlockAllDynamic`〈見るトレースが Plane の箱の当たりに止まる〉）。Zone 2 に置いたメモは `Plane` を根に戻し（相対 0）、根の変形と `Plane` の材質を持つ（ステップ 5）。
   - BeginPlay: `Texture` とメモの画面の素材（`UWasamiMysteryNoteWidget::LoadAssets`）を読み込む。
   - `InteractWithObject`（DoOnce なし。画面がゲームを止め、閉じるまで次は押せない）→ `UWasamiMysteryNoteWidget::Show(this, Texture, Texts, bLoreNote)`（本家 `Create(Self, UMG_MysteryNote_C, None)` に名前で `Texture`・`Texts`・`E Note` を入れて `AddToViewport(2)`）。何も保存しない。
@@ -126,6 +126,7 @@ updated: 2026-09-20
 - 画面の操作の注意: PIE でクリックの位置を変えるとカーソルの移動が視点を回すので、見て使う物を狙うときは、狙いを入れてから前のクリックと同じ位置を押す。
 
 ## 変更履歴
+- 2026-09-20: 秘密の壁が開いた 0.5 s 後にワサミの声 `best` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）
 - 2026-09-20: 書類が EXTRAS を解放するところを PIE で確かめた（「確かめたこと」。作業一覧の項目 29 のステップ 6）
 - 2026-09-20: 書類の `Unlock` の EXTRAS を写した（`Collectables`・`Unlock`、セーブの `ExtrasArt`・`ExtrasSFX`〈06 記録〉、テスト `Wasami.Secrets.Collectable.Unlock`）。両ゾーンの書類に `Collectables` を入れた（01 記録。作業一覧の項目 29 のステップ 1）
 - 2026-09-20: 作業一覧の項目 12 を閉じた（役割の「作っている途中」を外した）

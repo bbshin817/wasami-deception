@@ -78,6 +78,8 @@ public:
 
 	static constexpr float LifeLostVolume = 0.6f;
 	static constexpr float GameOverVolume = 0.7f;
+	/** Wasami's voices, which the WebGL version played at 1 (its voice bus). */
+	static constexpr float VoiceVolume = 1.f;
 
 	/** Life1 to Life6. */
 	static constexpr int32 LifeIcons = 6;
@@ -227,6 +229,16 @@ protected:
 	/** UI_Select_V3: LAST CHECKPOINT's warning. */
 	UPROPERTY(EditAnywhere, Category = "Death|Assets")
 	TSoftObjectPtr<USoundBase> SelectSound;
+
+	/**
+	 * Wasami_Fine and Wasami_Over: this game's voices where the original has Bierce's death line and its game over
+	 * one (the WebGL version's choice, its record 10). Neither carries a subtitle, as the original's do not.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Death|Assets")
+	TSoftObjectPtr<USoundBase> LifeVoiceSound;
+
+	UPROPERTY(EditAnywhere, Category = "Death|Assets")
+	TSoftObjectPtr<USoundBase> GameOverVoiceSound;
 
 private:
 	/** What a Delay of Construct resumes. */

@@ -4,7 +4,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
+#include "TimerManager.h"
 #include "WasamiAssets.h"
+#include "WasamiVoice.h"
 
 namespace
 {
@@ -72,6 +74,15 @@ void AWasamiSecretWall::InteractWithObject_Implementation(AActor* Interactee)
 	bMoving = true;
 	ApplyMoveUp();
 	SetActorTickEnabled(true);
+
+	// Not the original's: the WebGL version's best, half a second after a secret door opens (its record 06). The
+	// original says nothing here; its Bierce speaks over the secret files instead (BP_Collectable, record 18).
+	GetWorldTimerManager().SetTimer(VoiceTimer, this, &AWasamiSecretWall::SayBest, VoiceDelay, false);
+}
+
+void AWasamiSecretWall::SayBest()
+{
+	WasamiVoice::Say(this, EWasamiVoice::Best);
 }
 
 void AWasamiSecretWall::Tick(float DeltaSeconds)

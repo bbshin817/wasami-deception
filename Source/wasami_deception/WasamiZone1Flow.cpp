@@ -15,6 +15,7 @@
 #include "WasamiLoadingWidget.h"
 #include "WasamiMusicPlayer.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiVoice.h"
 #include "WasamiZoneBarrier.h"
 
 namespace
@@ -80,7 +81,7 @@ void AWasamiZone1Flow::InitialStart()
 			return;
 		}
 		Player->bCanMove = false;
-		After(InitialHoldSeconds, [Player = TWeakObjectPtr<AWasamiPlayerCharacter>(Player)]()
+		After(InitialHoldSeconds, [this, Player = TWeakObjectPtr<AWasamiPlayerCharacter>(Player)]()
 		{
 			if (Player.IsValid())
 			{
@@ -88,6 +89,9 @@ void AWasamiZone1Flow::InitialStart()
 			}
 			// The entrance's own Bierce_TormentTherapy_Event_01 goes here in the original; this game does not build
 			// that level, so its lines (Event_01..08) are not taken (implementation record 10-audio).
+			// Wasami greets the player as the hold ends instead, which is the WebGL version's greet(): a run's start
+			// and nothing collected — here, Initial Start, which only a new game runs.
+			WasamiVoice::Say(this, EWasamiVoice::Greeting);
 		});
 	});
 }

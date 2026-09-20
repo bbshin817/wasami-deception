@@ -20,6 +20,7 @@
 #include "WasamiTeleportAim.h"
 #include "WasamiVanishPower.h"
 #include "WasamiVanishWidget.h"
+#include "WasamiVoice.h"
 
 namespace
 {
@@ -334,6 +335,8 @@ void UWasamiPowerComponent::UseSpeedBoost()
 
 	ActivePowers.AddUnique(EWasamiPower::SpeedBoost);
 	UGameplayStatics::PlaySoundAtLocation(this, LoadedBoostSound, Player->GetActorLocation());
+	// Not the original's: the WebGL version's fast on a boost that went off (its record 04's onBoost).
+	WasamiVoice::Say(this, EWasamiVoice::Fast);
 	SetPowerAvailable(EWasamiPower::SpeedBoost, false);
 	APlayerController* PC = Cast<APlayerController>(Player->GetController());
 	if (PC && PC->PlayerCameraManager && LoadedBoostShake)

@@ -159,6 +159,7 @@
 
 - 症状: リモート実行から `LaunchCharacter` などで動かしても速さが出ない。Automation テストも進まない（テストの道具は前面で 10 fps を超えるまで、背面なら最大 600 秒待つ）。`UWidgetComponent` の画面（タブレットの地図）も描き直されない（`bTickWhenOffscreen` が偽）。
 - 原因: `Use Less CPU when in Background`。
+- 2026-09-20: **`desktop.py shot` に古いコマが写る**。背面のエディタはビューポートを描き直さないので、PIE のゲーム時刻が進んでいても画面は数秒前のまま（字幕のように数秒で消えるものを撮ると、出ていないように見える）。撮る前に下の対処でスロットルを切る。
 - 2026-09-19: **ウィジェットのティック（`NativeTick` の `InDeltaTime`）も遅れる**。Slate は 1 コマの時間を 1/8 s で打ち切る（`FSlateApplication::TickTime`）ので、約 3 fps だとスコア画面の `ClearAnimation` も連続回収の画面（2 s で消える）も約半分の速さになった。ゲームの時間（`get_time_seconds`）は実時間どおり進むので気づきにくい。画面の時刻を収録で測る前に、エディタを前面にして 8 fps を超えているか（`unreal.SystemLibrary.get_frame_count()` の進み）を見る。
 - 対処: `python Tools/desktop.py click 2957 95 --allow UnrealEditor.exe`（タイトルバーの空き。エディタの窓が今の位置のとき。撮った画面でクリックの位置がエディタの上であることを先に見る）でエディタを前面にする。PIE を始めてもエディタは前面に来ない。
 - 対処（前面に出せないとき。2026-09-19）: ユーザーのターミナルが前面だと `desktop.py` はクリックを断り（前面が許した窓でない）、MCP の `SlateInspectorToolset.Windows` の `select` も Windows に前面の切り替えを止められる。そのときはリモート実行で `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)` にする（クラスは Python の型として出ていないが、CDO は `find_object` で取れて書ける。メモリ上だけなので開き直すと戻る）。背面のまま PIE とテストが前面と同じ速さで進み、`desktop.py record` で約 58 fps で収録できた。終わったら `True` に戻す。前面の小窓（メッセージログ）は `SlateInspectorToolset.Windows` の `list` → `close`（番号）で閉じられる。

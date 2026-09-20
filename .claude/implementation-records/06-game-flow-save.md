@@ -73,7 +73,7 @@ updated: 2026-09-20
 4. ゲームモード（`GetAuthGameMode<AWasamiGameMode>`）の `CheckShards()`（本家 @773 の `GameMode.Check Shards`。下の「シャードの確かめ」）。
 5. `ClientStartCameraShake(BP_CameraShake_ShardCollect, 0.4, CameraLocal)`。
 6. `SpawnEmitterAtLocation(P_WasamiShardFlash, Body の位置, 回転 0, 拡縮 0.2, 自動破棄, プールなし, 自動起動)`（本家は `P_ky_flash3` を `SkeletalMesh` の `K2_GetComponentLocation` に。`BP_Shard` @900〜@950）。部品はワールドの `WorldSettings` に付き、シャードの破棄の影響を受けない。エミッタの長さ（`RequiredModule` の既定の 1 秒）で終わって消える。
-7. `NoSound` が偽なら、ゲームインスタンス（`UWasamiGameInstance`。無ければ飛ばす）の `RememberCollectedShard(PreviousLocation)`（BeginPlay の位置を切り捨てて `AddUnique`。本家 @1228〜@1388）。
+7. `NoSound` が偽なら、ゲームインスタンス（`UWasamiGameInstance`。無ければ飛ばす）の `RememberCollectedShard(PreviousLocation)`（BeginPlay の位置を切り捨てて `AddUnique`。本家 @1228〜@1388）。足した後、**`Shards To Be Removed` がちょうど 1 個**（＝この遊びの 1 個目）で**タブレットの残りが 1 以上**なら、本家に無いワサミの声 `well`（`WasamiVoice::Say`。WebGL 版の鳴らし方。10 記録の「ワサミの声を鳴らす口」）。死んで戻ったときの 2 個目以降では鳴らない。
 8. `PlaySound2D(Soul_Shard_Pickup_v2_Cue, NoSound ? 0 : 0.65, 1.0, 0, OnlyFew)` → `Destroy()`。本家は破棄してから鳴らすが、同じフレームなので聞こえ方は同じ。破棄の後のワールドの取り方を当てにしないよう、音を先にした。
 - 重なりの開始（`OnCapsuleBeginOverlap`）: 相手がプレイヤー（`GetPlayerCharacter(0)`）なら `Collect(false)`。本家の重なりの経路は `NoSound` を書かずに回収へ飛ぶが、そこへ来るのは DoOnce が開いているとき（＝`Collect` がまだ呼ばれていない、`NoSound` が既定の偽）だけなので同じ。
 - タブレットの数は、プレイヤーが 0.1 秒ごとにシャードのアクタを数え直す（02 記録。破棄されたアクタは数えない）。回収の直後の −1 は本家どおり画面に直接書く。
@@ -238,6 +238,7 @@ Nanite が画面の大きさに合わせて三角形を出すので、17 倍の�
 - `Tests/WasamiGameFlowTests.cpp`: `Wasami.GameFlow.Lives`（3 で始まり、0..6 に Clamp、`ResetLives` で 3。`ShardKey` の 0 の方への切り捨て、同じ整数の位置は 1 つ、`ForgetCollectedShards`）、`Wasami.GameFlow.Save`（スロット名 `structSlot`、全欄のメモリ上の往復）、`Wasami.GameFlow.RemoveShards`（3 つ置いて、切り捨てて一致する 2 つが消え、残り 1 を返す）、`Wasami.GameFlow.GameMode`（テスト用のスロットで BeginPlay がセーブを作って書く、1 秒の時間・止めている間は数えない、`SaveCheckpoint(5)` がスロットに書いて時間を足し 0 に戻す、`DeathEvent` の DoOnce と `ResetDeath`・連続回収の最高、作り直したゲームモードがスロットを読む、Zone でないワールドの `GetStartCheckpoint` はセーブの値のまま）、`Wasami.GameFlow.Checkpoints`（`ZoneOf`、`PlayerStartTagFor` の 7 つと表に無い値、`DeathScreenLevelFor` の 4 通り）、`Wasami.GameFlow.Saving`（09 記録の SAVING PROGRESS の `init` の値と 3 s で外れること、黒のフェードの両端と速さ 10 で 0.5 s）、`Wasami.GameFlow.Loading`（09 記録の読み込み画面の `FadeIn` の値・2.5 s からの逆再生・3.5 s で外れること・紋章は 7 番の `loader_wasami` だけ）。
 
 ## 変更履歴
+- 2026-09-20: この遊びの 1 個目のシャードでワサミの声 `well` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）
 - 2026-09-20: セーブに EXTRAS の解放 `ExtrasArt`・`ExtrasSFX`・`Unlock`・`IsUnlocked` と型 `EWasamiCollectableType`・`FWasamiCollectableEntry` を足した（18 記録。作業一覧の項目 29 のステップ 1）
 - 2026-09-20: デバッグのコンソールコマンド `Wasami.ChapterPortal`（ステージ OP の画面を出す。09 記録）を足した（作業一覧の項目 30 のステップ 1）
 - 2026-09-19: 餅の開始のヨーを個体ごとの乱数（0〜360°）にした（有人セッションの指摘。上の「BeginPlay」。`GetSpinAngle()` とテストを足した。PIE の Zone 1 で 337 個のヨーが 30° ごとの 12 区間に 13〜37 個ずつ散らばり、見えている 3 つが別々の向きからそれぞれの速さで回るのを確かめた）

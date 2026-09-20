@@ -59,6 +59,9 @@ public:
 	static constexpr float SlideVolume = 0.65f;
 	static constexpr float SlidePitch = 1.f;
 
+	/** Not the original's: how long after the wall opens Wasami says best (the WebGL version's half a second). */
+	static constexpr float VoiceDelay = 0.5f;
+
 	UStaticMeshComponent* GetStaticMesh() const { return StaticMesh; }
 
 	/** Sliding_Wall. */
@@ -83,6 +86,11 @@ protected:
 private:
 	/** Move Up's update: the actor's z between OG Height and InterpHeight. */
 	void ApplyMoveUp();
+
+	/** VoiceDelay after the first use: Wasami's best. */
+	void SayBest();
+
+	FTimerHandle VoiceTimer;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UObject>> LoadedAssets;

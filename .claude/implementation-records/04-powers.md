@@ -210,6 +210,7 @@ updated: 2026-09-20
 
 ### スピードブースト（`UseSpeedBoost` → `EndSpeedBoost` → `RefillSpeedBoost`）
 - 使った瞬間: `Active Powers` に足す → `Shard_Streak_Milestone_V5` をプレイヤーの位置で鳴らす（`PlaySoundAtLocation`、音量・ピッチ 1.0、減衰なし。SoundWave 自体が音量 0.7・ピッチ 2.0 と同時発音 `NewSoundConcurrency` を持つ）→ 使えない状態にする → `BP_CameraShake_Streak` を倍率 1.0・`CameraLocal` で再生 → **歩きもダッシュも**ブーストの速さにする（`SetMoveSpeeds(速さ, 速さ)`）→ ゲージの `SetDelay(効果時間)` → `Delay(効果時間)` で終わりへ → 終わり用と充填用の DoOnce を開く。
+- 本家に無いもの: 使った瞬間に**ワサミの声 `fast`**（`WasamiVoice::Say`。WebGL 版の `onBoost` が鳴らしていたもの。10 記録の「ワサミの声を鳴らす口」）。
 - 終わり（DoOnce_3。開いているときだけ）: 閉じる → 速さを **300 / 600 に戻す**（本家は元の値ではなく定数を書く）→ `Active Powers` から外す → ゲージの `SetDelay(再使用)` → `Delay(再使用)` で充填へ。
 - 充填（DoOnce_4。開いているときだけ）: 閉じて `Refill`。
 - どちらの DoOnce も最初は閉じている（本家の Start Closed。@1211・@1241）ので、使う前にリセットしても何も起きない。
@@ -583,6 +584,7 @@ updated: 2026-09-20
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-20: スピードブーストを使った瞬間にワサミの声 `fast` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）
 - 2026-09-20: テレポートの移動が道の途中の扉・エレベーターの扉（WorldDynamic で Pawn を止める物。行き先の真下の物を除く）の手前で止まるようにした（`AWasamiTeleportAim::StopAtGates`。本家から外れる本作の直し。有人セッションのユーザーの指摘）。テスト `Wasami.Powers.TeleportGates`
 - 2026-09-19: Primal Fear の球の作りを基底 `AWasamiSphereBurst` に切り出した（特殊シャードの `AWasamiStunCollectEffect` と共有する。16 記録）。値と振る舞いは変えていない
 - 2026-09-19: `WasamiVanishWidget.cpp` の無名名前空間の定数を `VanishTicksPerSecond` にした（ファイルが増えてユニティビルドの塊が変わり、`WasamiLevelClearWidget.cpp` の `using WasamiWidgetAnimation::TicksPerSecond` とぶつかった。作業一覧の項目 18 のステップ 1）

@@ -5,9 +5,12 @@ sources:
   - Source/wasami_deception/WasamiMusicPlayer.cpp
   - Source/wasami_deception/WasamiBierceTalk.h
   - Source/wasami_deception/WasamiBierceTalk.cpp
+  - Source/wasami_deception/WasamiVoice.h
+  - Source/wasami_deception/WasamiVoice.cpp
   - Source/wasami_deception/Tests/WasamiMusicTests.cpp
   - Source/wasami_deception/Tests/WasamiBierceTalkTests.cpp
   - Source/wasami_deception/Tests/WasamiTestBierceTalk.h
+  - Source/wasami_deception/Tests/WasamiVoiceTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_audio.py
   - Content/Python/wasami_tools/pipeline/dd_dialogue.py
   - Content/Python/wasami_tools/pipeline/dd_voices.py
@@ -22,7 +25,7 @@ updated: 2026-09-20
 
 レベルが自分で鳴らす環境音（`AmbientSound`）と残響のボリューム（`AudioVolume`）も、本家の置き場所と値のまま置く（ステップ 3）。ほかの効果音は、それぞれを作る記録と取り込みの側にある（仕掛け・パワー・敵・UI）。捕獲の音（ホテルの叫びと館のウォッチャーの笑い・斧）は 07 記録の「捕獲の演出」にあり、取り込みは `dd_enemy.import_capture_sounds`（ステップ 4）。本家の病院で鳴る音を洗い出して残りを埋めたのがステップ 5 で、結論は下の「残りの効果音」。
 
-本作のワサミの声（WebGL 版が鳴らしていたユーザーのワサミの台詞）は、`Tools/dd/prepare_voices.py` が wav にし `dd_voices.py` が `/Game/Wasami/Voices` に取り込む（項目 20 のステップ 5。下の「ワサミの声の取り込み」）。鳴らす側は場面ごとの記録にある。
+本作のワサミの声（WebGL 版が鳴らしていたユーザーのワサミの台詞）は、`Tools/dd/prepare_voices.py` が wav にし `dd_voices.py` が `/Game/Wasami/Voices` に取り込む（項目 20 のステップ 5。下の「ワサミの声の取り込み」）。鳴らすのは `WasamiVoice`（ステップ 6。下の「ワサミの声を鳴らす口」）で、呼ぶのは場面ごとの記録の側。
 
 ## 公開インターフェース
 - `EWasamiMusicFade`（`None` / `In` / `Out` / `OutIfPlaying`）: 1 回の `Update` が 1 つの部品に求めるフェード。`OutIfPlaying` は本家の `If Playing Fade Out`（鳴っているときだけ `FadeOut`）。
@@ -37,6 +40,8 @@ updated: 2026-09-20
 - `AWasamiBierceTalk`（`AActor`）: `bHalt`（`EditAnywhere, BlueprintReadWrite`）、`Talk(WhatToSay, bAttenuate)`・`StopTalking()`（どちらも `BlueprintCallable`）、`Find(WorldContext)`（静的。本家の `BP_DD_Functions` の `Bierce Talk` = `GetAllActorsOfClass` の 0 番目）、`GetAudioComponent()`、`GetPendingSound()`・`IsWaiting()`・`GetLastStep()`（テストのため）。定数 `WaitInterval` 0.5。ソフト参照 `Attenuation`。`IsSpeaking()` は `protected virtual`（音声装置の無い自動テストで鳴っている状態を作るため。`AWasamiTestBierceTalk`）。
 - ツール `WasamiDDTools.import_dd_dialogue()`（`dd_dialogue.import_all`）: 病院の台詞の取り込み。戻り値は `lines` 9・`quips` 5・`cues` 1・`intercom` 1。`dd_dialogue` の公開は `LINES`・`GAMEPLAY_CUE`・`GAMEPLAY_WAVES`・`INTERCOM`（取り込む波）、`strings()`（本家の文字列表の中身）、`subtitle_key(name)`（波の名前 → 文言の鍵）、`line(rel, entries)`（字幕付きで 1 本取り込む）。
 - ツール `WasamiDDTools.import_wasami_voices()`（`dd_voices.import_all`）: ワサミの声の取り込み。戻り値は `subtitled` 5・`silent` 6。`dd_voices` の公開は `SUBTITLED`・`SILENT`・`CLIPS`（取り込む id）、`SOURCE`・`VOICES_ROOT`・`SOUND_CLASS`、`asset_name(id)`（id → 波の名前）、`manifest()`（id → 原本の中身）、`voice(clip, sound_class, subtitled)`（1 本取り込む）。
+
+- `EWasamiVoice`（`Greeting` / `Well` / `Fast` / `Best` / `Found` / `Calling` / `Others` / `Think` / `Remember` / `Fine` / `Over`）と名前空間 `WasamiVoice`: ワサミの声 11 本と鳴らし方。`Num()`・`Path(Id)`（`/Game/Wasami/Voices/Wasami_Greeting.Wasami_Greeting` …）・`Seconds(Id)`（原本の長さ）・`SubtitleSeconds(Id)`（字幕の出ている長さ）はワールド無しで試せる純粋な関数、`Load(Id)`（波を今読む）・`Say(WorldContext, Id, Volume = 1)`（2D で鳴らし、字幕があれば `SubtitleSeconds` の間出す。部品を返す）・`ShowSubtitle(WorldContext, Id)`（字幕だけ）はワールドが要る。
 
 ## 内部構造と処理の流れ
 - 部品（本家の SCS）: `DefaultSceneRoot` → `RegularMusic`・`PanicMusic`・`OverrideMusic`（`UAudioComponent`。本家の名前は `Regular Music` など。どれも `bAutoActivate = false` で、フェードインまで鳴らない）。曲は `BeginPlay` でソフト参照から入れる（`WasamiAssets.h`）。本家の音量・減衰の上書きは無く、音量は SoundWave 自身の 0.35（通常）・0.3（追跡）。
@@ -98,6 +103,21 @@ updated: 2026-09-20
 - 長さ（`manifest.json` と取り込んだ波で一致）: `greeting` 3.878・`well` 0.705・`fast` 0.637・`best` 0.517・`found` 0.622・`calling` 1.027・`others` 0.690・`think` 0.862・`remember` 0.937・`fine` 1.784・`over` 0.727 s。
 - 鳴らす場面（WebGL 版の 06・15 記録。位置と音量もそこに書かれている: 敵は頭の位置で `found` 1.0・巡回 0.9）は次のステップで各所に付ける。
 
+## ワサミの声を鳴らす口（項目 20 のステップ 6）
+`WasamiVoice`（`Source/wasami_deception/WasamiVoice.h`・`.cpp`）が声 11 本の表（パッケージと原本の長さ）と鳴らし方を持つ。本家に当たるものは無いので、鳴らす場面・音量・字幕の長さは WebGL 版の実装記録 06・15 に倣う。
+
+- `Say(WorldContext, Id, Volume = 1)`: `CreateSound2D`（`bAutoDestroy`）で鳴らす。バスは波の `DD_SoundClass_Dialogue`（WebGL 版の `voice` バスに当たる）なので、音量は既定の 1 のまま。
+- **字幕は波のものを止めて出し直す**: `UAudioComponent::bSuppressSubtitles` を真にしてから `Play` し、`FSubtitleManager::GetSubtitleManager()->QueueSubtitles(波, 波の優先度, 波の折り返し・1 行, SubtitleSeconds(Id), 波の Subtitles, 0, ワールドの音声時刻)` を自分で呼ぶ。`USoundWave::HandleStart` と同じ呼びで、長さだけ `SubtitleSeconds` に替えたもの。字幕の鍵に波そのもののアドレスを使うので、同じ声を続けて鳴らすと前の行を置き換える。字幕の可否（オプションの SUBTITLES）は出す側では見ない（エンジンが描くときに `GEngine->bSubtitlesEnabled` を見る）。
+- `SubtitleSeconds(Id)` = `max(2.2, 長さ + 1.2)`、`Found` だけ 2.4 固定（WebGL 版の `hud.subtitle` と敵の `onSpotted`）。
+- 鳴らす場所（どれも本家に無い、本作だけのもの）:
+  - `greeting` … Zone 1 の `InitialStart` の 10 s の据え置きが明けて操作が戻るところ（11 記録）。新しい始まりだけが通る道なので、WebGL 版の `greet()`（チェックポイント 1 で 1 個も取っていないとき）と同じになる。
+  - `well` … `AWasamiShard::Collect` で、ゲームインスタンスの `ShardsToBeRemoved` が 1 個目になり、タブレットの残りが 1 以上のとき（06 記録）。
+  - `fast` … `UWasamiPowerComponent::UseSpeedBoost` の頭（04 記録）。
+  - `best` … `AWasamiSecretWall` の最初の使用から 0.5 s 後（18 記録）。本家は秘密の壁で何も喋らず、Bierce が喋るのは書類のほう。
+  - `fine`・`over` … 死亡画面の `LifeLost` の段（ライフが残るとき、`Life_Lost` と一緒）と `GameOver` の段（`66_-_Game_Over` と一緒）。どちらも字幕なしで、音量 1（09 記録）。ゲームオーバーの 1.25 s 後の笑い声は鳴らさない。
+  - `found` と巡回の 4 本 … 敵（07 記録。ステップ 7）。
+- 死亡画面だけは `Say` ではなく画面自身の `PlaySound`（= `PlaySound2D`）で鳴らす。ゲームを止めた下で鳴る UI の音で、字幕も要らないため。
+
 ## 作るアセット
 - 曲 `/Game/DD/Audio/06_Hospital/Music/`（`dd_audio.import_music` → `WasamiDDTools.import_dd_audio`）。名前は本家のまま:
   - `DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING`（84.396 s・音量 0.35・ループ）
@@ -134,7 +154,7 @@ updated: 2026-09-20
 - 館内放送（Zone 2 の `Nurse_Hospital_Zone01_Event_48_Intercom_2`）は `bAutoActivate` 偽のまま置いてあるだけで、鳴らす側がまだ無い（本家はレベル BP が鳴らす。台詞なので項目 20）。
 - 話し役の待ちの戻り（`Resume`）には「待ちは無い」を値で渡す（`Step(false, false)`）。`FTimerManager::IsTimerActive` は**自分のコールバックの最中も真**なので、そこで `IsWaiting()` を見ると待ちの回が自分を「もう待っている」と誤り、台詞が二度と鳴らない（症状索引の「タイマーのコールバックの中で `IsTimerActive` が真を返す」）。
 - 話し役は音声装置の無い自動テストでは鳴っている状態を作れない（`UAudioComponent::Play` は装置が無いと何もしない）ので、`IsSpeaking()` を `virtual` にして `AWasamiTestBierceTalk` が差し替える。待ちの分岐そのものは純粋な `WasamiTalkStep` でも試す。
-- **ワサミの声の字幕が出ている長さは波の長さ**（UE の `FSubtitleManager` は音が終わると消す）。WebGL 版は `max(2.2, 長さ + 1.2)`（`found` は 2.4 s）出していたので、0.5〜0.7 s の短い声はそのままだと読む間がない。合わせるなら鳴らす側で `FSubtitleManager::QueueSubtitles`（`SoundDuration` を渡せる）を呼ぶか、`UAudioComponent::bSuppressSubtitles` で波の字幕を止めて自前で出す（項目 20 のステップ 6 で決める）。
+- ワサミの声の字幕は**波のものを止めて `WasamiVoice` が出し直す**（下の「ワサミの声を鳴らす口」）。波のままだと UE の `FSubtitleManager` が音の終わりで消すので、0.5〜0.7 s の声は読む間が無い。**`Say` を通さずに波をそのまま鳴らすと、短いままの字幕が出る**。
 - `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
 ## 変更履歴
@@ -145,3 +165,4 @@ updated: 2026-09-20
 - 2026-09-20: 病院の台詞の波 15 本と一言の Cue を字幕付きで取り込むようにした（`dd_dialogue.py`・`WasamiDDTools.import_dd_dialogue`。作業一覧の項目 20 のステップ 1）。
 - 2026-09-20: 話し役 `AWasamiBierceTalk` を作り、両ゾーンに 1 体ずつ置くようにした（項目 20 のステップ 2）。
 - 2026-09-20: ワサミの声 11 本を `/Game/Wasami/Voices` に取り込むようにした（`Tools/dd/prepare_voices.py`・`dd_voices.py`・`WasamiDDTools.import_wasami_voices`。項目 20 のステップ 5）。
+- 2026-09-20: 鳴らす口 `WasamiVoice` を作り、2D の 6 本（`greeting`・`well`・`fast`・`best`・`fine`・`over`）を場面に付けた（項目 20 のステップ 6）。

@@ -26,6 +26,7 @@
 #include "WasamiPopUpWidget.h"
 #include "WasamiPowerComponent.h"
 #include "WasamiSaveGame.h"
+#include "WasamiVoice.h"
 #include "WasamiWidgetAnimation.h"
 
 namespace
@@ -146,6 +147,8 @@ UWasamiDeathScreenWidget::UWasamiDeathScreenWidget(const FObjectInitializer& Obj
 	LifeLostSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Life_Lost")));
 	GameOverSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/66_-_Game_Over")));
 	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
+	LifeVoiceSound = TSoftObjectPtr<USoundBase>(WasamiVoice::Path(EWasamiVoice::Fine));
+	GameOverVoiceSound = TSoftObjectPtr<USoundBase>(WasamiVoice::Path(EWasamiVoice::Over));
 }
 
 UWasamiDeathScreenWidget* UWasamiDeathScreenWidget::Show(const UObject* WorldContextObject, uint8 InLevel)
@@ -412,6 +415,8 @@ void UWasamiDeathScreenWidget::RunStep(EStep Step)
 		if (LocalLives != 0)
 		{
 			PlaySound(LifeLostSound, LifeLostVolume);
+			// Wasami's fine goes with it, as the WebGL version's reveal plays them together.
+			PlaySound(LifeVoiceSound, VoiceVolume);
 		}
 		break;
 
@@ -502,9 +507,11 @@ void UWasamiDeathScreenWidget::RunStep(EStep Step)
 		break;
 
 	case EStep::GameOver:
-		// The game over's music and Death; the input goes to the screen (Bierce's line and laugh come with item 20).
+		// The game over's music and Death; the input goes to the screen. Wasami's over stands in for Bierce's game
+		// over line, and the laugh 1.25 s after it is not played (the WebGL version's choice, its record 10).
 		bGameOver = true;
 		PlaySound(GameOverSound, GameOverVolume);
+		PlaySound(GameOverVoiceSound, VoiceVolume);
 		DeathTime = 0.f;
 		if (APlayerController* Controller = GetOwningPlayer())
 		{
