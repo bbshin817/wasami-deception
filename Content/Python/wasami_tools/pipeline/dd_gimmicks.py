@@ -458,29 +458,46 @@ def _flattened(g, normal, pin, amount, x, y):
     return g.lerp(normal, pin, g.const3((0.0, 0.0, 1.0), x - 200, y + 100), "", amount, "", x, y)
 
 
+def _near_camera_fade(g, radius, x, y):
+    """How much of a particle is kept this close to the camera: 1 - a SphereMask of radius at hardness 10 % on the
+    pixel's depth, which is nothing within a tenth of radius of the camera and whole at radius (the original's way of
+    keeping dust off the lens)."""
+    mask = g.node(unreal.MaterialExpressionSphereMask, x, y)
+    mask.set_editor_property("hardness_percent", 10.0)
+    g.link(g.node(unreal.MaterialExpressionPixelDepth, x - 250, y), "", mask, "A")
+    g.link(dd_assets.constant(g, 0.0, x - 250, y + 100), "", mask, "B")
+    g.link(radius, "", mask, "Radius")
+    return dd_assets.single(g, unreal.MaterialExpressionOneMinus, mask, "", x + 200, y)
+
+
 def _build_whisp_directional(mat, d):
     """whispOne_Master_directional, estimated. The cook kept its settings (translucent, lit volumetric directional with
-    its own scattering and self-shadow values, spherical particle normals, no separate translucency, for sprites), the
-    parameters Base Overlay, FlattenNormal, Fade Distance, Opacity, Radius, Master Opacity and the
-    textures Base and Normal, the static switch MacroUVNoise and the bool Normal Map, of 36 expressions. Its compiled
-    shadow pass reads the opacity: Base's alpha x Opacity x the particle's alpha, faded into the depth over Fade
-    Distance, x Master Opacity (Radius fades it only within a few centimetres of the camera, which is not made, nor the
-    macro UV noise). The estimate adds a colour of Base's RGB x Base Overlay x the particle's colour, and Normal eased
-    flat by FlattenNormal."""
+    its own scattering and self-shadow values, spherical particle normals, no separate translucency, for sprites) and
+    16 of its 38 expressions: the parameters Base Overlay, FlattenNormal, Fade Distance, Opacity, Radius and Master
+    Opacity, the textures Base and Normal (plain TextureSampleParameter2D, not ParticleSubUV as Squib_one's normal is:
+    the emitter's SubUV frame arrives on the sprite's own UVs and the frames are not blended), a FlattenNormal call,
+    the static switch MacroUVNoise (off: its two panned noise samples do not reach the compiled shader) and the bool
+    Normal Map (on). Its compiled translucent base pass (Tools/dd/cooked_shaders.py "SmokeDust/Whisps_additive."
+    --show 28) is what the graph follows: a base colour of Base's RGB x Base Overlay x the particle's colour, the
+    normal eased flat by FlattenNormal, and an opacity of Base's alpha x Opacity x the particle's alpha, faded into
+    the depth over Fade Distance, x the near-camera fade of Radius (_near_camera_fade) x Master Opacity."""
     _lit_particle(mat, SMOKE_DUST + "whispOne_Master_directional")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
-    base = _sub_uv(g, "Base", WHISP_BASE, st.SAMPLERTYPE_COLOR, True, -1300, 0)
+    base = g.texture("Base", unreal.load_asset(dd_assets.asset_path(WHISP_BASE)), st.SAMPLERTYPE_COLOR, -1300, 0)
     particle = g.node(unreal.MaterialExpressionParticleColor, -1300, 300)
     tinted = g.multiply(base, "RGB", g.vector("Base Overlay", d["Base Overlay"], -1100, -150), "", -900, -50)
     g.out(g.multiply(tinted, "", particle, "RGB", -700, 0), "", MP.MP_BASE_COLOR)
-    normal = _sub_uv(g, "Normal", WHISP_NORMAL, st.SAMPLERTYPE_NORMAL, True, -1300, 600)
+    normal = g.texture("Normal", unreal.load_asset(dd_assets.asset_path(WHISP_NORMAL)), st.SAMPLERTYPE_NORMAL,
+                       -1300, 600)
     g.out(_flattened(g, normal, "RGB", g.scalar("FlattenNormal", d["FlattenNormal"], -1100, 750), -900, 600), "",
           MP.MP_NORMAL)
     alpha = g.multiply(base, "A", g.scalar("Opacity", d["Opacity"], -1100, 150), "", -900, 150)
     alpha = g.multiply(alpha, "", particle, "A", -750, 200)
-    alpha = g.multiply(alpha, "", g.scalar("Master Opacity", d["Master Opacity"], -750, 300), "", -600, 200)
-    dd_assets.depth_faded_opacity(g, alpha, g.scalar("Fade Distance", d["Fade Distance"], -600, 350), -400, 250)
+    near = _near_camera_fade(g, g.scalar("Radius", d["Radius"], -1300, 1000), -1000, 1000)
+    alpha = g.multiply(alpha, "", near, "", -600, 250)
+    alpha = g.multiply(alpha, "", g.scalar("Master Opacity", d["Master Opacity"], -600, 400), "", -450, 300)
+    dd_assets.depth_faded_opacity(g, alpha, g.scalar("Fade Distance", d["Fade Distance"], -450, 500), -300, 350)
 
 
 def _build_whisp_amb(mat, d):
@@ -490,11 +507,12 @@ def _build_whisp_amb(mat, d):
     (whispOne_Master_amb_Inst) turns CamFade off, which the estimate leaves out with Radius and Hardness (taken as that
     fade's): a colour of Base's RGB x ColourOverlay x the particle's colour, the normal eased flat by FlattenNormal, and
     an opacity of Base's alpha x Opacity x the particle's alpha, faded into the depth over Fade Distance (as
-    whispOne_Master_directional's)."""
+    whispOne_Master_directional's). Base is a plain TextureSampleParameter2D as the directional's is (the emitter's
+    SubUV frame arrives on the sprite's own UVs); the normal is a blended ParticleSubUV, as the original has it."""
     _lit_particle(mat, SMOKE_DUST + "whispOne_Master_amb")
     g = dd_stage._Graph(mat, checked=True)
     st = unreal.MaterialSamplerType
-    base = _sub_uv(g, "Base", WHISP_BASE, st.SAMPLERTYPE_COLOR, True, -1300, 0)
+    base = g.texture("Base", unreal.load_asset(dd_assets.asset_path(WHISP_BASE)), st.SAMPLERTYPE_COLOR, -1300, 0)
     particle = g.node(unreal.MaterialExpressionParticleColor, -1300, 300)
     tinted = g.multiply(base, "RGB", g.vector("ColourOverlay", d["ColourOverlay"], -1100, -150), "", -900, -50)
     g.out(g.multiply(tinted, "", particle, "RGB", -700, 0), "", MP.MP_BASE_COLOR)
@@ -635,6 +653,8 @@ def _build_squib(mat, d):
 SMOKE_MATERIALS = (
     ("whispOne_Master_directional", "M_DD_WhispDirectional", _build_whisp_directional,
      ("Whisps_trans", "Whisps_trans2")),
+)
+AMB_MATERIALS = (
     ("whispOne_Master_amb", "M_DD_WhispAmb", _build_whisp_amb, ("whispOne_Master_amb_Inst",)),
 )
 DEBRIS_MATERIALS = (
@@ -647,9 +667,10 @@ CELL_MATERIALS = (
               ("M_Radial_Gradient", "M_DD_BvfxRadialGradient", _build_radial_gradient, ()))),
     (SMOKE_DUST, (("Squib_one", "M_DD_Squib", _build_squib, ()),)),
 )
-# What the estimates do without, which the original's instances set: whispOne_Master_amb's camera fade (its instance
-# turns it off) and whispOne_Master_directional's Radius (a fade within centimetres of the camera).
-SMOKE_LEFT_OUT = ("CamFade", "Radius")
+# What the amb estimate does without, which whispOne_Master_amb_Inst sets: its camera fade (the instance turns the
+# CamFade switch off) and that fade's Radius. whispOne_Master_directional's Radius is made (_near_camera_fade), so
+# nothing of the directional's is left out.
+AMB_LEFT_OUT = ("CamFade", "Radius")
 
 
 def _panned_sample(g, tex, uvs, speed, x, y):
@@ -812,7 +833,8 @@ def import_doors_busted():
     estimated materials. Returns how many of each."""
     result = {"sounds": len([dd_assets.sound(rel, VERSION) for rel in DOORS_BUSTED_SOUNDS]),
               "textures": len([dd_assets.texture(rel, VERSION) for rel in BURST_TEXTURES])}
-    made = dd_assets.estimated_materials(SMOKE_DUST, SMOKE_MATERIALS, VERSION, SMOKE_LEFT_OUT)
+    made = dd_assets.estimated_materials(SMOKE_DUST, SMOKE_MATERIALS, VERSION)
+    made += dd_assets.estimated_materials(SMOKE_DUST, AMB_MATERIALS, VERSION, AMB_LEFT_OUT)
     made += dd_assets.estimated_materials(FRAGMENTS, DEBRIS_MATERIALS, VERSION)
     result["materials"] = len(made)
     dd_particles.particle_system(BURST, VERSION)
@@ -856,7 +878,6 @@ def import_nurse_door_hit():
     parent = unreal.load_asset(dd_assets.asset_path(parent_rel))
     known = {str(n) for n in unreal.MaterialEditingLibrary.get_scalar_parameter_names(parent)}
     scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(NURSE_DOOR_HIT_MATERIAL, VERSION)
-    scalars = {k: v for k, v in scalars.items() if k not in SMOKE_LEFT_OUT}
     unknown = set(scalars) - known
     if unknown or vectors or textures or masks or switches:
         raise RuntimeError("%s sets %s, which the estimate of Whisps_trans does not have"
