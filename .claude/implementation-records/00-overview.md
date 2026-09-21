@@ -199,8 +199,11 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 
 Windows で作った物を Mac で受け取り、Metal 用にクックして遊ぶための道具 `Tools/mac_build.sh`（macOS 専用。macOS が積んでいる bash 3.2 で動くように書いてある）。**Mac では開発しない**（ユーザーの指示。エディタの UI・MCP・参照データ・Git LFS は要らない）。運用と、そう決めた理由は `.claude/guides/distribution.md` の「Mac 版のパッケージ」。Mac 側のパスは `/Users/sbaba/Documents/wasami_deception`、エンジンは `/Users/Shared/Epic Games/UE_5.8`（`UE_ENGINE_DIR` で上書きできる。`Tools/ue_remote.py`・`Tools/editor_cycle.py` と同じ作法）。
 
-- 段取りは 6 つ。**同期**（`--sync <取り込み元>`: `rsync -rlt --delete`。除外は `Intermediate/`・`Binaries/`・`Saved/`・`DerivedDataCache/`・`pak_reference*`・`cc2_reference`・`tmp/`・`observations/`・`__pycache__/`・`.DS_Store`）→ **前提チェック** → **エディタのビルド**（`Build.sh wasami_deceptionEditor Mac Development`。クックはエディタのコマンドレットが走るので、遊ぶだけでも要る）→ **`RunUAT.sh BuildCookRun -platform=Mac -clientconfig=<既定 Development> -cook -build -stage -pak -archive`** → **中身の検査** → **起動**（`--run`）。引数は `--sync`・`--sync-only`・`--check`・`--no-package`・`--run`・`--config`・`--force`。
-- **同期の後は `exec` で自分を起動し直す**（取り込んだ新しい手順で続きをやるため）。rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける（`--inplace` を足すとこれが崩れる）。
+- 段取りは 6 つ。**同期**（`--sync [host[:repo]]`。既定は `desktop:Desktop/wasami_deception`）→ **前提チェック** → **エディタのビルド**（`Build.sh wasami_deceptionEditor Mac Development`。クックはエディタのコマンドレットが走るので、遊ぶだけでも要る）→ **`RunUAT.sh BuildCookRun -platform=Mac -clientconfig=<既定 Development> -cook -build -stage -pak -archive`** → **中身の検査** → **起動**（`--run`）。引数は `--sync`・`--sync-rsync`・`--no-git`・`--sync-only`・`--check`・`--no-package`・`--run`・`--config`・`--force`。
+- **同期は 2 段で、Windows には何も入れない**（2026-09-22 のユーザーの選択）。追跡ファイルは GitHub から `git pull --ff-only`、git に入らない `Content/`（1204 ファイル・1.2 GB）は Windows から `scp -rp` で**毎回まるごと**取り直す（`Content.new` に受けてから入れ替えるので、途中で落ちても前のものが残る）。差分にしないのは、消えた・改名されたアセットが Mac に残るとクック（`bCookAll=True`）が必ずそれも焼いて落ちるため。`scp` は **sftp サブシステム**を通るので Windows の既定シェル（PowerShell）に左右されない。ただし OpenSSH 8 以前の `scp` はログインシェルを通るので、`ssh -V` が 9 未満なら `-s` を付ける。
+- **コードとアセットの時点のズレを止める**: `ssh <host> "git -C <repo> rev-parse HEAD; echo ---; git -C <repo> status --porcelain"` で Windows の HEAD を読み、Mac の HEAD と違えば止まる（`--force` で続行）。未コミットがあれば警告だけ。PowerShell の出力は CRLF なので `\r` を落として読む。**この形の引数なら PowerShell 越しでも壊れない**（2026-09-22 に実測。裸の `.` を含む引数列もバイナリの素通しも問題なし）。
+- **同期の後は `exec` で自分を起動し直す**（`git pull` で自分自身が新しくなっているかもしれないため）。
+- `--sync-rsync <取り込み元>` は、Windows に rsync を入れた場合の差分同期（既定では使わない。除外は `Intermediate/`・`Binaries/`・`Saved/`・`DerivedDataCache/`・`pak_reference*`・`cc2_reference`・`tmp/`・`observations/`・`__pycache__/`・`.DS_Store`）。rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける（`--inplace` を足すとこれが崩れる）。
 - 前提チェックが見るもの: macOS であること、`.uproject` と Content（`Content/Stage/Maps/L_Title.umap`）があること、`Build.sh`・`RunUAT.sh` があること、エンジンが **5.8 系**であること（違えば止まる。承知のうえなら `--force`）、`xcodebuild` と `xcrun -sdk macosx metal` が呼べること、そして**このエンジンに無いプラグイン**。
 - **足りないプラグインはビルドの間だけ `.uproject` から外す**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`。3 つとも `NoRedist: true` なのでエンジンの配り方によっては入っていない）。python3 で JSON を書き換え、`trap … EXIT INT TERM` で必ず元に戻す。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。
 - **中身の検査**は `Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` の数と、`Content/` の `.uasset`＋`.umap` の数の一致で見る（Windows の 2026-09-21 のパッケージでは両方 1139）。`BUILD SUCCESSFUL` は中身を保証しない（上の `bCookAll` の顛末）。
@@ -225,6 +228,7 @@ Windows で作った物を Mac で受け取り、Metal 用にクックして遊�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
+- 2026-09-22: 同期を **git pull + scp**（Windows には何も入れない。ユーザーの選択）にし、Windows の HEAD との突き合わせを足した。`--sync-rsync` は別の運び方として残した
 - 2026-09-22: Mac で受け取ってビルドして遊ぶための `Tools/mac_build.sh` を足し、「Mac でのビルド」の節を書いた（ユーザーの指示。Mac では開発しない。`Config/` と `.uproject` は変えない）。ついでに古くなっていたターゲットの版（`BuildSettingsVersion.V7`・`IncludeOrderVersion.Unreal5_8`）を直した
 - 2026-09-21: パッケージした本編がタイトルから脱出まで通しで遊べることを `Tools/game_flow.py` で確かめ、「パッケージした本編の通しプレイ」の節を足した（項目 36 のステップ 6b。これで項目 36 と大目標 3 を閉じた）
 - 2026-09-21: パッケージした本編の fps を 7 か所 × 2 画質で測って「パッケージした本編の fps」の節を足した（項目 36 のステップ 5・5b）。初期値の HIGH は平均 63.2 fps で目安に届き、VERY HIGH は平均 50.9 fps

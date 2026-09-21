@@ -4,16 +4,18 @@
 # cooks it for Metal and runs it. Nothing here needs the editor's UI, the MCP server or the reference data
 # (pak_reference*): the assets arrive already built. See .claude/guides/distribution.md「Mac 版のパッケージ」.
 #
-#     bash Tools/mac_build.sh --sync /Volumes/wasami_deception   # 取り込む → ビルド → パッケージ → 検査
-#     bash Tools/mac_build.sh --sync user@windows:/Users/User/Desktop/wasami_deception
-#     bash Tools/mac_build.sh --check                            # 前提だけ確かめて終わる
-#     bash Tools/mac_build.sh --run                              # ビルドして、出来た .app を起動する
+#     bash Tools/mac_build.sh --sync --run     # git pull → Content を scp → ビルド → パッケージ → 検査 → 起動
+#     bash Tools/mac_build.sh --check          # 前提だけ確かめて終わる
 #     bash Tools/mac_build.sh --config Shipping
+#     bash Tools/mac_build.sh --sync desktop:Desktop/wasami_deception   # 取り込み元を明示する
 #
-# Steps: 同期（rsync）→ 前提チェック → エディタのビルド → BuildCookRun → 中身の検査 → 起動。
+# Steps: 同期（git pull + scp）→ 前提チェック → エディタのビルド → BuildCookRun → 中身の検査 → 起動。
+# 同期は Windows の SSH（~/.ssh/config の desktop、Tailscale 越し）を使う。**Windows には何も入れない**:
+# 追跡ファイルは GitHub から git pull、git に入らない Content（1.2 GB）は scp で取り直す。scp は sftp
+# サブシステムを通るので、Windows の既定シェル（PowerShell）に左右されない。
 # Env: UE_ENGINE_DIR  エンジンの Engine フォルダ（既定 "/Users/Shared/Epic Games/UE_5.8/Engine"）
 #
-# Run it with `bash Tools/mac_build.sh`: the file arrives over rsync from Windows, where it has no execute bit.
+# Run it with `bash Tools/mac_build.sh`（git から来たファイルに実行ビットが無くても動く）。
 # Written for the bash 3.2 that macOS ships (no `set -u`, no associative arrays).
 set -eo pipefail
 
@@ -26,12 +28,16 @@ ARCHIVE="$ROOT/Saved/Archive"
 COOKED_META="$ROOT/Saved/Cooked/Mac/$PROJECT_NAME/Metadata/ReferencedSet.txt"
 LOG_DIR="$ROOT/Intermediate/MacBuild"
 
+# 取り込み元の既定。WIN_HOST は ~/.ssh/config の別名、WIN_REPO は Windows のホーム（C:\Users\User）からの相対パス。
+WIN_HOST="desktop"
+WIN_REPO="Desktop/wasami_deception"
+
 # Editor-only plugins that may be missing from the Mac engine (all three are NoRedist). The .uproject allow-lists
 # them to the editor, so leaving them out changes nothing in the package — only the tools Windows uses.
 OPTIONAL_PLUGINS="ModelContextProtocol AllToolsets LiveCodingToolset"
 
-# rsync: what never travels. Intermediate/（9.3 GB）と Binaries/ は Mac で作り直す物、Saved/ は Mac 側の成果物、
-# 参照データ（29 GB）はパッケージに要らない。
+# --sync-rsync を使うとき（Windows に rsync を入れた場合）の除外。Intermediate/（9.3 GB）と Binaries/ は Mac で
+# 作り直す物、Saved/ は Mac 側の成果物、参照データ（29 GB）はパッケージに要らない。
 SYNC_EXCLUDES=(
 	--exclude 'Intermediate/'
 	--exclude 'Binaries/'
@@ -47,7 +53,9 @@ SYNC_EXCLUDES=(
 )
 
 CONFIG=Development
-SYNC_SRC=""
+DO_SYNC=0
+DO_GIT=1
+RSYNC_SRC=""
 SYNC_ONLY=0
 CHECK_ONLY=0
 DO_PACKAGE=1
@@ -55,15 +63,25 @@ DO_RUN=0
 FORCE=0
 REST=()
 
-usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^#[ ]\{0,1\}//'; }
+usage() { sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^#[ ]\{0,1\}//'; }
 say() { printf '\n== %s\n' "$*"; }
 note() { printf '   %s\n' "$*"; }
+warn() { printf '   ** %s\n' "$*"; }
 die() { printf '\n!! %s\n' "$*" >&2; exit 1; }
 secs_since() { echo $(($(date +%s) - $1)); }
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-		--sync) SYNC_SRC="$2"; [ -n "$SYNC_SRC" ] || die "--sync には取り込み元のパスが要る"; shift 2 ;;
+		--sync)
+			DO_SYNC=1
+			# 引数は省略できる（省略すると desktop:Desktop/wasami_deception）
+			case "$2" in
+				""|-*) shift ;;
+				*) WIN_HOST="${2%%:*}"; case "$2" in *:*) WIN_REPO="${2#*:}" ;; esac; shift 2 ;;
+			esac
+			;;
+		--sync-rsync) RSYNC_SRC="$2"; [ -n "$RSYNC_SRC" ] || die "--sync-rsync には取り込み元のパスが要る"; shift 2 ;;
+		--no-git) DO_GIT=0; REST+=("$1"); shift ;;
 		--sync-only) SYNC_ONLY=1; shift ;;
 		--check) CHECK_ONLY=1; REST+=("$1"); shift ;;
 		--no-package) DO_PACKAGE=0; REST+=("$1"); shift ;;
@@ -76,25 +94,75 @@ while [ $# -gt 0 ]; do
 done
 
 # ---- 同期 --------------------------------------------------------------------------------------------------------
-# rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける
-# （--inplace を足すとそれが崩れる）。それでも取り込んだ後の手順は新しい方でやりたいので、同期の後に自分を
-# 起動し直す。-rlt にしているのは、SMB で共有したフォルダから取るときに所有者とパーミッションで転けないため。
-if [ -n "$SYNC_SRC" ]; then
-	START=$(date +%s)
-	say "同期: $SYNC_SRC → $ROOT"
+# 追跡ファイルは GitHub から、Content は Windows から直に。Content は git の外（1204 ファイル・1.2 GB）で、
+# 消えたアセットが残るとクック（bCookAll=True）が必ずそれも焼いて落ちるので、**毎回まるごと取り直す**。
+sync_from_windows() {
+	local start head_win head_mac dirty tmp
+	if [ $DO_GIT -eq 1 ]; then
+		say "同期 1/2: git pull（追跡ファイル）"
+		[ -d "$ROOT/.git" ] || die "$ROOT は git のクローンではない（GitHub から clone してから使う。--no-git で飛ばせる）"
+		git -C "$ROOT" pull --ff-only
+	fi
+
+	say "同期 2/2: Content を $WIN_HOST から取り直す"
+	command -v ssh >/dev/null || die "ssh が無い"
+
+	# Windows 側の HEAD と突き合わせる（PowerShell 越しでも壊れない形の引数だけを送る）。出力は CRLF なので \r を落とす。
+	local out
+	out=$(ssh "$WIN_HOST" "git -C $WIN_REPO rev-parse HEAD; echo ---; git -C $WIN_REPO status --porcelain" | tr -d '\r') \
+		|| die "$WIN_HOST に ssh できない（~/.ssh/config の別名と Tailscale を確かめる）"
+	head_win=$(echo "$out" | sed -n '1p')
+	dirty=$(echo "$out" | sed -n '/^---$/,$p' | sed '1d' | grep -c . || true)
+	head_mac=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo "(git 無し)")
+	note "Windows の HEAD: ${head_win:0:7} / この Mac: ${head_mac:0:7}"
+	if [ "$head_win" != "$head_mac" ]; then
+		[ $FORCE -eq 1 ] || die "Windows と Mac で HEAD が違う（Windows に未 push のコミットがある見込み）。Windows で git push してから、もう一度。承知のうえなら --force"
+		warn "HEAD が違うまま続ける（--force）。コードとアセットが食い違うかもしれない"
+	fi
+	[ "$dirty" = "0" ] || warn "Windows 側に未コミットの変更が $dirty 件ある（作業中かもしれない。同期は Windows が止まっているときに取る）"
+
+	# scp は sftp サブシステムを通す（OpenSSH 9 以降は既定。8 以前は -s を付けないとログインシェルを通ってしまう）。
+	local proto="" major
+	major=$(ssh -V 2>&1 | sed -n 's/^OpenSSH_\([0-9]*\).*/\1/p')
+	if [ -n "$major" ] && [ "$major" -lt 9 ] 2>/dev/null; then
+		proto="-s"
+	fi
+
+	start=$(date +%s)
+	tmp="$ROOT/Content.new"
+	rm -rf "$tmp"
+	scp -rpq $proto "$WIN_HOST:$WIN_REPO/Content" "$tmp" || { rm -rf "$tmp"; die "scp に失敗した（$WIN_HOST:$WIN_REPO/Content）"; }
+	[ -f "$tmp/Stage/Maps/L_Title.umap" ] || { rm -rf "$tmp"; die "取ってきた Content に L_Title.umap が無い（取り込み元のパスを確かめる）"; }
+	rm -rf "$ROOT/Content"
+	mv "$tmp" "$ROOT/Content"
+	note "$(du -sh "$ROOT/Content" | cut -f1) を $(secs_since "$start") 秒で取り直した"
+}
+
+if [ -n "$RSYNC_SRC" ]; then
+	# Windows に rsync を入れたときの差分同期（既定は使わない。distribution.md「別の運び方」）。
+	# rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける。
+	say "同期: $RSYNC_SRC → $ROOT（rsync）"
 	command -v rsync >/dev/null || die "rsync が無い"
-	rsync -rlt --delete --human-readable "${SYNC_EXCLUDES[@]}" "${SYNC_SRC%/}/" "$ROOT/"
+	START=$(date +%s)
+	rsync -rlt --delete --human-readable "${SYNC_EXCLUDES[@]}" "${RSYNC_SRC%/}/" "$ROOT/"
 	note "$(secs_since "$START") 秒"
+	DO_SYNC=1
+elif [ $DO_SYNC -eq 1 ]; then
+	sync_from_windows
+fi
+
+if [ $DO_SYNC -eq 1 ]; then
 	if [ $SYNC_ONLY -eq 1 ]; then
 		exit 0
 	fi
+	# 取り込みで自分自身が新しくなっているかもしれないので、続きは新しい方で走らせる。
 	exec bash "$ROOT/Tools/mac_build.sh" "${REST[@]}"
 fi
 
 # ---- 前提チェック ------------------------------------------------------------------------------------------------
 say "前提チェック"
 [ "$(uname -s)" = "Darwin" ] || die "macOS で動かす道具（Windows 側は Tools/editor_cycle.py と .claude/guides/distribution.md）"
-[ -f "$UPROJECT" ] || die "$UPROJECT が無い（--sync で取り込む）"
+[ -f "$UPROJECT" ] || die "$UPROJECT が無い"
 [ -x "$ENGINE/Build/BatchFiles/Mac/Build.sh" ] || die "エンジンが $ENGINE に無い（UE_ENGINE_DIR で指定できる）"
 [ -x "$ENGINE/Build/BatchFiles/RunUAT.sh" ] || die "RunUAT.sh が $ENGINE/Build/BatchFiles に無い"
 
@@ -104,7 +172,7 @@ case "$ENGINE_VERSION" in
 	"$ENGINE_WANTED".*) ;;
 	*)
 		[ $FORCE -eq 1 ] || die "エンジンが $ENGINE_WANTED 系でない（Windows 側は $ENGINE_WANTED 系。アセットは開けない）。承知のうえなら --force"
-		note "警告: 版が違うまま続ける（--force）"
+		warn "版が違うまま続ける（--force）"
 		;;
 esac
 
@@ -184,7 +252,7 @@ say "中身の検査"
 [ -f "$COOKED_META" ] || die "$COOKED_META が無い（クックが走っていない）"
 COOKED=$(grep -c '^/game/' "$COOKED_META" || true)
 note "/Game のパッケージ: クック $COOKED / Content $PACKAGES"
-[ "$COOKED" = "$PACKAGES" ] || die "数が合わない。本編が入っていないか、消したはずのアセットが Mac に残っている（同期は --delete 付きで取り込む）"
+[ "$COOKED" = "$PACKAGES" ] || die "数が合わない。本編が入っていないか、消したはずのアセットが Mac に残っている（--sync は Content をまるごと取り直す）"
 
 APP=$(find "$ARCHIVE/Mac" -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
 [ -n "$APP" ] || die "$ARCHIVE/Mac に .app が無い"

@@ -56,22 +56,27 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 
 2026-09-22 のユーザーの指示による運用。**Mac では開発しない**（エディタの UI・MCP・参照データ `pak_reference*`・Git LFS はどれも要らない）。Windows が作った物を受け取り、Metal 用にクックして遊ぶだけ。
 
-- Mac 側のパスは `/Users/sbaba/Documents/wasami_deception`、エンジンは `/Users/Shared/Epic Games/UE_5.8`（`UE_ENGINE_DIR` で変えられる）。**エンジンは Windows と同じ 5.8 系**（今 5.8.2）。アセットは 5.8 で保存してあるので古い版では開けない。Xcode（Metal のコンパイラを含む）も要る。
-- 道具は `Tools/mac_build.sh`（同期 → 前提チェック → エディタのビルド → BuildCookRun → 中身の検査 → 起動）。**実行ビットは同期で落ちるので `bash` を付けて呼ぶ**:
+- Mac 側のパスは `/Users/sbaba/Documents/wasami_deception`（GitHub からの clone）、エンジンは `/Users/Shared/Epic Games/UE_5.8`（`UE_ENGINE_DIR` で変えられる）。**エンジンは Windows と同じ 5.8 系**（今 5.8.2）。アセットは 5.8 で保存してあるので古い版では開けない。Xcode（Metal のコンパイラを含む）も要る。
+- 道具は `Tools/mac_build.sh`（同期 → 前提チェック → エディタのビルド → BuildCookRun → 中身の検査 → 起動）。**clone したファイルに実行ビットは無いので `bash` を付けて呼ぶ**:
   ```bash
-  bash Tools/mac_build.sh --check                                  # 前提だけ確かめる（初回に）
-  bash Tools/mac_build.sh --sync /Volumes/wasami_deception --run    # 毎回これ 1 本
+  bash Tools/mac_build.sh --check          # 前提だけ確かめる（初回に）
+  bash Tools/mac_build.sh --sync --run     # 毎回これ 1 本
   ```
 - **クックはエディタのコマンドレットが走る**ので、遊ぶだけでもエディタのビルド（＝Xcode）は要る。これは省けない。
 
-### 運び方（git では運べない）
+### 運び方（git pull + scp。Windows には何も入れない）
 
-`Content/` は **1204 ファイル・1.2 GB がすべて `.gitignore`**（参照データから作り直せる素材。`git-workflow.md`）。clone で来るのは 424 ファイルだけで、アセットは 1 つも来ない。しかも無人運転が回るたびに書き換わる（2026-09-22 時点で直近 1 日に 238 ファイル、2 日で 541 ファイル）。**だから git ではなく rsync で運ぶ**（Git LFS に入れる案は、この大きさと頻度では履歴が破裂するので採らない）。
+`Content/` は **1204 ファイル・1.2 GB がすべて `.gitignore`**（参照データから作り直せる素材。`git-workflow.md`）。clone で来るのは 424 ファイルだけで、アセットは 1 つも来ない。しかも無人運転が回るたびに書き換わる（2026-09-22 時点で直近 1 日に 238 ファイル、2 日で 541 ファイル）。**だから追跡ファイルと Content を別の経路で運ぶ**（Git LFS に入れる案は、この大きさと頻度では履歴が破裂するので採らない）:
 
-- `mac_build.sh --sync <取り込み元>` が `rsync -rlt --delete` で持ってくる。除外は `Intermediate/`（9.3 GB）・`Binaries/`・`Saved/`・`DerivedDataCache/`・参照データ 3 つ・`tmp/`・`observations/`・`__pycache__/`。初回は約 1.25 GB、以後は 1 日分で数百 MB。
-- **`--delete` は外さない**。`bCookAll=True` で `/Game` を丸ごとクックするので、Windows で消した・改名したアセットが Mac に残ると必ずクックされ、参照が壊れていればクックが 1 エラーで UAT ごと落ちる。
-- 取り込み元は、Windows でフォルダを共有して Mac からマウントしたパス（`/Volumes/…`）か `user@host:/path`。**Windows 側が止まっているときに取る**（無人運転の最中だと、コードとアセットの時点がズレる）。
+- **追跡ファイル**（`Source/`・`Config/`・`Tools/`・`.uproject`・`.claude/`）は GitHub から `git pull --ff-only`。
+- **`Content/`** は Windows から `scp -rp` で**毎回まるごと取り直す**（1.2 GB）。`Content.new` に受けてから入れ替えるので、途中で落ちても前のものが残る。**差分ではなくまるごと**なのは、消えた・改名されたアセットが Mac に残ると、クック（`bCookAll=True`）が必ずそれも焼いて 1 エラーで UAT ごと落ちるため。
+- 接続は `~/.ssh/config` の **`desktop`**（Tailscale 越し。2026-09-22 時点で 100.80.88.93）。リポジトリは SSH のホーム `C:\Users\User` からの相対パス **`Desktop/wasami_deception`** で届く（`--sync desktop:Desktop/wasami_deception` が既定値）。
+- **Windows には何も入れない**（2026-09-22 のユーザーの選択）。`scp` は **sftp サブシステム**（`sshd_config` の `Subsystem sftp sftp-server.exe`）を通るので、Windows の既定シェルが PowerShell のままでも影響を受けない。OpenSSH 8 以前の Mac では `scp` が既定でログインシェルを通ってしまうので、`mac_build.sh` は `ssh -V` を見て 9 未満なら `-s` を付ける。
+- **コードとアセットの時点がズレないように**、`mac_build.sh` は同期のときに `ssh desktop "git -C Desktop/wasami_deception rev-parse HEAD"` で Windows の HEAD を読み、Mac の HEAD と違えば**止まる**（Windows に未 push のコミットがある＝コードだけ古い状態になる）。Windows で push してからやり直す。未コミットの変更があるときは警告だけ出して続ける。
+- 同期は **Windows 側が止まっているときに取る**（無人運転の最中だと、コミットとアセットの時点がズレる）。
 - **Mac 側の作業ディレクトリは 1 つを使い回す**（毎回 clone し直さない）。`Intermediate/` と `Saved/Cooked/Mac` が残っていれば C++ もクックも差分で済む。シェーダーの DDC はプロジェクトの外（`~/Library/Application Support/Epic/UnrealEngine/Common`）なので、作業ディレクトリを作り直しても生き残る。
+
+**別の運び方（今は使わない）**: Windows に rsync を入れれば差分同期にできる（`scoop install rsync`。使うときは `bash Tools/mac_build.sh --sync-rsync <取り込み元>`）。**Windows の既定シェルを変える必要は無い**ことは 2026-09-22 に確かめた（PowerShell 越しでも引数の解釈もバイナリの素通しも壊れない。最初に壊れて見えたのは、試した Git Bash が引数 `/c` を `C:/` に変換していたためで、PowerShell のせいではなかった）。毎回 1.2 GB の転送が重くなったら切り替える。
 
 ### 触らなくてよいもの（2026-09-22 に確かめた）
 
@@ -81,7 +86,8 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 
 ### 時間の目安と、最初の 1 回に確かめること
 
-- 初回はエンジンと Xcode の用意に加えて **Metal のシェーダーを全部コンパイルする**ので数時間を見る。2 回目からは同期 + 差分ビルド + 差分クックで **10〜20 分**が目安（Windows の実績: 中身が変わらなければクック約 1 分、全クックで 5 分 22 秒）。アセットが大きく変わった回は、変わった分のシェーダーのコンパイルが上乗せされる。
+- **初回**は Mac で `git clone` してから `bash Tools/mac_build.sh --check` → `bash Tools/mac_build.sh --sync --run`。エンジンと Xcode の用意に加えて **Metal のシェーダーを全部コンパイルする**ので数時間を見る。
+- **2 回目から**は「Content の転送（1.2 GB）+ 差分ビルド + 差分クック」で、転送が直結なら **10〜20 分**が目安（Windows の実績: クックは中身が変わらなければ約 1 分、全クックで 5 分 22 秒）。アセットが大きく変わった回は、変わった分の Metal のシェーダーのコンパイルが上乗せされる。
 - **Mac でしか分からないことが 3 つある**。最初の 1 回で確かめ、違っていたらここに書き足す:
   1. プラグイン 3 つがエンジンにあるか（`--check` が教える。無くても `mac_build.sh` が外して進む）
   2. Metal のコンパイラが呼べるか（`--check` が見る。無ければ `xcodebuild -downloadComponent MetalToolchain`）
