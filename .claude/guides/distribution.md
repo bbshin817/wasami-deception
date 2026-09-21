@@ -29,9 +29,13 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
     - `Engine/` 75 MB（エンジン側のシェーダーと既定のアセット）
   - 途中の出力（どれも git の外、作り直せる。消してよい）: クックは `Saved/Cooked/Windows`（303 MB）、ステージは `Saved/StagedBuilds/Windows`（1.0 GB、アーカイブと同じ中身）。UAT のログは `%APPDATA%\Unreal Engine\AutomationTool\Logs\`。
 - 出力先はリポジトリの外（`Saved/` か別のフォルダ）にする。`Build/` と `Saved/` は git の対象外。
+- **パッケージが出来たら、まず中身に本編が入っているかを見る**（`BUILD SUCCESSFUL` は中身を保証しない）。手早いのは 2 つ:
+  - `Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` … コンテナに入ったパッケージの一覧（小文字）。`grep -c "^/game/"` が 1000 前後あること（1 桁なら本編が入っていない）。
+  - `Intermediate/Overnight/uat_package.log` の `Packages Cooked: N ... Total Packages: M` … `/Game` の 1139 パッケージ + エンジンとプラグインの 500 ほどで **1600 前後**になること。
+  - `UnrealPak.exe <…>.utoc -List` はコンテナの**ファイル名を持つ入り口だけ**（`.ubulk` とエンジンの `.uasset`）を出す。クックしたパッケージはパッケージ ID で引くので名前が出ず、中身の確認には使えない。
 - クック前に確かめること: 参照している素材がすべて `/Game` にあるか（`Intermediate/Pipeline/` の中間データはパッケージに入らない）、既定のマップとゲームモード（`Config/DefaultEngine.ini`）、起動して 1 面が遊べるか。
 - **`Config/DefaultGame.ini` の 2 つの節はパッケージのためにある**（消さない。理由はその ini のコメント）:
-  - `[/Script/UnrealEd.ProjectPackagingSettings]` を**置かない**（`MapsToCook` を書くと、C++ から直に読む 195 個のアセットが落ちる）。
+  - `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True`（無いと **`/Game` のパッケージが `L_Title` の 1 つしか入らない**パッケージが黙って出来る。2026-09-21 に実際に起きた）。`MapsToCook` と `DirectoriesToAlwaysCook` は書かない（書くと C++ から直に読む 195 個のアセットが落ちる）。
   - `[/Script/Engine.AssetManagerSettings]` の `GameFeatureData` の規則（無いとクックがエラー 2 件で落ちる）。
 
 ## 性能の目安

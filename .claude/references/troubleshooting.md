@@ -404,6 +404,14 @@
 - 確かめ方: 直した後のログの `Warning/Error Summary` が `Success - 0 error(s)` になり、最後が `BUILD SUCCESSFUL`。
 - 出典: 作業一覧の項目 36 のステップ 2（2026-09-21。初回のパッケージ）。
 
+### パッケージは `BUILD SUCCESSFUL` なのに、中身に `/Game` のアセットが 1 つ（`L_Title`）しか入っていない
+
+- 症状: `BuildCookRun` が通り、`Warning/Error Summary` も `Success - 0 error(s)`。出来たパッケージは 1.0 GB あるのに、`Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt`（コンテナに入ったパッケージの一覧）が 493 行しかなく、`^/game/` はたった 1 件（`/game/stage/maps/l_title`）。残りはエンジンとプラグインの既定のアセット。ログの `Packages Cooked: 494, ... Total Packages: 501` も同じ数。**起動しても本編が無い。**
+- 原因: `Config/DefaultGame.ini` に `[/Script/UnrealEd.ProjectPackagingSettings]` を置かず、UE 5.8 の `CookOnTheFlyServer.cpp` `CollectFilesToCook` の**おまけの経路**（`bCookAll || (bCookAllByDefault && NumFilesAddedByCommandLineOrGameCallback == 0)`）に「`/Game` を全部なめる」のを任せていた。この数え上げはコマンドラインの指定・`AlwaysCookMaps`・アセットマネージャーやプラグインの `ModifyCook` など**複数の経路で増える**ので、0 のままである保証が無い。増えた瞬間に全部なめる経路が消え、既定のマップとその依存だけの（= C++ から名指しで読むアセットが丸ごと抜けた）パッケージが、**エラーも警告も出さずに**出来上がる。
+- 対処: `Config/DefaultGame.ini` に `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True` を置く（Project Settings の Packaging の Advanced「Cook everything in the project content directory」。`bCookAll` は上の条件を飛ばして必ず全部なめる）。`MapsToCook` と `DirectoriesToAlwaysCook` は書かない（書くと「全部なめる」ではなく書いた分だけになり、C++ から直に読む 195 個のアセットが落ちる）。
+- 確かめ方: `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1000 前後（1 桁なら本編が入っていない）。`UnrealPak.exe <…>.utoc -List` は**使えない**（コンテナのファイル名を持つ入り口だけを出し、クックしたパッケージはパッケージ ID で引くので名前が出ない）。
+- 出典: 作業一覧の項目 36 のステップ 3（2026-09-21）。
+
 
 ## 取り込み・レベル・描画
 
