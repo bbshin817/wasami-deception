@@ -202,7 +202,9 @@ Windows で作った物を Mac で受け取り、Metal 用にクックして遊�
 - 段取りは 6 つ。**同期**（`--sync [host[:repo]]`。既定は `desktop:Desktop/wasami_deception`）→ **前提チェック** → **エディタのビルド**（`Build.sh wasami_deceptionEditor Mac Development`。クックはエディタのコマンドレットが走るので、遊ぶだけでも要る）→ **`RunUAT.sh BuildCookRun -platform=Mac -clientconfig=<既定 Development> -cook -build -stage -pak -archive`** → **中身の検査** → **起動**（`--run`）。引数は `--sync`・`--sync-rsync`・`--no-git`・`--sync-only`・`--check`・`--no-package`・`--run`・`--config`・`--force`。
 - **同期は 2 段で、Windows には何も入れない**（2026-09-22 のユーザーの選択）。追跡ファイルは GitHub から `git pull --ff-only`、git に入らない `Content/`（1204 ファイル・1.2 GB）は Windows から `scp -rp` で**毎回まるごと**取り直す（`Content.new` に受けてから入れ替えるので、途中で落ちても前のものが残る）。差分にしないのは、消えた・改名されたアセットが Mac に残るとクック（`bCookAll=True`）が必ずそれも焼いて落ちるため。`scp` は **sftp サブシステム**を通るので Windows の既定シェル（PowerShell）に左右されない。ただし OpenSSH 8 以前の `scp` はログインシェルを通るので、`ssh -V` が 9 未満なら `-s` を付ける。
 - **コードとアセットの時点のズレを止める**: `ssh <host> "git -C <repo> rev-parse HEAD; echo ---; git -C <repo> status --porcelain"` で Windows の HEAD を読み、Mac の HEAD と違えば止まる（`--force` で続行）。未コミットがあれば警告だけ。PowerShell の出力は CRLF なので `\r` を落として読む。**この形の引数なら PowerShell 越しでも壊れない**（2026-09-22 に実測。裸の `.` を含む引数列もバイナリの素通しも問題なし）。
-- **同期の後は `exec` で自分を起動し直す**（`git pull` で自分自身が新しくなっているかもしれないため）。
+- **転送中は進み具合を出す**（2026-09-22。`-q` のまま黙って 1.2 GB 運ぶと生きているか分からず、実際にユーザーが止まったかと思った）。`scp` を背景に回し、5 秒ごとに `Content.new` の大きさを 1 行で書き換えながら出す（見込みには**前回の `Content` の大きさ**を使い、超えたら 99 % で止める。初回は数字だけ）。`-o ServerAliveInterval=15 -o ServerAliveCountMax=4` を付けてあるので、切れた接続は 1 分ほどで諦める。Ctrl-C では背景の `scp` も止める（trap）。
+- **エンジンの版は `Build.version` を `sed` で読む**（2026-09-22。`python3` に頼っていたが、Mac で版の表示が化けた）。`python3` を使うのは足りないプラグインを `.uproject` から外すときだけで、そこで無ければその場で止める。
+- **`git pull` の直後に `exec` で自分を起動し直す**（目印の環境変数 `WASAMI_MAC_BUILD_PULLED=1` で pull は繰り返さない）。取り込んだ新しい版で Content の取り込みから先をやるため（同期より後ろで起動し直すと、同期の手順を直しても 1 回遅れて効く）。`--sync-rsync` のときも rsync の後に同じことをする。
 - `--sync-rsync <取り込み元>` は、Windows に rsync を入れた場合の差分同期（既定では使わない。除外は `Intermediate/`・`Binaries/`・`Saved/`・`DerivedDataCache/`・`pak_reference*`・`cc2_reference`・`tmp/`・`observations/`・`__pycache__/`・`.DS_Store`）。rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける（`--inplace` を足すとこれが崩れる）。
 - 前提チェックが見るもの: macOS であること、`.uproject` と Content（`Content/Stage/Maps/L_Title.umap`）があること、`Build.sh`・`RunUAT.sh` があること、エンジンが **5.8 系**であること（違えば止まる。承知のうえなら `--force`）、`xcodebuild` と `xcrun -sdk macosx metal` が呼べること、そして**このエンジンに無いプラグイン**。
 - **足りないプラグインはビルドの間だけ `.uproject` から外す**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`。3 つとも `NoRedist: true` なのでエンジンの配り方によっては入っていない）。python3 で JSON を書き換え、`trap … EXIT INT TERM` で必ず元に戻す。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。
@@ -228,6 +230,7 @@ Windows で作った物を Mac で受け取り、Metal 用にクックして遊�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
+- 2026-09-22: Mac の実機で初めて走らせたときの直し: 転送中に進み具合を出す（無出力で止まったように見えた）、エンジンの版を `python3` ではなく `sed` で読む（版の表示が化けた）、`ServerAlive` で切れた接続を諦める
 - 2026-09-22: 同期を **git pull + scp**（Windows には何も入れない。ユーザーの選択）にし、Windows の HEAD との突き合わせを足した。`--sync-rsync` は別の運び方として残した
 - 2026-09-22: Mac で受け取ってビルドして遊ぶための `Tools/mac_build.sh` を足し、「Mac でのビルド」の節を書いた（ユーザーの指示。Mac では開発しない。`Config/` と `.uproject` は変えない）。ついでに古くなっていたターゲットの版（`BuildSettingsVersion.V7`・`IncludeOrderVersion.Unreal5_8`）を直した
 - 2026-09-21: パッケージした本編がタイトルから脱出まで通しで遊べることを `Tools/game_flow.py` で確かめ、「パッケージした本編の通しプレイ」の節を足した（項目 36 のステップ 6b。これで項目 36 と大目標 3 を閉じた）

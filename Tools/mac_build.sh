@@ -52,6 +52,9 @@ SYNC_EXCLUDES=(
 	--exclude '.DS_Store'
 )
 
+ORIG_ARGS=("$@")                          # git pull の後に自分を起動し直すときに渡す
+PULLED="${WASAMI_MAC_BUILD_PULLED:-}"     # その起動し直しの目印（pull を繰り返さない）
+
 CONFIG=Development
 DO_SYNC=0
 DO_GIT=1
@@ -98,11 +101,16 @@ done
 # 消えたアセットが残るとクック（bCookAll=True）が必ずそれも焼いて落ちるので、**毎回まるごと取り直す**。
 sync_from_windows() {
 	local start head_win head_mac dirty tmp
-	if [ $DO_GIT -eq 1 ]; then
+	if [ $DO_GIT -eq 1 ] && [ "$PULLED" != "1" ]; then
 		say "同期 1/2: git pull（追跡ファイル）"
 		[ -d "$ROOT/.git" ] || die "$ROOT は git のクローンではない（GitHub から clone してから使う。--no-git で飛ばせる）"
 		git -C "$ROOT" pull --ff-only
+		# この道具自身が新しくなっているかもしれないので、**ここから先は新しい方で走らせる**
+		# （Content の取り込みも、その後のビルドも。目印の環境変数で pull は繰り返さない）。
+		export WASAMI_MAC_BUILD_PULLED=1
+		exec bash "$ROOT/Tools/mac_build.sh" "${ORIG_ARGS[@]}"
 	fi
+	[ "$PULLED" = "1" ] && note "git pull 済み（取り込んだ版で続けている）"
 
 	say "同期 2/2: Content を $WIN_HOST から取り直す"
 	command -v ssh >/dev/null || die "ssh が無い"
@@ -131,7 +139,29 @@ sync_from_windows() {
 	start=$(date +%s)
 	tmp="$ROOT/Content.new"
 	rm -rf "$tmp"
-	scp -rpq $proto "$WIN_HOST:$WIN_REPO/Content" "$tmp" || { rm -rf "$tmp"; die "scp に失敗した（$WIN_HOST:$WIN_REPO/Content）"; }
+	# 1204 ファイル・1.2 GB を黙って運ぶと生きているのか分からないので、5 秒ごとに受け取った量を出す。
+	# 総量の見込みには前回の Content の大きさを使う（初回は出さない）。ServerAlive で、切れた接続は 1 分ほどで諦める。
+	local total_kb=0
+	[ -d "$ROOT/Content" ] && total_kb=$(du -sk "$ROOT/Content" | cut -f1)
+	scp -rpq $proto -o ServerAliveInterval=15 -o ServerAliveCountMax=4 "$WIN_HOST:$WIN_REPO/Content" "$tmp" &
+	local scp_pid=$!
+	trap 'kill '"$scp_pid"' 2>/dev/null; exit 130' INT TERM
+	while kill -0 "$scp_pid" 2>/dev/null; do
+		sleep 5
+		local now_kb
+		now_kb=$(du -sk "$tmp" 2>/dev/null | cut -f1)
+		[ -n "$now_kb" ] || now_kb=0
+		if [ "$total_kb" -gt 0 ]; then
+			local pct=$((now_kb*100/total_kb))
+			[ "$pct" -gt 99 ] && pct=99      # 見込みは前回の大きさなので、超えたら 99 で止める
+			printf '\r   取り込み中: %d / %d MB (%d%%)   ' $((now_kb/1024)) $((total_kb/1024)) "$pct"
+		else
+			printf '\r   取り込み中: %d MB   ' $((now_kb/1024))
+		fi
+	done
+	printf '\r%*s\r' 60 ""
+	trap - INT TERM
+	wait "$scp_pid" || { rm -rf "$tmp"; die "scp に失敗した（$WIN_HOST:$WIN_REPO/Content）"; }
 	[ -f "$tmp/Stage/Maps/L_Title.umap" ] || { rm -rf "$tmp"; die "取ってきた Content に L_Title.umap が無い（取り込み元のパスを確かめる）"; }
 	rm -rf "$ROOT/Content"
 	mv "$tmp" "$ROOT/Content"
@@ -146,17 +176,16 @@ if [ -n "$RSYNC_SRC" ]; then
 	START=$(date +%s)
 	rsync -rlt --delete --human-readable "${SYNC_EXCLUDES[@]}" "${RSYNC_SRC%/}/" "$ROOT/"
 	note "$(secs_since "$START") 秒"
-	DO_SYNC=1
-elif [ $DO_SYNC -eq 1 ]; then
-	sync_from_windows
-fi
-
-if [ $DO_SYNC -eq 1 ]; then
 	if [ $SYNC_ONLY -eq 1 ]; then
 		exit 0
 	fi
 	# 取り込みで自分自身が新しくなっているかもしれないので、続きは新しい方で走らせる。
 	exec bash "$ROOT/Tools/mac_build.sh" "${REST[@]}"
+elif [ $DO_SYNC -eq 1 ]; then
+	sync_from_windows          # git pull の直後に、この道具の新しい版で起動し直す
+	if [ $SYNC_ONLY -eq 1 ]; then
+		exit 0
+	fi
 fi
 
 # ---- 前提チェック ------------------------------------------------------------------------------------------------
@@ -166,7 +195,14 @@ say "前提チェック"
 [ -x "$ENGINE/Build/BatchFiles/Mac/Build.sh" ] || die "エンジンが $ENGINE に無い（UE_ENGINE_DIR で指定できる）"
 [ -x "$ENGINE/Build/BatchFiles/RunUAT.sh" ] || die "RunUAT.sh が $ENGINE/Build/BatchFiles に無い"
 
-ENGINE_VERSION="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("%d.%d.%d" % (d["MajorVersion"], d["MinorVersion"], d["PatchVersion"]))' "$ENGINE/Build/Build.version")"
+# Build.version（JSON、1 行 1 キー）から版を読む。python3 には頼らない（macOS では Xcode の入り具合で
+# 呼べないことがあり、2026-09-22 に版の表示が化けた）。
+version_field() { sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$ENGINE/Build/Build.version" | tr -d '\r' | head -1; }
+ENGINE_VERSION="$(version_field MajorVersion).$(version_field MinorVersion).$(version_field PatchVersion)"
+case "$ENGINE_VERSION" in
+	[0-9]*.[0-9]*.[0-9]*) ;;
+	*) die "$ENGINE/Build/Build.version から版が読めない（読めたのは '$ENGINE_VERSION'）" ;;
+esac
 note "エンジン: $ENGINE_VERSION（$ENGINE）"
 case "$ENGINE_VERSION" in
 	"$ENGINE_WANTED".*) ;;
@@ -201,6 +237,7 @@ restore_uproject() {
 
 if [ -n "$MISSING" ]; then
 	note "このエンジンに無いプラグイン:$MISSING → ビルドの間だけ .uproject から外す（パッケージの中身は変わらない）"
+	command -v python3 >/dev/null || die "python3 が無いので .uproject を書き換えられない。手で $MISSING の項目を外すか、エンジンにプラグインを入れる"
 	cp "$UPROJECT" "$UPROJECT.macbuild.bak"
 	trap restore_uproject EXIT INT TERM
 	python3 - "$UPROJECT" $MISSING <<'PY'
