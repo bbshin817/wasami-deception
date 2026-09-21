@@ -14,7 +14,8 @@ sources:
   - Source/wasami_deception/wasami_deception.cpp
   - Source/wasami_deception/wasami_deception.h
   - Source/wasami_deception/WasamiAssets.h
-updated: 2026-09-21
+  - Tools/mac_build.sh
+updated: 2026-09-22
 ---
 
 # 全体像
@@ -36,7 +37,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 ## モジュールとビルド
 
 - `wasami_deception.Build.cs` の公開依存: `Core`、`CoreUObject`、`Engine`、`InputCore`、`EnhancedInput`、`UMG`（タブレットの画面。03 記録）、`LevelSequence`・`MovieScene`（ゾーンの流れがレベルのシーケンスを再生する。11 記録）、`AIModule`・`GameplayTasks`・`NavigationSystem`（敵の AI MoveTo とランダムの点。07 記録）。非公開依存: `Slate`、`SlateCore`、`EngineSettings`（タイトルの版の文字がプロジェクト設定の `ProjectVersion` を読む。14 記録）、`AnimationCore`（Matron の LookAt の `SolveAim`。17 記録）。
-- ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V5`、`IncludeOrderVersion.Unreal5_6`（テンプレートのまま）。
+- ターゲット: `wasami_deception.Target.cs`（Game）と `wasami_deceptionEditor.Target.cs`（Editor）。どちらも `BuildSettingsVersion.V7`、`IncludeOrderVersion.Unreal5_8`（テンプレートのまま）。
 - `wasami_deception.cpp` / `.h` はモジュールの実装（`IMPLEMENT_PRIMARY_GAME_MODULE`）。
 - **パイプラインが作るアセット（`/Game/DD`・`/Game/Pipeline`）の参照の決まり**（`WasamiAssets.h`）: C++ はそれらをソフト参照で持ち（`TSoftObjectPtr` / `TSoftClassPtr` の UPROPERTY に、`WasamiAssets::Path("/Game/…/Name")`〈→ `/Game/…/Name.Name`〉や `WasamiAssets::ClassPath`〈→ `…/BP_Name.BP_Name_C`〉で既定のパスを入れる）、使うとき（`BeginPlay`・`RebuildWidget`）に `LoadSynchronous` で読む。`ConstructorHelpers` で読むとエディタの起動時の読み込みでルートに入り、パイプラインが作り直そうとするとエディタが落ちる（01 記録の注意点）。
 - Automation テストは `Source/wasami_deception/Tests/`（名前は `Wasami.*`）。モジュールのヘッダーは `../` で読む（`Tests/` はモジュールの include パスに入っていない）。
@@ -194,6 +195,19 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - **パッケージ版がタイトルから脱出まで 1 回の起動（228 s）で通った**。`python Tools/game_flow.py run`（01 記録）がコマンドラインの `-ExecCmds` だけで進め、**18 の節目がすべて期待どおり**だった（タイトル → `Wasami.ResetSave` + `open` → Zone 1 の到着とステージ OP → 鍵 → 迷路で保存 5 → 全回収 → 駐車場の場面 → 救急車の屋根で保存 7 → Zone 2 → 捕まる場面と独房 → 鍵 → 保存 8・9 → 全回収と欠片 → ガレージ → ポータル → スコア画面 FINAL RANK A）。レベルの読み込みは Zone 1 が 0.60 s・Zone 2 が 1.12 s、`Saved/Archive/Windows/wasami_deception/Saved/Crashes` は 0 件。
 - **マウスとキーそのものはパッケージ版では未確認**（タイトルの NEW GAME、欠片の画面の CLOSE、スコア画面の NEXT）。画面への入力が塞がれていたので（ファイアウォールの確認の窓。症状索引）コマンドで回り道した。この 3 つは PIE で `Tools/playthrough.py` が実際に押して通している（11 記録）ので、残るのは「パッケージ版でも押せるか」だけ。
 
+## Mac でのビルド（2026-09-22）
+
+Windows で作った物を Mac で受け取り、Metal 用にクックして遊ぶための道具 `Tools/mac_build.sh`（macOS 専用。macOS が積んでいる bash 3.2 で動くように書いてある）。**Mac では開発しない**（ユーザーの指示。エディタの UI・MCP・参照データ・Git LFS は要らない）。運用と、そう決めた理由は `.claude/guides/distribution.md` の「Mac 版のパッケージ」。Mac 側のパスは `/Users/sbaba/Documents/wasami_deception`、エンジンは `/Users/Shared/Epic Games/UE_5.8`（`UE_ENGINE_DIR` で上書きできる。`Tools/ue_remote.py`・`Tools/editor_cycle.py` と同じ作法）。
+
+- 段取りは 6 つ。**同期**（`--sync <取り込み元>`: `rsync -rlt --delete`。除外は `Intermediate/`・`Binaries/`・`Saved/`・`DerivedDataCache/`・`pak_reference*`・`cc2_reference`・`tmp/`・`observations/`・`__pycache__/`・`.DS_Store`）→ **前提チェック** → **エディタのビルド**（`Build.sh wasami_deceptionEditor Mac Development`。クックはエディタのコマンドレットが走るので、遊ぶだけでも要る）→ **`RunUAT.sh BuildCookRun -platform=Mac -clientconfig=<既定 Development> -cook -build -stage -pak -archive`** → **中身の検査** → **起動**（`--run`）。引数は `--sync`・`--sync-only`・`--check`・`--no-package`・`--run`・`--config`・`--force`。
+- **同期の後は `exec` で自分を起動し直す**（取り込んだ新しい手順で続きをやるため）。rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける（`--inplace` を足すとこれが崩れる）。
+- 前提チェックが見るもの: macOS であること、`.uproject` と Content（`Content/Stage/Maps/L_Title.umap`）があること、`Build.sh`・`RunUAT.sh` があること、エンジンが **5.8 系**であること（違えば止まる。承知のうえなら `--force`）、`xcodebuild` と `xcrun -sdk macosx metal` が呼べること、そして**このエンジンに無いプラグイン**。
+- **足りないプラグインはビルドの間だけ `.uproject` から外す**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`。3 つとも `NoRedist: true` なのでエンジンの配り方によっては入っていない）。python3 で JSON を書き換え、`trap … EXIT INT TERM` で必ず元に戻す。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。
+- **中身の検査**は `Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` の数と、`Content/` の `.uasset`＋`.umap` の数の一致で見る（Windows の 2026-09-21 のパッケージでは両方 1139）。`BUILD SUCCESSFUL` は中身を保証しない（上の `bCookAll` の顛末）。
+- ログは `Intermediate/MacBuild/build_editor.log` と `Intermediate/MacBuild/uat_package.log`、出来上がりは `Saved/Archive/Mac/*.app`。
+- **Mac のために `Config/` と `wasami_deception.uproject` は変えていない**（音声・RHI・アーキテクチャの既定が Windows と揃っていること、`EngineAssociation` が使われないことを確かめた。根拠はガイドの「触らなくてよいもの」）。
+- **Windows からは動かせない**（macOS 専用）。2026-09-22 時点で Mac の実機ではまだ通していない。
+
 ## 作業の流れ
 
 1. 参照データの前処理（`Tools/` のスクリプト）→ `Intermediate/Pipeline/`。
@@ -211,6 +225,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
+- 2026-09-22: Mac で受け取ってビルドして遊ぶための `Tools/mac_build.sh` を足し、「Mac でのビルド」の節を書いた（ユーザーの指示。Mac では開発しない。`Config/` と `.uproject` は変えない）。ついでに古くなっていたターゲットの版（`BuildSettingsVersion.V7`・`IncludeOrderVersion.Unreal5_8`）を直した
 - 2026-09-21: パッケージした本編がタイトルから脱出まで通しで遊べることを `Tools/game_flow.py` で確かめ、「パッケージした本編の通しプレイ」の節を足した（項目 36 のステップ 6b。これで項目 36 と大目標 3 を閉じた）
 - 2026-09-21: パッケージした本編の fps を 7 か所 × 2 画質で測って「パッケージした本編の fps」の節を足した（項目 36 のステップ 5・5b）。初期値の HIGH は平均 63.2 fps で目安に届き、VERY HIGH は平均 50.9 fps
 - 2026-09-21: 有人セッションで性能の要確認に回答をもらい、**クックして本編の fps を測る**ことにした（項目 36）。使っていない原作の題字と `Pipeline/Debug` の材質 17 個はクックの前に**消した**（項目 35）

@@ -11,7 +11,7 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 
 ## パッケージ
 
-- 対象はこの PC と同等の Windows（DirectX 12、SM6）。`Development` か `Shipping` の Win64。
+- 対象はこの PC と同等の Windows（DirectX 12、SM6）。`Development` か `Shipping` の Win64。Mac で作って遊ぶ手順は下の「Mac 版のパッケージ」。
 - 手順（2026-09-21 に実際に通した。作業一覧の項目 36）。**エディタを閉じてから**走らせる（VRAM 6 GB、`.claude/guides/verification.md`）:
   ```bash
   python Tools/editor_cycle.py --quit-only
@@ -51,6 +51,45 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 - **`Config/DefaultGame.ini` の 2 つの節はパッケージのためにある**（消さない。理由はその ini のコメント）:
   - `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True`（無いと **`/Game` のパッケージが `L_Title` の 1 つしか入らない**パッケージが黙って出来る。2026-09-21 に実際に起きた）。`MapsToCook` と `DirectoriesToAlwaysCook` は書かない（書くと C++ から直に読む 195 個のアセットが落ちる）。
   - `[/Script/Engine.AssetManagerSettings]` の `GameFeatureData` の規則（無いとクックがエラー 2 件で落ちる）。
+
+## Mac 版のパッケージ（Mac 上でビルドして遊ぶ）
+
+2026-09-22 のユーザーの指示による運用。**Mac では開発しない**（エディタの UI・MCP・参照データ `pak_reference*`・Git LFS はどれも要らない）。Windows が作った物を受け取り、Metal 用にクックして遊ぶだけ。
+
+- Mac 側のパスは `/Users/sbaba/Documents/wasami_deception`、エンジンは `/Users/Shared/Epic Games/UE_5.8`（`UE_ENGINE_DIR` で変えられる）。**エンジンは Windows と同じ 5.8 系**（今 5.8.2）。アセットは 5.8 で保存してあるので古い版では開けない。Xcode（Metal のコンパイラを含む）も要る。
+- 道具は `Tools/mac_build.sh`（同期 → 前提チェック → エディタのビルド → BuildCookRun → 中身の検査 → 起動）。**実行ビットは同期で落ちるので `bash` を付けて呼ぶ**:
+  ```bash
+  bash Tools/mac_build.sh --check                                  # 前提だけ確かめる（初回に）
+  bash Tools/mac_build.sh --sync /Volumes/wasami_deception --run    # 毎回これ 1 本
+  ```
+- **クックはエディタのコマンドレットが走る**ので、遊ぶだけでもエディタのビルド（＝Xcode）は要る。これは省けない。
+
+### 運び方（git では運べない）
+
+`Content/` は **1204 ファイル・1.2 GB がすべて `.gitignore`**（参照データから作り直せる素材。`git-workflow.md`）。clone で来るのは 424 ファイルだけで、アセットは 1 つも来ない。しかも無人運転が回るたびに書き換わる（2026-09-22 時点で直近 1 日に 238 ファイル、2 日で 541 ファイル）。**だから git ではなく rsync で運ぶ**（Git LFS に入れる案は、この大きさと頻度では履歴が破裂するので採らない）。
+
+- `mac_build.sh --sync <取り込み元>` が `rsync -rlt --delete` で持ってくる。除外は `Intermediate/`（9.3 GB）・`Binaries/`・`Saved/`・`DerivedDataCache/`・参照データ 3 つ・`tmp/`・`observations/`・`__pycache__/`。初回は約 1.25 GB、以後は 1 日分で数百 MB。
+- **`--delete` は外さない**。`bCookAll=True` で `/Game` を丸ごとクックするので、Windows で消した・改名したアセットが Mac に残ると必ずクックされ、参照が壊れていればクックが 1 エラーで UAT ごと落ちる。
+- 取り込み元は、Windows でフォルダを共有して Mac からマウントしたパス（`/Volumes/…`）か `user@host:/path`。**Windows 側が止まっているときに取る**（無人運転の最中だと、コードとアセットの時点がズレる）。
+- **Mac 側の作業ディレクトリは 1 つを使い回す**（毎回 clone し直さない）。`Intermediate/` と `Saved/Cooked/Mac` が残っていれば C++ もクックも差分で済む。シェーダーの DDC はプロジェクトの外（`~/Library/Application Support/Epic/UnrealEngine/Common`）なので、作業ディレクトリを作り直しても生き残る。
+
+### 触らなくてよいもの（2026-09-22 に確かめた）
+
+- **`wasami_deception.uproject`**: `EngineAssociation` の GUID `{932002E3-…}` はどこにも登録されていない（`HKCU\SOFTWARE\Epic Games\Unreal Engine\Builds` は空で、エンジンは Launcher の `LauncherInstalled.dat` に `UE_5.8` として入るだけ）。`Build.sh` / `RunUAT.sh` に `-project=` を渡す限り Mac でも使われないので書き換えない（`.uproject` をダブルクリックで開くときだけ関係する）。
+- **プラグイン 3 つ**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）はどれも `NoRedist: true` で、Mac の 5.8 に入っていないことがある。無いとクック（＝エディタ）が起動時に落ちるので、`mac_build.sh` が**ビルドの間だけ `.uproject` から外し、終わったら必ず戻す**（trap）。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。
+- **`Config/` に Mac 用に足すものは無い**。`[/Script/WindowsTargetPlatform.WindowsTargetSettings]` の音声の値は `BaseEngine.ini` の `[/Script/MacTargetPlatform.MacTargetSettings]` の既定と同じ（`AudioSampleRate=48000`・`AudioCallbackBufferFrameSize=1024`・`AudioNumBuffersToEnqueue=1`・`AudioNumSourceWorkers=4`）。`CacheSizeKB=65536` は Mac の節に無いが、エンジンの既定 `FAudioStreamCachingSettings::DefaultCacheSize = 64 * 1024` と同じ値。残りのキー（`CompressionOverrides`・`MaxChunkSizeOverrideKB`・各 `*SampleRate`・`CompressionQualityModifier`・`AutoStreamingThreshold`・`SoundCueCookQualityIndex`・プラグイン名）は既定値そのもので、`bResampleForDevice=False` のときサンプルレートの表は読まれない（`FPlatformCompressionUtilities`）。RHI は既に `+TargetedRHIs=SF_METAL_SM6`。アーキテクチャも既定のままでよい（`DefaultArchitecture=MacTargetArchitectureHost` なので、手元のビルドは Universal にならず host〈Apple Silicon なら arm64〉だけを作る）。
+
+### 時間の目安と、最初の 1 回に確かめること
+
+- 初回はエンジンと Xcode の用意に加えて **Metal のシェーダーを全部コンパイルする**ので数時間を見る。2 回目からは同期 + 差分ビルド + 差分クックで **10〜20 分**が目安（Windows の実績: 中身が変わらなければクック約 1 分、全クックで 5 分 22 秒）。アセットが大きく変わった回は、変わった分のシェーダーのコンパイルが上乗せされる。
+- **Mac でしか分からないことが 3 つある**。最初の 1 回で確かめ、違っていたらここに書き足す:
+  1. プラグイン 3 つがエンジンにあるか（`--check` が教える。無くても `mac_build.sh` が外して進む）
+  2. Metal のコンパイラが呼べるか（`--check` が見る。無ければ `xcodebuild -downloadComponent MetalToolchain`）
+  3. **Metal SM6 での見え方**（Substrate・仮想シャドウマップ・露出）が Windows と揃うか
+- 中身の検査は Windows と同じ考え方で、`mac_build.sh` が `Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` の数と `Content/` の `.uasset`＋`.umap` の数（2026-09-22 時点で 1139）を突き合わせ、合わなければ止まる。
+- 出来上がりは `Saved/Archive/Mac/wasami_deception.app`。自分の Mac でビルドした物は ad-hoc 署名で、そのまま起動できる。ゲームのログは `~/Library/Logs/wasami_deception/wasami_deception.log`。
+- ログを見ながら遊ぶなら `.app` の中の実行ファイルを直に呼ぶ（`wasami_deception.app/Contents/MacOS/wasami_deception`）。`Development` でビルドしているので `Wasami.Status` などのコンソールコマンドも使える（`~` で開く）。
+- **ほかの Mac に渡すのは配布**（Gatekeeper を通すには notarize が要る）。このファイルの頭の決まりどおり、必ずユーザーに確認する。
 
 ## 性能の目安
 
