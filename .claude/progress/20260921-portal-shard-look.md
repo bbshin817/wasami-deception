@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 3226bb8
 started: 2026-09-21 09:21
-updated: 2026-09-21 15:05
+updated: 2026-09-21 16:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（上限 30 KB） -->
@@ -28,17 +28,17 @@ updated: 2026-09-21 15:05
 - [x] 4. 親 2 つ（`M_DD_PPPParticlesLit`・`_LitFogged`）・インスタンス 5・テクスチャ 6・`PPP_Radial_Gradient_Doffed` の ThirdParty 版を作った。パラメータ・既定・テクスチャ・静的スイッチ・`BasePropertyOverrides` は書き出しと一致（実装記録 08）
 - [x] 5. `PPP_PortalAppear`・`_Lock` を組んで `import_portal` に足した（`dd_particles` に `RDO_Extreme` の表を足した。GPU の `Sparks` の焼き込みは原作と色の ±1/255 だけ違う）
 - [x] 5b. `AWasamiPortal` が `BeginPlay` で 2 つの部品に粒子を入れ、`AWasamiSpeedBarrier::BreakIfBoosting` が本家どおり `P_ky_impact2` より先に `PPP_PortalAppear` を 0.3 倍で出すようにした（テスト 4 件が通る。08 記録）
-- [ ] 6. 閃光の材質 `M_ky_primitiveColor`・`M_ky_lensFlare02` の不透明度をコンパイル済みシェーダーの式で確定して直す
+- [x] 6. 閃光の材質 2 つの不透明度を焼き込みで確定して直した（`M_ky_primitiveColor` は `DepthFade` の前に `useHilight` のスイッチ、`M_ky_lensFlare02` は粒子の α を掛ける。マスクの読みは G → R。実装記録 16）
 - [ ] 7. 結晶 `m_crystal` と地図の印 3 つ（`M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy`）をシェーダーと突き合わせ、差があれば直す
 - [ ] 8. PIE でポータル（鍵 → 開く）と特殊シャード（出現・閃光・取得・地図の印）を見て確かめ、実装記録 08・16 と作業一覧・handover を直して項目 34 を閉じる
 
 ## 次にやること
 
-ステップ 6（閃光の材質の不透明度）。特殊シャードの閃光が引く `M_ky_primitiveColor`・`M_ky_lensFlare02` の Opacity を `python Tools/dd/cooked_shaders.py "<パスの一部>."` の焼き込みで確定し、推定と違えば pipeline（`Content/Python/wasami_tools/pipeline/` の該当ファイル。まず現物の式がどこで組まれているかを grep する）を直して取り込み直す。式の数が合わないときは「決定事項」の 1 つめの決め方に従う。
+ステップ 7（結晶と地図の印）。結晶 `m_crystal`（`dd_specials._build_crystal`。`M_DD_Crystal`）と地図の印 3 つ（`M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy`。`dd_specials._build_masked_mark` と `dd_shards` の `M_DD_MapMark`）を `python Tools/dd/cooked_shaders.py "<パスの一部>."` の焼き込みと突き合わせ、差があれば pipeline を直して `WasamiDDTools.import_dd_specials`（または `dd_specials.make_crystal` / `make_map_marks`）で作り直す。**サンプルのチャンネルは添字の揃うスウィズルで読む**（下の「再開時の注意」）。式の数が合わないときは「決定事項」の 1 つめの決め方に従う。
 
 ## 決定事項
 
-- 2026-09-21（ステップ 2）: **式の数が合わないときは、焼き込みが同じになる形のうち安い方を採る**。数は式自身の定数（`Multiply`・`Add` の B）に持たせる（ステップ 6・7 でも同じ）。
+- 2026-09-21（ステップ 2）: **式の数が合わないときは、焼き込みが同じになる形のうち安い方を採る**。数は式自身の定数（`Multiply`・`Add` の B）に持たせる（ステップ 7 でも同じ）。不透明度の出力にエンジンがかける saturate の分は組まない（ステップ 6）。
 - 2026-09-21: 項目 33 と同じ進め方 — **本家の実機の収録に頼らず、原作のブループリント・アセットの値・cook の `ResourceData`・コンパイル済みシェーダーの式で決める**（作業一覧の大目標 3 の節の頭、2026-09-21 のユーザーの回答）。
 
 ## 要確認（ユーザー）
@@ -48,7 +48,8 @@ updated: 2026-09-21 15:05
 ## 再開時の注意
 
 - **`Tools/ue_remote.py` のスクリプトは、pipeline を直したら先に読み込み直す**（`import wasami_tools; from toolset_registry import _reload; _reload.reload_module(wasami_tools)`）。しないと古いモジュールのまま走り、直したはずの例外がそのまま出る。
-- 使う道具: `python Tools/dd/cooked_shaders.py "<パスの一部>." [--show N]`（`--show` なしで並ぶ表の ps_5_0 のうち、texture3d と `sample_l` の scene depth を引く 200 行台のものが翻訳の基本パス）。
+- 使う道具: `python Tools/dd/cooked_shaders.py "<パスの一部>." [--show N]`（`--show` なしで並ぶ表の ps_5_0 のうち、texture3d と `sample_l` の scene depth を引く長いものが翻訳の基本パス。粒子の材質では 78〜100 行）。
+- **サンプルのチャンネルは資源のスウィズルの添字で読む**（書き込む成分 c ← スウィズルの c 番目。`.w` へ書く `yzwx` は R、`.x` へ書く `zxyw` は B、`.w` へ書く `xzwy` は G）。先頭の成分で読むと取り違える（2026-09-21 に fxc で確かめた。`Tools/dd/cooked_shaders.py` の説明）。
 - 材質の読み方（ステップ 6・7 でも同じ）: 書き出しの `exports[0].props.Expressions` に原作の式の数と生き残りの名前、`exports[1:]` に生きている式の既定とグループ。**`props` は材質の入力の一部しか残さない**ので「書き出しに無い＝つながっていない」とは読まない。
 - **材質の中身を UE 5.8 の Python から読む道**: 式の一覧は出せない。使えるのは `MaterialEditingLibrary.get_num_material_expressions` と `get_statistics`、インスタンス側の `get_*_parameter_names` / `get_material_instance_*_parameter_value`。パラメータのグループは保存した `.uasset` の名前表を見る。
 - **`get_statistics` の命令数は原作の焼き込みと突き合わせられない**（ステップ 4 で確かめた）: 返るのはローカル頂点ファクトリのベースパスで、`ParticleColor` は 1・`DynamicParameter` は既定 (0, 0, 0, 1) に畳まれる（粒子の式だけの材質と定数だけの材質が同じ 337 命令・補間子 0 になる）。粒子の式を含む枝の差は原作より小さく出るので、照合は**パラメータ・既定・静的スイッチ・上書きの一致**と、**枝の上下関係**（スイッチを倒さない子は親と同じ命令数、真の側は偽の側より重い）で見る。
@@ -56,7 +57,7 @@ updated: 2026-09-21 15:05
 
 ## 検証
 
-- check_records: ステップ 5b で通した（08 のハッシュを更新）
-- C++ ビルド: ステップ 5b で `python Tools/editor_cycle.py` が成功し、エディタは開き直して応答している（MCP も再接続済み）
-- 自動テスト: `AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter("StartsWith:Wasami.Portal+StartsWith:Wasami.SpeedBarrier")` で 4 件とも合格（`Wasami.Portal.Actor` に粒子のテンプレートの確認を足した）
-- エディタでの確認: ステップ 5 で `import_portal` を回し、テクスチャ 11・材質 23・粒子 2 が出来て `/Game/DD`・`/Game/Pipeline` を保存した。**PIE で見るのはステップ 8**
+- check_records: ステップ 6 で通した（01・16 のハッシュを更新）
+- C++ ビルド: ステップ 5b で `python Tools/editor_cycle.py` が成功し、エディタは開き直して応答している（MCP も再接続済み。ステップ 6 は C++ に触れていない）
+- 自動テスト: `AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter("StartsWith:Wasami.Portal+StartsWith:Wasami.SpeedBarrier")` で 4 件とも合格（ステップ 5b）
+- エディタでの確認: ステップ 6 で `dd_specials.make_flash_materials()` を回し、材質 7 つを作り直して保存した（式は `M_DD_KyPrimitiveColor` 22・`M_DD_KyLensFlare02` 26、コンパイルのエラーなし。`MI_ky_primitiveColor` は `useHilight` 真、`hilightPower` 1.0・`hilightColor` (0.340017, 0.993335, 7, 1)、`M_ky_lensFlare02` は 5 つのスカラとも焼き込みの cb3 と一致）。**PIE で見るのはステップ 8**

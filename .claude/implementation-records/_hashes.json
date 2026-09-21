@@ -17,7 +17,7 @@
   "01-stage-pipeline.md": {
     "Tools/dd/prepare_stage.py": "c76f67b31b9beec0ba47b5df92ce000a1fdbc129",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
-    "Tools/dd/cooked_shaders.py": "7c25a3166fefd04a63cb38bc6cfab05bd8210627",
+    "Tools/dd/cooked_shaders.py": "dcc26af84b302fe8f2051c7e495534580b58e40a",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
     "Tools/dd/gpu_emitters.py": "48e923a2c2dce85de2a2288f748e7bc963c4f29c",
     "Tools/dd/psa_pose.py": "e079c0000b53bf1646d8722775df2226ae315f31",
@@ -57,7 +57,7 @@
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "9152be4681c984e45f037f5dba0a0579a82d5809",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "5a6d5f8716c774423cd5082a305305a9d7936a25",
-    "Content/Python/wasami_tools/pipeline/dd_specials.py": "bc2c43d426f3927a715e10cb363bdf2986956e8b",
+    "Content/Python/wasami_tools/pipeline/dd_specials.py": "700bfc432a9a7beae346d72a45d9998fee1dd729",
     "Content/Python/wasami_tools/pipeline/dd_secrets.py": "e305e2a847f06e830a671d1ce8398d334c9fda53",
     "Source/wasami_deception/WasamiCascadeLibrary.h": "061975e535e2e5ffc14ec2a9cec97595a4513615",
     "Source/wasami_deception/WasamiCascadeLibrary.cpp": "b00106cf75a40b11b8c39de777ff8b3bbd269d72",
@@ -287,7 +287,7 @@
     "Source/wasami_deception/Tests/WasamiPauseTests.cpp": "84bbbb23572ba8b41749022060cc76d1706dae50"
   },
   "16-special-shards.md": {
-    "Content/Python/wasami_tools/pipeline/dd_specials.py": "bc2c43d426f3927a715e10cb363bdf2986956e8b",
+    "Content/Python/wasami_tools/pipeline/dd_specials.py": "700bfc432a9a7beae346d72a45d9998fee1dd729",
     "Source/wasami_deception/WasamiVignetteSidesWidget.h": "4310b83d8fb4e19cd4901698b299b9af469ce8dc",
     "Source/wasami_deception/WasamiVignetteSidesWidget.cpp": "caf456ce4c67c7272640a8853fdb4e729df251ad",
     "Source/wasami_deception/Tests/WasamiVignetteSidesTests.cpp": "3b94ae0915c18fc82d6b5cb4041f2b338c2379df",

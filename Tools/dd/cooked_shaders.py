@@ -23,6 +23,11 @@ lerp at the end of the emissive, black at run time). A
 material instance with a static switch of its own (bHasStaticPermutationResource) carries its own shader map; one
 without (MI_ky_aura7c) has none and uses its parent's.
 
+A sample's channel is read off the resource swizzle by index, not by its first component: in
+`sample r1.w, uv, t2.yzwx, s2` the destination component (w, index 3) takes the swizzle's component 3 (x), so that
+reads R; `.x` with `zxyw` reads B and `.w` with `xzwy` reads G. (Checked by compiling a ps_5_0 that reads known
+channels with fxc from the Windows Kits, 2026-09-21.)
+
 Needs pak_reference_2/_tools/scripts/unpak.py (the pak reader the export was made with) and Windows.
 Env: PAK_REF2 — the export (default <repo>/pak_reference_2).
 """

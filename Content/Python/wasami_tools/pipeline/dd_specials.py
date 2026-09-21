@@ -260,10 +260,12 @@ def _build_primitive_color(mat, d):
     """M_ky_primitiveColor, estimated. The cook kept its settings (translucent, unlit, for sprites and mesh
     particles), the parameters hilightPower and hilightColor, MF_ky_addHilight and the static switch useHilight on its
     emissive colour (A an Add, B the particle colour's RGB) and its opacity (A a Multiply, B the particle's alpha). Its
-    compiled shaders read, with the switch off, the particle's alpha faded into the depth over 100 as the opacity; with
-    it on (MI_ky_primitiveColor), a highlight of T_ky_maskRGB3's G and B at UV × 0.2 panned by time × (0.1, −1) and
-    (−0.2, −2): n1 × n2 × (n1 + n2) × 2500 × hilightPower × hilightColor. The estimate adds that to the particle
-    colour (the Add) and keeps the faded alpha on both sides (what the Multiply multiplies is not known)."""
+    compiled shaders read a highlight of T_ky_maskRGB3's R and B at UV × 0.2 panned by time × (0.1, −1) and (−0.2, −2):
+    strength = n1 × n2 × (n1 + n2) × 2500 × hilightPower, and the emissive colour strength × hilightColor + the
+    particle colour (the Add). The opacity is the switch through a DepthFade over 100 (both shaders end in
+    saturate(depth × 0.01) × the switch), the switch's A saturate(strength ^ 0.5) × the particle's alpha (the
+    max(x, 0), rsq/div and min(…, 1) of MI_ky_primitiveColor's shader, which turns the switch on) and its B the
+    particle's alpha alone (the master's shader)."""
     dd_assets.particle_material(mat)
     g = dd_stage._Graph(mat, checked=True)
     particle = g.node(unreal.MaterialExpressionParticleColor, -700, 300)
@@ -272,7 +274,7 @@ def _build_primitive_color(mat, d):
     uv.set_editor_property("u_tiling", 0.2)
     uv.set_editor_property("v_tiling", 0.2)
     samples = []
-    for speed, keep, y in (((0.1, -1.0), "G", -300), ((-0.2, -2.0), "B", -50)):
+    for speed, keep, y in (((0.1, -1.0), "R", -300), ((-0.2, -2.0), "B", -50)):
         pan = g.node(unreal.MaterialExpressionPanner, -1650, y)
         pan.set_editor_property("speed_x", speed[0])
         pan.set_editor_property("speed_y", speed[1])
@@ -290,8 +292,13 @@ def _build_primitive_color(mat, d):
     hilight = g.multiply(strength, "", g.vector("hilightColor", d["hilightColor"], -550, 0), "RGB", -350, -100)
     added = dd_assets.add(g, particle, "RGB", hilight, "", -200, 0)
     g.out(g.switch("useHilight", added, "", particle, "RGB", 0, 50), "", MP.MP_EMISSIVE_COLOR)
-    fade = g.node(unreal.MaterialExpressionDepthFade, -200, 300)   # the expression's own distance, 100
-    dd_assets.connect(particle, "A", fade, "Opacity")
+    root = g.node(unreal.MaterialExpressionPower, -350, 200)   # PositiveClampedPow: the shader's max(x, 0) before sqrt
+    root.set_editor_property("const_exponent", 0.5)
+    dd_assets.connect(strength, "", root, "Base")
+    lit = dd_assets.single(g, unreal.MaterialExpressionSaturate, root, "", -200, 200)
+    fade = g.node(unreal.MaterialExpressionDepthFade, 250, 300)   # the expression's own distance, 100
+    dd_assets.connect(g.switch("useHilight", g.multiply(lit, "", particle, "A", -50, 250), "", particle, "A", 100, 300),
+                      "", fade, "Opacity")
     g.out(fade, "", MP.MP_OPACITY)
 
 
@@ -299,9 +306,10 @@ def _build_lens_flare(mat, d):
     """M_ky_lensFlare02, estimated. The cook kept its settings (translucent, unlit, for sprites), its emissive colour
     (the particle colour's RGB), the parameters alphaDensity, remap1, remap2, rotRemap1 and rotRemap2, two calls of
     Sine_Remapped and a sample of T_ky_lensFlare01 at a Rotator. Its compiled shaders read the opacity as
-    saturate(lerp(remap1, remap2, s(time, 2)) × G^alphaDensity), G read at the texture coordinates turned about the
-    middle by lerp(rotRemap1, rotRemap2, s(time, 0.5)) × 0.25, where s(time, p) = (sin(2π sin(2π time / p)) + 1) / 2
-    (a Sine of period p through Sine_Remapped): the flare pulses and rocks. The particle's alpha does not enter."""
+    lerp(remap1, remap2, s(time, 2)) × G^alphaDensity × the particle's alpha, G read at the texture coordinates turned
+    about the middle by lerp(rotRemap1, rotRemap2, s(time, 0.5)) × 0.25, where s(time, p) = (sin(2π sin(2π time / p)) + 1)
+    / 2 (a Sine of period p through Sine_Remapped): the flare pulses and rocks. The shaders' last saturate is the
+    engine's own clamp of the opacity output, so no Saturate is built."""
     dd_assets.particle_material(mat)
     g = dd_stage._Graph(mat, checked=True)
     time = g.node(unreal.MaterialExpressionTime, -2000, 0)
@@ -328,10 +336,10 @@ def _build_lens_flare(mat, d):
     dd_assets.connect(rotator, "", flare, "UVs")
     shaped = g.power(flare, "G", g.scalar("alphaDensity", d["alphaDensity"], -750, -100), "", -550, -250)
     bright = pulse(2.0, "remap1", "remap2", 200)
-    opacity = dd_assets.single(g, unreal.MaterialExpressionSaturate,
-                               g.multiply(shaped, "", bright, "", -400, -100), "", -250, -100)
-    g.out(opacity, "", MP.MP_OPACITY)
-    g.out(g.node(unreal.MaterialExpressionParticleColor, -400, 200), "RGB", MP.MP_EMISSIVE_COLOR)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -400, 200)
+    g.out(g.multiply(g.multiply(shaped, "", bright, "", -400, -100), "", particle, "A", -250, -100), "",
+          MP.MP_OPACITY)
+    g.out(particle, "RGB", MP.MP_EMISSIVE_COLOR)
 
 
 FLASH_MATERIALS = (

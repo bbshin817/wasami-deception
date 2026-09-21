@@ -115,9 +115,10 @@ updated: 2026-09-21
 ### 地図の印の色
 3 つとも書き出しは `Constant3Vector` を値なしで持つだけだが、コンパイル済みのシェーダーに定数が残っていた: `M_PowerOrb` (1, 0.2903, 0)、`M_Bonus_Shard`・`M_Enemy` (1, 0, 0)（`T_EnemyTriangle` の 1 チャンネルを 0.3333 で切る）。ついでに `M_Shard` の定数は (0.482481, 0, 1) と分かった（`dd_shards` は画面の実測で (0.70, 0.0071, 1.0) に合わせている。06 記録）。新しい 3 つはシェーダーの定数のままにし、タブレットでの見え方は見比べていない（作業一覧の項目 28 の後回し）。
 
-### 閃光の材質（推定。グラフは cook で消えている）
-- `M_ky_primitiveColor`: 残る式は `hilightPower`・`hilightColor`・`MF_ky_addHilight` と、自己発光（A = Add、B = 粒子の色）と不透明度（A = Multiply、B = 粒子の α）の静的スイッチ `useHilight`。シェーダーでは、スイッチ偽は不透明度 = 粒子の α を深さで 100 かけて消す。真（`MI_ky_primitiveColor`）は `T_ky_maskRGB3` の G と B を UV × 0.2 に時間 × (0.1, −1)・(−0.2, −2) で流して読み、n1 × n2 × (n1 + n2) × 2500 × `hilightPower` × `hilightColor` の光り。推定は真の側で粒子の色にこれを足し（Add）、不透明度は両側とも深さで消す粒子の α（Multiply の相手は分からない）。
-- `M_ky_lensFlare02`: 自己発光 = 粒子の色。不透明度 = saturate(lerp(`remap1`, `remap2`, s(時間, 2)) × G^`alphaDensity`)。G は `T_ky_lensFlare01` を lerp(`rotRemap1`, `rotRemap2`, s(時間, 0.5)) × 0.25 だけ中心で回した UV で読む。s(時間, p) = (sin(2π sin(2π 時間 / p)) + 1) / 2（周期 p の Sine を `Sine_Remapped` に通したもの）。粒子の α は入らない。
+### 閃光の材質（グラフは cook で消えている。コンパイル済みシェーダーの式で確定。2026-09-21、作業一覧の項目 34）
+- `M_ky_primitiveColor`: 残る式は `hilightPower`・`hilightColor`・`MF_ky_addHilight` と、自己発光（A = Add、B = 粒子の色）と不透明度（A = Multiply、B = 粒子の α）の静的スイッチ `useHilight`（同じ名前の式 2 つ）。シェーダーでは `T_ky_maskRGB3` の **R と B** を UV × 0.2 に時間 × (0.1, −1)・(−0.2, −2) で流して読み、強さ = n1 × n2 × (n1 + n2) × 2500 × `hilightPower`。自己発光 = 強さ × `hilightColor` + 粒子の色（真の側）。不透明度はスイッチを `DepthFade`（距離 100）に通したもので、真は saturate(強さ ^ 0.5) × 粒子の α（`MI_ky_primitiveColor` のシェーダーの max(x, 0)・rsq/div・min(…, 1)。`Power` の `ConstExponent` 0.5 + `Saturate` で組む）、偽は粒子の α だけ（マスターのシェーダー）。
+- `M_ky_lensFlare02`: 自己発光 = 粒子の色。不透明度 = lerp(`remap1`, `remap2`, s(時間, 2)) × G^`alphaDensity` × **粒子の α**。G は `T_ky_lensFlare01` を lerp(`rotRemap1`, `rotRemap2`, s(時間, 0.5)) × 0.25 だけ中心で回した UV で読む。s(時間, p) = (sin(2π sin(2π 時間 / p)) + 1) / 2（周期 p の Sine を `Sine_Remapped` に通したもの）。シェーダーの最後の saturate は不透明度の出力にエンジンがかける clamp なので `Saturate` は組まない（式の数は原作 18 − 関数呼び出し 2 + 展開 10 = 26 で一致）。
+- **DXBC のサンプルのチャンネルの読み方**: `sample r1.w, uv, t2.yzwx, s2` のような資源のスウィズルは**添字が揃う**（書き込む成分 c ← スウィズルの c 番目）。`.w` へ書く `yzwx` は R、`.x` へ書く `zxyw` は B、`.w` へ書く `xzwy` は G。fxc（`Windows Kits/10/bin/10.0.26100.0/x64/fxc.exe`）に既知のチャンネルを読む小さな ps_5_0 を通して確かめた（2026-09-21）。先頭の成分で読むと R と G を取り違える。
 
 ## 原作データの根拠
 - 本体・部品・流れ: `pak_reference_2/_assets/DDeception/Content/Blueprints/Main/BP_PowerOrb.json`・`BP_BonusShard.json`、`_bytecode/.../BP_PowerOrb.txt`・`BP_BonusShard.txt`（`python Tools/dd/bp_flow.py`）。取得の演出は `Blueprints/Main/Powers/BP_StunCollectEffect`・`BP_BonusShardCollectEffect`。
@@ -151,7 +152,7 @@ updated: 2026-09-21
 - `Wasami.BonusShard.Collect`: 出現点 1 つ（オーブの点は数えない）、`AWasamiPlayerCharacter`（コントローラの `SetPawn`）、敵 2 クラス（代役とナース）。取る前は地図にシャードだけ → 明滅の最中に触れて取る: アクタは残る・セーブに `ID`・結晶と印と灯が消える・演出が 1 つ・60 s の暴き・敵がすぐ地図に → 地図の作り直しの後も載る → 明滅の 5 s が終わる・演出が消える → 後から出た敵が 2.1 s 以内に載る → 60 s の直前はまだ、直後にシャードが消えて敵が地図から外れ、外れたまま。
 
 ## 既知の制約・注意点
-- 結晶と閃光の材質・地図の印の色は推定で、本家と見比べていない（大目標 1・2 の決め方。作業一覧の項目 28 の後回しの一覧）。
+- 結晶の材質・地図の印の色は推定で、本家と見比べていない（大目標 1・2 の決め方。作業一覧の項目 28 の後回しの一覧）。閃光の材質 2 つはシェーダーの式で確定した（上）。
 - 赤いシャードは本家の結晶（`soul_shard` × 20・`m_crystal_Inst`）で、通常のシャードのワサミ餅には替えない（WebGL 版は餅にしたが、最終目標の「本家と同一の見た目にする」が優先。2026-09-19）。
 - 地図の印（特殊シャードの 20 m 上、敵の 10 m 上の板）は本家と違って当たりを持たない（上の「共通の作り」）。
 - 地図に敵を足すのはクラスごと（本家の `Add To Map(GetObjectClass)`）なので、サブクラスも含めてそのクラスの敵がみな載る。赤いシャードの 60 s の間は、敵の骨格メッシュも地図のキャプチャに写る（印が 10 m 上から覆う。本家も同じ）。
