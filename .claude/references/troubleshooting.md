@@ -404,6 +404,15 @@
 - 確かめ方: 直した後のログの `Warning/Error Summary` が `Success - 0 error(s)` になり、最後が `BUILD SUCCESSFUL`。
 - 出典: 作業一覧の項目 36 のステップ 2（2026-09-21。初回のパッケージ）。
 
+### Mac のパッケージを起動すると「書類フォルダへのアクセス」を聞かれ、どちらを押しても反応しない
+
+- 症状: `~/Documents` の下に出来た `.app` を開くと macOS の確認ダイアログが出るが、「許可」「許可しない」のどちらを押しても何も起きず、ゲームは起動しないまま固まる。
+- 原因: macOS の TCC は `~/Documents`・`~/Desktop`・`~/Downloads` の中のファイルを読むアプリに確認を出す。**`.app` 自身がそこに置かれていると、自分の中身（pak）を読むだけでも聞かれる**。そのときゲームは全画面で画面と入力を掴んでいるので、システムのダイアログにクリックが届かない（どちらのボタンも効かないように見える）。
+- 対処: **`~/Documents` の外にパッケージを置く**。`Tools/mac_build.sh` は `~/Applications/WasamiDeception`（TCC の保護対象外）に出す（`--archive <置き場所>` か環境変数 `WASAMI_ARCHIVE_DIR` で変えられる）。既に出来ている `.app` は `cp -R` で移すだけでよい。クックとステージはプロジェクトの中（`Saved/Cooked`・`Saved/StagedBuilds`）に残るので、差分は効いたまま。
+- 固まったときの止め方: `pkill -f wasami_deception`。
+- 様子を見ながら起動する: `"<app>/Contents/MacOS/wasami_deception" -windowed -ResX=1280 -ResY=720`（窓で出て、端末にログが流れる）。
+- 出典: 2026-09-22、Mac で初めて起動したとき。
+
 ### Mac のパッケージした `.app` が起動の瞬間に落ちる（`Library not loaded: @rpath/libtbb.12.dylib`）
 
 - 症状: パッケージは `BUILD SUCCESSFUL` で中身の検査も通るのに、`.app` を開くと即クラッシュ。クラッシュレポートは `Termination Reason: Namespace DYLD, Code 1, Library missing` / `Library not loaded: @rpath/libtbb.12.dylib`。`find <app> -name '*.dylib'` が**何も返さない**（1 つも入っていない）。

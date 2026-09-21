@@ -24,7 +24,11 @@ PROJECT_NAME="wasami_deception"
 UPROJECT="$ROOT/$PROJECT_NAME.uproject"
 ENGINE="${UE_ENGINE_DIR:-/Users/Shared/Epic Games/UE_5.8/Engine}"
 ENGINE_WANTED="5.8"                       # Windows 側は 5.8.2（.claude/implementation-records/00-overview.md）
-ARCHIVE="$ROOT/Saved/Archive"
+# パッケージの置き場所。**`~/Documents` の下には置かない**: そこに置いた `.app` を起動すると macOS が毎回
+# 「書類フォルダへのアクセス」を聞き（TCC）、ゲームが全画面で画面と入力を掴んでいるとその確認に触れられず、
+# 起動したまま固まる（2026-09-22 に実際に起きた）。`~/Applications` は TCC の保護対象ではないので聞かれない。
+# クックとステージ（`Saved/Cooked`・`Saved/StagedBuilds`）はプロジェクトの中に残るので、差分は効いたまま。
+ARCHIVE="${WASAMI_ARCHIVE_DIR:-$HOME/Applications/WasamiDeception}"
 COOKED_META="$ROOT/Saved/Cooked/Mac/$PROJECT_NAME/Metadata/ReferencedSet.txt"
 LOG_DIR="$ROOT/Intermediate/MacBuild"
 
@@ -98,6 +102,7 @@ while [ $# -gt 0 ]; do
 		--no-package) DO_PACKAGE=0; REST+=("$1"); shift ;;
 		--run) DO_RUN=1; REST+=("$1"); shift ;;
 		--config) CONFIG="$2"; [ -n "$CONFIG" ] || die "--config には Development か Shipping が要る"; REST+=("$1" "$2"); shift 2 ;;
+		--archive) ARCHIVE="$2"; [ -n "$ARCHIVE" ] || die "--archive には置き場所が要る"; REST+=("$1" "$2"); shift 2 ;;
 		--force) FORCE=1; REST+=("$1"); shift ;;
 		-h|--help) usage; exit 0 ;;
 		*) echo "知らない引数: $1" >&2; usage >&2; exit 2 ;;
@@ -285,6 +290,8 @@ fi
 # ---- パッケージ --------------------------------------------------------------------------------------------------
 # 初回は Metal のシェーダーを全部コンパイルするので数時間かかることがある。2 回目からは変わった分だけ。
 say "パッケージ（BuildCookRun -platform=Mac -clientconfig=$CONFIG）"
+note "置き場所: $ARCHIVE"
+mkdir -p "$ARCHIVE"
 START=$(date +%s)
 # 落ちたときは、ログのどこを見ればよいかをその場で出す。クックのコマンドレットは**エラーが 1 件でもログに
 # 出ると失敗を返す**ので、クックの中身が正しくても UAT は ExitCode=25 で落ちる（症状索引）。
@@ -364,5 +371,5 @@ if [ $DO_RUN -eq 1 ]; then
 else
 	say "出来た。遊ぶには:"
 	note "open \"$APP\""
-	note "ログを見ながらなら: \"$APP/Contents/MacOS/$PROJECT_NAME\""
 fi
+note "窓で出して端末でログを見るなら: \"$APP/Contents/MacOS/$PROJECT_NAME\" -windowed -ResX=1280 -ResY=720"

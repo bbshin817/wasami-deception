@@ -95,7 +95,7 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
   4. クックの所要は **3 分 42 秒**（初回、`PeakPhysMemoryMB=6961`）。シェーダーで数時間という見込みより ずっと速かった
 - 中身の検査は Windows と同じ考え方で、`mac_build.sh` が `Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` の数と `Content/` の `.uasset`＋`.umap` の数（2026-09-22 時点で 1139）を突き合わせ、合わなければ止まる。
 - **ステージが入れ忘れる dylib は `mac_build.sh` が後から同梱する**（`libtbb.12.dylib`・`libtbbmalloc.2.dylib`・`libmetalirconverter.dylib`。入れないと起動の瞬間に `Library not loaded: @rpath/libtbb.12.dylib` で落ちる。症状索引）。同梱したら ad-hoc で署名し直す。
-- 出来上がりは `Saved/Archive/Mac/wasami_deception.app`。自分の Mac でビルドした物は ad-hoc 署名で、そのまま起動できる。ゲームのログは `~/Library/Logs/wasami_deception/wasami_deception.log`。
+- 出来上がりは **`~/Applications/WasamiDeception/Mac/wasami_deception.app`**（`--archive <置き場所>` か `WASAMI_ARCHIVE_DIR` で変えられる）。**`~/Documents` の下には置かない**: そこに置いた `.app` は起動のたびに macOS が「書類フォルダへのアクセス」を聞き（TCC）、ゲームが全画面で画面と入力を掴んでいるとその確認に触れられず固まる（2026-09-22 に実際に起きた。症状索引）。クックとステージはプロジェクトの中（`Saved/Cooked`・`Saved/StagedBuilds`）に残るので差分は効いたまま。自分の Mac でビルドした物は ad-hoc 署名で、そのまま起動できる。ゲームのログは `~/Library/Logs/wasami_deception/wasami_deception.log`。
 - ログを見ながら遊ぶなら `.app` の中の実行ファイルを直に呼ぶ（`wasami_deception.app/Contents/MacOS/wasami_deception`）。`Development` でビルドしているので `Wasami.Status` などのコンソールコマンドも使える（`~` で開く）。
 - **ほかの Mac に渡すのは配布**（Gatekeeper を通すには notarize が要る）。このファイルの頭の決まりどおり、必ずユーザーに確認する。
 
