@@ -145,26 +145,32 @@ def _two_vectors(values):
 CURVES = {"FInterpCurveFloat": _number, "FInterpCurveVector": _vector, "FInterpCurveVector2D": _vector2,
           "FInterpCurveTwoVectors": _two_vectors}
 
-# ERawDistributionOperation (Distributions.h): a table's entries are single values (RDO_None) or low and high values
-# to pick between at random (RDO_Random).
+# ERawDistributionOperation (Distributions.h): a table's entries are single values (RDO_None) or low and high values,
+# picked between per channel at random (RDO_Random) or as a whole (RDO_Extreme: the low vector or the high one, never a
+# mix - FRawDistribution::GetValue3Extreme). Only a vector's uniforms are ever RDO_Extreme, from their bUseExtremes
+# (UDistributionVectorUniform::GetOperation, UDistributionVectorUniformCurve::GetOperation).
 RDO_NONE = 1
 RDO_RANDOM = 2
+RDO_EXTREME = 3
 
 
 def _table_distribution(raw, vector):
     """The distribution object (its class and values) a cook's baked table (an exported FRawDistribution) was made
     from, as near as the table tells. A table's entries sit TimeBias + i / TimeScale apart and are lerped between
     (FDistributionLookupTable::GetEntry), which a linear curve through them repeats; one entry is a constant, or a
-    uniform range when the entry holds a low and a high value."""
+    uniform range when the entry holds a low and a high value (of extremes where the table says so)."""
     table = raw["Table"]
     op, count = table.get("Op", 0), table.get("EntryCount", 0)
     stride, sub = table.get("EntryStride", 0), table.get("SubEntryStride", 0)
     values = table.get("Values", [])
     width = 3 if vector else 1
-    wanted = {RDO_NONE: (width, 0), RDO_RANDOM: (2 * width, width)}.get(op)
+    wanted = {RDO_NONE: (width, 0), RDO_RANDOM: (2 * width, width), RDO_EXTREME: (2 * width, width)}.get(op)
     if wanted is None or (stride, sub) != wanted or count < 1 or len(values) != count * stride or table.get("LockFlag"):
         raise ValueError("a baked table no distribution is made for: %r" % (table,))
+    if op == RDO_EXTREME and not vector:
+        raise ValueError("a float's baked table of extremes, which no distribution is made for: %r" % (table,))
     kind = "Vector" if vector else "Float"
+    extremes = {"bUseExtremes": True} if op == RDO_EXTREME else {}
     one = list if vector else (lambda v: v[0])
     entries = [values[i * stride:(i + 1) * stride] for i in range(count)]
     times = [table.get("TimeBias", 0.0) + (i / table["TimeScale"] if i else 0.0) for i in range(count)]
@@ -174,10 +180,10 @@ def _table_distribution(raw, vector):
         points = [{"InVal": t, "OutVal": one(e)} for t, e in zip(times, entries)]
         return "Distribution%sConstantCurve" % kind, {"ConstantCurve": {"Points": points}}
     if count == 1:
-        return "Distribution%sUniform" % kind, {"Min": one(entries[0][:width]), "Max": one(entries[0][width:])}
+        return "Distribution%sUniform" % kind, dict(extremes, Min=one(entries[0][:width]), Max=one(entries[0][width:]))
     # A uniform curve's value: (X low, Y high) for a float, (v1 low, v2 high) for a vector.
     points = [{"InVal": t, "OutVal": list(e)} for t, e in zip(times, entries)]
-    return "Distribution%sUniformCurve" % kind, {"ConstantCurve": {"Points": points}}
+    return "Distribution%sUniformCurve" % kind, dict(extremes, ConstantCurve={"Points": points})
 
 
 def _quantized_channel(resource, curve, channel):

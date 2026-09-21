@@ -88,8 +88,8 @@ IMPACT = KY + "Particles/P_ky_impact3"
 # The speed barriers (AWasamiSpeedBarrier, after Blueprints/Main/Traps/BP_SpeedBarrier), which only the speed boost breaks:
 # their planes' red instances of MM_SpeedBarrier (MM_SpeedBarrier_Inst, the brighter, in front, and _Inst2), the burst
 # they shatter with (P_ky_impact2, of P_ky_impact3's two materials) and the camera shake then (BP_01_DoorExplode_CameraShake).
-# Their hum and shatter are the zone barrier's. The original bursts PPP_PortalAppear too, which is not made (as the
-# portal's: its materials' graphs were cooked away).
+# Their hum and shatter are the zone barrier's. The original bursts PPP_PortalAppear too, which comes with the portal's
+# assets (PORTAL_APPEAR_PARTICLES); AWasamiSpeedBarrier does not show it yet.
 SPEED_BARRIER_MATERIALS = ("Materials/Shared/MM_SpeedBarrier_Inst", "Materials/Shared/MM_SpeedBarrier_Inst2")
 SPEED_BARRIER_IMPACT = KY + "Particles/P_ky_impact2"
 SPEED_BARRIER_CAMERA_SHAKE = "Blueprints/Main/BP_01_DoorExplode_CameraShake"
@@ -204,6 +204,12 @@ PPP_DYNAMIC = ("alphaClipMultiplier", "GlowMultiplier", "DephFadeDistance", "Nea
 PPP_FOGGED_CAMERA_FADE = 50.0
 PPP_FOGGED_FADE_DISTANCE = 25.0
 PORTAL_APPEAR_GRADIENT = PPP_MATERIALS + "PPP_Radial_Gradient_Doffed"
+# The two bursts themselves. Of their six emitters the original's LOD 0 draws three in PPP_PortalAppear (Smoke, blast2
+# and the GPU emitter Sparks) and two in _Lock (the same but Sparks); the other LOD levels are off in neither, which is
+# the packs' own way of making a system stop drawing at a distance (the LOD levels are all there). _Lock is
+# PPP_PortalAppear without its light (ParticleModuleLight), which is why the two are built from the same materials.
+PPP_PARTICLES = "ThirdParty/PyroParticlePack/Particles/"
+PORTAL_APPEAR_PARTICLES = (PPP_PARTICLES + "PPP_PortalAppear", PPP_PARTICLES + "PPP_PortalAppear_Lock")
 # The defibrillators (AWasamiDefib, after Blueprints/06_Hospital/BP_06_Defib): the charge's hum (DD_TT_Defibrillator_Zap,
 # through MonkeyAttenuation, which the double doors bring), the crackle as the player is hit (Electric_Sparks_08) and the
 # discharge (P_06_Defib). Of the system's 18 emitters the original draws four: thander, the lightning (MI_ky_spark02_4x5,
@@ -1063,9 +1069,9 @@ def make_portal_appear_materials():
 
 
 def import_portal():
-    """The garage portal's collection, textures, mesh, materials, logo, sounds and camera shake, and the six materials
-    and six textures of the burst it appears with (PPP_PortalAppear), saved. The logo's image has to have been drawn
-    (python Tools/dd/prepare_portal_logo.py). Returns how many of each."""
+    """The garage portal's collection, textures, mesh, materials, logo, sounds and camera shake, and the two bursts it
+    appears with (PPP_PortalAppear, _Lock) with their six materials and six textures, saved. The logo's image has to
+    have been drawn (python Tools/dd/prepare_portal_logo.py). Returns how many of each."""
     if not os.path.exists(PORTAL_LOGO_FILE):
         raise FileNotFoundError("%s is missing: run python Tools/dd/prepare_portal_logo.py first." % PORTAL_LOGO_FILE)
     make_parameter_collection()
@@ -1080,6 +1086,7 @@ def import_portal():
     dd_assets.camera_shake(PORTAL_CAMERA_SHAKE, VERSION)
     result["camera_shakes"] = 1
     result["parameter_collections"] = 1
+    result["particle_systems"] = len([dd_particles.particle_system(rel, VERSION) for rel in PORTAL_APPEAR_PARTICLES])
     return result
 
 
