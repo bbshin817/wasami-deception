@@ -417,9 +417,9 @@
 
 - 症状: パッケージ版（`Development`）のコンソールや `-ExecCmds` で `Wasami.Settings [Name Value]` を打つと、設定を印字し切った直後に `LogWindows: Error: appError called: Assertion failed: IsInAudioThread() [File:…\AudioDevice.cpp] [Line: 7232]` で落ちる。エディタ・PIE では起きない。
 - 原因: このコマンドの終わりが `FAudioDevice::GetSoundClassCurrentProperties`（`check(IsInAudioThread())` を持つ）をゲームスレッドから呼んでいる。エディタは音声スレッドを別に立てないことが多く、そのとき `IsInAudioThread()` はゲームスレッドでも真になるので当たらない。パッケージ版は音声スレッドが本当に別なので当たる。
-- 対処: 読むところを `FAudioThread::RunCommandOnAudioThread`（音声スレッドが無ければその場で走る）に包む。**2026-09-21 時点では未修正**（作業一覧の項目 36 のステップ 5c で直す）。回避は、パッケージ版でこのコマンドを使わないこと。画質を変えるだけなら、レベルを読み終えた後にエンジンの `scalability N` と `sg.*` を直接打てば製品の SET SETTINGS と同じ値になる（`Tools/game_perf.py` の `quality_commands`）。
+- 対処: **2026-09-21 に直した**（項目 36 のステップ 5c）。読むところを `FAudioThread::RunCommandOnAudioThread` に包み、`FAudioCommandFence` の `BeginFence()` → `Wait()` で待ってからゲームスレッドで印字する（`WasamiGameInstance.cpp`。15 記録）。**音声スレッドが無いときは `IsInAudioThread()` が `IsInGameThread()` を返すので、`RunCommandOnAudioThread` はその場で走る**（エディタの道はこれまでと同じ）。音声スレッドがあるときは命令が溜められるので、**`RunCommandOnAudioThread` だけでは値が返る前に読んでしまう。柵で待つ**のが要る（`BeginFence()` は音声スレッドが無ければ何もしないが、そのときは命令が済んでいるので待たなくてよい）。`USoundClass` の読み込み（`LoadSynchronous`）はゲームスレッドに残す。画質を変えるだけなら、レベルを読み終えた後にエンジンの `scalability N` と `sg.*` を直接打てば製品の SET SETTINGS と同じ値になる（`Tools/game_perf.py` の `quality_commands`）。
 - 確かめ方: `<パッケージ>/wasami_deception/Saved/Logs/wasami_deception.log` に `IsInAudioThread` があるか。落ちると `Saved/Crashes/` も増える。
-- **同じ罠はほかの `Wasami.*` にもあり得る**: エディタでしか試していないコンソールコマンドは、パッケージ版で初めて音声スレッド・描画スレッドの `check` に当たる。
+- **同じ罠はほかの `Wasami.*` にもあり得る**: エディタでしか試していないコンソールコマンドは、パッケージ版で初めて音声スレッド・描画スレッドの `check` に当たる。2026-09-21 に `Source/` を `GetSoundClassCurrentProperties`・`IsInAudioThread`・`GetAudioDeviceRaw` で見たところ、音の装置を直に読むのはこの 1 か所だけだった。
 - 出典: 作業一覧の項目 36 のステップ 5（2026-09-21。本編の fps の計測で最初に踏んだ）。
 
 ## 取り込み・レベル・描画

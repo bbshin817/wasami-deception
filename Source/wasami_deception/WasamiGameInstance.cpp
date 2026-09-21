@@ -1,6 +1,7 @@
 #include "WasamiGameInstance.h"
 
 #include "AudioDevice.h"
+#include "AudioThread.h"
 #include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -44,11 +45,31 @@ namespace
 			// The volumes the audio device works out for the sliders' classes (they reach them over the overrides' 1 s).
 			if (FAudioDevice* Device = World->GetAudioDeviceRaw())
 			{
-				for (USoundClass* Class : {UWasamiSettingsSaveGame::LoadMusicClass(), UWasamiSettingsSaveGame::LoadSFXClass(), UWasamiSettingsSaveGame::LoadDialogueClass()})
+				// The classes load on the game thread, but GetSoundClassCurrentProperties has a check(IsInAudioThread()): the
+				// editor runs the audio on the game thread (so it passes), a packaged build does not, so the read goes over there.
+				TArray<USoundClass*> Classes({UWasamiSettingsSaveGame::LoadMusicClass(), UWasamiSettingsSaveGame::LoadSFXClass(), UWasamiSettingsSaveGame::LoadDialogueClass()});
+				Classes.RemoveAll([](const USoundClass* Class) { return Class == nullptr; });
+				TArray<float> Volumes;
+				Volumes.Init(TNumericLimits<float>::Lowest(), Classes.Num());
+				FAudioThread::RunCommandOnAudioThread([Device, &Classes, &Volumes]()
 				{
-					if (const FSoundClassProperties* Properties = Class ? Device->GetSoundClassCurrentProperties(Class) : nullptr)
+					for (int32 Index = 0; Index < Classes.Num(); ++Index)
 					{
-						UE_LOG(LogWasamiSettings, Display, TEXT("%s volume now %.3f"), *Class->GetName(), Properties->Volume);
+						if (const FSoundClassProperties* Properties = Device->GetSoundClassCurrentProperties(Classes[Index]))
+						{
+							Volumes[Index] = Properties->Volume;
+						}
+					}
+				});
+				// The command is batched when the audio thread runs; the fence retires it before the values are read back.
+				FAudioCommandFence Fence;
+				Fence.BeginFence();
+				Fence.Wait();
+				for (int32 Index = 0; Index < Classes.Num(); ++Index)
+				{
+					if (Volumes[Index] > TNumericLimits<float>::Lowest())
+					{
+						UE_LOG(LogWasamiSettings, Display, TEXT("%s volume now %.3f"), *Classes[Index]->GetName(), Volumes[Index]);
 					}
 				}
 			}

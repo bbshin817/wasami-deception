@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 14:05
+updated: 2026-09-21 14:00
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -30,19 +30,16 @@ updated: 2026-09-21 14:05
 - [x] 4. パッケージの作り直しと中身の確認 … 2026-09-21 完了。`bCookAll=True` で **1650 パッケージがクックされ、`/game/` は 1139 件**（`Content/` の全部）。原作のロゴのテクスチャもキャラクターのモデルも入っていない。exe が起動してタイトルが出た。**原作のナースの姿の絵 3 枚**が入っているのを見つけた（要確認）。
 - [x] 5. 2026-09-21 完了。**`Tools/game_perf.py`**（画面への入力を使わず、コマンドラインの `-ExecCmds` だけで測る）を作り、**VERY HIGH で 7 か所**を測った。`Wasami.Settings` がパッケージ版で落ちること・ファイアウォールの確認が前面を離さないことを症状索引に書いた。
 - [x] 5b. 2026-09-21 完了。**既定の HIGH で同じ 7 か所**を測り、実装記録 00 に「パッケージした本編の fps」の節（2 画質 × 7 か所）を足した。**HIGH は 56.4〜72.4 fps（平均 63.2）で目安に届き**、VERY HIGH は 43.2〜58.2（平均 50.9）。
-- [ ] 5c. `Wasami.Settings` がパッケージ版で落ちるのを直す（`FAudioThread::RunCommandOnAudioThread` で包む → ビルド → パッケージし直し）
+- [x] 5c. 2026-09-21 完了。音量の読みを `FAudioThread::RunCommandOnAudioThread` + `FAudioCommandFence` に移して**パッケージ版の `Wasami.Settings` が落ちなくなった**（`L_Title` と `L_Hospital_Zone1` の両方で 3 クラスの音量を印字して正常終了、`Saved/Crashes/` は 0 件）。症状索引と 15 記録を直し、パッケージを作り直した（1 分 52 秒、`/game/` 1139 件）。
 - [ ] 6. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）※**画面への入力が塞がれている間はできない**（下の「要確認」のファイアウォールの確認）
 - [ ] 7. 結果をまとめて項目 36 を閉じる（画質の選択肢の項目は立てない＝上の「決定事項」。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 5c: **`Wasami.Settings` がパッケージ版で落ちるのを直す**（症状索引「`Wasami.Settings` でパッケージした本編が落ちる」）。`Source/wasami_deception/Private/WasamiGameInstance.cpp` の `Wasami.Settings` の終わりで `FAudioDevice::GetSoundClassCurrentProperties`（`check(IsInAudioThread())` 持ち）をゲームスレッドから呼んでいるのが原因。読むところを `FAudioThread::RunCommandOnAudioThread`（音声スレッドが無ければその場で走る）に包み、`AudioThread.h` を include する。手順:
+ステップ 6: **パッケージ版で通しプレイ**（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）。**いまは出来ない**: Windows のセキュリティの確認（`PickerHost.exe` の窓「Windows セキュリティ」、2026-09-21 14:00 の時点でも前面のまま）が前面を離さず、`Tools/desktop.py` の入力がゲームに届かない（下の「要確認」）。前面かどうかは `python Tools/desktop.py start` → `ping` の `foreground.process` で分かる。
 
-1. `WasamiGameInstance.cpp` を直す（音量の読みを音声スレッドへ。印字は読み終えてから）。
-2. `python Tools/editor_cycle.py` でビルド（C++ を書き終えたら尋ねずに走らせる）。
-3. エディタを閉じてからパッケージし直す（`.claude/guides/distribution.md`「パッケージ」。5 分 22 秒。**VRAM 6 GB なのでエディタとは同時に動かさない**）。
-4. `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る。
-5. パッケージ版で `Wasami.Settings` を打って落ちないことを確かめる（`Tools/game_perf.py` が使う `-ExecCmds` で 1 回起動するのが早い）。落ちなければ症状索引の「2026-09-21 時点では未修正」を直す。
+- **`PickerHost.exe` が消えていたら** → `python Tools/desktop.py start` でゲーム（`wasami_deception.exe`）を `--allow` に入れて起動し、タイトル → NEW GAME → Zone 1 → Zone 2 → 脱出 → スコアまで遊ぶ。落ちないこと・シャードと敵とパワーが動くこと・スコア画面まで出ることを見る。
+- **まだ前面なら** → ステップ 6 を飛ばし、ステップ 7 で項目 36 を「通しプレイはユーザー待ち」として閉じるかを決める（大目標 3 の最後の項目なので、閉じると大目標 3 が達成になる。**通しプレイは完了の条件に入っている**ので、飛ばすなら記録に理由を残す）。
 
 ## 決定事項
 
@@ -59,7 +56,7 @@ updated: 2026-09-21 14:05
   - 替えるなら、WebGL 版で CC2 のポスターにしたのと同じやり方（前処理でワサミの絵を描いて `/Game/Wasami` に取り込み、材質のテクスチャを差し替える）。替えないなら「本家の絵のまま置く」と決めて `original-fidelity.md` の表に 1 行足す。
   - 原作のロゴとキャラクターの**モデル**は入っていない（ステップ 4 で確かめた）。
 
-- 2026-09-21（ステップ 5）: **Windows のファイアウォールの確認（UnrealEditor 宛て）が画面の前面を離さず、`Tools/desktop.py` の入力が届かない**。`SetForegroundWindow`・`AttachThreadInput`・`SwitchToThisWindow`・ゲームの窓のクリックのどれでも戻らなかった。OS 全体の入力は操作しない決まりなので Claude は押さない。**ユーザーに押してもらいたい**（「許可」でも「キャンセル」でもよい）。消えるまで**ステップ 6 の通しプレイと、画面の入力が要る観察はできない**（症状索引）。
+- 2026-09-21（ステップ 5）: **Windows のファイアウォールの確認（UnrealEditor 宛て）が画面の前面を離さず、`Tools/desktop.py` の入力が届かない**。窓は `PickerHost.exe` の「Windows セキュリティ」（2026-09-21 14 時の時点でも前面のまま。`python Tools/desktop.py start` → `ping` の `foreground` で見える）。`SetForegroundWindow`・`AttachThreadInput`・`SwitchToThisWindow`・ゲームの窓のクリックのどれでも戻らなかった。OS 全体の入力は操作しない決まりなので Claude は押さない。**ユーザーに押してもらいたい**（「許可」でも「キャンセル」でもよい）。消えるまで**ステップ 6 の通しプレイと、画面の入力が要る観察はできない**（症状索引）。
 
 ## 再開時の注意
 

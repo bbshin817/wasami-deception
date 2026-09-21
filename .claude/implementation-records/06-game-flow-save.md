@@ -11,7 +11,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiShardTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_shards.py
   - SourceArt/Wasami/wasami_mochi.glb
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # ゲームの流れ（シャード・ライフ・セーブ）
