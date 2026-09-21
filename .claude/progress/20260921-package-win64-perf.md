@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 13:15
+updated: 2026-09-21 13:50
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -28,25 +28,31 @@ updated: 2026-09-21 13:15
 - [x] 2. `BuildCookRun` を通した … 2026-09-21 完了。`GameFeatureData` の規則が無くてクックがエラー 2 件で落ちたので `Config/DefaultGame.ini` に足し、`BUILD SUCCESSFUL`。手順を `distribution.md` に、失敗を症状索引に書いた。
 - [x] 3. パッケージの中身の確認 … 2026-09-21 完了。**`/Game` のアセットが `L_Title` の 1 つしか入っていなかった**（全 501 パッケージ・494 クック。残りはエンジンとプラグインの既定）。`Config/DefaultGame.ini` に `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True` を足して直し、症状索引・`distribution.md`・実装記録 00 を直した。**作り直しはステップ 4。**
 - [x] 4. パッケージの作り直しと中身の確認 … 2026-09-21 完了。`bCookAll=True` で **1650 パッケージがクックされ、`/game/` は 1139 件**（`Content/` の全部）。原作のロゴのテクスチャもキャラクターのモデルも入っていない。exe が起動してタイトルが出た。**原作のナースの姿の絵 3 枚**が入っているのを見つけた（要確認）。
-- [ ] 5. 本編の fps を 7 か所で測る（実装記録 00 の表に本編の列を足す）
-- [ ] 6. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）
+- [x] 5. 2026-09-21 完了。**`Tools/game_perf.py`**（画面への入力を使わず、コマンドラインの `-ExecCmds` だけで測る）を作り、**VERY HIGH で 7 か所**を測った（下の「検証」）。`Wasami.Settings` がパッケージ版で落ちること・ファイアウォールの確認が前面を離さないことを症状索引に書いた。
+- [ ] 5b. **既定の HIGH で 7 か所**を測り、実装記録 00 の性能の表に本編の 2 列を足す
+- [ ] 5c. `Wasami.Settings` がパッケージ版で落ちるのを直す（`FAudioThread::RunCommandOnAudioThread` で包む → ビルド → パッケージし直し）
+- [ ] 6. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）※**画面への入力が塞がれている間はできない**（下の「要確認」のファイアウォールの確認）
 - [ ] 7. 結果をまとめて項目 36 を閉じる（60 前後に届かなければ画質の選択肢の項目を立てる。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 5: **本編の fps を 7 か所で測る**（実装記録 00 の性能の表に本編の列を足す）。測る前に下の 2 つを決める（ステップ 4 で分かった）:
-- **解像度**: 本編は `Saved/Archive/Windows/wasami_deception/Saved/Config/Windows/GameUserSettings.ini` の `FullscreenMode=1`（ボーダーレス）が効いて、`-windowed -ResX=1920 -ResY=1080` を付けても**デスクトップの 3440x1440（496 万画素 = 1080p の 2.4 倍）**で描いた。PIE の表と比べるには 1080p にそろえる必要がある。`FullscreenMode=2`（ウィンドウ）に書き換えて起動するか、コンソールで `r.setres 1920x1080w`。
-- **画質**: 本編の初回起動が自動判定して `GameUserSettings.ini` に書いた既定は **`sg.*=2`（High）**（`ViewDistanceQuality` だけ 3、`ResolutionQuality=100`）。PIE の表は 11 群すべて 3（Epic）で測ったので、**Epic にそろえた列**（PIE と比べる用）と、**既定の High のまま**（遊ぶ人が実際に得る絵）の 2 つを測るのがよい。
-- **測り方**: `Tools/perf_probe.py` は PIE 専用（`pie.remote()` を使う）ので本編には使えない。本編では `~` でコンソールを開いて `csvprofile start` / `stop` をキーで打ち、出来た `Saved/Archive/Windows/wasami_deception/Saved/Profiling/CSV/Profile(*).csv` を `perf_probe.py` と同じ列でまとめる（`stat unit` の画面を読むより正確）。**入力は `python Tools/desktop.py ... --allow wasami_deception.exe`**。
-- **7 か所への行き方**: 本編にはチェックポイントで開く手立てが無いので、コンソールの `open L_Hospital_Zone1` + セーブのチェックポイントか、通しで遊んで着いた所で測るかを決める（ステップ 6 の通しプレイと合わせると 1 度で済むかもしれない）。
+ステップ 5b: **既定の HIGH（製品の初期値 Quality 2）で同じ 7 か所を測り**、実装記録 00 の「性能」の表に**本編の 2 列**（VERY HIGH と HIGH）を足す。ステップ 5 と同じコマンドの `--game-quality 3` を `2` にするだけ（7 回で 6 分ほど）。VERY HIGH の値は下の「検証」に控えてある。
+
+```bash
+for spec in "pkgh_z1_cp4_arrive:L_Hospital_Zone1:4" "pkgh_z1_cp5_maze:L_Hospital_Zone1:5" "pkgh_z1_cp6_parking:L_Hospital_Zone1:6" "pkgh_z2_cp8_watch:L_Hospital_Zone2:8" "pkgh_z2_cp9_maze:L_Hospital_Zone2:9" "pkgh_z2_cp10_garage:L_Hospital_Zone2:10"; do
+  IFS=: read -r label level cp <<< "$spec"
+  python -u Tools/game_perf.py measure --label "$label" --level "$level" --checkpoint "$cp" --game-quality 2 --frames 1800 --seconds 10
+done
+python -u Tools/game_perf.py measure --label pkgh_z2_cp7_cell --level L_Hospital_Zone2 --checkpoint 7 --game-quality 2 --frames 1800 --seconds 10 --pre "Wasami.Flow OnCellCutsceneFinished" --pre "BugItGo -14573.65 1694.18 92 0 -67.86 0"
+python Tools/game_perf.py table --prefix pkgh_
+```
 
 ## 決定事項
 
-- 2026-09-21: 出力先は `Saved/Archive/Windows`（`Saved/` は git の対象外）。
-- 2026-09-21: **クックとパッケージ版の実行の間はエディタを閉じる**。この PC の VRAM は 6 GB で、エディタだけで 2.9〜4.1 GB の GPU メモリを使う（実装記録 00 の性能の表）。本家を同時に動かさないのと同じ理由（`.claude/guides/verification.md`）。
-- 2026-09-21: パッケージ版は**対話デスクトップで起動する**（`python Tools/console_session.py <exe>`）。Claude は Windows のセッション 0 にいるので直に起動すると DXGI で落ちる。操作と撮影は `python Tools/desktop.py`。
-- 2026-09-21: 本編の fps は、PIE と同じ測り方（エンジンの CSV プロファイラ）を使えるか試してから決める。`Development` のパッケージはコンソール（`~`）と `stat unit` / `csvprofile start|stop` が使える。CSV は `<パッケージ>/wasami_deception/Saved/Profiling/CSV` に出る。読めなければ `stat unit` の画面を撮って読む（項目 36 の完了の条件は `stat unit` / `stat fps`）。
-- 2026-09-21: **`BUILD SUCCESSFUL` は中身を保証しない**ので、パッケージのたびに `ReferencedSet.txt` の `/game/` の数を見る（症状索引・`distribution.md`）。`UnrealPak.exe <…>.utoc -List` は中身の確認に使えない（ファイル名を持つ入り口だけを出し、クックしたパッケージはパッケージ ID で引くので名前が出ない）。
+- 2026-09-21: 出力先は `Saved/Archive/Windows`（`Saved/` は git の対象外）。**クックとパッケージ版の実行の間はエディタを閉じる**（VRAM 6 GB。エディタだけで 2.9〜4.1 GB）。
+- 2026-09-21: **本編の画質は製品自身の OPTIONS の QUALITY で測る**（`UWasamiSettingsSaveGame::Quality`。0 LOW〜3 VERY HIGH、初期値 2 HIGH）。`GameUserSettings.ini` の `sg.*` は起動時に製品の設定で上書きされるので当てにしない。PIE の表（11 群すべて 3）と並べるのは **VERY HIGH** の列で、**HIGH** の列が遊ぶ人の実際の絵。
+- 2026-09-21: **解像度は `GameUserSettings.ini` の `FullscreenMode=2`（ウィンドウ）+ `ResolutionSizeX/Y=1920/1080`** で 1080p にそろえた（既定の `1`＝ボーダーレスだとデスクトップの 3440x1440 になる）。控えは同じ場所の `.bak`。
+- 2026-09-21: **測定はパッケージ版が前面でなくても成立する**（前面を握られていても窓は普通に描き続ける）。ただし通しプレイ（ステップ 6）は入力が要るのでできない。
 
 ## 要確認（ユーザー）
 
@@ -57,37 +63,30 @@ updated: 2026-09-21 13:15
   - 替えるなら、WebGL 版で CC2 のポスターにしたのと同じやり方（前処理でワサミの絵を描いて `/Game/Wasami` に取り込み、材質のテクスチャを差し替える）。替えないなら「本家の絵のまま置く」と決めて `original-fidelity.md` の表に 1 行足す。
   - 原作のロゴとキャラクターの**モデル**は入っていない（下の「検証」）。
 
+- 2026-09-21（ステップ 5）: **Windows のファイアウォールの確認（UnrealEditor 宛て）が画面の前面を離さず、`Tools/desktop.py` の入力が届かない**。`SetForegroundWindow`・`AttachThreadInput`・`SwitchToThisWindow`・ゲームの窓のクリックのどれでも戻らなかった。OS 全体の入力は操作しない決まりなので Claude は押さない。**ユーザーに押してもらいたい**（「許可」でも「キャンセル」でもよい）。消えるまで**ステップ 6 の通しプレイと、画面の入力が要る観察はできない**（症状索引）。
+
 ## 再開時の注意
 
-- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」に実際に通った形で書いた。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）。作り直しは 2026-09-21 13:01〜13:07 の **5 分 22 秒**（クック 1650 パッケージ、`BUILD SUCCESSFUL`・`ExitCode=0`）。
-- **パッケージ版の起動と入力**:
-  ```bash
-  python Tools/desktop.py start
-  python Tools/console_session.py "C:\Users\User\Desktop\wasami_deception\Saved\Archive\Windows\wasami_deception.exe" -windowed -ResX=1920 -ResY=1080
-  python Tools/desktop.py shot --scale 0.45                        # 撮る
-  python Tools/desktop.py click X Y --allow wasami_deception.exe   # 入力は --allow が要る
-  taskkill //F //IM wasami_deception.exe                           # 終わり（入力が通らないときも確実）
-  ```
-  本編のログは `Saved/Archive/Windows/wasami_deception/Saved/Logs/wasami_deception.log`。
-- **⚠ デスクトップへの入力が今は通らない**: Windows のファイアウォールの確認（「UnrealEditor にパブリック／プライベート ネットワークへのアクセスを許可しますか?」）が前面に出たままで、`desktop.py` が `PermissionError: the foreground window is PickerHost.exe` で断る。OS の設定なので触っていない（`.claude/guides/verification.md`「OS 全体の入力は操作しない」）。**ステップ 5・6 の前に消えているかを `python Tools/desktop.py ping` で見る**（要確認）。
-- **比べる相手**（実装記録 00 の「性能」の PIE の 7 か所。1080p 相当・Epic、fps avg / p95 / GPU ms）:
-  | 場所（チェックポイント） | PIE fps avg | p95 | GPU ms |
-  | --- | --- | --- | --- |
-  | Z1 リフトの到着（cp 4） | 46.0 | 33.9 | 21.10 |
-  | Z1 迷路の始まり（cp 5） | 57.7 | 54.8 | 16.64 |
-  | Z1 駐車場（cp 6） | 52.7 | 36.9 | 18.40 |
-  | Z2 独房（cp 7 + 場面の後） | 49.7 | 47.8 | 19.51 |
-  | Z2 見張りの廊下（cp 8） | 47.3 | 35.0 | 20.50 |
-  | Z2 迷路（cp 9） | 60.1 | 55.7 | 16.08 |
-  | Z2 祭壇の車庫（cp 10） | 56.0 | 37.9 | 17.20 |
-- **エディタ**: ステップ 4 の終わりに開き直した（ステップ 5・6 の前にまた閉じる）。C++ は変えないのでビルドは要らない。
+- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）、作り直しは 5 分 22 秒。**`BUILD SUCCESSFUL` は中身を保証しない**ので、作り直したら `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る（症状索引）。
+- **本編の fps の測り方**は `Tools/game_perf.py`（記録 01 の道具の表）。画面への入力は使わない。CSV は `Saved/Archive/Windows/wasami_deception/Saved/Profiling/CSV/`、ログは同じ `Saved/Logs/wasami_deception.log`。二重に走らせると互いの CSV を読んでしまうので錠（`Intermediate/Perf/.game_perf.lock`）を置いてある。
+- **エディタは閉じてある**（ステップ 4 の後に開き直したが、ステップ 5 の頭で閉じた）。ステップ 5c で C++ を直すときに `python Tools/editor_cycle.py` で開き直す。
 - 走らせたままのバックグラウンドの処理・未保存のアセットは無い。
 
 ## 検証
 
-- **ステップ 4（2026-09-21）**:
-  - (a) 本編が入った: `Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` は 1650 行で `^/game/` が **1139 件**（`Content/` の 1139 パッケージ全部）。ログは `Packages Cooked: 1650, Packages Incrementally Skipped: 0, Packages Skipped by Platform: 7, Total Packages: 1657`、`Success - 0 error(s), 1 warning(s)`、`BUILD SUCCESSFUL`・`ExitCode=0`。直す前は `/game/` が 1 件だったので、`bCookAll=True` が効いた。
-  - 出来上がりも増えた: `Saved/Archive/Windows` は **1.7 GB**（前は 1.0 GB）で、`wasami_deception-Windows.ucas` が **970 MB**（前は 198 MB）。
-  - (b) 原作の**ロゴ**は入っていない: `ReferencedSet.txt` の `logo` はエンジンの `zenlogo_64` と本作の `t_titlelogo`・`t_titlelogoglow`・`m_dd_portallogo` だけ（`darkdeception` は曲のファイル名 3 つ = 音なので使ってよい）。原作の**キャラクターのモデル**も入っていない: スケルタルメッシュは本作の `sk_wasamienemy`・`sk_wasamiboss` の 2 体だけで、`hospital_*_anim_skeleton` は小物（ガレージのリフト・のこぎり罠）の動き。`m_06_nurse_items` と `nurse-low5_items_*` はナースの持ち物のテクスチャだが、**絵は金属と針だけで人物の姿は無く**、本作ではレベルの小物「独房の天井の針」（`hospital_zone_02_holdingCell_01_needles_ceiling`）に使っている。`bp_dd_playercharacter_*shake` は揺れ、`m_06_nursesparks` は火花、`tablet_*` はプレイヤーの持つタブレット。
-  - **ただし原作のナースの姿を描いた絵が 3 枚入る**（上の「要確認」）。
-  - (c) 起動: `console_session.py` で exe を起動してタイトル画面が出た（`Intermediate/DesktopAgent/shots/shot-130826.png`。本作のロゴ・ワサミの顔・NEW GAME / EXTRAS / OPTIONS / QUIT・`UNOFFICIAL FAN GAME - NOT AFFILIATED WITH GLOWSTICK ENTERTAINMENT`・`v1.0.0`）。ログは `Game Engine Initialized.` → `LoadMap(/Game/Stage/Maps/L_Title)` 0.58 s。エラーは 1 件だけで軽いもの（`LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget SObjectWidget`。タイトル画面。遊ぶのに支障は無い）。
+- **ステップ 5（2026-09-21）— パッケージした本編の fps、1080p ウィンドウ・VERY HIGH（製品の最高画質）、各 10 s・`t.MaxFPS 500`**。PIE の列は実装記録 00 の表（1080p 相当・Epic）。
+
+| 場所（チェックポイント） | 本編 fps avg | p95 の fps | Frame ms | Game ms | GPU ms | Draws | Prims | GPU メモリ | （PIE fps） | （PIE GPU ms） |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Z1 リフトの到着（cp 4） | 43.2 | 32.9 | 23.15 | 2.51 | 22.54 | 901 | 331k | 2679 MB | 46.0 | 21.10 |
+| Z1 迷路の始まり（cp 5） | 54.9 | 37.5 | 18.22 | 3.40 | 17.43 | 1003 | 347k | 2708 MB | 57.7 | 16.64 |
+| Z1 駐車場（cp 6） | 51.7 | 40.0 | 19.35 | 3.01 | 18.84 | 402 | 811k | 2769 MB | 52.7 | 18.40 |
+| Z2 独房（cp 7 + 場面の後） | 49.1 | 33.4 | 20.37 | 5.03 | 19.76 | 340 | 34k | 2920 MB | 49.7 | 19.51 |
+| Z2 見張りの廊下（cp 8） | 46.7 | 31.9 | 21.41 | 5.35 | 20.65 | 463 | 878k | 2950 MB | 47.3 | 20.50 |
+| Z2 迷路（cp 9） | 58.2 | 46.0 | 17.17 | 5.35 | 16.67 | 330 | 17k | 2087 MB | 60.1 | 16.08 |
+| Z2 祭壇の車庫（cp 10） | 52.6 | 30.4 | 19.02 | 4.85 | 17.79 | 358 | 37k | 2887 MB | 56.0 | 17.20 |
+
+- **同じ場所を見ている**ことの確かめ: プリミティブ数が PIE とほぼ同じ（331k 対 336k、347k 対 350k、811k 対 816k、34k 対 36k、878k 対 884k、17k 対 20k、37k 対 40k）。ドローコールは本編のほうが毎回 100〜150 少ない（エディタだけの描画のぶん）。
+- **本編は PIE より 1〜6 % 遅い**（43.2〜58.2 fps 対 46.0〜60.1）。**GameThread は 9.5〜11.3 ms → 2.5〜5.4 ms に減った**（エディタのぶんが消えた）が、**GPU が 0.15〜1.44 ms 増えた**ので差し引きで遅い。どこも GPU 律速のまま（GPU ms ≒ Frame ms）。**1080p・最高画質で 60 fps には届かない**（目安に 3〜28 % 足りない）。
+- GPU メモリは 2087〜2950 MB（予算 5198 MB）で PIE より 0.7〜1.4 GB 少なく、`nvidia-smi` のカード全体の山も 2850〜3712 MB / 6144 MB。**メモリは余裕がある。**
+- 測定中のパッケージ版は前面ではない（ファイアウォールの確認が前面）が、窓は普通に描き続けており、絵も正しい（`Intermediate/DesktopAgent/shots/shot-133110.png` は Zone 1 の廊下）。

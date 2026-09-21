@@ -413,6 +413,15 @@
 - 出典: 作業一覧の項目 36 のステップ 3（2026-09-21）。
 
 
+### `Wasami.Settings` でパッケージした本編が落ちる（`Assertion failed: IsInAudioThread()`）
+
+- 症状: パッケージ版（`Development`）のコンソールや `-ExecCmds` で `Wasami.Settings [Name Value]` を打つと、設定を印字し切った直後に `LogWindows: Error: appError called: Assertion failed: IsInAudioThread() [File:…\AudioDevice.cpp] [Line: 7232]` で落ちる。エディタ・PIE では起きない。
+- 原因: このコマンドの終わりが `FAudioDevice::GetSoundClassCurrentProperties`（`check(IsInAudioThread())` を持つ）をゲームスレッドから呼んでいる。エディタは音声スレッドを別に立てないことが多く、そのとき `IsInAudioThread()` はゲームスレッドでも真になるので当たらない。パッケージ版は音声スレッドが本当に別なので当たる。
+- 対処: 読むところを `FAudioThread::RunCommandOnAudioThread`（音声スレッドが無ければその場で走る）に包む。**2026-09-21 時点では未修正**（作業一覧の項目 36 のステップ 5d で直す）。回避は、パッケージ版でこのコマンドを使わないこと。画質を変えるだけなら、レベルを読み終えた後にエンジンの `scalability N` と `sg.*` を直接打てば製品の SET SETTINGS と同じ値になる（`Tools/game_perf.py` の `quality_commands`）。
+- 確かめ方: `<パッケージ>/wasami_deception/Saved/Logs/wasami_deception.log` に `IsInAudioThread` があるか。落ちると `Saved/Crashes/` も増える。
+- **同じ罠はほかの `Wasami.*` にもあり得る**: エディタでしか試していないコンソールコマンドは、パッケージ版で初めて音声スレッド・描画スレッドの `check` に当たる。
+- 出典: 作業一覧の項目 36 のステップ 5（2026-09-21。本編の fps の計測で最初に踏んだ）。
+
 ## 取り込み・レベル・描画
 
 ### 組み立てが置いた BP のアクタが本家と違う向き・位置になる（のこぎりの罠の刃が床に寝た円盤に見える）
@@ -637,6 +646,15 @@
 - 出典: 2026-09-20 の有人セッションのユーザーの指摘（進捗記録 `20260920-teleport-gates`）。
 
 ## 画面の操作・本家の実機
+
+### `desktop.py` が `PermissionError: the foreground window is PickerHost.exe` で入力を断る（Windows のファイアウォールの確認が出たまま）
+
+- 症状: `python Tools/desktop.py ping` の `foreground` が `{"title": "Windows セキュリティ", "process": "PickerHost.exe"}` のままで、`click` / `key` が届かない。画面の真ん中に「パブリック ネットワークとプライベート ネットワークのアプリへのアクセスを許可しますか?」（発行元 Epic Games, Inc. / UnrealEditor）が出ている。
+- 原因: Windows のファイアウォールの確認は前面を握り続ける。`SetForegroundWindow`・`AttachThreadInput` + `SetForegroundWindow`・`SwitchToThisWindow`・ゲームの窓のクリックのどれでも前面が戻らない（2026-09-21 に 4 つとも試した）。
+- 対処: **この確認はユーザーが答える**（許可でも取り消しでも、消えれば入力は通る）。OS 全体の入力は操作しない決まり（`.claude/guides/verification.md`）なので、Claude は押さない。消えるまでは、画面へのキー・クリックが要る作業（パッケージ版の通しプレイ、本家の観察）はできない。
+- 回避: ゲームの中の操作だけなら、コマンドラインの `-ExecCmds="…"` で足りることがある（`UEngine::Init` が遅延コマンドに積み、`UGameEngine::Init` の起動マップの読み込みの後、最初のティックで走る。`Tools/game_perf.py` はこれで 7 か所の fps を測った）。前面でなくてもゲームは普通に描き続けるので、fps の計測には影響しない。
+- 確かめ方: `python Tools/desktop.py ping` の `foreground.process`。
+- 出典: 作業一覧の項目 36 のステップ 4・5（2026-09-21）。
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている
 
