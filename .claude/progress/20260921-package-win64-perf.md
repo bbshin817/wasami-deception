@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 13:50
+updated: 2026-09-21 14:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -28,31 +28,27 @@ updated: 2026-09-21 13:50
 - [x] 2. `BuildCookRun` を通した … 2026-09-21 完了。`GameFeatureData` の規則が無くてクックがエラー 2 件で落ちたので `Config/DefaultGame.ini` に足し、`BUILD SUCCESSFUL`。手順を `distribution.md` に、失敗を症状索引に書いた。
 - [x] 3. パッケージの中身の確認 … 2026-09-21 完了。**`/Game` のアセットが `L_Title` の 1 つしか入っていなかった**（全 501 パッケージ・494 クック。残りはエンジンとプラグインの既定）。`Config/DefaultGame.ini` に `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True` を足して直し、症状索引・`distribution.md`・実装記録 00 を直した。**作り直しはステップ 4。**
 - [x] 4. パッケージの作り直しと中身の確認 … 2026-09-21 完了。`bCookAll=True` で **1650 パッケージがクックされ、`/game/` は 1139 件**（`Content/` の全部）。原作のロゴのテクスチャもキャラクターのモデルも入っていない。exe が起動してタイトルが出た。**原作のナースの姿の絵 3 枚**が入っているのを見つけた（要確認）。
-- [x] 5. 2026-09-21 完了。**`Tools/game_perf.py`**（画面への入力を使わず、コマンドラインの `-ExecCmds` だけで測る）を作り、**VERY HIGH で 7 か所**を測った（下の「検証」）。`Wasami.Settings` がパッケージ版で落ちること・ファイアウォールの確認が前面を離さないことを症状索引に書いた。
-- [ ] 5b. **既定の HIGH で 7 か所**を測り、実装記録 00 の性能の表に本編の 2 列を足す
+- [x] 5. 2026-09-21 完了。**`Tools/game_perf.py`**（画面への入力を使わず、コマンドラインの `-ExecCmds` だけで測る）を作り、**VERY HIGH で 7 か所**を測った。`Wasami.Settings` がパッケージ版で落ちること・ファイアウォールの確認が前面を離さないことを症状索引に書いた。
+- [x] 5b. 2026-09-21 完了。**既定の HIGH で同じ 7 か所**を測り、実装記録 00 に「パッケージした本編の fps」の節（2 画質 × 7 か所）を足した。**HIGH は 56.4〜72.4 fps（平均 63.2）で目安に届き**、VERY HIGH は 43.2〜58.2（平均 50.9）。
 - [ ] 5c. `Wasami.Settings` がパッケージ版で落ちるのを直す（`FAudioThread::RunCommandOnAudioThread` で包む → ビルド → パッケージし直し）
 - [ ] 6. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）※**画面への入力が塞がれている間はできない**（下の「要確認」のファイアウォールの確認）
-- [ ] 7. 結果をまとめて項目 36 を閉じる（60 前後に届かなければ画質の選択肢の項目を立てる。大目標 3 の達成）
+- [ ] 7. 結果をまとめて項目 36 を閉じる（画質の選択肢の項目は立てない＝上の「決定事項」。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 5b: **既定の HIGH（製品の初期値 Quality 2）で同じ 7 か所を測り**、実装記録 00 の「性能」の表に**本編の 2 列**（VERY HIGH と HIGH）を足す。ステップ 5 と同じコマンドの `--game-quality 3` を `2` にするだけ（7 回で 6 分ほど）。VERY HIGH の値は下の「検証」に控えてある。
+ステップ 5c: **`Wasami.Settings` がパッケージ版で落ちるのを直す**（症状索引「`Wasami.Settings` でパッケージした本編が落ちる」）。`Source/wasami_deception/Private/WasamiGameInstance.cpp` の `Wasami.Settings` の終わりで `FAudioDevice::GetSoundClassCurrentProperties`（`check(IsInAudioThread())` 持ち）をゲームスレッドから呼んでいるのが原因。読むところを `FAudioThread::RunCommandOnAudioThread`（音声スレッドが無ければその場で走る）に包み、`AudioThread.h` を include する。手順:
 
-```bash
-for spec in "pkgh_z1_cp4_arrive:L_Hospital_Zone1:4" "pkgh_z1_cp5_maze:L_Hospital_Zone1:5" "pkgh_z1_cp6_parking:L_Hospital_Zone1:6" "pkgh_z2_cp8_watch:L_Hospital_Zone2:8" "pkgh_z2_cp9_maze:L_Hospital_Zone2:9" "pkgh_z2_cp10_garage:L_Hospital_Zone2:10"; do
-  IFS=: read -r label level cp <<< "$spec"
-  python -u Tools/game_perf.py measure --label "$label" --level "$level" --checkpoint "$cp" --game-quality 2 --frames 1800 --seconds 10
-done
-python -u Tools/game_perf.py measure --label pkgh_z2_cp7_cell --level L_Hospital_Zone2 --checkpoint 7 --game-quality 2 --frames 1800 --seconds 10 --pre "Wasami.Flow OnCellCutsceneFinished" --pre "BugItGo -14573.65 1694.18 92 0 -67.86 0"
-python Tools/game_perf.py table --prefix pkgh_
-```
+1. `WasamiGameInstance.cpp` を直す（音量の読みを音声スレッドへ。印字は読み終えてから）。
+2. `python Tools/editor_cycle.py` でビルド（C++ を書き終えたら尋ねずに走らせる）。
+3. エディタを閉じてからパッケージし直す（`.claude/guides/distribution.md`「パッケージ」。5 分 22 秒。**VRAM 6 GB なのでエディタとは同時に動かさない**）。
+4. `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る。
+5. パッケージ版で `Wasami.Settings` を打って落ちないことを確かめる（`Tools/game_perf.py` が使う `-ExecCmds` で 1 回起動するのが早い）。落ちなければ症状索引の「2026-09-21 時点では未修正」を直す。
 
 ## 決定事項
 
 - 2026-09-21: 出力先は `Saved/Archive/Windows`（`Saved/` は git の対象外）。**クックとパッケージ版の実行の間はエディタを閉じる**（VRAM 6 GB。エディタだけで 2.9〜4.1 GB）。
-- 2026-09-21: **本編の画質は製品自身の OPTIONS の QUALITY で測る**（`UWasamiSettingsSaveGame::Quality`。0 LOW〜3 VERY HIGH、初期値 2 HIGH）。`GameUserSettings.ini` の `sg.*` は起動時に製品の設定で上書きされるので当てにしない。PIE の表（11 群すべて 3）と並べるのは **VERY HIGH** の列で、**HIGH** の列が遊ぶ人の実際の絵。
-- 2026-09-21: **解像度は `GameUserSettings.ini` の `FullscreenMode=2`（ウィンドウ）+ `ResolutionSizeX/Y=1920/1080`** で 1080p にそろえた（既定の `1`＝ボーダーレスだとデスクトップの 3440x1440 になる）。控えは同じ場所の `.bak`。
 - 2026-09-21: **測定はパッケージ版が前面でなくても成立する**（前面を握られていても窓は普通に描き続ける）。ただし通しプレイ（ステップ 6）は入力が要るのでできない。
+- 2026-09-21（ステップ 5b）: **画質の選択肢を足す項目は立てない**。項目 36 の依頼は「1080p で 60 前後に届かなければ画質の選択肢を用意する項目を立てる」だったが、**製品の初期値の HIGH で平均 63.2 fps**（7 か所中 5 か所が 60 以上）で届いており、OPTIONS には既に QUALITY 4 段と RESOLUTION SCALE がある（15 記録）。60 を割るのは最高画質の VERY HIGH だけ。
 
 ## 要確認（ユーザー）
 
@@ -61,7 +57,7 @@ python Tools/game_perf.py table --prefix pkgh_
   - `hospital_decal_nurseambulance`（`M_06_Hospital_Decal_NurseAmbulance`。救急車の上で注射器を構えるナースの絵）… **Zone 1・Zone 2 の両方で使っている**。
   - `hospital_poster_nurse_02`（`M_06_Hospital_Poster_14`。注射器を持つナースの黒い影絵と「GET VACCINATED!」）… **どのレベルからも使っていない**が、`bCookAll=True` でパッケージには入る。
   - 替えるなら、WebGL 版で CC2 のポスターにしたのと同じやり方（前処理でワサミの絵を描いて `/Game/Wasami` に取り込み、材質のテクスチャを差し替える）。替えないなら「本家の絵のまま置く」と決めて `original-fidelity.md` の表に 1 行足す。
-  - 原作のロゴとキャラクターの**モデル**は入っていない（下の「検証」）。
+  - 原作のロゴとキャラクターの**モデル**は入っていない（ステップ 4 で確かめた）。
 
 - 2026-09-21（ステップ 5）: **Windows のファイアウォールの確認（UnrealEditor 宛て）が画面の前面を離さず、`Tools/desktop.py` の入力が届かない**。`SetForegroundWindow`・`AttachThreadInput`・`SwitchToThisWindow`・ゲームの窓のクリックのどれでも戻らなかった。OS 全体の入力は操作しない決まりなので Claude は押さない。**ユーザーに押してもらいたい**（「許可」でも「キャンセル」でもよい）。消えるまで**ステップ 6 の通しプレイと、画面の入力が要る観察はできない**（症状索引）。
 
@@ -74,19 +70,9 @@ python Tools/game_perf.py table --prefix pkgh_
 
 ## 検証
 
-- **ステップ 5（2026-09-21）— パッケージした本編の fps、1080p ウィンドウ・VERY HIGH（製品の最高画質）、各 10 s・`t.MaxFPS 500`**。PIE の列は実装記録 00 の表（1080p 相当・Epic）。
-
-| 場所（チェックポイント） | 本編 fps avg | p95 の fps | Frame ms | Game ms | GPU ms | Draws | Prims | GPU メモリ | （PIE fps） | （PIE GPU ms） |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Z1 リフトの到着（cp 4） | 43.2 | 32.9 | 23.15 | 2.51 | 22.54 | 901 | 331k | 2679 MB | 46.0 | 21.10 |
-| Z1 迷路の始まり（cp 5） | 54.9 | 37.5 | 18.22 | 3.40 | 17.43 | 1003 | 347k | 2708 MB | 57.7 | 16.64 |
-| Z1 駐車場（cp 6） | 51.7 | 40.0 | 19.35 | 3.01 | 18.84 | 402 | 811k | 2769 MB | 52.7 | 18.40 |
-| Z2 独房（cp 7 + 場面の後） | 49.1 | 33.4 | 20.37 | 5.03 | 19.76 | 340 | 34k | 2920 MB | 49.7 | 19.51 |
-| Z2 見張りの廊下（cp 8） | 46.7 | 31.9 | 21.41 | 5.35 | 20.65 | 463 | 878k | 2950 MB | 47.3 | 20.50 |
-| Z2 迷路（cp 9） | 58.2 | 46.0 | 17.17 | 5.35 | 16.67 | 330 | 17k | 2087 MB | 60.1 | 16.08 |
-| Z2 祭壇の車庫（cp 10） | 52.6 | 30.4 | 19.02 | 4.85 | 17.79 | 358 | 37k | 2887 MB | 56.0 | 17.20 |
-
-- **同じ場所を見ている**ことの確かめ: プリミティブ数が PIE とほぼ同じ（331k 対 336k、347k 対 350k、811k 対 816k、34k 対 36k、878k 対 884k、17k 対 20k、37k 対 40k）。ドローコールは本編のほうが毎回 100〜150 少ない（エディタだけの描画のぶん）。
-- **本編は PIE より 1〜6 % 遅い**（43.2〜58.2 fps 対 46.0〜60.1）。**GameThread は 9.5〜11.3 ms → 2.5〜5.4 ms に減った**（エディタのぶんが消えた）が、**GPU が 0.15〜1.44 ms 増えた**ので差し引きで遅い。どこも GPU 律速のまま（GPU ms ≒ Frame ms）。**1080p・最高画質で 60 fps には届かない**（目安に 3〜28 % 足りない）。
-- GPU メモリは 2087〜2950 MB（予算 5198 MB）で PIE より 0.7〜1.4 GB 少なく、`nvidia-smi` のカード全体の山も 2850〜3712 MB / 6144 MB。**メモリは余裕がある。**
-- 測定中のパッケージ版は前面ではない（ファイアウォールの確認が前面）が、窓は普通に描き続けており、絵も正しい（`Intermediate/DesktopAgent/shots/shot-133110.png` は Zone 1 の廊下）。
+- **ステップ 5・5b（2026-09-21）— パッケージした本編の fps**（1080p ウィンドウ、VERY HIGH と既定の HIGH の 2 画質 × 7 か所、各 10 s・`t.MaxFPS 500`）。**表と考察は実装記録 00 の「パッケージした本編の fps」へ移した**。要点だけ:
+  - **HIGH（遊ぶ人が見る絵）は 56.4〜72.4 fps（平均 63.2）で「1080p で 60 前後」に届く**。VERY HIGH は 43.2〜58.2（平均 50.9）で届かない。
+  - VERY HIGH（PIE と同じ品質）の本編は PIE より 1〜6 % 遅いだけなので、**PIE の数字は本編の目安に使える**。
+  - どの品質も GPU 律速、GPU メモリは 2087〜2950 MB（予算 5198 MB）で余裕がある。
+  - 同じ場所を見ていることはプリミティブ数が PIE と一致することで確かめた。
+  - 測定中のパッケージ版は前面ではない（ファイアウォールの確認が前面）が、窓は普通に描き続けており絵も正しい。
