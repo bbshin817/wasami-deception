@@ -408,7 +408,7 @@
 
 - 症状: Mac で `RunUAT.sh BuildCookRun -platform=Mac` が `Cook failed.` → `AutomationTool exiting with ExitCode=25`。ログの `Warning/Error Summary` は `Failure - 1 error(s), 10 warning(s)` で、**エラーは `LogHttpListener: Error: HttpListener unable to bind to 127.0.0.1:8000` の 1 件だけ**。クック自体は `Execution of commandlet took: 3m 42s` で完走している。警告 10 件はどれも無害（96 kHz の波に Bink は無駄という助言 9 件と、MCP の EULA の注意 1 件）。
 - 原因: クックはエディタのコマンドレットで走るので**エディタ専用のプラグインも読み込まれる**。`ModelContextProtocol`（MCP サーバー）が `Config/DefaultEditorPerProjectUserSettings.ini` の `bAutoStartServer=True` に従って `127.0.0.1:8000` を掴みにいき、その Mac では 8000 が塞がっていて失敗し、エラーを 1 件出す。コマンドレットは**エラーが 1 件でもログに出ると失敗を返す**ので UAT が落ちる（上の `GameFeatureData` の件とまったく同じ型）。
-- 対処: `Tools/mac_build.sh` が**エディタ専用のプラグイン 3 つ（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）をビルドの間だけ `.uproject` から外す**（終わったら `trap` で必ず戻す）。3 つとも `TargetAllowList` が Editor なのでパッケージの中身は変わらず、Mac では開発しないので外して困るものが無い。
+- 対処: `Tools/mac_build.sh` が **`ModelContextProtocol` をビルドの間だけ `.uproject` から外す**（終わったら `trap` で必ず戻す）。`TargetAllowList` が Editor なのでパッケージの中身は変わらず、Mac では MCP を使わないので外して困るものが無い。**`AllToolsets` と `LiveCodingToolset` まで外さないこと**: `AllToolsets` が連れてくる `GameFeatures` を `Config/DefaultGame.ini` の `GameFeatureData` の規則が前提にしているので、Windows と同じ顔ぶれでクックする（2026-09-22、3 つとも外したらクックが 29 秒で別のエラーになった）。
 - やらない案: Mac の 8000 を空ける（その機械の事情に依存し、また塞がれば再発する）。`Config/` の `bAutoStartServer` を False にする（Windows の開発で MCP が自動起動しなくなる。`Config/` は両方で共有している）。UAT の `-IgnoreCookErrors`（本物のクックのエラーまで黙って通す）。
 - 確かめ方: 直した後のログが `Success - 0 error(s)` で終わり、`Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` が `Content/` の `.uasset`＋`.umap` と同じ数（`mac_build.sh` が自動で突き合わせる）。
 - 出典: 2026-09-22、Mac で初めてパッケージしたとき。

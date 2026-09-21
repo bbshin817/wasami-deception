@@ -32,15 +32,17 @@ LOG_DIR="$ROOT/Intermediate/MacBuild"
 WIN_HOST="desktop"
 WIN_REPO="Desktop/wasami_deception"
 
-# Windows が開発に使うエディタ専用のプラグイン。**Mac のビルドでは必ず外す**（2026-09-22）。
-# - Mac では開発しない（MCP もツールセットも Live Coding も使わない）。
+# Mac のビルドの間だけ .uproject から外すプラグイン（2026-09-22）。
 # - `ModelContextProtocol` は起動のたびに 127.0.0.1:8000 へ HTTP サーバーを立てようとし、塞がっていると
 #   `LogHttpListener: Error: HttpListener unable to bind to 127.0.0.1:8000` を 1 件出す。クックのコマンドレットは
 #   **エラーが 1 件でもログに出ると失敗を返す**ので、クックの中身が正しくても UAT が ExitCode=25 で落ちる
-#   （2026-09-22 に Mac で実際に起きた。`Failure - 1 error(s)` でクックは 3m 42s で完走していた）。
-# - 3 つとも `TargetAllowList` が Editor なので、外してもパッケージの中身は変わらない。
-# - エンジンにそのプラグインが無いとき（NoRedist なので配り方によっては入っていない）の対処も、これで兼ねる。
-EDITOR_ONLY_PLUGINS="ModelContextProtocol AllToolsets LiveCodingToolset"
+#   （2026-09-22 に Mac で実際に起きた。`Failure - 1 error(s)` でクックは 3m 42s で完走していた）。Mac では
+#   MCP を使わないので外して困らない。`TargetAllowList` が Editor なのでパッケージの中身も変わらない。
+# - **`AllToolsets` と `LiveCodingToolset` は外さない**。`AllToolsets` は `GameFeatures` を連れてきており、
+#   `Config/DefaultGame.ini` の `GameFeatureData` の規則はそれが読み込まれている前提で書いてある（外すと今度は
+#   クラスを解決できずにエラーが出る）。Windows と同じ顔ぶれのままクックするのがいちばん安全。
+# - エンジンにそのプラグインが無いとき（`NoRedist` なので配り方によっては入っていない）の対処も、これで兼ねる。
+EDITOR_ONLY_PLUGINS="ModelContextProtocol"
 
 # --sync-rsync を使うとき（Windows に rsync を入れた場合）の除外。Intermediate/（9.3 GB）と Binaries/ は Mac で
 # 作り直す物、Saved/ は Mac 側の成果物、参照データ（29 GB）はパッケージに要らない。
@@ -284,11 +286,21 @@ fi
 # 初回は Metal のシェーダーを全部コンパイルするので数時間かかることがある。2 回目からは変わった分だけ。
 say "パッケージ（BuildCookRun -platform=Mac -clientconfig=$CONFIG）"
 START=$(date +%s)
-"$ENGINE/Build/BatchFiles/RunUAT.sh" BuildCookRun \
+# 落ちたときは、ログのどこを見ればよいかをその場で出す。クックのコマンドレットは**エラーが 1 件でもログに
+# 出ると失敗を返す**ので、クックの中身が正しくても UAT は ExitCode=25 で落ちる（症状索引）。
+if ! "$ENGINE/Build/BatchFiles/RunUAT.sh" BuildCookRun \
 	-project="$UPROJECT" \
 	-noP4 -platform=Mac -clientconfig="$CONFIG" \
 	-cook -build -stage -pak -archive \
 	-archivedirectory="$ARCHIVE" 2>&1 | tee "$LOG_DIR/uat_package.log"
+then
+	say "パッケージに失敗した（$(secs_since "$START") 秒）。エラーの要約:"
+	sed -n '/Warning\/Error Summary/,/Failure - /p' "$LOG_DIR/uat_package.log" | head -30
+	echo
+	note "Error の行:"
+	grep -nE ": (Error|Fatal)" "$LOG_DIR/uat_package.log" | grep -v "0 error" | head -20 || true
+	die "ログ全体: $LOG_DIR/uat_package.log"
+fi
 note "$(secs_since "$START") 秒（ログ: $LOG_DIR/uat_package.log）"
 
 # ---- 中身の検査 --------------------------------------------------------------------------------------------------
