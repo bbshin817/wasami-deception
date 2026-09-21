@@ -159,9 +159,19 @@ public:
 	// MoveVolumeSpeed onto 0 to 1 and follows at MoveVolumeInterp, the pitch maps MoveVolumeSpeed to MovePitchSpeed onto
 	// MoveMinPitch to MoveMaxPitch and follows at MovePitchInterp.
 	static constexpr float MoveVolume = 0.f;
-	static constexpr float MoveVolumeSpeed = 400.f;
+	/**
+	 * The original wrote those two speeds against its nurse: 400 for the volume, a little over its Walk Speed 350, and
+	 * 800 for the pitch, its Run Speed exactly. So a patrol holds the pitch down at MoveMinPitch with the volume nearly
+	 * full, and only a chase lifts the pitch, which reaches MoveMaxPitch at the top speed. This game's enemy skates at
+	 * MaxSpeed instead (the Murder Monkey's 430, NormalSpeed and SkateSpeed), so both speeds shrink by the same
+	 * MaxSpeed / NurseSkateSpeed and that relationship holds: 215 is still over the patrol's 200, and the pitch is full
+	 * at the chase's 430 (the user's answer of 2026-09-21; the nurse's own 800 only ever reached 1.2225 here). The wave
+	 * stays the nurse's DD_Rollerskating_Fast_V1_LOOP, and MoveMinPitch and MoveMaxPitch stay the nurse's too.
+	 */
+	static constexpr float NurseSkateSpeed = 800.f;
+	static constexpr float MoveVolumeSpeed = 400.f * MaxSpeed / NurseSkateSpeed;
 	static constexpr float MoveVolumeInterp = 5.f;
-	static constexpr float MovePitchSpeed = 800.f;
+	static constexpr float MovePitchSpeed = MaxSpeed;
 	static constexpr float MoveMinPitch = 1.2f;
 	static constexpr float MoveMaxPitch = 1.5f;
 	static constexpr float MovePitchInterp = 2.f;

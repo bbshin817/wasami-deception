@@ -174,6 +174,14 @@
 - 確かめ方: `stat fps`、またはリモート実行で `unreal.GameplayStatics.get_time_seconds` の進み。
 - 出典: `.claude/guides/verification.md` の「動きの確認」（2026-09-16）、03 記録。「試して駄目だった案」も参照。
 
+### `-NullRHI` の `UnrealEditor-Cmd.exe` で回すと、パーティクルを見るテストだけが落ちる
+
+- 症状: `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests <filter>;quit" -Unattended -NullRHI` で回すと、`Expected 'the dust' to be not null.`（`Wasami.Enemy.Actor.Chase06`）・`Expected 'both sparks going' to be true.`（`Wasami.Defib.Charge`）・`Expected 'P_ky_impact3 at the back plane, twice its size' to be true.`（`Wasami.ZoneBarrier.Actor`）が出る。同じテストはエディタの中では成功する。
+- 原因: `-NullRHI` のワールドには FX システムが無いので、`SpawnEmitterAtLocation` などが `UParticleSystemComponent` を作らず null を返す。テストのほかの主張はすべて通る。
+- 対処: パーティクルを見るテストはエディタの中で回す。エディタを前面に出せないとき（`PickerHost.exe` の「Windows セキュリティ」のような別プロセスの窓が前面を握っているとき）は、上の「エディタが背面にあると PIE のティックが 3 fps ほどに落ちる」の対処で `bThrottleCPUWhenNotForeground` を偽にしてから `unreal.SystemLibrary.execute_console_command(None, 'Automation RunTests <filter>')` を送り、`Saved/Logs/wasami_deception.log` の `Test Completed` を読む（終わったら真に戻す）。パーティクルを見ないテストは `-NullRHI` のままで速い。
+- 確かめ方: 同じ `-NullRHI` の実行で、パーティクルを見ない `Wasami.Enemy.Actor.Sound`・`Defaults`・`Wasami.Defib.Actor`・`Hit` などは成功する。
+- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 1。
+
 ### Automation テストを始めると PIE が止まる
 
 - 症状: PIE の確認中にテストを走らせると PIE が終わる。

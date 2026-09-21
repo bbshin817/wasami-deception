@@ -883,15 +883,19 @@ bool FWasamiEnemySoundTest::RunTest(const FString& Parameters)
 		Speech->Stop();
 	}
 
-	// Update Skate Sound: a whole second of interpolation lands on the mapped value (InterpSpeed * DeltaTime >= 1).
+	// Update Skate Sound: a whole second of interpolation lands on the mapped value (InterpSpeed * DeltaTime >= 1). The
+	// two speeds are this game's, not the nurse's: the volume fills at 215, just over the patrol's 200, and the pitch
+	// rises from there to the chase's 430.
 	UCharacterMovementComponent* Movement = Spawned->GetCharacterMovement();
 	struct FSpeedCase { float Speed; float Volume; float Pitch; };
 	const FSpeedCase Cases[] = {
-		{0.f, 0.f, 1.2f},        // standing: silent, the low pitch
-		{200.f, 0.5f, 1.2f},     // half of the volume's range, still under the pitch's
-		{400.f, 1.f, 1.2f},      // full volume where the pitch starts to rise
-		{800.f, 1.f, 1.5f},      // the chase: full volume and the high pitch
-		{2000.f, 1.f, 1.5f},     // clamped over it
+		{0.f, 0.f, 1.2f},                                      // standing: silent, the low pitch
+		{AWasamiEnemy::MoveVolumeSpeed * 0.5f, 0.5f, 1.2f},    // half of the volume's range, still under the pitch's
+		{Spawned->NormalSpeed, 200.f / 215.f, 1.2f},           // the patrol: nearly full volume, the pitch not yet up
+		{AWasamiEnemy::MoveVolumeSpeed, 1.f, 1.2f},            // full volume where the pitch starts to rise
+		{(AWasamiEnemy::MoveVolumeSpeed + AWasamiEnemy::MovePitchSpeed) * 0.5f, 1.f, 1.35f}, // halfway up the pitch
+		{Spawned->SkateSpeed, 1.f, 1.5f},                      // the chase: full volume and the high pitch
+		{2000.f, 1.f, 1.5f},                                   // clamped over it
 	};
 	for (const FSpeedCase& Case : Cases)
 	{

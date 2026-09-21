@@ -101,10 +101,12 @@ namespace WasamiEnemyAnim
 	// An AnimMontage's default blends, for what plays once.
 	inline constexpr float OnceBlendTime = 0.25f;
 
-	// TODO(仮): the play rate follows the speed so the feet slide less (the original skates at rate 1). The speed of
-	// each clip's planted foot at the mesh's own size, as PIE measured it (the item 4's step 4: 134, 446, 496 cm/s at
-	// rate 1), grown with the enemy's mesh (AWasamiEnemy::MeshScale) where the rate is worked out, and the WebGL
-	// version's limits (walk 0.5–2, run 0.6–1.8). The patrol's 200 cm/s walk then wants 1.11 and the chase's 430 cm/s run 0.70.
+	// The play rate follows the speed so the feet slide less (the original skates at rate 1). The speed of each clip's
+	// planted foot at the mesh's own size, as PIE measured it (the item 4's step 4: 134, 446, 496 cm/s at rate 1), grown
+	// with the enemy's mesh (AWasamiEnemy::MeshScale) where the rate is worked out, and the WebGL version's limits
+	// (walk 0.5–2, run 0.6–1.8). Kept as it stands (the user's answer of 2026-09-21): the patrol's 200 cm/s walk asks
+	// 1.11 and the chase's 430 cm/s run 0.70, both well inside their limits, so the 24 % of foot slide that the limit
+	// forced while the patrol still ran at the nurse's 350 cm/s cannot happen. The limits only catch an odd speed now.
 	inline constexpr float WalkStrideSpeed = 133.f;
 	inline constexpr float RunStrideSpeed = 450.f;
 	inline constexpr float NightmareStrideSpeed = 500.f;
