@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 12:31
+updated: 2026-09-21 12:55
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -25,16 +25,16 @@ updated: 2026-09-21 12:31
 ## 計画
 
 - [x] 1. 計画（この記録を作ってステップに分ける） … 2026-09-21 完了。
-- [ ] 2. クック前の確認と `BuildCookRun` を通す ← 次
-  - 変更予定: `.claude/guides/distribution.md`（手順を書き足す）、出力は git の外（`Saved/Archive/Win64`）
-- [ ] 3. パッケージの中身の確認（原作のロゴとキャラクターのモデルが入っていない・pak の大きさ）と、exe が起動してタイトルが出ること
+- [x] 2. `BuildCookRun` を通した … 2026-09-21 完了。初回は `GameFeatureData` の規則が無くてクックがエラー 2 件で落ちたので `Config/DefaultGame.ini` に規則を足し、`BUILD SUCCESSFUL`（`Saved/Archive/Windows/`、約 1.0 GB）。手順を `distribution.md` に、失敗を症状索引に書いた。
+- [ ] 3. パッケージの中身の確認（原作のロゴとキャラクターのモデルが入っていない・pak の大きさ）と、exe が起動してタイトルが出ること ← 次
+  - 変更予定: なし（確認だけ。必要なら記録に表を足す）
 - [ ] 4. 本編の fps を 7 か所で測る（実装記録 00 の表に本編の列を足す）
 - [ ] 5. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）
 - [ ] 6. 結果をまとめて項目 36 を閉じる（60 前後に届かなければ画質の選択肢の項目を立てる。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 2: エディタを保存して閉じ（`python Tools/editor_cycle.py --quit-only`）、`RunUAT BuildCookRun` を走らせる（下の「再開時の注意」のコマンド）。通ったら `.claude/guides/distribution.md` の手順を実際に通った形に書き足し、エディタを開き直して（`python Tools/editor_cycle.py --no-quit --no-build`）コミットする。
+ステップ 3: 出来たパッケージ `Saved/Archive/Windows/` の中身を確かめる。(a) 原作のロゴとキャラクターのモデルが入っていないこと（`Manifest_UFSFiles_Win64.txt` の名前を見る。クック前の確認は項目 21 で済んでいるが、実物でも見る）、(b) `Tools/console_session.py` で exe を起動してタイトルが出ること（`Tools/desktop.py shot` で 1 枚）。エディタは閉じてから起動する。
 
 ## 決定事項
 
@@ -43,22 +43,16 @@ updated: 2026-09-21 12:31
 - 2026-09-21: パッケージ版は**対話デスクトップで起動する**（`python Tools/console_session.py <exe>`）。Claude は Windows のセッション 0 にいるので直に起動すると DXGI で落ちる（記憶・`editor_cycle.py` の説明）。操作と撮影は `python Tools/desktop.py`。
 - 2026-09-21: 本編の fps は、PIE と同じ測り方（エンジンの CSV プロファイラ）を使えるか試してから決める。`Development` のパッケージはコンソール（`~`）と `stat unit` / `csvprofile start|stop` が使える。CSV は `<パッケージ>/wasami_deception/Saved/Profiling/CSV` に出る。読めなければ `stat unit` の画面を撮って読む（項目 36 の完了の条件は `stat unit` / `stat fps`）。
 
+- 2026-09-21: クックが `GameFeatureData` の規則が無いというエラー 2 件で落ちる件は、**`Config/DefaultGame.ini` に規則を 1 行足して直した**（UAT の `-IgnoreCookErrors` は本物のエラーまで黙らせるので採らない）。理由は ini のコメントと症状索引の `Error_UnknownCookFailure` の項に書いた。
+
 ## 要確認（ユーザー）
 
 （なし）
 
 ## 再開時の注意
 
-- **パッケージのコマンド**（`.claude/guides/distribution.md`。1 回で 30 分以上かかる見込み。`run_in_background` で走らせ、`Monitor` でログの終わりを待つ。**応答を終える前に必ず結果を読む**）:
-  ```
-  "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun \
-    -project="C:\Users\User\Desktop\wasami_deception\wasami_deception.uproject" \
-    -noP4 -platform=Win64 -clientconfig=Development -cook -build -stage -pak -archive \
-    -archivedirectory="C:\Users\User\Desktop\wasami_deception\Saved\Archive"
-  ```
-  - 完了の確かめ方: 標準出力の最後が `BUILD SUCCESSFUL`（失敗は `BUILD FAILED` と `AutomationTool exiting with ExitCode=`）。成果物は `Saved/Archive/Windows/wasami_deception.exe` と `Saved/Archive/Windows/wasami_deception/Content/Paks/*.pak`。UAT のログは `%LOCALAPPDATA%\UnrealBuildTool\Log.txt` と `Saved/Logs/`（クックは `Saved/Cooked/`）。
-  - 途中で止めた・失敗したときは、クックの中間出力 `Saved/Cooked/Windows` が残る（作り直せるので消してよい。git の外）。
-- **エディタ**: 反復の始めに開いている（レベル `L_Hospital_Zone2`。2026-09-21 12:30 時点）。閉じるのは `python Tools/editor_cycle.py --quit-only`（保存してから閉じる）、開き直すのは `python Tools/editor_cycle.py --no-quit --no-build`。C++ は変えないのでビルドは要らない。
+- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」に実際に通った形で書いた（2 回目からは 1 分ほど。`run_in_background` で走らせ、**応答を終える前に必ず結果を読む**）。出来上がりは `Saved/Archive/Windows/`（本体は `wasami_deception/Binaries/Win64/wasami_deception.exe`、起動は直下の `wasami_deception.exe`）。
+- **パッケージ版の起動**: エディタを閉じて（`python Tools/editor_cycle.py --quit-only`）から `python Tools/console_session.py "C:\Users\User\Desktop\wasami_deception\Saved\Archive\Windows\wasami_deception.exe"`。操作と撮影は `python Tools/desktop.py`。コンソールは `~`、`stat unit` / `csvprofile start|stop` が使える（`Development`）。
 - **比べる相手**（実装記録 00 の「性能」の PIE の 7 か所。1080p 相当・Epic、fps avg / p95 / GPU ms）:
   | 場所（チェックポイント） | PIE fps avg | p95 | GPU ms |
   | --- | --- | --- | --- |
@@ -69,11 +63,12 @@ updated: 2026-09-21 12:31
   | Z2 見張りの廊下（cp 8） | 47.3 | 35.0 | 20.50 |
   | Z2 迷路（cp 9） | 60.1 | 55.7 | 16.08 |
   | Z2 祭壇の車庫（cp 10） | 56.0 | 37.9 | 17.20 |
+- **エディタ**: ステップ 2 の終わりに開き直した（`python Tools/editor_cycle.py --no-quit --no-build`）。C++ は変えないのでビルドは要らない。
 - **クック前の確認は項目 21 のステップで一度済んでいる**（実装記録 00・作業一覧の項目 21）: 既定のマップ `/Game/Stage/Maps/L_Title` とゲームモード、`/Game` の外を指す参照（`Intermediate/Overnight/pkg_check.py` で 3 つのマップから辿った結果が `pkg_check.json`。`/Engine`・`/ACLPlugin` だけ）、原作のロゴとキャラクターのモデルの 3 つとも問題なし。`Config/DefaultGame.ini` は `[/Script/UnrealEd.ProjectPackagingSettings]` を置かない（`MapsToCook` 無し = `/Game` を全部クックする）。項目 35 で使っていないアセット 18 個は消した。
 - 走らせたままのバックグラウンドの処理・未保存のアセットは無い。
 
 ## 検証
 
-- check_records: 未実行（この反復ではソースを変えていない）
-- C++ ビルド: 不要（C++ は変えない）
-- エディタでの確認（取り込み・組み立て・PIE）: 不要（この反復は計画だけ）
+- check_records: 未実行（ソースは変えていない。変えたのは ini とガイド）
+- C++ ビルド: `BuildCookRun -build` が通った（`Development` の Win64）
+- パッケージ: `BUILD SUCCESSFUL` / `AutomationTool exiting with ExitCode=0`、クックは `Success - 0 error(s), 1 warning(s)`（残る 1 件は MCP プラグインの EULA の注意で無害）

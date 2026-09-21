@@ -395,6 +395,16 @@
 - 確かめ方: 落ちる所は `UE_LOG(LogTemp, Display, …)` の印を疑う行の前後に置いて `Saved/Logs/wasami_deception.log` で読む（自動化のログは落ちる直前まで残る）。
 - 出典: 作業一覧の項目 25 のステップ 3（2026-09-20）。
 
+### `BuildCookRun` が `BUILD FAILED` `AutomationTool exiting with ExitCode=25 (Error_UnknownCookFailure)`（クックは `Done!` まで進んでいる）
+
+- 症状: パッケージのコマンドが `Cook failed.` で止まる。ログを遡ると `LogCook: Display: Done!` まで進んでいて、直後の `Warning/Error Summary` が `Failure - 2 error(s), 1 warning(s)`。エラーは 2 件とも同じ原因で、`LogGameFeatures: Error: Asset manager settings do not include a rule for assets of type GameFeatureData, which is required for game feature plugins to function` と、その日本語版（`LoadErrors: Error: アセット マネージャー設定に、ゲーム機能のプラグインが…`）。
+- 原因: クックはエディタのコマンドレット（`UnrealEditor-Cmd.exe -run=Cook`）で走るので、**エディタ専用のプラグインも読み込まれる**。MCP のツールセット `AllToolsets` が `GameFeaturesToolset` を要求し、それが `GameFeatures` プラグインを有効にする。`GameFeatures` は起動時（UE 5.8 `GameFeaturesSubsystem.cpp` の `OnAssetManagerCreated`）に `GameFeatureData` 型の `FPrimaryAssetRules` が既定のままだとエラーを 1 件出す。クック自体は成功しているのに、コマンドレットは**エラーが 1 件でもログに出ると失敗を返す**ので UAT が落ちる。本作は Game Feature プラグインを 1 つも使っていない。
+- 対処: `Config/DefaultGame.ini` に `[/Script/Engine.AssetManagerSettings]` の `+PrimaryAssetTypesToScan=(PrimaryAssetType="GameFeatureData",…,bIsEditorOnly=True,Rules=(Priority=1,…,CookRule=Unknown))` を 1 行足す（実物はその ini のコメント付き）。`Priority` を既定の `-1` から変えるのが肝で（`FPrimaryAssetRules::IsDefault()` が偽になればよい）、`Directories` は空・`CookRule=Unknown` なので何も走査せずクックの中身は変わらない。`bIsEditorOnly=True` にすると、パッケージした本編は `AssetManager.cpp` の `ShouldScanPrimaryAssetType`（`bIsEditorOnly && !GIsEditor`）で項目ごと読み飛ばすので、本編に入っていない `GameFeatures` モジュールのクラスを読もうとして ensure が出ることもない。
+- やらない案: UAT の `-IgnoreCookErrors`。本物のクックのエラーまで黙って通してしまう。
+- 確かめ方: 直した後のログの `Warning/Error Summary` が `Success - 0 error(s)` になり、最後が `BUILD SUCCESSFUL`。
+- 出典: 作業一覧の項目 36 のステップ 2（2026-09-21。初回のパッケージ）。
+
+
 ## 取り込み・レベル・描画
 
 ### 組み立てが置いた BP のアクタが本家と違う向き・位置になる（のこぎりの罠の刃が床に寝た円盤に見える）
