@@ -106,14 +106,16 @@ updated: 2026-09-21
 ### 結晶の材質（`m_crystal`。グラフは cook で消えている）
 書き出しに残るのは出力の一部（金属・スペキュラ・自己発光。法線は未接続）、パラメータ、Noise 2 つの FeatureLevelSwitch、`BoundingBoxBased_0-1_UVW`、Custom を通して読むキューブ。コンパイル済みのシェーダー（`Tools/dd/cooked_shaders.py "Fords_Materials/m_crystal."` の SM5 のベースパス）を読んで、式をそのまま組んだ（不透明・ライトあり）:
 - **法線 N**（反射と屈折の両方がこれを軸に取る）= TransformVector(接空間 → ワールド)(`distortion_normal` を UV × 0.1 で読んだ接空間の法線) + 頂点法線。**正規化しない**（シェーダーにも `rsq` が無い）。`distortion_normal` は親の既定も 3 つのインスタンスも `/Engine/EditorShapes/Textures/T_ShapeNormal` で、中身は 255 分の 1 の揺らぎしかない平らな法線なので、N はほぼ**頂点法線の 2 倍**になる。長さが 2 だと `reflect`・`refract` の結果は単位法線のときと別物（正面では反射が 7 倍の長さ）なので、平らでも省けない
-- 自己発光 = max(0, Noise(反射ベクトル（上の N を軸に、正規化せず）× 0.75 + 時間 × `emissive_speed`。3D テクスチャのグラディエント・乱流・4 段・−0.5〜0.5) × `emissive_col` × `emissive_entensity` + Fresnel(指数 5、基底 0.04) × `Fresnel Setting` + `Additive Emissive`)
+- 自己発光 = Noise(反射ベクトル（上の N を軸に、正規化せず）× 0.75 + 時間 × `emissive_speed`。3D テクスチャのグラディエント・乱流・4 段・−0.5〜0.5) × `emissive_col` × `emissive_entensity` + Fresnel(指数 5、基底 0.04) × `Fresnel Setting` + `Additive Emissive`
 - t = Noise(ワールド位置 × `tile_ratio` − 時間 × `emissive_speed`。テクスチャのシンプレックス・乱流・4 段・0〜1) + バウンディングボックスの Z（0〜1）− 0.5
-- ベースカラー = saturate(lerp(`color2`, `color1`, t) + `env_cubemap` を refract(−カメラ, 上の N, 0.66) の向きで × 0.5)（屈折は Custom `return refract(-V, N, 0.66);`。HLSL の `refract` は全反射（cos² < 0）で 0 を返し、シェーダーも同じ判定を持つ）
+- ベースカラー = lerp(`color2`, `color1`, t) + `env_cubemap` を refract(−カメラ, 上の N, 0.66) の向きで × 0.5（屈折は Custom `return refract(-V, N, 0.66);`。HLSL の `refract` は全反射（cos² < 0）で 0 を返し、シェーダーも同じ判定を持つ）
 - 金属 = t × 0.5、スペキュラ = t、粗さ = `roughness`（0.01）
+- **シェーダーの clamp のうち組まないもの**（2026-09-21、作業一覧の項目 34 のステップ 7）: 自己発光の最後の `max(x, 0)` と、ベースカラー・金属・スペキュラ・粗さの `saturate`。どれも UE がかけるもので（`MaterialTemplate.ush` の `GetMaterial*`。自己発光の clamp は材質の `bAllowNegativeEmissiveColor` が偽のとき）、自己発光の `max` は**エディタの `SelectionColor` の lerp より後**に出る。書き出しも自己発光の接続先を `MaterialExpressionAdd_5`、スペキュラを `MaterialExpressionAdd_1` と覚えていて `Max` ではない。組んでいた `Max`・`Saturate` を外し、式は 49 → 46 になった
 - 推定で外したもの: **無し**（2026-09-21、作業一覧の項目 28 のステップ 13 で `distortion_normal` を入れ、`CRYSTAL_LEFT_OUT` は空になった）。本家の親の `env_cubemap` だけは既定が空なので、こちらの親は `DefaultTextureCube` を既定にした（赤いシャードはこれを継ぐ）。`T_ShapeNormal` はエディタの内容だが、本家も pak に cook して入れている（`pak_reference_2/Engine/Content/EditorShapes/Textures/`）ので `/Engine/` のパスのまま使う。
 
 ### 地図の印の色
 3 つとも書き出しは `Constant3Vector` を値なしで持つだけだが、コンパイル済みのシェーダーに定数が残っていた: `M_PowerOrb` (1, 0.2903, 0)、`M_Bonus_Shard`・`M_Enemy` (1, 0, 0)（`T_EnemyTriangle` の 1 チャンネルを 0.3333 で切る）。ついでに `M_Shard` の定数は (0.482481, 0, 1) と分かった（`dd_shards` は画面の実測で (0.70, 0.0071, 1.0) に合わせている。06 記録）。新しい 3 つはシェーダーの定数のままにし、タブレットでの見え方は見比べていない（作業一覧の項目 28 の後回し）。
+2026-09-21（作業一覧の項目 34 のステップ 7）にシェーダーと突き合わせ直し、**直すところは無かった**: 色は上のとおり（`SelectionColor` の lerp に入る定数）、`M_Bonus_Shard`・`M_Enemy` のマスクは資源のスウィズルの添字で読んで **R**（`sample_b r0.x, …, t0.xyzw` と `sample_b r0.w, …, t13.yzwx` のどちらも添字 = x）、しきいは `add r0.x, r0.x, l(-0.3333)` で **0.3333**、サンプラーは書き出しどおり `SAMPLERTYPE_LinearGrayscale`。ベースカラーも同じ定数につながっている（デカール（DBuffer）と混ぜる枝が定数を読むので、書き出しに `BaseColor` が残っていなくても分かる）。金属・スペキュラ・粗さは既定のまま（`mov r4.xy, l(0, 0.5, 0, 0)`）。
 
 ### 閃光の材質（グラフは cook で消えている。コンパイル済みシェーダーの式で確定。2026-09-21、作業一覧の項目 34）
 - `M_ky_primitiveColor`: 残る式は `hilightPower`・`hilightColor`・`MF_ky_addHilight` と、自己発光（A = Add、B = 粒子の色）と不透明度（A = Multiply、B = 粒子の α）の静的スイッチ `useHilight`（同じ名前の式 2 つ）。シェーダーでは `T_ky_maskRGB3` の **R と B** を UV × 0.2 に時間 × (0.1, −1)・(−0.2, −2) で流して読み、強さ = n1 × n2 × (n1 + n2) × 2500 × `hilightPower`。自己発光 = 強さ × `hilightColor` + 粒子の色（真の側）。不透明度はスイッチを `DepthFade`（距離 100）に通したもので、真は saturate(強さ ^ 0.5) × 粒子の α（`MI_ky_primitiveColor` のシェーダーの max(x, 0)・rsq/div・min(…, 1)。`Power` の `ConstExponent` 0.5 + `Saturate` で組む）、偽は粒子の α だけ（マスターのシェーダー）。
@@ -152,7 +154,7 @@ updated: 2026-09-21
 - `Wasami.BonusShard.Collect`: 出現点 1 つ（オーブの点は数えない）、`AWasamiPlayerCharacter`（コントローラの `SetPawn`）、敵 2 クラス（代役とナース）。取る前は地図にシャードだけ → 明滅の最中に触れて取る: アクタは残る・セーブに `ID`・結晶と印と灯が消える・演出が 1 つ・60 s の暴き・敵がすぐ地図に → 地図の作り直しの後も載る → 明滅の 5 s が終わる・演出が消える → 後から出た敵が 2.1 s 以内に載る → 60 s の直前はまだ、直後にシャードが消えて敵が地図から外れ、外れたまま。
 
 ## 既知の制約・注意点
-- 結晶の材質・地図の印の色は推定で、本家と見比べていない（大目標 1・2 の決め方。作業一覧の項目 28 の後回しの一覧）。閃光の材質 2 つはシェーダーの式で確定した（上）。
+- 結晶の材質・地図の印・閃光の材質は、原作の書き出しとコンパイル済みシェーダーの式で確定した（上の 3 節。2026-09-21、作業一覧の項目 34）。画面での見え方は本家と見比べていない（大目標 1・2 の決め方。作業一覧の項目 28 の後回しの一覧）。
 - 赤いシャードは本家の結晶（`soul_shard` × 20・`m_crystal_Inst`）で、通常のシャードのワサミ餅には替えない（WebGL 版は餅にしたが、最終目標の「本家と同一の見た目にする」が優先。2026-09-19）。
 - 地図の印（特殊シャードの 20 m 上、敵の 10 m 上の板）は本家と違って当たりを持たない（上の「共通の作り」）。
 - 地図に敵を足すのはクラスごと（本家の `Add To Map(GetObjectClass)`）なので、サブクラスも含めてそのクラスの敵がみな載る。赤いシャードの 60 s の間は、敵の骨格メッシュも地図のキャプチャに写る（印が 10 m 上から覆う。本家も同じ）。
@@ -160,6 +162,7 @@ updated: 2026-09-21
 - Zone 2 の祭壇の球 `m_crystal_Inst2` もここで作る（`CRYSTAL_INSTANCES`）。前処理が根 `m_crystal` を `crystal` に振り分け、ステージの取り込みは自分で作らずに `make_crystal` を呼ぶ（01 記録。2026-09-20、作業一覧の項目 31。それまではステージが汎用の `M_DD_Substance` で作り、白っぽかった）。`make_crystal` はマスター `M_DD_Crystal` から作り直すので、ステージの取り込みが結晶のインスタンスに当たるたびに走る（今は 1 つ）。
 
 ## 変更履歴
+- 2026-09-21: `M_DD_Crystal` から `Max`（自己発光）と `Saturate`（ベースカラー）を外し、地図の印 3 つをシェーダーと突き合わせて直すところが無いことを確かめた（作業一覧の項目 34 のステップ 7）
 - 2026-09-21: `M_DD_Crystal` が `distortion_normal` を読むようにした（反射と屈折の軸になる正規化しない法線。作業一覧の項目 28 のステップ 13）
 - 2026-09-20: `CRYSTAL_INSTANCES` に Zone 2 の祭壇の球 `m_crystal_Inst2` を足し、`make_crystal` が既にあるインスタンスの `base_property_overrides` を外すようにした（ステージの取り込みが呼ぶ。作業一覧の項目 31 のステップ 3）
 - 2026-09-19: PIE で両ゾーンを確かめ、台本の通しを流した（上の「PIE での確かめ」。ステップ 6）

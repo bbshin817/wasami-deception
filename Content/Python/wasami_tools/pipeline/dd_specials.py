@@ -81,13 +81,16 @@ def _build_crystal(mat, d):
     tile_ratio, roughness; distortion_normal, surface_normal, env_cubemap), a FeatureLevelSwitch between two Noise
     nodes, BoundingBoxBased_0-1_UVW and a TextureSampleParameterCube read along a Custom node. Its SM5 base pass reads
     (opaque, lit):
-      emissive  max(0, Noise(ReflectionVector × 0.75 + time × emissive_speed; the 3D texture gradient noise, turbulent,
+      emissive  Noise(ReflectionVector × 0.75 + time × emissive_speed; the 3D texture gradient noise, turbulent,
                 4 levels, −0.5 … 0.5) × emissive_col × emissive_entensity + Fresnel(5, 0.04) × Fresnel Setting +
-                Additive Emissive)
+                Additive Emissive
       t         Noise(world position × tile_ratio − time × emissive_speed; the texture simplex noise, turbulent,
                 4 levels) + the bounding box's Z (0 … 1) − 0.5
-      base      saturate(lerp(color2, color1, t) + env_cubemap along refract(−camera, normal, 0.66) × 0.5)
+      base      lerp(color2, color1, t) + env_cubemap along refract(−camera, normal, 0.66) × 0.5
       metallic  t × 0.5; specular t; roughness roughness
+    The shader's max(emissive, 0) and the saturates on the base colour, the metallic, the specular and the roughness
+    are the engine's own (MaterialTemplate.ush's GetMaterial*), not nodes: the export has the emissive on an Add and
+    the specular on an Add, and the engine puts its clamp after the editor's SelectionColor lerp. They are left out.
     Both the reflection and the refraction are read about the same normal: distortion_normal (sampled at UV × 0.1)
     turned into the world and added to the vertex normal, left unnormalized. T_ShapeNormal, what every instance puts
     there, is flat to within a 255th, so the sum is twice the vertex normal: not the same vector a plain reflection
@@ -126,8 +129,7 @@ def _build_crystal(mat, d):
     rim = g.multiply(fresnel, "", g.vector("Fresnel Setting", d["Fresnel Setting"], -1550, 0), "RGB", -1350, -150)
     emissive = dd_assets.add(g, dd_assets.add(g, lit, "", rim, "", -1150, -300), "",
                              g.vector("Additive Emissive", d["Additive Emissive"], -1350, 0), "RGB", -950, -250)
-    g.out(g.binary(unreal.MaterialExpressionMax, emissive, "", dd_assets.constant(g, 0.0, -950, -100), "",
-                   -750, -250), "", MP.MP_EMISSIVE_COLOR)
+    g.out(emissive, "", MP.MP_EMISSIVE_COLOR)
 
     # The body: noise through the world, rising up the bounding box.
     world = g.node(unreal.MaterialExpressionWorldPosition, -2400, 300)
@@ -156,9 +158,7 @@ def _build_crystal(mat, d):
     cube.set_editor_property("texture", unreal.load_asset(DEFAULT_CUBE))
     dd_assets.connect(refract, "", cube, "UVs")
     halved = g.multiply(cube, "RGB", dd_assets.constant(g, 0.5, -1150, 850), "", -900, 650)
-    base = dd_assets.single(g, unreal.MaterialExpressionSaturate,
-                            dd_assets.add(g, mixed, "", halved, "", -800, 400), "", -650, 400)
-    g.out(base, "", MP.MP_BASE_COLOR)
+    g.out(dd_assets.add(g, mixed, "", halved, "", -800, 400), "", MP.MP_BASE_COLOR)
     g.out(g.multiply(t, "", dd_assets.constant(g, 0.5, -1150, 500), "", -900, 500), "", MP.MP_METALLIC)
     g.out(t, "", MP.MP_SPECULAR)
     g.out(g.scalar("roughness", d["roughness"], -900, 800), "", MP.MP_ROUGHNESS)
