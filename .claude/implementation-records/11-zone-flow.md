@@ -196,7 +196,10 @@ updated: 2026-09-21
 
 台詞の通し（項目 20 のステップ 8、2026-09-20）: PIE で話し役の `AudioComponent` を毎コマ見て、`Wasami.Flow` で各所を順に呼んだ（背面のエディタは `bThrottleCPUWhenNotForeground` を偽にしてから。終わったら戻す）。**Zone 1**: `On04DoorBreak` → 1.01 s 後に `Event_10`（5.1 s）、`On04Intercom` → 館内放送（字幕「…an unruly patient on the loose…」が出る）と 13.00 s 後に `Event_09`（3.0 s）。**Zone 2**: `OnCellCutsceneFinished` → 1.01 s 後に `Event_17`、`OnMinibossBierceTalk` と `OnMinibossTriggerTransition` → どちらも即 `Event_19`、`OnMinibossBehindMatron` → 置いてある `Nurse_Hospital_Zone01_Event_48_Intercom` が 8.6 s 鳴る、`OnMazeTriggerStart` → 1.00 s 後に `Gameplay_08`（**`bAllowSpatialization` が真。病院で唯一**）、`OnBierceLiftQuip` → 1.00 s 後に `Gameplay_07`、`OnMazeAllShards` → 2.00 s 後に `Event_20`、`OnRingPieceCollect` → 1.03 s 後に `Event_21`、`OnPostmazeTriggerGarage` → 1.05 s 後に `Event_22`。ほかはすべて `bAllowSpatialization` が偽。字幕は PIE の画面で読めた（`Event_10` の「…visible to the eye, but they can't hide the sounds they make.」、`Event_22`・`Event_19`。収録 `Intermediate/DesktopAgent/shots/note-dialogue.mkv`、git の外）。
 
+脱出の間合い（2026-09-21、作業一覧の項目 35 のステップ 6）: `Wasami.Checkpoint 10` で Zone 2 を PIE → `OnEndTrigger` を呼んで毎コマ（約 80 fps）読んだ。**t = 0.032 s**: ゲームは止まっておらず、曲は `FADING_OUT`・`bFadeOut` 真。**t = 1.026 s**: `Escape` が走ってゲームが止まり、曲は `STOPPED`、`WasamiLevelClearWidget` が画面に出て、その下に `WasamiBlackFadeWidget`（`bHold`）が残る。レベルの時計は引き金から 0.967 s で止まった。つまり**曲の 1 s のフェードは止まっていないゲームの上で走り、スコア画面はその後に出る**（10 記録）。引き金の箱そのものは通していない（`AWasamiTriggerBox` の DoOnce は結ぶ前に触れると使い切られるので、結ぶ前にプレイヤーを置くと二度と鳴らない。症状索引）。
+
 ## 変更履歴
+- 2026-09-21: 脱出の間合い（フェード 1 s → スコア画面）を PIE で測った（上の「脱出の間合い」。作業一覧の項目 35 のステップ 6）
 - 2026-09-21: Zone 2 の脱出で曲を聞こえる形で引くようにした（`EscapeMusicFade` 1 s・`FadeAllMusicOut` → `PauseTimeCounter` → 1 s 後に `Escape`。作業一覧の項目 35 のステップ 2。10 記録）
 - 2026-09-20: Zone 1 の `InitialStart` で動けるようになるときにワサミの声 `greeting` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）
 - 2026-09-20: Zone 1 の途中の出来事・Zone 2 の捕まる場面と独房の 3 つを PIE で通して確かめた（「確かめたこと」の「場面の通し」。スキップの `SetPlaybackPosition(1e7, Jump)` が `OnFinished` を流すことも見た。ソースの変更なし。作業一覧の項目 25 のステップ 6）

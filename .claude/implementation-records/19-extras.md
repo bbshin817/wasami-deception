@@ -93,7 +93,13 @@ updated: 2026-09-21
 - 続けて `Wasami.Title` でタイトルへ移ると、EXTRAS の Art Gallery で 35 枚のうち ID 19・20 の 2 枚だけが絵になり（残りは鍵）、ID 19 を押すと大きく見る画面が出た。日記は仮のまま（鍵ではなく、押しても鳴らない。当時は曲も同じ）。
 - 収録のグリッド: `Intermediate/DesktopAgent/shots/extras_step6_{doors,collect,title,maximize}.png`（git の外）。
 
+## 確かめたこと（2026-09-21、PIE。書類が曲 4 本を解放する）
+
+- Zone 1 をチェックポイント 5（迷路）で開き、書類（`ID` 0。`Collectables` は SOUND 0・1・2・3 の 4 件）にプレイヤーを重ねると、ディスクのスロット `structSlot` の `ExtrasSFX` が `[]` → **`[0, 1, 2, 3]`** になった（`ExtrasArt` は空のまま）。SOUND ARCHIVE の 4 本が 1 つの書類で全部開く（作業一覧の項目 35 のステップ 4・6）。
+- 曲が鳴るところは PIE では聞けない（エディタが前面でないと出力が無音。症状索引）ので、押した先の `SetSound` と再生バーは Automation の `Wasami.Extras.SoundButton` で見ている。
+
 ## 変更履歴
+- 2026-09-21: 書類が `ExtrasSFX` を [0, 1, 2, 3] にすることを PIE で確かめ、作業一覧の項目 35 を閉じた（上の「確かめたこと（2026-09-21）」。ステップ 6）
 - 2026-09-21: Zone 1 の書類が SOUND ARCHIVE の 4 本とも解放するようにした（組み立ての `COLLECTABLE_SOUNDS`。18・01 記録。作業一覧の項目 35 のステップ 4）
 - 2026-09-21: SOUND ARCHIVE に本作の曲 4 本を名前つきで並べた（`SoundTracks`・`FWasamiExtrasTrack`、`SoundCount` 10 → 4、日記の 10 は `DiaryCount` へ。テスト `Wasami.Extras.Screen`・`.SoundButton`。作業一覧の項目 35 のステップ 3）
 - 2026-09-21: 有人セッションのユーザーの回答で、EXTRAS は**曲の欄だけ埋める**ことにした（本作で実際に鳴っている曲を名前つきで並べ、余る欄は減らす）。日記 10 は空のまま、絵 19〜22 とクレジットは今のまま（作業一覧の項目 35）

@@ -158,7 +158,13 @@ updated: 2026-09-21
 - **字幕の長さは実時間で数える**: `UWorld::AudioTimeSeconds` は `slomo` の時間の伸縮を受けない（`LevelTick.cpp`「Audio always plays at real-time regardless of time dilation」）。`slomo 0.1` にしても字幕は 2.4 s の実時間で消えるので、PIE で撮るときは収録して後からコマを見る。
 - `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
+## 確かめたこと（2026-09-21、PIE。脱出の曲のフェード）
+
+- Zone 2 をチェックポイント 10 で開き、`AWasamiZone2Flow::OnEndTrigger` を呼んで毎フレーム（約 80 fps、`bThrottleCPUWhenNotForeground` を偽にして）読んだ: **t = 0.032 s でゲームは止まっておらず**、`RegularMusic` の再生状態は `FADING_OUT`・`bFadeOut` は真。**t = 1.026 s で `Escape` が走ってゲームが止まり**、曲は `STOPPED`。1 s のフェードは止まっていないゲームの上で走るので、上の「一時停止の下では曲を引けない」の穴は塞がっている（作業一覧の項目 35 のステップ 6）。
+- 音そのものは PIE では録れない（エディタが前面でないと出力が無音。症状索引）ので、`UAudioComponent::GetPlayState` の `FADING_OUT` とゲームが止まっていないことで見ている。
+
 ## 変更履歴
+- 2026-09-21: 脱出のフェードが止まっていないゲームの上で走ることを PIE で確かめた（上の「確かめたこと（2026-09-21）」。作業一覧の項目 35 のステップ 6）
 - 2026-09-21: `FadeAllMusicOut(Duration)` を足した（作業一覧の項目 35 のステップ 2。Zone 2 の脱出で曲を聞こえる形で引く。止めたゲームは音が鳴らないことを「既知の制約」に書いた）。
 - 2026-09-21: 有人セッションで要確認 3 件に回答をもらった。台詞の字幕の**名前の対応**と敵の呼びかけの間隔**14〜26 s** はこのまま追認、Zone 2 の脱出は**聞こえる形で曲を引く**（止める前に部品を直にフェードアウトする。作業一覧の項目 35）
 - 2026-09-20: 初版（作業一覧の項目 19 のステップ 1。`AWasamiMusicPlayer` と曲 3 本の取り込み・配置）。

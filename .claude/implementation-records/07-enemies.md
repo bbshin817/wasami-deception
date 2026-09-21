@@ -334,6 +334,12 @@ emis  = If(rim, n, A>B → GlowColor, それ以外 → 黒) * GlowIntensity
 - **`bNightmare` を真にする所は無い**（全回収の後の追跡 `Run_Nightmare` は作っていない。作業一覧の項目 7 の読み替え）。本家の病院の Zone は全回収で敵を全部消し（11 記録の `05 All Shards Collected`・`Postmaze Transition`）、ナースはゲームモードの `Activate Frenzy` を実装していないので、全回収の後に追う敵がいない（Nightmare のナース `BP_06_ReaperNurse_06_Chase_Nightmare` は作らない入口 `06_Hospital` だけ）。アニメの分岐と変数は残す（要確認。作業一覧の「未回答の要確認」の項目 7）。
 - 起き上がりの移し替え（最大で約 0.7 m）はスイープしないので、壁際で倒れるとカプセルが壁に掛かることがある。キャラクターの移動が押し出すのに任せている（`TODO(仮)`。PIE では廊下の真ん中でしか見ていない）。
 
+## 確かめたこと（2026-09-21、PIE。移動音のピッチと音量）
+
+- Zone 1 をチェックポイント 5（迷路）で開き、巡回中のナース 3 体の `SkateAudio` を読んだ: 速さ 200 でピッチ **1.2000**・音量 **0.9302**（`MoveVolumeSpeed` 215 に対する 200 / 215 = 0.930 と一致し、`MoveMinPitch` に張り付く）。
+- プレイヤーを 1 体の 15 m 前に置いて見つけさせると、速さ 430 でピッチが 1.3500 → 1.4132 → 1.4498 → **1.4987**（`MovePitchInterp` 2 の追従。`MoveMaxPitch` 1.5 へ）・音量は **1.0000** に張り付いた。巡回と追跡で 1.2 ↔ 1.5 に振れることを実際の敵で確かめた（作業一覧の項目 35 のステップ 6）。
+- 音そのものは PIE では録れない（エディタが前面でないと出力が無音になる。症状索引）ので、部品の値で見ている。
+
 ## 変更履歴
 - 2026-09-21: 移動音の速さの割り当てを本作の速さに移した（`AWasamiEnemy::NurseSkateSpeed` 800 を足し、`MoveVolumeSpeed` = 400 × `MaxSpeed` / `NurseSkateSpeed` = 215、`MovePitchSpeed` = `MaxSpeed` = 430。波・`MoveMinPitch`・`MoveMaxPitch` は本家のまま）。本家がナースの歩き 350・走り 800 に対して書いた「巡回ではピッチが上がらず、追跡の最高速で 1.5 に届く」関係を、同じ倍率で本作の 200・430 に写したもの。あわせて足の運びの再生の速さの `TODO(仮)` を外した（`WasamiEnemyAnimInstance.h`）。テストは `Wasami.Enemy.Actor.Sound`（作業一覧の項目 35 のステップ 1）
 - 2026-09-21: 見つける前に気絶した見張りが、本家どおり倒れたまま起き上がらないようにした（`AWasamiEnemy::IndefiniteStunSeconds`、見張りの `GetTimeToStunStart` の上書き、`FWasamiStunPlayback::IsIndefinite`・`SetTimeLeft` と、終わりが決まったコマでの読み直し）。本家の気絶の姿勢（`nurse_stunned` の 2.6333 s のループ、起き上がり無し）と、本家でも Primal Fear が見張りに効いていたこと（収録の周期 2.62 s）を確かめた。テストは `Wasami.Enemy.Actor.Sentry`・`Anim.Stun`（作業一覧の項目 28 のステップ 10）

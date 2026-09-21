@@ -788,6 +788,29 @@
 - 次に試すこと: テレポートの照準を最大まで押すと、輪は**歩ける床の一番遠く**に乗るので、それで道の向きを読む。または `Ambulance_Arrive_Blockers*` (−22293〜−22783, −5030) の外側の床を原作のレベルの静的メッシュから起こして、出口の向きを先に決める。
 - 出典: 2026-09-21、項目 28 のステップ 16（進捗記録 `20260920-deferred-look-polish.md`）。
 
+### PIE の音を録っても無音（`AudioMixerLibrary.start_recording_output` の wav が全部 0）
+
+- 症状: `unreal.AudioMixerLibrary.start_recording_output(world, N)` → 音を鳴らす → `stop_recording_output(world, unreal.AudioRecordingExportType.WAV_FILE, '<名前>', '<フォルダー>')` で `Saved/BouncedWavFiles/<フォルダー>/<名前>.wav` は出来るが、全サンプルが 0。長さは録った実時間ぶんある。音の部品は `is_playing()` が真で、ログの WASAPI も `InitializeHardware succeeded` と出ている。
+- 原因: エディタが前面でないとき、UE は出力の音量を 0 にする（`UnfocusedVolumeMultiplier`。既定 0）。Claude は Windows のセッション 0 にいてエディタを前面にできない（項目 33 のファイアウォールのダイアログが前面に居座るので `SetForegroundWindow` も断られる）。`au.UnfocusedVolumeMultiplier` というコンソール変数は**無い**（`Command not recognized`）ので、コマンドでは戻せない。
+- 対処: **音そのものは PIE では確かめない**。部品の値で見る: `UAudioComponent::GetPlayState()` が `FADING_OUT` / `PLAYING` / `STOPPED`、`pitch_multiplier`・`volume_multiplier`、`UGameplayStatics::IsGamePaused`。止めたゲームでは UI 以外の音が全部止まる（10 記録）ので、「聞こえる形か」は「フェードの間ゲームが止まっていないか」で判定できる。どうしても波形が要るなら、ユーザーに前面で確かめてもらう（要確認に書く）。
+- 確かめ方: 上の手順で録った wav の最大振幅が 0。
+- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6（10・19 記録の「確かめたこと（2026-09-21）」）。
+
+### `HighResShot` の PNG に UMG（タブレット・スコア画面・EXTRAS）が写らない
+
+- 症状: PIE で `HighResShot 1 filename=x` を実行すると `Saved/Screenshots/WindowsEditor/x.png` は出来るが、3D の場面だけで UI が無い。`HighResShot 1280x720` の形でも同じ。
+- 原因: `HighResShot` は場面のレンダーターゲットを書き出すので、Slate で描く UMG は入らない。
+- 対処: UI を写すなら `Tools/desktop.py shot`（窓の取り込み）。エディタを前面にできないときは写せないので、UI は `unreal.WidgetLibrary.get_all_widgets_of_class(world, cls, True)` と部品の値で確かめる。
+- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6。
+
+### `AWasamiTriggerBox` が 2 度と鳴らない（流れが結ぶ前にプレイヤーを置いた）
+
+- 症状: `pie.py place` や `set_actor_location` でプレイヤーを引き金の箱に置いたのに `OnTrigger` が来ない。出てもう一度入れても来ない。`get_overlapping_actors` にはその箱が出る。
+- 原因: `AWasamiTriggerBox::NotifyPlayerOverlap` の DoOnce（`bBeginClosed`）は**結び先があるかに関わらず**最初の重なりで閉じる（原作の `ReceiveActorBeginOverlap` の DoOnce のまま。11 記録）。流れがまだ `BindTrigger` していない段階で重なると、その箱は永久に鳴らない。
+- 対処: 流れの手順（チェックポイント → 区間 → 結び）を踏んでから置く。踏むのが長い場合は、流れの `On...` が `UFUNCTION()`（`BindUFunction` で結ぶため）なので `flow.call_method('OnEndTrigger')` のようにリモート実行から直に呼ぶ（箱の配線は Automation の `Wasami.ZoneFlow` が見ている）。
+- 確かめ方: 区間が進んだかは、その区間の副作用（ポータルの `locked`、目的の文字）で見る。`Section` は `UPROPERTY` ではないので Python からは読めない。
+- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6（11 記録の「脱出の間合い」）。
+
 ## 直さなくてよい既知の見え方
 
 - **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。`Tools/editor_cycle.py` の開き直しの後に閉じ忘れると、`playthrough.py` の画面のボタンのクリックが小窓に当たり、`pause` の区間がタイトルの RESUME の後に `L_Hospital_Zone1 to open did not happen within 40 s` で止まる（2026-09-19。`desktop.py ping` の前面が `メッセージ ログ` になる。窓の右上の × を `--allow UnrealEditor.exe` で押す）。
