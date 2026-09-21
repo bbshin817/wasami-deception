@@ -30,7 +30,6 @@ Mat_ParameterCol, the material parameter collection its materials read.
 
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24).
 """
-import math
 import os
 
 import unreal
@@ -185,9 +184,6 @@ PORTAL_LOGO_TINT = (0.5271 * 0.03 / 0.05, 0.0, 0.0, 1.0)
 PORTAL_LOGO = paths.WASAMI_ROOT + "/Portal/MI_Portal_Wasami"
 # The monkey's texture settings (_textures.json: sRGB, default compression, the UI group).
 PORTAL_LOGO_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
-# The instances name a second texture, Albedo_1, which none of the vortex's compiled shaders samples (the graph's
-# compile dropped it), so the estimate has no such parameter and the instances' values of it are left out.
-PORTAL_LEFT_OUT = ("Albedo_1",)
 # The defibrillators (AWasamiDefib, after Blueprints/06_Hospital/BP_06_Defib): the charge's hum (DD_TT_Defibrillator_Zap,
 # through MonkeyAttenuation, which the double doors bring), the crackle as the player is hit (Electric_Sparks_08) and the
 # discharge (P_06_Defib). Of the system's 18 emitters the original draws four: thander, the lightning (MI_ky_spark02_4x5,
@@ -264,12 +260,19 @@ def _collection_parameter(g, name, x, y):
 def _build_portal_vortex(mat):
     """M_00_Portal_Vortex, whose graph the cook took away; the graph writes out its compiled shaders
     (Tools/dd/cooked_shaders.py "MasterMaterials/M_00_Portal_Vortex." --show 40, the translucent base pass, and
-    "00_Ballroom/M_00_Portal_Vortex_Masked." --show 3, the masked instance's depth pass). Albedo is sampled at the UVs
-    turned about the middle by Time x Speed x 0.25 radians; its RGB, greyed by Desaturation (the 0.3, 0.59, 0.11
-    luminance), x (a sine of Time x Strobe Speed (period 1) x Strobe Intensity + Glow Multiplier + Base Glow) x 0.2 x
-    (1 + Mat_ParameterCol's Portal Extra Brightness, lerped to its Portal Brightness Locked by Locked) is the emissive
-    colour; its alpha is the opacity, and plus DitherTemporalAA's dither the opacity mask of the masked instances. The
-    original is lit but has no base colour, so no light shows on it: the estimate is unlit."""
+    "00_Ballroom/M_00_Portal_Vortex_Masked." --show 3, the masked instance's depth pass), and the cook keeps the
+    expressions the original named them with (its export's Expressions, 11 of 29 alive: the parameters, the two
+    collection parameters, the function call, and the Rotator the Albedo's Coordinates names). Albedo is sampled at the
+    UVs a Rotator turns about the middle, its Time input Time x Speed and its own Speed the default 0.25, so the angle
+    is Time x Speed x 0.25 radians; its RGB, greyed by Desaturation (the 0.3, 0.59, 0.11 luminance), x (a sine of
+    Time x Strobe Speed (period 1) x Strobe Intensity + Glow Multiplier + Base Glow) x 0.2 x (1 + Mat_ParameterCol's
+    Portal Extra Brightness, lerped to its Portal Brightness Locked by Locked) is the emissive colour; its alpha is the
+    opacity, and plus DitherTemporalAA's dither the opacity mask of the masked instances.
+
+    The original is lit (no ShadingModel in its export, so MSM_DefaultLit) but leaves base colour unconnected, and its
+    base pass shows what that costs: the lit term it adds to the emissive is DiffuseOverrideParameter.rgb (plus
+    SpecularOverrideParameter, 0.04 x its alpha, x 0.45) through the translucency lighting volume, which is 0 outside
+    the editor's lighting-only view modes. So no light reaches it in play and the estimate is unlit."""
     scalars, _ = dd_assets.parameter_defaults(PORTAL_VORTEX, VERSION)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     # bEnableSeparateTranslucency false: drawn before the depth of field (UE 5's translucency pass).
@@ -281,33 +284,21 @@ def _build_portal_vortex(mat):
     def param(name, x, y):
         return g.scalar(name, scalars.get(name, 0.0), x, y)
 
-    # The UVs turned about the middle.
-    angle = g.multiply(g.multiply(time, "", param("Speed", -2600, -200), "", -2400, -250), "",
-                       dd_assets.constant(g, 0.25, -2400, -150), "", -2250, -250)
-    trig = []
-    for cls, y in ((unreal.MaterialExpressionSine, -300), (unreal.MaterialExpressionCosine, -150)):
-        e = g.node(cls, -2100, y)
-        e.set_editor_property("period", 2.0 * math.pi)  # the angle in radians
-        g.link(angle, "", e, "")
-        trig.append(e)
-    sine, cosine = trig
-    uv = g.node(unreal.MaterialExpressionTextureCoordinate, -2600, 0)
-    centred = g.node(unreal.MaterialExpressionSubtract, -2400, 0)
-    centred.set_editor_property("const_b", 0.5)
-    g.link(uv, "", centred, "A")
-    u = dd_assets.channel(g, centred, "", "R", -2250, 0)
-    v = dd_assets.channel(g, centred, "", "G", -2250, 100)
-    turned_u = g.binary(unreal.MaterialExpressionSubtract, g.multiply(cosine, "", u, "", -1950, -50), "",
-                        g.multiply(sine, "", v, "", -1950, 50), "", -1800, 0)
-    turned_v = dd_assets.add(g, g.multiply(sine, "", u, "", -1950, 150), "", g.multiply(cosine, "", v, "", -1950, 250),
-                             "", -1800, 200)
-    turned = g.binary(unreal.MaterialExpressionAppendVector, turned_u, "", turned_v, "", -1650, 100)
-    back = g.node(unreal.MaterialExpressionAdd, -1500, 100)
-    back.set_editor_property("const_b", 0.5)
-    g.link(turned, "", back, "A")
-    albedo = g.texture("Albedo", unreal.load_asset(dd_assets.asset_path(PORTAL_TEXTURES[0])),
-                       unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -1350, 100)
-    g.link(back, "", albedo, "UVs")
+    def albedo_texture(name, x, y):
+        e = g.texture(name, unreal.load_asset(dd_assets.asset_path(PORTAL_TEXTURES[0])),
+                      unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, x, y)
+        e.set_editor_property("group", "Textures")  # the original's group for both
+        return e
+
+    # The UVs turned about the middle: the original's Rotator, left at its defaults (the middle 0.5, 0.5, Speed 0.25
+    # and texture coordinate 0, none of which its export carries), with Time x Speed for its Time.
+    rotator = g.node(unreal.MaterialExpressionRotator, -2250, 100)
+    g.link(g.multiply(time, "", param("Speed", -2600, -100), "", -2450, 100), "", rotator, "Time")
+    albedo = albedo_texture("Albedo", -1350, 100)
+    g.link(rotator, "", albedo, "UVs")
+    # Albedo_1, which the original's graph has (its export) but none of its compiled shaders samples: the compile
+    # dropped it, so it is made connected to nothing, to carry the instances' values of it as the original does.
+    albedo_texture("Albedo_1", -1350, 450)
 
     # The colour and its strobe.
     grey = g.node(unreal.MaterialExpressionDesaturation, -1000, 0)
@@ -395,7 +386,6 @@ def make_portal_materials():
             ("scalars", MEL.get_scalar_parameter_names), ("textures", MEL.get_texture_parameter_names))}
         for rel in children:
             scalars, vectors, textures, masks, switches = dd_assets.instance_parameters(rel, VERSION)
-            textures = {k: v for k, v in textures.items() if k not in PORTAL_LEFT_OUT}
             unknown = (set(scalars) - known["scalars"]) | (set(textures) - known["textures"])
             if unknown or vectors or masks or switches:
                 raise RuntimeError("%s sets %s, which the estimate does not have"
