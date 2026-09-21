@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 3226bb8
 started: 2026-09-21 09:21
-updated: 2026-09-21 10:05
+updated: 2026-09-21 10:45
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（上限 30 KB） -->
@@ -22,10 +22,10 @@ updated: 2026-09-21 10:05
 
 ## 計画
 
-- [x] 1. 渦の材質 `M_00_Portal_Vortex` と 8 つのインスタンスを原作のデータどおりにした（`Rotator`・`Albedo_1`・パラメータのグループ。差は 3 つで、式は一致していた）
-- [ ] 2. ロゴの親 `M_00_Portal_Monkey` と鍵 `M_00_Portal_Lock` を同じく原作のデータどおりにする ← 次
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_gimmicks.py` の `_build_portal_logo`、`/Game/Pipeline/Materials/M_DD_PortalLogo`、`/Game/DD/Materials/00_Ballroom/M_00_Portal_Lock`
-- [ ] 3. `PPP_PortalAppear`・`_Lock` の型データと親の材質（`PPP_Particles_lit`・`_fogged`）を読み、**作るか作らないかを決める**（作るなら材質をこのステップで組む）
+- [x] 1. 渦の材質 `M_00_Portal_Vortex` と 8 つのインスタンスを原作のデータどおりにした（差は 3 つで、式は一致していた）
+- [x] 2. ロゴの親 `M_DD_PortalLogo`（本家 `M_00_Portal_Monkey`）を原作のデータどおりにした（`Albedo` のグループ `Textures`・関数の UVs をつながない・数は式自身の定数へ。式 12 → 9、焼き込みは不変）。鍵 `M_00_Portal_Lock` は照合だけで直しなし
+- [ ] 3. `PPP_PortalAppear`・`_Lock` の型データと親の材質（`PPP_Particles_lit`・`_fogged`）を読み、**作るか作らないかを決める**（作るなら材質をこのステップで組む） ← 次
+  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_gimmicks.py`、`.claude/implementation-records/08-stage-gimmicks.md`
 - [ ] 4. ステップ 3 で作ると決めたら、エミッタを `ResourceData` から組んで取り込み、`AWasamiPortal` の部品につなぐ（作らないなら理由を実装記録 08 に書いて飛ばす）
 - [ ] 5. 閃光の材質 `M_ky_primitiveColor`・`M_ky_lensFlare02` の不透明度をコンパイル済みシェーダーの式で確定して直す
 - [ ] 6. 結晶 `m_crystal` と地図の印 3 つ（`M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy`）をシェーダーと突き合わせ、差があれば直す
@@ -33,11 +33,12 @@ updated: 2026-09-21 10:05
 
 ## 次にやること
 
-ステップ 2。ロゴの親 `M_00_Portal_Monkey` と鍵 `M_00_Portal_Lock` を、ステップ 1 と同じやり方で原作のデータどおりにする: `pak_reference_2/_assets/DDeception/Content/Materials/00_Ballroom/M_00_Portal_Monkey.json` の `props`（`Expressions` の生き残り・入力の `ExpressionName`・パラメータの既定とグループ・`BlendMode` ほかの設定）と `python Tools/dd/cooked_shaders.py "00_Ballroom/M_00_Portal_Monkey."` を、今の `_build_portal_logo`（`dd_gimmicks.py`）と突き合わせる。`M_00_Portal_Lock.json` はインスタンスなので値と上書きだけ見る。
+ステップ 3。`pak_reference_2/_assets/DDeception/Content/ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear.json`・`PPP_PortalAppear_Lock.json` の `ResourceData`（エミッタ・モジュール・材質）と、その材質の親 `PPP_Particles_lit`・`PPP_Particles_fogged` の書き出し＋焼き込み（`python Tools/dd/cooked_shaders.py`、GPU なら `python Tools/dd/gpu_emitters.py`）を読み、**作るか作らないかを決めて記録に理由を書く**。本家では `AWasamiPortal` が写した `LockUnlock`（実装記録 08 の @967）が鍵のときに `PPP_PortalAppear_Lock`、開くときに `PPP_PortalAppear` を起こす。
 
 ## 決定事項
 
 - 2026-09-21（ステップ 1）: **cook の書き出しの `props` は材質の入力の一部しか残さない**（渦は `EmissiveColor` だけで `Opacity`・`OpacityMask` が無いのに、コンパイル済みシェーダーは α を出している。`DebrisMaster` は `Normal` だけ）。だから**「書き出しに無い＝つながっていない」とは読まない**。残る `Expressions` の並び（消えた式は `null`）と、生きている式の `props`（入力の `ExpressionName`・パラメータの既定とグループ）は使える。
+- 2026-09-21（ステップ 2）: **式の数が合わないときは、焼き込みが同じになる形のうち安い方を採る**（ロゴは消えた 5 個のうち 1 個が決まらない ── `Constant` か `TextureCoordinate` か落とされた式）。数は式自身の定数（`Multiply`・`Add` の B）に持たせる。`dd_powers._build_wall02` と同じやり方。
 - 2026-09-21: 項目 33 と同じ進め方にする — **本家の実機の収録に頼らず、原作のブループリント・アセットの値・cook の `ResourceData`・コンパイル済みシェーダーの式で決める**。理由: 作業一覧の大目標 3 の節の頭（2026-09-21 のユーザーの回答）。項目 33 は 4 行とも収録なしで閉じられた。
 
 ## 要確認（ユーザー）
@@ -48,11 +49,12 @@ updated: 2026-09-21 10:05
 
 - 原作の材質と粒子の在り処: 渦・ロゴ・鍵 = `pak_reference_2/_assets/DDeception/Content/Materials/MasterMaterials/M_00_Portal_Vortex.json`・`Materials/00_Ballroom/M_00_Portal_{Monkey,Lock}.json` とインスタンス 8 つ（同じ `00_Ballroom`）、粒子 = `ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear.json`・`PPP_PortalAppear_Lock.json`。
 - 使う道具: `python Tools/dd/cooked_shaders.py "<パスの一部>."`（cook で消えた式を焼き込みから読む）、`python Tools/dd/gpu_emitters.py`（項目 33 で作った、GPU のエミッタの型データと焼き込みの表の突き合わせ）。
-- ステップ 1 で使った読み方（ステップ 2 以降もこれ）: 書き出しの `exports[0].props.Expressions` に原作の式の数と生き残りの名前が、`exports[1:]` に生きている式（パラメータ・パラメータ集・関数呼び出し）の既定とグループが入る。入力の `ExpressionName` は消えた式も名指しするので、そこから型が分かる（渦は `MaterialExpressionRotator_0`）。UE 5.8 の `MaterialExpressions.cpp` の `Compile` と焼き込みを見比べれば、同じ式かを確かめられる。
+- ステップ 1・2 で使った読み方: 書き出しの `exports[0].props.Expressions` に原作の式の数と生き残りの名前が、`exports[1:]` に生きている式（パラメータ・パラメータ集・関数呼び出し）の既定とグループが入る。入力の `ExpressionName` は消えた式も名指しするので、そこから型が分かる。UE 5.8 の `MaterialExpressions.cpp` の `Compile` と焼き込みを見比べれば、同じ式かを確かめられる。
+- **材質の中身を UE 5.8 の Python から読む道**: 式の一覧は出せない（`Material.expressions` は protected、`editor_only_data` は式を出さない）。使えるのは `MaterialEditingLibrary.get_num_material_expressions` と `get_statistics`（命令・サンプラー数で焼き込みが変わっていないかを見る）、インスタンス側の `get_*_parameter_names` / `get_material_instance_*_parameter_value`。パラメータのグループは保存した `.uasset` の名前表を見る（`\x09\x00\x00\x00Textures\x00` のような長さ付きの文字列）。
 - **結晶の `distortion_normal` は項目 28 のステップ 13（2026-09-21）で入れ済み**（実装記録 16 の「結晶の材質」の「推定で外したもの: 無し」）。作業一覧の項目 34 の「今は」の行はそれより前の記述なので、ステップ 6 では現物を見て判断する。
 
 ## 検証
 
-- check_records: ステップ 1 で通した
+- check_records: ステップ 2 で通した（01・08 のハッシュを更新）
 - C++ ビルド: この項目では C++ を変えない
-- エディタでの確認（取り込み・組み立て・PIE）: ステップ 1 で `make_portal_materials()` を走らせ直し、渦の材質が組み上がる（ピクセルの命令 177 → 175、サンプラー 2・ピクセルのテクスチャ 1 は変わらず＝`Albedo_1` は引かれない）ことと、4 つのインスタンスが `Albedo_1` を持つことを確かめた。**PIE で見るのはステップ 7**。
+- エディタでの確認: ステップ 2 で `make_portal_materials()` を走らせ直し、ロゴの親が式 12 → 9 になっても画素の命令 165・サンプラー 2・画素のテクスチャ 1・UV スカラー 2 が変わらない（＝焼き込みは同じ）ことと、`Albedo` のグループ `Textures` が保存した `.uasset` に入ったこと、鍵と `MI_Portal_Wasami` の値が元のままであることを確かめた。**PIE で見るのはステップ 7**。

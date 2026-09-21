@@ -323,26 +323,43 @@ def _build_portal_vortex(mat):
 
 
 def _build_portal_logo(mat):
-    """M_00_Portal_Monkey, whose graph the cook took away; the graph writes out its compiled translucent base pass
-    (Tools/dd/cooked_shaders.py "00_Ballroom/M_00_Portal_Monkey." --show 40): Albedo sampled at the UVs scaled about the
-    middle by Scale (ScaleUVsByCenter), its RGB x 0.05 x (1 + Mat_ParameterCol's Portal Extra Brightness) the emissive
-    colour and its alpha the opacity. Unlit, as the vortex (no base colour). Albedo defaults to the lock: the monkey is
-    the original's character, which this game does not show. This game adds Tint, multiplied into the RGB: white by
-    default (the lock as the original), the rings' red on this game's white logo (PORTAL_LOGO_TINT)."""
+    """M_00_Portal_Monkey, whose graph the cook took away; its export keeps four of its nine expressions (the Albedo
+    sample, in the group Textures, whose Coordinates name the ScaleUVsByCenter call; Scale; and the collection
+    parameter Portal Extra Brightness), and its compiled translucent base pass writes out the rest
+    (Tools/dd/cooked_shaders.py "00_Ballroom/M_00_Portal_Monkey." --show 40): Albedo sampled at (the UVs - 0.5) /
+    Scale + 0.5 (ScaleUVsByCenter about the middle), its RGB x 0.05 x (1 + Mat_ParameterCol's Portal Extra Brightness)
+    the emissive colour and its alpha the opacity. Four of the five the cook dropped are that arithmetic's Multiply
+    and Add, the Multiply_7 its EmissiveColor names and the Constant_2 its Specular names (0.5, the engine's own
+    default, and nothing here reads it); the fifth is either 0.05 or 1 as a Constant of its own, a TextureCoordinate
+    on the function call's UVs, or an expression the compile dropped whole (as the vortex's Albedo_1 was). None of
+    the three changes what is compiled, so the estimate takes the cheapest: the two numbers are the expressions' own
+    constants, and the UVs is left unconnected as the function's input invites ("Only need to plug in if you want a
+    different UV channel"), which leaves its own TexCoord 0 - the coordinate the compiled shader samples at.
+
+    The original is lit (no ShadingModel in its export) but leaves base colour unconnected, and its base pass adds
+    what the vortex's does: DiffuseOverrideParameter.rgb (plus SpecularOverrideParameter, 0.04 x its alpha, x 0.45)
+    through the translucency lighting volume, which is 0 outside the editor's lighting-only view modes. So no light
+    reaches it in play and the estimate is unlit, as the vortex is.
+
+    Albedo defaults to the lock: the monkey is the original's character, which this game does not show. This game adds
+    Tint, multiplied into the RGB: white by default (the lock as the original), the rings' red on this game's white
+    logo (PORTAL_LOGO_TINT)."""
     scalars, _ = dd_assets.parameter_defaults(PORTAL_MONKEY, VERSION)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     mat.set_editor_property("used_with_static_lighting", True)
     g = dd_stage._Graph(mat, checked=True)
     scaled = dd_assets.function_call(g, "Texturing/ScaleUVsByCenter", -1000, 0)
-    g.link(g.node(unreal.MaterialExpressionTextureCoordinate, -1200, 0), "", scaled, "UVs")
     g.link(g.scalar("Scale", scalars.get("Scale", 1.0), -1200, 100), "", scaled, "Texture Scale")
     albedo = g.texture("Albedo", unreal.load_asset(dd_assets.asset_path(PORTAL_TEXTURES[3])),
                        unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -750, 0)
+    albedo.set_editor_property("group", "Textures")  # the original's group
     g.link(scaled, "", albedo, "UVs")
-    extra = dd_assets.add(g, _collection_parameter(g, "Portal Extra Brightness", -750, -300), "",
-                          dd_assets.constant(g, 1.0, -750, -200), "", -550, -250)
+    extra = g.node(unreal.MaterialExpressionAdd, -550, -250)  # B: its constant, 1
+    g.link(_collection_parameter(g, "Portal Extra Brightness", -750, -300), "", extra, "A")
     tinted = g.multiply(albedo, "RGB", g.vector("Tint", (1.0, 1.0, 1.0, 1.0), -750, 200), "RGB", -550, 50)
-    colour = g.multiply(tinted, "", dd_assets.constant(g, 0.05, -550, -100), "", -400, -50)
+    colour = g.node(unreal.MaterialExpressionMultiply, -400, -50)  # B: its constant, the original's 0.05
+    colour.set_editor_property("const_b", 0.05)
+    g.link(tinted, "", colour, "A")
     g.out(g.multiply(colour, "", extra, "", -250, -150), "", MP.MP_EMISSIVE_COLOR)
     g.out(albedo, "A", MP.MP_OPACITY)
 
