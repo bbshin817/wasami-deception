@@ -684,7 +684,8 @@
 
 - 症状: PIE で粒子（`Fracture_concrete_3` の破片と煙、`P_06_NurseDoorHit` の塵、`P_06_Defib` の稲妻）を出しているのに、`HighResShot 1600x900` の絵には**背景だけが写り、粒子がどこにも無い**。リモート実行では `UParticleSystemComponent` が `is_active() == True` で、位置も正しい。TAA の縁の揺れぶんの差（最大 +70/255 の 1 画素）しか出ないので、**差分を測っても「ほとんど見えない粒子」と読み違える**。
 - 原因: `HighResShot` はシーンを描き直すので、Cascade のスプライトがその描き直しに乗らない。UI が写らないのと同じ扱い。
-- 対処: **粒子の絵は画面から撮る**（`python Tools/desktop.py shot --region <l> <t> <r> <b> --scale 1.0`）。位置や明るさだけを比べるなら `HighResShot` でよい。ビューポートに別の窓（出力ログなど）が重なっているときは、重ならない矩形を測ってから撮る。
+- 対処: **コンソールの `shot`（引数なし）なら粒子も写る**（2026-09-21、作業一覧の項目 34 のステップ 8 で分かった）。ビューポートをそのまま `Saved/Screenshots/WindowsEditor/ScreenShotNNNNN.png` に出すので、画面から撮るのと違って別の窓が重なっていても関係なく、UI（タブレット）も写る。`python Tools/pie.py cmd "shot"` か、リモート実行の `execute_console_command(world, "shot")` で呼ぶ。それでも足りないときだけ画面から撮る（`python Tools/desktop.py shot --region <l> <t> <r> <b> --scale 1.0`。ビューポートに別の窓〈出力ログなど〉が重なっているときは、重ならない矩形を測ってから）。位置や明るさだけを比べるなら `HighResShot` でよい。
+- **`shot` の落とし穴 2 つ**: (1) 連写の 1 枚目が PIE でなく**エディタのビューポート**（別の場所を写した静止画）になることがある ── 並べるときに 1 枚目を捨てるか、先に 1 枚捨て撮りする。(2) エディタが前面に無いと Slate のティックが 0.3〜2 s おきに落ちるので、`register_slate_post_tick_callback` で刻む連写は**ゲーム内時間で見ると飛び飛び**になる ── 短い演出は `slomo 0.2` 前後まで落としてから撮る。
 - 確かめ方: 同じ 1 コマを `HighResShot` と `desktop.py shot` の両方で撮って並べる（粒子が片方にしか無い）。
 - 出典: 作業一覧の項目 33 のステップ 8（2026-09-21）。
 

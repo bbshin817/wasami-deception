@@ -196,6 +196,7 @@ Zone 2 の独房（`import_cell`。`import_doors_busted` の後。流れの `OnS
 
 - 除細動器の稲妻の材質 `M_ky_spark02_4x4` は、2026-09-21 に書き出しの式と両方のスイッチの焼き込みのシェーダーと突き合わせて原作どおりにした（上。作業一覧の項目 33 のステップ 7）。決まらないのは Emissive の Add とスイッチの組み合わせだけで（glow を火花の側に付けても命令は同じ）、見え方は変わらない。`P_06_Defib` の無効な 14 のエミッタは材質なしで組んだので、有効にしても本家の見た目にはならない（本家でも描かれない）。
 - のこぎりの罠の重なりは、刃の箱の上端がまだ床下 16 cm ほどのコマから飛び飛びに出て（`short01` で 3 回確かめた）、上端が床に届くと続けて出る。捕まるのが 0.1 s ほど早いだけで遊びには効かないので、原因は調べていない（構築の溶接つきの付け方か、骨の変換と重なりの取り直しの順が疑わしい）。
+- **鍵をかけるときの `PPP_PortalAppear_Lock` は見えない（本家どおり）**: 粒子の部品は `Logo` の子で、`Lock/Unlock` は先に `Logo` の拡縮を 0 にしてから `PPP_PortalAppear_Lock` を起こす（原作の @1043 → @1558 も同じ順）。粒子の大きさには部品のワールドの拡縮が掛かるので、湧いた粒子（`Smoke` 3・`blast2` 2）は大きさ 0 で描かれる。2026-09-21 に PIE で確かめた: 部品から起こすと 16 コマ撮っても何も見えず、同じ粒子系を `SpawnEmitterAtLocation` で拡縮 1 で出すと大きな炎と煙が出る。**本作は本家の順のまま**にしてある（本編では鍵をかけ直す所が無いので、遊びには出ない）。
 - エディタでは初めて使う材質のシェーダーをその場でコンパイルするので、PIE で開けた直後の 0.3 s ほど、円盤が仮の材質の大きな黒い円に見える（パッケージでは起きない）。`Portal Extra Brightness` はエディタのワールドでは既定の 1 なので、エディタのビューでは暗い（ゲームでは Zone 2 の流れが 40 にする）。
 
 ## テスト（`Tests/WasamiDoubleDoorsTests.cpp`）
@@ -242,7 +243,17 @@ Zone 1 の迷路（2026-09-19、62 枚を置いた後）: 巡回するナース�
 - **Zone 2 の独房の粒子**（`Wasami.Checkpoint 7` → `open L_Hospital_Zone2` → `Wasami.Flow OnCellCutsceneFinished`。エミッタを直に起こしてもよい）: `P_06_NurseSparks` は廊下の床に**赤い小さな十字の火花**が 2 コマだけ（4 m 手前から見える）、`Concrete_impact_large` は独房の扉に**橙の火花の筋**が 2 コマ（2 m 手前）。`Fracture_dark_slow` は床の 3 m 下なので廊下からは何も見えない（上）。
 - **除細動器の放電**（Zone 1。`(6207, −12597)` からヨー 162）: 2.25 s ごとに台の間に**赤橙の稲妻が 3 本ほど**走り、明るい芯と赤い尾が廊下を横切って約 0.7 s で消える（`M_ky_spark02_4x4`）。グリッド `Intermediate/Overnight/shots/s8_report_defib.png`。
 
+## 確かめたこと（2026-09-21、PIE。作業一覧の項目 34 のステップ 8）
+
+ガレージのポータル。撮り方は `Tools/pie.py place` で前に立ち、`AWasamiPortal::LockUnlock` を Python から呼んで `shot`（粒子も写る。上の項目 33 の節の `HighResShot` の注意を見る）。グリッドは `Intermediate/Overnight/shots/item34_portal.png`（git の外）。
+
+- **鍵**（`bLocked` のまま）: 暗い渦の輪の真ん中に白い南京錠、外周にルーンの輪。
+- **開く**（`LockUnlock(false, true)`）: `PPP_PortalAppear` が赤橙の炎で輪を埋め、赤い火花が散り、黒い煙が 0.5 s ほど広がって晴れ、赤く光る輪とルーン・ワサミのロゴが残る。揺れと `portal_unlocked` も鳴る。
+- **鍵をかける**（`LockUnlock(true, true)`）: 見た目は鍵の姿に戻るだけで、`PPP_PortalAppear_Lock` は見えない（本家どおり。上の「既知の制約・注意点」）。
+- **Zone 2 の祭壇の球**（`m_crystal_Inst2`。16 記録のステップ 7 で `M_DD_Crystal` を直した後）: 紫に光る球を翼のある像が掲げ、ガレージ全体と救急車が紫に染まる。
+
 ## 変更履歴
+- 2026-09-21: PIE でポータルの鍵・開く・鍵をかけるの 3 つを確かめ、`PPP_PortalAppear_Lock` が見えないのは本家の順のせいだと突き止めて作業一覧の項目 34 を閉じた（上の 2 つの節。ステップ 8）
 - 2026-09-21: ポータルの現れる粒子 `PPP_PortalAppear`・`_Lock` を出す側につないだ: `AWasamiPortal` の 2 つの部品が `BeginPlay` でテンプレートを入れ（`AppearParticle`・`AppearLockParticle`）、`AWasamiSpeedBarrier::BreakIfBoosting` が本家どおり `P_ky_impact2` より先に `PPP_PortalAppear` を 0.3 倍で出す（本家 `BP_SpeedBarrier` @233 → @352）。PIE で見るのはこれから（作業一覧の項目 34 のステップ 5b）
 - 2026-09-21: ポータルの現れる粒子 `PPP_PortalAppear`・`PPP_PortalAppear_Lock` を `dd_particles` で組み、`import_portal` に足した（`PORTAL_APPEAR_PARTICLES`）。GPU のエミッタ `Sparks` の焼き込みは原作と `QuantizedColorSamples` の ±1/255 だけ違う（エディタの再量子化の丸め）。`dd_particles` が `RDO_Extreme` の表を扱えるようにした（01 記録。作業一覧の項目 34 のステップ 5）
 - 2026-09-20: `dd_gimmicks.import_cutscene_particles`（Zone 1 の途中の出来事の土煙 `P_06_NursesJump`・`P_06_NursesLand`）を足し、`import_all` が作るようにして取り込んだ（作業一覧の項目 25 のステップ 1。01 記録）
