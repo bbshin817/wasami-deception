@@ -70,7 +70,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8.2 版。ステージ�
 - **`DefaultEditorPerProjectUserSettings.ini`**: MCP サーバーの設定（`ServerUrlPath=/mcp`、`ServerPortNumber=8000`、`bAutoStartServer=True`、`bEnableToolSearch=True`）。
 - **`DefaultInput.ini`**: テンプレートのまま。Enhanced Input（`DefaultPlayerInputClass=EnhancedPlayerInput`、`DefaultInputComponentClass=EnhancedInputComponent`）、`bEnableLegacyInputScales=True`（本家と同じ 2.5 / −2.5 の視点の倍率が掛かる。02 記録）、`bEnableMouseSmoothing=True`、`FOVScale=0.011110`。
 - **`DefaultGame.ini`**: CommonUI の設定とプロジェクト ID に、`[/Script/EngineSettings.GeneralProjectSettings]` の `ProjectVersion=1.0.0`（タイトルの右上の版の文字。2026-09-20 のユーザーの回答。14 記録）。
-  - **`[/Script/UnrealEd.ProjectPackagingSettings]` の節は置かない**（2026-09-20 に理由をファイルにも書いた）。UE 5.8 のクックは、マップの一覧（`MapsToCook`・`[AllMaps]`）も `DirectoriesToAlwaysCook` も無いときだけ「`/Game` を全部入れる」経路に落ちる（`CookOnTheFlyServer.cpp` の `bCookAllByDefault = true` と、`CollectFilesToCook` の終わりの `if (bCookAll || (bCookAllByDefault && NumFilesAddedByCommandLineOrGameCallback == 0))`）。本作は **C++ が `/Game` のパスを直に名指しして読むアセットが 237 個**あり、そのうち 195 個はどのマップからも参照されていない（アセットレジストリから辿れない）ので、Project Settings の「Maps to Cook」「Directories to Always Cook」を埋めるとその数え上げが 0 でなくなって全部入れる経路が消え、195 個が黙って落ちる。絞る必要が出たら `bCookAll=True` にする。`/Game` の 1134 パッケージのうち、3 つのマップか C++ の名指しから辿れるのは 1106（残り 28 は `Pipeline/Debug` の検証用の材質 17 など）。**2026-09-21 のユーザーの回答で、使っていない原作の題字 `/Game/DD/UI/Menu/TitleCards/chapter_ui_title_tormenttherapy` と `Pipeline/Debug` の材質 17 個は消す**（クックの前に。作業一覧の項目 35）。
+  - **`[/Script/UnrealEd.ProjectPackagingSettings]` の節は置かない**（2026-09-20 に理由をファイルにも書いた）。UE 5.8 のクックは、マップの一覧（`MapsToCook`・`[AllMaps]`）も `DirectoriesToAlwaysCook` も無いときだけ「`/Game` を全部入れる」経路に落ちる（`CookOnTheFlyServer.cpp` の `bCookAllByDefault = true` と、`CollectFilesToCook` の終わりの `if (bCookAll || (bCookAllByDefault && NumFilesAddedByCommandLineOrGameCallback == 0))`）。本作は **C++ が `/Game` のパスを直に名指しして読むアセットが 237 個**あり、そのうち 195 個はどのマップからも参照されていない（アセットレジストリから辿れない）ので、Project Settings の「Maps to Cook」「Directories to Always Cook」を埋めるとその数え上げが 0 でなくなって全部入れる経路が消え、195 個が黙って落ちる。絞る必要が出たら `bCookAll=True` にする。`/Game` の 1134 パッケージのうち、3 つのマップか C++ の名指しから辿れるのは 1106（残り 28。2026-09-20 に数えた）。その 28 のうち **使っていない原作の題字 `/Game/DD/UI/Menu/TitleCards/chapter_ui_title_tormenttherapy` と `Pipeline/Debug` の検証用の材質 `M_Probe_*` 17 個は 2026-09-21 に消した**（2026-09-21 のユーザーの回答。作業一覧の項目 35。どちらも git の管理外で、参照は 0 件。空になった `/Game/Pipeline/Debug` のフォルダーごと消した。作り直す経路は無い: `dd_ui.py` の取り込みの一覧に題字はもう無く、`Tools/dd/prepare_level_title.py` は `/Game` ではなく `pak_reference_2` の PNG を読む。`M_Probe_*` を作る Python も無い〈検証のときに MCP で直に作ったもの〉）。残る 10 個はタブレットの地図の印 4 つ・サードパーティの HDRI と火花 3 つ・取り込みのプリセット 3 つ。
 - **`DefaultEditor.ini`**: テンプレートのまま。
 
 ## 露出（2026-09-16）
@@ -184,7 +184,7 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
-- 2026-09-21: 有人セッションで性能の要確認に回答をもらい、**クックして本編の fps を測る**ことにした（項目 36）。使っていない原作の題字と `Pipeline/Debug` の材質 17 個は**クックの前に消す**（項目 35）
+- 2026-09-21: 有人セッションで性能の要確認に回答をもらい、**クックして本編の fps を測る**ことにした（項目 36）。使っていない原作の題字と `Pipeline/Debug` の材質 17 個はクックの前に**消した**（項目 35）
 - 2026-09-20: `ProjectVersion` を 1.0.0 にした（ユーザーの回答。仮の 0.1.0 から）
 - 2026-09-16: 初版（現行の構成・設定を記録）
 - 2026-09-19: `DefaultEngine.ini` に本家のナビの設定（`RecastNavMesh`・`NavigationSystemV1`）を足した（作業一覧の項目 7 のステップ 1）

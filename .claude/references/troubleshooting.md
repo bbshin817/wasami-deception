@@ -211,6 +211,13 @@
 - 対処: 設定どうしの A/B には使えるが、実機との数値の突き合わせは PIE で撮る（`HighResShot` か `Tools/desktop.py shot`）。PIE 中のリモート実行は `get_game_world()` を使う。
 - 出典: コミット 97676a8（2026-09-16）、01 記録。
 
+### `EditorAssetLibrary.delete_asset` が真を返すのにアセットのファイルが残る
+
+- 症状: 18 個のアセットをまとめて消して 18 個とも真が返り、アセットレジストリからも消えたのに、テクスチャ 1 個（`chapter_ui_title_tormenttherapy.uasset`）だけ `Content/` にファイルが残った（更新時刻は取り込んだときのまま＝一度も消されていない）。`does_asset_exist` は真（ディスクを見る）なのに `list_assets`・`get_assets_by_package_name` は空、という食い違いが出る。
+- 原因: 不明。消す対象は読み込まれておらず（`find_object` が `None`）、読み取り専用でもリダイレクタが残ったのでもなかった。同じ呼び出しで材質 17 個は消えている。
+- 対処: 削除の後は**ディスクを見て確かめる**（`ls Content/…`）。残っていたらそのファイルを消す。そのままエディタを開き直すとレジストリが読み直してアセットが戻る。
+- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 5。
+
 ## Python（UE 5.8 の API の罠）
 
 ### ログが毎フレームの `LogPython: Error: … in tick` で埋まる（`module 'unreal' has no attribute 'unregister_slate_post_tick_handle'`）
