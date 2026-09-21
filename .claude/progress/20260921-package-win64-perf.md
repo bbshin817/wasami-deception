@@ -69,6 +69,6 @@ updated: 2026-09-21 12:55
 
 ## 検証
 
-- check_records: 未実行（ソースは変えていない。変えたのは ini とガイド）
+- check_records: OK（`--update` 済み。`DefaultGame.ini` を変えたので 00 記録の `DefaultGame.ini` の節と変更履歴を直した）
 - C++ ビルド: `BuildCookRun -build` が通った（`Development` の Win64）
 - パッケージ: `BUILD SUCCESSFUL` / `AutomationTool exiting with ExitCode=0`、クックは `Success - 0 error(s), 1 warning(s)`（残る 1 件は MCP プラグインの EULA の注意で無害）
