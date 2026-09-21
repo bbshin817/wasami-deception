@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 13:20
+updated: 2026-09-21 13:15
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -27,18 +27,18 @@ updated: 2026-09-21 13:20
 - [x] 1. 計画（この記録を作ってステップに分ける） … 2026-09-21 完了。
 - [x] 2. `BuildCookRun` を通した … 2026-09-21 完了。`GameFeatureData` の規則が無くてクックがエラー 2 件で落ちたので `Config/DefaultGame.ini` に足し、`BUILD SUCCESSFUL`。手順を `distribution.md` に、失敗を症状索引に書いた。
 - [x] 3. パッケージの中身の確認 … 2026-09-21 完了。**`/Game` のアセットが `L_Title` の 1 つしか入っていなかった**（全 501 パッケージ・494 クック。残りはエンジンとプラグインの既定）。`Config/DefaultGame.ini` に `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True` を足して直し、症状索引・`distribution.md`・実装記録 00 を直した。**作り直しはステップ 4。**
-- [ ] 4. パッケージを作り直し、本編が入っていることと原作のロゴ・キャラクターのモデルが入っていないことを確かめ、exe が起動してタイトルが出ることまで見る ← 次
-  - 変更予定: なし（必要なら記録に数を書く）
+- [x] 4. パッケージの作り直しと中身の確認 … 2026-09-21 完了。`bCookAll=True` で **1650 パッケージがクックされ、`/game/` は 1139 件**（`Content/` の全部）。原作のロゴのテクスチャもキャラクターのモデルも入っていない。exe が起動してタイトルが出た。**原作のナースの姿の絵 3 枚**が入っているのを見つけた（要確認）。
 - [ ] 5. 本編の fps を 7 か所で測る（実装記録 00 の表に本編の列を足す）
 - [ ] 6. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）
 - [ ] 7. 結果をまとめて項目 36 を閉じる（60 前後に届かなければ画質の選択肢の項目を立てる。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 4: `bCookAll=True` を入れたのでパッケージを**作り直す**（下の「再開時の注意」のコマンド。今度は `/Game` を全部クックするので初回は長い。`run_in_background` で走らせ、**応答を終える前に必ず結果を読む**）。終わったら:
-- (a) 本編が入ったこと: `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1000 前後（`/Game` は 1139 パッケージ。1 桁なら失敗）。
-- (b) 原作のロゴとキャラクターのモデルが入っていないこと: 同じ `ReferencedSet.txt` を名前で見る（クック前の確認は項目 21 で済んでいるが、実物でも見る）。
-- (c) `python Tools/console_session.py "…\Saved\Archive\Windows\wasami_deception.exe"` で起動してタイトルが出ること（`python Tools/desktop.py shot` で 1 枚）。エディタは閉じてから起動する。
+ステップ 5: **本編の fps を 7 か所で測る**（実装記録 00 の性能の表に本編の列を足す）。測る前に下の 2 つを決める（ステップ 4 で分かった）:
+- **解像度**: 本編は `Saved/Archive/Windows/wasami_deception/Saved/Config/Windows/GameUserSettings.ini` の `FullscreenMode=1`（ボーダーレス）が効いて、`-windowed -ResX=1920 -ResY=1080` を付けても**デスクトップの 3440x1440（496 万画素 = 1080p の 2.4 倍）**で描いた。PIE の表と比べるには 1080p にそろえる必要がある。`FullscreenMode=2`（ウィンドウ）に書き換えて起動するか、コンソールで `r.setres 1920x1080w`。
+- **画質**: 本編の初回起動が自動判定して `GameUserSettings.ini` に書いた既定は **`sg.*=2`（High）**（`ViewDistanceQuality` だけ 3、`ResolutionQuality=100`）。PIE の表は 11 群すべて 3（Epic）で測ったので、**Epic にそろえた列**（PIE と比べる用）と、**既定の High のまま**（遊ぶ人が実際に得る絵）の 2 つを測るのがよい。
+- **測り方**: `Tools/perf_probe.py` は PIE 専用（`pie.remote()` を使う）ので本編には使えない。本編では `~` でコンソールを開いて `csvprofile start` / `stop` をキーで打ち、出来た `Saved/Archive/Windows/wasami_deception/Saved/Profiling/CSV/Profile(*).csv` を `perf_probe.py` と同じ列でまとめる（`stat unit` の画面を読むより正確）。**入力は `python Tools/desktop.py ... --allow wasami_deception.exe`**。
+- **7 か所への行き方**: 本編にはチェックポイントで開く手立てが無いので、コンソールの `open L_Hospital_Zone1` + セーブのチェックポイントか、通しで遊んで着いた所で測るかを決める（ステップ 6 の通しプレイと合わせると 1 度で済むかもしれない）。
 
 ## 決定事項
 
@@ -50,19 +50,26 @@ updated: 2026-09-21 13:20
 
 ## 要確認（ユーザー）
 
-（なし）
+- 2026-09-21（ステップ 4）: **原作のナースの姿を描いたテクスチャ 3 枚がパッケージに入る**。`.claude/guides/original-fidelity.md` の「ステージの中にキャラクターの姿が描かれたテクスチャ（ポスター、看板など）があったときは、ワサミの絵に差し替えるかをユーザーに確認する」に当たるので、**替えるかを確かめたい**（中身は絵で、キャラクターのモデルではない）。
+  - `hospital_poster_nurse_01_D`（`M_06_Hospital_Poster_01`。紙袋をかぶったナースが「TAKE YOUR MEDICINE!」と言う漫画風の絵）… **Zone 1 で使っている**。
+  - `hospital_decal_nurseambulance`（`M_06_Hospital_Decal_NurseAmbulance`。救急車の上で注射器を構えるナースの絵）… **Zone 1・Zone 2 の両方で使っている**。
+  - `hospital_poster_nurse_02`（`M_06_Hospital_Poster_14`。注射器を持つナースの黒い影絵と「GET VACCINATED!」）… **どのレベルからも使っていない**が、`bCookAll=True` でパッケージには入る。
+  - 替えるなら、WebGL 版で CC2 のポスターにしたのと同じやり方（前処理でワサミの絵を描いて `/Game/Wasami` に取り込み、材質のテクスチャを差し替える）。替えないなら「本家の絵のまま置く」と決めて `original-fidelity.md` の表に 1 行足す。
+  - 原作のロゴとキャラクターの**モデル**は入っていない（下の「検証」）。
 
 ## 再開時の注意
 
-- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」に実際に通った形で書いた。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）。
+- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」に実際に通った形で書いた。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）。作り直しは 2026-09-21 13:01〜13:07 の **5 分 22 秒**（クック 1650 パッケージ、`BUILD SUCCESSFUL`・`ExitCode=0`）。
+- **パッケージ版の起動と入力**:
   ```bash
-  python Tools/editor_cycle.py --quit-only
-  "C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun \
-    -project="C:\Users\User\Desktop\wasami_deception\wasami_deception.uproject" \
-    -noP4 -platform=Win64 -clientconfig=Development -cook -build -stage -pak -archive \
-    -archivedirectory="C:\Users\User\Desktop\wasami_deception\Saved\Archive" > Intermediate/Overnight/uat_package.log 2>&1
-  python Tools/editor_cycle.py --no-quit --no-build   # 終わったら開き直す
+  python Tools/desktop.py start
+  python Tools/console_session.py "C:\Users\User\Desktop\wasami_deception\Saved\Archive\Windows\wasami_deception.exe" -windowed -ResX=1920 -ResY=1080
+  python Tools/desktop.py shot --scale 0.45                        # 撮る
+  python Tools/desktop.py click X Y --allow wasami_deception.exe   # 入力は --allow が要る
+  taskkill //F //IM wasami_deception.exe                           # 終わり（入力が通らないときも確実）
   ```
+  本編のログは `Saved/Archive/Windows/wasami_deception/Saved/Logs/wasami_deception.log`。
+- **⚠ デスクトップへの入力が今は通らない**: Windows のファイアウォールの確認（「UnrealEditor にパブリック／プライベート ネットワークへのアクセスを許可しますか?」）が前面に出たままで、`desktop.py` が `PermissionError: the foreground window is PickerHost.exe` で断る。OS の設定なので触っていない（`.claude/guides/verification.md`「OS 全体の入力は操作しない」）。**ステップ 5・6 の前に消えているかを `python Tools/desktop.py ping` で見る**（要確認）。
 - **比べる相手**（実装記録 00 の「性能」の PIE の 7 か所。1080p 相当・Epic、fps avg / p95 / GPU ms）:
   | 場所（チェックポイント） | PIE fps avg | p95 | GPU ms |
   | --- | --- | --- | --- |
@@ -73,10 +80,14 @@ updated: 2026-09-21 13:20
   | Z2 見張りの廊下（cp 8） | 47.3 | 35.0 | 20.50 |
   | Z2 迷路（cp 9） | 60.1 | 55.7 | 16.08 |
   | Z2 祭壇の車庫（cp 10） | 56.0 | 37.9 | 17.20 |
-- **エディタ**: ステップ 2 の終わりに開き直したまま（ステップ 4 の前に閉じる）。C++ は変えないのでビルドは要らない。
+- **エディタ**: ステップ 4 の終わりに開き直した（ステップ 5・6 の前にまた閉じる）。C++ は変えないのでビルドは要らない。
 - 走らせたままのバックグラウンドの処理・未保存のアセットは無い。
 
 ## 検証
 
-- check_records: ステップ 3 の終わりに `--update` で通す（`DefaultGame.ini` を変えたので 00 記録を直した）。
-- ステップ 3 の根拠: `Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 493 件で `^/game/` は 1 件（`/game/stage/maps/l_title`）、`Intermediate/Overnight/uat_package.log` の `Packages Cooked: 494, ... Total Packages: 501`、コンテナの PackageStore も 494 パッケージ。`Content/` は 1139 パッケージ・1.1 GB。
+- **ステップ 4（2026-09-21）**:
+  - (a) 本編が入った: `Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` は 1650 行で `^/game/` が **1139 件**（`Content/` の 1139 パッケージ全部）。ログは `Packages Cooked: 1650, Packages Incrementally Skipped: 0, Packages Skipped by Platform: 7, Total Packages: 1657`、`Success - 0 error(s), 1 warning(s)`、`BUILD SUCCESSFUL`・`ExitCode=0`。直す前は `/game/` が 1 件だったので、`bCookAll=True` が効いた。
+  - 出来上がりも増えた: `Saved/Archive/Windows` は **1.7 GB**（前は 1.0 GB）で、`wasami_deception-Windows.ucas` が **970 MB**（前は 198 MB）。
+  - (b) 原作の**ロゴ**は入っていない: `ReferencedSet.txt` の `logo` はエンジンの `zenlogo_64` と本作の `t_titlelogo`・`t_titlelogoglow`・`m_dd_portallogo` だけ（`darkdeception` は曲のファイル名 3 つ = 音なので使ってよい）。原作の**キャラクターのモデル**も入っていない: スケルタルメッシュは本作の `sk_wasamienemy`・`sk_wasamiboss` の 2 体だけで、`hospital_*_anim_skeleton` は小物（ガレージのリフト・のこぎり罠）の動き。`m_06_nurse_items` と `nurse-low5_items_*` はナースの持ち物のテクスチャだが、**絵は金属と針だけで人物の姿は無く**、本作ではレベルの小物「独房の天井の針」（`hospital_zone_02_holdingCell_01_needles_ceiling`）に使っている。`bp_dd_playercharacter_*shake` は揺れ、`m_06_nursesparks` は火花、`tablet_*` はプレイヤーの持つタブレット。
+  - **ただし原作のナースの姿を描いた絵が 3 枚入る**（上の「要確認」）。
+  - (c) 起動: `console_session.py` で exe を起動してタイトル画面が出た（`Intermediate/DesktopAgent/shots/shot-130826.png`。本作のロゴ・ワサミの顔・NEW GAME / EXTRAS / OPTIONS / QUIT・`UNOFFICIAL FAN GAME - NOT AFFILIATED WITH GLOWSTICK ENTERTAINMENT`・`v1.0.0`）。ログは `Game Engine Initialized.` → `LoadMap(/Game/Stage/Maps/L_Title)` 0.58 s。エラーは 1 件だけで軽いもの（`LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget SObjectWidget`。タイトル画面。遊ぶのに支障は無い）。
