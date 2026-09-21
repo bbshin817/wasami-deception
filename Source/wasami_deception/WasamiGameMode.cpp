@@ -110,7 +110,7 @@ namespace
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs ResetSaveCommand(TEXT("Wasami.ResetSave"),
-		TEXT("Starts the save over (no checkpoint, deaths, time or streaks, no warning) with 3 lives and no shards remembered; open the level again to begin anew."),
+		TEXT("Starts the save over (no checkpoint, deaths, time or streaks, no warning) with 3 lives and no shards remembered; open the level again to begin anew. On the title, which has no hospital game mode, the slot is erased as NEW GAME erases it."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			AWasamiGameMode* Mode = WasamiModeOf(World);
@@ -120,7 +120,14 @@ namespace
 				Mode->GetSave()->bLastCheckpointWarning = false;
 				Mode->WriteSave();
 			}
-			if (UWasamiGameInstance* Instance = Mode ? Mode->GetWasamiGameInstance() : nullptr)
+			else
+			{
+				// The title has a game mode of its own (14 record), so there is no save loaded to empty: write a new one
+				// over the slot, which is what the title's own NEW GAME does (UWasamiTitleScreenWidget::BeginNewGame).
+				UWasamiSaveGame::Erase(UWasamiSaveGame::SlotName);
+			}
+			// Through the world, not the game mode, so that the lives go back to 3 on the title as well.
+			if (UWasamiGameInstance* Instance = World ? World->GetGameInstance<UWasamiGameInstance>() : nullptr)
 			{
 				Instance->ResetLives();
 				Instance->ForgetCollectedShards();

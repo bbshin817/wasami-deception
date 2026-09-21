@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 14:20
+updated: 2026-09-21 16:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -32,25 +32,24 @@ updated: 2026-09-21 14:20
 - [x] 5b. 2026-09-21 完了。**既定の HIGH で同じ 7 か所**を測り、実装記録 00 に「パッケージした本編の fps」の節（2 画質 × 7 か所）を足した。**HIGH は 56.4〜72.4 fps（平均 63.2）で目安に届き**、VERY HIGH は 43.2〜58.2（平均 50.9）。
 - [x] 5c. 2026-09-21 完了。音量の読みを `FAudioThread::RunCommandOnAudioThread` + `FAudioCommandFence` に移して**パッケージ版の `Wasami.Settings` が落ちなくなった**（`L_Title` と `L_Hospital_Zone1` の両方で 3 クラスの音量を印字して正常終了、`Saved/Crashes/` は 0 件）。症状索引と 15 記録を直し、パッケージを作り直した（1 分 52 秒、`/game/` 1139 件）。
 - [x] 6a. 2026-09-21 完了。デバッグの **`Wasami.Delay S Command …`**（実時間 S 秒後にコンソールコマンドを走らせる。レベルをまたぐ）と **`Wasami.Status`**（レベル・チェックポイント・ライフ・シャード・目的・プレイヤー・画面のウィジェットを 1 行でログに）を足し、PIE とパッケージ版の両方で確かめた（06 記録）。パッケージも作り直した（1 分 44 秒、`/game/` 1139 件）。
-- [ ] 6b. `Tools/game_flow.py` でパッケージ版を通す（Zone 1 の到着 → 迷路 → 駐車場 → 救急車 → Zone 2 → 独房 → 廊下 → 迷路 → 祭壇 → 脱出 → スコア画面。節目で `Wasami.Status` と `HighResShot`）。落ちないこと・各レベルが開くこと・スコア画面が出ることを見る。
+- [x] 6b. 2026-09-21 完了。**`Tools/game_flow.py`** を作り、パッケージ版をタイトル → Zone 1 の到着 → 脱出 → スコア画面まで**1 回の起動（228 s）で通した**（18 の節目がすべて期待どおり、絵 19 枚、`Saved/…/Crashes` 0 件）。途中で `Wasami.ResetSave` がタイトルで効かない（病院のゲームモードが無い）のを見つけて直し、パッケージを作り直した（1 分 35 秒）。01・06 記録。
 - [ ] 7. 結果をまとめて項目 36 を閉じる（画質の選択肢の項目は立てない＝上の「決定事項」。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 6b: **`Tools/game_flow.py`** を書いて、パッケージ版を Zone 1 の到着 → 脱出まで通す。
+ステップ 7: 項目 36 を閉じる。
 
-- 作り: `Tools/game_perf.py` の `launch(map, commands, timeout)`（起動して自分で終わるまで待つ）を使い、`-ExecCmds` に `Wasami.Delay <秒> <コマンド>` を並べて節目を作る。節目ごとに `Wasami.Status` と `Shot showui`、最後は `quit`。結果は `Saved/Archive/Windows/wasami_deception/Saved/Logs/wasami_deception.log` の `LogWasamiDebug` の行（`Wasami.Status level=… checkpoint=… widgets=…`）と `…/Saved/Screenshots/Windows/ScreenShotNNNNN.png` で見る。
-- どのチェックポイント・どの `Wasami.*` で場面を作るかは **`Tools/playthrough.py` の `SETUPS`（1298 行〜）と各区間の関数が正本**（`z1_arrive` … `z2_escape`）。歩きは出来ないので `BugItGo X Y Z Pitch Yaw Roll`（`Tools/game_perf.py` の 7 か所の座標も使える）で運び、扉と箱は `Wasami.Trigger <名前>`・`Wasami.Interact`・`Wasami.Flow <イベント>` で進める。
-- 見るもの: 落ちないこと（`Saved/Archive/Windows/wasami_deception/Saved/Crashes` が空）、Zone 1 → Zone 2 のレベルの開き直しが通ること、シャードの回収と祭壇と脱出が進むこと、スコア画面（`WasamiLevelClearWidget`）が出ること。
-- **キーとマウスそのもの（タイトルの NEW GAME のクリック、歩き、ポーズ）は確かめられない**（下の「要確認」のセキュリティの確認が消えるまで）。
+- 実装記録 00 の「パッケージした本編」の節に**通しプレイが通ったこと**（`Tools/game_flow.py`、228 s、18 の節目、落ちない）を 2〜3 行足す。
+- `.claude/guides/distribution.md` の「パッケージ」に**出来たパッケージの確かめ方の最後の 1 つ**として `python Tools/game_flow.py run` を足す（中身の確認 → 原作の素材の確認 → 通しプレイ、の順）。
+- `.claude/references/handover.md` の「現状と次の一歩」を直し、**ユーザーが遊んで確かめる手順**（`Saved/Archive/Windows/wasami_deception.exe` を起動して NEW GAME）を書く。
+- `.claude/roadmap.md` の項目 36 を完了にする。**これで大目標 3 の項目がすべて完了**なので、同じコミットで大目標 3 を「達成（2026-09-21）」にし、進捗記録を消して `stop` を書く（`.claude/skills/continue/SKILL.md` の「5. ステップが終わったら」）。
+- 画質の選択肢の項目は立てない（下の「決定事項」）。ナースの絵 3 枚は**ユーザー待ちのまま残す**（下の「要確認」）。
 
 ## 決定事項
 
-- 2026-09-21（ステップ 6）: **通しプレイはコマンドラインから行う**。Windows のセキュリティの確認が前面を離さないので画面への入力（キーとマウス）はゲームに届かない（下の「要確認」。2026-09-21 15:00 の時点でも前面のまま）。パッケージ版は `-ExecCmds` しか受け口が無く、それは起動の 1 ティックで走り切るので、**実時間で遅れて走るコマンド `Wasami.Delay` を足して**節目を並べ、`Wasami.Status` と `HighResShot`（ゲームの中から撮るので前面が要らない）で確かめる。キーとマウスそのものの確かめは残るので要確認に書く。
-
-- 2026-09-21: 出力先は `Saved/Archive/Windows`（`Saved/` は git の対象外）。**クックとパッケージ版の実行の間はエディタを閉じる**（VRAM 6 GB。エディタだけで 2.9〜4.1 GB）。
-- 2026-09-21: **測定はパッケージ版が前面でなくても成立する**（前面を握られていても窓は普通に描き続ける）。ただし通しプレイ（ステップ 6）は入力が要るのでできない。
 - 2026-09-21（ステップ 5b）: **画質の選択肢を足す項目は立てない**。項目 36 の依頼は「1080p で 60 前後に届かなければ画質の選択肢を用意する項目を立てる」だったが、**製品の初期値の HIGH で平均 63.2 fps**（7 か所中 5 か所が 60 以上）で届いており、OPTIONS には既に QUALITY 4 段と RESOLUTION SCALE がある（15 記録）。60 を割るのは最高画質の VERY HIGH だけ。
+- 2026-09-21（ステップ 6）: **通しプレイはコマンドラインから行う**（画面への入力が塞がれているため。下の「要確認」）。**マウスとキーそのもの**（タイトルの NEW GAME、欠片の画面の CLOSE、スコア画面の NEXT）は確かめられないので回り道した。この 3 つは PIE では `Tools/playthrough.py` が実際に押して通している（11 記録）ので、残るのは「パッケージ版でも押せるか」だけ。
+- 2026-09-21（ステップ 6b）: **チェックポイント 6 はどこからも保存されない**が、これは本家どおりで不具合ではない。本家の `06_Hospital_Zone_01` のレベル BP が `LevelCheckpoint` を書くのは 2 か所だけで、本作の `SaveCheckpoint(5)`（迷路の箱）と `SaveCheckpoint(7)`（救急車の屋根）に当たる。6 は開始位置の値としてだけ使う（`ChoosePlayerStart` → `06_Start`、`Tools/game_perf.py` の駐車場の計測）。
 
 ## 要確認（ユーザー）
 
@@ -65,18 +64,14 @@ updated: 2026-09-21 14:20
 
 ## 再開時の注意
 
-- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）。C++ だけ変えたときの作り直しは **1 分 44 秒**。**`BUILD SUCCESSFUL` は中身を保証しない**ので、作り直したら `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る（症状索引）。
-- **パッケージ版の動かし方**（画面への入力は届かない）: `Tools/game_perf.py` の `launch()` で `-ExecCmds` を渡す。`Wasami.Delay` で節目を並べ、`Wasami.Status` でログに読み、絵は **`Shot showui`**（`HighResShot` は 3D だけで UI の画面は真っ黒）。コマンドの文字列に**コンマは使えない**（`-ExecCmds` がコンマで切る）。
-- **エディタは閉じてある**（ステップ 6a のパッケージの前に閉じた）。PIE が要るときは `python Tools/editor_cycle.py` で開き直す。
-- **本編の fps の測り方**は `Tools/game_perf.py`（記録 01 の道具の表）。二重に走らせると互いの CSV を読むので錠（`Intermediate/Perf/.game_perf.lock`）がある。
+- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）。C++ だけ変えたときの作り直しは **1 分 35 秒〜1 分 44 秒**。**`BUILD SUCCESSFUL` は中身を保証しない**ので、作り直したら `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る（症状索引）。
+- **パッケージ版の通しプレイ**は `python Tools/game_flow.py run`（228 s。01 記録の道具の表）。二重起動を防ぐ錠は `Tools/game_perf.py` と共有（`Intermediate/Perf/.game_perf.lock`）。
+- **エディタは閉じてある**（ステップ 6a の前に閉じた）。パッケージを作り直したのでエディタ側のビルドは古い。PIE が要るときは `python Tools/editor_cycle.py` で建て直して開く。
 - 走らせたままのバックグラウンドの処理・未保存のアセットは無い。
 
 ## 検証
 
-- **ステップ 6a（2026-09-21）— 足したデバッグコマンド**。PIE（Zone 1）: `Wasami.Status` が 1 行（`level=L_Hospital_Zone1 … lives=3 shards=337/337 … widgets=WasamiInteractWidget`）、`Wasami.Delay 3 Wasami.Status` がちょうど 3.000 s 後に走った。`Wasami.Delay 8 …` は途中の `Wasami.Title` の開き直しをまたいで `level=L_Title widgets=WasamiTitleScreenWidget` を出し、`Wasami.Delay 2 HighResShot 1` も 2 s 後に PNG を書いた。**パッケージ版**（`L_Title`）: 同じ 3 本が同じように走り（`lives=3`、4.0 s 後に 2 本目、9 s の `quit` で正常終了、`Saved/Crashes` 0 件）、`Shot showui` がタイトルの絵（ロゴ・RESUME/NEW GAME/EXTRAS/OPTIONS/QUIT・`UNOFFICIAL FAN GAME` の注意書き・v1.0.0）を撮れた。`HighResShot 1` は 3D だけなので同じ画面が真っ黒だった（症状索引）。
-- **ステップ 5・5b（2026-09-21）— パッケージした本編の fps**（1080p ウィンドウ、VERY HIGH と既定の HIGH の 2 画質 × 7 か所、各 10 s・`t.MaxFPS 500`）。**表と考察は実装記録 00 の「パッケージした本編の fps」へ移した**。要点だけ:
-  - **HIGH（遊ぶ人が見る絵）は 56.4〜72.4 fps（平均 63.2）で「1080p で 60 前後」に届く**。VERY HIGH は 43.2〜58.2（平均 50.9）で届かない。
-  - VERY HIGH（PIE と同じ品質）の本編は PIE より 1〜6 % 遅いだけなので、**PIE の数字は本編の目安に使える**。
-  - どの品質も GPU 律速、GPU メモリは 2087〜2950 MB（予算 5198 MB）で余裕がある。
-  - 同じ場所を見ていることはプリミティブ数が PIE と一致することで確かめた。
-  - 測定中のパッケージ版は前面ではない（ファイアウォールの確認が前面）が、窓は普通に描き続けており絵も正しい。
+- **ステップ 6b（2026-09-21）— パッケージ版の通しプレイ**。`python Tools/game_flow.py run`: 1 回の起動で **228 s**、`-ExecCmds` の 59 コマンドがすべて時刻どおりに走り、**18 の節目が全部期待どおり**（終了コード 0）。タイトル（`WasamiTitleScreenWidget`）→ `Wasami.ResetSave` + `open` → Zone 1 がチェックポイント 4・ライフ 3・シャード 337 で開いてステージ OP（`WasamiChapterPortalWidget`）→ エレベーターの扉が開く → 鍵 → 迷路の箱で保存 5 → 全回収で REACH THE PARKING LOT（ライフ 4。連続回収の褒賞）→ 駐車場の場面 → GET ON TOP OF THE AMBULANCE → 屋根で保存 7・GOOD LUCK → **Zone 2 が開く**（7、シャード 342）→ 捕まる場面（`input=0`）→ 独房の場面（101 s）→ 入力が戻る → 鍵 → 独房を出て廊下の箱で保存 8 → 迷路の箱で保存 9 → 全回収で保存 10・COLLECT THE RING PIECE（ライフ 5）→ 欠片で HEAD TOWARDS THE GARAGE → ガレージで GET TO THE PORTAL → ポータルで**スコア画面**（`WasamiLevelClearWidget`、停止、チェックポイント 0、死亡 0）→ `quit` で正常終了。`Saved/Archive/Windows/wasami_deception/Saved/Crashes` は 0 件。レベルの読み込みは Zone 1 が 0.60 s・Zone 2 が 1.12 s。
+  - 絵 19 枚 `Intermediate/GameFlow/01-title.png`〜`19-z2_results.png`（git の外）。見て確かめたのは、エレベーターの扉が開いて赤い両開き扉が見えること、独房の天井から棘が下りていること、ガレージ手前で Bierce の字幕 `You got it! Now get out of this twisted hospital!` が出ること、スコア画面が `Stinky Gachimi` / TIME 3:39 S / SOUL SHARDS 679 S / BONUS SHARDS 0/2 C / SECRETS 0/4 C / LIVES LOST 0 S / SHARD STREAK 500 S / TOTAL SHARDS 819 / FINAL RANK A になること。
+  - **1 回目は失敗した**（`Wasami.ResetSave` がタイトルで効かず、前のチェックポイント 7 のまま Zone 1 が開いた）。直してパッケージを作り直した（`BuildCookRun` 1 分 35 秒、`/game/` 1139 件）。
+- **ステップ 5・5b（2026-09-21）— パッケージした本編の fps**。表と考察は実装記録 00 の「パッケージした本編の fps」へ移した。要点: **既定の HIGH は 56.4〜72.4 fps（平均 63.2）で目安に届き**、VERY HIGH は 43.2〜58.2（平均 50.9）。どの品質も GPU 律速で、GPU メモリは 2087〜2950 MB（予算 5198 MB）。
