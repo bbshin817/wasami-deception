@@ -46,6 +46,12 @@ namespace
 		{0., 1110.f, 0., -0.0035302701871842146, RCIM_Linear},
 		{2388000., -4121.8603515625f, -0.0035302701871842146, 0., RCIM_Linear}};
 
+	// The hospital's music, as AWasamiMusicPlayer plays it (its folder under /Game/DD).
+	TSoftObjectPtr<USoundBase> ExtrasMusicTrack(const TCHAR* Name)
+	{
+		return TSoftObjectPtr<USoundBase>(WasamiAssets::Path(*(FString(TEXT("/Game/DD/Audio/06_Hospital/Music/")) + Name)));
+	}
+
 	// The movies' IDs in WrapBox_3's order (the original's third to tenth are all 2).
 	const int32 VideoIDs[UWasamiExtrasWidget::VideoCount] = {0, 1, 2, 2, 2, 2, 2, 2, 2, 2};
 
@@ -116,6 +122,18 @@ UWasamiExtrasWidget::UWasamiExtrasWidget(const FObjectInitializer& ObjectInitial
 	ArtTextures[20] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/UI/Pause/T_PausePeek")));
 	ArtTextures[21] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/UI/Pause/T_PauseHead")));
 	ArtTextures[22] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/Portal/T_Portal_Wasami")));
+
+	// The Sound Archive's tracks: this game's four music-class sounds, in the order they are first heard. The Zone 1
+	// track keeps the name the original's own Sound Archive gives it (its Sound 5, UMG_Extras' Extras_Sound_Button_C_14).
+	SoundTracks.SetNum(SoundCount);
+	SoundTracks[0].Name = FText::FromString(TEXT("Cold Hearted"));
+	SoundTracks[0].Sound = ExtrasMusicTrack(TEXT("DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING"));
+	SoundTracks[1].Name = FText::FromString(TEXT("Hospital Panic Track"));
+	SoundTracks[1].Sound = ExtrasMusicTrack(TEXT("DD_-_Dark_Deception_-_Chapter_4_Hospital_-_Panic_Track_v1_2_-_LOOPING"));
+	SoundTracks[2].Name = FText::FromString(TEXT("Hospital Zone 2 Normal Track"));
+	SoundTracks[2].Sound = ExtrasMusicTrack(TEXT("DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_2_-_Normal_Track_v1_1_-_LOOPING"));
+	SoundTracks[3].Name = FText::FromString(TEXT("Pause Theme"));
+	SoundTracks[3].Sound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Pause_Sound_v1")));
 }
 
 UWasamiExtrasWidget* UWasamiExtrasWidget::Show(const UObject* WorldContextObject)
@@ -278,10 +296,11 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 			PageSlot->SetVerticalAlignment(VAlign_Center);
 		}
 
-		// 2 CanvasPanel_19 and 3 CanvasPanel_20: a player 208 px above the middle and under it ten sounds (five a row at
-		// 0.95), the diaries' and the sound archive's. TODO(仮): the sounds are empty until they are decided with the user.
+		// 2 CanvasPanel_19 and 3 CanvasPanel_20: a player 208 px above the middle and under it its sounds (five a row at
+		// 0.95), the diaries' (ten, TODO(仮) empty until they are decided with the user) and the sound archive's
+		// (SoundTracks, this game's four tracks where the original has ten).
 		auto AddSoundPage = [this](const TCHAR* PanelName, const TCHAR* BarName, const TCHAR* BoxName, bool bDiary,
-			TObjectPtr<UWasamiExtrasSoundBarWidget>& OutBar, TObjectPtr<UWrapBox>& OutBox,
+			int32 Count, TObjectPtr<UWasamiExtrasSoundBarWidget>& OutBar, TObjectPtr<UWrapBox>& OutBox,
 			TArray<TObjectPtr<UWasamiExtrasSoundButtonWidget>>& OutButtons)
 		{
 			UCanvasPanel* Page = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), PanelName);
@@ -292,7 +311,7 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 			OutBox->SetWrapSize(1635.440185546875f);
 			OutBox->SetExplicitWrapSize(true);
 			OutBox->SetRenderScale(FVector2D(0.949999988079071f, 0.949999988079071f));
-			for (int32 ID = 0; ID < SoundCount; ++ID)
+			for (int32 ID = 0; ID < Count; ++ID)
 			{
 				UWasamiExtrasSoundButtonWidget* Button = WidgetTree->ConstructWidget<UWasamiExtrasSoundButtonWidget>(
 					UWasamiExtrasSoundButtonWidget::StaticClass(),
@@ -301,14 +320,21 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 				Button->bDiary = bDiary;
 				Button->SoundBar = OutBar;
 				Button->Save = Save;
+				if (!bDiary && SoundTracks.IsValidIndex(ID))
+				{
+					Button->Text = SoundTracks[ID].Name;
+					Button->Sound = SoundTracks[ID].Sound.LoadSynchronous();
+				}
 				OutBox->AddChildToWrapBox(Button);
 				OutButtons.Add(Button);
 			}
 			ExtrasScreenPlace(Page, OutBox, FAnchors(0.5f), FMargin(0.f, -107.29153442382812f, 1289.f, 573.f), FVector2D(0.5f, 0.f), true);
 			Switcher->AddChild(Page);
 		};
-		AddSoundPage(TEXT("CanvasPanel_19"), TEXT("UMG_Extras_Sound_Bar"), TEXT("WrapBox_1"), true, DiaryBar, DiaryBox, DiaryButtons);
-		AddSoundPage(TEXT("CanvasPanel_20"), TEXT("UMG_Extras_Sound_Bar_C_0"), TEXT("WrapBox_2"), false, SoundBar, SoundBox, SoundButtons);
+		AddSoundPage(TEXT("CanvasPanel_19"), TEXT("UMG_Extras_Sound_Bar"), TEXT("WrapBox_1"), true, DiaryCount,
+			DiaryBar, DiaryBox, DiaryButtons);
+		AddSoundPage(TEXT("CanvasPanel_20"), TEXT("UMG_Extras_Sound_Bar_C_0"), TEXT("WrapBox_2"), false, SoundCount,
+			SoundBar, SoundBox, SoundButtons);
 
 		// 4 WrapBox_3: the ten movies, 30 px apart, wrapping at 1553 and moved 27 px left.
 		VideoBox = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("WrapBox_3"));

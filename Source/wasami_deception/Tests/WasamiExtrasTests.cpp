@@ -27,13 +27,17 @@
 
 namespace
 {
-	/** A save with Art Gallery 19 and 20 and Sound 5 unlocked (the hospital's Zone 1 files'). */
+	/**
+	 * A save with Art Gallery 19 and 20 and Sounds 0 and 1 unlocked (the hospital's Zone 1 files'; the file that
+	 * unlocks the sounds unlocks all four tracks, two here so that a locked one can be seen as well).
+	 */
 	UWasamiSaveGame* ExtrasSave()
 	{
 		UWasamiSaveGame* Save = NewObject<UWasamiSaveGame>();
 		Save->Unlock(FWasamiCollectableEntry{EWasamiCollectableType::ArtGallery, 19});
 		Save->Unlock(FWasamiCollectableEntry{EWasamiCollectableType::ArtGallery, 20});
-		Save->Unlock(FWasamiCollectableEntry{EWasamiCollectableType::Sound, 5});
+		Save->Unlock(FWasamiCollectableEntry{EWasamiCollectableType::Sound, 0});
+		Save->Unlock(FWasamiCollectableEntry{EWasamiCollectableType::Sound, 1});
 		return Save;
 	}
 
@@ -231,10 +235,10 @@ bool FWasamiExtrasSoundButtonTest::RunTest(const FString& Parameters)
 		Sound->Begin();
 		return Sound;
 	};
-	Button* Unlocked = MakeSound(5, TEXT("Cold Hearted"));
-	TestTrue(TEXT("SOUND 6 unlocked"), Unlocked->IsUnlocked());
-	TestEqual(TEXT("labelled SOUND 6"), Unlocked->GetLabel()->GetText().ToString(), FString(TEXT("SOUND 6")));
-	TestFalse(TEXT("SOUND 5 locked"), MakeSound(4, TEXT("Departing Sanity"))->IsUnlocked());
+	Button* Unlocked = MakeSound(0, TEXT("Cold Hearted"));
+	TestTrue(TEXT("SOUND 1 unlocked"), Unlocked->IsUnlocked());
+	TestEqual(TEXT("labelled SOUND 1"), Unlocked->GetLabel()->GetText().ToString(), FString(TEXT("SOUND 1")));
+	TestFalse(TEXT("SOUND 4 locked"), MakeSound(3, TEXT("Pause Theme"))->IsUnlocked());
 
 	// Hover: red, and back to dark red.
 	Unlocked->Hover(true);
@@ -262,7 +266,7 @@ bool FWasamiExtrasSoundButtonTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Paused? stays on"), Unlocked->IsPaused());
 
 	// Another's press deselects this one (back to rest, the play icon) and selects that one.
-	Button* Other = MakeSound(5, TEXT("Cold Hearted Again"));
+	Button* Other = MakeSound(1, TEXT("Hospital Panic Track"));
 	Other->Press();
 	TestFalse(TEXT("the first stops playing"), Unlocked->IsPlaying());
 	TestFalse(TEXT("nor is paused"), Unlocked->IsPaused());
@@ -270,7 +274,7 @@ bool FWasamiExtrasSoundButtonTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("dark red"), NearlyColour(Unlocked->GetButton()->GetBackgroundColor(), Button::RestColour));
 	TestTrue(TEXT("with the play icon"), BrushTexture(Unlocked->GetIcon())->GetName() == TEXT("extras_play_icon"));
 	TestTrue(TEXT("the other plays"), Other->IsPlaying() && Other->IsSelected());
-	TestEqual(TEXT("its name on the bar"), Bar->GetTitleText().ToString(), FString(TEXT("COLD HEARTED AGAIN")));
+	TestEqual(TEXT("its name on the bar"), Bar->GetTitleText().ToString(), FString(TEXT("HOSPITAL PANIC TRACK")));
 
 	// The first again: selected once more (its gate was opened), the other deselected.
 	Unlocked->Press();
@@ -380,18 +384,24 @@ bool FWasamiExtrasScreenTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("the parts read the screen's save"), Art[19]->Save == Extras->Save);
 	}
 
-	// The diaries: ten over their player, 0 to 8 unlocked (no ranks), 9 not; the sounds: ten, 5 unlocked.
+	// The diaries: ten over their player, 0 to 8 unlocked (no ranks), 9 not; the sounds: this game's four tracks,
+	// named and played, 0 and 1 unlocked in this save.
 	const auto& Diaries = Extras->GetDiaryButtons();
 	const auto& Sounds = Extras->GetSoundButtons();
-	TestTrue(TEXT("ten diaries and ten sounds"), Diaries.Num() == Screen::SoundCount && Sounds.Num() == Screen::SoundCount);
-	if (Diaries.Num() == Screen::SoundCount && Sounds.Num() == Screen::SoundCount)
+	const bool bLists = Diaries.Num() == Screen::DiaryCount && Sounds.Num() == Screen::SoundCount;
+	TestTrue(TEXT("ten diaries and four sounds"), bLists);
+	if (bLists)
 	{
 		TestTrue(TEXT("the diaries are diaries on the diaries' player"), Diaries[3]->bDiary && Diaries[3]->SoundBar == Extras->GetDiaryBar());
 		TestTrue(TEXT("diary 8 is unlocked"), Diaries[8]->IsUnlocked());
 		TestFalse(TEXT("diary 9 is locked"), Diaries[9]->IsUnlocked());
 		TestTrue(TEXT("the sounds are sounds on the sounds' player"), !Sounds[3]->bDiary && Sounds[3]->SoundBar == Extras->GetSoundBar());
-		TestTrue(TEXT("sound 5 is unlocked"), Sounds[5]->IsUnlocked());
-		TestFalse(TEXT("sound 4 is locked"), Sounds[4]->IsUnlocked());
+		TestTrue(TEXT("sound 1 is unlocked"), Sounds[1]->IsUnlocked());
+		TestFalse(TEXT("sound 3 is locked"), Sounds[3]->IsUnlocked());
+		TestEqual(TEXT("the first track is the Zone 1 music, under the original's name for it"),
+			Sounds[0]->Text.ToString(), FString(TEXT("Cold Hearted")));
+		TestTrue(TEXT("and it is the track the music player plays"), Sounds[0]->Sound != nullptr
+			&& Sounds[0]->Sound->GetName().Contains(TEXT("Hospital_Zone_1")));
 	}
 
 	// The movies: ten, all locked.
@@ -431,7 +441,7 @@ bool FWasamiExtrasScreenTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("BIERCE DIARIES white, ART GALLERY dark grey"),
 		NearlyColour(Extras->GetSectionButton(Screen::BierceDiariesSection)->GetColorAndOpacity(), FLinearColor::White)
 		&& NearlyColour(Extras->GetSectionButton(Screen::ArtGallerySection)->GetColorAndOpacity(), Grey));
-	if (Diaries.Num() == Screen::SoundCount && Sounds.Num() == Screen::SoundCount)
+	if (bLists)
 	{
 		Diaries[0]->Press();
 		TestTrue(TEXT("diary 0 plays"), Diaries[0]->IsPlaying());
@@ -442,11 +452,11 @@ bool FWasamiExtrasScreenTest::RunTest(const FString& Parameters)
 		Extras->Select(Screen::SoundArchiveSection);
 		TestEqual(TEXT("the sounds' page"), Switcher->GetActiveWidgetIndex(), 3);
 		TestFalse(TEXT("SOUND ARCHIVE stops the diary"), Diaries[0]->IsPlaying() || Diaries[0]->IsSelected());
-		Sounds[5]->Press();
-		Sounds[5]->Press();
-		TestTrue(TEXT("sound 5 paused"), Sounds[5]->IsPaused() && !Sounds[5]->IsPlaying());
+		Sounds[0]->Press();
+		Sounds[0]->Press();
+		TestTrue(TEXT("sound 0 paused"), Sounds[0]->IsPaused() && !Sounds[0]->IsPlaying());
 		Extras->Select(Screen::BierceDiariesSection);
-		TestTrue(TEXT("a paused sound is left chosen"), Sounds[5]->IsSelected() && Sounds[5]->IsPaused());
+		TestTrue(TEXT("a paused sound is left chosen"), Sounds[0]->IsSelected() && Sounds[0]->IsPaused());
 	}
 
 	// CREDITS: its page, and the credits scrolling from 1110 up to -4121.86 over 39.8 s (from the start each press).
