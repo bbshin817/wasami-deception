@@ -207,7 +207,7 @@ Windows で作った物を Mac で受け取り、Metal 用にクックして遊�
 - **`git pull` の直後に `exec` で自分を起動し直す**（目印の環境変数 `WASAMI_MAC_BUILD_PULLED=1` で pull は繰り返さない）。取り込んだ新しい版で Content の取り込みから先をやるため（同期より後ろで起動し直すと、同期の手順を直しても 1 回遅れて効く）。`--sync-rsync` のときも rsync の後に同じことをする。
 - `--sync-rsync <取り込み元>` は、Windows に rsync を入れた場合の差分同期（既定では使わない。除外は `Intermediate/`・`Binaries/`・`Saved/`・`DerivedDataCache/`・`pak_reference*`・`cc2_reference`・`tmp/`・`observations/`・`__pycache__/`・`.DS_Store`）。rsync は既定で一時ファイルに書いてから rename するので、走っている最中の自分自身を入れ替えても走り続ける（`--inplace` を足すとこれが崩れる）。
 - 前提チェックが見るもの: macOS であること、`.uproject` と Content（`Content/Stage/Maps/L_Title.umap`）があること、`Build.sh`・`RunUAT.sh` があること、エンジンが **5.8 系**であること（違えば止まる。承知のうえなら `--force`）、`xcodebuild` と `xcrun -sdk macosx metal` が呼べること、そして**このエンジンに無いプラグイン**。
-- **足りないプラグインはビルドの間だけ `.uproject` から外す**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`。3 つとも `NoRedist: true` なのでエンジンの配り方によっては入っていない）。python3 で JSON を書き換え、`trap … EXIT INT TERM` で必ず元に戻す。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。
+- **エディタ専用のプラグイン 3 つ（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）は、ビルドの間だけ必ず `.uproject` から外す**（2026-09-22。`--check` では外す対象を知らせるだけで書き換えない）。python3 で JSON を書き換え、`trap … EXIT INT TERM` で元に戻す。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。**外す理由は 2 つ**: (1) Mac では開発しないので要らない、(2) クックはエディタのコマンドレットで走るため `ModelContextProtocol` が `127.0.0.1:8000` を掴みにいき、塞がっていると `LogHttpListener: Error:` を 1 件出して**クックが完走していても UAT が `ExitCode=25` で落ちる**（2026-09-22 に Mac で実際に起きた。症状索引）。3 つとも `NoRedist: true` だがエンジンには入っていた（Mac の UE 5.8.2 で確認）。
 - **中身の検査**は `Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` の数と、`Content/` の `.uasset`＋`.umap` の数の一致で見る（Windows の 2026-09-21 のパッケージでは両方 1139）。`BUILD SUCCESSFUL` は中身を保証しない（上の `bCookAll` の顛末）。
 - ログは `Intermediate/MacBuild/build_editor.log` と `Intermediate/MacBuild/uat_package.log`、出来上がりは `Saved/Archive/Mac/*.app`。
 - **Mac のために `Config/` と `wasami_deception.uproject` は変えていない**（音声・RHI・アーキテクチャの既定が Windows と揃っていること、`EngineAssociation` が使われないことを確かめた。根拠はガイドの「触らなくてよいもの」）。
@@ -230,6 +230,7 @@ Windows で作った物を Mac で受け取り、Metal 用にクックして遊�
   - `r.DefaultFeature.MotionBlur=False` … 原作はこれでモーションブラーを切っている（ゲームに設定項目は無く、BP のバイトコードも触っていないので戻る箇所が無い）。**2026-09-16 にユーザーが「0.5 のまま（今は変えない）」と決めた**ので写さない。本作は原作よりモーションブラーの掛かった絵になる。
 
 ## 変更履歴
+- 2026-09-22: Mac の初回のクックが `ExitCode=25` で落ちたのを直した。エディタ専用のプラグイン 3 つを**必ず**外してビルドするようにした（`ModelContextProtocol` が 8000 を掴めずエラーを 1 件出し、クックが完走していても UAT が落ちていた。症状索引）
 - 2026-09-22: Mac の実機で初めて走らせたときの直し: 転送中に進み具合を出す（無出力で止まったように見えた）、エンジンの版を `python3` ではなく `sed` で読む（版の表示が化けた）、`ServerAlive` で切れた接続を諦める
 - 2026-09-22: 同期を **git pull + scp**（Windows には何も入れない。ユーザーの選択）にし、Windows の HEAD との突き合わせを足した。`--sync-rsync` は別の運び方として残した
 - 2026-09-22: Mac で受け取ってビルドして遊ぶための `Tools/mac_build.sh` を足し、「Mac でのビルド」の節を書いた（ユーザーの指示。Mac では開発しない。`Config/` と `.uproject` は変えない）。ついでに古くなっていたターゲットの版（`BuildSettingsVersion.V7`・`IncludeOrderVersion.Unreal5_8`）を直した

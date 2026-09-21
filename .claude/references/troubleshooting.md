@@ -404,6 +404,15 @@
 - 確かめ方: 直した後のログの `Warning/Error Summary` が `Success - 0 error(s)` になり、最後が `BUILD SUCCESSFUL`。
 - 出典: 作業一覧の項目 36 のステップ 2（2026-09-21。初回のパッケージ）。
 
+### Mac のパッケージが `ExitCode=25 (Error_UnknownCookFailure)` で落ちる（エラーは `HttpListener unable to bind to 127.0.0.1:8000` の 1 件だけ）
+
+- 症状: Mac で `RunUAT.sh BuildCookRun -platform=Mac` が `Cook failed.` → `AutomationTool exiting with ExitCode=25`。ログの `Warning/Error Summary` は `Failure - 1 error(s), 10 warning(s)` で、**エラーは `LogHttpListener: Error: HttpListener unable to bind to 127.0.0.1:8000` の 1 件だけ**。クック自体は `Execution of commandlet took: 3m 42s` で完走している。警告 10 件はどれも無害（96 kHz の波に Bink は無駄という助言 9 件と、MCP の EULA の注意 1 件）。
+- 原因: クックはエディタのコマンドレットで走るので**エディタ専用のプラグインも読み込まれる**。`ModelContextProtocol`（MCP サーバー）が `Config/DefaultEditorPerProjectUserSettings.ini` の `bAutoStartServer=True` に従って `127.0.0.1:8000` を掴みにいき、その Mac では 8000 が塞がっていて失敗し、エラーを 1 件出す。コマンドレットは**エラーが 1 件でもログに出ると失敗を返す**ので UAT が落ちる（上の `GameFeatureData` の件とまったく同じ型）。
+- 対処: `Tools/mac_build.sh` が**エディタ専用のプラグイン 3 つ（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）をビルドの間だけ `.uproject` から外す**（終わったら `trap` で必ず戻す）。3 つとも `TargetAllowList` が Editor なのでパッケージの中身は変わらず、Mac では開発しないので外して困るものが無い。
+- やらない案: Mac の 8000 を空ける（その機械の事情に依存し、また塞がれば再発する）。`Config/` の `bAutoStartServer` を False にする（Windows の開発で MCP が自動起動しなくなる。`Config/` は両方で共有している）。UAT の `-IgnoreCookErrors`（本物のクックのエラーまで黙って通す）。
+- 確かめ方: 直した後のログが `Success - 0 error(s)` で終わり、`Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` が `Content/` の `.uasset`＋`.umap` と同じ数（`mac_build.sh` が自動で突き合わせる）。
+- 出典: 2026-09-22、Mac で初めてパッケージしたとき。
+
 ### パッケージは `BUILD SUCCESSFUL` なのに、中身に `/Game` のアセットが 1 つ（`L_Title`）しか入っていない
 
 - 症状: `BuildCookRun` が通り、`Warning/Error Summary` も `Success - 0 error(s)`。出来たパッケージは 1.0 GB あるのに、`Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt`（コンテナに入ったパッケージの一覧）が 493 行しかなく、`^/game/` はたった 1 件（`/game/stage/maps/l_title`）。残りはエンジンとプラグインの既定のアセット。ログの `Packages Cooked: 494, ... Total Packages: 501` も同じ数。**起動しても本編が無い。**

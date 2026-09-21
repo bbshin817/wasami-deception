@@ -81,17 +81,18 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 ### 触らなくてよいもの（2026-09-22 に確かめた）
 
 - **`wasami_deception.uproject`**: `EngineAssociation` の GUID `{932002E3-…}` はどこにも登録されていない（`HKCU\SOFTWARE\Epic Games\Unreal Engine\Builds` は空で、エンジンは Launcher の `LauncherInstalled.dat` に `UE_5.8` として入るだけ）。`Build.sh` / `RunUAT.sh` に `-project=` を渡す限り Mac でも使われないので書き換えない（`.uproject` をダブルクリックで開くときだけ関係する）。
-- **プラグイン 3 つ**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）はどれも `NoRedist: true` で、Mac の 5.8 に入っていないことがある。無いとクック（＝エディタ）が起動時に落ちるので、`mac_build.sh` が**ビルドの間だけ `.uproject` から外し、終わったら必ず戻す**（trap）。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。
+- **プラグイン 3 つ**（`ModelContextProtocol`・`AllToolsets`・`LiveCodingToolset`）は、`mac_build.sh` が**ビルドの間だけ `.uproject` から外し、終わったら必ず戻す**（trap）。3 つとも `TargetAllowList: ["Editor"]` なので、外してもパッケージの中身は変わらない。**外さないとクックが落ちる**: `ModelContextProtocol` が `127.0.0.1:8000` を掴みにいって失敗するとエラーが 1 件ログに出て、クックが完走していても UAT が `ExitCode=25` で落ちる（2026-09-22 に Mac で実際に起きた。症状索引）。Mac の UE 5.8.2 には 3 つとも同梱されていた（`NoRedist` だが入っている）。
 - **`Config/` に Mac 用に足すものは無い**。`[/Script/WindowsTargetPlatform.WindowsTargetSettings]` の音声の値は `BaseEngine.ini` の `[/Script/MacTargetPlatform.MacTargetSettings]` の既定と同じ（`AudioSampleRate=48000`・`AudioCallbackBufferFrameSize=1024`・`AudioNumBuffersToEnqueue=1`・`AudioNumSourceWorkers=4`）。`CacheSizeKB=65536` は Mac の節に無いが、エンジンの既定 `FAudioStreamCachingSettings::DefaultCacheSize = 64 * 1024` と同じ値。残りのキー（`CompressionOverrides`・`MaxChunkSizeOverrideKB`・各 `*SampleRate`・`CompressionQualityModifier`・`AutoStreamingThreshold`・`SoundCueCookQualityIndex`・プラグイン名）は既定値そのもので、`bResampleForDevice=False` のときサンプルレートの表は読まれない（`FPlatformCompressionUtilities`）。RHI は既に `+TargetedRHIs=SF_METAL_SM6`。アーキテクチャも既定のままでよい（`DefaultArchitecture=MacTargetArchitectureHost` なので、手元のビルドは Universal にならず host〈Apple Silicon なら arm64〉だけを作る）。
 
 ### 時間の目安と、最初の 1 回に確かめること
 
 - **初回**は Mac で `git clone` してから `bash Tools/mac_build.sh --check` → `bash Tools/mac_build.sh --sync --run`。エンジンと Xcode の用意に加えて **Metal のシェーダーを全部コンパイルする**ので数時間を見る。
 - **2 回目から**は「Content の転送（1.2 GB）+ 差分ビルド + 差分クック」で、転送が直結なら **10〜20 分**が目安（Windows の実績: クックは中身が変わらなければ約 1 分、全クックで 5 分 22 秒）。アセットが大きく変わった回は、変わった分の Metal のシェーダーのコンパイルが上乗せされる。
-- **Mac でしか分からないことが 3 つある**。最初の 1 回で確かめ、違っていたらここに書き足す:
-  1. プラグイン 3 つがエンジンにあるか（`--check` が教える。無くても `mac_build.sh` が外して進む）
-  2. Metal のコンパイラが呼べるか（`--check` が見る。無ければ `xcodebuild -downloadComponent MetalToolchain`）
-  3. **Metal SM6 での見え方**（Substrate・仮想シャドウマップ・露出）が Windows と揃うか
+- **Mac でしか分からなかったこと**（2026-09-22 に実機で確かめた分）:
+  1. ~~プラグイン 3 つがエンジンにあるか~~ → **入っていた**（Mac の UE 5.8.2。`NoRedist` だが同梱）。ただし別の理由で外す（上の「触らなくてよいもの」）
+  2. ~~Metal のコンパイラが呼べるか~~ → **呼べた**（Xcode 27.0。`--check` が見る。無ければ `xcodebuild -downloadComponent MetalToolchain`）
+  3. **Metal SM6 での見え方**（Substrate・仮想シャドウマップ・露出）が Windows と揃うか → **まだ未確認**
+  4. クックの所要は **3 分 42 秒**（初回、`PeakPhysMemoryMB=6961`）。シェーダーで数時間という見込みより ずっと速かった
 - 中身の検査は Windows と同じ考え方で、`mac_build.sh` が `Saved/Cooked/Mac/wasami_deception/Metadata/ReferencedSet.txt` の `^/game/` の数と `Content/` の `.uasset`＋`.umap` の数（2026-09-22 時点で 1139）を突き合わせ、合わなければ止まる。
 - 出来上がりは `Saved/Archive/Mac/wasami_deception.app`。自分の Mac でビルドした物は ad-hoc 署名で、そのまま起動できる。ゲームのログは `~/Library/Logs/wasami_deception/wasami_deception.log`。
 - ログを見ながら遊ぶなら `.app` の中の実行ファイルを直に呼ぶ（`wasami_deception.app/Contents/MacOS/wasami_deception`）。`Development` でビルドしているので `Wasami.Status` などのコンソールコマンドも使える（`~` で開く）。

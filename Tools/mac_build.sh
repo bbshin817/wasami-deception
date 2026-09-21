@@ -32,9 +32,15 @@ LOG_DIR="$ROOT/Intermediate/MacBuild"
 WIN_HOST="desktop"
 WIN_REPO="Desktop/wasami_deception"
 
-# Editor-only plugins that may be missing from the Mac engine (all three are NoRedist). The .uproject allow-lists
-# them to the editor, so leaving them out changes nothing in the package — only the tools Windows uses.
-OPTIONAL_PLUGINS="ModelContextProtocol AllToolsets LiveCodingToolset"
+# Windows が開発に使うエディタ専用のプラグイン。**Mac のビルドでは必ず外す**（2026-09-22）。
+# - Mac では開発しない（MCP もツールセットも Live Coding も使わない）。
+# - `ModelContextProtocol` は起動のたびに 127.0.0.1:8000 へ HTTP サーバーを立てようとし、塞がっていると
+#   `LogHttpListener: Error: HttpListener unable to bind to 127.0.0.1:8000` を 1 件出す。クックのコマンドレットは
+#   **エラーが 1 件でもログに出ると失敗を返す**ので、クックの中身が正しくても UAT が ExitCode=25 で落ちる
+#   （2026-09-22 に Mac で実際に起きた。`Failure - 1 error(s)` でクックは 3m 42s で完走していた）。
+# - 3 つとも `TargetAllowList` が Editor なので、外してもパッケージの中身は変わらない。
+# - エンジンにそのプラグインが無いとき（NoRedist なので配り方によっては入っていない）の対処も、これで兼ねる。
+EDITOR_ONLY_PLUGINS="ModelContextProtocol AllToolsets LiveCodingToolset"
 
 # --sync-rsync を使うとき（Windows に rsync を入れた場合）の除外。Intermediate/（9.3 GB）と Binaries/ は Mac で
 # 作り直す物、Saved/ は Mac 側の成果物、参照データ（29 GB）はパッケージに要らない。
@@ -220,12 +226,12 @@ xcrun -sdk macosx metal --version >/dev/null 2>&1 || die "Metal のコンパイ�
 PACKAGES=$(find "$ROOT/Content" \( -name '*.uasset' -o -name '*.umap' \) | wc -l | tr -d ' ')
 note "Content: $PACKAGES パッケージ"
 
-# 足りないプラグインは .uproject から外してビルドし、終わったら必ず戻す。
-MISSING=""
-for name in $OPTIONAL_PLUGINS; do
-	grep -q "\"$name\"" "$UPROJECT" || continue
-	found=$(find "$ENGINE/Plugins" -maxdepth 4 -type d -name "$name" 2>/dev/null | head -1)
-	[ -n "$found" ] || MISSING="$MISSING $name"
+# エディタ専用のプラグインは .uproject から外してビルドし、終わったら必ず戻す。
+STRIP=""
+for name in $EDITOR_ONLY_PLUGINS; do
+	if grep -q "\"$name\"" "$UPROJECT"; then
+		STRIP="$STRIP $name"
+	fi
 done
 
 restore_uproject() {
@@ -235,12 +241,20 @@ restore_uproject() {
 	fi
 }
 
-if [ -n "$MISSING" ]; then
-	note "このエンジンに無いプラグイン:$MISSING → ビルドの間だけ .uproject から外す（パッケージの中身は変わらない）"
-	command -v python3 >/dev/null || die "python3 が無いので .uproject を書き換えられない。手で $MISSING の項目を外すか、エンジンにプラグインを入れる"
+if [ -n "$STRIP" ]; then
+	note "ビルドの間だけ .uproject から外すプラグイン:$STRIP（Mac では使わない。パッケージの中身は変わらない）"
+	command -v python3 >/dev/null || die "python3 が無いので .uproject を書き換えられない。手で$STRIP の項目を .uproject から外してから走らせる（終わったら戻す）"
+fi
+
+if [ $CHECK_ONLY -eq 1 ]; then
+	say "前提は揃っている"
+	exit 0
+fi
+
+if [ -n "$STRIP" ]; then
 	cp "$UPROJECT" "$UPROJECT.macbuild.bak"
 	trap restore_uproject EXIT INT TERM
-	python3 - "$UPROJECT" $MISSING <<'PY'
+	python3 - "$UPROJECT" $STRIP <<'PY'
 import json, sys
 path, names = sys.argv[1], set(sys.argv[2:])
 with open(path, encoding="utf-8") as f:
@@ -250,11 +264,6 @@ with open(path, "w", encoding="utf-8") as f:
 	json.dump(data, f, indent="\t", ensure_ascii=False)
 	f.write("\n")
 PY
-fi
-
-if [ $CHECK_ONLY -eq 1 ]; then
-	say "前提は揃っている"
-	exit 0
 fi
 
 mkdir -p "$LOG_DIR"
