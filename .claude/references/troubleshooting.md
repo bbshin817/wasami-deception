@@ -404,6 +404,17 @@
 - 確かめ方: 直した後のログの `Warning/Error Summary` が `Success - 0 error(s)` になり、最後が `BUILD SUCCESSFUL`。
 - 出典: 作業一覧の項目 36 のステップ 2（2026-09-21。初回のパッケージ）。
 
+### Mac のパッケージした `.app` が起動の瞬間に落ちる（`Library not loaded: @rpath/libtbb.12.dylib`）
+
+- 症状: パッケージは `BUILD SUCCESSFUL` で中身の検査も通るのに、`.app` を開くと即クラッシュ。クラッシュレポートは `Termination Reason: Namespace DYLD, Code 1, Library missing` / `Library not loaded: @rpath/libtbb.12.dylib`。`find <app> -name '*.dylib'` が**何も返さない**（1 つも入っていない）。
+- 原因: 2 つ重なっている。
+  1. UE 5.8 の Mac のステージが、本体が `@rpath` で読む ThirdParty の dylib を `.app` に入れない。本作の本体は 3 つ読む: `libtbb.12.dylib`・`libtbbmalloc.2.dylib`・`libmetalirconverter.dylib`（`otool -L` で分かる）。**Windows は同じ TBB を `Binaries/Win64/tbb12.dll`・`tbbmalloc.dll` として入れている**ので、入れるのが本来の姿。
+  2. 本体に焼かれた「エンジンへ戻る」rpath（`@loader_path/../……×8/Shared/Epic Games/UE_5.8/Engine/…`）は **`<Project>/Binaries/Mac/` に置かれた `.app` の深さ**を前提にしている。`Saved/Archive/Mac/` の成果物はそれより 1 階層深いので、`/Users/<user>/Shared/Epic Games/…` という存在しない場所を指す。だから「同梱もされず、近道も届かない」。
+- 対処: `Tools/mac_build.sh` がパッケージの後に、`otool -L` で `@rpath` の dylib を拾い、`.app` に無いものをエンジンから探して `Contents/MacOS/`（rpath の `@loader_path/`）へ複製し、**ad-hoc で署名し直す**（Apple Silicon は中身を書き換えた bundle を署名なしでは起動しない）。dylib が dylib を呼ぶ分も拾えるように、増えなくなるまで最大 4 周する。
+- 置き場所の注意: **TBB はエンジンの `Binaries/ThirdParty` には無い**。`Engine/Source/ThirdParty/Intel/TBB/Deploy/oneTBB-<版>/Mac/lib`（2026-09-22 は `oneTBB-2022.3.0`）にある。`libmetalirconverter.dylib` は `Engine/Binaries/ThirdParty/Apple/MetalShaderConverter/Mac`。
+- 確かめ方: `otool -L <app>/Contents/MacOS/wasami_deception | grep @rpath` に出るものが、すべて `<app>/Contents/MacOS/` にあること。
+- 出典: 2026-09-22、Mac で初めてパッケージを起動したとき。
+
 ### Mac のパッケージが `ExitCode=25 (Error_UnknownCookFailure)` で落ちる（エラーは `HttpListener unable to bind to 127.0.0.1:8000` の 1 件だけ）
 
 - 症状: Mac で `RunUAT.sh BuildCookRun -platform=Mac` が `Cook failed.` → `AutomationTool exiting with ExitCode=25`。ログの `Warning/Error Summary` は `Failure - 1 error(s), 10 warning(s)` で、**エラーは `LogHttpListener: Error: HttpListener unable to bind to 127.0.0.1:8000` の 1 件だけ**。クック自体は `Execution of commandlet took: 3m 42s` で完走している。警告 10 件はどれも無害（96 kHz の波に Bink は無駄という助言 9 件と、MCP の EULA の注意 1 件）。

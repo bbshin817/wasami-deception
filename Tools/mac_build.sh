@@ -314,6 +314,46 @@ note "/Game のパッケージ: クック $COOKED / Content $PACKAGES"
 
 APP=$(find "$ARCHIVE/Mac" -maxdepth 1 -name '*.app' 2>/dev/null | head -1)
 [ -n "$APP" ] || die "$ARCHIVE/Mac に .app が無い"
+
+# ---- 足りない dylib を同梱する ------------------------------------------------------------------------------------
+# UE 5.8 の Mac のステージは、本体が @rpath で読む ThirdParty の dylib を .app に入れてくれない（2026-09-22。
+# Windows は同じものを Binaries/Win64/tbb12.dll として入れている）。エンジンへ戻る rpath
+# （@loader_path/../…×8/Shared/Epic Games/…）は `<Project>/Binaries/Mac/` に置かれた .app の深さ向けなので、
+# `Saved/Archive/Mac/` の成果物からは 1 階層ずれて届かない。そこで、実行ファイルの隣（rpath の @loader_path/）へ
+# エンジンから拾って置く。置いた後は ad-hoc で署名し直す（Apple Silicon は署名が壊れた bundle を起動しない）。
+copy_missing_dylibs() {
+	local app="$1" pass=0 copied=1 target lib found
+	while [ $copied -eq 1 ] && [ $pass -lt 4 ]; do
+		copied=0
+		pass=$((pass + 1))
+		for target in "$app/Contents/MacOS/$PROJECT_NAME" "$app/Contents/MacOS/"*.dylib; do
+			[ -f "$target" ] || continue
+			for lib in $(otool -L "$target" 2>/dev/null | sed -n 's/^[[:space:]]*@rpath\/\([^ ]*\.dylib\).*/\1/p'); do
+				if [ -f "$app/Contents/MacOS/$lib" ]; then
+					continue
+				fi
+				found=$(find "$ENGINE/Binaries/ThirdParty" "$ENGINE/Source/ThirdParty" "$ENGINE/Plugins" \
+					-name "$lib" -type f 2>/dev/null | head -1)
+				if [ -n "$found" ]; then
+					cp "$found" "$app/Contents/MacOS/"
+					note "同梱した: $lib"
+					copied=1
+				else
+					warn "エンジンに見つからない: $lib（起動時に落ちる）"
+				fi
+			done
+		done
+	done
+}
+
+BEFORE=$(find "$APP/Contents/MacOS" -maxdepth 1 -name '*.dylib' | wc -l | tr -d ' ')
+copy_missing_dylibs "$APP"
+AFTER=$(find "$APP/Contents/MacOS" -maxdepth 1 -name '*.dylib' | wc -l | tr -d ' ')
+if [ "$AFTER" != "$BEFORE" ]; then
+	codesign --force --sign - "$APP" >/dev/null 2>&1 || warn "ad-hoc の署名し直しに失敗した（起動できないときは codesign --force --sign - \"$APP\"）"
+	note "dylib を $((AFTER - BEFORE)) 個入れて署名し直した"
+fi
+
 note "出来上がり: $APP（$(du -sh "$APP" | cut -f1)）"
 
 # ---- 起動 --------------------------------------------------------------------------------------------------------
