@@ -760,7 +760,7 @@ def estimated_materials(folder, entries, version, left_out=()):
     original material's path with the original's defaults of the parameters the estimate has (those of the sides not
     made left out), and the original's instances as instances of that one with their own values (a value the estimate
     has no parameter for raises, unless its parameter is named in left_out: one the estimate knowingly does without,
-    whose values are dropped). Returns the assets, saved."""
+    whose values are dropped) and the base property overrides they switch on. Returns the assets, saved."""
     made = []
     for name, master_name, build, children in entries:
         rel = folder + name
@@ -786,8 +786,10 @@ def estimated_materials(folder, entries, version, left_out=()):
                 if unknown:
                     raise RuntimeError("%s sets %s, which the estimate of %s does not have"
                                        % (child, sorted(unknown), name))
-            made.append(material_instance(asset_path(child_rel), base, scalars=c_scalars, vectors=c_vectors,
-                                          textures=c_textures, static_masks=c_masks, static_switches=c_switches))
+            child_mic = material_instance(asset_path(child_rel), base, scalars=c_scalars, vectors=c_vectors,
+                                          textures=c_textures, static_masks=c_masks, static_switches=c_switches)
+            base_property_overrides(child_mic, child_rel, version)
+            made.append(child_mic)
     for asset in made:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     return made

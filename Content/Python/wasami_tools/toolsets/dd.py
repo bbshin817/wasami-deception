@@ -174,6 +174,7 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         _module("gltf")
         _module("dd_enemy")
         _module("dd_skeletal")
+        _module("dd_powers")
         return _module("dd_gimmicks").import_all()
 
     @toolset_registry.tool_call

@@ -34,7 +34,7 @@ import os
 
 import unreal
 
-from wasami_tools.pipeline import dd_assets, dd_particles, dd_skeletal, dd_stage, paths
+from wasami_tools.pipeline import dd_assets, dd_particles, dd_powers, dd_skeletal, dd_stage, paths
 
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
@@ -184,6 +184,26 @@ PORTAL_LOGO_TINT = (0.5271 * 0.03 / 0.05, 0.0, 0.0, 1.0)
 PORTAL_LOGO = paths.WASAMI_ROOT + "/Portal/MI_Portal_Wasami"
 # The monkey's texture settings (_textures.json: sRGB, default compression, the UI group).
 PORTAL_LOGO_SETTINGS = {"srgb": True, "compression": None, "lodGroup": "TEXTUREGROUP_UI"}
+# The burst the portal appears with (PPP_PortalAppear, and PPP_PortalAppear_Lock while it is locked): the textures
+# its five sprite materials draw and PyroParticlePack's two lit masters they are instances of, whose graphs the cook
+# took away (rebuilt from their compiled base passes). The first texture is the masters' own ParticleTexture default;
+# the five instances each override it. PPP_Radial_Gradient_Doffed, which the burst's sixth material is, comes with the
+# teleport aim's estimate (dd_powers): UE 4.24 moved the pack under ThirdParty, so the same material sits at two paths.
+PPP_MATERIALS = "ThirdParty/PyroParticlePack/Materials/"
+PPP_TEXTURES = "ThirdParty/PyroParticlePack/Textures/Particles/"
+PPP_DEFAULT_TEXTURE = PPP_TEXTURES + "Flames_16x4_01"
+PORTAL_APPEAR_TEXTURES = (PPP_DEFAULT_TEXTURE, PPP_TEXTURES + "Smoke_8x4_01", PPP_TEXTURES + "FireBlast_8x4_03_",
+                          PPP_TEXTURES + "FireBlast_8x4_02", PPP_TEXTURES + "Flames_8x4_03",
+                          PPP_TEXTURES + "Spark_01")
+# The DynamicParameter both masters read (the emitters' Dynamic modules are named after it). Only alphaClipMultiplier,
+# GlowMultiplier and NearCameraFade reach the shader; DephFadeDistance is dead.
+PPP_DYNAMIC = ("alphaClipMultiplier", "GlowMultiplier", "DephFadeDistance", "NearCameraFade")
+# What PPP_Particles_lit_fogged holds as constants where PPP_Particles_lit has a parameter: the camera fade's offset
+# (a constant 50, the lit master's default of Camera Fade) and the depth fade's distance (the compiled shader's
+# saturate((SceneDepth - PixelDepth) x 0.04)).
+PPP_FOGGED_CAMERA_FADE = 50.0
+PPP_FOGGED_FADE_DISTANCE = 25.0
+PORTAL_APPEAR_GRADIENT = PPP_MATERIALS + "PPP_Radial_Gradient_Doffed"
 # The defibrillators (AWasamiDefib, after Blueprints/06_Hospital/BP_06_Defib): the charge's hum (DD_TT_Defibrillator_Zap,
 # through MonkeyAttenuation, which the double doors bring), the crackle as the player is hit (Electric_Sparks_08) and the
 # discharge (P_06_Defib). Of the system's 18 emitters the original draws four: thander, the lightning (MI_ky_spark02_4x5,
@@ -766,6 +786,103 @@ DEFIB_MATERIALS = (
 )
 
 
+def _build_ppp_particles(mat, d, rel, fogged):
+    """PyroParticlePack's PPP_Particles_lit (fogged False) and PPP_Particles_lit_fogged (True), estimated. The cook
+    kept their settings (translucent, lit at UE's default volumetric non-directional, for sprites, and the lit one's
+    separate translucency off) and 14 of 48 expressions - the SubUV sample ParticleTexture, four DynamicParameters, a
+    CameraDepthFade call, the scalars Camera Fade, UseParallelFade, Emissive Multiplier, UseGreenForAlphaClip,
+    FadeDistance and NormalStrength, the static switch UseAlphaClip and a TextureSample of SphericalNormal_001; what
+    they took away is read off the compiled translucent base pass pixel shader of sprites (Tools/dd/cooked_shaders.py
+    "PyroParticlePack/Materials/PPP_Particles_lit." --show 5, the fogged one's, and the UseAlphaClip false side off an
+    instance's own shader map, "DOFFED/PPP_Particle_01_Smoke_2_A_DOF." --show 5):
+
+      camFade   CameraDepthFade over the particle's NearCameraFade from Camera Fade on: how far the pixel is past it
+      a0        camFade x Lerp(1, OneMinus(Fresnel 0.5 / 0.05) squared, UseParallelFade), the rim's parallel fade
+      colour    the texture's RGB x the particle's colour
+      base      colour x a0 (the shader's mul_sat saturates it in the base pass, not in the graph)
+      emissive  Clamp(colour x the particle's GlowMultiplier x a0, 0, itself) x Emissive Multiplier - the clamp is the
+                identity (min(max(x, 0), x)), but the original's export keeps its name, so it is made
+      opacity   a0 x this alpha faded into the depth over FadeDistance:
+                  UseAlphaClip on   max(1 - (one minus the texture's alpha, or its green by UseGreenForAlphaClip,
+                                    x max((1 - the particle's alpha) x alphaClipMultiplier, 1)) ^ the texture's alpha,
+                                    0) x the particle's alpha - the particle fading out eats its own edges away
+                  off               the texture's alpha x the particle's alpha
+
+    The fogged one is the same graph with three of its knobs frozen: Camera Fade a constant 50, FadeDistance a constant
+    25, and no Emissive Multiplier at all. Its separate translucency stays on (UE 5's pass after the depth of field),
+    the lit one's is off (before it).
+
+    Not made: the normal. SphericalNormal_001's sample (at a ParticleMacroUV) and NormalStrength are still in the
+    export, but neither the sample nor the uniform reaches any compiled shader - the normal is the sprite's own."""
+    props = dd_assets.main_export(dd_assets.export_json(rel, VERSION), rel)["props"]
+    mat.set_editor_property("used_with_particle_sprites", True)
+    # UE 4.24's bEnableSeparateTranslucency off is UE 5.8's translucency drawn before the depth of field.
+    if not props.get("bEnableSeparateTranslucency", True):
+        mat.set_editor_property("translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    g = dd_stage._Graph(mat, checked=True)
+    tex = _sub_uv(g, "ParticleTexture", PPP_DEFAULT_TEXTURE, unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -2100, -400)
+    particle = g.node(unreal.MaterialExpressionParticleColor, -2100, -100)
+    dynamic = dd_assets.dynamic_parameter(g, PPP_DYNAMIC, -2100, 150)
+
+    offset = (dd_assets.constant(g, PPP_FOGGED_CAMERA_FADE, -2100, 450) if fogged
+              else g.scalar("Camera Fade", d["Camera Fade"], -2100, 450))
+    camera = dd_assets.function_call(g, "Opacity/CameraDepthFade", -1850, 350)
+    dd_assets.connect(dynamic, "NearCameraFade", camera, "Fade Length")
+    dd_assets.connect(offset, "", camera, "Fade Offset")
+    fresnel = g.node(unreal.MaterialExpressionFresnel, -2100, 600)
+    fresnel.set_editor_property("exponent", 0.5)
+    fresnel.set_editor_property("base_reflect_fraction", 0.05)
+    rim = g.power(dd_assets.single(g, unreal.MaterialExpressionOneMinus, fresnel, "", -1900, 600), "",
+                  dd_assets.constant(g, 2.0, -1900, 700), "", -1700, 600)
+    parallel = g.lerp(dd_assets.constant(g, 1.0, -1700, 480), "", rim, "",
+                      g.scalar("UseParallelFade", d["UseParallelFade"], -1700, 780), "", -1500, 600)
+    a0 = g.multiply(parallel, "", camera, "Result", -1300, 450)
+
+    colour = g.multiply(tex, "RGB", particle, "RGB", -1750, -350)
+    g.out(g.multiply(colour, "", a0, "", -600, -450), "", MP.MP_BASE_COLOR)
+    glow = g.multiply(g.multiply(colour, "", dynamic, "GlowMultiplier", -1500, -250), "", a0, "", -1250, -250)
+    # Clamp's own MinDefault is the 0 the original clamps to; only its Max is connected, to the value itself.
+    clamped = g.node(unreal.MaterialExpressionClamp, -1000, -250)
+    dd_assets.connect(glow, "", clamped, "")
+    dd_assets.connect(glow, "", clamped, "Max")
+    g.out(clamped if fogged else g.multiply(
+        clamped, "", g.scalar("Emissive Multiplier", d["Emissive Multiplier"], -1000, -150), "", -800, -250),
+        "", MP.MP_EMISSIVE_COLOR)
+
+    clip = g.lerp(tex, "A", tex, "G", g.scalar("UseGreenForAlphaClip", d["UseGreenForAlphaClip"], -1750, 60), "",
+                  -1550, -50)
+    thin = dd_assets.single(g, unreal.MaterialExpressionOneMinus, clip, "", -1350, -50)
+    boost = g.multiply(dd_assets.single(g, unreal.MaterialExpressionOneMinus, particle, "A", -1750, 220), "",
+                       dynamic, "alphaClipMultiplier", -1550, 220)
+    boost = g.binary(unreal.MaterialExpressionMax, boost, "", dd_assets.constant(g, 1.0, -1550, 320), "", -1350, 220)
+    eaten = g.power(g.multiply(thin, "", boost, "", -1150, 50), "", tex, "A", -950, 50)
+    kept = g.binary(unreal.MaterialExpressionMax,
+                    dd_assets.single(g, unreal.MaterialExpressionOneMinus, eaten, "", -750, 50), "",
+                    dd_assets.constant(g, 0.0, -750, 150), "", -550, 50)
+    switch = g.switch("UseAlphaClip", g.multiply(kept, "", particle, "A", -400, 50), "",
+                      g.multiply(tex, "A", particle, "A", -550, -120), "", -250, 0)
+    switch.set_editor_property("default_value", True)
+    distance = (dd_assets.constant(g, PPP_FOGGED_FADE_DISTANCE, -250, 200) if fogged
+                else g.scalar("FadeDistance", d["FadeDistance"], -250, 200))
+    fade = g.node(unreal.MaterialExpressionDepthFade, -100, 50)
+    dd_assets.connect(switch, "", fade, "Opacity")
+    dd_assets.connect(distance, "", fade, "FadeDistance")
+    g.out(g.multiply(a0, "", fade, "", 100, 100), "", MP.MP_OPACITY)
+
+
+# (the original's material, the master holding our estimate, its builder, the original's instances of it - the five the
+# portal's burst draws, of the pack's thirteen)
+PORTAL_APPEAR_MATERIALS = (
+    ("PPP_Particles_lit", "M_DD_PPPParticlesLit",
+     lambda mat, d: _build_ppp_particles(mat, d, PPP_MATERIALS + "PPP_Particles_lit", False),
+     ("Particles/PPP_Particles_01_Blast_01_Add", "Particles/PPP_Particles_01_Burnout_01_A1",
+      "Particles/PPP_Particles_01_Sparks_01_A")),
+    ("PPP_Particles_lit_fogged", "M_DD_PPPParticlesLitFogged",
+     lambda mat, d: _build_ppp_particles(mat, d, PPP_MATERIALS + "PPP_Particles_lit_fogged", True),
+     ("Particles/DOFFED/PPP_Particle_01_Smoke_2_A_DOF", "Particles/DOFFED/PPP_Particles_01_Blast_02_A_DOF")),
+)
+
+
 def _defib_undrawn(exports):
     """dd_particles' adjust for P_06_Defib: the emitters whose LOD levels are all off (DEFIB_UNDRAWN) lose their
     materials (their Required modules' Material: None). Raises if those off are not the ones known, or if a Required
@@ -930,9 +1047,25 @@ def import_ring_statue():
     return {"materials": 1, "particle_systems": 1}
 
 
+def make_portal_appear_materials():
+    """The burst's six materials: the two estimated masters of PyroParticlePack's lit particle materials, instances of
+    them at the original's paths, the five instances of those the burst draws (with their own values and overrides),
+    and PPP_Radial_Gradient_Doffed under ThirdParty, which UE 4.24 moved there - an instance of the same estimate the
+    teleport aim's PPP_Radial_Gradient_Doffed is (dd_powers.RADIAL_GRADIENT_MASTER), made here if the powers have not
+    been imported. Returns the assets' paths (saved)."""
+    made = dd_assets.estimated_materials(PPP_MATERIALS, PORTAL_APPEAR_MATERIALS, VERSION)
+    gradient = dd_assets.material(dd_powers.RADIAL_GRADIENT_MASTER, dd_powers._build_radial_gradient,
+                                  blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
+    made += [gradient, dd_assets.material_instance(dd_assets.asset_path(PORTAL_APPEAR_GRADIENT), gradient)]
+    for asset in made:
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return [a.get_path_name() for a in made]
+
+
 def import_portal():
-    """The garage portal's collection, textures, mesh, materials, logo, sounds and camera shake (saved). The logo's
-    image has to have been drawn (python Tools/dd/prepare_portal_logo.py). Returns how many of each."""
+    """The garage portal's collection, textures, mesh, materials, logo, sounds and camera shake, and the six materials
+    and six textures of the burst it appears with (PPP_PortalAppear), saved. The logo's image has to have been drawn
+    (python Tools/dd/prepare_portal_logo.py). Returns how many of each."""
     if not os.path.exists(PORTAL_LOGO_FILE):
         raise FileNotFoundError("%s is missing: run python Tools/dd/prepare_portal_logo.py first." % PORTAL_LOGO_FILE)
     make_parameter_collection()
@@ -941,7 +1074,8 @@ def import_portal():
     EAL.save_loaded_asset(logo, only_if_is_dirty=False)
     dd_assets.static_mesh(PORTAL_MESH, VERSION)
     result["meshes"] = 1
-    result["materials"] = len(make_portal_materials())
+    result["textures"] += len([dd_assets.texture(rel, VERSION) for rel in PORTAL_APPEAR_TEXTURES])
+    result["materials"] = len(make_portal_materials()) + len(make_portal_appear_materials())
     result["sounds"] = len([dd_assets.sound(rel, VERSION) for rel in PORTAL_SOUNDS])
     dd_assets.camera_shake(PORTAL_CAMERA_SHAKE, VERSION)
     result["camera_shakes"] = 1
