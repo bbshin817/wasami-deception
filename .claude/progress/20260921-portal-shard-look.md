@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 3226bb8
 started: 2026-09-21 09:21
-updated: 2026-09-21 14:10
+updated: 2026-09-21 15:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（上限 30 KB） -->
@@ -27,14 +27,14 @@ updated: 2026-09-21 14:10
 - [x] 3. `PPP_PortalAppear`・`_Lock` を**作ると決めた**（下の「決定事項」に理由。親 2 つの式も焼き込みから全部読めた）
 - [x] 4. 親 2 つ（`M_DD_PPPParticlesLit`・`_LitFogged`）・インスタンス 5・テクスチャ 6・`PPP_Radial_Gradient_Doffed` の ThirdParty 版を作った。パラメータ・既定・テクスチャ・静的スイッチ・`BasePropertyOverrides` は書き出しと一致（実装記録 08）
 - [x] 5. `PPP_PortalAppear`・`_Lock` を組んで `import_portal` に足した（`dd_particles` に `RDO_Extreme` の表を足した。GPU の `Sparks` の焼き込みは原作と色の ±1/255 だけ違う）
-- [ ] 5b. `AWasamiPortal` の 2 つの部品にその粒子をつなぎ（`WasamiAssets.h` のソフト参照）、スピードバリアの `BreakIfBoosting` も同じ粒子なので直すか決める
+- [x] 5b. `AWasamiPortal` が `BeginPlay` で 2 つの部品に粒子を入れ、`AWasamiSpeedBarrier::BreakIfBoosting` が本家どおり `P_ky_impact2` より先に `PPP_PortalAppear` を 0.3 倍で出すようにした（テスト 4 件が通る。08 記録）
 - [ ] 6. 閃光の材質 `M_ky_primitiveColor`・`M_ky_lensFlare02` の不透明度をコンパイル済みシェーダーの式で確定して直す
 - [ ] 7. 結晶 `m_crystal` と地図の印 3 つ（`M_PowerOrb`・`M_Bonus_Shard`・`M_Enemy`）をシェーダーと突き合わせ、差があれば直す
 - [ ] 8. PIE でポータル（鍵 → 開く）と特殊シャード（出現・閃光・取得・地図の印）を見て確かめ、実装記録 08・16 と作業一覧・handover を直して項目 34 を閉じる
 
 ## 次にやること
 
-ステップ 5b（C++。`python Tools/editor_cycle.py` が要る）。`AWasamiPortal` の `PortalAppear`・`PortalAppearLock` の部品（いまテンプレートなし）に `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear`・`_Lock` を入れる（`WasamiAssets.h` のソフト参照 → `BeginPlay` で読む形が `AWasamiDefib` にある。`LockUnlock` は音と揺れのときに既に `Activate` を呼んでいる）。`AWasamiSpeedBarrier::BreakIfBoosting` も本家は `SpawnEmitterAtLocation(PPP_PortalAppear, StaticMesh の位置, 回転 0, 0.3)` を出すので、同じ粒子を足す（08 記録の「既知の制約」の行と、`WasamiSpeedBarrier.h` の @25 の説明も直す）。PIE で見るのはステップ 8 でよい。
+ステップ 6（閃光の材質の不透明度）。特殊シャードの閃光が引く `M_ky_primitiveColor`・`M_ky_lensFlare02` の Opacity を `python Tools/dd/cooked_shaders.py "<パスの一部>."` の焼き込みで確定し、推定と違えば pipeline（`Content/Python/wasami_tools/pipeline/` の該当ファイル。まず現物の式がどこで組まれているかを grep する）を直して取り込み直す。式の数が合わないときは「決定事項」の 1 つめの決め方に従う。
 
 ## 決定事項
 
@@ -56,6 +56,7 @@ updated: 2026-09-21 14:10
 
 ## 検証
 
-- check_records: ステップ 5 で通した（01・08 のハッシュを更新）
-- C++ ビルド: **ステップ 5b で要る**（`python Tools/editor_cycle.py`）
-- エディタでの確認: ステップ 5 で `import_portal` を回し、テクスチャ 11・材質 23・粒子 2 が出来て `/Game/DD`・`/Game/Pipeline` を保存した。粒子の構造（エミッタ・LOD・モジュール・`LODValidity`）は `dd_particles` の組み立てが書き出しと照合済み。**PIE で見るのはステップ 8**
+- check_records: ステップ 5b で通した（08 のハッシュを更新）
+- C++ ビルド: ステップ 5b で `python Tools/editor_cycle.py` が成功し、エディタは開き直して応答している（MCP も再接続済み）
+- 自動テスト: `AutomationTestToolset` の `DiscoverTests` → `RunTestsByFilter("StartsWith:Wasami.Portal+StartsWith:Wasami.SpeedBarrier")` で 4 件とも合格（`Wasami.Portal.Actor` に粒子のテンプレートの確認を足した）
+- エディタでの確認: ステップ 5 で `import_portal` を回し、テクスチャ 11・材質 23・粒子 2 が出来て `/Game/DD`・`/Game/Pipeline` を保存した。**PIE で見るのはステップ 8**

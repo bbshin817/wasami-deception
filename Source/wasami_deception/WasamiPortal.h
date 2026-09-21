@@ -9,6 +9,7 @@ class UAudioComponent;
 class UBoxComponent;
 class UCameraShakeBase;
 class UMaterialInterface;
+class UParticleSystem;
 class UParticleSystemComponent;
 class UPointLightComponent;
 class USoundBase;
@@ -26,8 +27,7 @@ class UStaticMeshComponent;
  * CanTeleport?, then UseTeleport), which the hotel's exit does not do (CanTeleport? false: a trigger by it ends the
  * level) and neither does the garage's; the ballroom's extra lights (Lights, Update Lights), which the hotel's exit has
  * none of; and the character on the logo (Portal Enemy's M_00_Portal_Monkey and the others), which is this game's
- * Wasami symbol (MI_Portal_Wasami). The bursts' particle systems (PPP_PortalAppear, _Lock) are not made yet, so their
- * components have no template and activating them shows nothing.
+ * Wasami symbol (MI_Portal_Wasami).
  *
  * The original's portal refers to a BP_00_StrobingLight placed by it in the level (Strobing Light, Strobing Light 2: the
  * same one at the hotel's exit), which Lock/Unlock colours; here that light is the portal's own StrobingLight, where the
@@ -144,11 +144,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Portal")
 	TObjectPtr<UAudioComponent> Audio;
 
-	/** PPP_PortalAppear: the burst as it opens (no template yet). */
+	/** PPP_PortalAppear: the burst as it opens. */
 	UPROPERTY(VisibleAnywhere, Category = "Portal")
 	TObjectPtr<UParticleSystemComponent> PortalAppear;
 
-	/** PPP_PortalAppear_Lock: the burst as it locks (no template yet). */
+	/** PPP_PortalAppear_Lock: the burst as it locks. */
 	UPROPERTY(VisibleAnywhere, Category = "Portal")
 	TObjectPtr<UParticleSystemComponent> PortalAppearLock;
 
@@ -192,6 +192,14 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Portal|Assets")
 	TSoftObjectPtr<UMaterialInterface> LockMaterial;
+
+	/** PPP_PortalAppear (PyroParticlePack), the burst as the portal opens. */
+	UPROPERTY(EditAnywhere, Category = "Portal|Assets")
+	TSoftObjectPtr<UParticleSystem> AppearParticle;
+
+	/** PPP_PortalAppear_Lock, the same without its light, as the portal locks. */
+	UPROPERTY(EditAnywhere, Category = "Portal|Assets")
+	TSoftObjectPtr<UParticleSystem> AppearLockParticle;
 
 	UPROPERTY(EditAnywhere, Category = "Portal|Assets")
 	TSoftObjectPtr<USoundBase> LoopSound;

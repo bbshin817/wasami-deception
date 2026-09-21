@@ -42,9 +42,10 @@ namespace
 	constexpr float SpeedBarrierLoopVolume = 0.3f;
 	constexpr float SpeedBarrierFalloffDistance = 2000.f;
 
-	// @25: SpawnEmitterAtLocation(P_ky_impact2, StaticMesh's location, no rotation, 4, auto destroy, no pooling, active),
-	// PlayCameraShake(BP_01_DoorExplode_CameraShake, 3, CameraLocal, no rotation) on player 0's camera, and
-	// PlaySound2D(Barrier_Shatter, 0.8, 1, 0).
+	// @25: SpawnEmitterAtLocation(PPP_PortalAppear, StaticMesh's location, no rotation, 0.3, auto destroy, no pooling,
+	// active), the same for P_ky_impact2 at 4, PlayCameraShake(BP_01_DoorExplode_CameraShake, 3, CameraLocal, no
+	// rotation) on player 0's camera, and PlaySound2D(Barrier_Shatter, 0.8, 1, 0).
+	constexpr double SpeedBarrierAppearScale = 0.30000001192092896;
 	constexpr double SpeedBarrierBreakScale = 4.;
 	constexpr float SpeedBarrierShakeScale = 3.f;
 	constexpr float SpeedBarrierShatterVolume = 0.8f;
@@ -129,6 +130,7 @@ AWasamiSpeedBarrier::AWasamiSpeedBarrier()
 
 	LoopSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/02_School/Barrier_Loop")));
 	ShatterSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/02_School/Barrier_Shatter")));
+	AppearParticle = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear")));
 	BreakParticle = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/AdvancedMagicFX13/Particles/P_ky_impact2")));
 	BreakShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/Main/BP_01_DoorExplode_CameraShake")));
 }
@@ -137,6 +139,7 @@ void AWasamiSpeedBarrier::BeginPlay()
 {
 	Super::BeginPlay();
 	LoadedShatterSound = ShatterSound.LoadSynchronous();
+	LoadedAppearParticle = AppearParticle.LoadSynchronous();
 	LoadedBreakParticle = BreakParticle.LoadSynchronous();
 	LoadedBreakShake = BreakShakeClass.LoadSynchronous();
 	Audio->SetSound(LoopSound.LoadSynchronous());
@@ -178,8 +181,11 @@ void AWasamiSpeedBarrier::BreakIfBoosting()
 		return;
 	}
 	bShattered = true;
-	UGameplayStatics::SpawnEmitterAtLocation(this, LoadedBreakParticle, StaticMesh->GetComponentLocation(),
-		FRotator::ZeroRotator, FVector(SpeedBarrierBreakScale), true, EPSCPoolMethod::None, true);
+	const FVector BreakLocation = StaticMesh->GetComponentLocation();
+	UGameplayStatics::SpawnEmitterAtLocation(this, LoadedAppearParticle, BreakLocation, FRotator::ZeroRotator,
+		FVector(SpeedBarrierAppearScale), true, EPSCPoolMethod::None, true);
+	UGameplayStatics::SpawnEmitterAtLocation(this, LoadedBreakParticle, BreakLocation, FRotator::ZeroRotator,
+		FVector(SpeedBarrierBreakScale), true, EPSCPoolMethod::None, true);
 	if (APlayerCameraManager* Camera = UGameplayStatics::GetPlayerCameraManager(this, 0); Camera && LoadedBreakShake)
 	{
 		Camera->StartCameraShake(LoadedBreakShake, SpeedBarrierShakeScale, ECameraShakePlaySpace::CameraLocal, FRotator::ZeroRotator);

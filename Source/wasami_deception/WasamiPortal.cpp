@@ -11,6 +11,7 @@
 #include "Engine/StaticMesh.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
+#include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundBase.h"
 #include "UObject/ConstructorHelpers.h"
@@ -202,6 +203,8 @@ AWasamiPortal::AWasamiPortal()
 	InnerMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/00_Ballroom/M_00_Portal_Vortex_Inner_Inst")));
 	InnerLockedMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/00_Ballroom/M_00_Portal_Vortex_Inner_Locked_Inst")));
 	LogoMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/Wasami/Portal/MI_Portal_Wasami")));
+	AppearParticle = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear")));
+	AppearLockParticle = TSoftObjectPtr<UParticleSystem>(WasamiAssets::Path(TEXT("/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear_Lock")));
 	LockMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/DD/Materials/00_Ballroom/M_00_Portal_Lock")));
 	LoopSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/Portal_Sound_v3")));
 	UnlockedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/portal_unlocked")));
@@ -271,6 +274,9 @@ void AWasamiPortal::BeginPlay()
 	LoadLook();
 	Audio->SetSound(UnlockedSound.LoadSynchronous());
 	PortalLoop->SetSound(LoopSound.LoadSynchronous());
+	// The original's SCS holds these templates; here they are loaded as play begins (WasamiAssets.h).
+	PortalAppear->SetTemplate(AppearParticle.LoadSynchronous());
+	PortalAppearLock->SetTemplate(AppearLockParticle.LoadSynchronous());
 	PortalLoop->Play();
 	// BP_00_StrobingLight's ReceiveBeginPlay: Strobe plays (and loops).
 	StrobeSeconds = 0.f;

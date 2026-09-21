@@ -7,6 +7,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInterface.h"
+#include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Tests/AutomationCommon.h"
 
@@ -88,6 +89,10 @@ bool FWasamiPortalActorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the loop at half"), Portal->GetPortalLoop()->VolumeMultiplier, 0.5f);
 	TestTrue(TEXT("the loop's sound"), Portal->GetPortalLoop()->Sound && Portal->GetPortalLoop()->Sound->GetName() == TEXT("Portal_Sound_v3"));
 	TestTrue(TEXT("the unlock's sound"), Portal->GetAudio()->Sound && Portal->GetAudio()->Sound->GetName() == TEXT("portal_unlocked"));
+	TestTrue(TEXT("the opening burst"), Portal->GetPortalAppear()->Template
+		&& Portal->GetPortalAppear()->Template->GetName() == TEXT("PPP_PortalAppear"));
+	TestTrue(TEXT("the locking burst"), Portal->GetPortalAppearLock()->Template
+		&& Portal->GetPortalAppearLock()->Template->GetName() == TEXT("PPP_PortalAppear_Lock"));
 
 	// BP_00_StrobingLight's Strobe: 0.5, up to 1 at 1 s, back to 0.5 at 2 s, looping; x Light Intensity.
 	TestEqual(TEXT("0.5 at the start"), AWasamiPortal::EvaluateStrobe(0.f), 0.5f);

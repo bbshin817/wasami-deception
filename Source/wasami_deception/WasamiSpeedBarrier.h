@@ -19,8 +19,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiSpeedBarrierDestroyedSignature);
  * boost breaks: two planes 3 cm apart with pulsing materials (the zone barrier's master, AWasamiZoneBarrier), a red
  * light and a humming loop. The planes block nothing; Box1, a thin box just behind the front plane, blocks pawns, and
  * Box, a deeper one about it, overlaps them. The player coming into Box, or running into Box1 (ReceiveHit, while Can Be
- * Destroyed?), with the speed boost on (in Active Powers) shatters it: a burst of P_ky_impact2, the camera shaking, the
- * shatter sound, Destroyed, and the actor gone. Without the speed boost (walking or sprinting) Box1 only stops the
+ * Destroyed?), with the speed boost on (in Active Powers) shatters it: the portal's burst and one of P_ky_impact2, the
+ * camera shaking, the shatter sound, Destroyed, and the actor gone. Without the speed boost (walking or sprinting) Box1 only stops the
  * player. Nothing else refers to them (the levels' Blueprints do not); Zone 1 of the hospital has four.
  *
  * The planes' materials are not set by the class (assets under /Game/DD are never loaded from a constructor,
@@ -44,8 +44,8 @@ public:
 
 	/**
 	 * The original's @25, where the hit and the overlap go: if the player is using the speed boost, the DoOnce: the
-	 * burst at StaticMesh (4 times its size), the camera shake (3), the shatter (2D, 0.8), Destroyed, and the actor
-	 * destroyed. The original's other burst, PPP_PortalAppear, is not made (as the portal's).
+	 * portal's burst at StaticMesh (0.3 times its size), the impact burst there too (4), the camera shake (3), the
+	 * shatter (2D, 0.8), Destroyed, and the actor destroyed.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Speed Barrier")
 	void BreakIfBoosting();
@@ -106,6 +106,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Speed Barrier|Assets")
 	TSoftObjectPtr<USoundBase> ShatterSound;
 
+	/** PPP_PortalAppear (PyroParticlePack), the portal's opening burst, as it breaks. */
+	UPROPERTY(EditAnywhere, Category = "Speed Barrier|Assets")
+	TSoftObjectPtr<UParticleSystem> AppearParticle;
+
 	/** P_ky_impact2 (AdvancedMagicFX13), as it breaks. */
 	UPROPERTY(EditAnywhere, Category = "Speed Barrier|Assets")
 	TSoftObjectPtr<UParticleSystem> BreakParticle;
@@ -119,6 +123,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundBase> LoadedShatterSound;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> LoadedAppearParticle;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UParticleSystem> LoadedBreakParticle;
