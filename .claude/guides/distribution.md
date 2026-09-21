@@ -42,6 +42,10 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
   - ロゴに出てよいのは、エンジンの `zenlogo_64` と本作の `t_titlelogo`・`t_titlelogoglow`・`m_dd_portallogo` だけ。`dark_deception` を含む曲のファイル名は音なので使ってよい（`original-fidelity.md` の表）。
   - スケルタルメッシュに出てよいのは本作の `sk_wasamienemy`・`sk_wasamiboss` だけ。`hospital_*_anim_skeleton` は小物（ガレージのリフト・のこぎり罠）の動きで、キャラクターではない。
   - 名前に `nurse` が出るものは中身を見る。**音・火花・小物のテクスチャは使ってよい**が、**キャラクターの姿が描かれた絵（ポスター・看板・デカール）が見つかったら `original-fidelity.md` の決まりどおりユーザーに確認する**（2026-09-21 に 3 枚見つかった: `hospital_poster_nurse_01_D`・`hospital_poster_nurse_02`・`hospital_decal_nurseambulance`。ユーザー待ち）。
+- **最後に通しで遊べるかを確かめる**: `python Tools/game_flow.py run`（**エディタを閉じてから**。2026-09-21 に実際に通した。道具は実装記録 01、結果は 00 記録の「パッケージした本編の通しプレイ」）。パッケージ版を対話デスクトップで起動し、コマンドラインの `-ExecCmds` だけでタイトル → Zone 1 → Zone 2 → 脱出のスコア画面まで **228 s** で進めて、18 の節目（レベル・チェックポイント・ライフ・シャード・目的・画面のウィジェット）を `Wasami.Status` のログで確かめ、`quit` で終える。
+  - 通った印: 最後の行が `the playthrough went through`（終了コード 0）、`no crash report`、表の右端がすべて `OK`。落ちたところは表の行と `Intermediate/GameFlow/*.png` の絵で分かる。
+  - 画面への入力は使わないので、**マウスとキーそのもの（タイトルの NEW GAME、欠片の画面の CLOSE、スコア画面の NEXT）は別に確かめる**（PIE では `Tools/playthrough.py` が実際に押している）。
+  - 二重起動を防ぐ錠は `Tools/game_perf.py`（本編の fps の計測）と共有している（`Intermediate/Perf/.game_perf.lock`）。同時には走らせられない。
 - **`bCookAll=True` は `/Game` を丸ごとクックする**ので、どのレベルからも使っていないアセットもパッケージに入る。原作の素材をパッケージから外したいときは `Content/` から消すしかない（作業一覧の項目 35 と同じ）。
 - クック前に確かめること: 参照している素材がすべて `/Game` にあるか（`Intermediate/Pipeline/` の中間データはパッケージに入らない）、既定のマップとゲームモード（`Config/DefaultEngine.ini`）、起動して 1 面が遊べるか。
 - **`Config/DefaultGame.ini` の 2 つの節はパッケージのためにある**（消さない。理由はその ini のコメント）:
