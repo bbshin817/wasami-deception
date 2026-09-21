@@ -15,7 +15,7 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_dialogue.py
   - Content/Python/wasami_tools/pipeline/dd_voices.py
   - Tools/dd/prepare_voices.py
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 曲と環境音と台詞（ゾーンの曲の切り替え・台詞の取り込み）
@@ -32,7 +32,7 @@ updated: 2026-09-20
 - `FWasamiMusicFades`: 3 つの部品（`Regular`・`Panic`・`Override`）の 1 回分と `IsSilent()`。
 - `FWasamiMusicDoOnce`: 本家の DoOnce ノード 1 つ。`Enter()`（通したら真。以後は Reset まで偽）・`Reset()`・`IsClosed()`。`FWasamiMusicDoOnce{true}` は Start Closed。
 - `FWasamiMusicState`: `Update(bFadeOut, bOverrideMusic, bIntense)` → `FWasamiMusicFades`。ワールド無しで試せる純粋な構造体で、5 つの DoOnce を持つ。
-- `AWasamiMusicPlayer`（`AActor`）: `bFadeOut`・`bOverrideMusic`（どちらも `EditAnywhere, BlueprintReadWrite`）、`Update()`（`BlueprintCallable`）、`IsIntenseMusic()`（`BlueprintPure`。本家の `Intense Music ?`）、`FadeRegularMusicIn(Duration, Volume)`（`BlueprintCallable`。`Regular Music` の `FadeIn(Duration, Volume, 0, Linear)` だけを流す。Zone 2 の独房の場面が使う）、`GetLastFades()`（直前の `Update` が流したフェード。テストと道具のため）、`GetLastRegularFadeInDuration()`・`GetLastRegularFadeInVolume()`（直前の `FadeRegularMusicIn`。まだ無ければ長さが負。同じくテストのため）、部品の取り出し `GetRegularMusic()`・`GetPanicMusic()`・`GetOverrideMusic()`。定数 `UpdateInterval` 0.5・`FadeDuration` 1.0・`FadeInVolume` 1.0。ソフト参照 `RegularMusicSound`・`PanicMusicSound`・`OverrideMusicSound`。
+- `AWasamiMusicPlayer`（`AActor`）: `bFadeOut`・`bOverrideMusic`（どちらも `EditAnywhere, BlueprintReadWrite`）、`Update()`（`BlueprintCallable`）、`IsIntenseMusic()`（`BlueprintPure`。本家の `Intense Music ?`）、`FadeRegularMusicIn(Duration, Volume)`（`BlueprintCallable`。`Regular Music` の `FadeIn(Duration, Volume, 0, Linear)` だけを流す。Zone 2 の独房の場面が使う）、`FadeAllMusicOut(Duration)`（`BlueprintCallable`。3 本とも鳴っていれば `FadeOut(Duration, 0, Linear)`。`bFadeOut` の `Update` がする分を `Update` を待たずに流す口で、Zone 2 の脱出が使う）、`GetLastFades()`（直前の `Update` が流したフェード。テストと道具のため）、`GetLastRegularFadeInDuration()`・`GetLastRegularFadeInVolume()`・`GetLastFadeOutDuration()`（直前の `FadeRegularMusicIn`・`FadeAllMusicOut`。まだ無ければ長さが負。同じくテストのため）、部品の取り出し `GetRegularMusic()`・`GetPanicMusic()`・`GetOverrideMusic()`。定数 `UpdateInterval` 0.5・`FadeDuration` 1.0・`FadeInVolume` 1.0。ソフト参照 `RegularMusicSound`・`PanicMusicSound`・`OverrideMusicSound`。
 - `AWasamiMusicPlayerZone2`: 本家の `BP_06_MusicPlayer_Zone2`（`Regular Music` の曲だけを差し替えた子）。
 - `IWasamiEnemyInterface::Chasing()`（04 記録）: 本家の `DD_EnemyInterface` の `Chasing`。既定は偽、`AWasamiEnemy` は `IsChasing()`（07 記録）を返す。`IsIntenseMusic()` がこれを見る。
 - ツール `WasamiDDTools.import_dd_audio()`（`dd_audio.import_all`）: 曲 3 本（`MUSIC`）・環境音 2 本（`AMBIENCE`）・残響 2 つ（`REVERBS`）の取り込み。戻り値は `music`・`ambience`・`reverbs`。
@@ -140,7 +140,7 @@ updated: 2026-09-20
 - ワサミの声: 原本は WebGL 版の `public/voices/`（`manifest.json` の `clips[]` の id・`subtitle`・`duration`）。鳴らす場面と音量・字幕は WebGL 版の実装記録 06（`Game.say` の 4 本と死亡画面の 2 本、バス `voice`）と 15（敵の `found` と巡回の 4 本を頭の位置で）。本家に当たるものは無い（本家の Bierce に当たる案内役がワサミ）。
 
 ## 依存関係
-- 使う側: ゾーンの流れ（`AWasamiZone1Flow`・`AWasamiZone2Flow`。11 記録）。`src:BP_06_MusicPlayer_2` / `src:BP_06_MusicPlayer_Zone2_2` のタグで引き（`AWasamiZoneFlow::MusicPlayer`）、Zone 1 は 5 か所で `bFadeOut` を上げ下げし（`SetMusicFadeOut`）、Zone 2 は独房の場面で `FadeRegularMusicIn` を 2 回呼び、脱出で `bFadeOut` を上げる。レベルの組み立て（`dd_level._flow`。01 記録）。
+- 使う側: ゾーンの流れ（`AWasamiZone1Flow`・`AWasamiZone2Flow`。11 記録）。`src:BP_06_MusicPlayer_2` / `src:BP_06_MusicPlayer_Zone2_2` のタグで引き（`AWasamiZoneFlow::MusicPlayer`）、Zone 1 は 5 か所で `bFadeOut` を上げ下げし（`SetMusicFadeOut`）、Zone 2 は独房の場面で `FadeRegularMusicIn` を 2 回呼び、脱出で `bFadeOut` を上げて `FadeAllMusicOut(1 s)` を流す。レベルの組み立て（`dd_level._flow`。01 記録）。
 - 見る側: `IWasamiEnemyInterface`（04 記録）の `Chasing` → `AWasamiEnemy::IsChasing()`（07 記録）。
 - 話し役を使う側: 両ゾーンの流れ（11 記録。`src:BierceTalk_Blueprint_2` のタグか `AWasamiBierceTalk::Find`）。減衰 `/Game/DD/Audio/Misc/DialogueAttenuation`（`dd_gimmicks` が取り込む。08 記録）。
 - 取り込み: `dd_assets.sound`・`dd_assets.sound_file`（01 記録）。ワサミの声の原本は `Tools/dd/prepare_voices.py` （ffmpeg が要る）が WebGL 版から作る。
@@ -150,7 +150,7 @@ updated: 2026-09-20
 - `Override Music` は曲が空のまま（本家の病院も空）。`bOverrideMusic` の道だけ残してある。
 - 曲は 3D の減衰を持たない（本家も部品に減衰の上書きが無く、SoundWave 自身も素）ので、どこにいても同じ大きさで鳴る。置き場所は本家に合わせてあるだけ。
 - テストの `Wasami.Music.Actor` は `/Game/DD/Audio/06_Hospital/Music` の曲が取り込まれていることを前提にする（`import_dd_audio` を先に走らせる）。
-- **`bFadeOut` は一時停止の下では効かない**: `Update` は 0.5 s のタイマーなので、止めたゲームでは回らない。Zone 2 の脱出（11 記録の `OnEndTrigger`）が同じフレームで一時停止するため、そこで上げた `bFadeOut` は音にならず、スコア画面の下で曲は鳴り続ける。**2026-09-21 のユーザーの回答で「聞こえる形で引く」と決まった**ので、止める前に部品を直にフェードアウトする（作業一覧の項目 35）。
+- **一時停止の下では曲を引けない**: `Update` は 0.5 s のタイマーなので止めたゲームでは回らず、さらに**止めたゲームはゲームの音そのものが鳴らない**（`FAudioDevice::HandlePause` が UI の音でない発音体を全部止める。UE 5.8 の `AudioDevice.cpp:4113`）ので、止めたのと同じフレームで始めたフェードも聞こえない。Zone 2 の脱出（11 記録の `OnEndTrigger`）はそのため、**止める前に `FadeAllMusicOut` でフェードを始め、その長さだけ `Escape` を待たせる**（2026-09-21 のユーザーの回答「聞こえる形で引く」。作業一覧の項目 35）。
 - 館内放送（Zone 2 の `Nurse_Hospital_Zone01_Event_48_Intercom_2`）は `bAutoActivate` 偽のまま置いてあるだけで、鳴らす側がまだ無い（本家はレベル BP が鳴らす。台詞なので項目 20）。
 - 話し役の待ちの戻り（`Resume`）には「待ちは無い」を値で渡す（`Step(false, false)`）。`FTimerManager::IsTimerActive` は**自分のコールバックの最中も真**なので、そこで `IsWaiting()` を見ると待ちの回が自分を「もう待っている」と誤り、台詞が二度と鳴らない（症状索引の「タイマーのコールバックの中で `IsTimerActive` が真を返す」）。
 - 話し役は音声装置の無い自動テストでは鳴っている状態を作れない（`UAudioComponent::Play` は装置が無いと何もしない）ので、`IsSpeaking()` を `virtual` にして `AWasamiTestBierceTalk` が差し替える。待ちの分岐そのものは純粋な `WasamiTalkStep` でも試す。
@@ -159,6 +159,7 @@ updated: 2026-09-20
 - `IsIntenseMusic()` が見るのは敵インターフェースを持つアクタだけなので、Matron（17 記録）は曲を追跡に変えない。本家も同じ（`BP_06_Matron_MiniBoss.json` に `DD_EnemyInterface` は無い）。
 
 ## 変更履歴
+- 2026-09-21: `FadeAllMusicOut(Duration)` を足した（作業一覧の項目 35 のステップ 2。Zone 2 の脱出で曲を聞こえる形で引く。止めたゲームは音が鳴らないことを「既知の制約」に書いた）。
 - 2026-09-21: 有人セッションで要確認 3 件に回答をもらった。台詞の字幕の**名前の対応**と敵の呼びかけの間隔**14〜26 s** はこのまま追認、Zone 2 の脱出は**聞こえる形で曲を引く**（止める前に部品を直にフェードアウトする。作業一覧の項目 35）
 - 2026-09-20: 初版（作業一覧の項目 19 のステップ 1。`AWasamiMusicPlayer` と曲 3 本の取り込み・配置）。
 - 2026-09-20: `FadeRegularMusicIn` を足し、ゾーンの流れからの切り替えを繋いだ（ステップ 2）。

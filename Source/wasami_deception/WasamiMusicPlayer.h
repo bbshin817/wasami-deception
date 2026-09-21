@@ -139,12 +139,24 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Music")
 	void FadeRegularMusicIn(float Duration, float Volume);
 
+	/**
+	 * The three components' FadeOut(Duration, 0, Linear) at once — what bFadeOut's Update would do, asked for straight
+	 * away. Zone 2's escape needs it: Escape pauses the game, which stops the 0.5 s Update from coming round and
+	 * silences the game's sounds (FAudioDevice::HandlePause pauses every source that is not a UI sound), so the fade
+	 * has to be begun and heard before the game stops.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Music")
+	void FadeAllMusicOut(float Duration);
+
 	/** What the last Update faded (none while nothing changed). For the tests and the tools. */
 	const FWasamiMusicFades& GetLastFades() const { return LastFades; }
 
 	/** The last FadeRegularMusicIn, or a negative duration when none has come. For the tests and the tools. */
 	float GetLastRegularFadeInDuration() const { return LastRegularFadeInDuration; }
 	float GetLastRegularFadeInVolume() const { return LastRegularFadeInVolume; }
+
+	/** The last FadeAllMusicOut, or a negative duration when none has come. For the tests and the tools. */
+	float GetLastFadeOutDuration() const { return LastFadeOutDuration; }
 
 	UAudioComponent* GetRegularMusic() const { return RegularMusic; }
 	UAudioComponent* GetPanicMusic() const { return PanicMusic; }
@@ -186,6 +198,7 @@ private:
 	FWasamiMusicFades LastFades;
 	float LastRegularFadeInDuration = -1.f;
 	float LastRegularFadeInVolume = -1.f;
+	float LastFadeOutDuration = -1.f;
 	FTimerHandle UpdateTimer;
 };
 

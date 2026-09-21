@@ -36,6 +36,9 @@ namespace
 	const FLinearColor GarageArrow(1.f, 0.8941f, 0.f, 1.f);
 	// 01_Hotel's Change Color as it points the arrow at its exit portal.
 	const FLinearColor PortalArrow(1.f, 0.f, 0.016666f, 1.f);
+
+	static_assert(AWasamiZone2Flow::EscapeMusicFade == AWasamiMusicPlayer::FadeDuration,
+		"the escape fades the music over the player's own fade");
 }
 
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
@@ -465,17 +468,28 @@ void AWasamiZone2Flow::OnEndTrigger()
 	UGameplayStatics::PlaySound2D(this, EscapeSound.LoadSynchronous());
 	RemoveAllEnemies(GetWorld());
 	// The zone's music taken away as the level ends, where the original's ride to the boss fight takes it (@1423, with
-	// its GOOD LUCK and the loading screen 7 s on). Nothing is heard of it here: Escape pauses the game in this same
-	// frame, so no Update comes while the score screen is up and the track plays on under it, as the hotel's exit
-	// leaves its own; the fade falls when NEXT unpauses, in the second before the title opens.
+	// its GOOD LUCK and the loading screen 7 s on). bFadeOut is raised as the original raises it, but on its own it is
+	// never heard: Escape stops the game in this same frame, so the 0.5 s Update never comes round, and a paused game
+	// has no sound at all (FAudioDevice::HandlePause pauses every source that is not a UI sound) — the fade would only
+	// fall when NEXT unpauses, in the second before the title opens. So the components are faded here and Escape waits
+	// for the fade, under the black the screen is held at.
 	if (AWasamiMusicPlayer* Music = MusicPlayer(MusicPlayerSource))
 	{
 		Music->bFadeOut = true;
+		Music->FadeAllMusicOut(EscapeMusicFade);
 	}
 	// And the hospital's own portal: its Trigger_Escape calls Escape at once (06_Hospital @66935), which pauses the game,
-	// saves and puts up the score screen, as the hotel's EndTrigger does.
+	// saves and puts up the score screen, as the hotel's EndTrigger does. Here it comes EscapeMusicFade on, so the level
+	// is counted as done at the trigger, not at the screen: the counter stops now and the time saved is the time played.
 	if (AWasamiGameMode* GameMode = GetMode())
 	{
-		GameMode->Escape();
+		GameMode->PauseTimeCounter();
 	}
+	After(EscapeMusicFade, [this]()
+	{
+		if (AWasamiGameMode* GameMode = GetMode())
+		{
+			GameMode->Escape();
+		}
+	});
 }

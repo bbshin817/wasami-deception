@@ -158,6 +158,19 @@ void AWasamiMusicPlayer::FadeRegularMusicIn(float Duration, float Volume)
 	RegularMusic->FadeIn(Duration, Volume, 0.f, EAudioFaderCurve::Linear);
 }
 
+void AWasamiMusicPlayer::FadeAllMusicOut(float Duration)
+{
+	LastFadeOutDuration = Duration;
+	// The same If Playing Fade Out the bFadeOut branch puts on all three, at the length asked for.
+	for (UAudioComponent* Component : {RegularMusic.Get(), PanicMusic.Get(), OverrideMusic.Get()})
+	{
+		if (Component->IsPlaying())
+		{
+			Component->FadeOut(Duration, 0.f, EAudioFaderCurve::Linear);
+		}
+	}
+}
+
 void AWasamiMusicPlayer::ApplyFade(UAudioComponent* Component, EWasamiMusicFade Fade)
 {
 	switch (Fade)

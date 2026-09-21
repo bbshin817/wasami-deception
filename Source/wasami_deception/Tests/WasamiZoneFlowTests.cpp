@@ -919,9 +919,14 @@ bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the escape"), Flow->GetSection(), FName(TEXT("EndTrigger")));
 	TestTrue(TEXT("the enemies removed"), !WeakSentry.IsValid() || WeakSentry->IsActorBeingDestroyed());
 	TestTrue(TEXT("the music taken away"), Music->bFadeOut);
+	TestEqual(TEXT("and faded out to be heard"), Music->GetLastFadeOutDuration(), AWasamiZone2Flow::EscapeMusicFade);
 
-	// The hospital's Escape: checkpoint 0 saved with the time added and the counter back to 0 (no player here, so no
-	// pause and no screen).
+	// The hospital's Escape, which waits for that fade: the save is untouched until it ends, and the time played does
+	// not grow while it runs (the counter stops at the trigger, so the level is timed to the portal).
+	TestEqual(TEXT("the checkpoint kept while the fade runs"), SavedCheckpoint(), 10);
+	Advance(Wrapper, AWasamiZone2Flow::EscapeMusicFade + 0.1f);
+
+	// Then checkpoint 0 saved with the time added and the counter back to 0 (no player here, so no pause and no screen).
 	const auto SavedEntry = []()
 	{
 		const UWasamiSaveGame* Save = Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex));

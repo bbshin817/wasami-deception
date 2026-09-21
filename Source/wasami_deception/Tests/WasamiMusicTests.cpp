@@ -162,6 +162,13 @@ bool FWasamiMusicActorTest::RunTest(const FString& Parameters)
 	Player->Update();
 	TestTrue(TEXT("dropping it in the same state brings nothing back"), Player->GetLastFades().IsSilent());
 
+	// FadeAllMusicOut, which Zone 2's escape calls itself because no Update comes round once the game is stopped: the
+	// same fade out on all three, at the length asked for, without an Update.
+	TestTrue(TEXT("no fade out asked for before the escape"), Player->GetLastFadeOutDuration() < 0.f);
+	Player->FadeAllMusicOut(AWasamiMusicPlayer::FadeDuration);
+	TestEqual(TEXT("the escape's fade out"), Player->GetLastFadeOutDuration(), AWasamiMusicPlayer::FadeDuration);
+	TestTrue(TEXT("and it is no Update"), Player->GetLastFades().IsSilent());
+
 	// Zone 2's player: the same but for its regular track.
 	const AWasamiMusicPlayerZone2* Zone2 = World->SpawnActor<AWasamiMusicPlayerZone2>(FVector(1000., 0., 0.),
 		FRotator::ZeroRotator);

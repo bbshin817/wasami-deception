@@ -94,6 +94,14 @@ public:
 	static constexpr float EscapeFadeSpeed = 20.f;
 	static constexpr int32 EscapeFadeZOrder = 5;
 
+	/**
+	 * The escape's music: the zone's track is faded out over this (AWasamiMusicPlayer::FadeDuration, the original's own
+	 * fade) and Escape waits the same time, so the fade is heard under the black the screen is held at. Raising bFadeOut
+	 * alone is not heard at all — Escape stops the game in the same frame, which keeps the music player's 0.5 s Update
+	 * from coming round and silences the game's sounds while the score screen is up (2026-09-21, the user's answer).
+	 */
+	static constexpr float EscapeMusicFade = 1.f;
+
 protected:
 	/** ReceiveBeginPlay: Portal Extra Brightness set, then the zone's Setup (the base's BeginPlay). */
 	virtual void BeginPlay() override;

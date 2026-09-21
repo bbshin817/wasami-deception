@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: e91ec43
 started: 2026-09-21 11:13
-updated: 2026-09-21 12:05
+updated: 2026-09-21 11:40
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -22,8 +22,7 @@ updated: 2026-09-21 12:05
 ## 計画
 
 - [x] 1. 敵の移動音のピッチと足の運びの `TODO(仮)` — `NurseSkateSpeed` 800 を足し、`MoveVolumeSpeed` = 400 × `MaxSpeed` / `NurseSkateSpeed` = 215・`MovePitchSpeed` = `MaxSpeed` = 430 に移した（巡回 200 でピッチ 1.2・音量 0.93、追跡 430 でピッチ 1.5）。足の運びの `TODO(仮)` も外した。記録 07
-- [ ] 2. Zone 2 の脱出で曲を聞こえる形で引く
-  - 変更予定: `Source/wasami_deception/WasamiZone2Flow.cpp` の `OnEndTrigger`（`bFadeOut` を立てるだけでなく、止める前に `UAudioComponent` を直にフェードアウトする）、必要なら `WasamiMusicPlayer` に入口を足す、実装記録 10・11
+- [x] 2. Zone 2 の脱出で曲を聞こえる形で引く — `AWasamiMusicPlayer::FadeAllMusicOut(Duration)` を足し、`OnEndTrigger` で `bFadeOut` 真 + `FadeAllMusicOut(1 s)` → `PauseTimeCounter` → 1 s 後に `Escape`。記録 10・11
 - [ ] 3. EXTRAS の曲の欄 10 個を埋める
   - 変更予定: `Source/wasami_deception/WasamiExtrasWidget.h`/`.cpp`（`SoundCount` 10 を本作で鳴っている曲の数に減らし、名前を並べる）、実装記録 19
 - [ ] 4. 使っていないアセットを消し、前処理が作り直さないようにする
@@ -32,20 +31,20 @@ updated: 2026-09-21 12:05
 
 ## 次にやること
 
-ステップ 2。`WasamiZone2Flow.cpp` の `OnEndTrigger`（446 行、`Music->bFadeOut = true;` は 471-474 行）で、`Escape` がゲームを止める前に曲の `UAudioComponent` を直にフェードアウトする（`bFadeOut` の 0.5 s のタイマーは止まったフレームでは回らない）。必要なら `AWasamiMusicPlayer` に入口を足す。C++ なので`python Tools/editor_cycle.py` のビルドが要る。
+ステップ 3。EXTRAS の曲の欄を本作で実際に鳴っている曲で埋める（`WasamiExtrasWidget.h:78` の `SoundArchiveSection`、記録 19 の `SoundCount` 10 を実際の数に減らし、名前を並べる）。曲の一覧は記録 10（曲 3 本）・09（UI）・13（スコア画面）から拾う。C++ なので `python Tools/editor_cycle.py` のビルドが要る。
 
 ## 決定事項
 
+- 2026-09-21（ステップ 2）: 脱出の曲は**止める前にフェードを始め、`Escape` をその 1 s だけ待たせる**。止めたゲームは `Update` が来ないだけでなく**ゲームの音が全部止まる**（`FAudioDevice::HandlePause` が UI の音でない発音体を止める。WebGL 版 06 記録の調べとも一致）ので、止めたのと同じフレームでフェードを始めても聞こえないため。長さは本家のフェード `AWasamiMusicPlayer::FadeDuration` = 1 s。待つ間は画面が黒のまま（`bHold`）で、レベルの時間が伸びないよう引き金で `PauseTimeCounter` を呼ぶ。
 - 2026-09-21: アセットの削除は**ユーザーの指示済み**（項目 35 の完了の条件。2026-09-21 の有人セッションの回答）なので、無人運転で行ってよい。ただし消すのはこの 18 個だけ。
 
 ## 要確認（ユーザー）
 
-（なし）
+- 脱出でスコア画面が**1 s 遅れて**出る（曲のフェードを聞かせるため、その間は画面が黒のまま）。本家はポータルに触れた所ですぐスコア画面が出る。1 s が長ければ短くできる（`AWasamiZone2Flow::EscapeMusicFade`。曲のフェードも同じ長さになる）。
 
 ## 再開時の注意
 
 - 下調べで分かっていること（ステップに入る前に読み直さなくてよい）:
-  - 脱出の曲: `WasamiZone2Flow.cpp:446` の `OnEndTrigger`。471-474 行で `Music->bFadeOut = true;` を立てている（コメントに「聞こえない」理由が書いてある）。
   - EXTRAS: `WasamiExtrasWidget.h:78` の `SoundArchiveSection` 3、記録 19 に `SoundCount` 10。
   - 消すアセット: `Content/Pipeline/Debug/M_Probe_*.uasset` 17 個と `Content/DD/UI/Menu/TitleCards/chapter_ui_title_tormenttherapy.uasset`。**どちらも git の管理外**（`git ls-files` が空）なので、消してもコミットには出ない。`M_Probe_*` を作る Python は無く（`grep -rn "M_Probe" --include=*.py` が空）、検証のときに MCP で直に作ったものらしい。題字は `dd_ui.py:165-167` の取り込みの一覧には**もう入っていない**（同じ `TitleCards` の 3 枚だけ）ので、`Tools/dd/prepare_level_title.py:26` が前処理で書き戻さないかを確かめる。
 - エディタの状態: ステップ 1 のビルドの後に開き直し、応答している（PIE は動いていない）。
@@ -53,7 +52,7 @@ updated: 2026-09-21 12:05
 
 ## 検証
 
-- check_records: OK（20 件。記録 07 のハッシュを更新）
-- C++ ビルド: OK（`Tools/editor_cycle.py`。新しい警告なし）
-- Automation（ステップ 1）: `Wasami.Enemy` 17 件すべて成功。移動音の `Wasami.Enemy.Actor.Sound` は新しい値（0 で無音・107.5 で音量 0.5・200 で 0.93・215 で満・322.5 でピッチ 1.35・430 で 1.5・2000 で頭打ち）で成功。`-NullRHI` の `UnrealEditor-Cmd.exe` では `Chase06` が落ちるが、これはパーティクルが作られない `-NullRHI` のせいで（`Defib.Charge`・`ZoneBarrier.Actor` も同じ理由で落ちる）、エディタの中では成功する（症状索引に書いた）。
-- エディタでの確認（取り込み・組み立て・PIE）: ステップ 5 でまとめて行う
+- check_records: OK（20 件）
+- C++ ビルド: OK（`Tools/editor_cycle.py`。新しい警告なし。`WasamiCapture.cpp` の C4305 5 件は前からのもの）
+- Automation（ステップ 2）: エディタの中で `Wasami.Music`（2 件）・`Wasami.ZoneFlow`（7 件）すべて成功。脱出のテストは「フェードの長さの間はセーブが動かず、終わってからチェックポイント 0 が書かれる」「時間はポータルに着いた所まで」も見ている。
+- エディタでの確認（取り込み・組み立て・PIE）: ステップ 5 でまとめて行う（脱出は**実際に聞こえるか**と、スコア画面が 1 s 遅れて出るのが不自然でないかを見る）
