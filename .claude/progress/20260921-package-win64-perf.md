@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 5a12f23
 started: 2026-09-21 12:31
-updated: 2026-09-21 14:00
+updated: 2026-09-21 14:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -31,17 +31,22 @@ updated: 2026-09-21 14:00
 - [x] 5. 2026-09-21 完了。**`Tools/game_perf.py`**（画面への入力を使わず、コマンドラインの `-ExecCmds` だけで測る）を作り、**VERY HIGH で 7 か所**を測った。`Wasami.Settings` がパッケージ版で落ちること・ファイアウォールの確認が前面を離さないことを症状索引に書いた。
 - [x] 5b. 2026-09-21 完了。**既定の HIGH で同じ 7 か所**を測り、実装記録 00 に「パッケージした本編の fps」の節（2 画質 × 7 か所）を足した。**HIGH は 56.4〜72.4 fps（平均 63.2）で目安に届き**、VERY HIGH は 43.2〜58.2（平均 50.9）。
 - [x] 5c. 2026-09-21 完了。音量の読みを `FAudioThread::RunCommandOnAudioThread` + `FAudioCommandFence` に移して**パッケージ版の `Wasami.Settings` が落ちなくなった**（`L_Title` と `L_Hospital_Zone1` の両方で 3 クラスの音量を印字して正常終了、`Saved/Crashes/` は 0 件）。症状索引と 15 記録を直し、パッケージを作り直した（1 分 52 秒、`/game/` 1139 件）。
-- [ ] 6. パッケージ版で通しプレイ（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）※**画面への入力が塞がれている間はできない**（下の「要確認」のファイアウォールの確認）
+- [x] 6a. 2026-09-21 完了。デバッグの **`Wasami.Delay S Command …`**（実時間 S 秒後にコンソールコマンドを走らせる。レベルをまたぐ）と **`Wasami.Status`**（レベル・チェックポイント・ライフ・シャード・目的・プレイヤー・画面のウィジェットを 1 行でログに）を足し、PIE とパッケージ版の両方で確かめた（06 記録）。パッケージも作り直した（1 分 44 秒、`/game/` 1139 件）。
+- [ ] 6b. `Tools/game_flow.py` でパッケージ版を通す（Zone 1 の到着 → 迷路 → 駐車場 → 救急車 → Zone 2 → 独房 → 廊下 → 迷路 → 祭壇 → 脱出 → スコア画面。節目で `Wasami.Status` と `HighResShot`）。落ちないこと・各レベルが開くこと・スコア画面が出ることを見る。
 - [ ] 7. 結果をまとめて項目 36 を閉じる（画質の選択肢の項目は立てない＝上の「決定事項」。大目標 3 の達成）
 
 ## 次にやること
 
-ステップ 6: **パッケージ版で通しプレイ**（タイトル → Zone 1 → Zone 2 → 脱出 → スコア）。**いまは出来ない**: Windows のセキュリティの確認（`PickerHost.exe` の窓「Windows セキュリティ」、2026-09-21 14:00 の時点でも前面のまま）が前面を離さず、`Tools/desktop.py` の入力がゲームに届かない（下の「要確認」）。前面かどうかは `python Tools/desktop.py start` → `ping` の `foreground.process` で分かる。
+ステップ 6b: **`Tools/game_flow.py`** を書いて、パッケージ版を Zone 1 の到着 → 脱出まで通す。
 
-- **`PickerHost.exe` が消えていたら** → `python Tools/desktop.py start` でゲーム（`wasami_deception.exe`）を `--allow` に入れて起動し、タイトル → NEW GAME → Zone 1 → Zone 2 → 脱出 → スコアまで遊ぶ。落ちないこと・シャードと敵とパワーが動くこと・スコア画面まで出ることを見る。
-- **まだ前面なら** → ステップ 6 を飛ばし、ステップ 7 で項目 36 を「通しプレイはユーザー待ち」として閉じるかを決める（大目標 3 の最後の項目なので、閉じると大目標 3 が達成になる。**通しプレイは完了の条件に入っている**ので、飛ばすなら記録に理由を残す）。
+- 作り: `Tools/game_perf.py` の `launch(map, commands, timeout)`（起動して自分で終わるまで待つ）を使い、`-ExecCmds` に `Wasami.Delay <秒> <コマンド>` を並べて節目を作る。節目ごとに `Wasami.Status` と `Shot showui`、最後は `quit`。結果は `Saved/Archive/Windows/wasami_deception/Saved/Logs/wasami_deception.log` の `LogWasamiDebug` の行（`Wasami.Status level=… checkpoint=… widgets=…`）と `…/Saved/Screenshots/Windows/ScreenShotNNNNN.png` で見る。
+- どのチェックポイント・どの `Wasami.*` で場面を作るかは **`Tools/playthrough.py` の `SETUPS`（1298 行〜）と各区間の関数が正本**（`z1_arrive` … `z2_escape`）。歩きは出来ないので `BugItGo X Y Z Pitch Yaw Roll`（`Tools/game_perf.py` の 7 か所の座標も使える）で運び、扉と箱は `Wasami.Trigger <名前>`・`Wasami.Interact`・`Wasami.Flow <イベント>` で進める。
+- 見るもの: 落ちないこと（`Saved/Archive/Windows/wasami_deception/Saved/Crashes` が空）、Zone 1 → Zone 2 のレベルの開き直しが通ること、シャードの回収と祭壇と脱出が進むこと、スコア画面（`WasamiLevelClearWidget`）が出ること。
+- **キーとマウスそのもの（タイトルの NEW GAME のクリック、歩き、ポーズ）は確かめられない**（下の「要確認」のセキュリティの確認が消えるまで）。
 
 ## 決定事項
+
+- 2026-09-21（ステップ 6）: **通しプレイはコマンドラインから行う**。Windows のセキュリティの確認が前面を離さないので画面への入力（キーとマウス）はゲームに届かない（下の「要確認」。2026-09-21 15:00 の時点でも前面のまま）。パッケージ版は `-ExecCmds` しか受け口が無く、それは起動の 1 ティックで走り切るので、**実時間で遅れて走るコマンド `Wasami.Delay` を足して**節目を並べ、`Wasami.Status` と `HighResShot`（ゲームの中から撮るので前面が要らない）で確かめる。キーとマウスそのものの確かめは残るので要確認に書く。
 
 - 2026-09-21: 出力先は `Saved/Archive/Windows`（`Saved/` は git の対象外）。**クックとパッケージ版の実行の間はエディタを閉じる**（VRAM 6 GB。エディタだけで 2.9〜4.1 GB）。
 - 2026-09-21: **測定はパッケージ版が前面でなくても成立する**（前面を握られていても窓は普通に描き続ける）。ただし通しプレイ（ステップ 6）は入力が要るのでできない。
@@ -60,13 +65,15 @@ updated: 2026-09-21 14:00
 
 ## 再開時の注意
 
-- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）、作り直しは 5 分 22 秒。**`BUILD SUCCESSFUL` は中身を保証しない**ので、作り直したら `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る（症状索引）。
-- **本編の fps の測り方**は `Tools/game_perf.py`（記録 01 の道具の表）。画面への入力は使わない。CSV は `Saved/Archive/Windows/wasami_deception/Saved/Profiling/CSV/`、ログは同じ `Saved/Logs/wasami_deception.log`。二重に走らせると互いの CSV を読んでしまうので錠（`Intermediate/Perf/.game_perf.lock`）を置いてある。
-- **エディタは閉じてある**（ステップ 4 の後に開き直したが、ステップ 5 の頭で閉じた）。ステップ 5c で C++ を直すときに `python Tools/editor_cycle.py` で開き直す。
+- **パッケージのコマンド**は `.claude/guides/distribution.md`「パッケージ」。出来上がりは `Saved/Archive/Windows/`（起動は直下の `wasami_deception.exe`）。C++ だけ変えたときの作り直しは **1 分 44 秒**。**`BUILD SUCCESSFUL` は中身を保証しない**ので、作り直したら `grep -c "^/game/" Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` が 1139 前後かを見る（症状索引）。
+- **パッケージ版の動かし方**（画面への入力は届かない）: `Tools/game_perf.py` の `launch()` で `-ExecCmds` を渡す。`Wasami.Delay` で節目を並べ、`Wasami.Status` でログに読み、絵は **`Shot showui`**（`HighResShot` は 3D だけで UI の画面は真っ黒）。コマンドの文字列に**コンマは使えない**（`-ExecCmds` がコンマで切る）。
+- **エディタは閉じてある**（ステップ 6a のパッケージの前に閉じた）。PIE が要るときは `python Tools/editor_cycle.py` で開き直す。
+- **本編の fps の測り方**は `Tools/game_perf.py`（記録 01 の道具の表）。二重に走らせると互いの CSV を読むので錠（`Intermediate/Perf/.game_perf.lock`）がある。
 - 走らせたままのバックグラウンドの処理・未保存のアセットは無い。
 
 ## 検証
 
+- **ステップ 6a（2026-09-21）— 足したデバッグコマンド**。PIE（Zone 1）: `Wasami.Status` が 1 行（`level=L_Hospital_Zone1 … lives=3 shards=337/337 … widgets=WasamiInteractWidget`）、`Wasami.Delay 3 Wasami.Status` がちょうど 3.000 s 後に走った。`Wasami.Delay 8 …` は途中の `Wasami.Title` の開き直しをまたいで `level=L_Title widgets=WasamiTitleScreenWidget` を出し、`Wasami.Delay 2 HighResShot 1` も 2 s 後に PNG を書いた。**パッケージ版**（`L_Title`）: 同じ 3 本が同じように走り（`lives=3`、4.0 s 後に 2 本目、9 s の `quit` で正常終了、`Saved/Crashes` 0 件）、`Shot showui` がタイトルの絵（ロゴ・RESUME/NEW GAME/EXTRAS/OPTIONS/QUIT・`UNOFFICIAL FAN GAME` の注意書き・v1.0.0）を撮れた。`HighResShot 1` は 3D だけなので同じ画面が真っ黒だった（症状索引）。
 - **ステップ 5・5b（2026-09-21）— パッケージした本編の fps**（1080p ウィンドウ、VERY HIGH と既定の HIGH の 2 画質 × 7 か所、各 10 s・`t.MaxFPS 500`）。**表と考察は実装記録 00 の「パッケージした本編の fps」へ移した**。要点だけ:
   - **HIGH（遊ぶ人が見る絵）は 56.4〜72.4 fps（平均 63.2）で「1080p で 60 前後」に届く**。VERY HIGH は 43.2〜58.2（平均 50.9）で届かない。
   - VERY HIGH（PIE と同じ品質）の本編は PIE より 1〜6 % 遅いだけなので、**PIE の数字は本編の目安に使える**。

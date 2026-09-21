@@ -1,13 +1,17 @@
 #include "WasamiGameMode.h"
 
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Containers/Ticker.h"
+#include "Engine/Engine.h"
 #include "Engine/PlayerStartPIE.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "UObject/UObjectIterator.h"
 #include "WasamiBlackFadeWidget.h"
 #include "WasamiCapture.h"
 #include "WasamiChapterPortalWidget.h"
@@ -23,6 +27,8 @@
 #include "WasamiShardStreakWidget.h"
 #include "WasamiTriggerBox.h"
 #include "WasamiZoneFlow.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogWasamiDebug, Log, All);
 
 namespace
 {
@@ -202,6 +208,71 @@ namespace
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UWasamiChapterPortalWidget::Show(World);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs DelayCommand(TEXT("Wasami.Delay"),
+		TEXT("Wasami.Delay S Command ...: runs the console command S seconds later, so one command line can play the game on ")
+		TEXT("(Tools/game_flow.py). The wait is real time on the core ticker, so it outlives a level change and goes on while ")
+		TEXT("the game is paused; several can wait at once, and the command cannot hold a comma (-ExecCmds splits on it)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() < 2)
+			{
+				return;
+			}
+			TArray<FString> Rest(Args);
+			Rest.RemoveAt(0);
+			const FString Command = FString::Join(Rest, TEXT(" "));
+			const float Seconds = FMath::Max(0.f, FCString::Atof(*Args[0]));
+			UE_LOG(LogWasamiDebug, Display, TEXT("Wasami.Delay: '%s' in %.1f s"), *Command, Seconds);
+			FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Command](float)
+			{
+				// The engine's own deferred commands, the ones -ExecCmds uses: they run on the next tick, in whichever
+				// world is loaded by then.
+				if (GEngine)
+				{
+					GEngine->DeferredCommands.Add(Command);
+				}
+				return false;
+			}), Seconds);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs StatusCommand(TEXT("Wasami.Status"),
+		TEXT("Prints one line with where the game is (level, checkpoint, lives, shards, objective, the player, the widgets ")
+		TEXT("on screen), the fields Tools/playthrough.py reads from the editor, so a packaged build can be followed in its log."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AWasamiGameMode* Mode = WasamiModeOf(World);
+			const UWasamiSaveGame* Save = Mode ? Mode->GetSave() : nullptr;
+			// Through the world, not the game mode: the title has its own mode (14 record) but the same lives.
+			const UWasamiGameInstance* Instance = World ? World->GetGameInstance<UWasamiGameInstance>() : nullptr;
+			const AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0));
+			TArray<FString> Widgets;
+			for (TObjectIterator<UUserWidget> It; It; ++It)
+			{
+				if (It->GetWorld() == World && It->IsInViewport())
+				{
+					Widgets.AddUnique(It->GetClass()->GetName());
+				}
+			}
+			Widgets.Sort();
+			const FVector Where = Player ? Player->GetActorLocation() : FVector::ZeroVector;
+			UE_LOG(LogWasamiDebug, Display,
+				TEXT("Wasami.Status level=%s checkpoint=%d start=%d lives=%d shards=%d/%d deaths=%d time=%.1f paused=%d input=%d player=%.0f,%.0f,%.0f yaw=%.0f objective='%s' widgets=%s"),
+				World ? *World->GetName() : TEXT("none"),
+				Save ? Save->Hospital.LevelCheckpoint : -1,
+				Mode ? Mode->GetStartCheckpoint() : -1,
+				Instance ? Instance->GetLives() : -1,
+				World ? CountShards(World) : -1,
+				Mode ? Mode->GetTotalShards() : -1,
+				Save ? Save->Hospital.Deaths : -1,
+				Mode ? Mode->GetTime() : -1.f,
+				World && UGameplayStatics::IsGamePaused(World) ? 1 : 0,
+				Player && Player->bHasInput ? 1 : 0,
+				Where.X, Where.Y, Where.Z,
+				Player ? Player->GetControlRotation().Yaw : 0.0,
+				Mode ? *Mode->CurrentObjective.ToString() : TEXT(""),
+				Widgets.Num() > 0 ? *FString::Join(Widgets, TEXT(",")) : TEXT("none"));
 		}));
 }
 

@@ -653,6 +653,7 @@
 - 原因: Windows のファイアウォールの確認は前面を握り続ける。`SetForegroundWindow`・`AttachThreadInput` + `SetForegroundWindow`・`SwitchToThisWindow`・ゲームの窓のクリックのどれでも前面が戻らない（2026-09-21 に 4 つとも試した）。
 - 対処: **この確認はユーザーが答える**（許可でも取り消しでも、消えれば入力は通る）。OS 全体の入力は操作しない決まり（`.claude/guides/verification.md`）なので、Claude は押さない。消えるまでは、画面へのキー・クリックが要る作業（パッケージ版の通しプレイ、本家の観察）はできない。
 - 回避: ゲームの中の操作だけなら、コマンドラインの `-ExecCmds="…"` で足りることがある（`UEngine::Init` が遅延コマンドに積み、`UGameEngine::Init` の起動マップの読み込みの後、最初のティックで走る。`Tools/game_perf.py` はこれで 7 か所の fps を測った）。前面でなくてもゲームは普通に描き続けるので、fps の計測には影響しない。
+- 回避（続きの操作が要るとき。2026-09-21）: `-ExecCmds` は起動の 1 ティックで走り切るので、**`Wasami.Delay S Command …`**（実時間 S 秒後に走らせる。レベルの開き直しをまたぐ。06 記録）で節目を並べる。今どこかは **`Wasami.Status`**（1 行でログに出る）で読み、絵は **`Shot showui`**（ゲームの中から撮るので前面が要らない。出力は `<アーカイブ>/wasami_deception/Saved/Screenshots/Windows/ScreenShotNNNNN.png`）で撮る。**`HighResShot 1` は使わない**: 3D の場面だけを描くので、UI しか無い画面（タイトル・スコア画面）は真っ黒になる（2026-09-21 に実際に撮って確かめた）。キーとマウスそのもの（メニューのクリック、歩き）は確かめられないので、そこはユーザー待ちにする。
 - 確かめ方: `python Tools/desktop.py ping` の `foreground.process`。
 - 出典: 作業一覧の項目 36 のステップ 4・5（2026-09-21）。
 
