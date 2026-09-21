@@ -210,6 +210,11 @@ COLLECTABLE_CLASS = "BP_Collectable_C"
 SECRET_PROPS = {"ID": "id"}
 # A file's Collectables (the extras it unlocks; item 29): Enum_Collectables' numbers → EWasamiCollectableType.
 COLLECTABLE_TYPES = ("ART_GALLERY", "DIARY", "SOUND", "MOVIE")
+# The Sound Archive's tracks a file unlocks, in place of the original's ID (item 35). The original's Zone 1 file 0
+# unlocks its Sound 5, the one of that chapter's tracks, and the other chapters' files unlock the rest; this game has
+# the one chapter and the one file, and its Sound Archive holds this game's four tracks (UWasamiExtrasWidget's
+# SoundCount, 19 record), so that file unlocks all four or three of them would stay locked forever.
+COLLECTABLE_SOUNDS = (0, 1, 2, 3)
 SECRET_PARTS = {"BP_SecretRoomZone_C": {"Box": "box"}, "BP_07_Zone1_SecretWall_C": {"StaticMesh": "static_mesh"},
                 "BP_MysteryCollectable_C": {"Plane": "plane"}}
 SECRET_WALL_MESH = "/Game/Meshes/03_Manor/manor_fake_wall"
@@ -775,6 +780,19 @@ def _note_texts(refs, strings):
     return [unreal.Text(strings[r["key"]]) for r in refs]
 
 
+def _collectables(refs):
+    """A file's Collectables (the extras it unlocks) from the original's values: its Enum_Collectables number as an
+    EWasamiCollectableType (COLLECTABLE_TYPES), its ID as it is, but a sound's replaced by this game's tracks
+    (COLLECTABLE_SOUNDS)."""
+    out = []
+    for c in refs:
+        name = COLLECTABLE_TYPES[c["Type"]]
+        kind = getattr(unreal.WasamiCollectableType, name)
+        for i in (COLLECTABLE_SOUNDS if name == "SOUND" else (c["ID"],)):
+            out.append(unreal.WasamiCollectableEntry(type=kind, id=i))
+    return out
+
+
 def set_secret(actor, stage, zone, a, level, strings):
     """A secret placed from the original's (a: its stage entry): its ID, a file's Collectables, its parts moved as the
     placed one's (SECRET_PARTS), the wall's mesh and material, a note's texture, texts and paper, a decoy's doors.
@@ -784,10 +802,7 @@ def set_secret(actor, stage, zone, a, level, strings):
             actor.set_editor_property(name, a["props"][key])
     written = set(SECRET_PROPS)
     if a["class"] == COLLECTABLE_CLASS:
-        actor.set_editor_property("collectables", [
-            unreal.WasamiCollectableEntry(type=getattr(unreal.WasamiCollectableType, COLLECTABLE_TYPES[c["Type"]]),
-                                          id=c["ID"])
-            for c in a["props"].get("Collectables", [])])
+        actor.set_editor_property("collectables", _collectables(a["props"].get("Collectables", [])))
         written |= {"Collectables"}
     parts = {part: _level_props(zone, "%s.%s" % (a["name"], part), level) for part in SECRET_PARTS.get(a["class"], {})}
     for part, prop in SECRET_PARTS.get(a["class"], {}).items():

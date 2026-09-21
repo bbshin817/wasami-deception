@@ -44,7 +44,7 @@ updated: 2026-09-21
     - ID 2 `Hospital Zone 2 Normal Track` … Zone 2 の通常の曲（`…_Hospital_Zone_2_-_Normal_Track_v1_1_-_LOOPING`）
     - ID 3 `Pause Theme` … タイトル画面とポーズの曲（`UI/Pause_Sound_v1`。14・15 記録）
     - 1〜3 は本家の EXTRAS に無い曲なので、名前は本家のファイル名から起こした仮のもの（要確認）。曲以外（`66_-_Game_Over`・`DD_LVL2_15_V1_Secret_Mystery_Room_120818`・環境音）は `DD_SoundClass_SFX` なので並べない。
-    - 解放は本家どおり `ExtrasSFX` に ID があるかで、Zone 1 の書類（`ID` 0）が入れる（18 記録）。本家はその書類が Sound 5（＝同じ Zone 1 の曲）だけを解放するが、本作は曲がこの 4 本しか無く、ほかの章の書類も無いので、**この書類で 4 本とも解放する**（そうしないと 3 本が永久に鍵のまま。要確認）。
+    - 解放は本家どおり `ExtrasSFX` に ID があるかで、Zone 1 の書類（`ID` 0）が入れる（18 記録）。本家はその書類が Sound 5（＝同じ Zone 1 の曲）だけを解放するが、本作は曲がこの 4 本しか無く、ほかの章の書類も無いので、**この書類で 4 本とも解放する**（そうしないと 3 本が永久に鍵のまま。要確認）。組み立ては本家の Sound を `dd_level.COLLECTABLE_SOUNDS` = (0, 1, 2, 3) に置き換える（18・01 記録）。
 - 絵 `UWasamiExtrasItemWidget`: `CanvasPanel_0` → `Button_104`（中央に 150 四方〈動画は 250〉。Normal: 枠 `ring_altar_power_equipped_frame` 150 四方〈動画 300〉・端 0.1・0.516 の灰、Hovered: 枠 105×104 白、Pressed: `WhiteSquareTexture` 白、Disabled: `WhiteSquareTexture` 黒）・`ScaleBox_0`（全面から 5 内側・`ScaleToFill`〈満たして切る〉・当たりなし）→ `Image_1`（鍵 `locked`、刷毛 2500 四方・当たりなし）。
   - `Begin`（本家 Construct @252）: `Button_104` の様式を、Normal = 木の Normal を 0.4531 の灰に、Hovered = 木の Hovered を白に、Pressed = 絵の無い白（`Image` で描く 32 四方）に差し替える。セーブを読み（`Save` が無ければスロットから。スロットが空なら新しいセーブ）、`IsUnlocked`（`UWasamiSaveGame::IsUnlocked` の Art Gallery = `ExtrasArt` に `ID`）なら `Image_1` に `Art`（`SetBrushFromTexture(…, False)` で刷毛の 2500 四方のまま）・ボタンは `Visible`、でなければ鍵・`HitTestInvisible`（押せず、ホバーもしない）。
   - `Press`（@2511）: 解放済みだけ、`UI_Select_V3`（1, 1.25）→ `UWasamiMaximizePictureWidget::Show(Art, Text)`。
@@ -94,6 +94,7 @@ updated: 2026-09-21
 - 収録のグリッド: `Intermediate/DesktopAgent/shots/extras_step6_{doors,collect,title,maximize}.png`（git の外）。
 
 ## 変更履歴
+- 2026-09-21: Zone 1 の書類が SOUND ARCHIVE の 4 本とも解放するようにした（組み立ての `COLLECTABLE_SOUNDS`。18・01 記録。作業一覧の項目 35 のステップ 4）
 - 2026-09-21: SOUND ARCHIVE に本作の曲 4 本を名前つきで並べた（`SoundTracks`・`FWasamiExtrasTrack`、`SoundCount` 10 → 4、日記の 10 は `DiaryCount` へ。テスト `Wasami.Extras.Screen`・`.SoundButton`。作業一覧の項目 35 のステップ 3）
 - 2026-09-21: 有人セッションのユーザーの回答で、EXTRAS は**曲の欄だけ埋める**ことにした（本作で実際に鳴っている曲を名前つきで並べ、余る欄は減らす）。日記 10 は空のまま、絵 19〜22 とクレジットは今のまま（作業一覧の項目 35）
 - 2026-09-20: 作業一覧の項目 29 を閉じた（PIE で書類 → タイトルの EXTRAS まで通して確かめた。上の「確かめたこと」。ステップ 6）
