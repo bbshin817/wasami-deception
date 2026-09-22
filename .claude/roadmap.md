@@ -526,7 +526,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`（@6598・@10519）、`pak_reference_2/DDeception/Content/Audio/DD_-_Dark_Deception_-_Theme_v1_3.ogg`、`Source/wasami_deception/WasamiTitleScreenWidget.cpp`、実装記録 14。
 - 依存: なし。
 - 規模: 1
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-title-theme-music`。完了の条件 (1)(2) は済み、残るのは (3) のパッケージ版の確かめだけ）**（**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で確定。最終目標の「タイトル画面は WebGL 版に倣う」〈= 本家の旧版〉より指摘を優先する）。**(1) 済み**: `dd_ui.import_title` が最新版の `DD_-_Dark_Deception_-_Theme_v1_3`（3:34・ループ・Music のクラス）も取り込む。**(2) 済み**: `UWasamiTitleScreenWidget` の曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）を替えた（`FadeIn(2, 0.5)` は両版で同じなのでそのまま）。テスト 9 件 Success、PIE の `L_Title` で鳴っている音は新しい曲 1 つだけと確かめた（`au.Debug.ListAudioComponents`）。`Pause_Sound_v1` はポーズ画面と EXTRAS の「Pause Theme」のまま。**(3) にはパッケージ版が要る**（`RunUAT.bat BuildCookRun` は 2026-09-23 に許可が出た。`.claude/settings.json` の `permissions.allow`。項目 39・41・52 とまとめて 1 回で確かめられる）。
+- 状態: **完了（2026-09-23）**（**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で確定。最終目標の「タイトル画面は WebGL 版に倣う」〈= 本家の旧版〉より指摘を優先する）。**(1) 済み**: `dd_ui.import_title` が最新版の `DD_-_Dark_Deception_-_Theme_v1_3`（3:34・ループ・Music のクラス）も取り込む。**(2) 済み**: `UWasamiTitleScreenWidget` の曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）を替えた（`FadeIn(2, 0.5)` は両版で同じなのでそのまま）。テスト 9 件 Success、PIE の `L_Title` で鳴っている音は新しい曲 1 つだけと確かめた（`au.Debug.ListAudioComponents`）。`Pause_Sound_v1` はポーズ画面と EXTRAS の「Pause Theme」のまま。**(3) 済み**（2026-09-23）: パッケージ版（`Saved/Archive/Windows/wasami_deception.exe`）の `L_Title` で鳴っている音は `DD_-_Dark_Deception_-_Theme_v1_3`（サウンドクラス `DD_SoundClass_Music`）ただ 1 つで、`Pause_Sound_v1` は鳴っていない。入り方も最新版どおりで、音量は 0.6 s → 0.09・1.3 s → 0.20・3.0 s → 0.30 と線形に上がって 2 秒で頭打ち（0.6 × 0.5 = 0.30 = `FadeIn(2.0, 0.5)`）。
 
 ### 44. タイトル画面の筆の跡と、顔の左の境界を本家のものにする
 

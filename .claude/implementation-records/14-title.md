@@ -135,6 +135,13 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - **顔**: 絵が箱の四辺まで続く（右端の列 x = 858 でも輝度 7.5 で、切れ目や硬い縦線は無い。本家は光の筋が細いので x ≥ 820 が 0.7）。左の境界は行ごとに 540〜594 px とばらつく煙の縁で、本家の光の筋の縁と同じく硬い線ではない。
 - **顔の絵そのものは比べない**: 本家の最新版のタイトルの右側は横顔ではなく細い光の筋で、本作が写した旧版 `UMG_TitleScreen` の `Image_97` とは中身が違う（本家は章ごとに 9 枚の横顔 `ProfileIcons/` を持ち、タイトルは版によって別の絵を出す）。比べたのは作り（四辺まで続くか・左の境界が煙の縁か）と筆の跡。
 
+## 確かめたこと（2026-09-23、パッケージ版、`L_Title`。作業一覧の項目 43）
+
+- `Saved/Archive/Windows/wasami_deception.exe L_Title -ExecCmds="t.MaxFPS 60, au.Debug.SoundWaves 1, Wasami.Delay <秒> shot showui, ..."`（`Tools/game_perf.py` の `launch`。画面への入力は要らない）。
+- 鳴っている音は `/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3`（`Owner: WorldSettings`・`SoundClass: DD_SoundClass_Music`）**ただ 1 つ**で、旧版の `Pause_Sound_v1` は鳴っていない（`au.Debug.Sounds` の `Total Sounds: 1, Sound Waves: 1`、ログの `au.Debug.ListAudioComponents` も 4 回とも同じ 1 件）。クックで曲が落ちたり別の音に替わったりはしていない。
+- 入り方も最新版どおり: 画面に出る音量が起動から **0.6 s → 0.09、1.3 s → 0.20、3.0 s → 0.30** と線形に上がって 2 秒で頭打ちになる（0.6 × 0.5 = 0.30。`CreateSound2D` の音量 0.6 と `FadeIn(2, 0.5)` の積）。
+- 画面は `widgets=WasamiTitleScreenWidget`（`Wasami.Status`）で、NEW GAME・EXTRAS・OPTIONS・QUIT の 4 つが出ている。
+
 ## 変更履歴
 - 2026-09-22: 顔の α を本家の横顔と同じ切り口（ほぼ不透明 + 左の細い羽根）にし、WebGL 版の楕円は RGB を黒へ落とす暈しへ移した（上の「前処理」。右端・上端・下端の黒い隙間が消え、左の境界が煙の縁になった。作業一覧の項目 44）
 - 2026-09-22: 筆の跡 `Image_104` を無効にするのをやめた（UE 5 の Slate の無効は不透明度 0.45 倍。上の「画面」の 5。作業一覧の項目 44）
