@@ -500,7 +500,7 @@
 - 根拠: `Source/wasami_deception/WasamiCapture.cpp`（`ScreamSound`・`LaughSound`・`HitSound`・`NumSounds`・`SoundTime`）、`Content/Python/wasami_tools/pipeline/dd_enemy.py`（`CAPTURE_SOUNDS`）、`Source/wasami_deception/WasamiVoice.h`、実装記録 07・10。
 - 依存: なし。
 - 規模: 1
-- 状態: **未着手**（使う音源は 2026-09-22 に決まった。上の「完了の条件」）
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-capture-wasami-voice`）**。使う音源は 2026-09-22 のユーザーの回答で決まっている（上の「完了の条件」）。調べは済み: 本家の 3 本は捕獲だけが使い、`you` の原本 `SourceArt/Wasami/Voices/you.wav` と `manifest.json` の項目（5.007 s）はあるが `dd_voices` が取り込んでいない。
 
 ### 41. Zone 1 → Zone 2 の救急車（2 台に見える・プレイヤーが置いていかれる）
 
