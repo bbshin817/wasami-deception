@@ -533,9 +533,9 @@
 - 目標: （**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で、この項目は行うと決まった）指摘「タイトル画面における背景の筆跡、モチーフキャラクター画像の左の境界線のイメージが本家と異なる」。本家は顔（動画）の左の縁を煙のマスク `title_screen_video_mask` で切り、背景の筆の跡を `MM_TitleScreen_Mask_Grey` で流す。本作は WebGL 版の CSS（楕円のラジアルグラデーションのマスク）を焼き込んだ顔を出しているので、左の縁が本家の筆の切り口にならない。筆の跡も、cook で式が消えた材質を「`title_screen_chapters_background` を Panner で流す」と推定して組んである（14 記録）ので、本家と違って見える余地がある。
 - 完了の条件: (1) 本家の顔の左の縁（`title_screen_video_mask`・`MM_TitleScreen_Mask`・`MM_TitleScreen_Mask_Grey`）をコンパイル済みのシェーダー（`python Tools/dd/cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask"`）で確定し、本作の顔にも同じ切り口を掛ける。(2) 筆の跡のテクスチャと流れ（速さ・色・不透明度）を同じ式で確定する。(3) 本家のタイトル画面と本作の絵を並べ、背景の筆の跡と顔の左の縁が同じ形に見えることを確かめる。
 - 根拠: `pak_reference_2/_assets/DDeception/Content/UI/Main/TitleScreen/MM_TitleScreen_Mask*.json`、`DDeception/Content/UI/Main/TitleScreen/title_screen_video_mask.png`、`Tools/dd/prepare_title.py`、`Content/Python/wasami_tools/pipeline/dd_ui.py`（`_build_title_strokes`）、実装記録 14。
-- 依存: 43（同じ画面を触るので後に）。
+- 依存: 43（同じ画面を触るので後に）。**43 の C++ とアセットの変更は済んでいて、残りはパッケージ版での確かめ（`RunUAT.bat` の許可待ち）だけなので、依存は満たされている**（2026-09-22）。
 - 規模: 2
-- 状態: **未着手**
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-title-strokes-face-edge`）**
 
 ### 45. ステージ OP の紋章の中で、ワサミのシンボルが下にずれている
 
