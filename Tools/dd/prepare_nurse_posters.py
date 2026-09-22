@@ -178,8 +178,72 @@ def poster_01(src):
     return out.convert("RGB")
 
 
+# ------------------------------------------------------------------------------------------------ 02
+RED = (255, 42, 41)                                    # the poster's flat ground
+BLACK = (0, 0, 0)                                      # its silhouettes
+
+
+def poster_02(src):
+    """"GET VACCINATED!": the two silhouettes keep their bodies and get Wasami's face.
+
+    The poster is drawn in two flat colours, so each head's box simply goes back to the red and Wasami's ink
+    is drawn on it in the silhouettes' black: the face reads as red skin with black hair, eyes and mouth,
+    which is the same two colours the rest of the poster uses. The syringe, the heart, the words and the
+    bodies below the neck stay as they are."""
+    out = src.convert("RGBA")
+    # Each skull is cut off along the line where the silhouette turns into the shoulders, and the head is
+    # drawn a little below that line, so that its jaw covers the cut. The cut is not level: it follows the
+    # slope of the shoulders it leaves behind, so that what is left of the silhouette reads as a back or a
+    # collar the head sits on instead of a ruler line across it.
+    for box, skull, tilt in (
+            # the tall one bent over the small one: its skull, down to where the back branches off (the back
+            # falls away to the left, so the cut goes down that way too)
+            ((361, 31, 72, 98), [(354, 22), (436, 22), (436, 112), (354, 152)], 3.0),
+            # the small one at the left: its skull, down to where the hair widens into the shoulders (the cut
+            # dips under the chin, which leaves the hair standing on both sides of it like a collar)
+            ((40, 496, 100, 128), [(30, 484), (146, 484), (146, 628), (88, 640), (30, 596)], -4.0)):
+        hole = poly_mask(src.size, skull)
+        a = np.array(out).astype(np.float32)
+        a[..., :3] = a[..., :3] * (1 - hole)[..., None] + np.float32(RED) * hole[..., None]
+        out = Image.fromarray(a.astype(np.uint8))
+        head, at = draw_head(box, None, BLACK, None, tilt=tilt, ink_only=True)
+        out, _ = place(out, head, at)
+    return out.convert("RGB")
+
+
+# ------------------------------------------------------------------------------------------------ decal
+def decal_ambulance(src):
+    """The doodle on the ambulance's roof: the nurse's cap and the paper bag over her head become Wasami's.
+
+    The doodle is drawn on a fully clear white and every stroke of it is at the same alpha (166/255), so the
+    cap and the head are erased back to that clear white and Wasami's head is drawn in the doodle's own
+    colours (brown outlines, the arms' skin) and put back at the same alpha. The syringe, the arms, the
+    uniform and the ambulance stay as they are."""
+    rgba = np.array(src.convert("RGBA")).astype(np.float32)
+    ink = (49, 21, 21)                                 # the doodle's brown outlines
+    skin = (255, 205, 173)                             # her arms
+    opacity = 166.0                                    # every stroke of the doodle
+    # The cap (a tall quad up to y 130) and the paper bag below it, stopping short of the collar and of the
+    # forearm that crosses under her chin.
+    cap = [(489, 129), (577, 129), (577, 238), (572, 252), (569, 282), (548, 292),
+           (520, 290), (503, 277), (500, 250), (489, 238)]
+    hole = poly_mask(src.size, cap, grow=2)
+    rgba[..., :3] = rgba[..., :3] * (1 - hole)[..., None] + 255.0 * hole[..., None]
+    rgba[..., 3] = rgba[..., 3] * (1 - hole)
+    head, at = draw_head((501, 206, 72, 86), skin, ink, ink, tilt=-7.0)
+    over = Image.new("RGBA", src.size, (0, 0, 0, 0))
+    over.alpha_composite(head, (int(at[0]), int(at[1])))
+    o = np.array(over).astype(np.float32)
+    cover = o[..., 3:4] / 255.0                        # the head's own shape, its alpha put back by hand so
+    rgba[..., :3] = rgba[..., :3] * (1 - cover) + o[..., :3] * cover      # that it matches the doodle's
+    rgba[..., 3] = np.maximum(rgba[..., 3], cover[..., 0] * opacity)
+    return Image.fromarray(np.clip(rgba, 0, 255).astype(np.uint8))
+
+
 POSTERS = {
     "hospital_poster_nurse_01_D": ("wasami_poster_nurse_01.png", poster_01),
+    "hospital_poster_nurse_02": ("wasami_poster_nurse_02.png", poster_02),
+    "hospital_decal_nurseambulance": ("wasami_decal_nurseambulance.png", decal_ambulance),
 }
 
 
