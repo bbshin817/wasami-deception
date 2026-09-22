@@ -486,12 +486,12 @@
 
 ### 39. 捕獲の別室の地面のグリッド（パッケージに入らないエンジンのアセット）
 
-- 目標: 指摘「敵ワサミ襲撃時のアニメについて、本来暗闇のはずが、デバッグと思しきグリッドが地面に表示されている」。別室の黒い壁 6 枚は `/Engine/EngineDebugMaterials/BlackUnlitMaterial`（**エディタ専用のデバッグ材質**）を使っており、これはクックされないので、パッケージ版では材質の無い板になり既定の市松（グリッド）で描かれる。2026-09-22 に Windows のパッケージの `.utoc` の名前で確かめた: `BlackUnlitMaterial` は**入っておらず**、`BasicShapes/Plane`・`Cube`・`Sphere`・`BasicShapeMaterial`・`WhiteSquareTexture`・`Roboto*` は入っている。同じ理由で入っていないものがほかに 2 つある: `/Engine/EngineFonts/RobotoTiny`（死亡画面のヒントと SAVING PROGRESS の字）と `/Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHelper`（SAVING の絵）。
-- 完了の条件: (1) 別室の壁の材質を、クックされるものに替える（本作の `/Game/Wasami/…` に黒の Unlit を 1 つ作る）。(2) `RobotoTiny`・`SphereRenderHelper` も替え、パッケージ版で死亡画面と SAVING の見た目を確かめる。(3) ゲームのコードが参照する `/Engine/…` を洗い出し、パッケージに入るものだけにする（`WasamiSpecialSpawnPoint` のビルボードはエディタでしか出ないので除いてよい）。(4) パッケージ版で捕獲を 4 種とも見て、背景が真っ黒であることを確かめる。
+- 目標: 指摘「敵ワサミ襲撃時のアニメについて、本来暗闇のはずが、デバッグと思しきグリッドが地面に表示されている」。別室の黒い壁 6 枚は `/Engine/EngineDebugMaterials/BlackUnlitMaterial`（**エディタ専用のデバッグ材質**）を使っており、これはクックされないので、パッケージ版では材質の無い板になり既定の市松（グリッド）で描かれる。2026-09-22 に Windows のパッケージの `.utoc` の名前で確かめた: `BlackUnlitMaterial` は**入っておらず**、`BasicShapes/Plane`・`Cube`・`Sphere`・`BasicShapeMaterial`・`WhiteSquareTexture`・`EngineFonts/Roboto`（とその面）は入っている（`RobotoTiny` は入らないので `Roboto*` でひとくくりにはできない）。同じ理由で入っていないものがほかに 2 つある: `/Engine/EngineFonts/RobotoTiny`（死亡画面のヒントと SAVING PROGRESS の字）と `/Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap`（SAVING の絵）。
+- 完了の条件: (1) 別室の壁の材質を、クックされるものに替える（本作の `/Game/Wasami/…` に黒の Unlit を 1 つ作る）。(2) `RobotoTiny`・`SphereRenderHeightMap` も替え、パッケージ版で死亡画面と SAVING の見た目を確かめる。(3) ゲームのコードが参照する `/Engine/…` を洗い出し、パッケージに入るものだけにする（`WasamiSpecialSpawnPoint` のビルボードはエディタでしか出ないので除いてよい）。(4) パッケージ版で捕獲を 4 種とも見て、背景が真っ黒であることを確かめる。
 - 根拠: `Source/wasami_deception/WasamiCapture.cpp`（`WallMesh`・`WallMaterial`）、`WasamiDeathScreenWidget.cpp`・`WasamiSavingWidget.cpp`、`Saved/StagedBuilds/Windows/wasami_deception/Content/Paks/wasami_deception-Windows.utoc`、症状索引「パッケージ版でだけ、黒いはずの板が灰色のグリッドになる」、`.claude/guides/distribution.md`。
 - 依存: なし。
 - 規模: 1
-- 状態: **未着手**
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-cooked-engine-assets`）**。直すのは C++ の 3 か所だけ（前処理の Python が指す `/Engine/…` はすべてパッケージに入っている）。
 
 ### 40. 捕獲の音を本家の音源からワサミの音源に替える
 
