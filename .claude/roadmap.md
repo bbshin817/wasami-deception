@@ -482,7 +482,7 @@
 - 根拠: `Source/wasami_deception/WasamiPlayerCharacter.cpp`（`SprintPressed`・`StopSprinting`・`ToggleTablet`・`ApplySpeed`）、`WasamiGameInstance.h`、実装記録 02・06。
 - 依存: なし。
 - 規模: 1
-- 状態: **未着手**
+- 状態: **進行中**（2026-09-22 から。進捗記録 `20260922-respawn-keep-state`）
 
 ### 39. 捕獲の別室の地面のグリッド（パッケージに入らないエンジンのアセット）
 
