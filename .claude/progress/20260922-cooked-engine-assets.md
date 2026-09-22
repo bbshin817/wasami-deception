@@ -1,10 +1,10 @@
 ---
 title: 捕獲の別室の地面のグリッド（パッケージに入らないエンジンのアセット）
-status: ユーザー待ち
+status: 進行中
 branch: main
 base: 9c77bb2
 started: 2026-09-22 12:01
-updated: 2026-09-22 13:20
+updated: 2026-09-23
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -31,7 +31,7 @@ updated: 2026-09-22 13:20
 
 ## 次にやること
 
-ステップ 3b。**ユーザーが `RunUAT.bat BuildCookRun` の許可をくれてから**（下の「要確認」）:
+ステップ 3b（**2026-09-23 にユーザーが `.claude/settings.json` の `permissions.allow` に `RunUAT.bat BuildCookRun` を足したので、そのまま進められる**）:
 
 1. `python Tools/editor_cycle.py --quit-only` → `.claude/guides/distribution.md` の「パッケージ」の `RunUAT.bat BuildCookRun` → `python Tools/editor_cycle.py --no-quit --no-build`。
 2. `.utoc` に `RobotoTiny.uasset`・`SphereRenderHeightMap.uasset`・`M_WasamiCaptureBlack.uasset` が入ったことを確かめる（確かめ方は下の「再開時の注意」）。
@@ -46,7 +46,7 @@ updated: 2026-09-22 13:20
 
 ## 要確認（ユーザー）
 
-- 2026-09-22: **`RunUAT.bat BuildCookRun`（パッケージの作り直し）の許可**。ステップ 3b にはパッケージ版が要るが、この反復では 3 通り（bash の直呼び・`sh` の台本・PowerShell）とも自動モードの判定に止められた（理由「Real-World Transactions」）。`.claude/settings.json` にも規則が無い。**配布ではなく手元での確かめのための組み立て**（出力は git の外の `Saved/Archive`・`Saved/StagedBuilds`）なので、許可をもらえれば進む。許可の仕方は 2 つ: (a) `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足す、(b) 有人セッションでユーザーが 1 度走らせる。
+- 無し（2026-09-23 に回答をもらった。ユーザーが `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足したので、パッケージの作り直しはそのまま走らせてよい）。**パッケージは 1 回作れば項目 39・41・43 の 3 つを同じもので確かめられる**（3 つのうち**最初に動いた反復が 1 回だけ作り、あとの 2 つは同じものを使う**。`Saved/StagedBuilds` の中身が今の `main` より古ければ作り直す）。項目 47（マスターの用途フラグ）は材質を直すので、その後にもう 1 回作り、項目 52 はそれを使う。
 
 ## 再開時の注意
 

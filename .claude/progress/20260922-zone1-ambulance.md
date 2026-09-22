@@ -1,10 +1,10 @@
 ---
 title: Zone 1 → Zone 2 の救急車（2 台に見える・プレイヤーが置いていかれる）（作業一覧の項目 41）
-status: ユーザー待ち
+status: 進行中
 branch: main
 base: 055a05f
 started: 2026-09-22 13:36
-updated: 2026-09-22 15:40
+updated: 2026-09-23
 ---
 
 # Zone 1 → Zone 2 の救急車（2 台に見える・プレイヤーが置いていかれる）（作業一覧の項目 41）
@@ -32,7 +32,7 @@ updated: 2026-09-22 15:40
 
 ## 次にやること
 
-ステップ 5（**ユーザーが `RunUAT.bat BuildCookRun` の許可をくれてから**。下の「要確認」と、作業一覧の「未回答の要確認」の `20260922-cooked-engine-assets`）:
+ステップ 5（**2026-09-23 に `RunUAT.bat BuildCookRun` の許可が出たので進められる**。**パッケージは 1 回作れば項目 39・41・43 の 3 つを同じもので確かめられる**（3 つのうち**最初に動いた反復が 1 回だけ作り、あとの 2 つは同じものを使う**。`Saved/StagedBuilds` の中身が今の `main` より古ければ作り直す）。項目 47（マスターの用途フラグ）は材質を直すので、その後にもう 1 回作り、項目 52 はそれを使う。）:
 
 1. `python Tools/editor_cycle.py --quit-only` → `.claude/guides/distribution.md` の「パッケージ」の `RunUAT.bat BuildCookRun` → 走らせる → `python Tools/editor_cycle.py --no-quit --no-build`。
 2. `python Intermediate/Overnight/probe_ambulance.py ride` を 2 回走らせ、**どちらも屋根に乗ってから読み込み画面まで運ばれる**ことを確かめる（直す前は 3 回とも落ちていた）。
@@ -47,9 +47,9 @@ updated: 2026-09-22 15:40
 
 ## 要確認（ユーザー）
 
-- 2026-09-22: **完了の条件 (3)（パッケージ版での確かめ）には `RunUAT.bat BuildCookRun` の許可が要る**（作業一覧の「未回答の要確認」の `20260922-cooked-engine-assets` と同じ件）。直し 2 つはどちらも PIE で確かめてあるので、止まっているのはステップ 5 だけ。
+- 2026-09-23: 許可の件は**回答済み**（`RunUAT.bat BuildCookRun` を `.claude/settings.json` の `permissions.allow` に足してもらった）。直し 2 つはどちらも PIE で確かめてあるので、残るのはステップ 5 だけ。
 - 2026-09-22: **「2 台」は Mac 版でしか出ていない見込み**。Windows のパッケージ版では 3 つの見方で撮っても 1 台だけだった。救急車を Movable にして直したが、**直った絵は Mac でユーザーに見てもらうしかない**。
-- 2026-09-22: **祭壇の球の材質がパッケージ版で既定の材質に落ちている**（この項目の外で見つけた。パッケージ版のログ: `Material /Game/DD/Materials/Fords_Materials/m_crystal_Inst2 missing usage flag Nanite!` と `... StaticLighting!` → `Default Material will be used in game.`）。Zone 2 のガレージの祭壇の球（08 記録）が本家と違う見た目になっているはず。**作業一覧に項目を立てて直すか**（項目 39 と同じ「クックで初めて出る類い」）。
+- 2026-09-22: **祭壇の球の材質がパッケージ版で既定の材質に落ちている**（この項目の外で見つけた。パッケージ版のログ: `Material /Game/DD/Materials/Fords_Materials/m_crystal_Inst2 missing usage flag Nanite!` と `... StaticLighting!` → `Default Material will be used in game.`）。Zone 2 のガレージの祭壇の球（08 記録）が本家と違う見た目になっているはず。**2026-09-23 のユーザーの回答「はい」で作業一覧の項目 47 を立てた**（項目 39 と同じ「クックで初めて出る類い」。ステージのマスター 7 つと `M_DD_Crystal` の用途フラグをまとめて立て直す）。
 
 ## 再開時の注意
 
