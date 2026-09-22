@@ -22,6 +22,7 @@
 #include "WasamiGameInstance.h"
 #include "WasamiGameMode.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiVoice.h"
 
 namespace
 {
@@ -346,9 +347,9 @@ AWasamiCapture::AWasamiCapture()
 	Light->SetMobility(EComponentMobility::Movable);
 	Light->SetRelativeLocation(HotelLightOffset * SceneScale);
 	Light->SetIntensityUnits(ELightUnits::Unitless);
-	Light->SetIntensity(LightIntensity * SceneScale * SceneScale);
-	Light->SetAttenuationRadius(LightRadius * SceneScale);
-	Light->SetSourceRadius(LightSourceRadius * SceneScale);
+	Light->SetIntensity(static_cast<float>(LightIntensity * SceneScale * SceneScale));
+	Light->SetAttenuationRadius(static_cast<float>(LightRadius * SceneScale));
+	Light->SetSourceRadius(static_cast<float>(LightSourceRadius * SceneScale));
 	Light->SetLightFColor(LightColor);
 
 	// jumpscarelight and _5 on the eyes, riding the head bone as the monkey's ride its Head_Top socket. Their places
@@ -361,8 +362,8 @@ AWasamiCapture::AWasamiCapture()
 		Eye->SetMobility(EComponentMobility::Movable);
 		Eye->SetRelativeScale3D(FVector(1. / AWasamiEnemy::MeshScale));
 		Eye->SetIntensityUnits(ELightUnits::Unitless);
-		Eye->SetIntensity(FaceLightIntensity * FaceScale * FaceScale);
-		Eye->SetAttenuationRadius(FaceLightRadius * FaceScale);
+		Eye->SetIntensity(static_cast<float>(FaceLightIntensity * FaceScale * FaceScale));
+		Eye->SetAttenuationRadius(static_cast<float>(FaceLightRadius * FaceScale));
 		Eye->SetCastShadows(false);
 		Eye->SetLightFColor(LightColor);
 		FaceLights.Add(Eye);
@@ -385,9 +386,8 @@ AWasamiCapture::AWasamiCapture()
 	BodyMesh = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
 	WallMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Plane")));
 	WallMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/M_WasamiCaptureBlack")));
-	ScreamSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/01_Hotel/Evil_Monkey_Scream")));
-	LaughSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/LIVING_STATUE_Laughter_05")));
-	HitSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/Axe_Hit_03")));
+	HotelVoiceSound = TSoftObjectPtr<USoundBase>(WasamiVoice::Path(EWasamiVoice::You));
+	FaceVoiceSound = TSoftObjectPtr<USoundBase>(WasamiVoice::Path(EWasamiVoice::Over));
 }
 
 void AWasamiCapture::OnConstruction(const FTransform& Transform)
@@ -488,42 +488,31 @@ AWasamiCapture* AWasamiCapture::StartCapture(const UObject* WorldContextObject, 
 	return Room;
 }
 
-int32 AWasamiCapture::NumSounds(int32 InChoice)
+float AWasamiCapture::VoiceTime(int32 InChoice)
 {
-	return InChoice == FaceChoice ? 2 : 1;
+	// Every hotel Matinee opens with its scream (MonkeyJumpscare, 2 and 3's InterpTrackSound_0 at t = 0); the face
+	// cries where the watcher laughs, with the grab.
+	return InChoice == FaceChoice ? WatcherAnimDelay : 0.f;
 }
 
-float AWasamiCapture::SoundTime(int32 InChoice, int32 Index)
+USoundBase* AWasamiCapture::GetVoice(int32 InChoice) const
 {
-	if (InChoice != FaceChoice)
-	{
-		// Every hotel Matinee opens with its scream (MonkeyJumpscare, 2 and 3's InterpTrackSound_0 at t = 0).
-		return 0.f;
-	}
-	return Index == 0 ? WatcherAnimDelay : WatcherAnimDelay + WatcherHitDelay;
+	return InChoice == FaceChoice ? FaceVoiceSound.LoadSynchronous() : HotelVoiceSound.LoadSynchronous();
 }
 
-USoundBase* AWasamiCapture::GetSound(int32 InChoice, int32 Index) const
+float AWasamiCapture::GetVoiceDelay() const
 {
-	if (InChoice == FaceChoice)
-	{
-		return Index == 0 ? LaughSound.LoadSynchronous() : Index == 1 ? HitSound.LoadSynchronous() : nullptr;
-	}
-	return Index == 0 ? ScreamSound.LoadSynchronous() : nullptr;
+	return FMath::Max(GetWorldTimerManager().GetTimerRemaining(VoiceTimer), 0.f);
 }
 
-float AWasamiCapture::GetSoundDelay(int32 Index) const
+void AWasamiCapture::PlayCaptureVoice()
 {
-	return SoundTimers.IsValidIndex(Index) ? FMath::Max(GetWorldTimerManager().GetTimerRemaining(SoundTimers[Index]), 0.f) : 0.f;
-}
-
-void AWasamiCapture::PlayCaptureSound(int32 Index)
-{
-	if (USoundBase* Sound = GetSound(Choice, Index))
+	if (USoundBase* Voice = GetVoice(Choice))
 	{
 		// The Matinee key's and the watcher's own multipliers, both 1. A UI sound, as PlaySound2D makes it: the death
-		// screen pauses the game while the axe's hit is still going.
-		UGameplayStatics::PlaySound2D(this, Sound, 1.f, 1.f);
+		// screen pauses the game while the cry is still going. No subtitle goes up with it (implementation record 10):
+		// the capture fills the screen, and the waves carry none.
+		UGameplayStatics::PlaySound2D(this, Voice, 1.f, 1.f);
 	}
 }
 
@@ -627,22 +616,18 @@ void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoic
 	Timers.SetTimer(FadeTimer, this, &AWasamiCapture::StartFade, FMath::Max(FadeStart, KINDA_SMALL_NUMBER), false);
 	Timers.SetTimer(DeathTimer, this, &AWasamiCapture::EndCapture, GetDeathDelay(), false);
 
-	// The Matinee's sound track (the hotel) and the Gold Watcher's PlaySound2D calls (the face). Their times are the
-	// original's own, which the scene's rate does not touch: the hotel's is at t = 0 and the watcher's two come of
-	// Delays, as this room's fade and death do.
-	SoundTimers.Reset();
-	SoundTimers.SetNum(NumSounds(Choice));
-	for (int32 Index = 0; Index < SoundTimers.Num(); ++Index)
+	// The voice, where the Matinee's sound track (the hotel) and the Gold Watcher's PlaySound2D (the face) are. Its
+	// time is the original's own, which the scene's rate does not touch: the hotel's is at t = 0 and the watcher's
+	// comes of a Delay, as this room's fade and death do.
+	Timers.ClearTimer(VoiceTimer);
+	const float VoiceAt = VoiceTime(Choice);
+	if (VoiceAt <= 0.f)
 	{
-		const float At = SoundTime(Choice, Index);
-		if (At <= 0.f)
-		{
-			PlayCaptureSound(Index);
-		}
-		else
-		{
-			Timers.SetTimer(SoundTimers[Index], FTimerDelegate::CreateUObject(this, &AWasamiCapture::PlayCaptureSound, Index), At, false);
-		}
+		PlayCaptureVoice();
+	}
+	else
+	{
+		Timers.SetTimer(VoiceTimer, this, &AWasamiCapture::PlayCaptureVoice, VoiceAt, false);
 	}
 }
 

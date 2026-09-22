@@ -237,22 +237,21 @@ public:
 	float GetDeathDelay() const { return Choice == FaceChoice ? FaceDeathDelay : DeathDelay; }
 
 	/**
-	 * How many sounds a capture plays, and when (s, from Start; every one at volume 1 and pitch 1, as the original has
-	 * them). The hotel's three Matinees all open with InterpTrackSound_0's Evil_Monkey_Scream at t = 0; their other
-	 * sound tracks are left out, having nothing here to go with — the knife stabs of MonkeyJumpscare2 (0.484 s) and
-	 * MonkeyJumpscare3 (2.437 s), which the Wasami's clips do not make, and the four small screams MonkeyJumpscare3
-	 * lays under the five monkeys that jump in with its own. The face follows BP_03_Watcher's kill (@1474):
-	 * PlaySound2D(LIVING_STATUE_Laughter_05) with the grab at WatcherAnimDelay, PlaySound2D(Axe_Hit_03) after its
-	 * WatcherHitDelay.
+	 * When the capture's one voice comes (s, from Start; at volume 1 and pitch 1, as the original has its own sounds).
+	 * The hotel's three cry with the capture, as all three Matinees open with InterpTrackSound_0's scream at t = 0;
+	 * the face cries with the grab, where BP_03_Watcher's kill (@1474) plays its laugh at WatcherAnimDelay. The
+	 * original's other sounds are left out, having nothing here to go with — the knife stabs of MonkeyJumpscare2
+	 * (0.484 s) and MonkeyJumpscare3 (2.437 s), which the Wasami's clips do not make, the four small screams
+	 * MonkeyJumpscare3 lays under the five monkeys that jump in with its own, and the watcher's own Axe_Hit_03 after
+	 * its WatcherHitDelay, the Wasami having one line to say where the statue laughed and the axe struck.
 	 */
-	static int32 NumSounds(int32 Choice);
-	static float SoundTime(int32 Choice, int32 Index);
+	static float VoiceTime(int32 Choice);
 
-	/** The Index-th sound of the capture Choice, loaded, or null. */
-	USoundBase* GetSound(int32 Choice, int32 Index) const;
+	/** The voice the capture Choice cries, loaded, or null. */
+	USoundBase* GetVoice(int32 Choice) const;
 
-	/** How long (s) until the Index-th sound is played; 0 once it has been, or before Start. */
-	float GetSoundDelay(int32 Index) const;
+	/** How long (s) until the voice is played; 0 once it has been, or before Start. */
+	float GetVoiceDelay() const;
 
 	/** The scene time at Time (s, from Start): StartRate times as fast at first, easing back to 1 over RateEaseTime. */
 	float SceneTime(float Time) const;
@@ -285,18 +284,16 @@ public:
 	TSoftObjectPtr<UMaterialInterface> WallMaterial;
 
 	/**
-	 * What the capture plays, all 2D: the listener follows the view, which is up in the room, and the original plays
-	 * the watcher's two through PlaySound2D as well. The hotel Matinees' Evil_Monkey_Scream, and the Gold Watcher's
-	 * LIVING_STATUE_Laughter_05 and Axe_Hit_03.
+	 * What the capture cries, both 2D: the listener follows the view, which is up in the room, and the original plays
+	 * the watcher's own through PlaySound2D as well. Where the original played its own waves this game gives the
+	 * Wasami that has caught the player a voice of its own (the review of 2026-09-22): the hotel's three cry You in
+	 * place of Evil_Monkey_Scream, and the face says Over in place of LIVING_STATUE_Laughter_05 and Axe_Hit_03.
 	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
-	TSoftObjectPtr<USoundBase> ScreamSound;
+	TSoftObjectPtr<USoundBase> HotelVoiceSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
-	TSoftObjectPtr<USoundBase> LaughSound;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
-	TSoftObjectPtr<USoundBase> HitSound;
+	TSoftObjectPtr<USoundBase> FaceVoiceSound;
 
 	/** TODO(仮): the scene's rate at first, and how long (s) it takes to ease back to 1 (exponentially). */
 	UPROPERTY(EditAnywhere, Category = "Wasami|Capture")
@@ -364,8 +361,8 @@ private:
 	/** Puts the eye lights on the face, their places turned into the head bone's own frame by the bind pose. */
 	void PlaceFaceLights();
 
-	/** Plays the Index-th sound of the capture going on (the timers Start sets, and t = 0 at once). */
-	void PlayCaptureSound(int32 Index);
+	/** Cries the voice of the capture going on (the timer Start sets, or t = 0 at once). */
+	void PlayCaptureVoice();
 
 	void StartFade();
 
@@ -417,6 +414,6 @@ private:
 	bool bFading = false;
 	FTimerHandle FadeTimer;
 	FTimerHandle DeathTimer;
-	/** One per sound of the capture going on (NumSounds); the ones due at t = 0 stay unset. */
-	TArray<FTimerHandle> SoundTimers;
+	/** The voice of the capture going on, where it is not due at t = 0 (which leaves this unset). */
+	FTimerHandle VoiceTimer;
 };

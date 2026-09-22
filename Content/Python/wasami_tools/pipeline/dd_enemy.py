@@ -16,9 +16,9 @@
             material), and M_WasamiCaptureBlack, the black walls of the capture's room. The mesh faces +Y, as UE's
             mannequins do.
 
-The enemy's own sounds come from here too: the loop it moves to (MOVE_SOUND) and what the capture plays
-(CAPTURE_SOUNDS). They are the original's own waves, not this game's model, but they belong to what the enemy does
-(AWasamiEnemy, AWasamiCapture).
+The enemy's own sound comes from here too: the loop it moves to (MOVE_SOUND). It is the original's own wave, not
+this game's model, but it belongs to what the enemy does (AWasamiEnemy). What the capture cries is one of the
+Wasami's voices, imported with the rest of them (dd_voices).
 """
 import copy
 import math
@@ -46,16 +46,6 @@ MASTER = "/Game/Pipeline/Materials/M_DD_WasamiGltf"
 # in a packaged build the walls fall back to the default checkerboard, and the capture plays over a grid instead
 # of the dark. This is the same material -- unlit, emissive 0 -- in this game's own content, so it is cooked.
 CAPTURE_WALL_MATERIAL = FOLDER + "/M_WasamiCaptureBlack"
-
-# What the capture plays (AWasamiCapture, which names them by their paths under /Game/DD): the scream every one of
-# 01_Hotel's jumpscare Matinees opens with, and the laugh and the axe hit of 03_Manor's Gold Watcher kill the face
-# follows. All three are the old version's (pak_reference).
-CAPTURE_SOUNDS = (
-    "Audio/01_Hotel/Evil_Monkey_Scream",
-    "Audio/03_Manor/LIVING_STATUE_Laughter_05",
-    "Audio/03_Manor/Axe_Hit_03",
-)
-CAPTURE_SOUND_VERSION = 1
 
 # The loop the enemy moves to (AWasamiEnemy's Skate Audio, the nurse's), through the attenuation the original gives it
 # (dd_gimmicks makes the same one for the doors; making it again is harmless). The hospital is only in the latest
@@ -699,11 +689,6 @@ def _import_model(material, prepared=None, folder=FOLDER, mesh_path=MESH, anim_p
     return mesh, anims
 
 
-def import_capture_sounds():
-    """The waves the capture plays, with the original's own settings (dd_assets.sound). Returns their package paths."""
-    return [dd_assets.sound(rel, CAPTURE_SOUND_VERSION) for rel in CAPTURE_SOUNDS]
-
-
 def import_cloak_noise():
     """The two noises the cloak dissolves through, as the original has them. Returns {which: package path}."""
     return {which: dd_assets.texture(rel, CLOAK_NOISE_VERSION) for which, rel in CLOAK_NOISE.items()}
@@ -718,7 +703,7 @@ def import_enemy_audio():
 
 
 def import_all():
-    """Prepares and imports the enemy Wasami and the capture's sounds, then saves /Game/Wasami/Enemy and the master.
+    """Prepares and imports the enemy Wasami and the loop it moves to, then saves /Game/Wasami/Enemy and the master.
     Returns how many of each kind, and logs each animation's length and how far its pelvis was moved."""
     report = prepare()
     for role, (seconds, (dx, dz)) in report.items():
@@ -734,6 +719,6 @@ def import_all():
     for asset in [master, instance, black, mesh]:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     EAL.save_directory(FOLDER, only_if_is_dirty=True, recursive=True)
-    sounds = import_capture_sounds() + [import_enemy_audio()]
+    sounds = [import_enemy_audio()]
     return {"textures": len(textures) + len(noise), "materials": 3, "meshes": 1, "animations": len(report),
             "sounds": len(sounds)}

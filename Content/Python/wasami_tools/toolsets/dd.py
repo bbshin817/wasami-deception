@@ -280,8 +280,8 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         (Idle, Walk, Run, Stun_KnockDown, Capture_1 …), after writing the prepared glb (animations resampled at 30 fps,
         loops closed, chase variants in place, the stun's falls with their get-ups) under
         Intermediate/Pipeline/wasami/enemy. With them come M_WasamiCaptureBlack, the black walls of the room the
-        capture plays in, and the original's own sounds it plays (WasamiCapture): 01_Hotel's Evil_Monkey_Scream, and
-        03_Manor's LIVING_STATUE_Laughter_05 and Axe_Hit_03.
+        capture plays in, and the loop the enemy moves to (03_Hospital's DD_Rollerskating_Fast_V1_LOOP, through the
+        original's own attenuation). What the capture cries is a Wasami voice, imported by import_wasami_voices.
 
         Returns:
             How many assets of each kind were made ('textures', 'materials', 'meshes', 'animations', 'sounds').

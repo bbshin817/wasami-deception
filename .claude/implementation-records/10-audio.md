@@ -23,7 +23,7 @@ updated: 2026-09-22
 ## 役割
 レベル自身が鳴らす音（曲・環境音・残響）と、本家の病院で鳴る効果音の洗い出し。曲は `AWasamiMusicPlayer`（本家 `pak_reference_2` の `Blueprints/06_Hospital/BP_06_MusicPlayer`。処理は親の `Blueprints/08_BearHouse/BP_08_MusicPlayer`）が、ゾーンの通常の曲・追跡の曲・上書きの曲の 3 つを持ち、0.5 s ごとに `bFadeOut`・`bOverrideMusic`・敵が追跡中かを見て 1 s でクロスフェードする。レベルにゾーンごとに 1 体置き、`bFadeOut` を触り Zone 2 の独房の場面で曲を下げ・戻すのはゾーンの流れ（11 記録）。作業一覧の項目 19 のステップ 1・2 で作った。
 
-レベルが自分で鳴らす環境音（`AmbientSound`）と残響のボリューム（`AudioVolume`）も、本家の置き場所と値のまま置く（ステップ 3）。ほかの効果音は、それぞれを作る記録と取り込みの側にある（仕掛け・パワー・敵・UI）。捕獲の音（ホテルの叫びと館のウォッチャーの笑い・斧）は 07 記録の「捕獲の演出」にあり、取り込みは `dd_enemy.import_capture_sounds`（ステップ 4）。本家の病院で鳴る音を洗い出して残りを埋めたのがステップ 5 で、結論は下の「残りの効果音」。
+レベルが自分で鳴らす環境音（`AmbientSound`）と残響のボリューム（`AudioVolume`）も、本家の置き場所と値のまま置く（ステップ 3）。ほかの効果音は、それぞれを作る記録と取り込みの側にある（仕掛け・パワー・敵・UI）。捕獲が鳴らすのはワサミの声（ホテル型 3 本 = `You`、顔 = `Over`。2026-09-22 に本家の波から替えた）で、鳴らし方は 07 記録の「捕獲の演出」にある（ステップ 4）。本家の病院で鳴る音を洗い出して残りを埋めたのがステップ 5 で、結論は下の「残りの効果音」。
 
 本作のワサミの声（WebGL 版が鳴らしていたユーザーのワサミの台詞）は、`Tools/dd/prepare_voices.py` が wav にし `dd_voices.py` が `/Game/Wasami/Voices` に取り込む（項目 20 のステップ 5。下の「ワサミの声の取り込み」）。鳴らすのは `WasamiVoice`（ステップ 6。下の「ワサミの声を鳴らす口」）で、呼ぶのは場面ごとの記録の側。
 
@@ -176,4 +176,5 @@ updated: 2026-09-22
 - 2026-09-20: ワサミの声 11 本を `/Game/Wasami/Voices` に取り込むようにした（`Tools/dd/prepare_voices.py`・`dd_voices.py`・`WasamiDDTools.import_wasami_voices`。項目 20 のステップ 5）。
 - 2026-09-20: 鳴らす口 `WasamiVoice` を作り、2D の 6 本（`greeting`・`well`・`fast`・`best`・`fine`・`over`）を場面に付けた（項目 20 のステップ 6）。
 - 2026-09-20: 残りの 5 本（`found` と巡回の 4 本）を敵に付けた（項目 20 のステップ 7。中身は 07 記録の「声」）。
+- 2026-09-22: 捕獲が鳴らす声を当てた（ホテル型 3 本 = `You`、顔 = `Over`。`AWasamiCapture` の `HotelVoiceSound`・`FaceVoiceSound`。作業一覧の項目 40 のステップ 3。07 記録）。
 - 2026-09-22: 捕獲で鳴らす `you` を 12 本目の声として足した（`dd_voices.py`・`EWasamiVoice::You`。作業一覧の項目 40 のステップ 2）。
