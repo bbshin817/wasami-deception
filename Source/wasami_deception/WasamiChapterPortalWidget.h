@@ -65,6 +65,14 @@ public:
 	static const FVector2D BannerSize;
 	static const FVector2D TitleSize;
 
+	/**
+	 * Logo's render translation, which the original's tree hasn't: its marks (Textures/00_Ballroom/portal_<monster>,
+	 * the hospital's a half-size copy of pause_reapernurse_head) are centred in their picture, but this game's head is
+	 * low in its. Measured at PortalSize from the alpha's bounding-box centre and its centroid, midway between the two,
+	 * the original's mark is 1.1 px below the ring's centre and ours 11.3 px, so lift ours that far.
+	 */
+	static const FVector2D HeadOffset;
+
 	/** Image_1's tint: the wash over the blur. */
 	static const FLinearColor WashColor;
 	/** TitleCard's ColorAndOpacity: the title's grey drawn red. */

@@ -124,6 +124,7 @@ namespace
 
 const FVector2D UWasamiChapterPortalWidget::BannerSize(4165.f, 872.f);
 const FVector2D UWasamiChapterPortalWidget::TitleSize(901.f, 180.f);
+const FVector2D UWasamiChapterPortalWidget::HeadOffset(0.f, -11.3f);
 const FLinearColor UWasamiChapterPortalWidget::WashColor(0.109375f, 0.f, 0.f, 0.2f);
 const FLinearColor UWasamiChapterPortalWidget::TitleColor(1.f, 0.f, 0.f, 1.f);
 
@@ -306,6 +307,9 @@ void UWasamiChapterPortalWidget::BuildScreen(UCanvasPanel* InRoot)
 	PlaceInPortal(Icon, Runes, Middle, FMargin(0.f, 0.f, 100.f, 30.f), Centred, true);
 	UImage* Logo = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Logo"));
 	Logo->SetBrush(PortalBrush(HeadTexture.LoadSynchronous(), Portal, UWasamiPauseWidget::HeadTint()));
+	// Ours is the pause menu's head, low in its picture; HeadOffset lifts it into the middle of the ring. Moving the
+	// picture instead would move the pause menu's head with it.
+	Logo->SetRenderTranslation(HeadOffset);
 	PlaceInPortal(Icon, Logo, Middle, FMargin(0.f), Centred, true);
 	PlaceInPortal(Root, Icon, FAnchors(0.25178566575050354f, 0.47777774930000305f),
 		FMargin(-239.91238403320312f, -236.5164794921875f, 100.f, 30.f), FVector2D::ZeroVector, true);

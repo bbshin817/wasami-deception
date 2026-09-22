@@ -97,6 +97,7 @@ bool FWasamiChapterPortalTreeTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("the wash has no texture"), Wash ? Wash->GetBrush().GetResourceObject() : nullptr);
 	const UImage* Logo = Cast<UImage>(Tree->FindWidget(TEXT("Logo")));
 	TestTrue(TEXT("the head in the pause menu's red"), Logo && Logo->GetBrush().TintColor.GetSpecifiedColor().Equals(UWasamiPauseWidget::HeadTint()));
+	TestEqual(TEXT("the head lifted into the middle of the ring"), Logo ? FVector2D(Logo->GetRenderTransform().Translation) : FVector2D::ZeroVector, UWasamiChapterPortalWidget::HeadOffset);
 	const UImage* Title = Cast<UImage>(Tree->FindWidget(TEXT("TitleCard")));
 	TestTrue(TEXT("the title red"), Title && Title->GetColorAndOpacity().Equals(FLinearColor(1.f, 0.f, 0.f, 1.f)));
 	TestEqual(TEXT("the title moved (-72, 23)"), Title ? FVector2D(Title->GetRenderTransform().Translation) : FVector2D::ZeroVector, FVector2D(-72.f, 23.f));
