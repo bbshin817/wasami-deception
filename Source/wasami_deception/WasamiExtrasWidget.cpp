@@ -46,12 +46,6 @@ namespace
 		{0., 1110.f, 0., -0.0035302701871842146, RCIM_Linear},
 		{2388000., -4121.8603515625f, -0.0035302701871842146, 0., RCIM_Linear}};
 
-	// The hospital's music, as AWasamiMusicPlayer plays it (its folder under /Game/DD).
-	TSoftObjectPtr<USoundBase> ExtrasMusicTrack(const TCHAR* Name)
-	{
-		return TSoftObjectPtr<USoundBase>(WasamiAssets::Path(*(FString(TEXT("/Game/DD/Audio/06_Hospital/Music/")) + Name)));
-	}
-
 	// The movies' IDs in WrapBox_3's order (the original's third to tenth are all 2).
 	const int32 VideoIDs[UWasamiExtrasWidget::VideoCount] = {0, 1, 2, 2, 2, 2, 2, 2, 2, 2};
 
@@ -122,18 +116,6 @@ UWasamiExtrasWidget::UWasamiExtrasWidget(const FObjectInitializer& ObjectInitial
 	ArtTextures[20] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/UI/Pause/T_PausePeek")));
 	ArtTextures[21] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/UI/Pause/T_PauseHead")));
 	ArtTextures[22] = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/Wasami/Portal/T_Portal_Wasami")));
-
-	// The Sound Archive's tracks: this game's four music-class sounds, in the order they are first heard. The Zone 1
-	// track keeps the name the original's own Sound Archive gives it (its Sound 5, UMG_Extras' Extras_Sound_Button_C_14).
-	SoundTracks.SetNum(SoundCount);
-	SoundTracks[0].Name = FText::FromString(TEXT("Cold Hearted"));
-	SoundTracks[0].Sound = ExtrasMusicTrack(TEXT("DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING"));
-	SoundTracks[1].Name = FText::FromString(TEXT("Hospital Panic Track"));
-	SoundTracks[1].Sound = ExtrasMusicTrack(TEXT("DD_-_Dark_Deception_-_Chapter_4_Hospital_-_Panic_Track_v1_2_-_LOOPING"));
-	SoundTracks[2].Name = FText::FromString(TEXT("Hospital Zone 2 Normal Track"));
-	SoundTracks[2].Sound = ExtrasMusicTrack(TEXT("DD_-_Dark_Deception_-_Chapter_4_Hospital_Zone_2_-_Normal_Track_v1_1_-_LOOPING"));
-	SoundTracks[3].Name = FText::FromString(TEXT("Pause Theme"));
-	SoundTracks[3].Sound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Pause_Sound_v1")));
 }
 
 UWasamiExtrasWidget* UWasamiExtrasWidget::Show(const UObject* WorldContextObject)
@@ -297,8 +279,9 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 		}
 
 		// 2 CanvasPanel_19 and 3 CanvasPanel_20: a player 208 px above the middle and under it its sounds (five a row at
-		// 0.95), the diaries' (ten, TODO(仮) empty until they are decided with the user) and the sound archive's
-		// (SoundTracks, this game's four tracks where the original has ten).
+		// 0.95), the diaries' (ten, TODO(仮) empty until they are decided with the user) and the sound archive's (ten
+		// as the original's, none given a Text or a Sound: this game lists no track, so Extras_SFX leaves them all
+		// locked. 2026-09-23, the user's 「EXTRAS に曲は不要」).
 		auto AddSoundPage = [this](const TCHAR* PanelName, const TCHAR* BarName, const TCHAR* BoxName, bool bDiary,
 			int32 Count, TObjectPtr<UWasamiExtrasSoundBarWidget>& OutBar, TObjectPtr<UWrapBox>& OutBox,
 			TArray<TObjectPtr<UWasamiExtrasSoundButtonWidget>>& OutButtons)
@@ -320,11 +303,6 @@ TSharedRef<SWidget> UWasamiExtrasWidget::RebuildWidget()
 				Button->bDiary = bDiary;
 				Button->SoundBar = OutBar;
 				Button->Save = Save;
-				if (!bDiary && SoundTracks.IsValidIndex(ID))
-				{
-					Button->Text = SoundTracks[ID].Name;
-					Button->Sound = SoundTracks[ID].Sound.LoadSynchronous();
-				}
 				OutBox->AddChildToWrapBox(Button);
 				OutButtons.Add(Button);
 			}

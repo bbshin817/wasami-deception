@@ -24,22 +24,6 @@ class UWidgetSwitcher;
 class UWrapBox;
 
 /**
- * A track the Sound Archive lists: the name its player shows (the original's Text, upper cased there) and the sound
- * it plays (its Sound). See UWasamiExtrasWidget::SoundTracks.
- */
-USTRUCT()
-struct FWasamiExtrasTrack
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "Extras|Assets")
-	FText Name;
-
-	UPROPERTY(EditAnywhere, Category = "Extras|Assets")
-	TSoftObjectPtr<USoundBase> Sound;
-};
-
-/**
  * The extras screen, after Dark Deception's UI/Main/TitleScreen/UMG_Extras (pak_reference_2): black under the title's
  * panning brush strokes (MM_TitleScreen_Mask_) and a light blur, the sections on the left (ART GALLERY, BIERCE DIARIES,
  * SOUND ARCHIVE, the hidden MOVIES and CREDITS; dark grey, white while hovered or chosen), a thin red line and the
@@ -52,8 +36,8 @@ struct FWasamiExtrasTrack
  * UWasamiExtrasSoundWidget.h; the widget's own tick plays FadeIn, Credits_Scroll and BACK's Delay. What the sections
  * show is provisional (the original's pictures, diaries, movies and credits are not used; 2026-09-20, the user's
  * "枠組みだけ先に作る"): TODO(仮) pictures 19 to 22 are this game's own, the diaries are empty and the credits
- * are this game's. The Sound Archive lists the four tracks this game plays (SoundTracks; the user's answer of
- * 2026-09-21).
+ * are this game's. The Sound Archive keeps the original's ten slots with no track put in any of them, so it is
+ * always all locked, as MOVIES is (2026-09-23, the user's 「EXTRAS に曲は不要」「区分は残して曲を置かない」).
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiExtrasWidget : public UUserWidget
@@ -98,12 +82,12 @@ public:
 
 	/**
 	 * How many extras each section lays out (WrapBox_0's pictures, WrapBox_1's diaries, WrapBox_2's sounds,
-	 * WrapBox_3's movies). The original lays out ten sounds; this game lists the four tracks it plays instead
-	 * (SoundTracks. 2026-09-21, the user's 「本作で実際に鳴っている曲を名前つきで並べ、余る欄は減らす」).
+	 * WrapBox_3's movies), each as many as the original's tree holds. The Sound Archive keeps its ten slots although
+	 * this game puts no track in them (2026-09-23, the user's 「EXTRAS に曲は不要」).
 	 */
 	static constexpr int32 ArtCount = 35;
 	static constexpr int32 DiaryCount = 10;
-	static constexpr int32 SoundCount = 4;
+	static constexpr int32 SoundCount = 10;
 	static constexpr int32 VideoCount = 10;
 
 	/** FadeIn's length (its playback range, [0, 30001) ticks) and the speed both of its plays go at. */
@@ -226,15 +210,6 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, Category = "Extras|Assets")
 	TArray<TSoftObjectPtr<UTexture2D>> ArtTextures;
-
-	/**
-	 * The Sound Archive's tracks in order (SoundCount of them), each as the original's Text and Sound: the four
-	 * sounds of this game that are music (SoundClassObject DD_SoundClass_Music), in the order they are first heard.
-	 * The Zone 1 track is the one the original's own Sound Archive holds (its Sound 5, "Cold Hearted"); the other
-	 * three names are this game's, after the original's file names (the original names no track of them).
-	 */
-	UPROPERTY(EditAnywhere, Category = "Extras|Assets")
-	TArray<FWasamiExtrasTrack> SoundTracks;
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;

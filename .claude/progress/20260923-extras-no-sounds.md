@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: a43279b
 started: 2026-09-23 05:16
-updated: 2026-09-23 05:16
+updated: 2026-09-23 05:40
 ---
 
 # 項目 50 EXTRAS から曲を外す（書類の解放も追随）
@@ -23,12 +23,8 @@ updated: 2026-09-23 05:16
 
 ## 計画
 
-- [ ] 1. C++: SOUND ARCHIVE を本家の木に戻して空にする ← 次
-  - `UWasamiExtrasWidget` の `SoundTracks` を空（`SetNum` ごと外す）にし、`SoundCount` 4 → 本家の数に戻す（下の「決定事項」。まず `pak_reference_2/.../UMG_Extras.json` の `WrapBox_2` の子の数を数えて確かめる）。使わなくなる `ExtrasMusicTrack` ヘルパーも外す。
-  - テスト `Wasami.Extras.Screen`（欄の数）・`.SoundButton`（曲の名前を渡している）を直す。`Wasami.Extras.Item` の `Extras_SFX` の行はセーブの仕組みの話なのでそのまま。
-  - ビルド（`python Tools/editor_cycle.py`）→ `Wasami.Extras.*` を走らせる。
-  - 変更予定: `Source/wasami_deception/WasamiExtrasWidget.h`・`.cpp`、`Source/wasami_deception/Tests/WasamiExtrasTests.cpp`
-- [ ] 2. 前処理: 書類の解放から SOUND を外して Zone 1 を組み直す
+- [x] 1. C++: SOUND ARCHIVE を本家の木に戻して空にした（`SoundTracks`・`FWasamiExtrasTrack`・`ExtrasMusicTrack` を消し、`SoundCount` 4 → 10。テスト 5 件成功。19 記録）
+- [>] 2. 前処理: 書類の解放から SOUND を外して Zone 1 を組み直す ← 次
   - `dd_level.COLLECTABLE_SOUNDS` を無くし、`_collectables` が本家の `Type` = SOUND の項目を落とすようにする（本家の値どおり Art Gallery だけが残る）。
   - Zone 1（要れば Zone 2 も）を組み直して、書類の `Collectables` が Art 19・20 だけになったことを確かめる。
   - テスト `Wasami.Secrets.Collectable.Unlock` の Sound を使う行を見直す（セーブの `Unlock` の分岐の確かめはそのまま残す。置いた書類の値の確かめだけ直す）。
@@ -40,12 +36,12 @@ updated: 2026-09-23 05:16
 
 ## 次にやること
 
-ステップ 1。まず `python -c` で `pak_reference_2/_assets/DDeception/Content/UI/Main/TitleScreen/UMG_Extras.json` の `WrapBox_2`（曲の欄）の子の数を数えて本家の `SoundCount` を確かめ、`UWasamiExtrasWidget` の `SoundTracks` を空に・`SoundCount` をその数に戻す。
+ステップ 2。`Content/Python/wasami_tools/pipeline/dd_level.py` の `COLLECTABLE_SOUNDS`（今は `(0, 1, 2, 3)`）を無くし、`_collectables` が本家の `Type` = SOUND の項目を落とすようにしてから、Zone 1 を組み直して書類の `Collectables` が Art 19・20 だけになったことを確かめる。
 
 ## 決定事項
 
-- 2026-09-23: **`SoundCount` は本家の数（記録 19 では 10）に戻す**。ユーザーの「区分は残して曲を置かない」「本家の木のまま残していつも鍵」に従う。2026-09-21 の「余る欄は減らす」は本作の曲を並べる前提の指示で、曲を 1 本も置かない今は本家の木がそのまま正しい（日記 10・動画 10 と同じ扱い）。本家の木の実数はステップ 1 の頭で `UMG_Extras.json` から数えて確かめる。
-- 2026-09-23: **セーブの `ExtrasSFX` と `UWasamiSaveGame::Unlock` の SOUND の分岐は残す**（作業一覧の (2)。本家のセーブの形。いつも空になるだけ）。だからセーブの仕組みを見るテスト（`Wasami.Secrets.Save.*` の Sound の行）も残す。
+- 2026-09-23: **本家の曲の欄は 10**（`UMG_Extras` の `WrapBox_2` の子＝`UMG_Extras_Sound_Button` が 10 件）。`SoundCount` をこれに戻した。
+- 2026-09-23: **セーブの `ExtrasSFX` と `UWasamiSaveGame::Unlock` の SOUND の分岐は残す**（作業一覧の (2)。本家のセーブの形。いつも空になるだけ）。だからセーブの仕組みを見るテスト（`Wasami.Secrets.Save.*` の Sound の行）も残す。ステップ 1 では、テストの共通のセーブ `ExtrasSave()` から曲の解放を外し、曲の解放が要るテスト（`Wasami.Extras.Item`・`.SoundButton`）はその場で自分で `Unlock` するようにした。
 
 ## 要確認（ユーザー）
 
@@ -53,12 +49,13 @@ updated: 2026-09-23 05:16
 
 ## 再開時の注意
 
-- C++ を変えるステップ 1 のビルドは `python Tools/editor_cycle.py`（エディタを閉じて開き直す。確認は要らない）。テストは `Wasami.Extras` を Automation で走らせる。
 - ステップ 2 のレベルの組み直しは `Content/Python/wasami_tools` のツールセットを MCP か `Tools/ue_remote.py` から呼ぶ（`.claude/guides/unreal-workflow.md`）。前後で保存する。
+- テストはエディタの中で `unreal.SystemLibrary.execute_console_command(None, 'Automation RunTests <filter>')`。**背面のエディタは 3 fps で `FWaitForInteractiveFrameRate` が進まない**ので、先に `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)`（終わったら `True` に戻す）。結果は `Saved/Logs/wasami_deception.log` の `Test Completed`。
 - PIE は終わったら必ず止める。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（20 件。ステップ 1）
+- C++ ビルド: OK（`python Tools/editor_cycle.py`。ステップ 1）
+- テスト: `Wasami.Extras` 5 件すべて成功（ステップ 1）
+- エディタでの確認（組み立て・PIE）: 未実行（ステップ 2・3）
