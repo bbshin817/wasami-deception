@@ -544,7 +544,7 @@
 - 根拠: `Source/wasami_deception/WasamiChapterPortalWidget.cpp`（`Icon` の `Logo`）、`Tools/dd/prepare_loader.py`、`pak_reference_2/DDeception/Content/UI/Main/Loaders/loader_*.png`、実装記録 09。
 - 依存: なし。
 - 規模: 1
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-portal-symbol-offset`）**。ステップ 1（測る）まで完了。本家のステージ OP の印 `Textures/00_Ballroom/portal_nurse.png` は `pause_reapernurse_head.png` の半分の同じ絵で、**本作が `T_PauseHead` を使っているのは本家と同じ作り**。本家の `Logo` の slot は offsets も render transform も持たないので、ずれは絵の側だけ。「見た目の中心」を α の外接箱の中心と重心の中点と決めると（本作の頭は舌で箱が下に、髪で重心が上に引かれて 470 px で 22 px 食い違う）、本家の病院の印は +1.1 px＝輪の中心、本作は **+11.3 px 下**。**ウィジェットの `Logo` を 470 px 換算で 11.3 px 上へ**（X は −0.25 px で直さない）。読み込み画面の `MARK_CENTRE` は本家 9 枚の平均そのもので、本作の印もその散らばりの中なので直さない。
+- 状態: **完了（2026-09-22）**。本家のステージ OP の印 `Textures/00_Ballroom/portal_nurse.png` は `pause_reapernurse_head.png` の半分の同じ絵で、**本作が `T_PauseHead` を使っているのは本家と同じ作り**。本家の `Logo` の slot は offsets も render transform も持たないので、ずれは絵の側だけ。「見た目の中心」を α の外接箱の中心と重心の中点と決めると（本作の頭は舌で箱が下に、髪で重心が上に引かれて 470 px で 22 px 食い違う）、本家の病院の印は +1.1 px＝輪の中心、本作は **+11.3 px 下**。**ウィジェットの `Logo` を 470 px 換算で 11.3 px 上へ**（X は −0.25 px で直さない）。読み込み画面の `MARK_CENTRE` は本家 9 枚の平均そのもので、本作の印もその散らばりの中なので直さない。直したのは `UWasamiChapterPortalWidget::HeadOffset`（0, −11.3）で `Logo` に `SetRenderTranslation`（テスト `Wasami.ChapterPortal.Tree` が見る）。**PIE で確かめた**（完了の条件 (3)）: ステージ OP と読み込み画面を撮り、印の見た目の中心が輪の中心から 470 px 換算で (−1.0, −0.7) px に収まった（撮り方と測り方は `observations/tools/portal_symbol_pie.py`。09 記録）。パッケージ版では未確認（ウィジェットの値だけの直しなのでクックで変わらない）。
 
 ### 46. ガラスが透けない（ガラスのマスターを原作のシェーダーから組む）
 
