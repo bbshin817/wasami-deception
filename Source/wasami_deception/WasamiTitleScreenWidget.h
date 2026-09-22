@@ -64,8 +64,10 @@ public:
 	void Begin(bool bInHasProgress);
 
 	/**
-	 * FadeInMusic (@11218; Construct's music is the same): Music made anew, Pause_Sound_v1 at pitch 0.5 fading in over
-	 * 2 s to 0.5. EXTRAS' FadeMusic brings the music back with it. Nothing without a world.
+	 * FadeInMusic (the latest version's @10519; Construct's music is the same): Music made anew,
+	 * DD_-_Dark_Deception_-_Theme_v1_3 at volume 0.6 fading in over 2 s to 0.5. EXTRAS' FadeMusic brings the music back
+	 * with it. Nothing without a world. (The old version @11218 played Pause_Sound_v1 at pitch 0.5; the review asked for
+	 * the latest version's theme.)
 	 */
 	void FadeInMusic();
 
@@ -166,8 +168,8 @@ public:
 	static constexpr float VoiceTime = 98999.f / 60000.f;
 
 	// Construct's music.
-	static constexpr float MusicVolume = 1.f;
-	static constexpr float MusicPitch = 0.5f;
+	static constexpr float MusicVolume = 0.6f;
+	static constexpr float MusicPitch = 1.f;
 	static constexpr float MusicFadeInSeconds = 2.f;
 	static constexpr float MusicFadeInLevel = 0.5f;
 
@@ -210,7 +212,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<UFont> MenuFont;
 
-	/** Pause_Sound_v1: the music. */
+	/** DD_-_Dark_Deception_-_Theme_v1_3: the music (the latest version's theme). */
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<USoundBase> MusicSound;
 

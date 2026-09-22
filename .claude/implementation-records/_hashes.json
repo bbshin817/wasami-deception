@@ -272,16 +272,16 @@
   },
   "14-title.md": {
     "Tools/dd/prepare_title.py": "f11875c129fb470af4a9e023cae2d21e5eb57a38",
-    "Source/wasami_deception/WasamiTitleScreenWidget.h": "72c7ed54e2b5fe9b850df9300b01ed54a2ce1199",
-    "Source/wasami_deception/WasamiTitleScreenWidget.cpp": "5c301c498761213af5833c095a75cf809a6781a3",
+    "Source/wasami_deception/WasamiTitleScreenWidget.h": "5271b1bd71a364e14ea42a24bd1320b0a2ec593b",
+    "Source/wasami_deception/WasamiTitleScreenWidget.cpp": "8019529df1a0901682ad1eafdbdbcc6b9d4c4163",
     "Source/wasami_deception/WasamiTitleGameMode.h": "c11abe29e83187d6cc692272de05005522c542d9",
     "Source/wasami_deception/WasamiTitleGameMode.cpp": "2fae5ba4e952baee6e621b9288414783326b8716",
-    "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "aa88b43719b2490292f4407abc85dd28dec71412"
+    "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "8d771f6aa918118b8b78361ad841bac36fbcb7cf"
   },
   "15-options-pause.md": {
     "Source/wasami_deception/WasamiSettingsSaveGame.h": "06b3b0900259c944c8fcc50f83783a99b1988999",
     "Source/wasami_deception/WasamiSettingsSaveGame.cpp": "9229c77e19491df11c98dd456089db05f6699905",
-    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "f506362f839829a5af06c8a4331201c39e489e4f",
+    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "8bdd193badb4561bdbce60ee6ecefee36dc661be",
     "Source/wasami_deception/WasamiOptionsWidget.h": "327e06a9358ba641cd4ba28b00a4071eab70719f",
     "Source/wasami_deception/WasamiOptionsWidget.cpp": "3e1b35ff04ab4932a9722e77bbc36af71d8dd90a",
     "Source/wasami_deception/Tests/WasamiOptionsTests.cpp": "5bbb10f68b716de9988601683dc9367844c0c166",

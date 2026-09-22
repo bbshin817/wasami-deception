@@ -71,7 +71,9 @@ bool FWasamiTitleCurvesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("FadeOut runs as long as Start_New_Game"), W::FadeOutLength, 9.42633f, 1e-4f);
 	TestEqual(TEXT("FadeOut_0 runs 3.75 s"), W::FadeOut0Length, 3.75f);
 	TestEqual(TEXT("Bierce's line at 98999 ticks"), W::VoiceTime, 1.64998f, 1e-4f);
-	TestEqual(TEXT("the music at pitch 0.5"), W::MusicPitch, 0.5f);
+	// The latest version's theme (@10519): CreateSound2D(Theme_v1_3, 0.6, 1) then FadeIn(2, 0.5).
+	TestEqual(TEXT("the music at volume 0.6"), W::MusicVolume, 0.6f);
+	TestEqual(TEXT("at pitch 1"), W::MusicPitch, 1.f);
 	TestEqual(TEXT("fading in over 2 s"), W::MusicFadeInSeconds, 2.f);
 	TestEqual(TEXT("to 0.5"), W::MusicFadeInLevel, 0.5f);
 	TestEqual(TEXT("added at Z 1"), W::ViewportZOrder, 1);

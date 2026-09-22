@@ -10,7 +10,7 @@ sources:
   - Source/wasami_deception/WasamiPauseWidget.h
   - Source/wasami_deception/WasamiPauseWidget.cpp
   - Source/wasami_deception/Tests/WasamiPauseTests.cpp
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # 設定・オプション画面・ポーズ画面
@@ -66,7 +66,7 @@ updated: 2026-09-20
 - `DD_SoundMix`（ベースのミックス）: `SoundClassEffects` は SFX・Dialogue・Music の 3 つ（音量 1、`bApplyToChildren` 偽）。フェード 0.2 s、`Duration` −1。
 - クラスの木（旧版）: `DD_SoundClass_SFX`（`bApplyAmbientVolumes`）の子に `DD_SoundClass_SFX_UI`（`bIsUISound`、残響なし）と `DD_SoundClass_SFX_Movies`（音量 0.5）。`DD_SoundClass_Music`（残響なし）と `DD_SoundClass_Dialogue` は親なし。最新版は Music の親がエンジンの `Master`（最新版の総音量のため。旧版のオプションに無いので写さない）。
 - **SFX のスライダーは SFX_UI・SFX_Movies に効かない**（本家どおり）: UE はクラスの木で音量を親から子へ掛けた後（`ParseSoundClasses`）にミックスの上書きを当てるので、`bApplyToChildren` 偽の上書きは SFX のクラスの音だけに効く（UE 5.8 の `FAudioDevice::UpdateSoundClassProperties`・`ApplyClassAdjusters`）。
-- 音のクラスは本家の書き出しの `SoundClassObject` のまま（01 記録の `dd_assets.sound_classes`）。**本家でクラスの無い音は無いまま**（病院の扉・リフト・エレベーター・鍵開け・針の罠など 21 件。本家でもどのスライダーも効かない。2026-09-19 のユーザーの回答でこのまま）。`Pause_Sound_v1`（タイトルとポーズの曲）は旧版で SFX、最新版で Music で、最新版から取り込んだので Music。
+- 音のクラスは本家の書き出しの `SoundClassObject` のまま（01 記録の `dd_assets.sound_classes`）。**本家でクラスの無い音は無いまま**（病院の扉・リフト・エレベーター・鍵開け・針の罠など 21 件。本家でもどのスライダーも効かない。2026-09-19 のユーザーの回答でこのまま）。`Pause_Sound_v1`（ポーズ画面と EXTRAS の曲。2026-09-22 まではタイトルの曲でもあった。14 記録）は旧版で SFX、最新版で Music で、最新版から取り込んだので Music。
 
 ### 難易度の効き先
 - スコア画面（13 記録）: `AWasamiGameMode::Escape` とデバッグ `Wasami.LevelClear` が `FWasamiLevelResults::ForHospital(…, IsEasy())` を渡す（EASY MODE の文字と、FINAL RANK が A で止まる）。

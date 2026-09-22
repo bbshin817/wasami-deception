@@ -150,6 +150,7 @@ bool FWasamiSettingsSoundMixTest::RunTest(const FString& Parameters)
 		{TEXT("/Game/DD/Audio/SharedGameplay/Soul_Shard_Pickup_v2_Cue"), TEXT("DD_SoundClass_SFX")},
 		{TEXT("/Game/DD/Audio/UI/UI_YouEscaped"), TEXT("DD_SoundClass_SFX_UI")},
 		{TEXT("/Game/DD/Audio/UI/Pause_Sound_v1"), TEXT("DD_SoundClass_Music")},
+		{TEXT("/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3"), TEXT("DD_SoundClass_Music")},
 		{TEXT("/Game/DD/Audio/Titlescreen/Bierce_Title_Modified_03"), TEXT("DD_SoundClass_Dialogue")},
 		{TEXT("/Game/DD/Audio/06_Hospital/DD_TT_Lift_Loop"), TEXT("")},
 	};

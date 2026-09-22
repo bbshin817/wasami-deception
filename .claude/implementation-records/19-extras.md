@@ -42,7 +42,7 @@ updated: 2026-09-21
     - ID 0 `Cold Hearted` … Zone 1 の通常の曲（`06_Hospital/Music/DD_-_…_Hospital_Zone_1_-_Normal_Track_v1_2_-_LOOPING`。10 記録）。**名前は本家の EXTRAS がこの曲に付けているもの**（`UMG_Extras` の `Extras_Sound_Button_C_14`＝本家の Sound 5）。
     - ID 1 `Hospital Panic Track` … 追跡の曲（`…_Hospital_-_Panic_Track_v1_2_-_LOOPING`）
     - ID 2 `Hospital Zone 2 Normal Track` … Zone 2 の通常の曲（`…_Hospital_Zone_2_-_Normal_Track_v1_1_-_LOOPING`）
-    - ID 3 `Pause Theme` … タイトル画面とポーズの曲（`UI/Pause_Sound_v1`。14・15 記録）
+    - ID 3 `Pause Theme` … ポーズ画面の曲（`UI/Pause_Sound_v1`。15 記録。2026-09-22 まではタイトルの曲でもあった〈14 記録〉）
     - 1〜3 は本家の EXTRAS に無い曲なので、名前は本家のファイル名から起こした仮のもの（要確認）。曲以外（`66_-_Game_Over`・`DD_LVL2_15_V1_Secret_Mystery_Room_120818`・環境音）は `DD_SoundClass_SFX` なので並べない。
     - 解放は本家どおり `ExtrasSFX` に ID があるかで、Zone 1 の書類（`ID` 0）が入れる（18 記録）。本家はその書類が Sound 5（＝同じ Zone 1 の曲）だけを解放するが、本作は曲がこの 4 本しか無く、ほかの章の書類も無いので、**この書類で 4 本とも解放する**（そうしないと 3 本が永久に鍵のまま。要確認）。組み立ては本家の Sound を `dd_level.COLLECTABLE_SOUNDS` = (0, 1, 2, 3) に置き換える（18・01 記録）。
 - 絵 `UWasamiExtrasItemWidget`: `CanvasPanel_0` → `Button_104`（中央に 150 四方〈動画は 250〉。Normal: 枠 `ring_altar_power_equipped_frame` 150 四方〈動画 300〉・端 0.1・0.516 の灰、Hovered: 枠 105×104 白、Pressed: `WhiteSquareTexture` 白、Disabled: `WhiteSquareTexture` 黒）・`ScaleBox_0`（全面から 5 内側・`ScaleToFill`〈満たして切る〉・当たりなし）→ `Image_1`（鍵 `locked`、刷毛 2500 四方・当たりなし）。

@@ -526,7 +526,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`（@6598・@10519）、`pak_reference_2/DDeception/Content/Audio/DD_-_Dark_Deception_-_Theme_v1_3.ogg`、`Source/wasami_deception/WasamiTitleScreenWidget.cpp`、実装記録 14。
 - 依存: なし。
 - 規模: 1
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-title-theme-music`）**（**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で確定。最終目標の「タイトル画面は WebGL 版に倣う」〈= 本家の旧版〉より指摘を優先する）。最新版の値は `CreateSound2D(Theme_v1_3, 0.6, 1.0)` → `FadeIn(2, 0.5)` で、本作と違うのは曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）の 3 つ（フェードインは同じ）。
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-title-theme-music`。完了の条件 (1)(2) は済み、(3) は `RunUAT.bat` の許可待ちで `status: ユーザー待ち`）**（**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で確定。最終目標の「タイトル画面は WebGL 版に倣う」〈= 本家の旧版〉より指摘を優先する）。**(1) 済み**: `dd_ui.import_title` が最新版の `DD_-_Dark_Deception_-_Theme_v1_3`（3:34・ループ・Music のクラス）も取り込む。**(2) 済み**: `UWasamiTitleScreenWidget` の曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）を替えた（`FadeIn(2, 0.5)` は両版で同じなのでそのまま）。テスト 9 件 Success、PIE の `L_Title` で鳴っている音は新しい曲 1 つだけと確かめた（`au.Debug.ListAudioComponents`）。`Pause_Sound_v1` はポーズ画面と EXTRAS の「Pause Theme」のまま。**(3) にはパッケージ版が要る**（下の「未回答の要確認」の `20260922-cooked-engine-assets` と同じ件。項目 39・41 とまとめて 1 回で確かめられる）。
 
 ### 44. タイトル画面の筆の跡と、顔の左の境界を本家のものにする
 
@@ -595,7 +595,7 @@
 
 ### 20260922-cooked-engine-assets（項目 39。2026-09-22 から止まっている）
 
-1. **`RunUAT.bat BuildCookRun`（パッケージの作り直し）を Claude が走らせる許可**（項目 39 の完了の条件 2・4、および大目標 4 全体の「達成の姿: パッケージ版で確かめてある」）: 直しは 3 つとも入っているが、**パッケージ版での見た目の確かめができない**。無人運転の反復で 3 通り（bash の直呼び・`sh` の台本・PowerShell）とも自動モードの判定に止められた（理由「Real-World Transactions」）。`.claude/settings.json` の `permissions.allow` にも規則が無い。**これは配布ではなく手元での確かめのための組み立て**で、出力はすべて git の外（`Saved/Archive`・`Saved/StagedBuilds`・`Saved/Cooked`）。許可の仕方は 2 つ: (a) `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足す、(b) 有人セッションでユーザーが 1 度走らせて Claude が `.utoc` と画面を見る。**大目標 4 の残りの項目（41・43）も「パッケージ版で確かめる」を完了の条件に持つ**ので、同じ壁に当たる。
+1. **`RunUAT.bat BuildCookRun`（パッケージの作り直し）を Claude が走らせる許可**（項目 39 の完了の条件 2・4、および大目標 4 全体の「達成の姿: パッケージ版で確かめてある」）: 直しは 3 つとも入っているが、**パッケージ版での見た目の確かめができない**。無人運転の反復で 3 通り（bash の直呼び・`sh` の台本・PowerShell）とも自動モードの判定に止められた（理由「Real-World Transactions」）。`.claude/settings.json` の `permissions.allow` にも規則が無い。**これは配布ではなく手元での確かめのための組み立て**で、出力はすべて git の外（`Saved/Archive`・`Saved/StagedBuilds`・`Saved/Cooked`）。許可の仕方は 2 つ: (a) `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足す、(b) 有人セッションでユーザーが 1 度走らせて Claude が `.utoc` と画面を見る。**大目標 4 の残りの項目（41・43）も「パッケージ版で確かめる」を完了の条件に持つ**ので、同じ壁に当たる。2026-09-22 の時点で 39・41・43 はどれも直しとコードが入り終えていて、**残っているのはパッケージ 1 回ぶんの確かめだけ**（1 回作り直せば 3 項目まとめて閉じられる）。
 
 ### 20260922-respawn-keep-state（項目 38。2026-09-22 に閉じた）
 

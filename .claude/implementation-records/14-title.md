@@ -7,13 +7,13 @@ sources:
   - Source/wasami_deception/WasamiTitleGameMode.h
   - Source/wasami_deception/WasamiTitleGameMode.cpp
   - Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp
-updated: 2026-09-20
+updated: 2026-09-22
 ---
 
 # タイトル画面
 
 ## 役割
-ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19）。メニューは RESUME / NEW GAME / EXTRAS / OPTIONS / QUIT（本家の CHAPTERS・REPLAY と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイが無い。EXTRAS は作業一覧の項目 29 で足した〈画面は 19 記録〉。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）、死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先（ステップ 4）まで。EXTRAS の入口は項目 29 のステップ 5。
+ゲームの始まりのタイトル画面（本家の旧版 v1.6.1 の `UI/Main/TitleScreen/UMG_TitleScreen`。WebGL 版が写したもの。最新版 v1.9.6〈`pak_reference_2`〉はアニメが `FadeOut_NewGame`・`FadeOut_Resume`〈RESUME にも開始の音と声〉・`FadeOut_Norm` に分かれ、RESUME の YES は病院なら `06_Hospital` を開くが、最終目標の「WebGL版と同じように倣う点: タイトル画面」に従って旧版を写す。2026-09-19。**ただし曲だけは最新版のテーマ曲**〈レビューの指摘と 2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」。下の Construct〉）。メニューは RESUME / NEW GAME / EXTRAS / OPTIONS / QUIT（本家の CHAPTERS・REPLAY と隠れた動画・スライドは WebGL 版と同じく作らない。本作は 1 ステージで章の選択・リプレイが無い。EXTRAS は作業一覧の項目 29 で足した〈画面は 19 記録〉。QUIT は WebGL 版に無い〈ページは閉じられない〉が、デスクトップのゲームを閉じる道として本家どおり置く）。素材（作業一覧の項目 17 のステップ 1: 本家の筆の跡・煙の黒・選択の印・曲と開始の音と声、本作のロゴとそのグロー・ワサミの顔）、画面（ステップ 2: `UWasamiTitleScreenWidget`。木・ホバー・アニメ 3 本とその音・曲）、ボタンの道とタイトルのレベル（ステップ 3: NEW GAME・RESUME・OPTIONS・QUIT、`L_Title` と `AWasamiTitleGameMode`、パッケージの始まりのマップ）、死亡画面の QUIT TO TITLE とスコア画面の NEXT の後の行き先（ステップ 4）まで。EXTRAS の入口は項目 29 のステップ 5。
 
 ## 公開インターフェース
 - `python Tools/dd/prepare_title.py [--out <dir>]` … 本作の顔とロゴのグローを作る（下の「作るアセット」）。PIL と numpy を使う（エディタの Python には無い）。
@@ -59,7 +59,7 @@ WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/i
 9. `Image_0`（黒）・`Image_128`（黒。各辺から (−31.5, −80, −22, −57.5) はみ出す）・`Image_2`（赤 (0.266, 0, 0.002)）: どれも全面、不透明度 0、入力を取らない。
 10. `TextBlock_0`: 版の文字。右端の上から (−81.92, 12) に左寄せ（黒の上でも見える）。18、灰 0.107。
 
-Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlotName`。無ければ読まない）に進みが無ければ `Resume` を外す（本家は `New Game?` が立ち `Progress` < 2 なら外す。本作は Zone 1 を開くとチェックポイント 4 が書かれ、NEW GAME・RESTART・スコア画面の NEXT が病院の欄を空にするので、進み = `LevelCheckpoint` > 0）→ `Slideshow` → `SetInputMode_UIOnlyEx`（この画面、マウスを閉じ込めない）とカーソル → 曲 `Pause_Sound_v1` を `CreateSound2D`（音量 1・ピッチ 0.5）→ `FadeIn(2, 0.5)`（SoundWave の音量 0.4 と掛けて 0.2）。曲は本家の `FadeInMusic`（@11218）と同じ手順なので `FadeInMusic()` にまとめた。
+Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlotName`。無ければ読まない）に進みが無ければ `Resume` を外す（本家は `New Game?` が立ち `Progress` < 2 なら外す。本作は Zone 1 を開くとチェックポイント 4 が書かれ、NEW GAME・RESTART・スコア画面の NEXT が病院の欄を空にするので、進み = `LevelCheckpoint` > 0）→ `Slideshow` → `SetInputMode_UIOnlyEx`（この画面、マウスを閉じ込めない）とカーソル → 曲 `DD_-_Dark_Deception_-_Theme_v1_3` を `CreateSound2D`（音量 0.6・ピッチ 1）→ `FadeIn(2, 0.5)`（SoundWave の音量 1 と掛けて 0.3）。曲は本家の `FadeInMusic` と同じ手順なので `FadeInMusic()` にまとめた。**曲だけは本家の最新版（@10519）に倣う**（旧版は `Pause_Sound_v1` を音量 1・ピッチ 0.5 で鳴らし、本作も 2026-09-22 まではそうだった。レビューの指摘「タイトル画面の BGM が本家と異なる」と同じ日のユーザーの回答「曲も絵も最新版に寄せる」による。作業一覧の項目 43）。
 
 アニメ（書き出しのキーと UE の自動の接線。区間は終わった後も最後の値のまま〈どの区間も `KeepState`〉）:
 - `Slideshow`（2.5 s）: `Image_128` の不透明度 1 → 0。
@@ -92,7 +92,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 | 種類 | アセット | 数 |
 | --- | --- | --- |
 | テクスチャ（本家） | `/Game/DD/UI/Main/TitleScreen/title_screen_video_mask`（1920 × 1200、黒で α が煙）・`title_screen_chapters_background`（5760 × 1200、筆の跡）・`title_screen_selection_marker`（394 × 74、ホバーの赤い印） | 3 |
-| 音（本家） | `/Game/DD/Audio/UI/Pause_Sound_v1`（曲、音量 0.4・ループ、94.8 s）・`Start_New_Game`（9.4 s）、`/Game/DD/Audio/Titlescreen/Bierce_Title_Modified_03`（声、2.5 s） | 3 |
+| 音（本家） | `/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3`（曲、音量 1・ループ、214.0 s。最新版のテーマ曲）・`/Game/DD/Audio/UI/Pause_Sound_v1`（音量 0.4・ループ、94.8 s。タイトルはもう鳴らさず、ポーズ画面〈15 記録〉と EXTRAS〈19 記録〉が使うのでここで取り込む）・`Start_New_Game`（9.4 s）、`/Game/DD/Audio/Titlescreen/Bierce_Title_Modified_03`（声、2.5 s） | 4 |
 | 材質（本家） | `/Game/DD/UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey`（UI・半透明。上の式） | 1 |
 | テクスチャ（本作） | `/Game/Wasami/UI/Title/T_TitleLogo`（1942 × 809）・`T_TitleLogoGlow`（686 × 402）・`T_TitleFace`（512 × 512）。本家の UI の絵と同じ sRGB・既定の圧縮・UI の LOD グループ | 3 |
 
@@ -101,7 +101,8 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 ## 原作データの根拠
 - 画面: `pak_reference/_assets/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.json`（木は `UMG_TitleScreen_C.WidgetTree` の側の `CanvasPanelSlot`・`VerticalBoxSlot`・`ButtonSlot`。アニメは `FadeOut_INST` などの `MovieScene` のトラックと区間、音の区間の開始 `SectionStartTimeSeconds` 1.65 と `KeepState` は `PrecompiledEvaluationTemplate`。`Unhovered Color` は `Default__UMG_TitleScreen_C`）。Construct・`Setup Buttons`・ホバーは `pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`（`python Tools/dd/bp_flow.py <file> Construct` / `"Setup Buttons"` / `BndEvt__NewGame_K2Node_ComponentBoundEvent_0_OnButtonHoverEvent__DelegateSignature`）。ボタンのスロットの既定（余白 (4, 2)・中央揃え）と UE 4 の既定のボタンの余白は UE のソースの `UButtonSlot` と UMG の既定の様式。
 - 素材と材質: `pak_reference_2/_assets/DDeception/Content/UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey.json`（残った式）と焼き込みのシェーダー（上）、`pak_reference_2/_textures.json`（テクスチャの設定）、`pak_reference/_assets/.../UMG_TitleScreen.json`（`Image_104` のブラシがこの材質そのもの・色味なし、`VideoMask` が `title_screen_video_mask`）。
-- 曲と音: `pak_reference/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt` の Construct（`CreateSound2D(Pause_Sound_v1, 1, 0.5)` → `FadeIn(2, 0.5)`）と `UMG_TitleScreen.json` の `FadeOut` の音のトラック（`Start_New_Game`・`Bierce_Title_Modified_03`）。
+- 曲: `pak_reference_2/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt` の `FadeInMusic`（@10519。`python Tools/dd/bp_flow.py <file> FadeInMusic`）: `CreateSound2D(Self, DD_-_Dark_Deception_-_Theme_v1_3, 0.6, 1, 0, None, False, True)` → `SetSound(同じ曲)` → `FadeIn(2, 0.5, 0, 0)`。Construct（@6598）の曲も同じ。旧版（`pak_reference` の同じファイル）の Construct は `CreateSound2D(Pause_Sound_v1, 1, 0.5)` → `FadeIn(2, 0.5)` で、曲・音量・ピッチだけが版で違う。
+- 音: `pak_reference/_assets/.../UMG_TitleScreen.json` の `FadeOut` の音のトラック（`Start_New_Game`・`Bierce_Title_Modified_03`）。
 - 本作の顔とロゴの飾り: WebGL 版 `src/styles.css` の `.title__monster`・`.title__logo img`（`.claude/references/webgl/implementation-records/10-hud-tablet.md`）。
 
 ## 依存関係
@@ -125,6 +126,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
 
 ## 変更履歴
+- 2026-09-22: タイトルの曲を本家の最新版のテーマ曲 `DD_-_Dark_Deception_-_Theme_v1_3`（音量 0.6・ピッチ 1）にした。旧版の `Pause_Sound_v1`（音量 1・ピッチ 0.5）から替えたのはレビューの指摘とユーザーの回答による。`FadeIn(2, 0.5)` は両版で同じ。曲以外は旧版のまま（01・09・15・19 記録。作業一覧の項目 43）
 - 2026-09-20: 版を 1.0.0 にした（2026-09-20 のユーザーの回答）
 - 2026-09-19: タイトルのゲームモードの `BeginPlay` の頭で設定を読んで当てるようにした（15 記録。作業一覧の項目 18 のステップ 1）
 - 2026-09-19: OPTIONS がオプション画面を Z 10 で開くようにした（15 記録。作業一覧の項目 18 のステップ 4）

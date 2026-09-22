@@ -1,10 +1,10 @@
 ---
 title: タイトル画面の曲を本家（最新版）のテーマ曲にする（作業一覧の項目 43）
-status: 進行中
+status: ユーザー待ち
 branch: main
 base: 9499bc6
 started: 2026-09-22 16:30
-updated: 2026-09-22 17:10
+updated: 2026-09-22 17:45
 ---
 
 # タイトル画面の曲を本家（最新版）のテーマ曲にする
@@ -27,21 +27,18 @@ updated: 2026-09-22 17:10
 
 - [x] 1. 計画（この記録を作る）… 2026-09-22 完了。下の「決定事項」に本家の最新版の値。
 - [x] 2. 曲を取り込む … 2026-09-22 完了。`dd_ui.TITLE_SOUNDS` に足して `import_title()`（音 4 つ）→ `sound_classes()`（`changed: 0`）。`/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3` は音量 1・ピッチ 1・ループ・2 ch・213.99 s・`DD_SoundClass_Music` で、最新版の export と一致。記録 01・09 を直して `check_records --update` を通した。
-- [ ] 3. タイトルのコードを最新版の値にする ← 次
-  - 変更予定: `Source/wasami_deception/WasamiTitleScreenWidget.cpp`・`.h`（`MusicSound`・`MusicVolume`・`MusicPitch`、頭のコメント）、`Source/wasami_deception/Tests/WasamiSettingsTests.cpp`（サウンドクラスの一覧に足す）、実装記録 14（必要なら 10）
-  - `python Tools/editor_cycle.py` でビルドし直し、PIE でタイトルを開いて曲が鳴ることと、2 秒で 0.5 まで上がる入り方を確かめる（`Tools/video_probe.py` で録って測る）。ポーズ画面と EXTRAS の「Pause Theme」が変わっていないことも見る。
-- [ ] 4. パッケージ版で確かめる（完了の条件 3）
-  - `RunUAT.bat BuildCookRun` の許可が出ていれば、項目 39・41 の止まっている確かめとまとめて 1 回のパッケージで見る。許可がまだなら、この項目は PIE までで閉じて「要確認」に残す。
+- [x] 3. タイトルのコードを最新版の値にする … 2026-09-22 完了。`MusicSound` を `/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3`・`MusicVolume` 0.6・`MusicPitch` 1.0 にし、`.h` のコメント 2 か所と実装記録 14・15・19 を直し、テスト 2 つ（`Wasami.Title.Screen` の音の値、`Wasami.Settings` のサウンドクラスの一覧）に足した。ビルド OK（`editor_cycle.py`）、`Automation RunTests Wasami.Title+Wasami.Settings` は 9 件すべて Success、PIE の `L_Title` で鳴っている音は新しい曲 1 つだけ（下の「検証」）。
+- [ ] 4. パッケージ版で確かめる（完了の条件 3）← **ユーザー待ち**
+  - `RunUAT.bat BuildCookRun` の許可が出たら、項目 39・41 の止まっている確かめとまとめて 1 回のパッケージで見る（下の「要確認」）。
 
 ## 次にやること
 
-ステップ 3。`Source/wasami_deception/WasamiTitleScreenWidget.cpp` の `MusicSound`（130 行目）を `/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3` に、`MusicVolume` を 1.0 → 0.6、`MusicPitch` を 0.5 → 1.0 にし（`.h` の説明も）、`Tests/WasamiSettingsTests.cpp`（152 行目あたりのサウンドクラスの一覧）に新しい曲を足す。`python Tools/editor_cycle.py` でビルドし直し、PIE でタイトルの曲と 2 秒のフェードインを `Tools/video_probe.py` で測って確かめ、ポーズ画面と EXTRAS の「Pause Theme」が変わっていないことも見る。実装記録 14（必要なら 15・19）を直す。
+ステップ 4（**ユーザーが `RunUAT.bat BuildCookRun` の許可をくれてから**。下の「要確認」と、作業一覧の「未回答の要確認」の `20260922-cooked-engine-assets`）: パッケージ版を作り直してタイトルを開き、新しい曲が 2 秒のフェードインで鳴ることを確かめる。項目 39・41 も同じパッケージで確かめられる。**無人運転はこの項目を飛ばし、作業一覧の次の項目（44）へ進む。**
 
 ## 決定事項
 
-- 2026-09-22: **本家の最新版の値**（`pak_reference_2/_bytecode/.../UMG_TitleScreen.txt` の @6598・@3429・@2472 を `Tools/dd/bp_flow.py` で読んだ）: `CreateSound2D(Self, DD_-_Dark_Deception_-_Theme_v1_3, 0.6, 1, 0, None, False, True)` → `SetSound(同じ曲)` → `FadeIn(2, 0.5, 0, 0)`。本作は今 `Pause_Sound_v1`・音量 1.0・**ピッチ 0.5**・`FadeIn(2, 0.5)` なので、**替えるのは曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）の 3 つ**で、フェードインはすでに最新版と同じ。旧版（`pak_reference`）は `Pause_Sound_v1` を鳴らしており、本作はそちらを写していた。
-- 2026-09-22: **`Pause_Sound_v1` は取り込みからも参照からも外さない** — ポーズ画面（`WasamiPauseWidget`）と EXTRAS の 4 曲目「Pause Theme」（`WasamiExtrasWidget`）が今も使う。タイトルの `MusicSound` だけを替える。
-- 2026-09-22: 取り込みは `dd_ui.TITLE_SOUNDS` に足すだけでよかった（ステップ 2 で実施）。曲は `/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3`。
+- 2026-09-22: **替えたのは曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）の 3 つだけ**。`FadeIn(2, 0.5)` は旧版と最新版で同じなので触らない。理由と根拠（最新版の `FadeInMusic` @10519）は実装記録 14 へ移した。
+- 2026-09-22: **`Pause_Sound_v1` は取り込みからも参照からも外さない** — ポーズ画面（`WasamiPauseWidget`）と EXTRAS の 4 曲目「Pause Theme」（`WasamiExtrasWidget`）が今も使う。タイトルの `MusicSound` だけを替えた。
 
 ## 要確認（ユーザー）
 
@@ -49,11 +46,14 @@ updated: 2026-09-22 17:10
 
 ## 再開時の注意
 
-- ステップ 3 で `python Tools/editor_cycle.py`（C++ のビルド、10 分前後）を走らせる。先にこの記録へ走らせる手順を書いてから始める。
-- エディタは起きている（2026-09-22 17:00 に `L_Hospital_Zone2`・PIE なし・dirty なし）。曲の取り込みは済んでいるので、ステップ 3 は C++ だけ。
+- 残るのはステップ 4（パッケージ版）だけで、`RunUAT.bat BuildCookRun` の許可が出るまで動かせない。コードとアセットはすべて入っていて、エディタ側にやり残しは無い。
+- **エディタを前面にできないときのテストの走らせ方**（この反復で使った。症状索引にもある）: リモート実行で `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)` → `execute_console_command(None, 'Automation RunTests <filter>')` → 終わったら `True` に戻す。
+- **PIE で今鳴っている音を確かめる**: `execute_console_command(game_world, 'au.Debug.ListAudioComponents')` → `Saved/Logs/wasami_deception.log` の `ActiveSounds` の行を読む（画面に出すなら `au.Debug.Sounds 1` → 見終わったら `0`。`stat sounds` は出なかった）。
 
 ## 検証
 
-- check_records: 2026-09-22 OK（20 件）
-- C++ ビルド: 未実行（ステップ 3）
-- エディタでの確認: 2026-09-22 取り込み OK（上のステップ 2）。PIE は未実行（ステップ 3）
+- check_records: 2026-09-22 OK（20 件。14・15 記録のハッシュを更新）
+- C++ ビルド: 2026-09-22 OK（`editor_cycle.py`、57.8 s、`Result: Succeeded`）
+- Automation: 2026-09-22 `Wasami.Title+Wasami.Settings` 9 件すべて Success（`Wasami.Title.Screen` が音量 0.6・ピッチ 1.0・`FadeIn(2, 0.5)` を、`Wasami.Settings` が新しい曲のサウンドクラス `DD_SoundClass_Music` を見る）
+- PIE（`L_Title`）: 2026-09-22 OK。`au.Debug.ListAudioComponents` の `AudioDevice ... has 1 ActiveSounds` が `/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3` ただ 1 つ（画面の `au.Debug.Sounds` も `Total Sounds: 1 / Sound Waves: 1` で同じ曲）。旧版の `Pause_Sound_v1` は鳴っていない。PIE は停止済み、dirty なし。
+- ポーズ画面と EXTRAS: 2026-09-22 変更なし（`WasamiPauseWidget.cpp:109` と `WasamiExtrasWidget.cpp:136` は `Pause_Sound_v1` のまま。触っていない）
