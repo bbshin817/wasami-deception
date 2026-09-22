@@ -15,7 +15,7 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_dialogue.py
   - Content/Python/wasami_tools/pipeline/dd_voices.py
   - Tools/dd/prepare_voices.py
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 曲と環境音と台詞（ゾーンの曲の切り替え・台詞の取り込み）
@@ -39,9 +39,9 @@ updated: 2026-09-21
 - `EWasamiTalkStep`（`Nothing` / `Play` / `Wait` / `AlreadyWaiting`）と `WasamiTalkStep(bHalt, bPlaying, bWaiting)`: 本家のウーバーグラフに 1 回入ったときの行き先。ワールド無しで試せる純粋な関数。
 - `AWasamiBierceTalk`（`AActor`）: `bHalt`（`EditAnywhere, BlueprintReadWrite`）、`Talk(WhatToSay, bAttenuate)`・`StopTalking()`（どちらも `BlueprintCallable`）、`Find(WorldContext)`（静的。本家の `BP_DD_Functions` の `Bierce Talk` = `GetAllActorsOfClass` の 0 番目）、`GetAudioComponent()`、`GetPendingSound()`・`IsWaiting()`・`GetLastStep()`（テストのため）。定数 `WaitInterval` 0.5。ソフト参照 `Attenuation`。`IsSpeaking()` は `protected virtual`（音声装置の無い自動テストで鳴っている状態を作るため。`AWasamiTestBierceTalk`）。
 - ツール `WasamiDDTools.import_dd_dialogue()`（`dd_dialogue.import_all`）: 病院の台詞の取り込み。戻り値は `lines` 9・`quips` 5・`cues` 1・`intercom` 1。`dd_dialogue` の公開は `LINES`・`GAMEPLAY_CUE`・`GAMEPLAY_WAVES`・`INTERCOM`（取り込む波）、`strings()`（本家の文字列表の中身）、`subtitle_key(name)`（波の名前 → 文言の鍵）、`line(rel, entries)`（字幕付きで 1 本取り込む）。
-- ツール `WasamiDDTools.import_wasami_voices()`（`dd_voices.import_all`）: ワサミの声の取り込み。戻り値は `subtitled` 5・`silent` 6。`dd_voices` の公開は `SUBTITLED`・`SILENT`・`CLIPS`（取り込む id）、`SOURCE`・`VOICES_ROOT`・`SOUND_CLASS`、`asset_name(id)`（id → 波の名前）、`manifest()`（id → 原本の中身）、`voice(clip, sound_class, subtitled)`（1 本取り込む）。
+- ツール `WasamiDDTools.import_wasami_voices()`（`dd_voices.import_all`）: ワサミの声の取り込み。戻り値は `subtitled` 5・`silent` 7。`dd_voices` の公開は `SUBTITLED`・`SILENT`・`CLIPS`（取り込む id）、`SOURCE`・`VOICES_ROOT`・`SOUND_CLASS`、`asset_name(id)`（id → 波の名前）、`manifest()`（id → 原本の中身）、`voice(clip, sound_class, subtitled)`（1 本取り込む）。
 
-- `EWasamiVoice`（`Greeting` / `Well` / `Fast` / `Best` / `Found` / `Calling` / `Others` / `Think` / `Remember` / `Fine` / `Over`）と名前空間 `WasamiVoice`: ワサミの声 11 本と鳴らし方。`Num()`・`Path(Id)`（`/Game/Wasami/Voices/Wasami_Greeting.Wasami_Greeting` …）・`Seconds(Id)`（原本の長さ）・`SubtitleSeconds(Id)`（字幕の出ている長さ）はワールド無しで試せる純粋な関数、`Load(Id)`（波を今読む）・`Say(WorldContext, Id, Volume = 1)`（2D で鳴らし、字幕があれば `SubtitleSeconds` の間出す。部品を返す）・`ShowSubtitle(WorldContext, Id)`（字幕だけ）はワールドが要る。
+- `EWasamiVoice`（`Greeting` / `Well` / `Fast` / `Best` / `Found` / `Calling` / `Others` / `Think` / `Remember` / `Fine` / `Over` / `You`）と名前空間 `WasamiVoice`: ワサミの声 12 本と鳴らし方。`Num()`・`Path(Id)`（`/Game/Wasami/Voices/Wasami_Greeting.Wasami_Greeting` …）・`Seconds(Id)`（原本の長さ）・`SubtitleSeconds(Id)`（字幕の出ている長さ）はワールド無しで試せる純粋な関数、`Load(Id)`（波を今読む）・`Say(WorldContext, Id, Volume = 1)`（2D で鳴らし、字幕があれば `SubtitleSeconds` の間出す。部品を返す）・`ShowSubtitle(WorldContext, Id)`（字幕だけ）はワールドが要る。
 
 ## 内部構造と処理の流れ
 - 部品（本家の SCS）: `DefaultSceneRoot` → `RegularMusic`・`PanicMusic`・`OverrideMusic`（`UAudioComponent`。本家の名前は `Regular Music` など。どれも `bAutoActivate = false` で、フェードインまで鳴らない）。曲は `BeginPlay` でソフト参照から入れる（`WasamiAssets.h`）。本家の音量・減衰の上書きは無く、音量は SoundWave 自身の 0.35（通常）・0.3（追跡）。
@@ -97,14 +97,14 @@ updated: 2026-09-21
 ## ワサミの声の取り込み（項目 20 のステップ 5）
 本作のワサミの声は WebGL 版が鳴らしていた 15 本（原本は `<WEBGL>/public/voices/` の mp3 と `manifest.json`。-23 LUFS・-6 dBTP に揃えた書き出しで、id・場面の区分・字幕・長さを持つ。`<WEBGL>/voices/` の wav 55 本は切り出す前の素材で mp3 と対応が取れないので使わない）。**UE は mp3 を取り込めない**ので、`python Tools/dd/prepare_voices.py` が ffmpeg で 16 bit PCM の wav に**復号するだけ**（元の 1 ch・44.1 kHz のまま＝ WebGL 版で揃えた音量をそのまま）で `SourceArt/Wasami/Voices/` に書き、`manifest.json` を隣に写す。手作りの素材なので wav は Git LFS（`.gitattributes` の `SourceArt/**/*.wav`）、取り込んだ `/Game/Wasami/Voices` の波は作り直せるので git の外（`.gitignore` の `/Content/Wasami/`）。
 
-- 取り込むのは **WebGL 版が実際に鳴らす 11 本だけ**（`dd_voices.CLIPS`）。本家の台詞で本作が作らないレベルの分を取り込まないのと同じで、`manifest.json` に在っても鳴らさない `follow`・`safe`・`wait`・`you` の 4 本は作らない（wav は原本の一式として `SourceArt` に置いてある）。
-- **字幕を出す 5 本**（`SUBTITLED`）: `greeting`（開始）・`well`（1 個目の回収）・`fast`（ブースト成功）・`best`（隠し扉が開いた後）と、敵の発見の `found`（WebGL 版は `onSpotted` で字幕を出す）。**字幕を出さない 6 本**（`SILENT`）: 巡回の `calling`・`others`・`think`・`remember` と、死亡画面の `fine`・`over`。字幕は `manifest.json` の文言をそのまま `Subtitles` の 0 s に 1 つ入れ（台詞と同じ UE の仕組み。`dd_assets.sound_file`）、出さない 6 本は空のまま入れる。
+- 取り込むのは **本作が鳴らす 12 本だけ**（`dd_voices.CLIPS`）＝ WebGL 版が鳴らす 11 本と、本作が捕獲で鳴らす `you`（2026-09-22 の項目 40）。本家の台詞で本作が作らないレベルの分を取り込まないのと同じで、鳴らさない `follow`・`safe`・`wait` の 3 本は作らない（wav は原本の一式として `SourceArt` に置いてある）。
+- **字幕を出す 5 本**（`SUBTITLED`）: `greeting`（開始）・`well`（1 個目の回収）・`fast`（ブースト成功）・`best`（隠し扉が開いた後）と、敵の発見の `found`（WebGL 版は `onSpotted` で字幕を出す）。**字幕を出さない 7 本**（`SILENT`）: 巡回の `calling`・`others`・`think`・`remember`、死亡画面の `fine`・`over` と、捕獲の `you`（画面いっぱいの演出に字幕を重ねない。WebGL 版に前例が無く、同じ場面の `over` も出していない）。字幕は `manifest.json` の文言をそのまま `Subtitles` の 0 s に 1 つ入れ（台詞と同じ UE の仕組み。`dd_assets.sound_file`）、出さない 7 本は空のまま入れる。
 - 波は `/Game/Wasami/Voices/Wasami_<Id>`（`Wasami_Greeting` …）。値は UE の既定のまま（音量 1・ピッチ 1・ループせず）で、`SoundClassObject` は本家の `DD_SoundClass_Dialogue` — WebGL 版のバス `voice`（音量 1.0）に当たるクラスで、本家の台詞と同じミックスに乗る。
-- 長さ（`manifest.json` と取り込んだ波で一致）: `greeting` 3.878・`well` 0.705・`fast` 0.637・`best` 0.517・`found` 0.622・`calling` 1.027・`others` 0.690・`think` 0.862・`remember` 0.937・`fine` 1.784・`over` 0.727 s。
+- 長さ（`manifest.json` と取り込んだ波で一致）: `greeting` 3.878・`well` 0.705・`fast` 0.637・`best` 0.517・`found` 0.622・`calling` 1.027・`others` 0.690・`think` 0.862・`remember` 0.937・`fine` 1.784・`over` 0.727・`you` 5.007 s。
 - 鳴らす場面（WebGL 版の 06・15 記録。位置と音量もそこに書かれている: 敵は頭の位置で `found` 1.0・巡回 0.9）は次のステップで各所に付ける。
 
 ## ワサミの声を鳴らす口（項目 20 のステップ 6）
-`WasamiVoice`（`Source/wasami_deception/WasamiVoice.h`・`.cpp`）が声 11 本の表（パッケージと原本の長さ）と鳴らし方を持つ。本家に当たるものは無いので、鳴らす場面・音量・字幕の長さは WebGL 版の実装記録 06・15 に倣う。
+`WasamiVoice`（`Source/wasami_deception/WasamiVoice.h`・`.cpp`）が声 12 本の表（パッケージと原本の長さ）と鳴らし方を持つ。本家に当たるものは無いので、鳴らす場面・音量・字幕の長さは WebGL 版の実装記録 06・15 に倣う。
 
 - `Say(WorldContext, Id, Volume = 1)`: `CreateSound2D`（`bAutoDestroy`）で鳴らす。バスは波の `DD_SoundClass_Dialogue`（WebGL 版の `voice` バスに当たる）なので、音量は既定の 1 のまま。
 - **字幕は波のものを止めて出し直す**: `UAudioComponent::bSuppressSubtitles` を真にしてから `Play` し、`FSubtitleManager::GetSubtitleManager()->QueueSubtitles(波, 波の優先度, 波の折り返し・1 行, SubtitleSeconds(Id), 波の Subtitles, 0, ワールドの音声時刻)` を自分で呼ぶ。`USoundWave::HandleStart` と同じ呼びで、長さだけ `SubtitleSeconds` に替えたもの。字幕の鍵に波そのもののアドレスを使うので、同じ声を続けて鳴らすと前の行を置き換える。字幕の可否（オプションの SUBTITLES）は出す側では見ない（エンジンが描くときに `GEngine->bSubtitlesEnabled` を見る）。
@@ -126,7 +126,7 @@ updated: 2026-09-21
   - どれも `SoundClassObject` は `/Game/DD/Audio/SoundMix/DD_SoundClass_Music`（`dd_assets.sound` が export から入れる。01 記録）。
 - 環境音 `/Game/DD/Audio/06_Hospital/`（`dd_audio.import_ambience`）: `DD_City_Ambience_Creepy_Loop`（30.272 s・ループ・`SoundClassObject` は `DD_SoundClass_SFX`）、`Nurse_Hospital_Zone01_Event_48_Intercom`（8.474 s・ループせず・`SoundClassObject` 無し = プロジェクトの既定のクラス）。
 - 台詞 `/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/`（`dd_dialogue.import_all` → `WasamiDDTools.import_dd_dialogue`）: `Bierce_TormentTherapy_Event_09`（2.926 s）・`_10`（5.039）・`_17`（3.251）・`_19`（3.529）・`_20`（2.235）・`_21`（3.367）・`_22`（3.901）、`Bierce_TormentTherapy_Gameplay_01`（1.811）・`_02`（2.868）・`_03`（4.679）・`_04`（5.387）・`_05`（3.274）・`_07`（4.249）・`_08`（5.689）。どれも音量 2.0・ピッチ 1・1 ch・`DD_SoundClass_Dialogue`・字幕 1 つ。Cue `Bierce_TormentTherapy_Gameplay`（`SoundClassObject` 無し・`AttenuationSettings` は `/Game/DD/Audio/Misc/DialogueAttenuation`）。館内放送 `/Game/DD/Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom`（12.024 s・音量 1・2 ch・クラス無し・字幕 1 つ）。
-- ワサミの声 `/Game/Wasami/Voices/`（`dd_voices.import_all` → `WasamiDDTools.import_wasami_voices`。原本は `SourceArt/Wasami/Voices/*.wav`）: `Wasami_Greeting`・`Wasami_Well`・`Wasami_Fast`・`Wasami_Best`・`Wasami_Found`（字幕 1 つ）と `Wasami_Calling`・`Wasami_Others`・`Wasami_Think`・`Wasami_Remember`・`Wasami_Fine`・`Wasami_Over`（字幕なし）。どれも音量 1・1 ch・44.1 kHz・`DD_SoundClass_Dialogue`。
+- ワサミの声 `/Game/Wasami/Voices/`（`dd_voices.import_all` → `WasamiDDTools.import_wasami_voices`。原本は `SourceArt/Wasami/Voices/*.wav`）: `Wasami_Greeting`・`Wasami_Well`・`Wasami_Fast`・`Wasami_Best`・`Wasami_Found`（字幕 1 つ）と `Wasami_Calling`・`Wasami_Others`・`Wasami_Think`・`Wasami_Remember`・`Wasami_Fine`・`Wasami_Over`・`Wasami_You`（字幕なし）。どれも音量 1・1 ch・44.1 kHz・`DD_SoundClass_Dialogue`。
 - 残響 `/Game/DD/_Engine/EngineSounds/ReverbSettings/`（`dd_audio.import_reverbs` → `dd_assets.reverb_effect`）: `BunkerHall`（Gain 0.45・DecayTime 2.0…）、`ParkingLot`（Gain 0.8・DecayTime 1.65…）。エンジンの同名のアセットは使わず、本家の書き出しの値で作り直す（01 記録の `_Engine` の決まり）。
 
 ## 原作データの根拠
@@ -176,3 +176,4 @@ updated: 2026-09-21
 - 2026-09-20: ワサミの声 11 本を `/Game/Wasami/Voices` に取り込むようにした（`Tools/dd/prepare_voices.py`・`dd_voices.py`・`WasamiDDTools.import_wasami_voices`。項目 20 のステップ 5）。
 - 2026-09-20: 鳴らす口 `WasamiVoice` を作り、2D の 6 本（`greeting`・`well`・`fast`・`best`・`fine`・`over`）を場面に付けた（項目 20 のステップ 6）。
 - 2026-09-20: 残りの 5 本（`found` と巡回の 4 本）を敵に付けた（項目 20 のステップ 7。中身は 07 記録の「声」）。
+- 2026-09-22: 捕獲で鳴らす `you` を 12 本目の声として足した（`dd_voices.py`・`EWasamiVoice::You`。作業一覧の項目 40 のステップ 2）。

@@ -259,11 +259,11 @@ class WasamiDDTools(unreal.ToolsetDefinition):
     @staticmethod
     def import_wasami_voices() -> dict[str, int]:
         """Imports (or re-imports) this game's own voices from SourceArt/Wasami/Voices (the WebGL version's clips of
-        the user's Wasami, decoded to wav by python Tools/dd/prepare_voices.py): the eleven lines the WebGL version
-        speaks, as SoundWaves /Game/Wasami/Voices/Wasami_<Id> through the original's Dialogue sound class. The five it
-        puts a subtitle up for (the greeting, the first shard, a boost made, the secret door, and an enemy spotting the
-        player) get the manifest's line as their subtitle; the enemies' patrol calls and the death screen's two get
-        none, as it speaks them with none. Where each is played is the scene that uses it.
+        the user's Wasami, decoded to wav by python Tools/dd/prepare_voices.py): the eleven lines that version speaks
+        and the cry over a capture (you), as SoundWaves /Game/Wasami/Voices/Wasami_<Id> through the original's Dialogue
+        sound class. The five it puts a subtitle up for (the greeting, the first shard, a boost made, the secret door,
+        and an enemy spotting the player) get the manifest's line as their subtitle; the enemies' patrol calls, the
+        death screen's two and the capture's get none. Where each is played is the scene that uses it.
 
         Returns:
             How many waves were made with a subtitle ('subtitled') and how many without ('silent').

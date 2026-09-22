@@ -12,7 +12,7 @@ namespace
 	/** Every voice, in EWasamiVoice's order. */
 	const EWasamiVoice AllVoices[] = {EWasamiVoice::Greeting, EWasamiVoice::Well, EWasamiVoice::Fast, EWasamiVoice::Best,
 		EWasamiVoice::Found, EWasamiVoice::Calling, EWasamiVoice::Others, EWasamiVoice::Think, EWasamiVoice::Remember,
-		EWasamiVoice::Fine, EWasamiVoice::Over};
+		EWasamiVoice::Fine, EWasamiVoice::Over, EWasamiVoice::You};
 
 	/** The five whose waves carry a subtitle (dd_voices.SUBTITLED). */
 	bool IsSubtitled(EWasamiVoice Id)
@@ -27,14 +27,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiVoiceTableTest, "Wasami.Voice.Table",
 
 bool FWasamiVoiceTableTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("the voices the WebGL version plays"), WasamiVoice::Num(), static_cast<int32>(UE_ARRAY_COUNT(AllVoices)));
+	TestEqual(TEXT("every voice this game speaks"), WasamiVoice::Num(), static_cast<int32>(UE_ARRAY_COUNT(AllVoices)));
 
 	// The packages the import makes, and manifest.json's lengths.
 	TestEqual(TEXT("Greeting's wave"), WasamiVoice::Path(EWasamiVoice::Greeting).ToString(),
 		FString(TEXT("/Game/Wasami/Voices/Wasami_Greeting.Wasami_Greeting")));
 	TestEqual(TEXT("Over's wave"), WasamiVoice::Path(EWasamiVoice::Over).ToString(),
 		FString(TEXT("/Game/Wasami/Voices/Wasami_Over.Wasami_Over")));
+	TestEqual(TEXT("You's wave"), WasamiVoice::Path(EWasamiVoice::You).ToString(),
+		FString(TEXT("/Game/Wasami/Voices/Wasami_You.Wasami_You")));
 	TestEqual(TEXT("Greeting is the long one"), WasamiVoice::Seconds(EWasamiVoice::Greeting), 3.878f, 1e-4f);
+	TestEqual(TEXT("You is the longest"), WasamiVoice::Seconds(EWasamiVoice::You), 5.007f, 1e-4f);
 	TestEqual(TEXT("Found is half a second"), WasamiVoice::Seconds(EWasamiVoice::Found), 0.622f, 1e-4f);
 
 	// The subtitle's time: max(2.2, the clip + 1.2), and Found's flat 2.4.

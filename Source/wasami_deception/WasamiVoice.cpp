@@ -30,9 +30,10 @@ namespace
 		{TEXT("/Game/Wasami/Voices/Wasami_Think"), 0.862f},
 		{TEXT("/Game/Wasami/Voices/Wasami_Remember"), 0.937f},
 		{TEXT("/Game/Wasami/Voices/Wasami_Fine"), 1.784f},
-		{TEXT("/Game/Wasami/Voices/Wasami_Over"), 0.727f}
+		{TEXT("/Game/Wasami/Voices/Wasami_Over"), 0.727f},
+		{TEXT("/Game/Wasami/Voices/Wasami_You"), 5.007f}
 	};
-	static_assert(UE_ARRAY_COUNT(Clips) == static_cast<uint8>(EWasamiVoice::Over) + 1, "a clip for every voice");
+	static_assert(UE_ARRAY_COUNT(Clips) == static_cast<uint8>(EWasamiVoice::You) + 1, "a clip for every voice");
 
 	/** hud.subtitle's time in the WebGL version (its record 06), and the flat one its enemies gave Found (record 15). */
 	constexpr float SubtitleLeast = 2.2f;

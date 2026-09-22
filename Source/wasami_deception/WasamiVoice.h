@@ -8,8 +8,8 @@ class USoundBase;
 
 /**
  * A Wasami voice (/Game/Wasami/Voices, implementation record 10): this game's guide speaks where the original has no
- * line of its own, as the WebGL version had her do. The ids are that version's clips (its public/voices/manifest.json),
- * and only the eleven it plays are made.
+ * line of its own, as the WebGL version had her do. The ids are that version's clips (its public/voices/manifest.json):
+ * the eleven it plays, and You, which it never played and this game cries over a capture.
  */
 enum class EWasamiVoice : uint8
 {
@@ -34,7 +34,9 @@ enum class EWasamiVoice : uint8
 	/** A death with lives left: まぁまぁ、そういう時だってあるか。 */
 	Fine,
 	/** A death with none: あっ、終わりです。 */
-	Over
+	Over,
+	/** The enemy that has caught the player: オマエ・ジャ。 */
+	You
 };
 
 /**

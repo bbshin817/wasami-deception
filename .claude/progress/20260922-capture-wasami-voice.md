@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: d0a01e8
 started: 2026-09-22 12:51
-updated: 2026-09-22 12:51
+updated: 2026-09-22 13:05
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -29,21 +29,17 @@ updated: 2026-09-22 12:51
   - `GetSound` はソフト参照 `ScreamSound`・`LaughSound`・`HitSound`（`WasamiCapture.cpp:388-390` で `/Game/DD/Audio/…` を代入）。鳴らすのは `PlayCaptureSound` の `UGameplayStatics::PlaySound2D(this, Sound, 1.f, 1.f)`（戻り値を持たないので途中で止められない）。`Start` が `SoundTimers` を張る（t = 0 のものは即座に鳴らしてタイマーを張らない）。
 - 取り込み: `dd_enemy.CAPTURE_SOUNDS`（3 本、`CAPTURE_SOUND_VERSION = 1`）→ `import_capture_sounds`。説明は `Content/Python/wasami_tools/toolsets/dd.py:283-284`。
 - 本家の 3 本は**捕獲だけが使っている**（`grep` 済み。ほかの参照は実装記録と作業一覧の文だけ）。
-- 声: `dd_voices.py` の `SUBTITLED`（5 本）+ `SILENT`（6 本）= 11 本を取り込む。`you` は「WebGL 版が鳴らさない 4 本（follow・safe・wait・you）」として**外してある**。原本 `SourceArt/Wasami/Voices/you.wav` と `manifest.json` の項目（id `you`、category `chase`、字幕「オマエ・ジャ。」、5.007098 s）は**ある**。
-- `EWasamiVoice`（`WasamiVoice.h`）は 11 個で、`Over` が最後。`WasamiVoice.cpp:33-35` の `Clips` 表（パスと秒数）と `static_assert(... == (uint8)EWasamiVoice::Over + 1)` が最後の値に結びついている。
+- 声（ステップ 2 で更新済み）: `dd_voices.py` の `SUBTITLED`（5 本）+ `SILENT`（7 本）= 12 本、`EWasamiVoice` は `You` が最後（`WasamiVoice::Path(EWasamiVoice::You)` = `/Game/Wasami/Voices/Wasami_You.Wasami_You`、5.007 s、字幕なし）。
 - `Over` は死亡画面の**ゲームオーバー**（`EStep::GameOver`、ライフ 0 のときだけ）でも鳴る。ライフが残っているときの死亡画面は `Fine`（`EStep::LifeLost`、画面が出て 0.5 s ごろ）。
 - `/Content/DD/` も `/Content/Wasami/` も `.gitignore` の対象（前処理で作り直せる）。アセットの追加・削除は git に出ない。
 
 ## 計画
 
 - [x] 1. 調べて計画を立てる … 2026-09-22 完了（この記録）。
-- [ ] 2. `you` を取り込み、`EWasamiVoice::You` を足す
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_voices.py`、`Source/wasami_deception/WasamiVoice.h`・`.cpp`、`Source/wasami_deception/Tests/`（声のテストがあれば）、`.claude/implementation-records/10-audio.md`、`/Game/Wasami/Voices/Wasami_You`
-  - `dd_voices` の `SILENT` か `SUBTITLED` に `you` を足し（下の「決定事項」）、冒頭の「never played」の説明を直す。`EWasamiVoice` に `You` を足し、`Clips` 表（`/Game/Wasami/Voices/Wasami_You`, 5.007）と `static_assert` の最後の値を直す。
-  - エディタで `import_wasami_voices` を走らせて `Wasami_You` ができることを確かめ、`python Tools/editor_cycle.py` でビルドしてテストを通す。
+- [x] 2. `you` を取り込み、`EWasamiVoice::You` を足す … 2026-09-22 完了。`dd_voices.SILENT` に `you`（12 本目）、`EWasamiVoice::You`（`Over` の次、5.007 s）、テスト 2 つ緑、`/Game/Wasami/Voices/Wasami_You` 取り込み済み（1 ch・44.1 kHz・`DD_SoundClass_Dialogue`・字幕 0）。
 - [ ] 3. 捕獲の音を差し替える
   - 変更予定: `Source/wasami_deception/WasamiCapture.h`・`.cpp`、`Source/wasami_deception/Tests/WasamiCaptureTests.cpp`、`Content/Python/wasami_tools/pipeline/dd_enemy.py`、`Content/Python/wasami_tools/toolsets/dd.py`、`.claude/implementation-records/07-enemies.md`・`01-stage-pipeline.md`
-  - `ScreamSound`・`LaughSound`・`HitSound` を `WasamiVoice::Path(EWasamiVoice::You)` と `…::Over` の 2 つ（`ChaseVoiceSound`・`CaughtVoiceSound` のような本作の名前）に替え、`NumSounds`（顔も 1 に）・`SoundTime`・`GetSound` を直す。時刻は下の「決めること」。
+  - `ScreamSound`・`LaughSound`・`HitSound` を `WasamiVoice::Path(EWasamiVoice::You)` と `…::Over` の 2 つ（`ChaseVoiceSound`・`CaughtVoiceSound` のような本作の名前）に替え、`NumSounds`（顔も 1 に）・`SoundTime`・`GetSound` を直す。時刻は「決定事項」のとおり。
   - `dd_enemy.CAPTURE_SOUNDS` を外し（`import_capture_sounds` と `import_all` の戻り値の数、`dd.py` の説明も）、実装記録 07（「音」の節・アセットの表・履歴）と 01（`import_wasami_enemy` の行）を直す。
   - `Wasami.Capture.Sound` テスト（`WasamiCaptureTests.cpp:603-612` が波の名前を見ている）を新しい波と時刻に直す。
   - `python Tools/editor_cycle.py` でビルド → テスト → `python .claude/scripts/check_records.py --update`。
@@ -53,17 +49,14 @@ updated: 2026-09-22 12:51
 
 ## 次にやること
 
-ステップ 2。`dd_voices.py` に `you` を足して（`SILENT` に置く。下の決定事項）冒頭の説明を直し、`WasamiVoice.h`/`.cpp` に `You` を足す（`Clips` は `{TEXT("/Game/Wasami/Voices/Wasami_You"), 5.007}`、`static_assert` の最後を `You` に）。そのあとエディタで `import_wasami_voices`、`python Tools/editor_cycle.py`、テスト。
+ステップ 3。`WasamiCapture` の `ScreamSound`・`LaughSound`・`HitSound` を `WasamiVoice::Path(EWasamiVoice::You)`（ホテル型 0〜2）と `…::Over`（顔 3）の 2 つに替え、`NumSounds(FaceChoice)` を 2 → 1、`SoundTime` をホテル型 0 s・顔 0.2 s（下の「決めること」で決着済み）にする。`dd_enemy.CAPTURE_SOUNDS` と `import_capture_sounds` を外し（`import_all` の戻り値と `dd.py` の説明も）、`WasamiCaptureTests.cpp:603-612` を新しい波と時刻に直し、実装記録 07・01 を直す。
 
 ## 決定事項
 
-- 2026-09-22: **`you` には字幕を付けない**（`dd_voices.SILENT` に入れる） — 捕獲は台詞の場面ではなく、字幕は死亡画面の `Over` と同じく出していない。WebGL 版は `you` を鳴らさないので前例が無く、同じ chase の `found`（字幕あり）は「敵が見つけた合図」で画面に出す意味があるのに対し、捕獲は画面いっぱいの演出なので字幕が邪魔になる。要確認に載せる。
-- 2026-09-22: **本家の 3 本のアセットは消さない** — `/Content/DD/` は前処理で作り直せて git の外なので、`CAPTURE_SOUNDS` から外せば次の取り込みからは作られない。手元に残る古いアセットの削除は「変更を捨てる操作」なので無人運転では行わず、要確認に載せる。
-
-## 決めること（ステップ 3 で）
-
-- **ホテル型 3 本の `SoundTime`**: 本家は t = 0。`you` は 5.007 s で、場面は `DeathDelay = 3.5 s` で終わる（`PlaySound2D` は止められないので死亡画面へ 1.5 s はみ出し、ライフが残っていれば 4.0 s ごろの `Fine` と重なる）。候補: (a) t = 0 のまま（頭から鳴らす。はみ出しは許す）、(b) `DeathDelay` に収まるよう `SpawnSound2D` に替えて場面の終わりで止める、(c) 波の実音の長さ（無音の後ろを除いた長さ）を測って、収まるなら t = 0 のまま・収まらなければ (b)。まず `you.wav` の実音の終わりを測ってから決める。
-- **顔（`FaceChoice`）の `SoundTime`**: `Over` は 0.727 s で `FaceDeathDelay = 1.15 s` に収まる。本家の笑いと同じ `WatcherAnimDelay = 0.2 s`（掴む瞬間）が第一候補。`NumSounds(FaceChoice)` は 2 → 1。
+- 2026-09-22: **`you` には字幕を付けない**（`dd_voices.SILENT` に入れる） — 捕獲は画面いっぱいの演出で、同じ場面の `Over` も字幕を出していない。WebGL 版は `you` を鳴らさないので前例が無い。要確認に載せた。
+- 2026-09-22: **本家の 3 本のアセットは消さない** — `CAPTURE_SOUNDS` から外せば次の取り込みからは作られない。削除は無人運転では行わない。要確認に載せた。
+- 2026-09-22: **ホテル型 3 本の `SoundTime` は本家と同じ t = 0**（`PlaySound2D` のまま、止める仕組みは足さない） — `you.wav` を測ったら、台詞そのものは約 0.8 s で終わり、残りは残響の尾（ピーク比 -40 dB を 2.26 s、-60 dB を 3.36 s で下回り、3.5 s の時点で約 -81 dBFS）。`DeathDelay = 3.5 s` の中に聞こえる分がすべて収まるので、はみ出しは実際には聞こえない。
+- 2026-09-22: **顔（`FaceChoice`）は `Over` を 1 本だけ、`SoundTime = WatcherAnimDelay`（0.2 s）** — 本家の笑いと同じ掴む瞬間。0.727 s で `FaceDeathDelay = 1.15 s` に収まる。
 
 ## 要確認（ユーザー）
 
@@ -72,11 +65,14 @@ updated: 2026-09-22 12:51
 
 ## 再開時の注意
 
-- 長時間の処理はまだ走らせていない。C++ を変えたら `python Tools/editor_cycle.py`（エディタを閉じて Development Editor をビルドし開き直す。10〜20 分）。
-- `you.wav` の実音の長さを測るのは `SourceArt/Wasami/Voices/you.wav`（44 バイトの WAV ヘッダ + PCM。python の `wave` と `audioop`、または `Tools/video_probe.py` は動画用なので使わない）。
+- C++ を変えたら `python Tools/editor_cycle.py`（エディタを閉じて Development Editor をビルドし開き直す。今回は 44 s + 開き直し 17 s で済んだ）。
+- **テストの回し方**（MCP が切れているとき）: リモート実行で `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)` → `unreal.SystemLibrary.execute_console_command(None, 'Automation RunTests Wasami.Capture')` → `Saved/Logs/wasami_deception.log` の `Test Completed` を読む → 真に戻す。エディタを前面に出さずに通った。
+- `WasamiCapture.cpp:349-365` に既存の C4305 警告（double → float）が 5 つある。ステップ 3 でこのあたりを触るので、ついでに `f` を付けて消す。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: ステップ 2 で更新済み
+- C++ ビルド: ステップ 2 で成功（2026-09-22）
+- テスト: `Wasami.Voice.Table`・`Wasami.Voice.Waves` 緑（2026-09-22）
+- エディタでの確認: `import_wasami_voices` = `{'subtitled': 5, 'silent': 7}`、`Wasami_You` 5.007 s
+- PIE: 未実行（ステップ 4）
