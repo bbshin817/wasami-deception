@@ -485,11 +485,20 @@ void AWasamiGameMode::SaveCheckpoint(int32 Checkpoint)
 	WriteSave();
 }
 
-UWasamiLevelClearWidget* AWasamiGameMode::Escape()
+UWasamiLevelClearWidget* AWasamiGameMode::Escape(float PauseDelay)
 {
 	// @55455: SetGamePaused(True), then as a checkpoint's save with 0 (UMG_Saving at Z 0 first, the time added, Reset
 	// Time Counter, written). Not copied: SaveSlot's read for the achievements.
-	UGameplayStatics::SetGamePaused(this, true);
+	// Only the pause waits where the caller asked it to (Zone 2's escape, for its music's fade to be heard): the save
+	// and the screen below come in this frame either way, so the screen is up at the trigger as the original's is.
+	if (PauseDelay > 0.f)
+	{
+		GetWorldTimerManager().SetTimer(EscapePauseTimer, this, &AWasamiGameMode::PauseAfterEscape, PauseDelay, false);
+	}
+	else
+	{
+		UGameplayStatics::SetGamePaused(this, true);
+	}
 	SaveCheckpoint(0);
 	// The time's rank and the rows (@57305 → @38874), Create(UMG_LevelClear), Finished bound to Finished Level,
 	// AddToViewport(6). EASY is the settings' difficulty, which the screen's Construct and Final Rank read.
@@ -503,6 +512,15 @@ UWasamiLevelClearWidget* AWasamiGameMode::Escape()
 	return Screen;
 }
 
+void AWasamiGameMode::PauseAfterEscape()
+{
+	// Finished Level unpauses, so a NEXT pressed inside the wait wins: the screen is already on its way out.
+	if (!bLevelFinished)
+	{
+		UGameplayStatics::SetGamePaused(this, true);
+	}
+}
+
 void AWasamiGameMode::FinishedLevel()
 {
 	// @75934: SaveSlot's Progress and Level Ranks (the level select's) are not copied. Then a DoOnce, SetGamePaused(False)
@@ -512,6 +530,7 @@ void AWasamiGameMode::FinishedLevel()
 		return;
 	}
 	bLevelFinished = true;
+	GetWorldTimerManager().ClearTimer(EscapePauseTimer);
 	UGameplayStatics::SetGamePaused(this, false);
 	GetWorldTimerManager().SetTimer(FinishedLevelTimer, this, &AWasamiGameMode::LeaveFinishedLevel, FinishedLevelDelay, false);
 }

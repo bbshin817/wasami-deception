@@ -924,21 +924,22 @@ bool FWasamiZoneFlowEscapeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the music taken away"), Music->bFadeOut);
 	TestEqual(TEXT("and faded out to be heard"), Music->GetLastFadeOutDuration(), AWasamiZone2Flow::EscapeMusicFade);
 
-	// The hospital's Escape, which waits for that fade: the save is untouched until it ends, and the time played does
-	// not grow while it runs (the counter stops at the trigger, so the level is timed to the portal).
-	TestEqual(TEXT("the checkpoint kept while the fade runs"), SavedCheckpoint(), 10);
-	Advance(Wrapper, AWasamiZone2Flow::EscapeMusicFade + 0.1f);
-
-	// Then checkpoint 0 saved with the time added and the counter back to 0 (no player here, so no pause and no screen).
+	// The hospital's Escape in that same frame, as the original's Trigger_Escape calls it: checkpoint 0 saved with the
+	// time added and the counter back to 0, nothing waited for (no player here, so no pause and no screen). Only the
+	// pause is held back, for the music's fade to be heard under the screen.
 	const auto SavedEntry = []()
 	{
 		const UWasamiSaveGame* Save = Cast<UWasamiSaveGame>(UGameplayStatics::LoadGameFromSlot(FlowTestSlotName, UWasamiSaveGame::UserIndex));
 		return Save ? Save->Hospital : FWasamiLevelProgress();
 	};
-	TestEqual(TEXT("checkpoint 0 saved"), SavedEntry().LevelCheckpoint, 0);
+	TestEqual(TEXT("checkpoint 0 saved at the trigger"), SavedEntry().LevelCheckpoint, 0);
 	TestEqual(TEXT("the time added"), SavedEntry().Time, Played, 1e-4f);
 	TestEqual(TEXT("the deaths kept"), SavedEntry().Deaths, 2);
 	TestEqual(TEXT("the counter back to 0"), Mode->GetTime(), 0.f);
+
+	// And the counter stays there over the fade: it stopped at the trigger, so the level is timed to the portal.
+	Advance(Wrapper, AWasamiZone2Flow::EscapeMusicFade + 0.1f);
+	TestEqual(TEXT("the counter still 0 over the fade"), Mode->GetTime(), 0.f);
 
 	// The screen's Finished → Finished Level: 1 s on the hospital's entry is emptied and written, and the title opens.
 	TestFalse(TEXT("Finished Level not yet"), Mode->HasFinishedLevel());

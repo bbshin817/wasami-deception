@@ -147,9 +147,14 @@ public:
 	 * at a checkpoint with checkpoint 0 (SAVING PROGRESS, the time added, the counter back to 0, written), and the level
 	 * clear screen with the save's results at Z 6, its Finished bound to FinishedLevel. Returns the screen, or null where
 	 * there is no player to show it to.
+	 *
+	 * PauseDelay holds that pause back, and only it: the save and the screen still come in this frame, as the original's
+	 * do. A paused game renders no sound that is not a UI one (FAudioDevice::HandlePause), so a caller with a sound to
+	 * be heard as the screen comes up gives its length here — Zone 2's escape, whose music is to fall away rather than
+	 * be cut (2026-09-21, the user's answer), passes AWasamiZone2Flow::EscapeMusicFade.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Game")
-	UWasamiLevelClearWidget* Escape();
+	UWasamiLevelClearWidget* Escape(float PauseDelay = 0.f);
 
 	/**
 	 * Finished Level (@75934), once: the game unpaused, and FinishedLevelDelay on the hospital's save entry emptied and
@@ -272,6 +277,9 @@ private:
 	/** Finished Level after its Delay: the save entry emptied, the game instance reset, Zone 1 opened. */
 	void LeaveFinishedLevel();
 
+	/** Escape's pause when it was held back: skipped where NEXT has already been pressed, as that unpauses. */
+	void PauseAfterEscape();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UWasamiSaveGame> StructSave;
 
@@ -300,6 +308,7 @@ private:
 	FTimerHandle ShardRemovalTimer;
 	FTimerHandle CheckShardsTimer;
 	FTimerHandle FinishedLevelTimer;
+	FTimerHandle EscapePauseTimer;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiZoneFlow> ZoneFlow;

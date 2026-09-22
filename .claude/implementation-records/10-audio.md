@@ -150,7 +150,7 @@ updated: 2026-09-22
 - `Override Music` は曲が空のまま（本家の病院も空）。`bOverrideMusic` の道だけ残してある。
 - 曲は 3D の減衰を持たない（本家も部品に減衰の上書きが無く、SoundWave 自身も素）ので、どこにいても同じ大きさで鳴る。置き場所は本家に合わせてあるだけ。
 - テストの `Wasami.Music.Actor` は `/Game/DD/Audio/06_Hospital/Music` の曲が取り込まれていることを前提にする（`import_dd_audio` を先に走らせる）。
-- **一時停止の下では曲を引けない**: `Update` は 0.5 s のタイマーなので止めたゲームでは回らず、さらに**止めたゲームはゲームの音そのものが鳴らない**（`FAudioDevice::HandlePause` が UI の音でない発音体を全部止める。UE 5.8 の `AudioDevice.cpp:4113`）ので、止めたのと同じフレームで始めたフェードも聞こえない。Zone 2 の脱出（11 記録の `OnEndTrigger`）はそのため、**止める前に `FadeAllMusicOut` でフェードを始め、その長さだけ `Escape` を待たせる**（2026-09-21 のユーザーの回答「聞こえる形で引く」。作業一覧の項目 35）。
+- **一時停止の下では曲を引けない**: `Update` は 0.5 s のタイマーなので止めたゲームでは回らず、さらに**止めたゲームはゲームの音そのものが鳴らない**（`FAudioDevice::HandlePause` が UI の音でない発音体を全部止める。UE 5.8 の `AudioDevice.cpp:4113`）ので、止めたのと同じフレームで始めたフェードも聞こえない。Zone 2 の脱出（11 記録の `OnEndTrigger`）はそのため、**`FadeAllMusicOut` でフェードを始め、`Escape` に一時停止だけをその長さだけ遅らせてもらう**（`Escape(PauseDelay)`。13 記録）。セーブもスコア画面も引き金のフレームに来るので、フェードは黒い間ではなく**スコア画面の下**で聞こえる（2026-09-21 のユーザーの回答「聞こえる形で引く」＋ 2026-09-23 の回答「即時」。作業一覧の項目 35・49）。
 - 館内放送（Zone 2 の `Nurse_Hospital_Zone01_Event_48_Intercom_2`）は `bAutoActivate` 偽のまま置いてあるだけで、鳴らす側がまだ無い（本家はレベル BP が鳴らす。台詞なので項目 20）。
 - 話し役の待ちの戻り（`Resume`）には「待ちは無い」を値で渡す（`Step(false, false)`）。`FTimerManager::IsTimerActive` は**自分のコールバックの最中も真**なので、そこで `IsWaiting()` を見ると待ちの回が自分を「もう待っている」と誤り、台詞が二度と鳴らない（症状索引の「タイマーのコールバックの中で `IsTimerActive` が真を返す」）。
 - 話し役は音声装置の無い自動テストでは鳴っている状態を作れない（`UAudioComponent::Play` は装置が無いと何もしない）ので、`IsSpeaking()` を `virtual` にして `AWasamiTestBierceTalk` が差し替える。待ちの分岐そのものは純粋な `WasamiTalkStep` でも試す。

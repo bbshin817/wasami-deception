@@ -96,9 +96,11 @@ public:
 
 	/**
 	 * The escape's music: the zone's track is faded out over this (AWasamiMusicPlayer::FadeDuration, the original's own
-	 * fade) and Escape waits the same time, so the fade is heard under the black the screen is held at. Raising bFadeOut
-	 * alone is not heard at all — Escape stops the game in the same frame, which keeps the music player's 0.5 s Update
-	 * from coming round and silences the game's sounds while the score screen is up (2026-09-21, the user's answer).
+	 * fade), and Escape holds back its pause — and only its pause — for the same time, so the fade is heard under the
+	 * score screen, which is up at the trigger as the original's is (2026-09-23, the user's answer 即時). Raising
+	 * bFadeOut alone is not heard at all, and neither would this fade be if the game stopped at once: the music player's
+	 * 0.5 s Update would not come round, and FAudioDevice::HandlePause silences every source that is not a UI sound
+	 * while the score screen is up (2026-09-21, the user's answer: the music heard falling away, not cut).
 	 */
 	static constexpr float EscapeMusicFade = 1.f;
 

@@ -38,7 +38,7 @@ namespace
 	const FLinearColor PortalArrow(1.f, 0.f, 0.016666f, 1.f);
 
 	static_assert(AWasamiZone2Flow::EscapeMusicFade == AWasamiMusicPlayer::FadeDuration,
-		"the escape fades the music over the player's own fade");
+		"the escape fades the music over the player's own fade, and holds Escape's pause back for just as long");
 }
 
 const FName AWasamiZone2Flow::GaragePortal(TEXT("Wasami_GaragePortal"));
@@ -469,27 +469,22 @@ void AWasamiZone2Flow::OnEndTrigger()
 	RemoveAllEnemies(GetWorld());
 	// The zone's music taken away as the level ends, where the original's ride to the boss fight takes it (@1423, with
 	// its GOOD LUCK and the loading screen 7 s on). bFadeOut is raised as the original raises it, but on its own it is
-	// never heard: Escape stops the game in this same frame, so the 0.5 s Update never comes round, and a paused game
-	// has no sound at all (FAudioDevice::HandlePause pauses every source that is not a UI sound) — the fade would only
-	// fall when NEXT unpauses, in the second before the title opens. So the components are faded here and Escape waits
-	// for the fade, under the black the screen is held at.
+	// never heard: Escape stops the game in this same frame, so the music player's 0.5 s Update never comes round. So
+	// the components are faded here instead, and Escape below holds its pause back for as long as the fade — a paused
+	// game has no sound at all (FAudioDevice::HandlePause pauses every source that is not a UI sound), so that wait is
+	// what lets the fade be heard, now under the score screen rather than under a black hold.
 	if (AWasamiMusicPlayer* Music = MusicPlayer(MusicPlayerSource))
 	{
 		Music->bFadeOut = true;
 		Music->FadeAllMusicOut(EscapeMusicFade);
 	}
-	// And the hospital's own portal: its Trigger_Escape calls Escape at once (06_Hospital @66935), which pauses the game,
-	// saves and puts up the score screen, as the hotel's EndTrigger does. Here it comes EscapeMusicFade on, so the level
-	// is counted as done at the trigger, not at the screen: the counter stops now and the time saved is the time played.
+	// And the hospital's own portal: its Trigger_Escape calls Escape at once (06_Hospital @66935), which saves and puts
+	// up the score screen, as the hotel's EndTrigger does. It is called at once here too (2026-09-23, the user's answer
+	// 即時), so nothing black stands between the portal and the screen. The counter is stopped first, so the time saved
+	// is the time played to the portal.
 	if (AWasamiGameMode* GameMode = GetMode())
 	{
 		GameMode->PauseTimeCounter();
+		GameMode->Escape(EscapeMusicFade);
 	}
-	After(EscapeMusicFade, [this]()
-	{
-		if (AWasamiGameMode* GameMode = GetMode())
-		{
-			GameMode->Escape();
-		}
-	});
 }

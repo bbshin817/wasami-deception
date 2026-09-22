@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 2311ca0
 started: 2026-09-23 04:34
-updated: 2026-09-23 04:34
+updated: 2026-09-23 05:35
 ---
 
 # 項目 49 脱出のスコア画面を本家どおり即時に出す
@@ -23,21 +23,25 @@ updated: 2026-09-23 04:34
 
 ## 計画
 
-- [ ] 1. 脱出を即時にし、曲のフェードが一時停止の下でも聞こえるようにする（C++） ← 次
-  - 変更予定: `Source/wasami_deception/WasamiZone2Flow.cpp`・`.h`（`Escape` の `After` の待ち・`EscapeMusicFade` の doc・`static_assert`）、要るなら `Source/wasami_deception/WasamiMusicPlayer.cpp`・`.h`（一時停止の下で鳴らす扱い）、`Source/wasami_deception/Tests/WasamiZoneFlowTests.cpp`（`Wasami.ZoneFlow.Escape`）
-  - `python Tools/editor_cycle.py` でビルドし、`Wasami.ZoneFlow.*` を通す
-- [ ] 2. PIE で脱出を録って確かめ、記録を直す
+- [x] 1. 脱出を即時にした（C++）。`Escape(PauseDelay)` が一時停止だけを遅らせ、保存と画面は引き金のフレームに来る。ビルド通過、`Wasami` 157 件で関係するものは全部成功
+- [ ] 2. PIE で脱出を録って確かめ、記録を直す ← 次
   - 変更予定: `.claude/implementation-records/10-audio.md`・`11-stage-zone2.md`・`13-*`（触れた分だけ）、`.claude/roadmap.md`（項目 49 を完了に）、この進捗記録を削除
   - 撮り方は実装記録 13 の脱出の録り（`Tools/pie.py` + `Tools/video_probe.py`）。黒い間（触れた時刻 → スコア画面が出た時刻）と曲の波を測る
 
 ## 次にやること
 
-ステップ 1。`WasamiZone2Flow.cpp:488` の `After(EscapeMusicFade, …)` を外して `GetMode()->Escape()` をその場で呼ぶ。**ただし `AWasamiGameMode::Escape` は最初に `SetGamePaused(true)` する**（`WasamiGameMode.cpp:491`）ので、そのままだと `FAudioDevice::HandlePause` が UI 以外の音源を止め、直前に始めた `FadeAllMusicOut(EscapeMusicFade)` のフェードが聞こえないまま曲が固まるおそれがある（完了の条件 2 に反する）。一時停止の下でも鳴らす手（音のコンポーネントを UI サウンド扱いにする、など）を実装時に決め、PIE の波で確かめる。
+ステップ 2。PIE で脱出を録って確かめる。`python Tools/playthrough.py run z2_escape --setup --record escape_immediate.mkv --shots`（13 記録の脱出の録り。セーブのチェックポイント 10 から）で撮り、`Tools/video_probe.py` で 2 つ測る:
+
+1. **黒い間が無いこと** — ポータルの箱に触れたコマからスコア画面（赤・`You Escaped!`）が出始めるコマまで。前は 1.026 s（11 記録の「脱出の間合い」）。0.25 s の黒のフェードの下でスコア画面が同時に立ち上がるはずなので、黒だけの間は 0.25 s 前後まで縮む。
+2. **曲が切れずに引いていること** — 触れてから 1 s の波。`video_probe.py series` で振幅が段々に落ちて 0 になり、途中で急に 0 にならないこと。
+
+測ったら 11 記録の「脱出の間合い」（項目 35 の測り）と 10 記録の検証を新しい数字で置き換え、13 記録の `Wasami.LevelClear` の録りの記述も要れば直す。`.claude/roadmap.md` の項目 49 を完了にし、この進捗記録を削除して最後のコミットに含める。
 
 ## 決定事項
 
-- 2026-09-23: 本家どおり「触れた所で `Escape`」にする — 本家 `06_Hospital` の `Trigger_Escape` が待たずに `Escape` を呼ぶ（`WasamiZone2Flow.cpp:481` のコメントの @66935）。いまの 1 s の待ちは本作が曲のフェードを聞かせるために足したもので、ユーザーの回答「即時」で不要になった。
-- 2026-09-23: 曲のフェードは残す — 2026-09-21 のユーザーの回答「曲は聞こえる形で引いたまま」。フェードを聞かせる置き場が「黒い間」から「スコア画面の下」に変わるだけ。
+- 2026-09-23: **遅らせるのは一時停止だけにした**（`AWasamiGameMode::Escape(float PauseDelay = 0.f)`）。止めたゲームは UI でない音を 1 つも鳴らさない（`FAudioDevice::HandlePause`）ので、曲を聞かせるには「音を UI 扱いにする」か「その間は止めない」かの二択。前者は `bIsUISound` が再生を始めるときにしか `FActiveSound` に写らず、鳴っている曲には後から効かない（効かせるには鳴らし直すしかなく、曲が頭に戻る）。そこで後者にし、**保存とスコア画面は引き金のフレームのまま**・一時停止だけを `EscapeMusicFade`（1 s）後にした。その 1 s は入力が切れていて敵も消えているので、動くものは残っていない。
+- 2026-09-23: 待ちの間に NEXT が押されたときは止め直さない（`PauseAfterEscape` が `bLevelFinished` を見る。`FinishedLevel` 側でもタイマーを消す）。`FinishedLevel` は止めを解く側なので、後から止めると画面が固まる。
+- 2026-09-23: `static_assert`（`EscapeMusicFade == AWasamiMusicPlayer::FadeDuration`）は残した。曲のフェードの長さ＝遅らせる長さなので縛りの意味は変わらない。文言だけ直した。
 
 ## 要確認（ユーザー）
 
@@ -45,11 +49,13 @@ updated: 2026-09-23 04:34
 
 ## 再開時の注意
 
-- 長時間処理はまだ無い。C++ を変えるので、ステップ 1 の実装後に `python Tools/editor_cycle.py`（エディタを閉じてビルドして開き直す。完了は起動後に `Tools/ue_remote.py` が答えること）。
+- 走らせたままの処理は無い。エディタは開き直して応答する。
+- **テストの回し方**（この PC では素の `UnrealEditor-Cmd.exe` が終了コード 255 ですぐ落ちる）: `python Tools/console_session.py "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" "<uproject>" -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI -NoSplash -ABSLOG="<絶対パス>.log" --wait UnrealEditor-Cmd.exe` を**エディタを閉じてから**回し、`tasklist` から消えるのを待ってログの `Test Completed` を読む。`-NoSound` は付けない（症状索引）。
 - 本家の根拠: `pak_reference_2/_bytecode/…/06_Hospital.txt` の `Trigger_Escape`（@66935）、`06_Hospital_Zone_02.txt` の脱出（`Postmaze_Trigger_Ambulance` @1511・音楽 @1423）。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（20 件。02・11 記録のハッシュを更新）
+- C++ ビルド: 成功（`Tools/editor_cycle.py`、12 手順）
+- テスト: `Automation RunTests Wasami` を 157 件。`Wasami.ZoneFlow.Escape`・`Zone2`・`Wasami.GameFlow.*` はすべて成功。落ちた 4 件（`Defib.Charge`・`Enemy.Actor.Chase06`・`ZoneBarrier.Actor`・`ZoneFlow.Zone1`）は `-NullRHI` で粒子が動かない既知のもの（症状索引の 2 件）で、今回の変更とは関係しない
+- エディタでの確認（PIE の録り）: 未実行（ステップ 2）
