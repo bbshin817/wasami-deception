@@ -89,6 +89,8 @@ TRANSFORM_CHANNELS = {
     "Rotation": ("Rotation.X", 0.0), "Rotation[1]": ("Rotation.Y", 0.0), "Rotation[2]": ("Rotation.Z", 0.0),
     "Scale": ("Scale.X", 1.0), "Scale[1]": ("Scale.Y", 1.0), "Scale[2]": ("Scale.Z", 1.0),
 }
+# How far a transform channel's keys have to spread for the binding to count as moved (movable).
+MOVED_EPSILON = 0.01
 AUDIO_CHANNELS = {"SoundVolume": ("Volume", 1.0), "PitchMultiplier": ("Pitch", 1.0)}
 CURVE_CHANNELS = {"FloatCurve": ("None", None)}   # a float property's and a fade's, without a default
 PARTICLE_CHANNELS = {"ParticleKeys": ("None", None)}
@@ -545,6 +547,38 @@ class _Builder:
             rate.set_fixed_play_rate(left / seconds)
             params.set_editor_property("play_rate", rate)
 
+    # ------------------------------------------------------------------------------------------- mobility
+    def moves(self, pkg, paths_):
+        """Whether the binding's transform tracks change its transform. Some bindings the original keys once, at the
+        very transform the level places them at (Zone 2's holding cell), and those are not moved at all."""
+        per_channel = {}
+        for path in paths_:
+            export = pkg.get(path)
+            if export["class"] != "MovieScene3DTransformTrack":
+                continue
+            for s in export["props"].get("Sections", []):
+                props = pkg.get(s)["props"]
+                for name in TRANSFORM_CHANNELS:
+                    per_channel.setdefault(name, []).extend(
+                        float(v["Value"]) for v in (props.get(name) or {}).get("Values", []))
+        return any(max(v) - min(v) > MOVED_EPSILON for v in per_channel.values() if v)
+
+    def movable(self, obj):
+        """What a sequence moves is set Movable. A sequence does move a Static component, but the renderer is told its
+        transform never changes and caches it (baked lighting, its place in the static draw lists), which is the one
+        lead left for Zone 1's ambulance looking doubled on Metal. The original's levels leave three moved ones Static,
+        which UE 4.24 tolerated: Zone 1's taking-off ambulance, Zone 2's cell door and its wall switch. Whatever hangs
+        under it goes Movable too, which UE requires of a Movable component's children."""
+        comp = obj.get_editor_property("root_component") if isinstance(obj, unreal.Actor) else obj
+        if not isinstance(comp, unreal.SceneComponent):
+            return
+        for i, c in enumerate([comp] + list(comp.get_children_components(True))):
+            if c.get_editor_property("mobility") != unreal.ComponentMobility.MOVABLE:
+                c.set_mobility(unreal.ComponentMobility.MOVABLE)
+                owner = c.get_owner()
+                label = owner.get_actor_label() if owner else c.get_name()
+                self.result["made_movable"].append(label if i == 0 else "%s / %s" % (label, c.get_name()))
+
     def track(self, pkg, owner, path):
         """One track of the package onto `owner` (a binding proxy, or the sequence for a master track)."""
         export = pkg.get(path)
@@ -708,7 +742,7 @@ class _Builder:
         possessables = {p["Guid"]: p for p in ms.get("Possessables", [])}
         references = (pkg.asset.get("BindingReferences") or {}).get("BindingIdToReferences", {})
         order = sorted(possessables.values(), key=lambda p: p["ParentGuid"] != "0" * 32)   # parents first
-        bindings = {}
+        bindings, targets = {}, {}
         for p in order:
             target_object = resolve(p, references.get(p["Guid"], {}).get("References", [])) if resolve else None
             if target_object is None:
@@ -717,12 +751,15 @@ class _Builder:
             proxy = seq.add_possessable(target_object)
             proxy.set_display_name(p["Name"])
             bindings[p["Guid"]] = proxy
+            targets[p["Guid"]] = target_object
             self.result["bindings"] += 1
         for ob in ms.get("ObjectBindings", []):
             proxy = bindings.get(ob["ObjectGuid"])
             if proxy is None:
                 continue
             tracks = ob.get("Tracks", [])
+            if self.moves(pkg, tracks):
+                self.movable(targets[ob["ObjectGuid"]])
             # A camera anim of the binding's is added to its transform track, so it is read before the tracks go in.
             self.offset = next((self.camera_anim(pkg, p) for p in tracks
                                 if pkg.get(p)["class"] == "MovieSceneCameraAnimTrack"), None)
@@ -738,8 +775,8 @@ class _Builder:
 
 
 def _new_result():
-    return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "sounds": 0, "sound_cues": 0,
-            "attenuations": 0,
+    return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "made_movable": [],
+            "sounds": 0, "sound_cues": 0, "attenuations": 0,
             "camera_shakes": 0, "camera_anims": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
             "unlinked_players": [], "skipped_tracks": [], "missing_particles": []}
 
