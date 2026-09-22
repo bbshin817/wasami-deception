@@ -526,7 +526,7 @@
 - 根拠: `pak_reference_2/_bytecode/DDeception/Content/UI/Main/TitleScreen/UMG_TitleScreen.txt`（@6598・@10519）、`pak_reference_2/DDeception/Content/Audio/DD_-_Dark_Deception_-_Theme_v1_3.ogg`、`Source/wasami_deception/WasamiTitleScreenWidget.cpp`、実装記録 14。
 - 依存: なし。
 - 規模: 1
-- 状態: **未着手**（**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で確定。最終目標の「タイトル画面は WebGL 版に倣う」〈= 本家の旧版〉より指摘を優先する）
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-title-theme-music`）**（**2026-09-22 のユーザーの回答「曲も絵も最新版に寄せる」**で確定。最終目標の「タイトル画面は WebGL 版に倣う」〈= 本家の旧版〉より指摘を優先する）。最新版の値は `CreateSound2D(Theme_v1_3, 0.6, 1.0)` → `FadeIn(2, 0.5)` で、本作と違うのは曲・音量（1.0 → 0.6）・ピッチ（0.5 → 1.0）の 3 つ（フェードインは同じ）。
 
 ### 44. タイトル画面の筆の跡と、顔の左の境界を本家のものにする
 
