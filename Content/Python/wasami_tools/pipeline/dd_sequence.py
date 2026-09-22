@@ -74,6 +74,8 @@ NURSE_ANIMS = {
     "nurse_cloak": ("Idle", False),
 }
 NURSE_ANIMS.update({"Nurse_Hospital_Zone01_Event_%d" % n: ("Idle", False) for n in range(40, 48)})
+# The stand-in the gaps in a nurse's animation track are filled with (fill_rest_pose).
+FILL_CLIP = "Idle"
 # The stand-ins that are one action rather than a cycle. A section the original holds a single take in slows these to
 # fill it once instead of repeating the action (play_rate below); the cycles loop, as the original's own cycles do.
 ONE_SHOT_CLIPS = {"Chase_Charge", "Chase_VaultRoll"}
@@ -253,6 +255,8 @@ class _Builder:
         self.lengths = {}
         # What the binding being written adds to its transform track, from its camera anim track (camera_anim).
         self.offset = None
+        # The sequence's playback range in ticks, which fill_rest_pose measures its gaps against.
+        self.playback = None
 
     # ---------------------------------------------------------------------------------------------- assets
     def sound(self, object_path):
@@ -298,12 +302,16 @@ class _Builder:
             raise ValueError("no stand-in for the nurse animation %s (see NURSE_ANIMS and "
                              ".claude/references/enemy-wasami-motions.md)" % name)
         clip, reverse = NURSE_ANIMS[name]
-        if clip not in self.clips:
-            asset = unreal.load_asset(WASAMI_CLIP % clip)
+        return self.wasami_clip(clip), reverse
+
+    def wasami_clip(self, name):
+        """One of the enemy Wasami's clips, by its name (WASAMI_CLIP)."""
+        if name not in self.clips:
+            asset = unreal.load_asset(WASAMI_CLIP % name)
             if asset is None:
-                raise RuntimeError("%s is missing: run WasamiDDTools.import_wasami_enemy" % (WASAMI_CLIP % clip))
-            self.clips[clip] = asset
-        return self.clips[clip], reverse
+                raise RuntimeError("%s is missing: run WasamiDDTools.import_wasami_enemy" % (WASAMI_CLIP % name))
+            self.clips[name] = asset
+        return self.clips[name]
 
     def nurse_length(self, object_path):
         """The nurse animation's own length (SequenceLength), which tells a section that loops a cycle from one that
@@ -547,6 +555,55 @@ class _Builder:
             rate.set_fixed_play_rate(left / seconds)
             params.set_editor_property("play_rate", rate)
 
+    # ------------------------------------------------------------------------------------------ the rest pose
+    def span(self, props):
+        """A section's [start, end) in ticks and whether it restores state when it ends. An open bound reaches the
+        end of the playback range, which is as far as anything is evaluated. Every mode but KeepState restores:
+        BaseEngine.ini gives MovieSceneSequence DefaultCompletionMode=RestoreState, which is what ProjectDefault
+        (the mode of all but one of these sections) resolves to."""
+        rng = props.get("SectionRange") or {}
+        lower, upper = (rng.get("lower") or {"type": "Open"}), (rng.get("upper") or {"type": "Open"})
+        start = self.playback[0] if lower.get("type") == "Open" else int(lower["value"])
+        end = (self.playback[1] if upper.get("type") == "Open"
+               else int(upper["value"]) + (upper.get("type") == "Inclusive"))
+        mode = (props.get("EvalOptions") or {}).get("CompletionMode", "EMovieSceneCompletionMode::ProjectDefault")
+        return start, end, mode.split("::")[-1] != "KeepState"
+
+    def fill_rest_pose(self, track, spans):
+        """Fills the stretches of a nurse's animation track that would show the stand-in's rest pose with its idle.
+
+        The original's nurses stand naturally wherever nothing animates them: Zone 2's SkeletalMeshActors have no
+        AnimClass and their rest pose is an upright stand, and the cell's nurse has an idle Anim Blueprint
+        (...AnimBlueprint_lookat_cutscene). The enemy Wasami standing in for them rests with its arms out to the
+        sides (restpose), which is what a reviewer saw on the capture scene's terrace over the 17.2 s before that
+        track's first section (item 42).
+
+        That rest pose shows where nothing has posed the mesh yet - before the first section - and after a section
+        that restores state when it ends (span). After a KeepState section the last pose stays instead, which is the
+        original's own look (measured in PIE: the capture nurse holds the punch's last pose to the end of the scene),
+        so those gaps are left as they are. The fills themselves are KeepState, so one cannot end into a rest pose.
+        """
+        if not spans or self.playback is None:
+            return
+        start, end = self.playback
+        gaps, cursor, restores = [], start, True
+        for lower, upper, mode in sorted(spans):
+            if lower > cursor and restores:
+                gaps.append((cursor, lower))
+            if upper > cursor:
+                cursor, restores = upper, mode
+        if cursor < end and restores:
+            gaps.append((cursor, end))
+        for lower, upper in gaps:
+            section = track.add_section()
+            section.set_range(lower, upper)
+            params = section.get_editor_property("params")
+            params.set_editor_property("animation", self.wasami_clip(FILL_CLIP))
+            section.set_editor_property("params", params)
+            section.set_completion_mode(unreal.MovieSceneCompletionMode.KEEP_STATE)
+            self.result["sections"] += 1
+            self.result["idle_fills"] += 1
+
     # ------------------------------------------------------------------------------------------- mobility
     def moves(self, pkg, paths_):
         """Whether the binding's transform tracks change its transform. Some bindings the original keys once, at the
@@ -629,8 +686,10 @@ class _Builder:
                 self.channels(section, sp, AUDIO_CHANNELS)
         elif cls == "MovieSceneSkeletalAnimationTrack":
             track = add(unreal.MovieSceneSkeletalAnimationTrack)
+            spans = []
             for s in props.get("AnimationSections", []):
                 sec = pkg.get(s)
+                spans.append(self.span(sec["props"]))
                 section = self.section(track, sec, {"Params"})
                 p = sec["props"]["Params"]
                 unknown = set(p) - ANIMATION_KEYS
@@ -647,6 +706,7 @@ class _Builder:
                 params.set_editor_property("reverse", reverse)
                 self.play_rate(params, pkg, sec, p, clip)
                 section.set_editor_property("params", params)
+            self.fill_rest_pose(track, spans)
         elif cls == "MovieSceneVisibilityTrack":
             track = add(unreal.MovieSceneVisibilityTrack)
             track.set_property_name_and_path(props["PropertyName"], props["PropertyPath"])
@@ -738,6 +798,7 @@ class _Builder:
             raise ValueError("%s: playback range %s" % (rel, rng))
         seq.set_playback_start(int(rng["lower"]["value"]))
         seq.set_playback_end(int(rng["upper"]["value"]))
+        self.playback = (int(rng["lower"]["value"]), int(rng["upper"]["value"]))
 
         possessables = {p["Guid"]: p for p in ms.get("Possessables", [])}
         references = (pkg.asset.get("BindingReferences") or {}).get("BindingIdToReferences", {})
@@ -777,7 +838,7 @@ class _Builder:
 def _new_result():
     return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "made_movable": [],
             "sounds": 0, "sound_cues": 0, "attenuations": 0,
-            "camera_shakes": 0, "camera_anims": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
+            "idle_fills": 0, "camera_shakes": 0, "camera_anims": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
             "unlinked_players": [], "skipped_tracks": [], "missing_particles": []}
 
 
