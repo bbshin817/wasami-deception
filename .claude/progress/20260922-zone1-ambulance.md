@@ -32,7 +32,9 @@ updated: 2026-09-23
 
 ## 次にやること
 
-ステップ 5（**2026-09-23 に `RunUAT.bat BuildCookRun` の許可が出たので進められる**。**パッケージは 1 回作れば項目 39・41・43 の 3 つを同じもので確かめられる**（3 つのうち**最初に動いた反復が 1 回だけ作り、あとの 2 つは同じものを使う**。`Saved/StagedBuilds` の中身が今の `main` より古ければ作り直す）。項目 47（マスターの用途フラグ）は材質を直すので、その後にもう 1 回作り、項目 52 はそれを使う。）:
+ステップ 5（**2026-09-23 に `RunUAT.bat BuildCookRun` の許可が出たので進められる**。**パッケージは 2026-09-23 に項目 39 の反復が `d348ce5` から作り直してある**（`Saved/Archive/Windows/wasami_deception.exe`・`Saved/StagedBuilds/Windows`。クックは 0 エラー、`/game` 1147 件）。**`main` がそれより進んでいなければ作り直さずにそのまま使う**（`git log --oneline d348ce5..HEAD` でアセットやコードが変わっていないか見る）。項目 47（マスターの用途フラグ）は材質を直すので、その後にもう 1 回作り、項目 52 はそれを使う。
+
+パッケージ版の絵の撮り方（項目 39 で通した）: 画面への入力は要らない。`Tools/game_perf.py` の `launch(map, commands, timeout)` が対話デスクトップで起動して終わりを待つので、`-ExecCmds` を `t.MaxFPS 60` + `Wasami.Delay <秒> <コマンド>` の並びにし、節目ごとに `Wasami.Status`（ログに 1 行）と `Shot showui`（絵）を置いて、最後に `quit`。絵は `Saved/Archive/Windows/wasami_deception/Saved/Screenshots/Windows/ScreenShot*.png`、ログは同じ `Saved/Logs/wasami_deception.log`。）:
 
 1. `python Tools/editor_cycle.py --quit-only` → `.claude/guides/distribution.md` の「パッケージ」の `RunUAT.bat BuildCookRun` → 走らせる → `python Tools/editor_cycle.py --no-quit --no-build`。
 2. `python Intermediate/Overnight/probe_ambulance.py ride` を 2 回走らせ、**どちらも屋根に乗ってから読み込み画面まで運ばれる**ことを確かめる（直す前は 3 回とも落ちていた）。

@@ -458,7 +458,8 @@
   grep -rn "/Engine/" Content/Python/wasami_tools/ Config/*.ini
   ```
 
-- 出典: 2026-09-22 の有人セッション（作業一覧の項目 39）。**直してある**が、**パッケージ版での見た目の確かめは未了**（Claude が `RunUAT.bat BuildCookRun` を走らせる許可を得られていない。項目 39 の要確認）。
+- 出典: 2026-09-22 の有人セッション（作業一覧の項目 39）。**直してあり、2026-09-23 にパッケージ版で確かめた**（`main` の d348ce5 から作り直した Windows のパッケージ。`.utoc` に `RobotoTiny.uasset`・`SphereRenderHeightMap.uasset`・`M_WasamiCaptureBlack.uasset` が入り、`BlackUnlitMaterial.uasset` は無い）: 捕獲 4 種とも別室の背景は**真っ黒**（四隅と下端の画素が (0,0,0)。グリッドは出ない）、死亡画面のヒントと SAVING PROGRESS の字も丸も出る。
+- 確かめ方（パッケージ版で捕獲と死亡画面を見る）: 画面への入力は要らない。`wasami_deception.exe L_Hospital_Zone1 -ExecCmds="t.MaxFPS 60, Wasami.Lives 6, Wasami.Delay 4 Wasami.Capture N, Wasami.Delay 4.6 Shot showui, …, Wasami.Delay 12 quit"`（`Tools/game_perf.py` の `launch` が対話デスクトップで起動して終わりを待つ。`Shot showui` の絵は `Saved/Archive/Windows/wasami_deception/Saved/Screenshots/Windows`）。`Wasami.Capture` は 0〜2 がホテル型（3.5 s で死亡画面）、3 が顔（1.15 s）。**捕獲はゲームを止めない**ので別室は 0.3〜2 s の間に撮る。
 
 ### `Wasami.Settings` でパッケージした本編が落ちる（`Assertion failed: IsInAudioThread()`）
 
