@@ -2,13 +2,15 @@
 (its PNG) and one material instance per material of the export, from the pipeline data written by
 Tools/dd/prepare_stage.py. Everything lands under /Game/DD, mirroring the original's own /Game tree.
 
-The original's master materials are rebuilt as five of ours (their graphs are cooked away; only the parameters and the
+The original's master materials are rebuilt as seven of ours (their graphs are cooked away; only the parameters and the
 material settings survive, and for some the compiled shaders, Tools/dd/cooked_shaders.py):
-  M_DD_Substance  MM_Main_Substance and its Emissive / AlphaColorMask / Translucent / Glass variants, and anything else
+  M_DD_Substance  MM_Main_Substance and its Emissive / AlphaColorMask / Translucent variants, and anything else
   M_DD_Decal      M_01_Hotel_Decals — a deferred decal material, which the level puts on plane meshes (mesh decals)
   M_DD_Unlit      MM_Lit — an unlit colour times a multiplier
   M_DD_Metal      MM_Main_Metal — the altar's brass, read back from its compiled shaders
   M_DD_SubstanceFresnel  MM_Main_Substance_Fresnel — the ring pieces' and the secret file's rim, read back the same way
+  M_DD_Glass      MM_Main_Substance_Glass and its _ColorMask variant — the doors' and the ambulances' glass, the same way
+  M_DD_GlassSewerage  M_Glass (ThirdParty/Sewerage) — the poster frames' and the tiles' glass, the same way
 An instance of m_crystal (the altar's orb) is not one of ours: dd_specials makes it with the special shards' crystals.
 """
 import os
@@ -28,7 +30,8 @@ VERSION_TAG = "WasamiGraphVersion"
 
 # Which of our masters each master of the export maps to (prepare_stage.py's `master`).
 MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT, "metal": paths.MASTER_METAL,
-             "fresnel": paths.MASTER_FRESNEL}
+             "fresnel": paths.MASTER_FRESNEL, "glass": paths.MASTER_GLASS, "glassmask": paths.MASTER_GLASS,
+             "sewerglass": paths.MASTER_GLASS_SEWER}
 # The export's texture kinds → our texture parameters, per master.
 TEX_PARAM = {
     paths.MASTER_SUBSTANCE: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed", "emissive": "Emissive"},
@@ -36,6 +39,8 @@ TEX_PARAM = {
     paths.MASTER_UNLIT: {},
     paths.MASTER_METAL: {"normal": "Normal"},
     paths.MASTER_FRESNEL: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed"},
+    paths.MASTER_GLASS: {"albedo": "Albedo"},
+    paths.MASTER_GLASS_SEWER: {"normal": "Normal"},
 }
 # The export's parameters we can carry over. The rest (Normal Flatness, RefractionDepthBias, Emissive Multiplier,
 # Fade Length (S) …) belong to graph parts that cook removed, so they are counted and skipped, not guessed.
@@ -46,6 +51,8 @@ SCALARS = {
     paths.MASTER_METAL: ("Roughness", "Normal Flatness", "Hover Intensity"),
     paths.MASTER_FRESNEL: ("Roughness Power", "Metallic Power", "Normal Flatness", "Fresnel ExponentIn",
                            "BaseReflectFractionIn"),
+    paths.MASTER_GLASS: (),
+    paths.MASTER_GLASS_SEWER: ("Fresnel Power", "Max Opacity", "Min Opacity", "Metallic", "spec", "Roughness"),
 }
 VECTORS = {
     paths.MASTER_SUBSTANCE: ("Emissive Color Multiplier", "Mask Color"),
@@ -53,6 +60,8 @@ VECTORS = {
     paths.MASTER_UNLIT: ("Light Color",),
     paths.MASTER_METAL: ("Hover Color",),
     paths.MASTER_FRESNEL: ("Fresnel Setting",),
+    paths.MASTER_GLASS: ("MaskedColor",),
+    paths.MASTER_GLASS_SEWER: ("diffuse color", "diffuse2 color"),
 }
 BLEND = {
     None: unreal.BlendMode.BLEND_OPAQUE,
@@ -149,7 +158,8 @@ def ensure_masters():
     _, packed_changed = ensure_default_packed()
     for asset_path, build in ((paths.MASTER_SUBSTANCE, _build_substance), (paths.MASTER_DECAL, _build_decal),
                               (paths.MASTER_UNLIT, _build_unlit), (paths.MASTER_METAL, _build_metal),
-                              (paths.MASTER_FRESNEL, _build_substance_fresnel)):
+                              (paths.MASTER_FRESNEL, _build_substance_fresnel), (paths.MASTER_GLASS, _build_glass),
+                              (paths.MASTER_GLASS_SEWER, _build_glass_sewer)):
         mat, needs_build = _material(asset_path)
         if needs_build:
             build(mat)
@@ -194,6 +204,18 @@ class _Graph:
         e = self.node(unreal.MaterialExpressionVectorParameter, x, y)
         e.set_editor_property("parameter_name", param)
         e.set_editor_property("default_value", unreal.LinearColor(*value))
+        return e
+
+    def const(self, value, x, y):
+        e = self.node(unreal.MaterialExpressionConstant, x, y)
+        e.set_editor_property("r", value)
+        return e
+
+    def clamp(self, a, a_pin, x, y):
+        """Clamp to 0 – 1 (the node's defaults): what the original's shaders do with their saturating instructions.
+        Its first input has no name of its own, so it is connected by the empty one (as Min and Max are not)."""
+        e = self.node(unreal.MaterialExpressionClamp, x, y)
+        self.link(a, a_pin, e, "")
         return e
 
     def const3(self, value, x, y):
@@ -369,6 +391,82 @@ def _build_substance_fresnel(mat):
     g.out(rim, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 
+def _build_glass(mat):
+    """MM_Main_Substance_Glass and its _ColorMask variant, as their cooked base pass and distortion pixel shaders
+    compute them (Tools/dd/cooked_shaders.py "MasterMaterials/MM_Main_Substance_Glass"): metallic 0.1, specular 1,
+    roughness 0, no normal map, and over Fresnel (exponent 1.5, base reflect fraction 0) an opacity of
+    Lerp(0.008, 0.9) — all but invisible head on, nearly solid edge on, which is what makes this glass see-through —
+    and an index of refraction of Lerp(1.05, 0.95). Its lighting is Surface TranslucencyVolume, as the base pass's
+    reads of the translucency volume, the reflection captures and EnvBRDFApprox show.
+
+    The base colour is the constant (0.739583, 0.947552, 1.0) of MM_Main_Substance_Glass, or, with UseMaskColor (the
+    _ColorMask variant), Albedo tinted by MaskedColor over Albedo's alpha, as M_DD_Substance's Mask Color is.
+
+    Not reproduced: `RefractionDepthBias` (a material property UE compiles as a parameter of the same name; every
+    instance leaves it at the default 0, so it is read past with the other parameters cook removed)."""
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    mat.set_editor_property("refraction_method", unreal.RefractionMode.RM_INDEX_OF_REFRACTION)
+    g = _Graph(mat, checked=True)
+    white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
+
+    albedo = g.texture("Albedo", white, unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -1400, -700)
+    masked_color = g.vector("MaskedColor", (0.156516, 0.786076, 0.854167, 0.0), -1400, -470)
+    white3 = g.const3((1.0, 1.0, 1.0, 1.0), -1400, -350)
+    masked = g.lerp(white3, "", masked_color, "", albedo, "A", -1100, -450)
+    tinted = g.multiply(albedo, "RGB", masked, "", -850, -550)
+    plain = g.const3((0.739583, 0.947552, 1.0, 1.0), -850, -330)
+    g.out(g.switch("UseMaskColor", tinted, "", plain, "", -600, -450), "", unreal.MaterialProperty.MP_BASE_COLOR)
+
+    g.out(g.const(0.1, -600, -200), "", unreal.MaterialProperty.MP_METALLIC)
+    g.out(g.const(1.0, -600, -100), "", unreal.MaterialProperty.MP_SPECULAR)
+    g.out(g.const(0.0, -600, 0), "", unreal.MaterialProperty.MP_ROUGHNESS)
+
+    fresnel = g.node(unreal.MaterialExpressionFresnel, -1100, 150)
+    fresnel.set_editor_property("exponent", 1.5)
+    fresnel.set_editor_property("base_reflect_fraction", 0.0)
+    opacity = g.lerp(g.const(0.008, -1100, 330), "", g.const(0.9, -1100, 430), "", fresnel, "", -700, 200)
+    g.out(opacity, "", unreal.MaterialProperty.MP_OPACITY)
+    ior = g.lerp(g.const(1.05, -1100, 560), "", g.const(0.95, -1100, 660), "", fresnel, "", -700, 500)
+    g.out(ior, "", unreal.MaterialProperty.MP_REFRACTION)
+
+
+def _build_glass_sewer(mat):
+    """ThirdParty/Sewerage's M_Glass, as its cooked base pass pixel shader computes it (Tools/dd/cooked_shaders.py
+    "Sewerage/Materials/BaseMaterial/M_Glass."): over Fresnel (exponent the `Fresnel Power` parameter, base reflect
+    fraction 0.04), the base colour is Lerp(`diffuse color`, `diffuse2 color`) and the opacity Lerp(`Min Opacity`,
+    `Max Opacity`) clamped, as the shader's saturating instructions do (an instance may set Max Opacity above 1).
+    Metallic, specular (`spec`, clamped the same way — its default is 30) and roughness are parameters, and the
+    Normal texture parameter is used as it is. Its lighting is Surface TranslucencyVolume, as MM_Main_Substance_Glass.
+
+    Not reproduced: `Dirt Mask`, `Dirt str`, `Dirt color`, `HDR`, `HDR str` (cook removed them — they are in no
+    compiled shader of this material, so they do nothing in the original either) and `RefractionDepthBias` (this
+    material has no distortion shader at all: its glass does not refract)."""
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+    g = _Graph(mat, checked=True)
+    flat = unreal.load_asset("/Engine/EngineMaterials/DefaultNormal")
+
+    fresnel = g.node(unreal.MaterialExpressionFresnel, -800, -650)
+    g.link(g.scalar("Fresnel Power", 1.5, -1100, -700), "", fresnel, "ExponentIn")
+    g.link(g.const(0.04, -1100, -580), "", fresnel, "BaseReflectFractionIn")
+
+    diffuse = g.vector("diffuse color", (0.05098, 0.066667, 0.07451, 0.0), -1100, -450)
+    diffuse2 = g.vector("diffuse2 color", (0.05098, 0.066667, 0.07451, 0.0), -1100, -280)
+    g.out(g.lerp(diffuse, "RGB", diffuse2, "RGB", fresnel, "", -600, -400), "", unreal.MaterialProperty.MP_BASE_COLOR)
+
+    opacity = g.lerp(g.scalar("Min Opacity", 0.35, -1100, -120), "", g.scalar("Max Opacity", 0.9, -1100, -20), "",
+                     fresnel, "", -800, -80)
+    g.out(g.clamp(opacity, "", -550, -80), "", unreal.MaterialProperty.MP_OPACITY)
+
+    g.out(g.scalar("Metallic", 0.1, -600, 120), "", unreal.MaterialProperty.MP_METALLIC)
+    g.out(g.clamp(g.scalar("spec", 30.0, -1100, 230), "", -600, 230), "", unreal.MaterialProperty.MP_SPECULAR)
+    g.out(g.scalar("Roughness", 0.1, -600, 350), "", unreal.MaterialProperty.MP_ROUGHNESS)
+
+    normal = g.texture("Normal", flat, unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL, -1100, 500)
+    g.out(normal, "RGB", unreal.MaterialProperty.MP_NORMAL)
+
+
 # ------------------------------------------------------------------------------------------------ meshes
 def import_mesh(entry, nanite):
     ensure_mesh_pipeline()
@@ -517,6 +615,7 @@ def make_material(m, textures, skipped=None):
             MEL.set_material_instance_texture_parameter_value(mic, param, tex)
     if master_path == paths.MASTER_SUBSTANCE:
         MEL.set_material_instance_static_switch_parameter_value(mic, "UseEmissive", "emissive" in (m.get("kinds") or {}))
+    if master_path in (paths.MASTER_SUBSTANCE, paths.MASTER_GLASS):
         MEL.set_material_instance_static_switch_parameter_value(mic, "UseMaskColor", m["master"] in ("alphamask", "glassmask"))
     for key, value in (m.get("scalars") or {}).items():
         if key in SCALARS[master_path]:

@@ -45,7 +45,9 @@ MASTERS = {
     "/Game/Materials/MasterMaterials/MM_Main_Substance_Emissive": "emissive",
     "/Game/Materials/MasterMaterials/MM_Main_Substance_AlphaColorMask": "alphamask",
     "/Game/Materials/MasterMaterials/MM_Main_Substance_Translucent": "translucent",
+    "/Game/Materials/MasterMaterials/MM_Main_Substance_Glass": "glass",
     "/Game/Materials/MasterMaterials/MM_Main_Substance_Glass_ColorMask": "glassmask",
+    "/Game/ThirdParty/Sewerage/Materials/BaseMaterial/M_Glass": "sewerglass",
     "/Game/Materials/01_Hotel/M_01_Hotel_Decals": "decal",
     "/Game/Materials/MasterMaterials/MM_Lit": "lit",
     "/Game/Materials/MasterMaterials/MM_Main_Metal": "metal",
@@ -447,8 +449,10 @@ def resolve_material(ex, object_path, out, problems):
         entry["scalars"].update(m.get("scalars") or {})
         entry["vectors"].update(m.get("vectors") or {})
         over = m.get("base_property_overrides") or {}
-        if over.get("bOverride_BlendMode") and over.get("BlendMode"):
-            entry["blend"] = over["BlendMode"]
+        if over.get("bOverride_BlendMode"):
+            # the export leaves out a property that equals its default, so an override without a BlendMode is
+            # BLEND_Opaque (MM_Main_Substance_Glass_DoorsNontransparent and M_07_CeilingLamp_02, of the stage's)
+            entry["blend"] = over.get("BlendMode") or "BLEND_Opaque"
         if over.get("bOverride_TwoSided"):
             entry["twoSided"] = bool(over.get("TwoSided"))
         if over.get("OpacityMaskClipValue") is not None:

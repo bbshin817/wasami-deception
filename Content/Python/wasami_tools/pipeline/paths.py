@@ -27,6 +27,8 @@ MASTER_DECAL = "/Game/Pipeline/Materials/M_DD_Decal"
 MASTER_UNLIT = "/Game/Pipeline/Materials/M_DD_Unlit"
 MASTER_METAL = "/Game/Pipeline/Materials/M_DD_Metal"
 MASTER_FRESNEL = "/Game/Pipeline/Materials/M_DD_SubstanceFresnel"
+MASTER_GLASS = "/Game/Pipeline/Materials/M_DD_Glass"
+MASTER_GLASS_SEWER = "/Game/Pipeline/Materials/M_DD_GlassSewerage"
 DEFAULT_PACKED = "/Game/Pipeline/Textures/T_DD_DefaultPacked"
 PIPELINE_ROOT = "/Game/Pipeline"
 

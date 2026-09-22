@@ -16,7 +16,7 @@
     "Tools/mac_build.sh": "0764df586893c464167b0e2a4a43a03561b6bfa8"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "c76f67b31b9beec0ba47b5df92ce000a1fdbc129",
+    "Tools/dd/prepare_stage.py": "df70023e06419f46059f7f47bb08866ce0b373b3",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "dcc26af84b302fe8f2051c7e495534580b58e40a",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
@@ -44,10 +44,10 @@
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "f9ebcebc9fb4b61ee5366300f93b92e191b45a06",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
-    "Content/Python/wasami_tools/pipeline/paths.py": "5674c6fb9657e884700f49946b1cd6fa13152b12",
+    "Content/Python/wasami_tools/pipeline/paths.py": "e5ff59c8160311cc4df612b02aea0acc275de300",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "26ff2ea9fc0a630b4b1273c7cf152c71bc7d852b",
-    "Content/Python/wasami_tools/pipeline/dd_stage.py": "12fe905cda1b38498e493c44357aa86e6b25d2ed",
+    "Content/Python/wasami_tools/pipeline/dd_stage.py": "0549c9c19033e42d8df8c4aac0a2fb74238b1c3a",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "a9ec5aa9bd318abf834b1e07e817c0972f601509",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "bfebb6fc6f092b619a600faba370fc92fb00fb42",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "94ddeb42a5f66826025013d326e855db7cd1b4f4",
