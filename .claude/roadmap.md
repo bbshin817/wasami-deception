@@ -611,7 +611,7 @@
 - 根拠: `.claude/references/troubleshooting.md`（前面を離さない窓）、`.claude/guides/verification.md`、`.claude/guides/note-progress.md`、`Tools/game_flow.py`・`Tools/desktop.py`、実装記録 13・15。
 - 依存: 39・41・43・47（同じパッケージ版を使う）。
 - 規模: 1
-- 状態: 未着手
+- 状態: **進行中（2026-09-23 から）**（進捗記録 `.claude/progress/20260923-leftover-checks.md`）。**完了の条件 (1) は済み**: ファイアウォールの確認の窓は消えていて（ユーザーが 2026-09-23 に許可した）、エディタの「出力ログ」の浮いた窓も無い。これで画面へのクリックとキーが要る作業ができる
 
 ## 取りやめた項目
 
