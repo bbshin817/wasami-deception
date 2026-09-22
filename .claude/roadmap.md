@@ -518,7 +518,7 @@
 - 根拠: `pak_reference_2/_levels/06_Hospital_Zone_02.full.json`（`nurse_idle1_2`・`nurse_idle2_2` の `bHidden`）、`Content/Python/wasami_tools/pipeline/dd_sequence.py`（`boolean` の既定値、ナースの配置）、`Source/wasami_deception/WasamiCutsceneNurse.*`、実装記録 07・11、`.claude/references/enemy-wasami-motions.md`。
 - 依存: なし。
 - 規模: 3
-- 状態: **未着手**
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-zone2-cutscene-standins`）**。計画の反復で原作のデータから (a) の見当が付いた: **捕まる場面 `06_Hospital_Zone2_Capture` の `nurse_idle1_2`（テラス (−10910, −1010, 800)）は、本家でも可視トラックのキー 2 つがどちらも `bHidden = false` で t = 0 から見えている**（`FMovieSceneBoolChannel` の `PreInfinityExtrap` の既定 `RCCE_Constant` で、最初のキーより前もキー 0 の値。UE 4.24 も同じ）。**アニメの区間は 17.2〜20.87 s の 2 本だけ**なので、その前の 17.2 秒は何も流れず、本家のナース（`AnimClass` 無し）は自然な直立の基準姿勢、**本作の代役は腕を広げた `restpose`** になる。隠す・隠さないの移植の誤りではなく**代役のモデルの基準姿勢の違い**という見立て。独房の `nurse_idle2_2` は本家では `AnimClass`（`…AnimBlueprint_lookat_cutscene`）を持つので切れ目でも待機の姿勢を保つが、本作の代役は持たない
 
 ### 43. タイトル画面の曲を本家（最新版）のものにする
 
