@@ -597,12 +597,12 @@
 - 目標: 2026-09-23 のユーザーの回答「今後ワサミの絵に変える」（項目 36 の要確認）。ステージの中に原作のナースの姿が描かれたテクスチャが 3 枚ある。`.claude/guides/original-fidelity.md` の「ステージの中にキャラクターの姿が描かれたテクスチャ（ポスター、看板など）があったときは、ワサミの絵に差し替えるかをユーザーに確認する」に当たる（中身は絵で、キャラクターのモデルではない）。WebGL 版で CC2 のポスターにしたのと同じやり方（前処理でワサミの絵を描いて `/Game/Wasami` に取り込み、材質のテクスチャを差し替える）で替える。
   - `hospital_poster_nurse_01_D`（`M_06_Hospital_Poster_01`。紙袋をかぶったナースが「TAKE YOUR MEDICINE!」と言う漫画風の絵）… Zone 1 で使っている。
   - `hospital_decal_nurseambulance`（`M_06_Hospital_Decal_NurseAmbulance`。救急車の上で注射器を構えるナースの絵）… Zone 1・Zone 2 の両方で使っている。
-  - `hospital_poster_nurse_02`（`M_06_Hospital_Poster_14`。注射器を持つナースの黒い影絵と「GET VACCINATED!」）… どのレベルからも使っていないが、`bCookAll=True` でパッケージには入る。
+  - `hospital_poster_nurse_02`（`M_06_Hospital_Poster_14`。注射器を持つナースの黒い影絵と「GET VACCINATED!」）… **Zone 1 のポスター枠 7 枚が使う**（2026-09-23 に `stage_ue.json` で確かめた。ここに「どのレベルからも使っていない」と書いてあったのは誤り）。
 - 完了の条件: (1) 3 枚それぞれ、元の絵の構図と文言（「TAKE YOUR MEDICINE!」・「GET VACCINATED!」）はそのままに、ナースをワサミに置き換えた絵を前処理で描く（大きさ・圧縮の設定は元のテクスチャに合わせる）。(2) 材質 3 つのテクスチャを差し替える（原作の材質の式は変えない）。(3) PIE で Zone 1・Zone 2 の貼ってある場所を撮り、ナースの姿が 1 枚も残っていないことを確かめる。(4) `.claude/guides/original-fidelity.md` の表に 3 行足す。
 - 根拠: `pak_reference_2/_assets/DDeception/Content/Textures/06_Hospital/`（元の 3 枚）と `_materials.json` の材質 3 つ、WebGL 版の CC2 のポスターの作り方（`.claude/references/webgl/implementation-records/`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`、実装記録 01。
 - 依存: なし。
 - 規模: 3
-- 状態: 未着手
+- 状態: **進行中（2026-09-23 から。進捗記録 `20260923-nurse-posters-wasami`）**。貼ってある数は Zone 1 が `hospital_poster_nurse_01_D` 16 枚・`hospital_poster_nurse_02` 7 枚・`hospital_decal_nurseambulance` 1 枚、Zone 2 が `hospital_decal_nurseambulance` 2 枚。4 枚目の `hospital_poster_nurse_03`（「BURN FAT」と炎）は人物が描かれていないので対象外。
 
 ### 52. 積み残しの確かめ（パッケージ版のマウスとキー、note の GIF の撮り直し）
 
