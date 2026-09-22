@@ -703,7 +703,23 @@
 - 回避: ゲームの中の操作だけなら、コマンドラインの `-ExecCmds="…"` で足りることがある（`UEngine::Init` が遅延コマンドに積み、`UGameEngine::Init` の起動マップの読み込みの後、最初のティックで走る。`Tools/game_perf.py` はこれで 7 か所の fps を測った）。前面でなくてもゲームは普通に描き続けるので、fps の計測には影響しない。
 - 回避（続きの操作が要るとき。2026-09-21）: `-ExecCmds` は起動の 1 ティックで走り切るので、**`Wasami.Delay S Command …`**（実時間 S 秒後に走らせる。レベルの開き直しをまたぐ。06 記録）で節目を並べる。今どこかは **`Wasami.Status`**（1 行でログに出る）で読み、絵は **`Shot showui`**（ゲームの中から撮るので前面が要らない。出力は `<アーカイブ>/wasami_deception/Saved/Screenshots/Windows/ScreenShotNNNNN.png`）で撮る。**`HighResShot 1` は使わない**: 3D の場面だけを描くので、UI しか無い画面（タイトル・スコア画面）は真っ黒になる（2026-09-21 に実際に撮って確かめた）。キーとマウスそのもの（メニューのクリック、歩き）は確かめられないので、そこはユーザー待ちにする。
 - 確かめ方: `python Tools/desktop.py ping` の `foreground.process`。
-- 出典: 作業一覧の項目 36 のステップ 4・5（2026-09-21）。
+- **2026-09-23 に解消**: ユーザーがファイアウォールを許可し、窓は消えた。`desktop.py` の `click`・`key` はパッケージ版（`--allow wasami_deception.exe`）にもエディタにも届く。パッケージ版の 3 つの画面をマウスとキーで押して確かめた（項目 52、00 記録）。上の回避はもう要らないが、前面を取れない窓が出たときのために残す。
+- 出典: 作業一覧の項目 36 のステップ 4・5（2026-09-21）、項目 52（2026-09-23）。
+
+### パッケージ版に `Wasami.Flow OnRingPieceCollect` を送っても欠片の画面が出ない
+
+- 症状: Zone 2 で `Wasami.Flow OnRingPieceCollect` を送ると目的が「ガレージへ」に変わるだけで、`UMG_01_RingPieceCollect`（欠片の絵と CLOSE）が出ない。
+- 原因: `OnRingPieceCollect` は**画面を閉じた後**の処理（`AWasamiZone2Flow`。祭壇の灯を消してバリアを壊す）。画面を出すのは **`OnCollectedRingPiece`** の方（11 記録）。`Tools/game_flow.py` の通しは前者を送るので、欠片の画面は通っていない。
+- 対処: 画面が要るときは `Wasami.Flow OnCollectedRingPiece`。そのまま CLOSE を押せば `OnRingPieceCollect` が続く。
+- 関連: **脱出の `Wasami.Trigger Wasami_EscapeTrigger` は、先に `Wasami.Trigger Postmaze_Trigger_Garage` を送っていないと何も起きない**（`Wasami_EscapeTrigger` はガレージの段で `BindTrigger` される）。
+- 出典: 作業一覧の項目 52 のステップ 2（2026-09-23）。
+
+### パッケージ版で `L_Hospital_Zone2` を指定して起動したのに Zone 1 が開く
+
+- 症状: `wasami_deception.exe L_Hospital_Zone2 …` で起動すると、ログは Zone 2 を読んだ直後に `LoadMap: /Game/Stage/Maps/L_Hospital_Zone1` と続き、エレベーターの中から始まる。
+- 原因: セーブのチェックポイントが 0（新規／脱出して終わった直後）だと、ゾーンのゲームモードが始まりのレベルへ送り直す（06 記録の再開の流れ）。**脱出してスコア画面の NEXT を押すとセーブは 0 に戻る**ので、その次の起動で必ず起きる。
+- 対処: 起動のコマンドで先にチェックポイントを入れる。`-ExecCmds="Wasami.Delay 6 Wasami.Checkpoint 10, Wasami.Delay 9 open L_Hospital_Zone2, …"`（Zone 1 に居る間に `Wasami.Checkpoint` を送ってから開き直す。`Wasami.Checkpoint` はゾーンのゲームモードが要るのでタイトルでは効かない）。
+- 出典: 作業一覧の項目 52 のステップ 2（2026-09-23）。
 
 ### `desktop.py` の入力が「the agent did not answer within 30 s」で止まる／窓が最大化されている
 

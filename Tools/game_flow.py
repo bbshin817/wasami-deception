@@ -18,7 +18,10 @@ the build to Intermediate/GameFlow/. Exit code 0 when every expectation held and
 
 What this cannot try is the mouse and the keys themselves: the title's NEW GAME, the ring piece screen's CLOSE and the
 score screen's NEXT are clicks, so the run goes round them (Wasami.ResetSave and open for the title, Wasami.Flow
-OnRingPieceCollect for the ring piece) and stops at the score screen.
+OnRingPieceCollect for the ring piece) and stops at the score screen. Those three were pressed by hand on 2026-09-23,
+once with the mouse and once with the keyboard (Tab, then Enter), after the firewall prompt went away: work list item
+52, implementation record 00. Note the ring piece screen itself never comes up in this run — Wasami.Flow
+OnRingPieceCollect is what happens after it closes; Wasami.Flow OnCollectedRingPiece is what puts it up.
 """
 import argparse
 import glob

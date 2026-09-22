@@ -4,8 +4,8 @@
     python Tools/game_perf.py measure --label pkg_z2_cp7 --checkpoint 7 --level L_Hospital_Zone2         --pre "Wasami.Flow OnCellCutsceneFinished" --pre "BugItGo -14573.65 1694.18 92 0 -67.86 0"
     python Tools/game_perf.py table                      # every Intermediate/Perf/pkg_*.json as one table
 
-No key is sent to the game: the window of the packaged build cannot be brought to the front while Windows' firewall
-prompt holds the foreground (.claude/references/troubleshooting.md), so the spot is reached through the command line.
+No key is sent to the game: the spot is reached through the command line, which needs no window in front (the firewall
+prompt that used to hold the foreground is gone since 2026-09-23; .claude/references/troubleshooting.md).
 Two launches per spot:
 
   1. <exe> <map> -ExecCmds="Wasami.Lives 3, Wasami.Checkpoint N, quit"   writes the checkpoint into the save and quits
