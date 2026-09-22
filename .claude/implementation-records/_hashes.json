@@ -17,6 +17,7 @@
   },
   "01-stage-pipeline.md": {
     "Tools/dd/prepare_stage.py": "df70023e06419f46059f7f47bb08866ce0b373b3",
+    "Tools/dd/prepare_nurse_posters.py": "e420e17cc1b71624abc9f3f60b00b228f6377086",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "dcc26af84b302fe8f2051c7e495534580b58e40a",
     "Tools/dd/bp_flow.py": "4cceeb92608ee221740a1cd78492f33a7c3e96aa",
