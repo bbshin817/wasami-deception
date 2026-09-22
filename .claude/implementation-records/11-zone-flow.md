@@ -18,7 +18,7 @@ sources:
   - Source/wasami_deception/WasamiCutsceneNurse.h
   - Source/wasami_deception/WasamiCutsceneNurse.cpp
   - Source/wasami_deception/Tests/WasamiCutsceneNurseTests.cpp
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # ゾーンの進行（トリガー・区間の流れ・扉の破壊）
@@ -97,7 +97,7 @@ updated: 2026-09-21
 - 駐車場のガレージリフト（`hospital_garage_lift_anim_Anim_2` = `AWasamiGarageLiftZone1Special`、救急車の後ろ。12 記録）の `bNurseNear`（本家の `NurseNear`）: 本家のレベル BP は `TriggerVolume_1` にナース（`BP_06_ReaperNurse`）が入ると真にし（戻さない）、`Check Lift Nurses`（`06_Trigger_NurseLift` に `BP_06_ReaperNurse_06_Chase` がいるかを書く）はどこからも呼ばれない。本作は `StartAt` の始め（どの区間でも）に `TriggerVolume_1` の `OnActorBeginOverlap` を `OnNurseLiftTrigger` に結び、`AWasamiEnemy` なら真にする（戻さない。箱が無ければ警告）。`TriggerVolume_1` は救急車とリフトの間の床（(10452, −21616, 0)、200 × 650 × 200 cm）。
 - `On06TunnelEnter`: 矢印 偽・(1, 0.8317, 0, 1)・的 `TriggerBox_06_AmbulanceTop`、目的 `GET ON TOP OF THE AMBULANCE`。
 - `On06DoorsLock`: `BP_06_DoubleDoors33_36`（トンネルの手前の扉）の `Lock` → `Force Close`（本家 @17544・@17443）、`BlockingVolume_1` の当たりを QueryAndPhysics → `Nurses06` の `bAttackDoor` 真（本家 @12770）→ 25 s → `BreakDoorsIn`（本家 @1053〜@1016）: 扉の位置で `DD_TT_Door_BustedOpen_02`（`01_Lobby_Attenuation`）と `PlayWorldCameraShake(BP_07_CameraShake_Jump, 扉の位置, 0, 3000, 1, 真)`、`ActivateEmitter("Fracture_concrete_5")`（レベルのエミッタ。扉の 232 cm 手前で拡縮 4、ふだんは眠っている。01 記録）、`BlockingVolume_1` を NoCollision → `Nurses06` の `bAttackDoor` 偽（本家 @1575）→ 0.1 s 後に扉を `Destroy`。
-- `On06ReachAmbulance`: `SaveCheckpoint(7)`、`RemoveAllEnemies`、矢印 偽・(1, 0.8317, 0, 1)・的 `Plane48_2`、目的 `GOOD LUCK`、`BlockingVolume_Ambulance_4`・`_2`・`_1`・`_3` の当たりを QueryAndPhysics → 1 s → `PlaySequence("06_Hospital_Zone1_AmbulanceTakeOff")`（救急車が付いたボリュームとプレイヤーごと走る）と揺れ `06_CameraShake_Zone1_AmbulanceTakeOff`（拡縮 4）→ 7 s → 読み込み画面 `UWasamiLoadingWidget::Show(AsylumLevel)`（Level 7、Z 5。その Construct がゲームインスタンスの回収の記憶を空にする。09 記録）・`PlaySound2D(21-Ballroom_portal_V2)`・`RemoveAllEnemies` → 2.5 s → `OpenLevel(L_Hospital_Zone2)`（本家 @796〜@5）。目的の後に曲の `bFadeOut` 真（本家 @5334）。
+- `On06ReachAmbulance`: `SaveCheckpoint(7)`、`RemoveAllEnemies`、矢印 偽・(1, 0.8317, 0, 1)・的 `Plane48_2`、目的 `GOOD LUCK`、`BlockingVolume_Ambulance_4`・`_2`・`_1` の当たりを QueryAndPhysics（本家は後ろの `_3` も入れるが、本作は入れない。「既知の制約」） → 1 s → `PlaySequence("06_Hospital_Zone1_AmbulanceTakeOff")`（救急車が付いたボリュームとプレイヤーごと走る）と揺れ `06_CameraShake_Zone1_AmbulanceTakeOff`（拡縮 4）→ 7 s → 読み込み画面 `UWasamiLoadingWidget::Show(AsylumLevel)`（Level 7、Z 5。その Construct がゲームインスタンスの回収の記憶を空にする。09 記録）・`PlaySound2D(21-Ballroom_portal_V2)`・`RemoveAllEnemies` → 2.5 s → `OpenLevel(L_Hospital_Zone2)`（本家 @796〜@5）。目的の後に曲の `bFadeOut` 真（本家 @5334）。
 
 ### Zone 2（`AWasamiZone2Flow`、本家 `06_Hospital_Zone_02`）
 - `StartAt`（本家 `Spawn` @22328、`Load Progress By Level(7, 8)`）: 7 → `ArriveEvent`（救急車の到着 → 捕まる場面 → 独房の場面。本家はこのレベルを 7 で開くたびに流す = 棘で死んで開き直しても、また到着から始まる）、8 → `Miniboss Start ` → `MinibossTransition`、9 → `Maze Start` → `MazeTransition`、10 → `Postmaze Start` → `PostmazeTransition`（本家の `… Start` の PlayerStart への移動はゲームモード）。
@@ -155,7 +155,7 @@ updated: 2026-09-21
 - Zone 2 の 7 は、飛ばした場面の代わりに開いてすぐ棘が下り始める。本家は開き直すたびに捕まる場面と独房の場面（約 100 s）を流してから棘を始めるので、鍵を外せる時間（約 19 s）は同じだが、開いたときの黒のフェード（1〜2.5 s）の間も棘は進む。
 - テストのワールドでタイマーを進めるには注意が 2 つある（`Tests/WasamiZoneFlowTests.cpp` の `Advance`）: ティックとティックの間に置いたタイマーは保留になり、次のティックの終わりで始まる（`FTimerManager` の `PendingTimerSet`。本家の `Delay` と同じ）。1 回のティックの経過はワールドの `MaxUndilatedFrameTime`（0.4 s）で切られる。0 秒のティックを 1 回挟んでから 0.1 s 刻みで進める。
 - 本家のレベル BP の開発用の PrintString（`Progress Saved`・`ALL SHARDS COLLECTED!`）と実績は写さない。
-- **救急車の屋根の後ろの端に立つと、フレームレートが低いときに走り出してすぐ落ちる**（2026-09-19、項目 6 のステップ 10a）。屋根は `BlockingVolume_Ambulance_5`（プレイヤーの土台。Movable なので乗ったまま運ばれる）、周りの壁 1〜4 は厚さ 20 cm で、シーケンスが掃引なしで動かす。シーケンスはアクタの更新より先に進む（UE 5.8 の `MovieSceneSequenceTick` は `TG_PrePhysics` の前）ので、1 フレームの救急車の進みが後ろの壁との隙間より大きいと壁がカプセルに食い込み、押し出しが壁の後ろへ出す（推定）。テレポーテーションは後ろから狙うので、そのままでは屋根の後ろの端（後ろの壁から約 8 cm）に着く。60 fps では乗ったまま運ばれ、`t.MaxFPS 25` だと約 2 s で落ちる（屋根の真ん中なら 25 fps でも落ちない）。落ちても 7 s 後の読み込み画面と Zone 2 には進む。本家も同じ作りなので直していない（見た目の後回しではなく動きの問題なので、項目 28 ではなくここに書く）。どの場合も乗ってから約 7.4 s（読み込み画面が覆った後）には落ちるが、見えない。症状索引の「救急車の屋根からプレイヤーが落ちる」。
+- **救急車の屋根の後ろの壁（`BlockingVolume_Ambulance_3`）だけは走り出しで当たりを入れない**（2026-09-22、項目 41。本家は囲いの 4 枚すべてに入れる）。囲いは救急車の子で、シーケンスが親を掃引なしで動かす。プレイヤーは屋根 `BlockingVolume_Ambulance_5` を土台にして運ばれる（`UCharacterMovementComponent::UpdateBasedMovement` の掃引の移動）が、**1 フレームの進みが後ろの壁との隙間（屋根の真ん中で約 198 cm、テレポーテーションで着く後ろの端では約 8 cm）を超えると、壁がカプセルの中に現れて土台の移動が始めからの食い込みで中止になり、押し出しがプレイヤーを 46 cm 後ろへ出して屋根から外す**。走り出しの速さは終わりに 2440 cm/s まで上がるので、60 fps でも 40 cm/フレーム、エディタが前面でない PIE（約 3 fps）では 800 cm/フレームになり、真ん中に立っていても 1 回で外れる。前と左右の 3 枚はプレイヤーへ近づかないので入れたままにした（横と前から落ちるのは防げる。後ろへ歩いて落ちるのだけ防げない）。測り: 4 枚とも切ると約 3 fps でも読み込み画面まで 100 % 運ばれる（`Intermediate/Overnight/pie_ambulance.py --no-walls`）。
 
 - **祭壇（`ring_statue_2`）は担架（`hospital_stretcher_50`〜`54`・`70`・`71`）と救急車に囲まれ、プレイヤー（半径 50）が歩いて手の届く所まで入れるのは北西の隙間だけ**（(−8360, 0) → (−8880, −520) → (−8880, −760) → (−8760, −880)。祭壇まで約 2 m で、像の高さ 120 cm を狙うと手のマークが出る。2026-09-19、項目 27 のステップ 2。40 cm の格子でカプセルを当てて探した。`Tools/playthrough.py` の `z2_altar`）。東や南の正面からは担架に阻まれて届かない（いちばん近くて 7.6 m）。周りは本家のレベルの `NavModifierVolume2` が道から抜いているので、ナースは入らない。本作の当たりは描画のメッシュそのもの（01 記録）で、本家の担架の当たりは凸形の箱 1 つ（`hospital_stretcher_01` の `AggGeom`）なので、本家で同じ隙間があるかは確かめていない（大目標 3 で本家と見比べる）。
 
@@ -199,6 +199,7 @@ updated: 2026-09-21
 脱出の間合い（2026-09-21、作業一覧の項目 35 のステップ 6）: `Wasami.Checkpoint 10` で Zone 2 を PIE → `OnEndTrigger` を呼んで毎コマ（約 80 fps）読んだ。**t = 0.032 s**: ゲームは止まっておらず、曲は `FADING_OUT`・`bFadeOut` 真。**t = 1.026 s**: `Escape` が走ってゲームが止まり、曲は `STOPPED`、`WasamiLevelClearWidget` が画面に出て、その下に `WasamiBlackFadeWidget`（`bHold`）が残る。レベルの時計は引き金から 0.967 s で止まった。つまり**曲の 1 s のフェードは止まっていないゲームの上で走り、スコア画面はその後に出る**（10 記録）。引き金の箱そのものは通していない（`AWasamiTriggerBox` の DoOnce は結ぶ前に触れると使い切られるので、結ぶ前にプレイヤーを置くと二度と鳴らない。症状索引）。
 
 ## 変更履歴
+- 2026-09-22: 走り出しで救急車の屋根の**後ろの壁 `BlockingVolume_Ambulance_3` だけ当たりを入れない**ようにした（`On06ReachAmbulance`。作業一覧の項目 41）。本家は 4 枚すべてに入れるが、掃引なしで動く壁がカプセルの中に現れると土台の移動が中止になり、プレイヤーが屋根の後ろへ押し出されて落ちていた（「既知の制約」）。PIE（約 3 fps ＝ 1 フレーム 800 cm の最悪の場合）で屋根の真ん中と、テレポーテーションが着く後ろの端の両方から、読み込み画面まで 100 % 運ばれることを確かめた。
 - 2026-09-21: 脱出の間合い（フェード 1 s → スコア画面）を PIE で測った（上の「脱出の間合い」。作業一覧の項目 35 のステップ 6）
 - 2026-09-21: Zone 2 の脱出で曲を聞こえる形で引くようにした（`EscapeMusicFade` 1 s・`FadeAllMusicOut` → `PauseTimeCounter` → 1 s 後に `Escape`。作業一覧の項目 35 のステップ 2。10 記録）
 - 2026-09-20: Zone 1 の `InitialStart` で動けるようになるときにワサミの声 `greeting` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）

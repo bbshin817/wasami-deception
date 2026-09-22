@@ -832,13 +832,27 @@
 - 対処: 触るときは Steam を完全に終了してから。登録は最新版（`installdir = Dark Deception`）のままにする。
 - 出典: コミット dca8e00（2026-09-16）、`.claude/guides/verification.md`。
 
-### 収録中に救急車の屋根からプレイヤーが落ちる（Zone 1 の救急車が走り出して約 1.5 s）
+### 救急車の屋根からプレイヤーが落ちる（Zone 1 の救急車が走り出して 1〜2 s）
 
-- 症状: テレポーテーションで救急車の屋根へ渡り、GDI の 60 fps で PIE を収録していると、救急車が走り出して約 1.5 s（約 700 cm/s）でプレイヤーが屋根の後ろへ抜けて落ち、救急車だけがトンネルへ去る（読み込み画面と Zone 2 には進む）。収録しない・`place` で屋根の真ん中に置く・`slomo 0.2` では落ちない。
-- 原因: 屋根の後ろの壁 `BlockingVolume_Ambulance_3`（厚さ 20 cm、シーケンスが掃引なしで動かす）。テレポーテーションは後ろから狙うので屋根の後ろの端（壁から約 8 cm）に着き、収録の負荷でフレームレートが下がると 1 フレームの救急車の進みが隙間を超えて、壁がカプセルに食い込み後ろへ押し出される（推定。`t.MaxFPS 25` なら収録なしでも壁から 8 cm では落ち、真ん中では落ちない）。11 記録の既知の制約。
-- 対処: 収録は `desktop.py record --grab gdi --fps 30`、テレポーテーションの狙いを E の後にホイールで 2 目盛り前へ寄せてから左クリック（`desktop.py scroll --dx 120 --allow UnrealEditor.exe` を 2 回。屋根の y −20000 に着く）。本作の直しはしていない（本家も同じ作り）。
-- 確かめ方: PIE のプレイヤーの `character_movement.get_movement_base()`（UE 5.8 は非推奨の警告が出るが読める）と位置。土台が `BlockingVolume_Ambulance_5` で Z 402 のまま y が増えていれば乗っている。
-- 出典: 進捗記録 `20260918-zone-progression.md`（2026-09-19 ステップ 10a）。
+- 症状: 救急車の屋根に乗ると、走り出して 1〜2 s でプレイヤーだけが屋根の後ろへ抜けて落ち、救急車だけがトンネルへ去る（読み込み画面と Zone 2 には進む）。フレームレートが低いほど出やすく、エディタが前面でない PIE（約 3 fps）では屋根の真ん中に立っていても落ちる。パッケージ版でも出る。
+- 原因: 走り出しで当たりを入れる囲いのうち**後ろの壁 `BlockingVolume_Ambulance_3`**。囲いは救急車の子で、シーケンスが掃引なしで動かすので、1 フレームの進み（走り出しの終わりは 2440 cm/s）が壁との隙間を超えると、壁がプレイヤーのカプセルの中に現れる。土台の移動（`UCharacterMovementComponent::UpdateBasedMovement`）は掃引なので、始めから食い込んでいると移動が中止になり、押し出しが 46 cm 後ろへ出して屋根から外す。
+- 対処: **直した**（2026-09-22、項目 41）。`AWasamiZone1Flow::On06ReachAmbulance` は後ろの壁だけ当たりを入れない。前と左右の 3 枚はそのまま。
+- 確かめ方: `python Intermediate/Overnight/pie_ambulance.py`（PIE で屋根に落として走り出させ、`Wasami.Status` と毎ティックの測りを表にする）。プレイヤーと救急車の y の差が −66.7 のまま読み込み画面まで続けば乗っている。`--no-walls` は囲いを 4 枚とも切った比較用。
+- 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`20260918-zone-progression.md`（2026-09-19 ステップ 10a）。
+
+### Automation テストを `-NullRHI` で走らせると粒子と音のテストだけが落ちる
+
+- 症状: `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI` で、`Wasami.ZoneFlow.Zone1` の「the burst woken」（扉の破片のエミッタ）が落ちる。`-NoSound` も付けると `Wasami.ZoneFlow.Zone2` の「the announcement plays」も落ちる。コードは正しくても落ちるので、変更の巻き添えと見間違えやすい。
+- 原因: `UParticleSystemComponent::Activate` は `FApp::CanEverRender()` が偽だと何もしないで返る（UE 5.8 の `ParticleSystemComponent.cpp:3492`）。`-NullRHI` はこれを偽にする。音は `-NoSound` がそのまま切る。
+- 対処: `-NoSound` は付けない。残る「the burst woken」の 1 件は `-NullRHI` の制約として読み飛ばし、ほかの結果で判断する。描画ありで確かめたいときはエディタを**前面にして**走らせるしかないが、背面のままだと `FWaitForInteractiveFrameRate` が「Current FPS=3」と出したまま 600 s 待って進まない（下の「PIE のフレームレートが約 3 fps に落ちる」）。`Tools/desktop.py` では前面にできない（前面の窓が許可したアプリでないと入力を送らない）。
+- 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`.claude/guides/verification.md`。
+
+### PIE のフレームレートが約 3 fps に落ちる（エディタが前面でないとき）
+
+- 症状: `Tools/pie.py` で流した `Wasami.Delay` の台本が、0.25 s 刻みで積んだのに 2 つずつ同じ時刻のログに出る。毎ティックの測りも 0.33 s 刻みにしかならない（スレートの毎ティックの呼び出しが 1 フレームに 1 回なので、これがそのままフレームの間隔）。
+- 原因: エディタに窓の前面がない（Claude が動かしている間はいつもそう）。ゲームの時間は実時間どおりに進むので、**1 フレームが 0.33 s** になる。
+- 対処: 測りとしてはそのまま使える（むしろ動く床の当たりなどは最悪の場合の試験になる）。ただし**フレームレートに依る挙動を「60 fps で確かめた」と書かない**。`t.MaxFPS 60` を送っても上限が下がるだけで、実際のフレームレートは上がらない。
+- 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`.claude/guides/verification.md`（テストが背面で進まない話）。
 
 ### 本家でプレイヤーが一切動けなくなる（`ghost` / `fly` を試した後）
 

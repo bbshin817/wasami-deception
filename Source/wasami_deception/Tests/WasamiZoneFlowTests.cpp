@@ -301,6 +301,7 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 		TEXT("06_TunnelEnter"), TEXT("TriggerBox_06_AmbulanceTop")});
 	ABlockingVolume* Doors = SpawnBlocker(World, TEXT("BlockingVolume_1"), ECollisionEnabled::NoCollision);
 	ABlockingVolume* AmbulanceSide = SpawnBlocker(World, TEXT("BlockingVolume_Ambulance_2"), ECollisionEnabled::NoCollision);
+	ABlockingVolume* AmbulanceRear = SpawnBlocker(World, TEXT("BlockingVolume_Ambulance_3"), ECollisionEnabled::NoCollision);
 	AWasamiShard* Shard = World->SpawnActor<AWasamiShard>(FVector(0., 0., -90000.), FRotator::ZeroRotator);
 	const ALevelSequenceActor* Arrival = SpawnSequence(World, TEXT("06_Hospital_Zone01_ElevatorArrive"), 14.1);
 	const ALevelSequenceActor* TakeOff = SpawnSequence(World, TEXT("06_Hospital_Zone1_AmbulanceTakeOff"), 13.9);
@@ -516,6 +517,8 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("checkpoint 7 saved"), SavedCheckpoint(), 7);
 	TestEqual(TEXT("good luck"), Objective(Mode), FString(TEXT("GOOD LUCK")));
 	TestTrue(TEXT("the ambulance's sides block"), Collides(AmbulanceSide));
+	// Not the wall behind the player: the moving fence would land on the capsule and push the player off the roof.
+	TestFalse(TEXT("but not the wall behind the player"), Collides(AmbulanceRear));
 	TestEqual(TEXT("the nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestFalse(TEXT("the ambulance still"), TakeOff->GetSequencePlayer() && TakeOff->GetSequencePlayer()->IsPlaying());
 	Advance(Wrapper, AWasamiZone1Flow::TakeOffDelay + 0.1f);

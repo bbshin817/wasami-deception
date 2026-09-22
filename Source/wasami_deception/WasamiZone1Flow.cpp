@@ -354,8 +354,12 @@ void AWasamiZone1Flow::On06ReachAmbulance()
 	SetArrowTarget(Source(TEXT("Plane48_2")));
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGoodLuck", "GOOD LUCK"));
 	SetMusicFadeOut(true);
+	// The original also turns on the fence behind the player (Ambulance_3), but leaving it off is what keeps the
+	// player on the roof: the sequence teleports the fence along with the ambulance, so as soon as one frame's move
+	// is longer than the gap to that wall it lands on the capsule, which aborts the based move and pushes the player
+	// out the back. The other three never close in on the player (11 record, work list item 41).
 	for (const TCHAR* Blocker : {TEXT("BlockingVolume_Ambulance_4"), TEXT("BlockingVolume_Ambulance_2"),
-		TEXT("BlockingVolume_Ambulance_1"), TEXT("BlockingVolume_Ambulance_3")})
+		TEXT("BlockingVolume_Ambulance_1")})
 	{
 		SetVolumeCollision(Blocker, ECollisionEnabled::QueryAndPhysics);
 	}
