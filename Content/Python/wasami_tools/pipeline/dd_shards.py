@@ -131,6 +131,8 @@ def _build_mochi(mat, textures):
     roughness from G of the metallic-roughness map, the normal map, two-sided; and the base colour × Glow as
     emissive."""
     mat.set_editor_property("two_sided", True)
+    # The mochi's mesh is Nanite (import_mesh below); it is never lit statically (dd_stage's MASTER_USAGE).
+    mat.set_editor_property("used_with_nanite", True)
     g = dd_stage._Graph(mat, checked=True)
     tcs = unreal.MaterialSamplerType
     base = g.texture("BaseColor", textures["BaseColor"], tcs.SAMPLERTYPE_COLOR, -900, -300)

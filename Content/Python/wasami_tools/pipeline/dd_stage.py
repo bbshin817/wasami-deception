@@ -24,14 +24,31 @@ from wasami_tools.pipeline import paths, ue_props
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
 
-# Bump when a master material's graph changes: ensure_masters rebuilds it in place (its instances keep it).
-MASTER_VERSION = "1"
+# Bump when a master material's graph or its usage flags (MASTER_USAGE) change: ensure_masters rebuilds it in
+# place (its instances keep it).
+MASTER_VERSION = "2"
 VERSION_TAG = "WasamiGraphVersion"
 
 # Which of our masters each master of the export maps to (prepare_stage.py's `master`).
 MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT, "metal": paths.MASTER_METAL,
              "fresnel": paths.MASTER_FRESNEL, "glass": paths.MASTER_GLASS, "glassmask": paths.MASTER_GLASS,
              "sewerglass": paths.MASTER_GLASS_SEWER}
+# The usage flags (bUsedWith*) each master has to carry. A master a mesh of an unflagged kind uses compiles no shader
+# for that kind: the editor makes one on the spot, a packaged build falls back to the default material (the grey
+# checker). Only the kinds in use are flagged — each flag is another set of shader permutations to cook, and this PC
+# has 6 GB of VRAM (.claude/guides/performance.md). The six lit stage masters carry Nanite and static lighting
+# together even where the count is one mesh or none: which stage mesh is Nanite and which is static changes with every
+# import, so the counts are a snapshot. M_DD_Decal is a deferred decal, where Nanite means nothing.
+MASTER_USAGE = {
+    paths.MASTER_SUBSTANCE: ("used_with_nanite", "used_with_static_lighting",
+                             "used_with_skeletal_mesh"),   # the garage lifts' skinned mesh (dd_skeletal)
+    paths.MASTER_DECAL: ("used_with_static_lighting",),
+    paths.MASTER_UNLIT: ("used_with_nanite", "used_with_static_lighting"),
+    paths.MASTER_METAL: ("used_with_nanite", "used_with_static_lighting"),
+    paths.MASTER_FRESNEL: ("used_with_nanite", "used_with_static_lighting"),
+    paths.MASTER_GLASS: ("used_with_nanite", "used_with_static_lighting"),
+    paths.MASTER_GLASS_SEWER: ("used_with_nanite", "used_with_static_lighting"),
+}
 # The export's texture kinds → our texture parameters, per master.
 TEX_PARAM = {
     paths.MASTER_SUBSTANCE: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed", "emissive": "Emissive"},
@@ -163,6 +180,8 @@ def ensure_masters():
         mat, needs_build = _material(asset_path)
         if needs_build:
             build(mat)
+            for usage in MASTER_USAGE[asset_path]:
+                mat.set_editor_property(usage, True)
             EAL.set_metadata_tag(mat, VERSION_TAG, MASTER_VERSION)
         if needs_build or (packed_changed and asset_path == paths.MASTER_SUBSTANCE):
             MEL.recompile_material(mat)
@@ -265,7 +284,6 @@ def _build_substance(mat):
 
     Not reproduced: `Normal Flatness` (the instances set 1.2 – 3.0 against a master default of 0, and the graph that
     used it is gone, so neither a 0–1 flatten nor an XY multiplier can be confirmed — the normal is used as it is)."""
-    mat.set_editor_property("used_with_skeletal_mesh", True)   # the garage lifts' skinned mesh (dd_skeletal)
     g = _Graph(mat)
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
     black = unreal.load_asset("/Engine/EngineResources/Black") or white

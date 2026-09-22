@@ -18,7 +18,7 @@ sources:
   - Source/wasami_deception/WasamiSpecialSpawnPoint.h
   - Source/wasami_deception/WasamiSpecialSpawnPoint.cpp
   - Source/wasami_deception/Tests/WasamiSpecialShardTests.cpp
-updated: 2026-09-21
+updated: 2026-09-23
 ---
 
 # 特殊シャード（スタンオーブと赤いシャード）

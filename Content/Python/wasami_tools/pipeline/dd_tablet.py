@@ -194,6 +194,8 @@ def ensure_render_target():
 def _build_map_plane(mat):
     """MM_Map_Parent: the map image as base colour on a lit surface — the capture reads SCS_BaseColor, which an unlit
     material does not write."""
+    # The level's map planes are lit statically (dd_stage's MASTER_USAGE); they are not Nanite.
+    mat.set_editor_property("used_with_static_lighting", True)
     g = dd_stage._Graph(mat)
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
     tex = g.texture("Texture", white, unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -600, -100)

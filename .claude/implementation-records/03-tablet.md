@@ -12,7 +12,7 @@ sources:
   - Source/wasami_deception/WasamiMapTextureMultiFloor.cpp
   - Source/wasami_deception/Tests/WasamiMapMultiFloorTests.cpp
   - Content/Python/wasami_tools/pipeline/dd_tablet.py
-updated: 2026-09-21
+updated: 2026-09-23
 ---
 
 # タブレット（画面のウィジェットと素材、ミニマップ、地図の矢印と視界コーンの印）

@@ -95,6 +95,10 @@ def _build_crystal(mat, d):
     turned into the world and added to the vertex normal, left unnormalized. T_ShapeNormal, what every instance puts
     there, is flat to within a 255th, so the sum is twice the vertex normal: not the same vector a plain reflection
     gives, which is why it is read as the shader has it rather than left out."""
+    # The altar's orb is a Nanite mesh of the stage and the bonus shards' crystals are lit statically (dd_stage's
+    # MASTER_USAGE says why both are flagged, and what an unflagged kind costs in a packaged build).
+    mat.set_editor_property("used_with_nanite", True)
+    mat.set_editor_property("used_with_static_lighting", True)
     g = dd_stage._Graph(mat, checked=True)
     time = g.node(unreal.MaterialExpressionTime, -2400, 0)
     drift = g.multiply(time, "", g.scalar("emissive_speed", d["emissive_speed"], -2400, 100), "", -2200, 50)
