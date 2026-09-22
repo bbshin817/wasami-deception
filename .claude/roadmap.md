@@ -491,7 +491,7 @@
 - 根拠: `Source/wasami_deception/WasamiCapture.cpp`（`WallMesh`・`WallMaterial`）、`WasamiDeathScreenWidget.cpp`・`WasamiSavingWidget.cpp`、`Saved/StagedBuilds/Windows/wasami_deception/Content/Paks/wasami_deception-Windows.utoc`、症状索引「パッケージ版でだけ、黒いはずの板が灰色のグリッドになる」、`.claude/guides/distribution.md`。
 - 依存: なし。
 - 規模: 1
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-cooked-engine-assets`）**。直すのは C++ の 3 か所だけ（前処理の Python が指す `/Engine/…` はすべてパッケージに入っている）。
+- 状態: **ユーザー待ち（2026-09-22 から。進捗記録 `20260922-cooked-engine-assets`）**。**直しは 3 つとも入っている**: 別室の壁 6 枚は本作の黒の Unlit `/Game/Wasami/Enemy/M_WasamiCaptureBlack`、死亡画面のヒントと SAVING の字は `/Game/DD/_Engine/EngineFonts/RobotoTiny`（面も。`dd_assets.engine_font`）、SAVING の絵は `/Game/DD/_Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap`（`dd_assets.texture`）。作り直したものは UE 5.8 のエンジンのアセットと設定が一致する（面の ttf は md5 まで同じ）。完了の条件 (3) の洗い出しも済み: コード・前処理・`Config` に残る `/Engine/…` はすべてパッケージに入るもので、再発の見張りの grep を症状索引に書いた。残るのは**完了の条件 (2) の見た目と (4) のパッケージ版での確かめ**だけで、これが**止まっている**: Claude が `RunUAT.bat BuildCookRun` を走らせようとすると自動モードの判定に止められる（3 通り試して全部。下の「未回答の要確認」）。許可が出れば 1 反復で終わる。
 
 ### 40. 捕獲の音を本家の音源からワサミの音源に替える
 
@@ -579,7 +579,7 @@
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
 
-2026-09-21 の有人セッションで、それまで残っていた 9 件すべてに回答をもらった（答えは項目 35・36 と各実装記録へ移した。2026-09-20 の回答の反映は進捗記録 `20260920-user-answers`、2026-09-21 の分は項目 35 の記録）。その後に出たのが下の 4 件と、2026-09-22 の有人セッション（ゲームレビュアーの指摘）の 4 件、大目標 4 を進めて出た 1 件。
+2026-09-21 の有人セッションで、それまで残っていた 9 件すべてに回答をもらった（答えは項目 35・36 と各実装記録へ移した。2026-09-20 の回答の反映は進捗記録 `20260920-user-answers`、2026-09-21 の分は項目 35 の記録）。その後に出たのが下の 4 件と、2026-09-22 の有人セッション（ゲームレビュアーの指摘）の 4 件、大目標 4 を進めて出た 2 件。
 
 ### 20260922-review-findings（大目標 4。2026-09-22 の有人セッションで出た。4 件中 3 件は同じ日に回答をもらった）
 
@@ -587,6 +587,10 @@
 2. ~~タイトル画面を本家の最新版に寄せてよいか~~（項目 43・44）… **回答済み（2026-09-22）**: 「曲も絵も最新版に寄せる」。最終目標（2026-09-17）の「タイトル画面は WebGL 版と同じように倣う」（= 本家の旧版）より、レビュアーの指摘を優先する。
 3. **敵ワサミの手の直し方**（項目 37）: 切り分けが済み、**原因は原本 `enemy_wasami_v3.glb` の基準姿勢（回外＝手のひらが上）とアニメの食い違い**と分かった（同じ作者・同じ骨組みのボス `boss_wasami.glb` は回内で正しい）。(A) **モデルを直してもらう**（ボスと同じ回内の基準姿勢で書き出し直す。本作のコードは変えない）か、(B) **本作の側で補正する**（前処理で全アニメの手を前腕の軸まわりに 180° ねじる。ユーザーの素材には触らないが、手首の継ぎ目が出ないか要確認）か（未回答）。
 4. ~~レビュアーが遊んだのは Windows 版か Mac 版か~~（大目標 4 全体）… **回答済み（2026-09-22）**: **Mac 版**（`~/Applications/WasamiDeception` の `.app`）。クックの中身は同じなので直し方は変わらない。Claude の確かめは Windows 版で行い、Mac 版はユーザーに見てもらう。
+
+### 20260922-cooked-engine-assets（項目 39。2026-09-22 から止まっている）
+
+1. **`RunUAT.bat BuildCookRun`（パッケージの作り直し）を Claude が走らせる許可**（項目 39 の完了の条件 2・4、および大目標 4 全体の「達成の姿: パッケージ版で確かめてある」）: 直しは 3 つとも入っているが、**パッケージ版での見た目の確かめができない**。無人運転の反復で 3 通り（bash の直呼び・`sh` の台本・PowerShell）とも自動モードの判定に止められた（理由「Real-World Transactions」）。`.claude/settings.json` の `permissions.allow` にも規則が無い。**これは配布ではなく手元での確かめのための組み立て**で、出力はすべて git の外（`Saved/Archive`・`Saved/StagedBuilds`・`Saved/Cooked`）。許可の仕方は 2 つ: (a) `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足す、(b) 有人セッションでユーザーが 1 度走らせて Claude が `.utoc` と画面を見る。**大目標 4 の残りの項目（41・43）も「パッケージ版で確かめる」を完了の条件に持つ**ので、同じ壁に当たる。
 
 ### 20260922-respawn-keep-state（項目 38。2026-09-22 に閉じた）
 

@@ -1,10 +1,10 @@
 ---
 title: 捕獲の別室の地面のグリッド（パッケージに入らないエンジンのアセット）
-status: 進行中
+status: ユーザー待ち
 branch: main
 base: 9c77bb2
 started: 2026-09-22 12:01
-updated: 2026-09-22 12:45
+updated: 2026-09-22 13:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -26,17 +26,17 @@ updated: 2026-09-22 12:45
 
 - [x] 1. 捕獲の別室の黒い壁を、本作の黒の Unlit 材質 `/Game/Wasami/Enemy/M_WasamiCaptureBlack` に替えた
 - [x] 2. `RobotoTiny`（と面）・`SphereRenderHeightMap` を `dd_assets.engine_font` / `texture` で `/Game/DD/_Engine/…` に作り直し、死亡画面のヒントと SAVING PROGRESS の参照を替えた（01・09 記録）
-- [ ] 3. `/Engine/…` 参照の洗い出しと、パッケージ版での確かめ（完了の条件 3・4）
-  - 変更予定: `.claude/references/troubleshooting.md`（一覧の更新）、`.claude/guides/distribution.md`、`.claude/roadmap.md`
+- [x] 3a. `/Engine/…` 参照の洗い出し（完了の条件 3）。コード・前処理・`Config` の残りはすべてパッケージに入るものだけだと確かめ、症状索引と `distribution.md` に再発の見張りの grep を書いた
+- [ ] 3b. パッケージ版での確かめ（完了の条件 2 の見た目・4）— **許可待ちで止まっている**（下の「要確認」）
 
 ## 次にやること
 
-ステップ 3。
+ステップ 3b。**ユーザーが `RunUAT.bat BuildCookRun` の許可をくれてから**（下の「要確認」）:
 
-1. ゲームのコード（`Source/` の `Tests/` 以外）と前処理（`Content/Python/wasami_tools`）の `/Engine/…` をもう一度 grep し、**パッケージに入らないものが残っていないか**を確かめる（下の決定事項の一覧が基準）。残っていれば `/Game/DD/_Engine` に作り直す。
-2. パッケージを作り直し（下の「再開時の注意」）、`.utoc` に `RobotoTiny.uasset`・`SphereRenderHeightMap.uasset`・`M_WasamiCaptureBlack.uasset` が入ったことを確かめる。
+1. `python Tools/editor_cycle.py --quit-only` → `.claude/guides/distribution.md` の「パッケージ」の `RunUAT.bat BuildCookRun` → `python Tools/editor_cycle.py --no-quit --no-build`。
+2. `.utoc` に `RobotoTiny.uasset`・`SphereRenderHeightMap.uasset`・`M_WasamiCaptureBlack.uasset` が入ったことを確かめる（確かめ方は下の「再開時の注意」）。
 3. パッケージ版で捕獲を 4 種とも見て、別室の背景が真っ黒であること（グリッドが出ないこと）と、SAVING PROGRESS・死亡画面のヒントの字が出ることを確かめる。
-4. `.claude/references/troubleshooting.md` と `.claude/guides/distribution.md` の一覧を、確かめた結果に合わせて直す。
+4. 確かめた結果を症状索引（「出典」の行の「パッケージ版での見た目の確かめは未了」）と作業一覧の項目 39 に書き、この記録を消す。
 
 ## 決定事項
 
@@ -46,11 +46,11 @@ updated: 2026-09-22 12:45
 
 ## 要確認（ユーザー）
 
-（なし）
+- 2026-09-22: **`RunUAT.bat BuildCookRun`（パッケージの作り直し）の許可**。ステップ 3b にはパッケージ版が要るが、この反復では 3 通り（bash の直呼び・`sh` の台本・PowerShell）とも自動モードの判定に止められた（理由「Real-World Transactions」）。`.claude/settings.json` にも規則が無い。**配布ではなく手元での確かめのための組み立て**（出力は git の外の `Saved/Archive`・`Saved/StagedBuilds`）なので、許可をもらえれば進む。許可の仕方は 2 つ: (a) `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足す、(b) 有人セッションでユーザーが 1 度走らせる。
 
 ## 再開時の注意
 
-- ステップ 3 で **パッケージを作り直す**（`.claude/guides/distribution.md` の「パッケージ」の `RunUAT.bat BuildCookRun`）。差分なら 1 分ほど、全クックで 5 分 22 秒。`run_in_background` で走らせ、**応答を終える前に必ず結果を読む**。出来た印は `Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` の `grep -c "^/game/"` が 1139 前後であること。
+- ステップ 3b で **パッケージを作り直す**（`.claude/guides/distribution.md` の「パッケージ」の `RunUAT.bat BuildCookRun`）。差分なら 1 分ほど、全クックで 5 分 22 秒。`run_in_background` で走らせ、**応答を終える前に必ず結果を読む**。出来た印は `Saved/Cooked/Windows/wasami_deception/Metadata/ReferencedSet.txt` の `grep -c "^/game/"` が 1139 前後であること。
 - パッケージに何が入ったかの確かめ: `grep -a -o -E "[ -~]{4,}" Saved/StagedBuilds/Windows/wasami_deception/Content/Paks/wasami_deception-Windows.utoc | grep -x "<名前>.uasset"`。
 - エディタは起動していて、C++ はステップ 2 のビルドが通っている。PIE は止めてある。
 
@@ -59,4 +59,5 @@ updated: 2026-09-22 12:45
 - check_records: ステップ 2 で通した
 - C++ ビルド: ステップ 2 で `Tools/editor_cycle.py`（成功）
 - ステップ 2 の見た目: PIE で `unreal.WasamiSavingWidget.show()` → `screenshot showui`。SAVING PROGRESS の字が Roboto Light で出て、丸（`SphereRenderHeightMap`）も明滅の山で出た。死亡画面・SAVING の CDO のソフト参照が 3 つとも `/Game/DD/_Engine/…` を指すことも確かめた。作り直した Font・面・テクスチャは UE 5.8 のエンジンのアセットと設定が一致（面の ttf は md5 まで同じ）。
-- パッケージ版での確かめはステップ 3。
+- ステップ 3a の洗い出し: `Source/`（`Tests/` 以外）に残る `/Engine/…` は `BasicShapes/Plane`・`Cube`・`Sphere`・`BasicShapeMaterial`・`EngineResources/WhiteSquareTexture`・`EngineFonts/Roboto`・`EngineDebugMaterials/VertexColorViewMode_RedOnly` だけで、全部パッケージに入っている。前処理と `Config/DefaultInput.ini` の `DefaultVirtualJoysticks` も同じ。前回のクックの `ReferencedSet.txt` の `/engine/` にも `blackunlitmaterial`・`robototiny`・`sphererenderheightmap` は無く、決定事項の一覧と一致した。
+- パッケージ版での確かめはステップ 3b（許可待ち）。

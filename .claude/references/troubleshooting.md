@@ -448,7 +448,15 @@
 - 原因: 板の材質が `/Engine/EngineDebugMaterials/BlackUnlitMaterial`（エディタ専用のデバッグ材質）で、**クックされない**。C++ の `TSoftObjectPtr` / `FObjectFinder` で書いたエンジンのアセットの参照はアセットではなくコードの中にあるので、クッカーが辿れるとは限らず、`bCookAll=True`（`/Game` を丸ごと）でも `/Engine` の外れたものは入らない。材質が読めない板は既定の材質（灰色の市松）で描かれる。
 - 対処: **ゲームのコードが使うアセットは `/Game`（原作の取り込み先か `/Game/Wasami`）に置く**。エンジンのものを使うときは、パッケージに入っているかを `.utoc` の名前で確かめる。2026-09-22 に Windows のパッケージで確かめた結果 —— 入っている: `BasicShapes/Plane`・`Cube`・`Sphere`・`BasicShapeMaterial`・`EngineResources/WhiteSquareTexture`・`Black`・`DefaultTextureCube`・`EngineFonts/Roboto`・`RobotoDistanceField`・`Faces/RobotoLight`・`RobotoRegular`・`RobotoBold`・`DroidSansFallback`・`EngineMaterials/DefaultNormal`・`WorldGridMaterial`・`EditorShapes/Textures/T_ShapeNormal`・`EngineDebugMaterials/VertexColorViewMode_RedOnly`（**`Roboto*` でひとくくりにはできない**: `Roboto` は入るが `RobotoTiny` は入らない）。**入っていない**: `EngineDebugMaterials/BlackUnlitMaterial`（捕獲の別室の壁）・`EngineFonts/RobotoTiny`（死亡画面のヒントと SAVING の字）・`Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap`（SAVING の絵）。
 - 確かめ方: `grep -a -o -E "[ -~]{6,}" Saved/StagedBuilds/Windows/wasami_deception/Content/Paks/wasami_deception-Windows.utoc | grep -x "<アセット名>.uasset"`。コンテナの索引はパスの部品（フォルダ名・ファイル名）を別々の文字列で持つので、`EngineDebugMaterials` のようなフォルダ名が出ても中身が入っているとは限らない。
-- 出典: 2026-09-22 の有人セッション（作業一覧の項目 39。**まだ直していない**）。
+- 直し方: 入らないものは **`/Game/DD/_Engine/<エンジンでの相対パス>` に同じ設定で作り直し**、コードの参照をそちらへ向ける（前処理の `dd_assets.engine_font` / `texture`、音は取り込み済みの複製）。2026-09-22 に 3 つとも作り直した: 壁は `/Game/Wasami/Enemy/M_WasamiCaptureBlack`、字は `/Game/DD/_Engine/EngineFonts/RobotoTiny`（面も）、絵は `/Game/DD/_Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap`。
+- **足したときに再発させない見張り**: ゲームのコードが指す `/Engine/…` を洗い出し、上の「入っている」の一覧に無いものが増えていないかを見る。2026-09-22 に洗い出した結果、残っているのは **`BasicShapes/Plane`・`Cube`・`Sphere`・`BasicShapeMaterial`・`EngineResources/WhiteSquareTexture`・`EngineFonts/Roboto`・`EngineDebugMaterials/VertexColorViewMode_RedOnly`（エディタでしか出ないビルボード）だけ**で、どれもパッケージに入っている。前処理（`Content/Python/wasami_tools`）が指す `/Engine/…` と `Config/DefaultInput.ini` の `DefaultVirtualJoysticks` も全部入っている。テスト（`Source/**/Tests/*.cpp`）はパッケージに入らないので見なくてよい。
+
+  ```bash
+  grep -rn "/Engine/" Source/ --include=*.cpp --include=*.h | grep -v "/Tests/"
+  grep -rn "/Engine/" Content/Python/wasami_tools/ Config/*.ini
+  ```
+
+- 出典: 2026-09-22 の有人セッション（作業一覧の項目 39）。**直してある**が、**パッケージ版での見た目の確かめは未了**（Claude が `RunUAT.bat BuildCookRun` を走らせる許可を得られていない。項目 39 の要確認）。
 
 ### `Wasami.Settings` でパッケージした本編が落ちる（`Assertion failed: IsInAudioThread()`）
 
