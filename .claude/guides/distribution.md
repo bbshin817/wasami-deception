@@ -47,7 +47,8 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
   - 画面への入力は使わないので、**マウスとキーそのもの（タイトルの NEW GAME、欠片の画面の CLOSE、スコア画面の NEXT）は別に確かめる**（PIE では `Tools/playthrough.py` が実際に押している）。
   - 二重起動を防ぐ錠は `Tools/game_perf.py`（本編の fps の計測）と共有している（`Intermediate/Perf/.game_perf.lock`）。同時には走らせられない。
 - **`bCookAll=True` は `/Game` を丸ごとクックする**ので、どのレベルからも使っていないアセットもパッケージに入る。原作の素材をパッケージから外したいときは `Content/` から消すしかない（作業一覧の項目 35 と同じ）。
-- クック前に確かめること: 参照している素材がすべて `/Game` にあるか（`Intermediate/Pipeline/` の中間データはパッケージに入らない）、既定のマップとゲームモード（`Config/DefaultEngine.ini`）、起動して 1 面が遊べるか。
+- クック前に確かめること: 参照している素材がすべて `/Game` にあるか（`Intermediate/Pipeline/` の中間データはパッケージに入らない。**`/Engine` のアセットも、コードから `TSoftObjectPtr` や `FObjectFinder` で指しただけのものは入らないことがある**〈2026-09-22 に `BlackUnlitMaterial`・`RobotoTiny`・`SphereRenderHelper` が入っていないと分かった。症状索引「パッケージ版でだけ、黒いはずの板が灰色のグリッドになる」〉）、既定のマップとゲームモード（`Config/DefaultEngine.ini`）、起動して 1 面が遊べるか。
+- **見た目の確かめを PIE だけで済ませない**（2026-09-22 のレビューの指摘から）。パッケージ版でだけ出る違い（クックされないアセット、エディタ専用の既定値）があるので、見た目に関わる直しは `Saved/Archive/Windows/wasami_deception.exe` でも 1 度見る。
 - **`Config/DefaultGame.ini` の 2 つの節はパッケージのためにある**（消さない。理由はその ini のコメント）:
   - `[/Script/UnrealEd.ProjectPackagingSettings]` の `bCookAll=True`（無いと **`/Game` のパッケージが `L_Title` の 1 つしか入らない**パッケージが黙って出来る。2026-09-21 に実際に起きた）。`MapsToCook` と `DirectoriesToAlwaysCook` は書かない（書くと C++ から直に読む 195 個のアセットが落ちる）。
   - `[/Script/Engine.AssetManagerSettings]` の `GameFeatureData` の規則（無いとクックがエラー 2 件で落ちる）。
