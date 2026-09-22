@@ -593,6 +593,10 @@
 2. **捕獲の `you` に字幕を出すか**: 仮に**出さない**（`dd_voices.SILENT`）。WebGL 版は `you` を鳴らさず前例が無く、捕獲は画面いっぱいの演出で、同じ場面の `Over` も字幕を出していない。出すなら `Content/Python/wasami_tools/pipeline/dd_voices.py` の `SUBTITLED` へ移して取り込み直す。
 3. **手元に残る本家の捕獲の 3 本のアセットを消すか**（`/Game/DD/Audio/01_Hotel/Evil_Monkey_Scream`・`/Game/DD/Audio/03_Manor/LIVING_STATUE_Laughter_05`・`Axe_Hit_03`）: 仮に**消さない**（取り込みの一覧から外しただけ）。アセットの削除は無人運転では行わない決まりで、`Content/DD/` は git の外なので前処理で作り直せる。
 
+### 20260922-glass-master（項目 46。2026-09-22 に閉じた）
+
+1. **ステージのマスターは 7 つとも `bUsedWithNanite`・`bUsedWithStaticLighting` が偽のまま**（項目 46 で足した `M_DD_Glass`・`M_DD_GlassSewerage` も同じ）。エディタは足りない用途フラグをその場で立て直すので PIE では出ないが、**パッケージ版では既定の材質（灰色の市松）に落ちる** — 実際に祭壇の球 `m_crystal_Inst2` がパッケージ版のログに `missing usage flag Nanite!`・`StaticLighting!` を出して落ちている（`20260922-zone1-ambulance` の要確認と同じ件）。項目 46 でタイルの `MM_Main_Substance_Glass_DoorsNontransparent` が半透明 → 不透明に戻った分、新しく Nanite と焼き込みの対象になるので同じ形の危険がある。**作業一覧に項目を立てて、ステージのマスターの用途フラグをまとめて立て直すか**（直したかどうかの確かめには `RunUAT.bat BuildCookRun` の許可が要る。上の `20260922-cooked-engine-assets` と同じ）。
+
 ### 20260922-cooked-engine-assets（項目 39。2026-09-22 から止まっている）
 
 1. **`RunUAT.bat BuildCookRun`（パッケージの作り直し）を Claude が走らせる許可**（項目 39 の完了の条件 2・4、および大目標 4 全体の「達成の姿: パッケージ版で確かめてある」）: 直しは 3 つとも入っているが、**パッケージ版での見た目の確かめができない**。無人運転の反復で 3 通り（bash の直呼び・`sh` の台本・PowerShell）とも自動モードの判定に止められた（理由「Real-World Transactions」）。`.claude/settings.json` の `permissions.allow` にも規則が無い。**これは配布ではなく手元での確かめのための組み立て**で、出力はすべて git の外（`Saved/Archive`・`Saved/StagedBuilds`・`Saved/Cooked`）。許可の仕方は 2 つ: (a) `.claude/settings.json` の `permissions.allow` に `Bash("C:/Program Files/Epic Games/UE_5.8/Engine/Build/BatchFiles/RunUAT.bat" BuildCookRun *)` を足す、(b) 有人セッションでユーザーが 1 度走らせて Claude が `.utoc` と画面を見る。**大目標 4 の残りの項目（41・43）も「パッケージ版で確かめる」を完了の条件に持つ**ので、同じ壁に当たる。2026-09-22 の時点で 39・41・43 はどれも直しとコードが入り終えていて、**残っているのはパッケージ 1 回ぶんの確かめだけ**（1 回作り直せば 3 項目まとめて閉じられる）。
