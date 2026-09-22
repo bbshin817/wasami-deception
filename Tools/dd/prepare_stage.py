@@ -11,6 +11,9 @@ Almost nothing is copied: the glTF and PNG of the export are imported straight f
 the original mesh space and their glTF material names are the mesh's material slot names). The exception is a mesh
 whose sections share a material — UE's import would give those a single slot and shift every later slot index — whose
 glTF is written again under Intermediate/Pipeline/dd/meshes/ with one material per section. Its .bin is not copied.
+The other exception is this game's own: the three textures that draw the original's nurse are imported from
+Intermediate/Pipeline/wasami/stage/ (Tools/dd/prepare_nurse_posters.py) as /Game/Wasami/Stage/T_*, with Wasami's head
+in her place and the original's size, sRGB and compression.
 
 Env: PAK_REF2 — the export (default <repo>/pak_reference_2).
 """
@@ -21,6 +24,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import sys
 import urllib.parse
 
@@ -32,6 +36,17 @@ MESH_OUT = os.path.join(OUT, "meshes")
 GAME_ROOT = "/Game/DD"
 CONTENT_PREFIX = "DDeception/Content/"
 ENGINE_PREFIX = "Engine/Content/"
+
+# The three textures that draw the original's nurse are imported as this game's own pictures instead, with Wasami's
+# head in her place (Tools/dd/prepare_nurse_posters.py draws them into Intermediate; they are not in git). Everything
+# else about them stays the original's: the same size, sRGB and compression, and the material's graph is untouched.
+WASAMI_OUT = os.path.join(ROOT, "Intermediate", "Pipeline", "wasami", "stage")
+WASAMI_TEXTURES = {
+    "hospital_poster_nurse_01_D": ("wasami_poster_nurse_01.png", "/Game/Wasami/Stage/T_Hospital_Poster_Nurse_01"),
+    "hospital_poster_nurse_02": ("wasami_poster_nurse_02.png", "/Game/Wasami/Stage/T_Hospital_Poster_Nurse_02"),
+    "hospital_decal_nurseambulance": ("wasami_decal_nurseambulance.png",
+                                      "/Game/Wasami/Stage/T_Hospital_Decal_NurseAmbulance"),
+}
 
 ZONES = (
     ("Zone1", "06_Hospital_Zone_01", "/Game/Stage/Maps/L_Hospital_Zone1"),
@@ -182,6 +197,26 @@ def texture_asset(png):
         return None
     rel = re.sub(r"\.[A-Za-z0-9]+$", "", rel)
     return root + "/" + "/".join(safe_segment(s) for s in rel.split("/"))
+
+
+def wasami_texture(png):
+    """(file, asset) of the Wasami picture that takes this texture's place, or None for every other texture."""
+    name = re.sub(r"\.[A-Za-z0-9]+$", "", png.replace("\\", "/").split("/")[-1])
+    swap = WASAMI_TEXTURES.get(name)
+    return (os.path.join(WASAMI_OUT, swap[0]), swap[1]) if swap else None
+
+
+def draw_wasami_textures(problems):
+    """Draws the Wasami pictures when Intermediate has none (a fresh checkout), the same as running
+    Tools/dd/prepare_nurse_posters.py by hand."""
+    if all(os.path.exists(os.path.join(WASAMI_OUT, f)) for f, _ in WASAMI_TEXTURES.values()):
+        return
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prepare_nurse_posters.py")
+    print("ワサミの絵が無いので描く: %s" % script)
+    try:
+        subprocess.run([sys.executable, script], check=True)
+    except Exception as e:  # noqa: BLE001
+        problems.append("could not draw the wasami textures (%s): %s" % (script, e))
 
 
 # ------------------------------------------------------------------------------------------------ transforms
@@ -479,8 +514,14 @@ def note_texture(ex, png, kind, textures, problems):
     if not os.path.exists(path):
         problems.append("texture png missing: " + png)
         return
+    asset, swap = texture_asset(png), wasami_texture(png)
+    if swap:                                   # this game's own picture, in the place of the original's nurse
+        path, asset = swap
+        if not os.path.exists(path):
+            problems.append("wasami texture missing (python Tools/dd/prepare_nurse_posters.py): " + path)
+            return
     textures[png] = {
-        "asset": texture_asset(png), "file": path, "kind": kind,
+        "asset": asset, "file": path, "kind": kind,
         "srgb": info.get("srgb"), "compression": info.get("compression"), "lodGroup": info.get("lod_group"),
         "format": info.get("format"), "size": info.get("exported_size"),
     }
@@ -769,6 +810,7 @@ def main():
 
     ex = Export()
     meshes, textures, materials, problems = {}, {}, {}, []
+    draw_wasami_textures(problems)
     zones = {}
     for key, map_name, level in ZONES:
         zones[key] = read_zone(ex, map_name, level, meshes, textures, materials, problems)

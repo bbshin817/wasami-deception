@@ -692,6 +692,7 @@ def import_batch(max_items):
             imported += 1
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     EAL.save_directory(paths.PIPELINE_ROOT, only_if_is_dirty=True, recursive=True)
+    EAL.save_directory(paths.WASAMI_ROOT, only_if_is_dirty=True, recursive=True)   # this game's own pictures
     left = {k: sum(1 for kind, _a, _f in missing[imported:] if kind == k) for k in totals}
     out = {"imported": imported, "remaining": len(missing) - imported}
     for k, total in totals.items():
@@ -745,5 +746,6 @@ def refresh_settings():
             updated += 1
     EAL.save_directory(paths.DD_ROOT, only_if_is_dirty=True, recursive=True)
     EAL.save_directory(paths.PIPELINE_ROOT, only_if_is_dirty=True, recursive=True)
+    EAL.save_directory(paths.WASAMI_ROOT, only_if_is_dirty=True, recursive=True)   # this game's own pictures
     return {"masters_rebuilt": rebuilt, "textures_updated": changed, "lightmaps_updated": lightmaps,
             "materials_updated": updated, "materials_remade": remade}
