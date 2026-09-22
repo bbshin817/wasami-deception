@@ -35,8 +35,10 @@ Tools/dd/prepare_level_title.py) at /Game/Wasami/UI/T_LevelTitle. The white vign
 The title screen (UWasamiTitleScreenWidget, after the old version's UI/Main/TitleScreen/UMG_TitleScreen): the smoky
 black over the left (title_screen_video_mask), the brush strokes panning over it (MM_TitleScreen_Mask_Grey over
 title_screen_chapters_background, its graph read from its compiled shader), the hover smear behind a menu item
-(title_screen_selection_marker), the menu's music (Pause_Sound_v1) and NEW GAME's sound and voice (Start_New_Game,
-Bierce_Title_Modified_03). The select and pop-up sounds, the quit frame and the font come with the tablet and the death
+(title_screen_selection_marker), the menu's music (the latest version's DD_-_Dark_Deception_-_Theme_v1_3, which its
+UMG_TitleScreen plays where the old version's played Pause_Sound_v1; the user's answer of 2026-09-22) and NEW GAME's
+sound and voice (Start_New_Game, Bierce_Title_Modified_03). Pause_Sound_v1 still comes with this screen, for the pause
+menu and EXTRAS. The select and pop-up sounds, the quit frame and the font come with the tablet and the death
 screen. In place of the original's logo and monster face, this game's (SourceArt/Wasami/UI/title_logo.png, and the
 face and the logo's glow that Tools/dd/prepare_title.py bakes the WebGL version's CSS into) under /Game/Wasami/UI/Title.
 
@@ -185,7 +187,8 @@ TITLE_MASK = "UI/Main/TitleScreen/title_screen_video_mask"
 TITLE_STROKES = "UI/Main/TitleScreen/title_screen_chapters_background"
 TITLE_TEXTURES = (TITLE_MASK, TITLE_STROKES, "UI/Main/TitleScreen/title_screen_selection_marker")
 TITLE_SOUNDS = (
-    "Audio/UI/Pause_Sound_v1",
+    "Audio/DD_-_Dark_Deception_-_Theme_v1_3",  # the music (the latest version's; 3:34, looping, the Music class)
+    "Audio/UI/Pause_Sound_v1",  # no longer the title's: the pause menu's music and EXTRAS' Pause Theme
     "Audio/UI/Start_New_Game",
     "Audio/Titlescreen/Bierce_Title_Modified_03",
 )

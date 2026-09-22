@@ -54,7 +54,7 @@
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "ad611ed6d8835c1b718cd8898a9a2f8c960404b9",
     "Content/Python/wasami_tools/pipeline/dd_particles.py": "e5520982f627b2b7526ed7691b5a49401863a116",
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
-    "Content/Python/wasami_tools/pipeline/dd_ui.py": "e64c58aa4e3057d2ff1bc9db89628563e9e25dea",
+    "Content/Python/wasami_tools/pipeline/dd_ui.py": "4b7717b0a8ff1cd885f5e8394562fa206e3e57f0",
     "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "aa7271939c7317513332329e32b4d20bb8746ed2",
     "Content/Python/wasami_tools/pipeline/dd_enemy.py": "f5aa5281350d546f05d6cf771efab98d33d435e3",
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "9152be4681c984e45f037f5dba0a0579a82d5809",
@@ -192,7 +192,7 @@
     "Source/wasami_deception/WasamiWidgetAnimation.h": "bb7f4db7b7e9cd3c2497883c1b980a61270ad785",
     "Source/wasami_deception/WasamiWidgetProbe.h": "a7e3f0fef2e3dabe814c6f1ce4766aab58ab8fbe",
     "Source/wasami_deception/WasamiWidgetProbe.cpp": "54f2c8f9e79d36ff4675a4e57901e1dcd6bba315",
-    "Content/Python/wasami_tools/pipeline/dd_ui.py": "e64c58aa4e3057d2ff1bc9db89628563e9e25dea"
+    "Content/Python/wasami_tools/pipeline/dd_ui.py": "4b7717b0a8ff1cd885f5e8394562fa206e3e57f0"
   },
   "11-zone-flow.md": {
     "Source/wasami_deception/WasamiDoorBreak.h": "7bbf17f8a3c7d00b4ff104a3bbc09db88a2ff473",
