@@ -544,7 +544,7 @@
 - 根拠: `Source/wasami_deception/WasamiChapterPortalWidget.cpp`（`Icon` の `Logo`）、`Tools/dd/prepare_loader.py`、`pak_reference_2/DDeception/Content/UI/Main/Loaders/loader_*.png`、実装記録 09。
 - 依存: なし。
 - 規模: 1
-- 状態: **未着手**
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-portal-symbol-offset`）**。ずれは頭の絵 `T_PauseHead` の側から来る（ルーンの輪 `chapter_title_portal_inner` は絵の中心にぴったりなので、470 px の箱に入れると輪の中心 = 箱の中心）。本作の `pause_head.png` は α の外接箱の中心が 1024 で 49 px 下（470 px では約 22 px 下）、本家の病院の頭 `pause_reapernurse_head` も 39 px 下なので**本家も同じ向きにずれている**。ただし本作の絵は α の重心がほぼ中心で外接箱の中心と 49 px 食い違うので、「見た目の中心」をどう取るかを先に測って決める。
 
 ### 46. ガラスが透けない（ガラスのマスターを原作のシェーダーから組む）
 
