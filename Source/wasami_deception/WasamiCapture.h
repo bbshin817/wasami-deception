@@ -273,7 +273,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
 	TSoftObjectPtr<USkeletalMesh> BodyMesh;
 
-	/** jumpscareblock's plane and its BlackUnlitMaterial. */
+	/**
+	 * jumpscareblock's plane, and M_WasamiCaptureBlack for its BlackUnlitMaterial: the engine's debug material
+	 * is editor-only and never cooked, which left the walls checkered in a packaged build (import_wasami_enemy makes
+	 * the same material -- unlit, emissive 0 -- in this game's content).
+	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Capture")
 	TSoftObjectPtr<UStaticMesh> WallMesh;
 

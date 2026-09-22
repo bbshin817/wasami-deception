@@ -13,7 +13,8 @@
             floor (VAULT_FRAMES), and the capture's are carried onto v3's bones (_Retarget).
   imported  /Game/Wasami/Enemy: SK_WasamiEnemy with SK_WasamiEnemy_Skeleton and SK_WasamiEnemy_PhysicsAsset,
             A_WasamiEnemy_<role>, T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
-            material). The mesh faces +Y, as UE's mannequins do.
+            material), and M_WasamiCaptureBlack, the black walls of the capture's room. The mesh faces +Y, as UE's
+            mannequins do.
 
 The enemy's own sounds come from here too: the loop it moves to (MOVE_SOUND) and what the capture plays
 (CAPTURE_SOUNDS). They are the original's own waves, not this game's model, but they belong to what the enemy does
@@ -40,6 +41,11 @@ PHYSICS_ASSET = MESH + "_PhysicsAsset"
 ANIM_PREFIX = "A_WasamiEnemy_"
 MATERIAL = FOLDER + "/MI_WasamiEnemy"
 MASTER = "/Game/Pipeline/Materials/M_DD_WasamiGltf"
+# The black room the capture plays in (AWasamiCapture's walls). The original's jumpscareblock uses
+# /Engine/EngineDebugMaterials/BlackUnlitMaterial, which is an editor-only debug material the cook leaves out:
+# in a packaged build the walls fall back to the default checkerboard, and the capture plays over a grid instead
+# of the dark. This is the same material -- unlit, emissive 0 -- in this game's own content, so it is cooked.
+CAPTURE_WALL_MATERIAL = FOLDER + "/M_WasamiCaptureBlack"
 
 # What the capture plays (AWasamiCapture, which names them by their paths under /Game/DD): the scream every one of
 # 01_Hotel's jumpscare Matinees opens with, and the laugh and the axe hit of 03_Manor's Gold Watcher kill the face
@@ -654,6 +660,14 @@ def _build_master(mat, textures, noise):
     _build_cloak(g, noise)
 
 
+def _build_capture_black(mat):
+    """BlackUnlitMaterial, which the original's jumpscareblock gives its planes: unlit with an emissive of 0, one-sided
+    (the capture's walls face in because the material shows one side only)."""
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    g = dd_stage._Graph(mat, checked=True)
+    g.out(g.const3((0.0, 0.0, 0.0, 1.0), -300, 0), "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+
 def _import_model(material, prepared=None, folder=FOLDER, mesh_path=MESH, anim_prefix=ANIM_PREFIX, roles=None):
     """Imports a prepared glb (the enemy's by default) into folder and gives the mesh at mesh_path its material. Returns
     (mesh, {role: animation}) of roles (the enemy's ROLES by default)."""
@@ -715,10 +729,11 @@ def import_all():
                                 blend_mode=unreal.BlendMode.BLEND_MASKED)
     instance = dd_assets.material_instance(MATERIAL, master,
                                            textures={p: t.get_path_name().split(".")[0] for p, t in textures.items()})
+    black = dd_assets.material(CAPTURE_WALL_MATERIAL, _build_capture_black)
     mesh, anims = _import_model(instance)
-    for asset in [master, instance, mesh]:
+    for asset in [master, instance, black, mesh]:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     EAL.save_directory(FOLDER, only_if_is_dirty=True, recursive=True)
     sounds = import_capture_sounds() + [import_enemy_audio()]
-    return {"textures": len(textures) + len(noise), "materials": 2, "meshes": 1, "animations": len(report),
+    return {"textures": len(textures) + len(noise), "materials": 3, "meshes": 1, "animations": len(report),
             "sounds": len(sounds)}

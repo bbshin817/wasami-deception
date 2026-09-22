@@ -275,8 +275,9 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         mesh, skeleton and physics asset, its textures and material, and its animations named A_WasamiEnemy_<role>
         (Idle, Walk, Run, Stun_KnockDown, Capture_1 …), after writing the prepared glb (animations resampled at 30 fps,
         loops closed, chase variants in place, the stun's falls with their get-ups) under
-        Intermediate/Pipeline/wasami/enemy. With them come the original's own sounds the capture plays
-        (WasamiCapture): 01_Hotel's Evil_Monkey_Scream, and 03_Manor's LIVING_STATUE_Laughter_05 and Axe_Hit_03.
+        Intermediate/Pipeline/wasami/enemy. With them come M_WasamiCaptureBlack, the black walls of the room the
+        capture plays in, and the original's own sounds it plays (WasamiCapture): 01_Hotel's Evil_Monkey_Scream, and
+        03_Manor's LIVING_STATUE_Laughter_05 and Axe_Hit_03.
 
         Returns:
             How many assets of each kind were made ('textures', 'materials', 'meshes', 'animations', 'sounds').

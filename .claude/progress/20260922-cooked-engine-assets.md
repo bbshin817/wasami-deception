@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 9c77bb2
 started: 2026-09-22 12:01
-updated: 2026-09-22 12:01
+updated: 2026-09-22 12:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB。.claude/guides/progress-tracking.md の「記録を畳む」） -->
@@ -26,8 +26,7 @@ updated: 2026-09-22 12:01
 
 ## 計画
 
-- [ ] 1. 捕獲の別室の黒い壁を、本作の黒の Unlit 材質に替える ← 作業中
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_enemy.py`（黒の Unlit を作る）、`Content/Python/wasami_tools/toolsets/*.py`（呼ぶ側）、`Source/wasami_deception/WasamiCapture.cpp`・`.h`（`WallMaterial`）、`Source/wasami_deception/Tests/WasamiCaptureTests.cpp:255`（材質名の判定）、`/Game/Wasami/Enemy/M_WasamiCaptureBlack`（新）、実装記録 07
+- [x] 1. 捕獲の別室の黒い壁を、本作の黒の Unlit 材質 `/Game/Wasami/Enemy/M_WasamiCaptureBlack` に替えた（`dd_enemy._build_capture_black` が作り、`import_wasami_enemy` の一部。`WasamiCapture` の `WallMaterial` とテストもそのパス・名前に）
 - [ ] 2. `RobotoTiny` と `SphereRenderHeightMap` を本作に複製し、死亡画面と SAVING の参照を替える
   - 変更予定: `Content/Python/wasami_tools/pipeline/dd_assets.py`（複製）、`Source/wasami_deception/WasamiDeathScreenWidget.cpp`・`.h`、`WasamiSavingWidget.cpp`・`.h`、`/Game/DD/_Engine/EngineFonts/RobotoTiny`（+ 面）・`/Game/DD/_Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap`（新）、実装記録 09
 - [ ] 3. `/Engine/…` 参照の洗い出しと、パッケージ版での確かめ
@@ -35,7 +34,7 @@ updated: 2026-09-22 12:01
 
 ## 次にやること
 
-ステップ 1。`dd_enemy.py` に黒の Unlit 材質（`/Game/Wasami/Enemy/M_WasamiCaptureBlack`、`MSM_UNLIT`・エミッシブ 0）を作る関数を足し、取り込みのツールから作られるようにして、`WasamiCapture.cpp:387` の `WallMaterial` をそのパスに替える。テスト `WasamiCaptureTests.cpp:255` の材質名も直す。
+ステップ 2。`RobotoTiny`（`/Engine/EngineFonts/RobotoTiny` とその面）と `SphereRenderHeightMap` を `/Game/DD/_Engine/…` に複製する処理を `dd_assets.py` に足し（複製の決まりは `Content/Python/wasami_tools/toolsets/dd.py` のリバーブ・VREditor の音と同じ）、`WasamiDeathScreenWidget.cpp` と `WasamiSavingWidget.cpp:46` の参照を替える。
 
 ## 決定事項
 
@@ -57,6 +56,6 @@ updated: 2026-09-22 12:01
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: ステップ 1 で通した
+- C++ ビルド: ステップ 1 で `Tools/editor_cycle.py`
+- エディタでの確認: `M_WasamiCaptureBlack` を作って保存した（Unlit・不透明・片面・式 1）。捕獲の見た目はステップ 3 のパッケージ版で確かめる

@@ -252,7 +252,7 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 	for (const UStaticMeshComponent* Plane : Room->GetWalls())
 	{
 		TestTrue(TEXT("facing in"), FVector::DotProduct(Plane->GetUpVector(), Inside - Plane->GetComponentLocation()) > 0.);
-		TestTrue(TEXT("black"), Plane->GetMaterial(0) && Plane->GetMaterial(0)->GetName() == TEXT("BlackUnlitMaterial"));
+		TestTrue(TEXT("black"), Plane->GetMaterial(0) && Plane->GetMaterial(0)->GetName() == TEXT("M_WasamiCaptureBlack"));
 		TestFalse(TEXT("no shadow"), Plane->CastShadow);
 		const FVector Up = Plane->GetUpVector();
 		const double Wall = FVector::DotProduct(Plane->GetComponentLocation() - Room->GetActorLocation(), Up);

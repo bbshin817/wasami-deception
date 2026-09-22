@@ -54,7 +54,7 @@ sources:
   - Source/wasami_deception/WasamiMaterialLibrary.h
   - Source/wasami_deception/WasamiMaterialLibrary.cpp
   - Source/wasami_deception/Tests/WasamiCascadeTests.cpp
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 取り込みの仕組み
@@ -89,7 +89,7 @@ updated: 2026-09-21
 | `WasamiDDTools.import_dd_audio()` | レベル自身が鳴らす音を `/Game/DD` に作る（`pipeline/dd_audio.py`。中身は 10 記録）。曲 3 本（`MUSIC`。Zone 1・Zone 2 の通常と共通の追跡。`Audio/06_Hospital/Music`）、環境音 2 本（`AMBIENCE`。Zone 1 の街の環境音 `DD_City_Ambience_Creepy_Loop` と Zone 2 の館内放送 `Nurse_Hospital_Zone01_Event_48_Intercom`。`Audio/06_Hospital`）、Zone 1 の `AudioVolume` が指す残響（`REVERBS`。エンジンの `BunkerHall`・`ParkingLot` を書き出しの値で `/Game/DD/_Engine/EngineSounds/ReverbSettings` に作り直す。`dd_assets.reverb_effect`）。SoundWave の音量・ループ・SoundClass は本家の書き出しのまま。戻り値は `music` 3・`ambience` 2・`reverbs` 2 |
 | `WasamiDDTools.import_dd_dialogue()` | 病院の台詞を `/Game/DD` に作る（`pipeline/dd_dialogue.py`。中身は 10 記録）。ゾーンが直に喋らせる 9 本（`LINES`）、近づいたナースの一言の 5 本（`GAMEPLAY_WAVES`）とそれを選ぶ Cue（`GAMEPLAY_CUE`。`DialogueAttenuation` を通す）、Zone 1 の館内放送（`INTERCOM`）。波は本家の値のまま（音量 2.0・`DD_SoundClass_Dialogue`）で、字幕は本家の文字列表 `Blueprints/Main/Strings/Strings` の文言を名前の対応で `Subtitles` に入れる（本家の病院の波は字幕を持たない）。戻り値は `lines` 9・`quips` 5・`cues` 1・`intercom` 1 |
 | `WasamiDDTools.import_wasami_voices()` | 本作のワサミの声を `/Game/Wasami/Voices` に作る（`pipeline/dd_voices.py`。中身は 10 記録）。原本は `SourceArt/Wasami/Voices/*.wav` と `manifest.json`（先に `python Tools/dd/prepare_voices.py` が WebGL 版の mp3 から作る）。WebGL 版が鳴らす 11 本を `Wasami_<Id>` として、字幕を出す 5 本には `manifest.json` の文言を `Subtitles` に入れ、どれも `DD_SoundClass_Dialogue` を当てる。戻り値は `subtitled` 5・`silent` 6 |
-| `WasamiDDTools.import_wasami_enemy()` | 敵ワサミ（本作のモデル〈`SourceArt/` から〉）のスケルタルメッシュ・スケルトン・物理アセット・テクスチャ・材質と、役の名前のアニメ `A_WasamiEnemy_<役>` と、敵が鳴らす本家の波 4 本（捕獲の `CAPTURE_SOUNDS`〈`Evil_Monkey_Scream`・`LIVING_STATUE_Laughter_05`・`Axe_Hit_03`、版 1〉と移動音の `MOVE_SOUND`〈`DD_Rollerskating_Fast_V1_LOOP`、版 2。鳴らす減衰 `MonkeyAttenuation` も〉）を作る（中身は 07 記録）。戻り値は `textures` 3 / `materials` 2 / `meshes` 1 / `animations` 18 / `sounds` 4 |
+| `WasamiDDTools.import_wasami_enemy()` | 敵ワサミ（本作のモデル〈`SourceArt/` から〉）のスケルタルメッシュ・スケルトン・物理アセット・テクスチャ・材質と、役の名前のアニメ `A_WasamiEnemy_<役>` と、敵が鳴らす本家の波 4 本（捕獲の `CAPTURE_SOUNDS`〈`Evil_Monkey_Scream`・`LIVING_STATUE_Laughter_05`・`Axe_Hit_03`、版 1〉と移動音の `MOVE_SOUND`〈`DD_Rollerskating_Fast_V1_LOOP`、版 2。鳴らす減衰 `MonkeyAttenuation` も〉）と、捕獲の別室の黒い板の材質 `M_WasamiCaptureBlack`（エンジンの `BlackUnlitMaterial` はクックされないので本作の中身として持つ）を作る（中身は 07 記録）。戻り値は `textures` 3 / `materials` 3 / `meshes` 1 / `animations` 18 / `sounds` 4 |
 | `WasamiDDTools.import_wasami_boss()` | ボスワサミ（Zone 2 の Matron。本作のモデル〈`SourceArt/` から〉）のスケルタルメッシュ・スケルトン・物理アセット・テクスチャ・材質のインスタンスと、役の名前のアニメ `A_WasamiBoss_<役>` を作る（中身は 17 記録）。戻り値は `textures` 3 / `materials` 1 / `meshes` 1 / `animations` 3 と、Idle の最初のコマの頭の骨の高さ `idle_head_cm`（拡縮 1。128.2） |
 | `WasamiDevTools.execute_console_command(command)` | エディタのワールドでコンソールコマンドを実行する |
 | `WasamiDevTools.capture_pose(out_path, x, y, z, yaw, pitch, fov, width, height)` | いまのレベルを 1 つの視点から PNG に描く（下の「見た目を撮る」） |
@@ -340,7 +340,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 | `/Game/Pipeline/Materials/M_DD_KyWall02`・`M_DD_KyAura7`・`M_DD_KyShockWave02`・`M_DD_KyStarDust`、`/Game/DD/ThirdParty/AdvancedMagicFX09/Materials/…`・`Textures/…`・`Meshes/…` | テレキネシスの力場の式どおりのマスターと、原作のパスのインスタンス 4・原作のインスタンス 3・テクスチャ 6・メッシュ 2（`import_dd_powers`。04 記録） |
 | `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_VanishPuff` | Cascade のパーティクル（`dd_particles`。エミッタ 1・LOD 3・モジュール 14 を 3 つの LOD で共有） |
 | `/Game/DD/ThirdParty/PyroParticlePack/Particles/PPP_PortalAppear`・`PPP_PortalAppear_Lock` | Cascade のパーティクル（`dd_particles`。エミッタ 6〈GPU の `Sparks` を含む〉・LOD 2。ポータルが開く・閉じるときの爆風。08 記録） |
-| `/Game/Wasami/Enemy/…`（26）、`/Game/Pipeline/Materials/M_DD_WasamiGltf`、`/Game/Pipeline/Interchange/PL_Wasami_Skeletal`、`/Game/DD/Audio/01_Hotel/Evil_Monkey_Scream`・`/Game/DD/Audio/03_Manor/LIVING_STATUE_Laughter_05`・`Axe_Hit_03`・`/Game/DD/Audio/06_Hospital/DD_Rollerskating_Fast_V1_LOOP` | 敵ワサミの素材と、捕獲と移動の音（`import_wasami_enemy`。07 記録） |
+| `/Game/Wasami/Enemy/…`（27）、`/Game/Pipeline/Materials/M_DD_WasamiGltf`、`/Game/Pipeline/Interchange/PL_Wasami_Skeletal`、`/Game/DD/Audio/01_Hotel/Evil_Monkey_Scream`・`/Game/DD/Audio/03_Manor/LIVING_STATUE_Laughter_05`・`Axe_Hit_03`・`/Game/DD/Audio/06_Hospital/DD_Rollerskating_Fast_V1_LOOP` | 敵ワサミの素材と、捕獲と移動の音（`import_wasami_enemy`。07 記録） |
 | `/Game/Wasami/Boss/SK_WasamiBoss`・`_Skeleton`・`_PhysicsAsset`・`A_WasamiBoss_Idle`・`_Alert`・`_Detected`・`T_WasamiBoss_BaseColor`・`_MetallicRoughness`・`_Normal`・`MI_WasamiBoss` | ボスワサミの素材（`import_wasami_boss`。17 記録） |
 | `/Game/DD/Meshes/06_Hospital/hospital_garage_lift_anim`・`_Skeleton`・`_PhysicsAsset`・`_Anim`、`/Game/Pipeline/Interchange/PL_DD_Skeletal` | ガレージリフトの骨入りのメッシュとアニメ（`dd_skeletal`。`import_dd_gimmicks`。12 記録） |
 | `/Game/DD/Meshes/06_Hospital/hospital_sawTrap_short_01_anim`・`_short_02_`・`_medium_01_`・`_long_01_`（それぞれ `_Skeleton`・`_PhysicsAsset`・`_Anim`） | のこぎりの罠の骨入りのメッシュとアニメ（`dd_skeletal`。`import_dd_gimmicks`。骨格に本家のソケット `sawSocket`。08 記録） |
@@ -415,6 +415,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-22: `import_wasami_enemy` が捕獲の別室の黒い板の材質 `/Game/Wasami/Enemy/M_WasamiCaptureBlack`（`dd_enemy._build_capture_black`。Unlit・エミッシブ 0）も作るようにした。エンジンのデバッグ材質 `BlackUnlitMaterial` はクックされず、パッケージ版で板が市松になっていた（作業一覧の項目 39 のステップ 1。07 記録、症状索引）
 - 2026-09-21: `dd_gimmicks.import_portal` がポータルの現れる粒子 `PPP_PortalAppear`・`PPP_PortalAppear_Lock`（`PORTAL_APPEAR_PARTICLES`）も組むようにした。`dd_particles._table_distribution` が `RDO_Extreme` の表（`bUseExtremes` のベクトルの一様。`PPP_PortalAppear` の GPU のエミッタの `ParticleModuleSize` の `StartSize`）を扱えるようにした（作業一覧の項目 34 のステップ 5。08 記録）
 - 2026-09-21: 場面のシネカメラが本家の値で置かれるようにした（前処理の `camera_settings` が `CameraComponent` と `LookatTrackingSettings` の上書きを `camera` に出し、`dd_sequence._cine_camera`・`_look_at` が当てる）。フィルムバック 36 × 20.25 mm が効いて、場面の水平の画角が本家と同じ 85.9947° / 90.2249° になった（クラスの既定のままでは 63.2° / 65.6°）。両ゾーンを `dd_sequence.place` で置き直して道を焼いた（作業一覧の項目 28 のステップ 14c。上の「シーケンス」）
 - 2026-09-21: Zone 2 に置いた Matron の視界コーン 2 つから、レベルに焼かれていたタグ `dd_minimap` を外して保存し直した（クラスから外しただけでは残る。`place_dd_flow` で組み立て直せば今のクラスから作られるので付かない。作業一覧の項目 28 のステップ 9。07 記録）

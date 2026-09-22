@@ -384,7 +384,7 @@ AWasamiCapture::AWasamiCapture()
 	ShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/Main/JumpscareShake")));
 	BodyMesh = TSoftObjectPtr<USkeletalMesh>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/SK_WasamiEnemy")));
 	WallMesh = TSoftObjectPtr<UStaticMesh>(WasamiAssets::Path(TEXT("/Engine/BasicShapes/Plane")));
-	WallMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Engine/EngineDebugMaterials/BlackUnlitMaterial")));
+	WallMaterial = TSoftObjectPtr<UMaterialInterface>(WasamiAssets::Path(TEXT("/Game/Wasami/Enemy/M_WasamiCaptureBlack")));
 	ScreamSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/01_Hotel/Evil_Monkey_Scream")));
 	LaughSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/LIVING_STATUE_Laughter_05")));
 	HitSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/03_Manor/Axe_Hit_03")));
