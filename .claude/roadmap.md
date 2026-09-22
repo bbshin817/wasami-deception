@@ -553,7 +553,7 @@
 - 根拠: `pak_reference_2/_materials.json`（`MM_Main_Substance_Glass`・`_ColorMask`・`MM_Main_Substance_Glass_Doors`・`_DoorsNontransparent`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`（`MASTERS`・`make_material`・`BLEND`）、`Tools/dd/prepare_stage.py`、実装記録 01。
 - 依存: なし。
 - 規模: 2
-- 状態: **未着手**
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-glass-master`）**
 
 
 ## 取りやめた項目
