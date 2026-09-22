@@ -851,6 +851,14 @@
 - 確かめ方: `python Intermediate/Overnight/pie_ambulance.py`（PIE で屋根に落として走り出させ、`Wasami.Status` と毎ティックの測りを表にする）。プレイヤーと救急車の y の差が −66.7 のまま読み込み画面まで続けば乗っている。`--no-walls` は囲いを 4 枚とも切った比較用。
 - 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`20260918-zone-progression.md`（2026-09-19 ステップ 10a）。
 
+### `UnrealEditor-Cmd.exe` を Bash から直に起動するとテストが 1 件も走らずに終了コード 255 で落ちる
+
+- 症状: `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI -log` を Claude の Bash から直に走らせると、標準出力に UnrealBuildTool の `##PlatformValidate:` の 14 行だけが出て**終了コード 255**で終わる。エンジンのログ（`Saved/Logs/`）は 1 行も増えない。エディタを閉じてから回しても同じなので、二重起動が原因と見間違えやすい。終了コード 255 はテストが落ちたときの値（`RequestExitWithStatus(1, 255)`）とも同じで、そこでも紛らわしい。
+- 原因: 突き止めていない（エンジンの初期化まで届いていない）。疑わしいのは `-log`（別のログ用コンソール窓を開く）で、Claude の端末から起動した子プロセスでは窓を持てない。
+- 対処: `python Tools/console_session.py "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" "<uproject の絶対パス>" -ExecCmds="Automation RunTests <filter>;quit" -Unattended -NullRHI -NoSplash -ABSLOG="<絶対パス>.log" --wait UnrealEditor-Cmd.exe` で対話デスクトップに起こす。`-log` の代わりに **`-ABSLOG` で自分のログファイルに書かせる**（`Saved/Logs/wasami_deception.log` はエディタのものと混ざる）。`console_session.py` は起こすだけで待たないので、`tasklist` から `UnrealEditor-Cmd.exe` が消えるまで待ってからログの `Test Completed` を読む。**エディタは先に閉じておく**（`python Tools/editor_cycle.py --quit-only`）。
+- 確かめ方: ログの末尾に `**** TEST COMPLETE. EXIT CODE: N ****` があり、`grep -c "Test Completed"` が件数を返す。`Wasami` 全体で 157 件・約 70 s。
+- 出典: 進捗記録 `20260923-escape-score-immediate.md`（2026-09-23 ステップ 1）。
+
 ### Automation テストを `-NullRHI` で走らせると粒子と音のテストだけが落ちる
 
 - 症状: `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI` で、`Wasami.ZoneFlow.Zone1` の「the burst woken」（扉の破片のエミッタ）が落ちる。`-NoSound` も付けると `Wasami.ZoneFlow.Zone2` の「the announcement plays」も落ちる。コードは正しくても落ちるので、変更の巻き添えと見間違えやすい。

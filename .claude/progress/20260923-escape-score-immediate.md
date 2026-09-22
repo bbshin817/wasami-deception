@@ -50,7 +50,7 @@ updated: 2026-09-23 05:35
 ## 再開時の注意
 
 - 走らせたままの処理は無い。エディタは開き直して応答する。
-- **テストの回し方**（この PC では素の `UnrealEditor-Cmd.exe` が終了コード 255 ですぐ落ちる）: `python Tools/console_session.py "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" "<uproject>" -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI -NoSplash -ABSLOG="<絶対パス>.log" --wait UnrealEditor-Cmd.exe` を**エディタを閉じてから**回し、`tasklist` から消えるのを待ってログの `Test Completed` を読む。`-NoSound` は付けない（症状索引）。
+- **テストの回し方**（素の `UnrealEditor-Cmd.exe` は 1 件も走らずに落ちる。症状索引に書いた）: `python Tools/console_session.py "C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" "<uproject>" -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI -NoSplash -ABSLOG="<絶対パス>.log" --wait UnrealEditor-Cmd.exe` を**エディタを閉じてから**回し、`tasklist` から消えるのを待ってログの `Test Completed` を読む。`-NoSound` は付けない（症状索引）。
 - 本家の根拠: `pak_reference_2/_bytecode/…/06_Hospital.txt` の `Trigger_Escape`（@66935）、`06_Hospital_Zone_02.txt` の脱出（`Postmaze_Trigger_Ambulance` @1511・音楽 @1423）。
 
 ## 検証
