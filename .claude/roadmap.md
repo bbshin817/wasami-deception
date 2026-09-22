@@ -518,7 +518,7 @@
 - 根拠: `pak_reference_2/_levels/06_Hospital_Zone_02.full.json`（`nurse_idle1_2`・`nurse_idle2_2` の `bHidden`）、`Content/Python/wasami_tools/pipeline/dd_sequence.py`（`boolean` の既定値、ナースの配置）、`Source/wasami_deception/WasamiCutsceneNurse.*`、実装記録 07・11、`.claude/references/enemy-wasami-motions.md`。
 - 依存: なし。
 - 規模: 3
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-zone2-cutscene-standins`）**。(1)(2)(3) は済み。(a) の正体は**捕まる場面のテラスの代役 `nurse_idle1_2` が頭の 17.2 秒をアニメに覆われず基準姿勢（腕を広げた `restpose`）で立っていた**こと（本家でもこのナースは t = 0 から見えているので、直すのは可視ではなく姿勢）で、3 つの場面の切れ目 8 つを `Idle` で埋めた。(b) の殴打は本家の psa を測って `Chase_Charge` → `Chase_PickUp` に替えた（振りかぶって振り下ろす形は v3 でこれだけ）。(3) は Zone 1 の出来事も独房も**直し不要**と確かめた（Zone 1 は PIE で 0.2 s 刻みに測って基準姿勢がどの時刻にも出ない。独房の台詞 8 本が `Idle_11` になるのは代用の限界で項目 28 の後回し）。残りは (4) の撮り比べ
+- 状態: **完了（2026-09-22）**。(a) の正体は**捕まる場面のテラスの代役 `nurse_idle1_2` が頭の 17.2 秒をアニメに覆われず基準姿勢（腕を広げた `restpose`）で立っていた**こと（本家でもこのナースは t = 0 から見えているので、直すのは可視ではなく姿勢）で、3 つの場面の切れ目 8 つを `Idle` で埋めた。(b) の殴打は本家の psa を測って `Chase_Charge` → `Chase_PickUp` に替えた（振りかぶって振り下ろす形は v3 でこれだけ）。(3) は Zone 1 の出来事も独房も**直し不要**と確かめた（Zone 1 は PIE で 0.2 s 刻みに測って基準姿勢がどの時刻にも出ない。独房の台詞 8 本が `Idle_11` になるのは代用の限界で項目 28 の後回し）。(4) も済み: 3 つの場面を PIE で撮って連番のグリッドに並べ（`Intermediate/DesktopAgent/shots/z1ev-grid.png`・`z2cap-grid.png`・`z2cell-grid.png`）、棒立ちのワサミが 1 コマも居ないことを確かめた。絵に映らない時刻も落とさないよう、Zone 2 の 2 つは 0.2 s 刻みで代役の手の高さも測った（01 記録）
 ### 43. タイトル画面の曲を本家（最新版）のものにする
 
 - 目標: 指摘「タイトル画面のBGMが本家と異なる」。本作は本家の**旧版**の `UMG_TitleScreen` を写した（WebGL 版がそうしていたため）ので、曲がポーズ画面と同じ `Audio/UI/Pause_Sound_v1` になっている。**最新版**の `UMG_TitleScreen` は `CreateSound2D(/Game/Audio/DD_-_Dark_Deception_-_Theme_v1_3, 0.6, 1.0, 0.0)` → `FadeIn(2.0, 0.5)` でテーマ曲を流す（旧版と最新版で違う数少ない場所）。
