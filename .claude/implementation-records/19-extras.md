@@ -16,7 +16,7 @@ updated: 2026-09-23
 # EXTRAS
 
 ## 役割
-タイトル画面の EXTRAS（作業一覧の項目 29）。秘密の書類（18 記録）が解放してセーブに足した EXTRAS（`UWasamiSaveGame` の `ExtrasArt`・`ExtrasSFX`。06 記録）を見る画面。本家の最新版（`pak_reference_2`）の `UMG_Extras` とその部品を写す（病院の書類が解放する Art 19〜22・Sound 5 は最新版にだけある）。並べる中身（絵・日記の声・動画）は仮で、本家の Art Gallery の絵・日記の声・動画は使わない（2026-09-20 のユーザーの回答「枠組みだけ先に作る」。中身は後でユーザーと決める）。**SOUND ARCHIVE だけは本作で実際に鳴っている曲 4 本を名前つきで並べる**（欄も 10 → 4 に減らす。2026-09-21 のユーザーの回答。下の「曲の一覧」）。画面本体 `UWasamiExtrasWidget` と並べる部品・大きく見る画面。入口はタイトル画面の EXTRAS（`UWasamiTitleScreenWidget::PressExtras`: `Show` → `OnFadeMusic` に曲の `FadeInMusic` → 選択音 → 曲を 1 s で消す。14 記録）。素材の取り込みは 09 記録（`dd_ui.import_extras`）。
+タイトル画面の EXTRAS（作業一覧の項目 29）。秘密の書類（18 記録）が解放してセーブに足した EXTRAS（`UWasamiSaveGame` の `ExtrasArt`・`ExtrasSFX`。06 記録）を見る画面。本家の最新版（`pak_reference_2`）の `UMG_Extras` とその部品を写す（病院の書類が解放する Art 19〜22・Sound 5 は最新版にだけある）。並べる中身（絵・日記の声・動画）は仮で、本家の Art Gallery の絵・日記の声・動画は使わない（2026-09-20 のユーザーの回答「枠組みだけ先に作る」。中身は後でユーザーと決める）。**SOUND ARCHIVE には曲を 1 本も置かない**（区分は本家の木のまま残していつも鍵。2026-09-23 のユーザーの回答。下の「曲は 1 本も並べない」）。画面本体 `UWasamiExtrasWidget` と並べる部品・大きく見る画面。入口はタイトル画面の EXTRAS（`UWasamiTitleScreenWidget::PressExtras`: `Show` → `OnFadeMusic` に曲の `FadeInMusic` → 選択音 → 曲を 1 s で消す。14 記録）。素材の取り込みは 09 記録（`dd_ui.import_extras`）。
 
 ## 公開インターフェース
 - `UWasamiExtrasWidget`（本家 `UMG_Extras`。EXTRAS の画面本体）: `Show(WorldContext)`（BlueprintCallable。本家のタイトルの EXTRAS の `Create` → `AddToViewport(2)`。プレイヤーのコントローラーが無ければ null）・`OnFadeMusic`（本家の `FadeMusic`。BACK が画面を外すときに知らせる。タイトルが曲を戻すのに結ぶ）・`Save`/`SaveSlotName`（部品に渡すセーブ。無ければ木を組むときにスロットから読み、空なら新しいセーブ）・`Begin()`（Construct）・`Advance(Dt)`（ティック）・`Select(Section)`（区分のボタンのクリック）・`HoverSection(Section, bHovered)`・`PressBack`・`HoverBack`・`ResetAllColors`・`CheckIfPlaying`・`GetActiveButton`/`GetFadeInTime`/`GetCreditsTime`/`IsClosing`/`IsFinished`・`EvaluateOpacity`/`EvaluateCreditsY`・部品の取得（区分のボタン・スイッチャー・クレジット・絵・日記・曲・動画・再生バー 2 つ・WrapBox 4 つ）・定数 `CreditsSection` 0・`ArtGallerySection` 1・`BierceDiariesSection` 2・`SoundArchiveSection` 3・`MoviesSection` 4（本家の `Active Button` とスイッチャーの番号）・`ArtCount` 35・`DiaryCount` 10・`SoundCount` 10・`VideoCount` 10・`FadeInLength`（30001/60000 s）・`FadeInSpeed` 2・`CreditsScrollLength`（2388001/60000 s）・`BackPitch` 0.7・`BackDelay` 0.25・`UnhoveredGrey` 0.11・`ViewportZOrder` 2・`CreditsText`（仮のクレジット）。素材の欄 `ArtTextures`（ID ごとの絵。仮）。
@@ -76,8 +76,7 @@ updated: 2026-09-23
 - 音のボタンが押されたとき、本家はワールドの音のボタンをすべて `Deselect` する（別の一覧のものも）。テストのワールドの無いボタンどうしも互いに当たる（害は無い）。
 - 日記の解放（`Level Ranks[ID]` が None のとき解放）は本家のままの判定で、本作ではいつも `ID` 0〜8 が解放になる。
 - 動画は鍵のまま（`UMG_MaximizeVideo` は作らない）。MOVIES の区分は本家どおり隠れて無効。
-- 中身は仮（上の「仮の中身」）。絵・日記の声・動画・クレジットはユーザーと決めて `ArtTextures` と部品の値・`CreditsText` を差し替える。曲は決まっている（上の「曲の一覧」）が、ID 1〜3 の名前は仮。
-- 曲はどれもループの波なので、再生バーは最後まで行くと頭へ戻って鳴り続ける（本家の EXTRAS の曲も `LOOPING` で同じ）。
+- 中身は仮（上の「仮の中身」）。絵・日記の声・動画・クレジットはユーザーと決めて `ArtTextures` と部品の値・`CreditsText` を差し替える。曲は置かない（上の「曲は 1 本も並べない」）。
 - 配置は本家の 1920 × 1080 の値のまま。16:9 より横が狭い画面（エディタの PIE の窓など）では、中央からの位置で置く頁が左の区分に重なる（本家も同じ置き方）。
 - `Slider_0` は飾りだが本家どおり操作できる（値が変わるだけ）。
 - C++ で木を組むので、Python の `unreal.new_object` で作って `add_to_viewport` しても木が組まれず何も映らない。`Show` で出す（症状索引）。
@@ -88,15 +87,18 @@ updated: 2026-09-23
 - 続けて `Wasami.Title` でタイトルへ移ると、EXTRAS の Art Gallery で 35 枚のうち ID 19・20 の 2 枚だけが絵になり（残りは鍵）、ID 19 を押すと大きく見る画面が出た。日記は仮のまま（鍵ではなく、押しても鳴らない。当時は曲も同じ）。
 - 収録のグリッド: `Intermediate/DesktopAgent/shots/extras_step6_{doors,collect,title,maximize}.png`（git の外）。
 
-## 確かめたこと（2026-09-21、PIE。書類が曲 4 本を解放する）
+## 確かめたこと（2026-09-23、PIE。曲を外した後）
 
-- Zone 1 をチェックポイント 5（迷路）で開き、書類（`ID` 0。`Collectables` は SOUND 0・1・2・3 の 4 件）にプレイヤーを重ねると、ディスクのスロット `structSlot` の `ExtrasSFX` が `[]` → **`[0, 1, 2, 3]`** になった（`ExtrasArt` は空のまま）。SOUND ARCHIVE の 4 本が 1 つの書類で全部開く（作業一覧の項目 35 のステップ 4・6）。
-- 曲が鳴るところは PIE では聞けない（エディタが前面でないと出力が無音。症状索引）ので、押した先の `SetSound` と再生バーは Automation の `Wasami.Extras.SoundButton` で見ている。
+- `structSlot` の `ExtrasArt`・`ExtrasSFX` がどちらも空の状態から Zone 1 で PIE を始め、**書類を 2 つとも取った**（秘密のエレベーターの奥の `ID` 1 = (7777.7, −3900.5, 94.4)、迷路の `ID` 0 = (306.2, −10202.0, 108.0)）。ディスクは `ExtrasArt` **[19, 20]**・`ExtrasSFX` **[]** で、**`ID` 0 は 1 つも解放しない**（前は曲 4 本を開けていた）。`Secrets` は空のまま（チェックポイントまで書かない。18 記録）。
+- `Wasami.Title` でタイトルへ移り EXTRAS を押すと、ART GALLERY は 35 枠のうち 19・20 の 2 枚だけが絵で残りは鍵、**SOUND ARCHIVE は 10 枠とも鍵で名前も再生バーの題も 1 つも出ない**（MOVIES と同じ見せ方）。20 を押すと大きく見る画面が出る（解放されている証し）。
+- 絵: `Intermediate/DesktopAgent/shots/item50_{art_gallery,sound_archive}.png`（git の外）。
+- 曲が鳴るところは PIE では聞けない（エディタが前面でないと出力が無音。症状索引）が、本作の SOUND ARCHIVE に鳴らせる曲はもう無い。
 
 ## 変更履歴
+- 2026-09-23: PIE で曲を外した後の EXTRAS を確かめ、作業一覧の項目 50 を閉じた（上の「確かめたこと（2026-09-23）」。ステップ 3）
 - 2026-09-23: Zone 1 の書類（`ID` 0）の解放を空にした（組み立てが Sound の項目を落とす `COLLECTABLE_SKIP`。18・01 記録。作業一覧の項目 50 のステップ 2）
 - 2026-09-23: SOUND ARCHIVE から曲を外し、本家の木のまま 10 枠とも鍵にした（`SoundTracks`・`FWasamiExtrasTrack`・`ExtrasMusicTrack` を消し、`SoundCount` 4 → 10。テスト `Wasami.Extras.Screen`・`.SoundButton`・`.SoundBar`・`.Item`。作業一覧の項目 50 のステップ 1）
-- 2026-09-21: 書類が `ExtrasSFX` を [0, 1, 2, 3] にすることを PIE で確かめ、作業一覧の項目 35 を閉じた（上の「確かめたこと（2026-09-21）」。ステップ 6）
+- 2026-09-21: 書類が `ExtrasSFX` を [0, 1, 2, 3] にすることを PIE で確かめ、作業一覧の項目 35 を閉じた（ステップ 6。2026-09-23 の項目 50 で取り消したので、その節は消した）
 - 2026-09-21: Zone 1 の書類が SOUND ARCHIVE の 4 本とも解放するようにした（組み立ての `COLLECTABLE_SOUNDS`。18・01 記録。作業一覧の項目 35 のステップ 4）
 - 2026-09-21: SOUND ARCHIVE に本作の曲 4 本を名前つきで並べた（`SoundTracks`・`FWasamiExtrasTrack`、`SoundCount` 10 → 4、日記の 10 は `DiaryCount` へ。テスト `Wasami.Extras.Screen`・`.SoundButton`。作業一覧の項目 35 のステップ 3）
 - 2026-09-21: 有人セッションのユーザーの回答で、EXTRAS は**曲の欄だけ埋める**ことにした（本作で実際に鳴っている曲を名前つきで並べ、余る欄は減らす）。日記 10 は空のまま、絵 19〜22 とクレジットは今のまま（作業一覧の項目 35）

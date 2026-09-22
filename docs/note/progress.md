@@ -172,7 +172,7 @@ Zone 2 の 2 階には、使えるレンガの壁があります。使うと壁�
 
 ### EXTRAS
 
-秘密の書類で解放したものは、タイトル画面の EXTRAS で見られます。ART GALLERY・BIERCE DIARIES・SOUND ARCHIVE・CREDITS に分かれ、まだ解放していないものは鍵のまま。解放した絵は押すと大きく見られます。解放はセーブに残り、やられても消えません。SOUND ARCHIVE にはゲーム中で鳴る曲 4 本が並び、Zone 1 の書類を取ると 4 本とも聞けるようになります（絵と日記はまだ仮のものです）。
+秘密の書類で解放したものは、タイトル画面の EXTRAS で見られます。ART GALLERY・BIERCE DIARIES・SOUND ARCHIVE・CREDITS に分かれ、まだ解放していないものは鍵のまま。解放した絵は押すと大きく見られます。解放はセーブに残り、やられても消えません（絵と日記はまだ仮のもので、SOUND ARCHIVE に曲は置いていないのでいつも鍵です）。
 
 ![タイトルの EXTRAS で、書類で解放した絵を大きく見る](../../observations/ours/note/gif/38-extras.gif)
 
