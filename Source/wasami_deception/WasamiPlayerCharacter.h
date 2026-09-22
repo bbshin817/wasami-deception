@@ -56,6 +56,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
 	void StopSprinting();
 
+	/**
+	 * What the death before this carried over (UWasamiGameInstance::RememberPlayerState): the tablet already up, with
+	 * none of Toggle Tablet's woosh or its rise, and the sprint already on. BeginPlay calls it with what the game
+	 * instance carried.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Player")
+	void RestoreState(bool bInTabletUp, bool bInSprintOn);
+
 	/** Writes Walking Speed and Sprinting Speed (the speed boost sets both) and applies the one in use. */
 	UFUNCTION(BlueprintCallable, Category = "Player|Movement")
 	void SetMoveSpeeds(float Walking, float Sprinting);
@@ -137,6 +145,10 @@ public:
 
 	/** The screen on the tablet, once the widget component has made it. */
 	UWasamiTabletWidget* GetTabletScreen() const;
+
+	/** The plate itself, where PlaceTablet has put it this frame. */
+	UStaticMeshComponent* GetTablet() const { return Tablet; }
+
 
 	/** The map's arrow, once the child actor component has made it. */
 	AWasamiArrowPointer* GetArrowPointer() const;
@@ -314,6 +326,8 @@ private:
 	void LeftMouseReleased();
 	void MouseWheel(const FInputActionValue& Value);
 	void ApplySpeed();
+	void UpdateRestoredSprint();
+	static bool IsSprintKeyDown();
 	void ApplyTabletInterp(float Value);
 	void PlaceTablet();
 	void UpdateTablet(float DeltaSeconds);
@@ -412,6 +426,8 @@ private:
 	bool bMapZoomedOut = false;
 	bool bSprintHeld = false;
 	bool bSprintLatch = false;
+	/** Whether bSprintHeld came from RestoreState and no press or release of the key has confirmed it yet. */
+	bool bSprintRestored = false;
 	bool bBobSprint = false;
 	bool bBobStarted = false;
 };

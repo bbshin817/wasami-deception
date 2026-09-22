@@ -181,6 +181,25 @@ void UWasamiGameInstance::RememberCollectedShard(const FVector& StartLocation)
 void UWasamiGameInstance::ForgetCollectedShards()
 {
 	ShardsToBeRemoved.Reset();
+	// Every place that forgets the shards is a fresh start (RESTART, QUIT TO TITLE, the loading screen to the next
+	// level), and none of them should hand the next player the tablet and the sprint a death left behind.
+	bCarriedPlayerState = false;
+}
+
+void UWasamiGameInstance::RememberPlayerState(bool bTabletUp, bool bSprintOn)
+{
+	bCarriedPlayerState = true;
+	bCarriedTabletUp = bTabletUp;
+	bCarriedSprintOn = bSprintOn;
+}
+
+bool UWasamiGameInstance::TakeCarriedPlayerState(bool& bOutTabletUp, bool& bOutSprintOn)
+{
+	bOutTabletUp = bCarriedTabletUp;
+	bOutSprintOn = bCarriedSprintOn;
+	const bool bCarried = bCarriedPlayerState;
+	bCarriedPlayerState = false;
+	return bCarried;
 }
 
 FVector UWasamiGameInstance::ShardKey(const FVector& Location)

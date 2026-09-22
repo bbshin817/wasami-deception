@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: beccd4e
 started: 2026-09-22 11:19
-updated: 2026-09-22 11:19
+updated: 2026-09-22 11:45
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む -->
@@ -23,43 +23,39 @@ updated: 2026-09-22 11:19
 
 ## 計画
 
-- [ ] 1. 計画（この記録を作り、作業一覧の項目 38 を「進行中」にする） ← 作業中
-  - 変更予定: `.claude/progress/20260922-respawn-keep-state.md`、`.claude/roadmap.md`
-- [ ] 2. 現象の再現と実装（PIE で再現して原因を確かめ、C++ を直してビルドする）
-  - 変更予定: `Source/wasami_deception/WasamiGameInstance.h`・`.cpp`、`WasamiPlayerCharacter.h`・`.cpp`、`WasamiCapture.cpp`
-- [ ] 3. PIE で確かめ（トグル入・切の両方）、実装記録 02・06 を直し、記録を畳んで閉じる
-  - 変更予定: `.claude/implementation-records/02-player.md`・`06-game-flow-save.md`、`.claude/roadmap.md`
+- [x] 1. 計画（記録を作り、作業一覧の項目 38 を「進行中」にした。b077e56）
+- [x] 2. 実装（ゲームインスタンスの持ち越し `RememberPlayerState` / `TakeCarriedPlayerState`、捕獲が下ろす前に書く、プレイヤーの `RestoreState` と押しっぱなしの Shift の見張り。ビルド OK、テスト `Wasami.GameFlow.Lives`・`Wasami.Capture.Room`・`Wasami.Capture.Catch` 成功。実装記録 02・06・07 も更新）
+- [ ] 3. PIE で確かめ（トグル入・切の両方）、記録を畳んで閉じる ← 次
+  - 変更予定: `.claude/roadmap.md`（項目 38 を完了に）、必要なら `.claude/implementation-records/02-player.md`
+  - 手順: エディタは起動済み。**先に `bThrottleCPUWhenNotForeground` を偽に**（下の「再開時の注意」）→ `python Tools/pie.py start` → `Tools/desktop.py down shift w`（`--allow UnrealEditor.exe`。エディタが前面でないときの断りは症状索引の「前面の窓が許可の一覧に無い」）でタブレットを上げ（Space）Shift を押したまま `Wasami.Capture` か敵に捕まる → 再開後に `Wasami.Status` とプレイヤーの `MaxWalkSpeed`（リモート実行で `get_character_movement().max_walk_speed`）とタブレットの上下を見る → トグル設定（`Wasami.Settings ToggleSprint 1`）でも同じことを見る → `pie.py stop` → 絞りを真に戻す
 
 ## 次にやること
 
-ステップ 2。まず PIE で再現する（`Tools/pie.py start` → `Tools/desktop.py` でタブレットを上げ Shift を押したまま敵に捕まる → 再開後に走れるか）。`AWasamiPlayerCharacter::SprintPressed`／`ToggleTablet` に一時のログを足して、**再開後に Enhanced Input の `Started` が届いているか**を確かめてから直し方を決める（下の「調べてあること」の見立て）。
+ステップ 3。上の手順で PIE で確かめ、通ったら作業一覧の項目 38 を完了にし、この記録を消してコミットする。
 
-## 調べてあること（ステップ 2 の出発点）
+## 調べてあること
 
-- 死ぬ流れ: 捕獲 `AWasamiCapture` が始まると `DisableInput` と `PutDownTablet()` を呼ぶ（`WasamiCapture.cpp:600` 付近）。つまり**死亡画面が出るころには `bTabletUp` はもう偽**なので、持ち越しの記憶は**捕獲が始まる時点（`PutDownTablet()` の前）**に取る。
-- 死亡画面 `UWasamiDeathScreenWidget::NativeConstruct` が `DecrementLives()` を呼び（`:293`）、`OpenLevel(今のレベル)` で開き直す（`:501`・`:689`）。プレイヤーは作り直されるので `bTabletUp`・`bSprintHeld`・`bSprintLatch` はすべて既定の偽に戻る。
-- 持ち越しの置き場は `UWasamiGameInstance`（ライフと「回収した欠片」と同じ。ディスクには書かない）。**忘れる場所は `ForgetCollectedShards()` と同じ**（RESTART・QUIT TO TITLE・次のレベルへの読み込み）。
-- Shift の見立て: `SprintPressed` は `ETriggerEvent::Started` にしか繋がっておらず（`WasamiPlayerCharacter.cpp:287`）、押したままレベルが開き直ると押下の合図が来ない（または `bCanMove` が偽の間に来て捨てられる。`SprintPressed` の頭で `if (!bCanMove) return;`）。**`ETriggerEvent::Triggered`（押している間は毎フレーム来る）も繋いで押しっぱなしを拾い直す**のが素直。ただしトグル設定（`bToggleSprint`）のときは毎フレーム反転してしまうので、`Triggered` の処理は押しっぱなしの側だけに効かせる。
-- 新しいゲーム（チェックポイント 0）だけが `AWasamiZone1Flow::InitialStart()` を通って `bCanMove` を一時的に偽にする。死亡からの再開（チェックポイント 4 以降）はそこを通らないので、`bCanMove` は初めから真。
+- 死ぬ流れ: 捕獲 `AWasamiCapture::Start` が `DisableInput` → 持ち越しを書く → `PutDownTablet()`。死亡画面の `EStep::Respawn` が `OpenLevel(今のレベル)`。プレイヤーは作り直され、`BeginPlay` が持ち越しを取って `RestoreState` を呼ぶ。
+- 確かめたいところ: (1) 再開直後にタブレットが上がったままか（演出なしで）、(2) Shift を押したままなら走れるか、(3) 死亡画面の間に Shift を離していたら歩きのままか、(4) TOGGLE SPRINT 入のときに掛け金が戻るか。
 
 ## 決定事項
 
-- 2026-09-22: **持ち越しは `UWasamiGameInstance`** に置く — ライフと同じく「レベルを開き直しても残り、ディスクには書かない」ものだから（`WasamiGameInstance.h` の説明のとおり）。RESTART・QUIT TO TITLE・次のレベルでは忘れる（`ForgetCollectedShards` と同じ場所）ので、死亡からの再開のときだけ戻る。
-- 2026-09-22: **記憶を取るのは捕獲が始まる時点**（`AWasamiCapture` が `PutDownTablet()` を呼ぶ直前） — 死亡画面まで待つと、捕獲が下ろしたあとの「下がっている」を覚えてしまうから。
-- 2026-09-22: **ダッシュは、押しっぱなしの側も `Triggered` で拾い直す** — 持ち越しだけだと、死亡画面の間に Shift を離した人が走りっぱなしになる。押している間だけ真になる合図を足すほうが、どちらの場合も正しくなる。
+（実装済みの決めごとは実装記録 02「ダッシュ」「持ち越したダッシュの見張り」・06「ゲームインスタンス」・07「流れ」へ移した）
 
 ## 要確認（ユーザー）
 
-- 2026-09-22: **復帰したときのタブレットの出し方** — 仮に「演出（上がるアニメ）と woosh 音なしで、最初から上がった状態」にする。理由: 指摘は「表示状態を引き継ぐ」なので、再開のたびに上げ直す演出が入るのは引き継ぎに見えないため。場所: ステップ 2 で `AWasamiPlayerCharacter` に足す復帰の処理（`TabletInterp = 1` で置く）。
+- 2026-09-22: **復帰したときのタブレットの出し方** — 仮に「演出（上がるアニメ）と woosh 音なしで、最初から上がった状態」にする。理由: 指摘は「表示状態を引き継ぐ」なので、再開のたびに上げ直す演出が入るのは引き継ぎに見えないため。いまはそう実装してある（`AWasamiPlayerCharacter::RestoreState`: `TabletInterp` = 1 で置き、woosh は鳴らさない）。違うならその 1 か所を直す。
 
 ## 再開時の注意
 
-- 長時間処理はまだ無い。ステップ 2 で C++ を変えたら `python Tools/editor_cycle.py`（エディタを閉じて Live Coding 無しでビルドし、開き直す）。
-- PIE は `Tools/pie.py start` → 終わったら必ず `stop`。押しっぱなしの入力は `Tools/desktop.py hold`。
+- エディタは起動済み（ビルド済み。2026-09-22 11:41）。C++ を変えたら `python Tools/editor_cycle.py`。
+- **エディタが背面だと 3 fps に落ち、Automation テストも PIE の確かめも進まない**。リモート実行で `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)`、終わったら `True` に戻す（症状索引の「エディタが背面にあると…」）。
+- PIE は `Tools/pie.py start` → 終わったら必ず `stop`。押しっぱなしの入力は `Tools/desktop.py down shift w` →`up shift w`。
 - 項目 37 の記録 `20260922-enemy-hand-flip.md` は `status: ユーザー待ち` で残してある（この作業とは別。触らない）。
 
 ## 検証
 
-- check_records: 未実行
-- C++ ビルド: 未実行
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: OK（20 件。02・06・07 のハッシュを更新）
+- C++ ビルド: OK（`editor_cycle.py --no-quit`、161 s。エディタも起動して応答）
+- 自動テスト: `Wasami.GameFlow.Lives`・`Wasami.Capture.Room`・`Wasami.Capture.Catch` 成功（2026-09-22）
+- PIE での確かめ: 未実行（ステップ 3）

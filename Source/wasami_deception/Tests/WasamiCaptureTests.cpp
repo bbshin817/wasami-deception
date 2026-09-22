@@ -270,6 +270,26 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("put down"), Player->IsTabletUp());
 		Player->PutDownTablet();
 		TestFalse(TEXT("still down"), Player->IsTabletUp());
+
+		// Restore State: what the death carried, back on the player the level makes again (the roadmap's 38). The tablet
+		// is up at once, where Toggle Tablet would start its rise at the bottom, and the sprint is on at its speed.
+		Player->SetMoveSpeeds(300.f, 600.f);
+		const FVector Stowed = Player->GetTablet()->GetComponentLocation();
+		Player->RestoreState(true, true);
+		TestTrue(TEXT("the tablet up again"), Player->IsTabletUp());
+		TestTrue(TEXT("and up at once, with no rise left to play"),
+			FVector::DotProduct(Player->GetTablet()->GetComponentLocation() - Stowed, Player->GetActorUpVector()) > 30.);
+		TestTrue(TEXT("the sprint on, held"), Player->IsSprintOn());
+		TestEqual(TEXT("at Sprinting Speed"), Player->GetCharacterMovement()->MaxWalkSpeed, Player->SprintingSpeed);
+		Player->StopSprinting();
+		Player->bToggleSprint = true;
+		Player->RestoreState(true, true);
+		TestTrue(TEXT("the sprint on, latched, with TOGGLE SPRINT"), Player->IsSprintOn());
+		Player->StopSprinting();
+		Player->bToggleSprint = false;
+		Player->RestoreState(false, false);
+		TestFalse(TEXT("nothing carried leaves the sprint off"), Player->IsSprintOn());
+		TestTrue(TEXT("and does not put the tablet down"), Player->IsTabletUp());
 	}
 
 	UGameplayStatics::DeleteGameInSlot(CaptureTestSlotName, UWasamiSaveGame::UserIndex);

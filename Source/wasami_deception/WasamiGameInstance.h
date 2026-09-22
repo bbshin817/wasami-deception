@@ -11,7 +11,8 @@ class UWasamiSettingsSaveGame;
  * (pak_reference_2): the lives, and the shards collected since the last fresh start (Shards To Be Removed), which the
  * game mode takes out of the level each time it opens again. Lives go through BP_DD_Functions' Get Lives, Decrement
  * Lives, Increment Lives and Reset Lives. Also the capture's bag of clips, which the hotel keeps in its level Blueprint
- * but a death here opens the level again.
+ * but a death here opens the level again. Beyond the original: what a death carries to the next player (the tablet up,
+ * the sprint on), which the reviewer asked for on 2026-09-22.
  */
 UCLASS()
 class WASAMI_DECEPTION_API UWasamiGameInstance : public UGameInstance
@@ -80,6 +81,20 @@ public:
 
 	const TArray<FVector>& GetShardsToBeRemoved() const { return ShardsToBeRemoved; }
 
+	/**
+	 * What a death hands to the player the level makes when it opens again: the tablet up and the sprint on (the
+	 * reviewer's call of 2026-09-22; the original makes a fresh player, so both came back off). The capture writes it
+	 * as it begins, before Put Down Tablet lowers the tablet.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void RememberPlayerState(bool bTabletUp, bool bSprintOn);
+
+	/**
+	 * Takes what a death carried and forgets it, so that only the first player to ask gets it and a level opened again
+	 * for any other reason starts as it always did. False when nothing was carried.
+	 */
+	bool TakeCarriedPlayerState(bool& bOutTabletUp, bool& bOutSprintOn);
+
 	/** FTruncVector: each component truncated toward zero, the key a shard is remembered by. */
 	static FVector ShardKey(const FVector& Location);
 
@@ -109,6 +124,11 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Game")
 	TArray<FVector> ShardsToBeRemoved;
+
+	/** What RememberPlayerState carried, until a player takes it (TakeCarriedPlayerState). */
+	bool bCarriedPlayerState = false;
+	bool bCarriedTabletUp = false;
+	bool bCarriedSprintOn = false;
 
 	/** The macro's Remaining valid choices and Started yet? for the capture. */
 	TArray<int32> CaptureChoices;

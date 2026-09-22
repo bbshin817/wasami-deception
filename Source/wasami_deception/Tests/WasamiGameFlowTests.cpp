@@ -46,6 +46,19 @@ bool FWasamiGameFlowLivesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the same whole centimetres once"), Instance->GetShardsToBeRemoved().Num(), 2);
 	Instance->ForgetCollectedShards();
 	TestEqual(TEXT("forgotten"), Instance->GetShardsToBeRemoved().Num(), 0);
+
+	// Beyond the original: what a death carries to the player the level makes when it opens again (the tablet up, the
+	// sprint on). Only the first to ask gets it, and a fresh start drops it with the shards.
+	bool bTabletUp = true;
+	bool bSprintOn = true;
+	TestFalse(TEXT("nothing carried at the start"), Instance->TakeCarriedPlayerState(bTabletUp, bSprintOn));
+	Instance->RememberPlayerState(true, true);
+	TestTrue(TEXT("carried by a death"), Instance->TakeCarriedPlayerState(bTabletUp, bSprintOn));
+	TestTrue(TEXT("the tablet up and the sprint on"), bTabletUp && bSprintOn);
+	TestFalse(TEXT("taken once"), Instance->TakeCarriedPlayerState(bTabletUp, bSprintOn));
+	Instance->RememberPlayerState(false, true);
+	Instance->ForgetCollectedShards();
+	TestFalse(TEXT("a fresh start drops it"), Instance->TakeCarriedPlayerState(bTabletUp, bSprintOn));
 	return true;
 }
 

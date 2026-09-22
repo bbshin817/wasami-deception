@@ -14,6 +14,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Framework/Application/SlateApplication.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -207,6 +208,14 @@ void AWasamiPlayerCharacter::BeginPlay()
 		{
 			ApplySettings(*Settings);
 		}
+		// What the death before this carried over, taken after the settings so that TOGGLE SPRINT is known. Taken once,
+		// so a level opened again for any other reason begins as it always did.
+		bool bCarriedTablet = false;
+		bool bCarriedSprint = false;
+		if (Instance->TakeCarriedPlayerState(bCarriedTablet, bCarriedSprint))
+		{
+			RestoreState(bCarriedTablet, bCarriedSprint);
+		}
 	}
 	UpdateTabletScreen();
 	// UMG_Interact, added at 0 and collapsed until the player looks at something to use.
@@ -237,6 +246,7 @@ void AWasamiPlayerCharacter::BeginPlay()
 void AWasamiPlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	UpdateRestoredSprint();
 	UpdateInteractWidget();
 	UpdateTablet(DeltaSeconds);
 	UpdateHeadBob();
@@ -495,6 +505,8 @@ void AWasamiPlayerCharacter::SprintPressed()
 	{
 		return;
 	}
+	// Enhanced Input has the key from here on, so its Completed ends the sprint: UpdateRestoredSprint has no more to do.
+	bSprintRestored = false;
 	if (bToggleSprint)
 	{
 		bSprintLatch = !bSprintLatch;
@@ -508,6 +520,7 @@ void AWasamiPlayerCharacter::SprintPressed()
 
 void AWasamiPlayerCharacter::SprintReleased()
 {
+	bSprintRestored = false;
 	if (!bToggleSprint)
 	{
 		bSprintHeld = false;
@@ -519,6 +532,56 @@ void AWasamiPlayerCharacter::StopSprinting()
 {
 	bSprintHeld = false;
 	bSprintLatch = false;
+	bSprintRestored = false;
+	ApplySpeed();
+}
+
+void AWasamiPlayerCharacter::RestoreState(bool bInTabletUp, bool bInSprintOn)
+{
+	// The tablet up from the first frame, with none of Toggle Tablet's woosh or rise, so that it reads as the tablet
+	// the player already had and not as one raised again (the user's call, 2026-09-22).
+	if (bInTabletUp && !bTabletUp)
+	{
+		bTabletUp = true;
+		bTabletMoving = false;
+		TabletTime = TabletRaiseLength;
+		MinimapCapture->bCaptureEveryFrame = true;
+		ApplyTabletInterp(1.f);
+	}
+	if (bInSprintOn && !IsSprintOn())
+	{
+		if (bToggleSprint)
+		{
+			bSprintLatch = true;
+		}
+		else
+		{
+			// Shift may have been let go while the death screen was up: the sprint goes back on now and
+			// UpdateRestoredSprint takes it off on the first tick that finds the key up.
+			bSprintHeld = true;
+			bSprintRestored = true;
+		}
+		ApplySpeed();
+	}
+}
+
+bool AWasamiPlayerCharacter::IsSprintKeyDown()
+{
+	// Whether Shift is down on the keyboard right now. A key held from before this level opened never reaches Enhanced
+	// Input - Windows sends no fresh key down for a modifier - so a sprint carried over a death has neither a Started to
+	// back it up nor a Completed to end it, and the platform's own modifier state is the only place left to read it.
+	return !FSlateApplication::IsInitialized() || FSlateApplication::Get().GetModifierKeys().IsLeftShiftDown();
+}
+
+void AWasamiPlayerCharacter::UpdateRestoredSprint()
+{
+	// Only while a sprint RestoreState put back is still unconfirmed; a press or release of the key ends the watch.
+	if (!bSprintRestored || IsSprintKeyDown())
+	{
+		return;
+	}
+	bSprintRestored = false;
+	bSprintHeld = false;
 	ApplySpeed();
 }
 

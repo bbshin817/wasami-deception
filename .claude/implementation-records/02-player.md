@@ -5,7 +5,7 @@ sources:
   - Source/wasami_deception/WasamiGameMode.cpp
   - Source/wasami_deception/WasamiPlayerCharacter.h
   - Source/wasami_deception/WasamiPlayerCharacter.cpp
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # プレイヤーとゲームモード
@@ -17,7 +17,8 @@ updated: 2026-09-21
 
 - `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定は空 = 本家の `BP_DD_GameMode` の `Current Objective` の既定）はタブレットの帯に出す目的。ゾーンの流れ（11 記録）が区間ごとに入れる。ほかにゲームの流れの受け持ち（BeginPlay の頭で設定を読んで当てる〈ゲームインスタンスの `CheckSettingsSave`。15 記録〉、BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）と、シャードの `Check Shards`（全回収の通知）と `Check Streak`（連続回収。13 記録）、病院の `Escape`・`Finished Level`（脱出でスコア画面〈設定の難易度が EASY なら EASY MODE〉を出し、NEXT の後にタイトルへ。13 記録）、開始時にゾーンの流れ（`AWasamiZoneFlow`、11 記録）を出すことを持つ。レベルの名前の定数（`Zone1LevelName`・`Zone2LevelName`・`TitleLevelName` = `L_Title`）と、セーブのチェックポイントから続けるゾーンを選ぶ `LevelForCheckpoint(Checkpoint)`（本家の病院の入口 `06_Hospital` の `Spawn` @81063: 7〜10 は Zone 2、ほかは Zone 1。タイトルの RESUME が使う。14 記録）も持つ。タイトルのレベルは別のゲームモード `AWasamiTitleGameMode`（14 記録）。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」「シャードの確かめ（`Check Shards`）」。
 - `AWasamiPlayerCharacter : ACharacter`
-  - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `PutDownTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。`PutDownTablet` は本家の `Put Down Tablet`〈@31904〉: 上げていれば判定なしで下ろす〈woosh とカーブ〉。捕獲〈07 記録〉が呼ぶ。2 つの速さを書いて使う方を当てる。スピードブーストが使う。`StopSprinting()` は本家の `Sprinting?` を偽にするところ〈`BP_00_Teleport` の入り方〉: 押しと切り替えの両方の走りを消して歩きの速さを当てる。Zone 2 の脱出〈11 記録〉が呼ぶ）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetPowers()`。
+  - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `PutDownTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。`PutDownTablet` は本家の `Put Down Tablet`〈@31904〉: 上げていれば判定なしで下ろす〈woosh とカーブ〉。捕獲〈07 記録〉が呼ぶ。2 つの速さを書いて使う方を当てる。スピードブーストが使う。`StopSprinting()` は本家の `Sprinting?` を偽にするところ〈`BP_00_Teleport` の入り方〉: 押しと切り替えの両方の走りを消して歩きの速さを当てる。Zone 2 の脱出〈11 記録〉が呼ぶ）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetTablet()`（板のコンポーネント。`PlaceTablet` が毎フレーム置いた所にいる）、`GetPowers()`。
+  - `RestoreState(bTabletUp, bSprintOn)`（BlueprintCallable。**本家に無い**。2026-09-22 のレビューの指摘、作業一覧の項目 38）… 死ぬ直前のタブレットとダッシュを、レベルを開き直して作り直されたプレイヤーに戻す。`BeginPlay` がゲームインスタンスの持ち越し（06 記録の `TakeCarriedPlayerState`）を取って呼ぶ。タブレットは woosh も上がる演出も無しで**最初から上がった状態**に置き（`TabletInterp` = 1、ミニマップの撮影も入）、ダッシュは TOGGLE SPRINT なら掛け金、そうでなければ押しっぱなしとして入れる（下の「ダッシュ」）。偽を渡したものは触らない。
   - `IsMapZoomedOut()`（Z で地図を引いているか。本家の `mapZoomedOut?`）、`GetCamera()`、`GetArrowPointer()`（地図の矢印。子のアクタができてから。03 記録）。
   - `AddToMap(Class)`・`RemoveFromMap(Class)`（本家の同名のイベント。そのクラスの今いる全アクタを地図に足す・外す。赤いシャードが敵を足す。16 記録）、`IsOnMap(Actor)`（キャプチャの `ShowOnlyActors` に入っているか。最後の作り直しの時点）。
   - `OnInteract`（`FSimpleMulticastDelegate`。C++ だけ）と `InteractPressed()`（それを流す。F が呼び、デバッグの `Wasami.Interact` も呼ぶ）。
@@ -62,6 +63,7 @@ updated: 2026-09-21
     | Buy Upgrade | E | 未実装 |
 - **速さ**（`ApplySpeed`）: ダッシュの有無で `SprintingSpeed` / `WalkingSpeed` を `MaxWalkSpeed` に入れる。加減速は UE の既定のまま（本家も `MaxWalkSpeed` しか上書きしていない）。スピードブーストは `SetMoveSpeeds` で 2 つの速さをどちらもブーストの速さにし、終わると 300 / 600 に戻す（本家と同じく、元の値ではなく定数に戻す。04 記録）。
 - **ダッシュ**: Shift の押下で入り、離すと戻る。`bToggleSprint` のときは押すたびに反転（本家の TOGGLE SPRINT）。向きは問わない。
+- **持ち越したダッシュの見張り**（`UpdateRestoredSprint`・`IsSprintKeyDown`。本家に無い）: Windows は Shift のような修飾キーに自動リピートを送らないので、**押したままレベルが開き直ると新しい `UPlayerInput` は押下を一度も見ない**（Enhanced Input の `Started`・`Triggered`・`Completed` がどれも来ない）。そのため `RestoreState` が押しっぱなしの側を真にしたときだけ `bSprintRestored` を立て、毎フレーム `FSlateApplication::Get().GetModifierKeys().IsLeftShiftDown()`（OS の実際のキーの状態。Slate が無い環境では押しているものとして扱う）を見て、離れていたら歩きに戻す。本物の押下・離し（`SprintPressed` / `SprintReleased`）か `StopSprinting` が来たら見張りを終う（以降は Enhanced Input が正しく追える）。死亡画面が出ている間に Shift を離した人が走りっぱなしにならない。
 - **FOV**（`UpdateFOV`）: `BeginPlay` で 0.001 秒のループタイマーを張り、毎回 `FInterpTo(現在, MapRangeClamped(速さ, 300→900, 90→115), フレームの delta, 0.5)`。本家の `FOV Multiplier` と同じ仕組み（タイマーが 1 フレームに何度も呼ばれるので、追従の速さはフレームレートで変わる）。
 - **頭の揺れ**（`UpdateHeadBob` / `StopHeadBob`、本家の `Update Bob`）: ダッシュの状態が変わったら止める。速さが 1 cm/s 以下なら止める。動いていて未再生なら、`bHeadBob` のときにダッシュかどうかでシェイクを 1 つ再生する。止めるときはブレンドアウトさせる（`StopAllInstancesOfCameraShake(..., false)`）。
 - **180° ターン**（`TurnAround`）: 押した瞬間に `SetControlRotation(0, ヨー + 180, 0)`（ピッチは水平に戻る）。回って見えるのはスプリングアームの回転ラグによる。
@@ -97,6 +99,7 @@ updated: 2026-09-21
 - 素材はソフト参照なので、`/Game/DD` が無い（パイプラインを回す前の）状態でもエディタは起動する。その場合、PIE で板・音・揺れが無いだけになる。
 
 ## 変更履歴
+- 2026-09-22: 死んで戻ったときにタブレットの上げ下げとダッシュを引き継ぐようにした（`RestoreState`、押しっぱなしの Shift の見張り `UpdateRestoredSprint` / `IsSprintKeyDown`、板の取り出し `GetTablet()`）。持ち越しの置き場は 06 記録のゲームインスタンス、書くのは捕獲（07 記録）。テストは `Wasami.Capture.Room`（レビューの指摘。作業一覧の項目 38）
 - 2026-09-20: 場面の黒帯の後処理ボリューム `CutsceneBars`（`MM_CutsceneBars_Inst`）をプレイヤーに足した（作業一覧の項目 28 のステップ 5。09 記録）
 - 2026-09-20: ゲームモードに `IsNewStart()`（Zone 1 をセーブの 0 で開いた）と、ゾーンを見分けるレベル名 `LevelName`（空なら今のレベル。テスト用）を足した。中身は 06・11 記録（作業一覧の項目 30 のステップ 3）
 - 2026-09-20: ゲームモードのデバッグのコンソールコマンドに `Wasami.ChapterPortal`（ステージ OP を出すだけ。09 記録）を足した（作業一覧の項目 30 のステップ 1）

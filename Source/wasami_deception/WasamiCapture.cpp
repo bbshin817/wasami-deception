@@ -603,6 +603,12 @@ void AWasamiCapture::Start(AWasamiGameMode* InMode, AActor* Cause, int32 InChoic
 		Player->DisableInput(Controller);
 		if (AWasamiPlayerCharacter* WasamiPlayer = Cast<AWasamiPlayerCharacter>(Player))
 		{
+			// Beyond the original: what the player the level makes when it opens again gets back, written before Put Down
+			// Tablet lowers the tablet (the reviewer's call of 2026-09-22, the roadmap's 38).
+			if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+			{
+				Instance->RememberPlayerState(WasamiPlayer->IsTabletUp(), WasamiPlayer->IsSprintOn());
+			}
 			WasamiPlayer->PutDownTablet();
 		}
 	}
