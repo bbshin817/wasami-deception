@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: d573d72
 started: 2026-09-23 06:40
-updated: 2026-09-23 07:35
+updated: 2026-09-23 07:45
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -30,21 +30,20 @@ updated: 2026-09-23 07:35
 - [x] 1. 完了の条件 (1): 画面が空いていることを確かめる … 2026-09-23 完了。下の「決定事項」に結果。
 - [x] 2. 完了の条件 (2): NEW GAME・CLOSE・NEXT の 6 通り（マウスとキー）を押して確かめた … 2026-09-23 完了。結果は 00 記録と下の「決定事項」。
 - [x] 3. GIF `12-doors-busted.gif` と `06-primal-fear.gif` を撮り直した … 2026-09-23 完了。ビューポート全体（640 × 401）で撮り直し、撮り方は `.claude/guides/note-progress.md` の「2026-09-23 の撮り方」と (06) の行に書いた。
-- [ ] 4. GIF `20-capture.gif` を撮り直す（捕獲の別室。手が画面いっぱいに来る）
-  - 変更予定: `observations/ours/note/gif/20-capture.gif`（git の外）
+- [x] 4. GIF `20-capture.gif` を撮り直した … 2026-09-23 完了。ビューポート全体（640 × 401・63 コマ・4.19 s）で、前と同じ 2 本（後転 `Wasami.Capture 0` + 顔 `Wasami.Capture 3`）を同じ長さでつないだ。撮り方は `.claude/guides/note-progress.md` の「2026-09-23 の撮り方」の (20) の行。
 - [ ] 5. note の記事（id 180735989）を更新し、項目 52 を閉じて大目標 4 を「達成」にする
   - 変更予定: `docs/note/progress.md`、`.claude/roadmap.md`、`.claude/references/handover.md`、記録の削除
 
 ## 次にやること
 
-ステップ 4。`20-capture.gif`（捕獲の別室。手が画面いっぱいに来る）を撮り直す。エディタは `L_Hospital_Zone1` を開いたまま、PIE は止めてある。窓は既に GIF の矩形。前の GIF は 4 種のうち 2 種をつないだもので、`Wasami.Lives N` でライフを増やし `Wasami.Capture N`（N 0〜2 が Capture_1〜3、3 が顔）で出せる。今の GIF の中身は `ffmpeg -i observations/ours/note/gif/20-capture.gif -vf "fps=2,scale=288:-1,tile=5x4" -frames:v 1 <png>` で確かめてから、同じ 2 種を同じ長さで撮る。
+ステップ 5。note の記事（id 180735989・key n38f5d6ef4565、更新は `--no-notify`）を、撮り直した 3 本（`12-doors-busted.gif`・`06-primal-fear.gif`・`20-capture.gif`）を含む今の原稿 `docs/note/progress.md` で書き換える（`.claude/guides/note-progress.md` の「コマンド」。セッションの値は `Tools/note.local.json`、CLI は `tmp/note-cli/`）。原稿の本文は「いま何が出来るか」と食い違っていないか目を通すだけでよい（出来ることは項目 52 で増えていない）。そのうえで実装記録と `handover.md` の「現状と次の一歩」を直し、`.claude/roadmap.md` の項目 52 を完了にして大目標 4 を「達成（2026-09-23）」にし、この進捗記録を削除して最後のコミットに含める。閉じるときは「要確認（ユーザー）」の 1 件を作業一覧の「未回答の要確認」へ移す。
 
 ## 決定事項
 
 - 2026-09-23: **完了の条件 (1)・(2) は済み**（結果は `.claude/implementation-records/00-overview.md` の「パッケージした本編の通しプレイ」と `.claude/references/troubleshooting.md`）。(2) は 6 通りすべて通った（NEW GAME・CLOSE・NEXT × マウスとキー。キーは Tab で焦点 → Enter）。
 - 2026-09-23: パッケージ版は**作り直さない** — 項目 39・41・43・47 が使った `Saved/Archive/Windows/wasami_deception.exe` をそのまま使う（以後のコミットでクックの中身は変わらない）。ステップ 3〜5 は PIE だけなので使わない。
 - 2026-09-23（ステップ 3）: **GIF の演出を邪魔する物は PIE のワールドで消す**。06 は廊下の餅を隠すだけでなく、項目 30 で足した除細動器 `WasamiDefib`（(−5, −796)）を `destroy_actor()` で消した（赤い放電が 3〜4 秒ごとに画面いっぱいに横切り、2026-09-18 の GIF には無かった）。12 は流れの `On06Transition` を呼ばず `On06DoorsLock` だけを呼んだ（前者はナース 2 体を出し、5 秒で捕まって死ぬ）。どちらも見せたい 1 つの出来事だけを残す staging で、ゲームの作りは変えていない。
-- 2026-09-23（ステップ 3）: 敵は `note_gif.stand()` で置いても**自分からプレイヤーへ走って捕まえる**ので、置いてから撮り始めるまでを短くし、`use_when_near` で先に気絶させる。撮り終えた 23 秒の後は捕まってレベルが読み直され、隠した餅も置いた敵も消える（次の収録は PIE を始め直して組み直す）。
+- 2026-09-23（ステップ 4）: **捕獲の GIF の色が 2026-09-19 の前の GIF と違う**（青白い → 暖色）のは直さない。2026-09-21 の項目 32 で別室の灯を原作の値（色 (255, 236, 142)・強さを `SceneScale` の 2 乗）に直し、被写界深度を足した結果で、今のビルドの正しい見え方。前置き（エレベーターの扉）の露出は前の GIF と平均 RGB で 1.5 以内なので、自動露出の差ではない。
 
 ## 要確認（ユーザー）
 
@@ -55,7 +54,7 @@ updated: 2026-09-23 07:35
 - **エディタ**: `L_Hospital_Zone1` を開いたまま、PIE は止めてある。窓は GIF の矩形 `(1819, 68, 3279, 896)`（ビューポート 1039 × 652）。`observations/tools/check_viewport.py` は**観察用の別の矩形**（高さ 1269）を見るので、GIF を撮るときは使わない。
 - **対話デスクトップの代理人**: 生きている（`python Tools/desktop.py ping`）。**キーやクリックを送る前に `python observations/tools/raise_editor.py` でエディタを前面に出す**（`raise_editor.resize()` は前面に出さないので、`PermissionError: the foreground window is WindowsTerminal.exe` で弾かれる）。収録だけなら前面でなくてよい（端末の窓は撮る矩形に重ならない）。
 - **タブレットの枠**: `WasamiPowerComponent::CyclePower` はタブレットが出ていないと何もしないので、Python から呼んでも変わらない。Space → `1` を 3 回 → Space のキーで左の枠を Primal Fear にする（順は Speed Boost → Teleport → Telepathy → Primal Fear → Telekinesis → Vanish）。
-- **収録の台本**: `tmp/primal_shot.py`（PIE を始め直し、枠を回し、置き、`tmp/primal_stage.py` で舞台を作り、23 秒撮って 0.8 秒後に `tmp/primal_go.py`）。12 の台本はガイドの「2026-09-23 の撮り方」に書いた。
+- **収録の台本**: 12・20 の台本はガイド `.claude/guides/note-progress.md` の「2026-09-23 の撮り方」に書いた（20 は `tmp/cap_shot20.py` と `tmp/cap_probe.py`）。ステップ 5 は収録しない。
 - **時間のかかる処理**: PIE の収録（1 本 10〜25 秒）、エディタの開き直し。
 - note の CLI は `tmp/note-cli/`、セッションの値は `Tools/note.local.json`（存在する）。記事は id 180735989・key n38f5d6ef4565、更新は `--no-notify`。
 
@@ -63,4 +62,4 @@ updated: 2026-09-23 07:35
 
 - check_records: ステップ 2 の終わりに `--update` を通した
 - C++ ビルド: 不要（この項目はコードを変えない見込み）
-- エディタでの確認（取り込み・組み立て・PIE）: ステップ 3 の 2 本を PIE で撮り、コマの一覧（`fps` を落としたグリッド）で中身を確かめた。ステップ 4 の PIE はこれから
+- エディタでの確認（取り込み・組み立て・PIE）: ステップ 3・4 の 3 本を PIE で撮り、コマの一覧（`fps` を落としたグリッド）で中身を確かめた。PIE は止めてあり、未保存のパッケージは無い。ステップ 5 は PIE を使わない
