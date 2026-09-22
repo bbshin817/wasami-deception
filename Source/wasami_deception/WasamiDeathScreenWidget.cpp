@@ -148,7 +148,6 @@ UWasamiDeathScreenWidget::UWasamiDeathScreenWidget(const FObjectInitializer& Obj
 	GameOverSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/66_-_Game_Over")));
 	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
 	LifeVoiceSound = TSoftObjectPtr<USoundBase>(WasamiVoice::Path(EWasamiVoice::Fine));
-	GameOverVoiceSound = TSoftObjectPtr<USoundBase>(WasamiVoice::Path(EWasamiVoice::Over));
 }
 
 UWasamiDeathScreenWidget* UWasamiDeathScreenWidget::Show(const UObject* WorldContextObject, uint8 InLevel)
@@ -507,11 +506,11 @@ void UWasamiDeathScreenWidget::RunStep(EStep Step)
 		break;
 
 	case EStep::GameOver:
-		// The game over's music and Death; the input goes to the screen. Wasami's over stands in for Bierce's game
-		// over line, and the laugh 1.25 s after it is not played (the WebGL version's choice, its record 10).
+		// The game over's music and Death; the input goes to the screen. No voice here, so Bierce's game over line
+		// and the laugh 1.25 s after it have no stand-in: the capture that took the last life already says
+		// Wasami_Over 0.2 s in (record 07), and a second one 0.98 s later was cut (the user's call of 2026-09-23).
 		bGameOver = true;
 		PlaySound(GameOverSound, GameOverVolume);
-		PlaySound(GameOverVoiceSound, VoiceVolume);
 		DeathTime = 0.f;
 		if (APlayerController* Controller = GetOwningPlayer())
 		{

@@ -231,14 +231,12 @@ protected:
 	TSoftObjectPtr<USoundBase> SelectSound;
 
 	/**
-	 * Wasami_Fine and Wasami_Over: this game's voices where the original has Bierce's death line and its game over
-	 * one (the WebGL version's choice, its record 10). Neither carries a subtitle, as the original's do not.
+	 * Wasami_Fine: this game's voice where the original has Bierce's death line (the WebGL version's choice, its
+	 * record 10). It carries no subtitle, as the original's does not. The game over step has no voice of its own
+	 * (see RunStep), so this is the only one the screen plays.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Death|Assets")
 	TSoftObjectPtr<USoundBase> LifeVoiceSound;
-
-	UPROPERTY(EditAnywhere, Category = "Death|Assets")
-	TSoftObjectPtr<USoundBase> GameOverVoiceSound;
 
 private:
 	/** What a Delay of Construct resumes. */

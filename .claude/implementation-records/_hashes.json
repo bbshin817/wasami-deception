@@ -165,8 +165,8 @@
   "09-ui.md": {
     "Source/wasami_deception/WasamiSwitchboxWidget.h": "e474249fd2b11fe5a5b08671a4f3249141ad2cfc",
     "Source/wasami_deception/WasamiSwitchboxWidget.cpp": "40f8f327afe0d7d4a92b81279f956ee623dd17f9",
-    "Source/wasami_deception/WasamiDeathScreenWidget.h": "cf2a4fbf04c7a2ecf512a967997b98aba495aceb",
-    "Source/wasami_deception/WasamiDeathScreenWidget.cpp": "76dc6d2ebe72a091826859753165ee82558162cc",
+    "Source/wasami_deception/WasamiDeathScreenWidget.h": "44386e095f69a3f76edd1513dcde899505406a4d",
+    "Source/wasami_deception/WasamiDeathScreenWidget.cpp": "7ccbdf0cd512ac09a3c0b258e12a690c0671e589",
     "Source/wasami_deception/Tests/WasamiDeathScreenTests.cpp": "2f2967f8388f7f3817787388a3cb6ed68cd94650",
     "Source/wasami_deception/WasamiPopUpWidget.h": "793f06b2f48b7217b6aa260f0ea893a3bab88472",
     "Source/wasami_deception/WasamiPopUpWidget.cpp": "842a79ac01c5026ad477473f41bceec3f454883b",
