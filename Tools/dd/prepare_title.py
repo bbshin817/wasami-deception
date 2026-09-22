@@ -10,8 +10,10 @@ baked here:
 
 - The face (SourceArt/Wasami/UI/title_face.png, 512 px): the WebGL version's filter (grayscale(0.75) sepia(0.5)
   hue-rotate(38deg) saturate(0.85) brightness(0.46) contrast(1.45): the Filter Effects spec's matrices and transfers in
-  sRGB, each clamped) and its mask (radial-gradient(ellipse 50% 50% at 50% 52%, opaque at 30 %, alpha 0.5 at 58 %,
-  clear at 86 %)) as the alpha → Intermediate/Pipeline/wasami/ui/title_face.png.
+  sRGB, each clamped), the original's alpha (title_screen_profile_monkey.png is opaque but for a thin feather down its
+  left edge, which the smoke covers anyway), and the WebGL version's ellipse (radial-gradient at 50% 52%) widened into
+  a fade of the RGB to black, so that the picture reaches every edge of its box as the original's does
+  → Intermediate/Pipeline/wasami/ui/title_face.png.
 - The logo's glow: the WebGL version's drop-shadow(0 0 116u rgba(255, 40, 0, 0.28)) with the logo drawn 848 units wide
   (a Gaussian of σ = 58 units over the logo's alpha, × 0.28, in that colour), at a quarter of the logo's resolution with
   GLOW_PAD pixels of room on each side → Intermediate/Pipeline/wasami/ui/title_logo_glow.png. The widget draws it under
@@ -35,8 +37,14 @@ OUT_DIR = os.path.join(ROOT, "Intermediate", "Pipeline", "wasami", "ui")
 
 # The WebGL version's styles.css (.title__monster, .title__logo img).
 GRAYSCALE, SEPIA, HUE_ROTATE, SATURATE, BRIGHTNESS, CONTRAST = 0.75, 0.5, 38.0, 0.85, 0.46, 1.45
-MASK_CENTRE = (0.5, 0.52)                         # at 50% 52% of the box; the ellipse's radii are half the box
-MASK_STOPS = ((0.30, 1.0), (0.58, 0.5), (0.86, 0.0))
+# The original's alpha over the width (0 until 1.5 %, 0.5 at 3.1 %, opaque from 5 % on), and opaque everywhere else.
+FEATHER_STOPS = ((0.015, 0.0), (0.031, 0.5), (0.050, 1.0))
+# The WebGL version's ellipse, now a fade of the RGB to black. At 50% 52% of the box, radii half the box (so r = 1 at
+# the middle of each edge and 1.44 at the corners). The stops follow the original picture's brightness envelope
+# (luminance x alpha, blurred over 8 % of the width) divided by this game's own, so the two fall off alike.
+VIGNETTE_CENTRE = (0.5, 0.52)
+VIGNETTE_STOPS = ((0.45, 1.0), (0.57, 0.86), (0.69, 0.62), (0.82, 0.38),
+                  (0.94, 0.22), (1.06, 0.075), (1.18, 0.02), (1.36, 0.0))
 LOGO_WIDTH = 848.0                                # units the logo is drawn across
 GLOW_BLUR = 116.0                                 # the drop-shadow's blur radius (units) = 2σ
 GLOW_COLOUR = (255, 40, 0)
@@ -80,21 +88,27 @@ def filtered(rgb):
     return np.clip(rgb * CONTRAST + (0.5 - 0.5 * CONTRAST), 0.0, 1.0)
 
 
-def mask(width, height):
-    """The radial gradient's alpha over a box of width x height pixels."""
+def vignette(width, height):
+    """The ellipse's brightness over a box of width x height pixels."""
     ys, xs = np.mgrid[0:height, 0:width]
-    dx = (xs + 0.5 - MASK_CENTRE[0] * width) / (0.5 * width)
-    dy = (ys + 0.5 - MASK_CENTRE[1] * height) / (0.5 * height)
+    dx = (xs + 0.5 - VIGNETTE_CENTRE[0] * width) / (0.5 * width)
+    dy = (ys + 0.5 - VIGNETTE_CENTRE[1] * height) / (0.5 * height)
     r = np.hypot(dx, dy)
-    return np.interp(r, [s for s, _ in MASK_STOPS], [a for _, a in MASK_STOPS])
+    return np.interp(r, [s for s, _ in VIGNETTE_STOPS], [v for _, v in VIGNETTE_STOPS])
+
+
+def feather(width, height):
+    """The alpha over a box of width x height pixels: opaque but for the feather down the left edge."""
+    x = (np.arange(width) + 0.5) / width
+    return np.tile(np.interp(x, [s for s, _ in FEATHER_STOPS], [a for _, a in FEATHER_STOPS]), (height, 1))
 
 
 def face(path=FACE):
-    """The face (RGBA, the source's size) with the filter baked in and the mask as its alpha."""
+    """The face (RGBA, the source's size) with the filter and the ellipse baked in and the feather as its alpha."""
     rgb = np.array(Image.open(path).convert("RGB"), dtype=np.float64) / 255.0
     out = np.empty(rgb.shape[:2] + (4,), np.float64)
-    out[..., :3] = filtered(rgb)
-    out[..., 3] = mask(rgb.shape[1], rgb.shape[0])
+    out[..., :3] = filtered(rgb) * vignette(rgb.shape[1], rgb.shape[0])[..., None]
+    out[..., 3] = feather(rgb.shape[1], rgb.shape[0])
     return (out * 255.0 + 0.5).astype(np.uint8)
 
 

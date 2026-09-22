@@ -32,7 +32,10 @@ updated: 2026-09-22
 ## 内部構造と処理の流れ
 ### 前処理（`Tools/dd/prepare_title.py`）
 WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/implementation-records/10-hud-tablet.md` の styles.css「タイトル画面」）。UMG は絵をそのまま描くので、CSS をここで絵に焼き込む。
-- **顔**（`face`）: 原本 `SourceArt/Wasami/UI/title_face.png`（512 × 512、WebGL 版の `public/title/wasami-face.webp` を PNG にしたもの）に、WebGL 版の `.title__monster` の `filter`（`grayscale(0.75) sepia(0.5) hue-rotate(38deg) saturate(0.85) brightness(0.46) contrast(1.45)`）を Filter Effects の仕様の行列と伝達関数で sRGB のまま順にかけ（1 つごとに 0..1 に収める）、`mask-image`（`radial-gradient(ellipse 50% 50% at 50% 52%, 不透明 30 %, α 0.5 58 %, 透明 86 %)`: 箱の (50 %, 52 %) を中心に、半径を箱の半分とした楕円の距離で線形に）を α にして `Intermediate/Pipeline/wasami/ui/title_face.png`（RGBA 512 × 512）に書く。
+- **顔**（`face`）: 原本 `SourceArt/Wasami/UI/title_face.png`（512 × 512、WebGL 版の `public/title/wasami-face.webp` を PNG にしたもの）に、WebGL 版の `.title__monster` の `filter`（`grayscale(0.75) sepia(0.5) hue-rotate(38deg) saturate(0.85) brightness(0.46) contrast(1.45)`）を Filter Effects の仕様の行列と伝達関数で sRGB のまま順にかけ（1 つごとに 0..1 に収める）、α と暈しを次のようにして `Intermediate/Pipeline/wasami/ui/title_face.png`（RGBA 512 × 512）に書く（2026-09-22 に WebGL 版の `mask-image` から替えた。作業一覧の項目 44）。
+  - **α は本家の横顔と同じ切り口**（`feather`・`FEATHER_STOPS`）: 幅の 1.5 % まで 0・3.1 % で 0.5・5 % から不透明で、行によらず同じ。本家の `UI/Main/TitleScreen/title_screen_profile_monkey.png`（1024²、旧版と最新版で同一）は α > 0.95 が 91.1 %・平均 0.942 のほぼ不透明な絵で、左端だけ幅 30〜45 px（3〜4.5 %）の羽根になっている（上下の端ではもっと広い）。端が暗く見えるのは絵の側が黒いからで、α ではない。その羽根は煙の黒（`VideoMask`、左から 2029.65。α = 1 が u < 0.52 = キャンバスの x 1055 まで）の下に隠れるので、画面で見える顔の左の境界は煙のぎざぎざの縁になる。
+  - **WebGL 版の楕円は RGB を黒へ落とす暈しに移した**（`vignette`・`VIGNETTE_STOPS`）: 箱の (50 %, 52 %) を中心に半径を箱の半分とした距離 r（辺の中央で 1、隅で 1.44）で、1.0 (r 0.45) → 0.86 (0.57) → 0.62 (0.69) → 0.38 (0.82) → 0.22 (0.94) → 0.075 (1.06) → 0.02 (1.18) → 0 (1.36) と線形に。値は**本家の絵の明るさの包絡**（輝度 × α を幅の 8 % のガウスでぼかし最大 1 に正規化）**を本作の絵の同じ包絡で割った比**（半径の帯ごとの平均、中心側を 1 で頭打ち）なので、落ち方が本家と同じになる。本作の原本は明るい部屋の写真なので、そのまま不透明にすると画面の右半分に部屋が出る。黒の下地の上なので見え方は楕円の切り抜きとほぼ同じだが、**絵が箱の四辺まで続く**点が本家と同じになる。
+  - 見え方の確かめ（2026-09-22、筆の跡と同じ枠）: 包絡は本家 / 本作で x = 0.125 の列が 0〜0.16 / 0〜0.16、右端の列が 0〜0.47 / 0〜0.40、上端の行が 0〜0.10 / 0〜0.06、下端の行が 0〜0.39 / 0〜0.22。画面では右端・上端・下端の黒い隙間が消え（最後の列の輝度が 6〜11）、左の境界は行ごとに 540〜594 px（煙が薄れる 472〜618 px の帯の中）とばらつく＝煙の縁になった。
 - **ロゴのグロー**（`glow`）: WebGL 版の `.title__logo img` の `drop-shadow(0 0 116u rgba(255, 40, 0, 0.28))`（ロゴを 848 単位の幅で描く）を、ロゴの α を 1/4（`GLOW_SCALE`）に縮め、四方に 100 px（`GLOW_PAD`）の余白を足して σ = 116 / 2 単位（縮めた絵で 33.2 px）のガウスでぼかし、× 0.28 を α・色 (255, 40, 0) にして `Intermediate/Pipeline/wasami/ui/title_logo_glow.png`（686 × 402）に書く。画面はロゴの箱から四方に `GLOW_PAD` × `GLOW_SCALE` ロゴ px 広げた箱にロゴの下で描く。余白が 3σ 未満なら例外。
 - ロゴ自体（`SourceArt/Wasami/UI/title_logo.png`、1942 × 809、WebGL 版の `public/title/logo.webp` を PNG にしたもの）はそのまま取り込む。
 
@@ -127,6 +130,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
 
 ## 変更履歴
+- 2026-09-22: 顔の α を本家の横顔と同じ切り口（ほぼ不透明 + 左の細い羽根）にし、WebGL 版の楕円は RGB を黒へ落とす暈しへ移した（上の「前処理」。右端・上端・下端の黒い隙間が消え、左の境界が煙の縁になった。作業一覧の項目 44）
 - 2026-09-22: 筆の跡 `Image_104` を無効にするのをやめた（UE 5 の Slate の無効は不透明度 0.45 倍。上の「画面」の 5。作業一覧の項目 44）
 - 2026-09-22: タイトルの曲を本家の最新版のテーマ曲 `DD_-_Dark_Deception_-_Theme_v1_3`（音量 0.6・ピッチ 1）にした。旧版の `Pause_Sound_v1`（音量 1・ピッチ 0.5）から替えたのはレビューの指摘とユーザーの回答による。`FadeIn(2, 0.5)` は両版で同じ。曲以外は旧版のまま（01・09・15・19 記録。作業一覧の項目 43）
 - 2026-09-20: 版を 1.0.0 にした（2026-09-20 のユーザーの回答）
