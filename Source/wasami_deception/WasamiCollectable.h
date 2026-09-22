@@ -44,11 +44,11 @@ public:
 	int32 ID = 0;
 
 	/**
-	 * Collectables: the extras it unlocks (the level's values: Zone 1's file 1 Art Gallery 19 and 20, its file 0 the
-	 * Sound Archive's four tracks, Zone 2's file 2 Art Gallery 21 and 22; the one after the maze none). The original
-	 * has file 0 unlock its Sound 5 alone, the one of that chapter's tracks, and the other chapters' files unlock the
-	 * rest; this game has the one chapter and the one file, so the build gives it all four of this game's tracks
-	 * (dd_level's COLLECTABLE_SOUNDS, 01 record) or three would stay locked forever.
+	 * Collectables: the extras it unlocks (the level's values: Zone 1's file 1 Art Gallery 19 and 20, Zone 2's file 2
+	 * Art Gallery 21 and 22; its file 0 and the one after the maze none). The original has file 0 unlock its Sound 5,
+	 * the one of that chapter's tracks, but this game's Extras holds no track of its own and its Sound Archive stays
+	 * locked (19 record), so the build drops the sounds and that file unlocks nothing (dd_level's COLLECTABLE_SKIP,
+	 * 01 record).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collectable")
 	TArray<FWasamiCollectableEntry> Collectables;

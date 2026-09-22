@@ -94,6 +94,7 @@ updated: 2026-09-23
 - 曲が鳴るところは PIE では聞けない（エディタが前面でないと出力が無音。症状索引）ので、押した先の `SetSound` と再生バーは Automation の `Wasami.Extras.SoundButton` で見ている。
 
 ## 変更履歴
+- 2026-09-23: Zone 1 の書類（`ID` 0）の解放を空にした（組み立てが Sound の項目を落とす `COLLECTABLE_SKIP`。18・01 記録。作業一覧の項目 50 のステップ 2）
 - 2026-09-23: SOUND ARCHIVE から曲を外し、本家の木のまま 10 枠とも鍵にした（`SoundTracks`・`FWasamiExtrasTrack`・`ExtrasMusicTrack` を消し、`SoundCount` 4 → 10。テスト `Wasami.Extras.Screen`・`.SoundButton`・`.SoundBar`・`.Item`。作業一覧の項目 50 のステップ 1）
 - 2026-09-21: 書類が `ExtrasSFX` を [0, 1, 2, 3] にすることを PIE で確かめ、作業一覧の項目 35 を閉じた（上の「確かめたこと（2026-09-21）」。ステップ 6）
 - 2026-09-21: Zone 1 の書類が SOUND ARCHIVE の 4 本とも解放するようにした（組み立ての `COLLECTABLE_SOUNDS`。18・01 記録。作業一覧の項目 35 のステップ 4）

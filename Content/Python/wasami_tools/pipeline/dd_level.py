@@ -210,11 +210,10 @@ COLLECTABLE_CLASS = "BP_Collectable_C"
 SECRET_PROPS = {"ID": "id"}
 # A file's Collectables (the extras it unlocks; item 29): Enum_Collectables' numbers → EWasamiCollectableType.
 COLLECTABLE_TYPES = ("ART_GALLERY", "DIARY", "SOUND", "MOVIE")
-# The Sound Archive's tracks a file unlocks, in place of the original's ID (item 35). The original's Zone 1 file 0
-# unlocks its Sound 5, the one of that chapter's tracks, and the other chapters' files unlock the rest; this game has
-# the one chapter and the one file, and its Sound Archive holds this game's four tracks (UWasamiExtrasWidget's
-# SoundCount, 19 record), so that file unlocks all four or three of them would stay locked forever.
-COLLECTABLE_SOUNDS = (0, 1, 2, 3)
+# The lists a file does not unlock (item 50). This game's Extras holds no track of its own, so its Sound Archive keeps
+# the original's ten locked buttons (UWasamiExtrasWidget's SoundCount, 19 record) and the original's Zone 1 file for
+# its Sound 5 unlocks nothing, the way the Movies are never unlocked.
+COLLECTABLE_SKIP = ("SOUND",)
 SECRET_PARTS = {"BP_SecretRoomZone_C": {"Box": "box"}, "BP_07_Zone1_SecretWall_C": {"StaticMesh": "static_mesh"},
                 "BP_MysteryCollectable_C": {"Plane": "plane"}}
 SECRET_WALL_MESH = "/Game/Meshes/03_Manor/manor_fake_wall"
@@ -782,14 +781,14 @@ def _note_texts(refs, strings):
 
 def _collectables(refs):
     """A file's Collectables (the extras it unlocks) from the original's values: its Enum_Collectables number as an
-    EWasamiCollectableType (COLLECTABLE_TYPES), its ID as it is, but a sound's replaced by this game's tracks
-    (COLLECTABLE_SOUNDS)."""
+    EWasamiCollectableType (COLLECTABLE_TYPES) and its ID as they are, but the lists this game never unlocks dropped
+    (COLLECTABLE_SKIP)."""
     out = []
     for c in refs:
         name = COLLECTABLE_TYPES[c["Type"]]
-        kind = getattr(unreal.WasamiCollectableType, name)
-        for i in (COLLECTABLE_SOUNDS if name == "SOUND" else (c["ID"],)):
-            out.append(unreal.WasamiCollectableEntry(type=kind, id=i))
+        if name in COLLECTABLE_SKIP:
+            continue
+        out.append(unreal.WasamiCollectableEntry(type=getattr(unreal.WasamiCollectableType, name), id=c["ID"]))
     return out
 
 

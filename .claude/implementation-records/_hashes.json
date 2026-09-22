@@ -48,7 +48,7 @@
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "26ff2ea9fc0a630b4b1273c7cf152c71bc7d852b",
     "Content/Python/wasami_tools/pipeline/dd_stage.py": "723150b6270834571d7288978dffa74911d29cfd",
-    "Content/Python/wasami_tools/pipeline/dd_level.py": "a9ec5aa9bd318abf834b1e07e817c0972f601509",
+    "Content/Python/wasami_tools/pipeline/dd_level.py": "240c577ad2bced2d41c06a40acebe63fc3f97162",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "bfebb6fc6f092b619a600faba370fc92fb00fb42",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "3f1319fca53b67fc57aac306050d41b2d01fe671",
     "Content/Python/wasami_tools/pipeline/dd_powers.py": "ad611ed6d8835c1b718cd8898a9a2f8c960404b9",
@@ -324,7 +324,7 @@
     "Source/wasami_deception/WasamiCollectablesWidget.cpp": "b1fc1ebafeede1e326ffc7e9406fe90a98e4d354",
     "Source/wasami_deception/WasamiMysteryNoteWidget.h": "6cd5780c4460abe93503a74a3c72f09c26046dce",
     "Source/wasami_deception/WasamiMysteryNoteWidget.cpp": "deda6c9e41a0d75fd81f15c15b70514e35a5a1f8",
-    "Source/wasami_deception/WasamiCollectable.h": "a61eda22e5edc43a8acbcc9cb2ef18549227d872",
+    "Source/wasami_deception/WasamiCollectable.h": "5ee200082c75ee1b3edf8b496e0f94796fcb5db8",
     "Source/wasami_deception/WasamiCollectable.cpp": "65ac7f51393e0c78f17cd60d86f9e3a9b5e29f31",
     "Source/wasami_deception/WasamiSecretRoomZone.h": "c6529c18addc28dceabfc251b81d6f841946a55e",
     "Source/wasami_deception/WasamiSecretRoomZone.cpp": "8e79b4319987a5658f554d84bf05b63c42c32802",
@@ -334,7 +334,7 @@
     "Source/wasami_deception/WasamiMysteryCollectable.cpp": "e0e6d45a7cdc84cbd89de1beedb411ee91e9750a",
     "Source/wasami_deception/WasamiFakeUseActor.h": "06b9f5cd9d1fde636e4a81941bfe923d81b69878",
     "Source/wasami_deception/WasamiFakeUseActor.cpp": "6145eea41d30951492d16f68c9e3e23216998eb9",
-    "Source/wasami_deception/Tests/WasamiSecretsTests.cpp": "875ca20055c269e92d21c130016a3ba48957a223"
+    "Source/wasami_deception/Tests/WasamiSecretsTests.cpp": "c7f0bd966dfea45cfef5211866638659ee76e650"
   },
   "19-extras.md": {
     "Source/wasami_deception/WasamiExtrasWidget.h": "5cd76de52fa6634d2de3f9cff3868e9411ac5979",

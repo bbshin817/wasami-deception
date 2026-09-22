@@ -681,7 +681,9 @@ bool FWasamiSecretsCollectableUnlockTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the game mode's copy has the extras too"), Held->ExtrasArt, TArray<int32>({19, 20}));
 	TestEqual(TEXT("and the ID in its Secrets"), Held->Hospital.Secrets, TArray<int32>{1});
 
-	// Zone 1's other file: ID 0, Sound 5 (and 19 again, to see it kept once).
+	// Zone 1's other file: ID 0. The build drops the sounds (dd_level's COLLECTABLE_SKIP), so the level leaves its
+	// Collectables empty, but the save keeps the original's Sound list, so Unlock's branch for it is tested here
+	// with the original's Sound 5 by hand (and 19 again, to see it kept once).
 	AWasamiCollectable* Other = SpawnCollectable(World, 0, FVector(0., 2000., 0.));
 	if (!TestNotNull(TEXT("the other file"), Other))
 	{

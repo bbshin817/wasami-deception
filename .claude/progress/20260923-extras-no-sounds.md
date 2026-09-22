@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: a43279b
 started: 2026-09-23 05:16
-updated: 2026-09-23 05:40
+updated: 2026-09-23 06:05
 ---
 
 # 項目 50 EXTRAS から曲を外す（書類の解放も追随）
@@ -24,19 +24,15 @@ updated: 2026-09-23 05:40
 ## 計画
 
 - [x] 1. C++: SOUND ARCHIVE を本家の木に戻して空にした（`SoundTracks`・`FWasamiExtrasTrack`・`ExtrasMusicTrack` を消し、`SoundCount` 4 → 10。テスト 5 件成功。19 記録）
-- [>] 2. 前処理: 書類の解放から SOUND を外して Zone 1 を組み直す ← 次
-  - `dd_level.COLLECTABLE_SOUNDS` を無くし、`_collectables` が本家の `Type` = SOUND の項目を落とすようにする（本家の値どおり Art Gallery だけが残る）。
-  - Zone 1（要れば Zone 2 も）を組み直して、書類の `Collectables` が Art 19・20 だけになったことを確かめる。
-  - テスト `Wasami.Secrets.Collectable.Unlock` の Sound を使う行を見直す（セーブの `Unlock` の分岐の確かめはそのまま残す。置いた書類の値の確かめだけ直す）。
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_level.py`、`Source/wasami_deception/Tests/WasamiSecretsTests.cpp`、`/Game/Wasami/Levels/L_Hospital_Zone1`（要れば `_Zone2`）
-- [ ] 3. PIE で確かめて記録を締める
+- [x] 2. 前処理: `COLLECTABLE_SOUNDS` → `COLLECTABLE_SKIP` = ("SOUND",) で Sound の項目を落とし、Zone 1 を組み直した（書類 ID 1 = Art 19・20、ID 0 = 空。`Wasami.Secrets`・`Wasami.Extras` 18 件成功。01・18・19 記録）
+- [>] 3. PIE で確かめて記録を締める ← 次
   - PIE で Zone 1 の書類（秘密のエレベーターの奥、ID 1）を取り、セーブの `ExtrasSFX` が空のままで `ExtrasArt` に 19・20 が入ることを見る。続けてタイトルへ移り、EXTRAS の ART GALLERY は 19・20 が解放・SOUND ARCHIVE は全部鍵で名前が 1 つも出ないことを撮る。
   - 実装記録 19（曲の一覧・`SoundCount`・要確認）・18（書類の解放）・01（`COLLECTABLE_SOUNDS`）を直し、`python .claude/scripts/check_records.py --update`。
   - 作業一覧の項目 50 を「完了（2026-09-23）」にし、進捗記録を消す。
 
 ## 次にやること
 
-ステップ 2。`Content/Python/wasami_tools/pipeline/dd_level.py` の `COLLECTABLE_SOUNDS`（今は `(0, 1, 2, 3)`）を無くし、`_collectables` が本家の `Type` = SOUND の項目を落とすようにしてから、Zone 1 を組み直して書類の `Collectables` が Art 19・20 だけになったことを確かめる。
+ステップ 3。PIE で Zone 1 の書類（秘密のエレベーターの奥、`ID` 1）を取り、セーブの `ExtrasSFX` が空のままで `ExtrasArt` に 19・20 が入ることを見てから、タイトルの EXTRAS で ART GALLERY の 19・20 が解放・SOUND ARCHIVE は 10 枠とも鍵で名前が 1 つも出ないことを撮る。そのあと作業一覧の項目 50 を「完了（2026-09-23）」にして進捗記録を消す。
 
 ## 決定事項
 
@@ -49,7 +45,7 @@ updated: 2026-09-23 05:40
 
 ## 再開時の注意
 
-- ステップ 2 のレベルの組み直しは `Content/Python/wasami_tools` のツールセットを MCP か `Tools/ue_remote.py` から呼ぶ（`.claude/guides/unreal-workflow.md`）。前後で保存する。
+- MCP の `call_tool` は `toolset_name`（完全なクラスのパス `wasami_tools.toolsets.stage.WasamiStageTools`）と `tool_name`（接頭辞なしの `place_dd_flow`）を分けて渡す。まとめて `tool_name` に書くと `Tool '…' not found`。
 - テストはエディタの中で `unreal.SystemLibrary.execute_console_command(None, 'Automation RunTests <filter>')`。**背面のエディタは 3 fps で `FWaitForInteractiveFrameRate` が進まない**ので、先に `unreal.find_object(None, '/Script/UnrealEd.Default__EditorPerformanceSettings').set_editor_property('bThrottleCPUWhenNotForeground', False)`（終わったら `True` に戻す）。結果は `Saved/Logs/wasami_deception.log` の `Test Completed`。
 - PIE は終わったら必ず止める。
 
@@ -58,4 +54,6 @@ updated: 2026-09-23 05:40
 - check_records: OK（20 件。ステップ 1）
 - C++ ビルド: OK（`python Tools/editor_cycle.py`。ステップ 1）
 - テスト: `Wasami.Extras` 5 件すべて成功（ステップ 1）
-- エディタでの確認（組み立て・PIE）: 未実行（ステップ 2・3）
+- レベルの組み直し: OK（`place_dd_flow` Zone1 は `failed_settings` 0・`secrets` 9、`build_navigation` は `built`/`saved` 1・`navigable` 2。書類 ID 1 = Art 19・20、ID 0 = 空。ステップ 2）
+- テスト: `Wasami.Secrets`・`Wasami.Extras` 18 件すべて成功（ステップ 2）
+- PIE での確認: 未実行（ステップ 3）
