@@ -581,7 +581,7 @@
 - 根拠: `Source/wasami_deception/WasamiZone2Flow.cpp`・`.h`（`EscapeMusicFade`）、`pak_reference_2/_bytecode/.../06_Hospital_Zone_02.txt` の脱出、実装記録 10・11・13。
 - 依存: なし。
 - 規模: 1
-- 状態: 未着手
+- 状態: **完了（2026-09-23）**。**(1)** `AWasamiZone2Flow::OnEndTrigger` の `After(EscapeMusicFade, …)` の待ちを外し、保存もスコア画面も引き金のフレームに来るようにした（本家の `Trigger_Escape` @66935 と同じ）。**(2)** 曲は `FadeAllMusicOut(EscapeMusicFade)` のまま残し、代わりに `AWasamiGameMode::Escape(PauseDelay)` が**一時停止だけ**を 1 s 遅らせる（止めたゲームは UI でない音を鳴らさないので、その 1 s がフェードを聞かせる時間になる。入力は切れ敵も消えているので動くものは残らない。待ちの間に NEXT が押されても止め直さない）。`static_assert` は「曲のフェードの長さ＝遅らせる長さ」の縛りとして残し、文言だけ直した。**(3) PIE で確かめた**: 引き金の箱を本当に通した 60 fps の録りで、**触れたコマから 0.033 s でスコア画面が出て 0.217 s で画面を埋め、真っ黒のコマは 1 枚も無い**（コマ全体の輝度は 34/255 → 20.6/255 までしか落ちない）。毎コマの状態でもスコア画面は黒いフェードと**同じコマ**に出る（前は 1.026 s 後）。曲は主サブミックスを録って測り、倍率が 0.247 から 0.1 s ごとに約 0.025 ずつまっすぐ落ちて **1.01 s で 0**（途中で切れない）。テストは `Wasami` 157 件で `Wasami.ZoneFlow.Escape`・`Zone2`・`Wasami.GameFlow.*` がすべて成功。実装記録 10・11・13
 
 ### 50. EXTRAS から曲を外す（書類の解放も追随）
 
