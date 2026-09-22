@@ -572,7 +572,7 @@
 - 根拠: `Source/wasami_deception/WasamiDeathScreenWidget.cpp`（`EStep::GameOver`）・`WasamiCapture.cpp`（`PlayCaptureVoice`）、実装記録 09・10・07。
 - 依存: なし。
 - 規模: 1
-- 状態: 未着手
+- 状態: **完了（2026-09-23）**。`GameOverVoiceSound` ごと外し、`EStep::GameOver` は曲 `66_-_Game_Over` だけにした（`Fine` は前のまま）。PIE で 4 組を録って波で確かめた: 顔 × ライフ 0 は `over` が 0.235 s の 1 回だけで 1.20〜2.04 s は振幅 0、ホテル型 × ライフ 0 は `you` が 0.043 s の 1 回だけ。曲を波から引くと残りは 3.4 %・3.9 %（約 −40 dB）なので、曲の下にも声は無い。曲が入るまでの無音は 0.67〜0.84 s、曲は 41.05 s あるので Bierce の台詞の代わりを置かなくても間は持つ（実装記録 09・10、症状索引）。
 
 ### 49. 脱出のスコア画面を本家どおり即時に出す
 

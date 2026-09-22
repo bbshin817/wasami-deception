@@ -905,6 +905,13 @@
 - 確かめ方: 録った wav の最大振幅が 0 でないこと（`au.DisableAppVolume` を入れないと 0 のまま）。波の照合は `numpy` の相互相関（本作の声の原本は `SourceArt/Wasami/Voices/*.wav`。48 kHz モノラルへの変換は `ffmpeg`）。
 - 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6（10・19 記録の「確かめたこと（2026-09-21）」）、解決は 2026-09-22 の項目 40 のステップ 4。
 
+### 録った PIE の音で、曲や効果音に重なった声が判定できない（`au.DumpActiveSounds` は PIE の音を出さない）
+
+- 症状: 相互相関の値が低く、声が鳴っているのか曲だけなのか決められない。鳴っているものを engine に直接聞こうと `au.DumpActiveSounds` を PIE の中から送っても、**鳴っている最中でも `Active Sound Count: 0`** としか出ない（エディタ側の音声装置を見ていて、PIE の装置は見ない）。`stat sounds` は `Command not recognized`。Python には発音中の `UAudioComponent` を数える口が無い（`PlaySound2D` の部品はどのアクタにも付かないので `get_all_actors_of_class` では拾えない）。
+- 原因（相関が低くなるほう）: 正規化した相関は**原本と同じ長さの窓**の実効値で割るので、窓にステージ側の音が入ると下がる。`SourceArt/Wasami/Voices/you.wav` は 5.007 s のうち実音が 0.103〜1.992 s で残りは無音なので、窓が 3 s ぶん余計に拾う。Zone 1 は到着そのものが最初の 6 s に最大 0.36 の音を出している（何も引き金を引かずに録った `tmp/pie_idle_record.py` で確かめた）。
+- 対処: **重なっている既知の音を波から引いてから見る**（`tmp/gameover_music_residual.py`）。曲や効果音は同じ波を頭から鳴らすので、録りとの相互相関で始まる時刻を出し、最小二乗の倍率を掛けて引ける。残りの実効値が元の数 % まで落ちれば、その区間はその音だけで、ほかには何も鳴っていない。判定は相関の絶対値でなく**山と次点の比**で行う。
+- 出典: 2026-09-23 の作業一覧の項目 48 のステップ 2（10 記録の「確かめたこと（2026-09-23）」）。
+
 ### `HighResShot` の PNG に UMG（タブレット・スコア画面・EXTRAS）が写らない
 
 - 症状: PIE で `HighResShot 1 filename=x` を実行すると `Saved/Screenshots/WindowsEditor/x.png` は出来るが、3D の場面だけで UI が無い。`HighResShot 1280x720` の形でも同じ。
