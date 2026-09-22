@@ -635,7 +635,13 @@
 
 閉じた進捗記録に残っていた要確認（記録ごと）。答えが出たら該当の場所を直してここから消す。SessionStart hook は未完了の進捗記録の要確認しか出さないので、ここは朝の一覧に出ない。
 
-**いまは 0 件**。2026-09-21 の有人セッションでそれまでの 9 件、**2026-09-23 の有人セッションで残り 19 件すべて**に回答をもらった。答えは下の行き先へ移してある。
+**いまは 3 件**（下の `20260923-nurse-posters-wasami`）。2026-09-21 の有人セッションでそれまでの 9 件、**2026-09-23 の有人セッションでその時点の 19 件すべて**に回答をもらった。答えは下の行き先へ移してある。
+
+### `20260923-nurse-posters-wasami`（項目 51。2026-09-23 に閉じた）
+
+1. **3 枚のワサミの絵の見た目**（全体） — 仮に WebGL 版の CC2 のポスターと同じ考え方（人物の頭を周りの色で埋め、ワサミの頭を元の大きさ・位置に置く）で描いた。根拠は本家に無い本作のものなので本作の今までの決めごと（`.claude/references/webgl/implementation-records/13-asset-pipeline.md`）。見てもらうには `python Tools/dd/prepare_nurse_posters.py --preview` が書く `Intermediate/Pipeline/wasami/stage/_nurse_sheet.png`（元と新しいものが 3 行で並ぶ）。直すなら `Tools/dd/prepare_nurse_posters.py` の絵ごとの関数。
+2. **`hospital_poster_nurse_02`（GET VACCINATED!）の影絵は 2 人とも頭を替えた** — 絵は注射器を構える人物と注射される人物の 2 人で、片方だけワサミにすると 1 枚のポスターに人間とワサミが並ぶ。本作は原作のキャラクターを出さないので両方をワサミにした。片方（注射器を持つ方だけ）にしたいなら `poster_02` の for 文から一方を外す。
+3. **使わなくなった原作のテクスチャ 3 枚の扱い** — 仮に**消さずに残した**（アセットの削除はユーザーの確認が要る。`.claude/guides/verification.md`）。`/Game/DD/Textures/06_Hospital/hospital_poster_nurse_01_D`・`hospital_poster_nurse_02`・`hospital_decal_nurseambulance` は参照元 0 件だが、`bCookAll=True` なのでパッケージには入る。消してよいか。
 
 ### 2026-09-23 の回答（19 件）
 
