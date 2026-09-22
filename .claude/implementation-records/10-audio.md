@@ -176,5 +176,5 @@ updated: 2026-09-22
 - 2026-09-20: ワサミの声 11 本を `/Game/Wasami/Voices` に取り込むようにした（`Tools/dd/prepare_voices.py`・`dd_voices.py`・`WasamiDDTools.import_wasami_voices`。項目 20 のステップ 5）。
 - 2026-09-20: 鳴らす口 `WasamiVoice` を作り、2D の 6 本（`greeting`・`well`・`fast`・`best`・`fine`・`over`）を場面に付けた（項目 20 のステップ 6）。
 - 2026-09-20: 残りの 5 本（`found` と巡回の 4 本）を敵に付けた（項目 20 のステップ 7。中身は 07 記録の「声」）。
-- 2026-09-22: 捕獲が鳴らす声を当てた（ホテル型 3 本 = `You`、顔 = `Over`。`AWasamiCapture` の `HotelVoiceSound`・`FaceVoiceSound`。作業一覧の項目 40 のステップ 3。07 記録）。
+- 2026-09-22: 捕獲が鳴らす声を当てた（ホテル型 3 本 = `You`、顔 = `Over`。`AWasamiCapture` の `HotelVoiceSound`・`FaceVoiceSound`。作業一覧の項目 40 のステップ 3。07 記録）。PIE で 4 本とも録って、鳴る声と時刻が狙いどおりであることを波で確かめた（07 記録の「確かめたこと（2026-09-22）」。PIE の音は `au.DisableAppVolume 1` で録れる〈症状索引〉）。
 - 2026-09-22: 捕獲で鳴らす `you` を 12 本目の声として足した（`dd_voices.py`・`EWasamiVoice::You`。作業一覧の項目 40 のステップ 2）。

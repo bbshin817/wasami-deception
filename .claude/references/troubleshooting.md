@@ -873,10 +873,12 @@
 ### PIE の音を録っても無音（`AudioMixerLibrary.start_recording_output` の wav が全部 0）
 
 - 症状: `unreal.AudioMixerLibrary.start_recording_output(world, N)` → 音を鳴らす → `stop_recording_output(world, unreal.AudioRecordingExportType.WAV_FILE, '<名前>', '<フォルダー>')` で `Saved/BouncedWavFiles/<フォルダー>/<名前>.wav` は出来るが、全サンプルが 0。長さは録った実時間ぶんある。音の部品は `is_playing()` が真で、ログの WASAPI も `InitializeHardware succeeded` と出ている。
-- 原因: エディタが前面でないとき、UE は出力の音量を 0 にする（`UnfocusedVolumeMultiplier`。既定 0）。Claude は Windows のセッション 0 にいてエディタを前面にできない（項目 33 のファイアウォールのダイアログが前面に居座るので `SetForegroundWindow` も断られる）。`au.UnfocusedVolumeMultiplier` というコンソール変数は**無い**（`Command not recognized`）ので、コマンドでは戻せない。
-- 対処: **音そのものは PIE では確かめない**。部品の値で見る: `UAudioComponent::GetPlayState()` が `FADING_OUT` / `PLAYING` / `STOPPED`、`pitch_multiplier`・`volume_multiplier`、`UGameplayStatics::IsGamePaused`。止めたゲームでは UI 以外の音が全部止まる（10 記録）ので、「聞こえる形か」は「フェードの間ゲームが止まっていないか」で判定できる。どうしても波形が要るなら、ユーザーに前面で確かめてもらう（要確認に書く）。
-- 確かめ方: 上の手順で録った wav の最大振幅が 0。
-- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6（10・19 記録の「確かめたこと（2026-09-21）」）。
+- 原因: エディタが前面でないとき、UE は出力の音量を 0 にする（`FApp::UnfocusedVolumeMultiplier`。既定 0。`FWindowsPlatformApplicationMisc::PumpMessages` が毎回 `FApp::SetVolumeMultiplier` に入れ直し、`FAudioDevice::Update` が主音量に掛ける）。Claude は Windows のセッション 0 にいてエディタを前面にできない（項目 33 のファイアウォールのダイアログが前面に居座るので `SetForegroundWindow` も断られる）。`au.UnfocusedVolumeMultiplier` というコンソール変数は**無い**（`Command not recognized`）。
+- 対処（2026-09-22 に解決）: **コンソール変数 `au.DisableAppVolume 1`** を PIE の中で実行してから録る。`FAudioDevice::Update` の `if (!DisableAppVolumeCvar) { PrimaryVolume *= FApp::GetVolumeMultiplier(); }` を飛ばすので、前面かどうかに関わらず音が出る（開き直しは要らない。エディタを閉じると既定の 0 に戻る）。手順は `unreal.SystemLibrary.execute_console_command(w, 'au.DisableAppVolume 1')` → `unreal.AudioMixerLibrary.start_recording_output(w, 秒)` →（鳴らす）→ `stop_recording_output(w, unreal.AudioRecordingExportType.WAV_FILE, '<名前>', '<フォルダー>')` → `Saved/BouncedWavFiles/<フォルダー>/<名前>.wav`。**音はユーザーのスピーカーから鳴る**ので、音を確かめるときだけ入れる。
+  - `Saved/Config/WindowsEditor/Engine.ini` に `[Audio] UnfocusedVolumeMultiplier=1.0` を書く手も試したが、**エディタが起動時にこのファイルを消す**ので効かない（2026-09-22）。
+  - **時刻を測るなら `bThrottleCPUWhenNotForeground` も偽にする**: 背面のエディタは 3 fps ほどでティックするので、タイマーの発火が最大 0.3 s 遅れて記録に出る。
+- 確かめ方: 録った wav の最大振幅が 0 でないこと（`au.DisableAppVolume` を入れないと 0 のまま）。波の照合は `numpy` の相互相関（本作の声の原本は `SourceArt/Wasami/Voices/*.wav`。48 kHz モノラルへの変換は `ffmpeg`）。
+- 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6（10・19 記録の「確かめたこと（2026-09-21）」）、解決は 2026-09-22 の項目 40 のステップ 4。
 
 ### `HighResShot` の PNG に UMG（タブレット・スコア画面・EXTRAS）が写らない
 
