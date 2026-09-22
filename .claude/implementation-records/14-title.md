@@ -45,7 +45,7 @@ WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/i
 - Emissive = その RGB の `Desaturation`（Fraction なし = UE の輝度の係数 (0.3, 0.59, 0.11) の内積）。
 - Opacity = マスク `title_screen_video_mask` の α × 筆の跡の α（シェーダーは `saturate` する）。
 - 筆の跡の絵は一様な色 sRGB (151, 8, 0) で α が最大 45 なので、灰は線形で約 0.094（sRGB 約 86）、不透明度は最大 0.18 × マスク。WebGL 版の灰 179・α × 2.5・1 タイル 100 s は推定で、採らない。
-- 見え方の確かめ（2026-09-22、別窓の PIE 2580 × 1082 を 860 × 360 に縮め、本家の 3440 × 1440 の 1/4 と同じ枠で測った）: 広がり（半分に落ちる列 x ≈ 304、消える列 x ≈ 357）・色（灰にわずかな赤）・流れる速さ（−95 px/s。式の −94.7 と 1 % 以内）は本家と一致。平地の箱（x 180-280・y 155-310）の輝度は 1 周期 50 s に散らした 9 枚で 0.61〜6.43 で、本家の 1 枚の 4.84 はこの帯の中。道具は `observations/tools/title_fit/`（`shots.py` = 連写、`cmp.py` = 切り出しと形の比べ、`box.py` = この箱の輝度、`raise_pie.py` = 撮る前に PIE の窓を前へ出す〈端末が被る〉）。
+- 見え方の確かめ（2026-09-22、別窓の PIE 2580 × 1082 を 860 × 360 に縮め、本家の 3440 × 1440 の 1/4 と同じ枠で測った）: 広がり（半分に落ちる列 x ≈ 304、消える列 x ≈ 357）・色（灰にわずかな赤）・流れる速さ（−95 px/s。式の −94.7 と 1 % 以内）は本家と一致。平地の箱（x 180-280・y 155-310）の輝度は 1 周期 50 s に散らした 9 枚で 0.61〜6.43 で、本家の 1 枚の 4.84 はこの帯の中。道具は `observations/tools/title_fit/`（`shots.py` = 連写、`cmp.py` = 切り出しと形の比べ、`box.py` = この箱の輝度、`raise_pie.py` = 撮る前に PIE の窓を前へ出す〈端末が被る〉、`grid.py` = 本家と本作を並べたグリッド）。
 
 ### 画面（`UWasamiTitleScreenWidget`）
 本家の旧版 `UMG_TitleScreen` の木を、スロットの値のまま（書き出しに無い値はスロットの既定。キャンバスの余白 (0, 0, 100, 30)）`RebuildWidget` で組む。描く順は本家の `CanvasPanel_0` のスロットの順（WebGL 版 10 記録の styles.css「タイトル画面」と同じ）:
@@ -122,12 +122,18 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - NEW GAME が問うかどうかは本家の `New Game?` の代わりに進みで決める（上の「ボタンの道」）。本家は一度でも新しいゲームを始めた後は、進みが無くても問う。
 - `L_Title` は git の外（`Content/Stage`）。作り直すときは C++ をビルドしてから `WasamiStageTools.build_title_level`。エディタで遊んで確かめるときは `L_Title` を開いて PIE（エディタの開始のレベルは Zone 1）。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も焦点を持てない画面を渡しているので、そのままにしている（死亡画面も同じ）。
-- 顔とロゴのグローは WebGL 版の CSS の見た目を焼いたもの（本家に無い本作の素材）。直すときは `prepare_title.py` の定数を変えて前処理と `import_dd_ui` をやり直す。
+- 顔の色味（WebGL 版の CSS のフィルタ）とロゴのグローは焼き込み（本家に無い本作の素材。顔の α と暈しだけは 2026-09-22 に本家の横顔の切り口へ替えた。上の「前処理」）。直すときは `prepare_title.py` の定数を変えて前処理と `import_dd_ui` をやり直す。
 
 ## 確かめたこと（2026-09-19、PIE、`L_Title` から、エディタを前面）
 - `python Tools/playthrough.py run title --record step4_title.mkv --shots`（セーブはチェックポイント 4）: RESUME のある画面で NEW GAME → RESTART? の枠と STARTING A NEW GAME WILL RESET ALL PROGRESS. → YES で問いが閉じ、約 0.3 s で赤の閃光（収録の全体の R が 34 → 67）、赤が引きながら暗くなり YES から約 3.6 s で真っ黒（右上の版の文字だけ残る）、YES から約 11 s で Zone 1 がエレベーターの到着（チェックポイント 4・ライフ 3・シャード 337）で開いた。収録は `video_probe.py series` で測った。グリッド `Intermediate/Overnight/title_newgame_grid.png`（git の外）。
 - Zone 1 で `Wasami.Checkpoint 8`・`Wasami.Lives 1`・`Wasami.Kill` → YOU ARE DEAD と 3 つのボタン → QUIT TO TITLE → 約 1 s でタイトル（チェックポイント 8 のまま・RESUME あり・ライフ 3）→ RESUME → 約 6 s で Zone 2 の `PlayerStart_MiniBoss`（チェックポイント 8・目的 Get past the nurses）。
 - `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
+
+## 確かめたこと（2026-09-22、本家の実機の絵と並べた。作業一覧の項目 44）
+- グリッド `Intermediate/Overnight/t44_title_grid.png`（git の外。`python observations/tools/title_fit/grid.py`）: 本家の最新版 v1.9.6 の `obs4-title.png`（3440 × 1440 の 1/4）と本作の別窓の PIE（2580 × 1082 を同じ 860 × 360 の枠へ）を、素の絵と ×4 に持ち上げた絵の 2 行で並べる。画面は暗いので、見比べるのは ×4 の行。
+- **筆の跡**: 左半分に同じ向き・同じ太さの筆の渦が出て、右へ行くほど薄れて消える。広がり・色・流れる速さと明るさの帯は上の「筆の跡の材質」の測りのとおり。
+- **顔**: 絵が箱の四辺まで続く（右端の列 x = 858 でも輝度 7.5 で、切れ目や硬い縦線は無い。本家は光の筋が細いので x ≥ 820 が 0.7）。左の境界は行ごとに 540〜594 px とばらつく煙の縁で、本家の光の筋の縁と同じく硬い線ではない。
+- **顔の絵そのものは比べない**: 本家の最新版のタイトルの右側は横顔ではなく細い光の筋で、本作が写した旧版 `UMG_TitleScreen` の `Image_97` とは中身が違う（本家は章ごとに 9 枚の横顔 `ProfileIcons/` を持ち、タイトルは版によって別の絵を出す）。比べたのは作り（四辺まで続くか・左の境界が煙の縁か）と筆の跡。
 
 ## 変更履歴
 - 2026-09-22: 顔の α を本家の横顔と同じ切り口（ほぼ不透明 + 左の細い羽根）にし、WebGL 版の楕円は RGB を黒へ落とす暈しへ移した（上の「前処理」。右端・上端・下端の黒い隙間が消え、左の境界が煙の縁になった。作業一覧の項目 44）

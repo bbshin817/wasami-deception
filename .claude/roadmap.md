@@ -535,7 +535,7 @@
 - 根拠: `pak_reference_2/_assets/DDeception/Content/UI/Main/TitleScreen/MM_TitleScreen_Mask*.json`、`DDeception/Content/UI/Main/TitleScreen/title_screen_video_mask.png`、`Tools/dd/prepare_title.py`、`Content/Python/wasami_tools/pipeline/dd_ui.py`（`_build_title_strokes`）、実装記録 14。
 - 依存: 43（同じ画面を触るので後に）。**43 の C++ とアセットの変更は済んでいて、残りはパッケージ版での確かめ（`RunUAT.bat` の許可待ち）だけなので、依存は満たされている**（2026-09-22）。
 - 規模: 2
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-title-strokes-face-edge`）**
+- 状態: **完了（2026-09-22）**。**(1)** `MM_TitleScreen_Mask`・`_Grey` のコンパイル済みのシェーダーと `ProfileIcons/` の 9 枚を読み、**本家の横顔は 9 枚とも「不透明な絵」で、端の暗さは絵の中身**（α > 0.95 が 91.1 %〈monkey〉〜100 %〈5 枚〉）と分かったので、本作の顔も同じ作りに揃えた（`Tools/dd/prepare_title.py` の `feather`・`vignette` を作り直し、α は左の細い羽根だけにして楕円は RGB の暈しへ移し、`T_TitleFace` を作り直した）。右端・上端・下端の黒い隙間が消え、左の境界は行ごとに 540〜594 px とばらつく煙の縁になり、明るさ（輝度 × α の平均 0.051）も本家の幅（0.022〜0.175）の中に入った。**(2)** 筆の跡は広がり・色・速さが本家の式と一致していて、**明るさだけ半分**だった。原因は **UE 5 の Slate が「無効」のウィジェットを α 0.45 倍で描くこと**で、`Image_104` を有効にして本家の帯に入れた（症状索引）。**(3)** 本家の実機（最新版 v1.9.6）の絵と本作の PIE を同じ枠（860 × 360）に揃えて並べたグリッドで確かめた（`observations/tools/title_fit/`。`grid.py` が作る）。実装記録 14。**完了の条件の読み替え**: 本家の最新版のタイトルの右側は**横顔ではなく細い光の筋**で、旧版 `UMG_TitleScreen`（本作が写した木）の `Image_97` とは中身が違う。そこで顔の絵そのものは並べず、**作り**（絵が箱の四辺まで続くか・左の境界が硬い線でなく煙の縁か）と筆の跡を比べた。
 
 ### 45. ステージ OP の紋章の中で、ワサミのシンボルが下にずれている
 
