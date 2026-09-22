@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 671e4e8
 started: 2026-09-22 00:00
-updated: 2026-09-22 17:10
+updated: 2026-09-22 17:20
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -22,44 +22,45 @@ updated: 2026-09-22 17:10
 
 ## 計画
 
-- [x] 1. 本家の式と絵を確定した（下の「決定事項」の 1〜5）。コードは変えていない。
-- [ ] 2. 筆の跡を本家と見比べる（**式は一致しているので、直すのは絵が違ったときだけ**）
-  - 決定事項 1 のとおり `_build_title_strokes` は焼き込みのシェーダーと一致しているので、ステップ 2 は「式の直し」ではなく「描かれた絵の比べ」にする。
-  - `python Tools/pie.py start` で `L_Title` を 1920 × 1080 で出して撮り（`Tools/playthrough.py` の区間 `title` か `unreal.WasamiTitleScreenWidget.show`）、本家の絵（`Intermediate/DesktopAgent/shots/obs4-title.png` は 880 × 364 で縦横比が合わないので、等倍が要るならステップ 4 の観察と合わせて撮り直す）と、**筆の跡の広がり・濃さ・流れる速さ**を比べる。速さは `python Tools/video_probe.py period`。
-  - 差が出たら原因を絞る（テクスチャの取り込み〈`address_x` は本家も既定 = Wrap、DXT5・sRGB・UI で一致〉、`Image_104` の枠の幅 1654.65・`bIsEnabled(false)` の灰化、画面の解像度）。差が無ければ「差が無いことを確かめた」と書いて閉じる。
-  - 変更予定: なし（差が出たときだけ `Content/Python/wasami_tools/pipeline/dd_ui.py` と `/Game/DD/UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey`、実装記録 14）
+- [x] 1. 本家の式と絵を確定した（式は焼き込みのシェーダーと本作の材質で一致。顔の α は下の「決定事項」の 1〜3）。
+- [x] 2. 筆の跡を本家と見比べた（下の「決定事項」の 4）。**広がり・色・流れる速さは一致、明るさだけが半分**で、原因は UE 5 の Slate の「無効」の見え方。
+- [ ] 2b. 筆の跡の明るさを本家に合わせる（**`Image_104` を有効にする**）
+  - `Source/wasami_deception/WasamiTitleScreenWidget.cpp:202` の `Strokes->SetIsEnabled(false);` を消し、なぜ本家と違えるのかを注記する（決定事項 4）。本家の `bIsEnabled(false)` は UE 4 では見え方を変えないが、UE 5 では不透明度が 0.45 倍になる。
+  - `python Tools/editor_cycle.py` でビルドして開き直し、下の「再開時の注意」の別窓の PIE で撮り直して、筆の跡の明るさが本家の帯（平地 `x 180-280` で 4.84）に入ることを確かめる。
+  - 実装記録 14 の「筆の跡の材質」と「画面」の 5 を直し、`python .claude/scripts/check_records.py --update` を通す。
+  - 変更予定: `Source/wasami_deception/WasamiTitleScreenWidget.cpp`、`.claude/implementation-records/14-title.md`
 - [ ] 3. 顔の α を本家の切り口にする（**この項目の本体**）
-  - `Tools/dd/prepare_title.py`: **楕円のグラデーションを α から外し**（決定事項 5）、α は本家と同じ「ほぼ不透明 + 左の細い羽根」（幅の 1.5 % まで 0 → 3.1 % で 0.5 → 5 % で 1）にする。本作の原本は明るい部屋が写った写真なので、**楕円は RGB を黒へ落とす暈し**として残し、端の明るさが本家の包絡（決定事項 5 の表）に近づくよう幅を広げる。
+  - `Tools/dd/prepare_title.py`: **楕円のグラデーションを α から外し**（決定事項 3）、α は本家と同じ「ほぼ不透明 + 左の細い羽根」（幅の 1.5 % まで 0 → 3.1 % で 0.5 → 5 % で 1）にする。本作の原本は明るい部屋が写った写真なので、**楕円は RGB を黒へ落とす暈し**として残し、端の明るさが本家の包絡（決定事項 3 の表）に近づくよう幅を広げる。
   - `python Tools/dd/prepare_title.py` → `python Tools/ue_remote.py` から `dd_ui.import_title` で `/Game/Wasami/UI/Title/T_TitleFace` を作り直し、PIE の `L_Title` で撮る。**右端・上端・下端に黒い隙間が無く、左の境界が煙のぎざぎざの縁になっている**ことを見る。
   - 変更予定: `Tools/dd/prepare_title.py`、`/Game/Wasami/UI/Title/T_TitleFace`、実装記録 14
 - [ ] 4. 本家と並べて確かめ、項目を閉じる
-  - 本家の最新版（`Launch-Latest.cmd`）のタイトルを等倍で撮り（`.claude/guides/observation.md` の作法。**手元の `obs*-title.png` は 880 × 364 で縦横比が合わないので測りには使えない**）、本作の PIE の絵と並べて、筆の跡の形と流れ・顔の左の縁が同じに見えることを確かめる。
+  - 本家の最新版（`Launch-Latest.cmd`）のタイトルを撮り（`.claude/guides/observation.md` の作法）、本作の別窓の PIE の絵と並べて、筆の跡の形と流れ・顔の左の縁が同じに見えることを確かめる。**手元の `obs4-title.png`（860 × 360）は 3440 × 1440 の 1/4 の一様な縮小で、本作の別窓の PIE（2580 × 1082 → 860 × 360）とそのまま並べられる**（決定事項 4）ので、撮り直しは顔の比べに要るときだけでよい。
   - 実装記録 14 と `.claude/roadmap.md` の項目 44 を直し、`python .claude/scripts/check_records.py --update` を通して、この記録を消してコミットする。
   - 変更予定: `.claude/implementation-records/14-title.md`、`.claude/roadmap.md`、`.claude/references/handover.md`
 
 ## 次にやること
 
-ステップ 2。PIE で `L_Title` を 1920 × 1080 で撮り、筆の跡の広がり・濃さ・流れる速さを本家と比べる。式は一致しているので、差が出なければそのまま閉じてステップ 3（顔の α）へ。
+ステップ 2b。`WasamiTitleScreenWidget.cpp:202` の `Strokes->SetIsEnabled(false);` を消して `editor_cycle` でビルドし、別窓の PIE（再開時の注意）で撮って、筆の跡の明るさが本家の帯に入ることを確かめる。実装記録 14 も直す。
 
 ## 決定事項
 
-- 2026-09-22: **筆の跡の式は焼き込みのシェーダーと本作の材質で一致している**（ステップ 1）。`cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask_Grey." --show 4` の逐語:
-  - `mad r0.zw, r0.xxxy, l(0,0,0.35,1.0), r1.xxxy` … UV × **(0.35, 1)** + (Time × `Time Multiplier` × **0.02**, 0)。
-  - `sample r1, r0.zw, t0` … 筆の跡 `title_screen_chapters_background`（5760 × 1200。RGB は一様な (151, 8, 0)、α は 0〜45・平均 12）。
-  - `sample r0.x, r0.xy, t1.wxyz` … マスク `title_screen_video_mask` の **α を UV そのままで**。
-  - `dp3 r0.y, r1.xyz, (0.3, 0.59, 0.11)` … Emissive = Desaturation（Fraction 1 = 輝度そのもの）。
-  - `mul_sat r1.w, r0.x, r1.w` … Opacity = saturate(mask.A × strokes.A)。
-  - **残りの命令は Slate 側で材質ではない**: `SelectionColor` の混ぜ、頂点色の掛け、**無効の見え方**（`lerp(色, 輝度, 0.8)` → さらに 0.1 の灰へ距離ぶん寄せる）、sRGB の書き出し。`Image_104` の `bIsEnabled(false)` はこの灰化を掛けるためで、本作も同じ（実装記録 14）。
-  - 本作の `_build_title_strokes`（`TITLE_STROKES_TILING = (0.35, 1.0)`・`TITLE_STROKES_SPEED = 0.02`・Desaturation・mask.A × strokes.A）と**完全に一致**。テクスチャの取り込みも `_textures.json` の `address_x: null`（= Wrap）・sRGB・DXT5・`TEXTUREGROUP_UI` で本家と同じ。
 - 2026-09-22: **本家の顔はほぼ不透明な全面の絵で、楕円の暈しではない**（`title_screen_profile_monkey.png` 1024²。旧版と最新版〈`ProfileIcons/`〉で同一）。
   - α > 0.95 が 91.1 %・平均 0.942。中央の列（x = 512）は上から下まで α = 1、右端の列も平均 0.957。
   - **左だけが柔らかい**: α = 0 が x < 15、0.5 の交差が行の中ほど 80 % で x = 25〜35（幅の 2.5〜3.4 %）、0.95 が x = 45〜60（4.4〜5.9 %）。幅 30〜45 px（3〜4.5 %）の細い羽根。
   - 上下の端で左の透明が広がる（y = 0 で x50 = 121、y = 992 で 204、最下行は x < 256 が透明）。右上の隅も小さく欠ける（32 四方の平均 0.458）。
   - 端が暗く見えるのは**絵の側が真っ黒だから**で、α ではない。
-- 2026-09-22: **画面で見える顔の左の境界を作っているのは煙 `title_screen_video_mask`**。煙は 1920 × 1200・RGB 0・α が煙で、α = 1 が u < 0.52、0 に落ちるのが u ≈ 0.68。1920 × 1080 に左端から幅 2029.65 で描くので、**画面の x ≈ 1055 までは真っ黒・x ≈ 1380 で消える**。顔の箱は x 830.4〜1930.4（右端の中央から (−1089.6, −549.2)・1100 四方）なので、**顔の絵自身の左の羽根（画面の x ≈ 864）は真っ黒な煙の下に完全に隠れる**。見える左の境界は煙のぎざぎざの縁で、画面の上から下まで通る。
-- 2026-09-22: **本作の顔は柔らかい楕円の切り抜きで、ここが指摘の本体**。`Intermediate/Pipeline/wasami/ui/title_face.png` は α > 0.95 が 8.4 %・平均 0.285、α > 0 が x/w 0.076〜0.922・y/h 0.096〜0.941 の範囲だけ。画面では x 914〜1844・y 96〜1026 にしか絵が無く、**右端・上端・下端に黒い隙間ができ、左の境界が楕円の弧になる**。本家は上下左右とも画面の端まで絵が続き、左の境界は煙が作る。手元の絵（`Intermediate/DesktopAgent/shots/pt_title.png`）でも、写真の明るい壁が楕円の縁で切れて「境界線」に見えている。
-- 2026-09-22: **ステップ 3 の直し方 — 楕円は α から RGB へ移す**。α は本家と同じ「ほぼ不透明 + 左の細い羽根」（幅の 1.5 % まで 0 → 3.1 % で 0.5 → 5 % で 1）にする。本作の原本は明るい部屋が写った写真なので、そのまま不透明にすると画面の右半分に部屋が出る。本家の絵は端が黒いので、**楕円は RGB を黒へ落とす暈しとして残す**（黒の下地の上なので見え方はほぼ同じだが、上下左右の端まで絵が続く点が本家と同じになる）。
+- 2026-09-22: **画面で見える顔の左の境界を作っているのは煙 `title_screen_video_mask`**。煙は 1920 × 1200・RGB 0・α が煙で、α = 1 が u < 0.52、0 に落ちるのが u ≈ 0.68。キャンバスの左端から幅 2029.65 で描くので、**キャンバスの x ≈ 1055 までは真っ黒・x ≈ 1380 で消える**。顔の箱は右端の中央から (−1089.6, −549.2)・1100 四方なので、**顔の絵自身の左の羽根は真っ黒な煙の下に完全に隠れる**。見える左の境界は煙のぎざぎざの縁で、画面の上から下まで通る。
+- 2026-09-22: **本作の顔は柔らかい楕円の切り抜きで、ここが指摘の本体**。`Intermediate/Pipeline/wasami/ui/title_face.png` は α > 0.95 が 8.4 %・平均 0.285、α > 0 が x/w 0.076〜0.922・y/h 0.096〜0.941 の範囲だけ。画面では**右端・上端・下端に黒い隙間ができ、左の境界が楕円の弧になる**。手元の絵（`Intermediate/DesktopAgent/shots/pt_title.png`）でも、写真の明るい壁が楕円の縁で切れて「境界線」に見えている。
+  - **ステップ 3 の直し方 — 楕円は α から RGB へ移す**。α は本家と同じ「ほぼ不透明 + 左の細い羽根」（幅の 1.5 % まで 0 → 3.1 % で 0.5 → 5 % で 1）。本作の原本は明るい部屋が写った写真なので、そのまま不透明にすると画面の右半分に部屋が出る。本家の絵は端が黒いので、**楕円は RGB を黒へ落とす暈しとして残す**（黒の下地の上なので見え方はほぼ同じだが、上下左右の端まで絵が続く点が本家と同じになる）。
   - 落とす形の目標は本家の絵の明るさの包絡（輝度 × α を σ = 幅の 8 % でぼかして正規化）。重心は箱の (0.548, 0.583)、中央付近 0.66〜1.0、x = 0.125 の列で 0.01〜0.14、**右端の列は 0〜0.47**（中ほどが明るい）、上端・下端の行は 0〜0.39。**端でも完全な 0 ではない**ので、今の楕円（0.86 で 0）より広げる。
+- 2026-09-22: **筆の跡は「広がり・色・流れる速さ」は本家と一致、「明るさ」だけが半分**（ステップ 2。本家 `obs4-title.png` 860 × 360 と、本作の別窓の PIE 2580 × 1082 を 860 × 360 に縮めたものを、同じ箱で測った）。
+  - **広がり**: 筆の跡が平地の半分に落ちる列は本家 x = 304・本作 x = 300〜308、消える列は本家 ≈ 360・本作 ≈ 355。マスクの形は同じ。
+  - **色**: 明るい画素の平均 RGB は本家 (8.87, 8.72, 8.69)、本作 (4.52, 4.39, 4.37)。灰に赤がわずかに乗る比まで同じで、**倍率だけが違う**。
+  - **流れる速さ**: 2 s ごとの 2 次元の相関で −95.2・−94.1・−94.4・−95.4 px/s（2580 幅）。式からの予想 −94.7 px/s（0.02 ÷ 0.35 × 1657.7 px）と 1 % 以内。**一致**。
+  - **明るさ**: 原因は **UE 5 の Slate の「無効」の見え方が UE 4 と違う**こと。UE 5.8 の `Engine/Shaders/Private/SlateElementPixelShader.usf`（`USE_LEGACY_DISABLED_EFFECT` は 0 に固定）は `OutColor.a *= .45f` で**不透明度を 0.45 倍**にする。UE 4 の旧い式（本家の焼き込みのシェーダーに写っているもの）は `lerp(色, 輝度, 0.8)` → `lerp(色, 0.1 の灰, clamp(distance, 0, 0.8))` で、**もともと灰一色のこの材質には効かない**（距離 0.011 → ほぼ素通し）。
+  - PIE で `Image_104` を `set_is_enabled(True)` にして確かめた: 平地の箱（860 × 360 の x 180-280・y 155-310）の平均が 1.32 → 2.0 倍に上がり、49 s（1 周期は 50 s）に散らした 9 枚で 2.70〜6.43・平均 4.37。**本家の 1 枚は 4.84 でこの帯の中**（同じ箱、`x 180-355` なら本家 3.62・本作 1.55〜4.47 の平均 2.98）。
+  - **測り方**（ステップ 2b・4 で使う）: 別窓の PIE を 2580 × 1080 で頼むと中身は 2580 × 1082（DPI の倍率 1.0019）、画面の (433, 191)-(3013, 1273)。これを 860 × 360 に縮めると、本家の 3440 × 1440 を 1/4 にした `obs4-title.png` と同じ枠になる（どちらもキャンバス 2580 幅）。道具は `observations/tools/title_fit/`（`shots.py` = 時刻つきの連写、`cmp.py` = 切り出しと比べ、`enable_strokes.py` = PIE で `Image_104` を有効にする）。
+  - **同じ落とし穴がもう 1 か所**: `WasamiExtrasWidget.cpp:230` の MOVIES の節のボタンも `SetIsEnabled(false)`。UE 5 では本家（UE 4）の灰色化ではなく 0.45 倍の薄さになる。押せないことは同じなので、この項目では触らない。
 
 ## 要確認（ユーザー）
 
@@ -67,12 +68,13 @@ updated: 2026-09-22 17:10
 
 ## 再開時の注意
 
-- 長時間処理は無い。ステップ 2・3 の `dd_ui.import_title` は `python Tools/ue_remote.py` でエディタに投げる（数秒）。ステップ 3 の `prepare_title.py` は PIL と numpy を使うのでエディタの外の Python で走らせる。
-- エディタの状態: ステップ 1 では触っていない。ステップ 2 に入る前に PIE が残っていないかを確かめる。PIE は終わったら必ず止める。
-- 本家の実機を起動するのはステップ 4 だけ（`.claude/guides/verification.md`・`observation.md`。エディタと同時に動かさない）。
+- 長時間処理はステップ 2b の `python Tools/editor_cycle.py`（C++ のビルドと開き直し）だけ。終わったらエディタが `L_Title` を開いた状態に戻る。
+- **別窓の PIE の出し方**（ステップ 2b・4）: MCP の `ConfigSettingsToolset.SetSectionProperties`（`containerName` `Editor`・`categoryName` `LevelEditor`・`sectionName` `PlayIn`・`propertiesJson` に `NewWindowWidth` 2580・`NewWindowHeight` 1080・`CenterNewWindow` 真）→ `EditorToolset.EditorAppToolset.StartPIE`（`playMode` `PlayMode_InEditorFloating`・`warmupSeconds` 3）→ `python observations/tools/title_fit/shots.py <枚数> <間隔 s>` → `python Tools/pie.py stop` → **設定を 1280・720・偽に戻す**（ユーザーの設定）。
+- PIE は終わったら必ず止める。ステップ 2・2b では `L_Title` を開いたまま作業する。
+- 本家の実機を起動するのはステップ 4 で顔を比べるときだけ（`.claude/guides/verification.md`・`observation.md`。エディタと同時に動かさない）。筆の跡は `obs4-title.png` で足りる。
 
 ## 検証
 
-- check_records: 未実行（ステップ 1 はソースを変えていない）
-- C++ ビルド: 未実行（この項目は C++ を変えない見込み）
-- エディタでの確認（取り込み・組み立て・PIE）: 未実行
+- check_records: 未実行（ステップ 1・2 はソースを変えていない。2b で通す）
+- C++ ビルド: 未実行（ステップ 2b で `editor_cycle`）
+- エディタでの確認（取り込み・組み立て・PIE）: ステップ 2 で別窓の PIE（2580 × 1082）から 16 枚撮って測った。PIE は止め、PIE の窓の設定も戻した。
