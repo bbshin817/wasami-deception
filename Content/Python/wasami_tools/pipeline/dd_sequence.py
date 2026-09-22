@@ -65,7 +65,11 @@ NURSE_ANIMS = {
     "ReaperNurse_Fast_Jump_Up_Air": ("Run", False),
     "ReaperNurse_Flip_Up": ("Chase_VaultRoll", False),
     "ReaperNurse_Idle_Alert": ("Idle_Alert", False),
-    "Nurse_Hospital_Zone01_Event_39": ("Chase_Charge", False),   # the punch that takes the player
+    # The punch that takes the player. The original swings: it sinks, rises winding the right arm and the
+    # syringe a trunk's length above the hips, then brings them down in the last 0.13 s (measured off
+    # Nurse_Hospital_Zone01_Event_39.psa). Chase_PickUp is the only clip of the v3 set whose right hand does
+    # the same shape late in the take, and the camera is 0.4 m from her as it lands.
+    "Nurse_Hospital_Zone01_Event_39": ("Chase_PickUp", False),
     "nurse_idle_01": ("Idle", False),
     "ReaperNurse_Walk_Back": ("Walk", True),                # backing away
     # She turns invisible where she stands (the cell scene never moves her: its transform track holds one key of
@@ -78,7 +82,7 @@ NURSE_ANIMS.update({"Nurse_Hospital_Zone01_Event_%d" % n: ("Idle", False) for n 
 FILL_CLIP = "Idle"
 # The stand-ins that are one action rather than a cycle. A section the original holds a single take in slows these to
 # fill it once instead of repeating the action (play_rate below); the cycles loop, as the original's own cycles do.
-ONE_SHOT_CLIPS = {"Chase_Charge", "Chase_VaultRoll"}
+ONE_SHOT_CLIPS = {"Chase_Charge", "Chase_PickUp", "Chase_VaultRoll"}
 
 # UE 4.24's UMovieScene defaults for what the export leaves out (60000 ticks a second, 30 frames).
 DEFAULT_TICK_RESOLUTION = (60000, 1)
@@ -536,7 +540,7 @@ class _Builder:
         and 5.8 alike). So the original's sections come in two kinds: one loops a cycle (its animation is shorter than
         the section), the other holds a single take (the animation fills the section, sometimes cut short). A stand-in
         is a different length, so a single take would come out looped - the capture scene's punch (1.633 s, the nurse
-        animation's own length) would charge three times over with the 0.533 s stand-in. Keep which of the two kinds a
+        animation's own length) would swing twice over with the 1.233 s stand-in. Keep which of the two kinds a
         section is: slow a stand-in down to fill a single-take section once, and leave a looping one at 1. Only the
         stand-ins that are one action (ONE_SHOT_CLIPS) are slowed; a cycle standing in for a take of acting is left to
         loop, which reads as the idle it is (the cell's 11 s of dialogue would otherwise crawl at a sixth speed)."""
