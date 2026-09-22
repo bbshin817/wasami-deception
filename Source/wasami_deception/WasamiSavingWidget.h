@@ -49,11 +49,11 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
-	/** The engine's RobotoTiny (its Light typeface). */
+	/** RobotoTiny (its Light typeface), the engine font rebuilt under /Game/DD/_Engine. */
 	UPROPERTY(EditAnywhere, Category = "Save|Assets")
 	TSoftObjectPtr<UFont> TextFont;
 
-	/** The engine's SphereRenderHeightMap: the throbber's piece. */
+	/** SphereRenderHeightMap, the engine texture rebuilt under /Game/DD/_Engine: the throbber's piece. */
 	UPROPERTY(EditAnywhere, Category = "Save|Assets")
 	TSoftObjectPtr<UTexture2D> ThrobberTexture;
 

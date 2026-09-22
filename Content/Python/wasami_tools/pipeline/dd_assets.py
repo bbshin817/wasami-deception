@@ -447,10 +447,12 @@ def sound_cue(rel, version=1):
 
 def texture(rel, version=1):
     """Imports the original's /Game/<rel>.png under /Game/DD with its sRGB, compression and LOD group (_textures.json)
-    and its NeverStream (the export). Returns the package path."""
+    and its NeverStream (the export). An engine texture the original uses ('/Engine/Functions/...') comes from the same
+    table, under Engine/Content, and lands under /Game/DD/_Engine. Returns the package path."""
     with open(os.path.join(pak(version), "_textures.json"), encoding="utf-8") as f:
         table = json.load(f)
-    key = "DDeception/Content/%s.uasset" % rel
+    project, sub = _content(rel)
+    key = "%s/Content/%s.uasset" % (project, sub)
     entry = table.get(key)
     if entry is None:
         raise KeyError("no texture %s in %s/_textures.json" % (key, pak(version)))
@@ -469,14 +471,9 @@ def texture(rel, version=1):
     return target
 
 
-def font(face_rel, version=1):
-    """Imports the original's /Game/<face_rel>.ttf as a font face under /Game/DD and makes the runtime Font asset its UMG
-    texts use (<face_rel>_Font) with the face as its Default typeface, over the original's fallback typeface (the
-    engine's DroidSansFallback, what a character the face has not falls back to). (The original's Font keeps the
-    engine's Roboto as the default and the face as an en-US sub-typeface; the face is what an English game shows, and
-    this game's texts are English whatever the machine's culture. Its helvetica-normal_Font lists a second fallback
-    entry, RobotoRegular, which Slate never reaches: a typeface it cannot find the asked name in gives its first
-    entry.) Returns the Font's package path."""
+def _import_font_face(face_rel, version, props=None):
+    """Imports the .ttf of /Game/<face_rel> (or of an engine face, '/Engine/EngineFonts/Faces/RobotoTiny') as a FontFace
+    under /Game/DD, with the exported properties (the hinting) when they are given. Returns its package path."""
     ttf = content_file(face_rel, version, ".ttf")
     if not os.path.exists(ttf):
         raise FileNotFoundError(ttf)
@@ -491,25 +488,80 @@ def font(face_rel, version=1):
     task.save = False
     task.factory = unreal.FontFileImportFactory()
     _tools().import_asset_tasks([task])
-    if unreal.load_asset(face_path) is None:
+    face = unreal.load_asset(face_path)
+    if face is None:
         raise RuntimeError("the font face did not import to %s" % face_path)
+    if props:
+        failures = ue_props.apply(face, props, skip=("SourceFilename",))
+        if failures:
+            raise RuntimeError("settings of %s could not be set: %s" % (face_rel, "; ".join(failures)))
+    return face_path
 
+
+def _write_composite_font(font_asset, face_path, default_name="Default", fallback_name="Fallback"):
+    """Puts the face into the Font as its Default typeface under `default_name`, over the fallback typeface (the engine's
+    DroidSansFallback, what a character the face has not falls back to) under `fallback_name`."""
+    # FCompositeFont's members are not exposed to Python, so the typefaces go in as the struct's own text form.
+    composite = unreal.CompositeFont()
+    composite.import_text('(DefaultTypeface=(Fonts=((Name="%s",Font=(FontFaceAsset=FontFace\'"%s"\','
+                          'LoadingPolicy=LazyLoad,SubFaceIndex=0)))),FallbackTypeface=(Typeface=(Fonts='
+                          '((Name="%s",Font=(FontFaceAsset=FontFace\'"%s"\',LoadingPolicy=LazyLoad,'
+                          'SubFaceIndex=0)))),ScalingFactor=1.000000),SubTypefaces=,'
+                          'bEnableAscentDescentOverride=True)'
+                          % (default_name, paths.object_path(face_path), fallback_name, FALLBACK_FACE))
+    font_asset.set_editor_property("composite_font", composite)
+
+
+def font(face_rel, version=1):
+    """Imports the original's /Game/<face_rel>.ttf as a font face under /Game/DD and makes the runtime Font asset its UMG
+    texts use (<face_rel>_Font) with the face as its Default typeface, over the original's fallback typeface (the
+    engine's DroidSansFallback, what a character the face has not falls back to). (The original's Font keeps the
+    engine's Roboto as the default and the face as an en-US sub-typeface; the face is what an English game shows, and
+    this game's texts are English whatever the machine's culture. Its helvetica-normal_Font lists a second fallback
+    entry, RobotoRegular, which Slate never reaches: a typeface it cannot find the asked name in gives its first
+    entry.) Returns the Font's package path."""
+    face_path = _import_font_face(face_rel, version)
+    folder, name = paths.split(face_path)
     font_path = face_path + "_Font"
     if EAL.does_asset_exist(font_path):
         font_asset = unreal.load_asset(font_path)
     else:
         font_asset = _tools().create_asset(name + "_Font", folder, unreal.Font, unreal.FontFactory())
     font_asset.set_editor_property("font_cache_type", unreal.FontCacheType.RUNTIME)
-    # FCompositeFont's members are not exposed to Python, so the typeface goes in as the struct's own text form.
-    composite = unreal.CompositeFont()
-    composite.import_text('(DefaultTypeface=(Fonts=((Name="Default",Font=(FontFaceAsset=FontFace\'"%s"\','
-                          'LoadingPolicy=LazyLoad,SubFaceIndex=0)))),FallbackTypeface=(Typeface=(Fonts='
-                          '((Name="Fallback",Font=(FontFaceAsset=FontFace\'"%s"\',LoadingPolicy=LazyLoad,'
-                          'SubFaceIndex=0)))),ScalingFactor=1.000000),SubTypefaces=,'
-                          'bEnableAscentDescentOverride=True)'
-                          % (paths.object_path(face_path), FALLBACK_FACE))
-    font_asset.set_editor_property("composite_font", composite)
+    _write_composite_font(font_asset, face_path)
     return font_path
+
+
+def engine_font(rel, version=1):
+    """The engine's own Font the original names ('/Engine/EngineFonts/RobotoTiny') rebuilt under /Game/DD/_Engine with
+    its face, saved. The engine's own copies cannot be shipped: the cook leaves them out, because nothing but this
+    game's C++ asks for them and a soft path a constructor sets is no package dependency of any asset, so a packaged
+    build would draw the text in Slate's last resort font. The Font keeps the export's cache type, legacy size and
+    legacy name and its typefaces' names — the widgets ask for the typeface by name ('Light') — and the face the
+    export's hinting (RobotoTiny's Auto, where the engine's own Roboto Light face has AutoLight). Its fallback typeface
+    stays the engine's DroidSansFallback, which the cook does take. Returns the Font's package path."""
+    props = main_export(export_json(rel, version), rel)["props"]
+    composite = props["CompositeFont"]
+    default = composite["DefaultTypeface"]["Fonts"][0]
+    fallback = composite["FallbackTypeface"]["Typeface"]["Fonts"][0]
+    face_rel = default["Font"]["FontFaceAsset"].split(".", 1)[0]
+    face_path = _import_font_face(face_rel, version, main_export(export_json(face_rel, version), face_rel)["props"])
+    target = asset_path(rel)
+    if EAL.does_asset_exist(target):
+        font_asset = unreal.load_asset(target)
+    else:
+        folder, name = paths.split(target)
+        font_asset = _tools().create_asset(name, folder, unreal.Font, unreal.FontFactory())
+    failures = ue_props.apply(font_asset, props, skip=("CompositeFont", "LegacyFontName"))
+    if failures:
+        raise RuntimeError("settings of %s could not be set: %s" % (rel, "; ".join(failures)))
+    # LegacyFontName is an FName, which ue_props does not read a string into; it goes in as it is.
+    if "LegacyFontName" in props:
+        font_asset.set_editor_property("legacy_font_name", props["LegacyFontName"])
+    _write_composite_font(font_asset, face_path, default["Name"], fallback["Name"])
+    EAL.save_asset(face_path, only_if_is_dirty=False)
+    EAL.save_asset(target, only_if_is_dirty=False)
+    return target
 
 
 def static_mesh(rel, version=1):

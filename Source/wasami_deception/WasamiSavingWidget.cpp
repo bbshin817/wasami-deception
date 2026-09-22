@@ -41,9 +41,9 @@ namespace
 UWasamiSavingWidget::UWasamiSavingWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	TextFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Engine/EngineFonts/RobotoTiny")));
+	TextFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/EngineFonts/RobotoTiny")));
 	ThrobberTexture = TSoftObjectPtr<UTexture2D>(
-		WasamiAssets::Path(TEXT("/Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap")));
+		WasamiAssets::Path(TEXT("/Game/DD/_Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap")));
 }
 
 UWasamiSavingWidget* UWasamiSavingWidget::Show(const UObject* WorldContextObject)

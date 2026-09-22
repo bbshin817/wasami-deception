@@ -68,6 +68,10 @@ The cutscene screen (UWasamiCutsceneWidget, after UI/Main/UMG_CutsceneWidget): t
 which the widget slides in and out through Mat_ParameterCol's Cutscene Bars, and the black the bars are
 (T_Black). The collection comes with the gimmicks (dd_gimmicks).
 
+SAVING PROGRESS (UWasamiSavingWidget, after UI/Main/UMG_Saving) in the corner as a checkpoint is saved: the engine's
+RobotoTiny its words and the death screen's tip are in, and the engine texture its throbber spins
+(SphereRenderHeightMap) — both rebuilt under /Game/DD/_Engine, as no cook takes an engine asset only C++ asks for.
+
 Everything lands under /Game/DD mirroring the original's /Game tree, from pak_reference_2 (UE 4.24), whose death screen
 the widget follows.
 """
@@ -96,6 +100,15 @@ SOUNDS = (
     "Audio/UI/Life_Lost",
     "Audio/SharedGameplay/66_-_Game_Over",
     "Audio/UI/UI_Window_PopUp_V3",
+)
+# The engine's own content the death screen's tip (RobotoTiny's Light, with its face) and SAVING PROGRESS
+# (UWasamiSavingWidget: the same font and the throbber's texture) name. The cook takes no engine asset this game asks
+# for from C++ alone, so both are rebuilt under /Game/DD/_Engine (dd_assets.engine_font, dd_assets.texture).
+ENGINE_FONTS = (
+    "/Engine/EngineFonts/RobotoTiny",
+)
+ENGINE_TEXTURES = (
+    "/Engine/Functions/Engine_MaterialFunctions02/ExampleContent/Textures/SphereRenderHeightMap",
 )
 
 # ------------------------------------------------------------------------------------------------ the door break
@@ -534,10 +547,13 @@ def import_extras():
 def import_all():
     """Imports the death screen's and the pop-up's textures, font and sounds, the door break's assets, the loading
     screen's, the hand's, the ring piece screen's, the shard streak's, the level clear screen's, the title screen's, the
-    options screen's, the pause menu's, the stage's title card's and the extras screen's, and the cutscene screen's bars, then saves /Game/DD."""
+    options screen's, the pause menu's, the stage's title card's and the extras screen's, and the cutscene screen's bars,
+    with the engine's font and texture SAVING PROGRESS and the tip use, then saves /Game/DD."""
     result = {"textures": len([dd_assets.texture(rel, VERSION) for rel in TEXTURES]),
               "fonts": len([dd_assets.font(rel, VERSION) for rel in FONTS]),
-              "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS])}
+              "sounds": len([dd_assets.sound(rel, VERSION) for rel in SOUNDS]),
+              "engine_fonts": len([dd_assets.engine_font(rel, VERSION) for rel in ENGINE_FONTS]),
+              "engine_textures": len([dd_assets.texture(rel, VERSION) for rel in ENGINE_TEXTURES])}
     for key, count in import_door_break().items():
         result["door_break_" + key] = count
     for key, count in import_loading().items():

@@ -214,7 +214,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Death|Assets")
 	TSoftObjectPtr<UFont> MenuFont;
 
-	/** The engine's RobotoTiny (its Light typeface): the tip. */
+	/** RobotoTiny (its Light typeface), the engine font rebuilt under /Game/DD/_Engine: the tip. */
 	UPROPERTY(EditAnywhere, Category = "Death|Assets")
 	TSoftObjectPtr<UFont> TipFont;
 

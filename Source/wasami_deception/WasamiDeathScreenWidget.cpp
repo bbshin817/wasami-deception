@@ -143,7 +143,7 @@ UWasamiDeathScreenWidget::UWasamiDeathScreenWidget(const FObjectInitializer& Obj
 	VignetteTexture = TSoftObjectPtr<UTexture2D>(WasamiAssets::Path(TEXT("/Game/DD/UI/Menu/Streaks/T_Vignette")));
 	HeadingFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/UI/Fonts/helvetica-neue-bold_Font")));
 	MenuFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/UI/Fonts/helvetica-normal_Font")));
-	TipFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Engine/EngineFonts/RobotoTiny")));
+	TipFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/_Engine/EngineFonts/RobotoTiny")));
 	LifeLostSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Life_Lost")));
 	GameOverSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/SharedGameplay/66_-_Game_Over")));
 	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));

@@ -121,10 +121,14 @@ class WasamiDDTools(unreal.ToolsetDefinition):
         (WasamiOptionsWidget) frame, value boxes, arrows, slider thumb and check boxes. And the stage's title card's
         (WasamiChapterPortalWidget) portal ring, runes and two banners. And the extras screen's (after the latest
         version's UMG_Extras) play and pause icons, two locks, buttons' frame, opening sound and the material of the
-        strokes behind it (MM_TitleScreen_Mask_); the original's art, music, diaries and movies are left out.
+        strokes behind it (MM_TitleScreen_Mask_); the original's art, music, diaries and movies are left out. And the
+        engine's own assets SAVING PROGRESS (WasamiSavingWidget) and the death screen's tip name — the font RobotoTiny
+        with its face, and the throbber's texture — rebuilt under /Game/DD/_Engine, as the cook takes no engine asset
+        this game asks for from C++ alone.
 
         Returns:
-            How many assets of each kind were made ('textures', 'fonts', 'sounds', 'door_break_textures',
+            How many assets of each kind were made ('textures', 'fonts', 'sounds', 'engine_fonts', 'engine_textures',
+            'door_break_textures',
             '_sounds', '_sound_cues', '_attenuations', '_materials', 'loading_sounds', 'loading_emblems',
             'interact_textures', 'ring_piece_textures', 'ring_piece_sounds', 'streak_textures', 'streak_sounds',
             'level_clear_textures', 'level_clear_sounds', 'level_clear_wasami_textures', 'title_textures', 'title_sounds', 'title_materials',
