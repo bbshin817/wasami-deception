@@ -602,7 +602,7 @@
 - 根拠: `pak_reference_2/_assets/DDeception/Content/Textures/06_Hospital/`（元の 3 枚）と `_materials.json` の材質 3 つ、WebGL 版の CC2 のポスターの作り方（`.claude/references/webgl/implementation-records/`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`、実装記録 01。
 - 依存: なし。
 - 規模: 3
-- 状態: **進行中（2026-09-23 から。進捗記録 `20260923-nurse-posters-wasami`）**。貼ってある数は Zone 1 が `hospital_poster_nurse_01_D` 16 枚・`hospital_poster_nurse_02` 7 枚・`hospital_decal_nurseambulance` 1 枚、Zone 2 が `hospital_decal_nurseambulance` 2 枚。4 枚目の `hospital_poster_nurse_03`（「BURN FAT」と炎）は人物が描かれていないので対象外。
+- 状態: **完了（2026-09-23）**。**(1)** 前処理 `Tools/dd/prepare_nurse_posters.py` が 3 枚を描く（`SourceArt/Wasami/UI/pause_head.png` の頭を絵ごとの画風で置く。01 は紙袋＋十字の頭 → 鉢巻きの下のワサミの顔、02 は影絵 2 人の頭 → ワサミの線画、落書きはナース帽と紙袋の頭 → ワサミの頭。構図・文言・体・注射器・救急車はそのまま）。大きさ・sRGB・圧縮・LOD グループは原作の `_textures.json` の値のまま。**(2)** `prepare_stage.py` の差し替え（`WASAMI_TEXTURES`）で `stage_ue.json` のテクスチャ 3 件が本作の絵を指し、`/Game/Wasami/Stage/T_*` に取り込んで材質 `M_06_Hospital_Poster_01`・`M_06_Hospital_Poster_14`・`M_06_Hospital_Decal_NurseAmbulance` がそれを指す（**原作の材質の式はそのまま**）。**(3) PIE で確かめた**: Zone 1 で `Poster_01` 5 か所・`Poster_14` 3 か所・救急車の落書き 1 か所、Zone 2 で落書き 2 か所（高い方はエディタのビューポートのカメラ）を撮り、どれもワサミの頭で**ナースの姿は 1 枚も残っていない**。原作の 3 枚は AssetRegistry で**参照元 0 件**。**(4)** `.claude/guides/original-fidelity.md` の「原作の素材の使用範囲」に 3 行足した。貼ってある数は Zone 1 が `hospital_poster_nurse_01_D` 16 枚・`hospital_poster_nurse_02` 7 枚・`hospital_decal_nurseambulance` 1 枚、Zone 2 が `hospital_decal_nurseambulance` 2 枚。4 枚目の `hospital_poster_nurse_03`（「BURN FAT」と炎）は人物が描かれていないので対象外。実装記録 01
 
 ### 52. 積み残しの確かめ（パッケージ版のマウスとキー、note の GIF の撮り直し）
 
