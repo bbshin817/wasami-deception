@@ -56,7 +56,7 @@
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "d2069eebcf370978b513ac9618444a06331733d6",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "4b7717b0a8ff1cd885f5e8394562fa206e3e57f0",
     "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "aa7271939c7317513332329e32b4d20bb8746ed2",
-    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "f5aa5281350d546f05d6cf771efab98d33d435e3",
+    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "8edd14d0a8b6f74635c2075b487922fa7991179d",
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "9152be4681c984e45f037f5dba0a0579a82d5809",
     "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "5a6d5f8716c774423cd5082a305305a9d7936a25",
@@ -140,7 +140,7 @@
     "SourceArt/Wasami/wasami_mochi.glb": "f78bb3fc65c4fbc2fc02dd0cd09e86d08941fe51"
   },
   "07-enemies.md": {
-    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "f5aa5281350d546f05d6cf771efab98d33d435e3",
+    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "8edd14d0a8b6f74635c2075b487922fa7991179d",
     "Source/wasami_deception/WasamiEnemy.h": "0e76920166b1aabc465aa03474e8d0cfb6404c80",
     "Source/wasami_deception/WasamiEnemy.cpp": "1b06d9da3d24bdcd0b5a4a5350e185221c87f5d6",
     "Source/wasami_deception/WasamiEnemy06Chase.h": "810c290a93e980e782c23b7b3295b8617dbec5a8",
@@ -159,7 +159,8 @@
     "Source/wasami_deception/WasamiCapture.cpp": "4b6de49a2ed1c1f78ce3853b55dff8ff8926228f",
     "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "e5db84e4e216e1a8d6b78cb6ad9d7b26f70ef50d",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
-    "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112"
+    "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112",
+    "Tools/wasami_hands.py": "dae7a1fcb44be24f7f14bc1513bcde9667fe300c"
   },
   "09-ui.md": {
     "Source/wasami_deception/WasamiSwitchboxWidget.h": "e474249fd2b11fe5a5b08671a4f3249141ad2cfc",

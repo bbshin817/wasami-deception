@@ -54,7 +54,7 @@ sources:
   - Source/wasami_deception/WasamiMaterialLibrary.h
   - Source/wasami_deception/WasamiMaterialLibrary.cpp
   - Source/wasami_deception/Tests/WasamiCascadeTests.cpp
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 取り込みの仕組み

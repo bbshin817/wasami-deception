@@ -91,6 +91,28 @@ VAULT = "Vault_and_Land"
 VAULT_FRAMES = (28, 50, 74)
 FEET = ("ball_l", "ball_r")
 
+# The hands' twist (the review's finding, the work list's item 37). SOURCE is modelled with its forearms turned over:
+# its bind pose has the palms up, while its animations are of a body whose palms face down, and they hardly twist the
+# arms away from the bind pose, so in play both palms face outwards (the least inwards any palm faces in a clip is
+# -0.96, where +1 is straight in to the body). The boss's model, the same skeleton by the same hand, has the palms down
+# in its bind pose and faces them inwards in every clip. The user's answer (2026-09-23) was to correct it here rather
+# than in their model, so each hand is turned back about the forearm's length by as much as separates the two models'
+# rest poses: `python Tools/wasami_hands.py twist` reads each palm in the lowerarm's own frame and measures the turn
+# from v3's onto the boss's (+170.1 deg left, -172.2 deg right; the clips both models have agree within 9 deg).
+# The forearm's length is the lowerarm's own +X -- every hand node's rest offset lies along it -- so the turn goes in
+# the lowerarm's frame, ahead of the hand's own rotation: the wrist does not move, it only twists, and the fingers
+# come with it. It is applied to every clip once, after the capture's have been carried onto v3's bones (_Retarget
+# measures that mapping on the untwisted reference, so the two do not stack).
+# Half a turn at one joint is what linear blend skinning cannot do: where the two bones' weights meet, the average of
+# rotations 180 deg apart has no width left at all, and the wrist pinches to a thread (looked at in renders). So the
+# turn is shared with the forearm, which carries the hand with it: ELBOW_SHARE of it goes to the lowerarm, about its
+# own length, and the rest to the hand, and each seam only narrows by cos(half its share). Half and half leaves each
+# 0.74 of its width, and the elbow's seam is under the coat's sleeve where the wrist's is bare skin.
+HAND_TWIST = {"hand_l": 170.1, "hand_r": -172.2}
+ELBOW = {"hand_l": "lowerarm_l", "hand_r": "lowerarm_r"}
+ELBOW_SHARE = 0.5
+FOREARM_AXIS = (1.0, 0.0, 0.0)
+
 # (role, source, glTF animation, how):
 #   loop           closed: the first key is repeated after the last (the sources' loops stop a frame short)
 #   once           as it is
@@ -361,6 +383,25 @@ def _vault(model, chans):
     return tracks, height, turn
 
 
+def _twist_hands(tracks):
+    """Turns each hand about its forearm's length by HAND_TWIST, ELBOW_SHARE of it taken by the forearm (see them).
+    In place.
+
+    The forearm's length is the lowerarm's own +X, so the forearm's share is a turn in the lowerarm's own frame (after
+    its rotation) and the hand's is one in the lowerarm's frame (before the hand's). Neither moves a joint: both the
+    elbow's and the wrist's offsets from their parent lie along the axis they turn about. The hand hangs off the
+    forearm, so it is already carried by the forearm's share and only needs what is left."""
+    for bone, degrees in HAND_TWIST.items():
+        elbow = (ELBOW[bone], "rotation")
+        for key in (elbow, (bone, "rotation")):
+            if key not in tracks:
+                raise RuntimeError("%s is not keyed: the hands cannot be twisted" % key[0])
+        at_elbow = _axis_angle(FOREARM_AXIS, math.radians(degrees * ELBOW_SHARE))
+        at_wrist = _axis_angle(FOREARM_AXIS, math.radians(degrees * (1.0 - ELBOW_SHARE)))
+        tracks[elbow] = [gltf.qmul(r, at_elbow) for r in tracks[elbow]]
+        tracks[(bone, "rotation")] = [gltf.qmul(at_wrist, r) for r in tracks[(bone, "rotation")]]
+
+
 def _in_place(tracks):
     """Holds the pelvis's horizontal position at its first key. Returns how far it went (x, z) in the source."""
     key = (ROOT_BONE, "translation")
@@ -491,6 +532,7 @@ def prepare():
             if how in ("loop", "loop_in_place"):
                 for values in tracks.values():
                     values.append(values[0])
+        _twist_hands(tracks)
         gltf.add_animation(out, blob, ANIM_PREFIX + role, tracks, RATE)
         keys = len(next(iter(tracks.values())))
         report[role] = ((keys - 1) / RATE, moved)
