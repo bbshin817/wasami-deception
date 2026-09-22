@@ -46,7 +46,7 @@ updated: 2026-09-23 06:20
 
 ## 要確認（ユーザー）
 
-- 2026-09-23: 3 枚のワサミの絵の見た目 — 仮に WebGL 版の CC2 のポスターと同じ考え方（人物の箱を周りの色で埋め、ワサミの写真か白抜きの顔を元の人物の大きさ・位置に置く）で描く。理由: 本家に無い本作のものなので根拠は本作の今までの決めごと（`.claude/references/webgl/implementation-records/13-asset-pipeline.md`）。場所: `Tools/dd/prepare_nurse_posters.py`。出来た絵は `Intermediate/Pipeline/wasami/stage/_sheet.png`（元と並べたシート）で見てもらう。
+- 2026-09-23: 3 枚のワサミの絵の見た目 — 仮に WebGL 版の CC2 のポスターと同じ考え方（人物の箱を周りの色で埋め、ワサミの写真か白抜きの顔を元の人物の大きさ・位置に置く）で描く。理由: 本家に無い本作のものなので根拠は本作の今までの決めごと（`.claude/references/webgl/implementation-records/13-asset-pipeline.md`）。場所: `Tools/dd/prepare_nurse_posters.py`。出来た絵は `python Tools/dd/prepare_nurse_posters.py --preview` が書く `Intermediate/Pipeline/wasami/stage/_nurse_sheet.png`（元と新しいものが並んだシート）で見てもらう。
 - 2026-09-23: 差し替えで使わなくなる原作のテクスチャ `/Game/DD/Textures/06_Hospital/hospital_poster_nurse_01_D`・`hospital_poster_nurse_02`・`hospital_decal_nurseambulance` の扱い — 仮に**消さずに残す**（アセットの削除はユーザーの確認が要る。`.claude/guides/verification.md`）。どのレベルからも参照されなくなるが `bCookAll=True` でパッケージには入る。消してよいか確認したい。
 
 ## 再開時の注意
