@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 671e4e8
 started: 2026-09-22 00:00
-updated: 2026-09-22 00:00
+updated: 2026-09-22 17:10
 ---
 
 <!-- 続きをするのに要ることだけを書く。ステップを閉じるときにその分を畳む（目安 20 KB・上限 30 KB） -->
@@ -22,33 +22,44 @@ updated: 2026-09-22 00:00
 
 ## 計画
 
-- [ ] 1. 本家の式と絵を確定する（読むだけ。コードは変えない）
-  - `python Tools/dd/cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask_Grey." --show 4` と `"TitleScreen/MM_TitleScreen_Mask."`・`"TitleScreen/MM_TitleScreen_Mask_."` を読み、筆の跡の **UV のタイリング・Panner の速さ・色（Desaturation の割合）・Opacity の式**を確定する（14 記録の「筆の跡の材質」に書いた U 0.35 / V 1・速さ 0.02・`saturate(mask.A × strokes.A)` が本当にシェーダーのとおりかを確かめる）。
-  - 本家の顔 `title_screen_profile_monkey`（1024²・RGBA・α 0〜255）の α の形を測る（どこで切れているか、縁がどれだけぼけているか）。本作の顔は 512² に WebGL 版の楕円のラジアルグラデーションを焼いてあるので、ここが食い違いの本体。
-  - 煙 `title_screen_video_mask`（1920 × 1200・黒・α が煙）が顔の箱のどこに掛かるかを、ウィジェットの座標から計算する（顔は右端の中央から (−1089.6, −549.2) の 1100 四方、煙は左端から幅 2029.65 で全高、筆の跡は左端から幅 1654.65 で全高。描く順は 顔 → 煙 → 筆の跡 で本家と同じ。旧版・最新版でキャンバスの 13 枠は同一と確認済み）。
-  - 変更予定: なし（分かったことをこの記録の「決定事項」に書く）
-- [ ] 2. 筆の跡の材質を本家の式どおりに直す
-  - ステップ 1 で差が出たところを `Content/Python/wasami_tools/pipeline/dd_ui.py` の `_build_title_strokes` に反映し、`dd_ui.import_title` で作り直して保存する。差が無ければ「差が無いことを確かめた」と書いて閉じる。
-  - PIE の `L_Title` で筆の跡が流れることを確かめる（速さは `Tools/video_probe.py period` で測れる）。
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_ui.py`、`/Game/DD/UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey`、実装記録 14
-- [ ] 3. 顔の左の縁を本家の切り口にする
-  - `Tools/dd/prepare_title.py` の焼き込み（`MASK_CENTRE`・`MASK_STOPS`）を、本家の顔の α の形（ステップ 1）に合わせて見直す。**楕円のグラデーションをやめて煙のマスクに切らせるのか、縁のぼけだけ本家に合わせるのかは、ステップ 1 の測りで決める**（WebGL 版の CSS は本家の切り口ではないので、最新版に寄せるというユーザーの回答に従う）。
-  - `python Tools/dd/prepare_title.py` → `dd_ui.import_title` で `/Game/Wasami/UI/Title/T_TitleFace` を作り直し、PIE の `L_Title` で撮る。
+- [x] 1. 本家の式と絵を確定した（下の「決定事項」の 1〜5）。コードは変えていない。
+- [ ] 2. 筆の跡を本家と見比べる（**式は一致しているので、直すのは絵が違ったときだけ**）
+  - 決定事項 1 のとおり `_build_title_strokes` は焼き込みのシェーダーと一致しているので、ステップ 2 は「式の直し」ではなく「描かれた絵の比べ」にする。
+  - `python Tools/pie.py start` で `L_Title` を 1920 × 1080 で出して撮り（`Tools/playthrough.py` の区間 `title` か `unreal.WasamiTitleScreenWidget.show`）、本家の絵（`Intermediate/DesktopAgent/shots/obs4-title.png` は 880 × 364 で縦横比が合わないので、等倍が要るならステップ 4 の観察と合わせて撮り直す）と、**筆の跡の広がり・濃さ・流れる速さ**を比べる。速さは `python Tools/video_probe.py period`。
+  - 差が出たら原因を絞る（テクスチャの取り込み〈`address_x` は本家も既定 = Wrap、DXT5・sRGB・UI で一致〉、`Image_104` の枠の幅 1654.65・`bIsEnabled(false)` の灰化、画面の解像度）。差が無ければ「差が無いことを確かめた」と書いて閉じる。
+  - 変更予定: なし（差が出たときだけ `Content/Python/wasami_tools/pipeline/dd_ui.py` と `/Game/DD/UI/Main/TitleScreen/MM_TitleScreen_Mask_Grey`、実装記録 14）
+- [ ] 3. 顔の α を本家の切り口にする（**この項目の本体**）
+  - `Tools/dd/prepare_title.py`: **楕円のグラデーションを α から外し**（決定事項 5）、α は本家と同じ「ほぼ不透明 + 左の細い羽根」（幅の 1.5 % まで 0 → 3.1 % で 0.5 → 5 % で 1）にする。本作の原本は明るい部屋が写った写真なので、**楕円は RGB を黒へ落とす暈し**として残し、端の明るさが本家の包絡（決定事項 5 の表）に近づくよう幅を広げる。
+  - `python Tools/dd/prepare_title.py` → `python Tools/ue_remote.py` から `dd_ui.import_title` で `/Game/Wasami/UI/Title/T_TitleFace` を作り直し、PIE の `L_Title` で撮る。**右端・上端・下端に黒い隙間が無く、左の境界が煙のぎざぎざの縁になっている**ことを見る。
   - 変更予定: `Tools/dd/prepare_title.py`、`/Game/Wasami/UI/Title/T_TitleFace`、実装記録 14
 - [ ] 4. 本家と並べて確かめ、項目を閉じる
-  - 本家の最新版（`Launch-Latest.cmd`）のタイトルを撮り（`.claude/guides/observation.md` の作法。既に `Intermediate/DesktopAgent/shots/obs-title.png`・`obs3-title.png`・`obs4-title.png` に 0.25 倍の絵がある。等倍が要るなら 1 回だけ起動する）、本作の PIE の絵と並べて、**筆の跡の形と流れ・顔の左の縁**が同じに見えることを確かめる。
+  - 本家の最新版（`Launch-Latest.cmd`）のタイトルを等倍で撮り（`.claude/guides/observation.md` の作法。**手元の `obs*-title.png` は 880 × 364 で縦横比が合わないので測りには使えない**）、本作の PIE の絵と並べて、筆の跡の形と流れ・顔の左の縁が同じに見えることを確かめる。
   - 実装記録 14 と `.claude/roadmap.md` の項目 44 を直し、`python .claude/scripts/check_records.py --update` を通して、この記録を消してコミットする。
   - 変更予定: `.claude/implementation-records/14-title.md`、`.claude/roadmap.md`、`.claude/references/handover.md`
 
 ## 次にやること
 
-ステップ 1。`python Tools/dd/cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask_Grey." --show 4` で筆の跡の式を読み、本家の顔 `pak_reference/DDeception/Content/UI/Main/TitleScreen/title_screen_profile_monkey.png` の α の形を測って、この記録の「決定事項」に書く（コードは変えない）。
+ステップ 2。PIE で `L_Title` を 1920 × 1080 で撮り、筆の跡の広がり・濃さ・流れる速さを本家と比べる。式は一致しているので、差が出なければそのまま閉じてステップ 3（顔の α）へ。
 
 ## 決定事項
 
-- 2026-09-22: **項目 43 の完了を待たずに項目 44 を始める** — 項目 44 の依存「43（同じ画面を触るので後に）」は、43 の C++ とアセットの変更（完了の条件 (1)(2)）が済んでいるので満たされている。43 に残るのはパッケージ版での確かめ（`RunUAT.bat` の許可待ち）だけで、タイトルの画面を触る作業ではない。
-- 2026-09-22: **本家のウィジェットの作りは旧版と最新版で同一** — `UMG_TitleScreen.json` のキャンバスの 13 枠（`Image_97` の顔・`VideoMask`・`Image_104` の筆の跡を含む）が両版でアンカーも座標も同じ。本作の `UWasamiTitleScreenWidget::BuildTree` も同じ順・同じ座標なので、**枠と重なりの順は直す対象ではない**。直すのは顔の絵の α と筆の跡の材質の式。
-- 2026-09-22: **本家の顔は α を持つ切り抜き**（`title_screen_profile_monkey` 1024² RGBA・α 0〜255）。本作の顔は不透明な写真に WebGL 版の CSS の楕円マスクを焼いたもの（`Tools/dd/prepare_title.py` の `MASK_CENTRE`・`MASK_STOPS`）。**「左の境界が違う」の本体はここ**という見立てでステップ 1 の測りに入る。
+- 2026-09-22: **筆の跡の式は焼き込みのシェーダーと本作の材質で一致している**（ステップ 1）。`cooked_shaders.py "TitleScreen/MM_TitleScreen_Mask_Grey." --show 4` の逐語:
+  - `mad r0.zw, r0.xxxy, l(0,0,0.35,1.0), r1.xxxy` … UV × **(0.35, 1)** + (Time × `Time Multiplier` × **0.02**, 0)。
+  - `sample r1, r0.zw, t0` … 筆の跡 `title_screen_chapters_background`（5760 × 1200。RGB は一様な (151, 8, 0)、α は 0〜45・平均 12）。
+  - `sample r0.x, r0.xy, t1.wxyz` … マスク `title_screen_video_mask` の **α を UV そのままで**。
+  - `dp3 r0.y, r1.xyz, (0.3, 0.59, 0.11)` … Emissive = Desaturation（Fraction 1 = 輝度そのもの）。
+  - `mul_sat r1.w, r0.x, r1.w` … Opacity = saturate(mask.A × strokes.A)。
+  - **残りの命令は Slate 側で材質ではない**: `SelectionColor` の混ぜ、頂点色の掛け、**無効の見え方**（`lerp(色, 輝度, 0.8)` → さらに 0.1 の灰へ距離ぶん寄せる）、sRGB の書き出し。`Image_104` の `bIsEnabled(false)` はこの灰化を掛けるためで、本作も同じ（実装記録 14）。
+  - 本作の `_build_title_strokes`（`TITLE_STROKES_TILING = (0.35, 1.0)`・`TITLE_STROKES_SPEED = 0.02`・Desaturation・mask.A × strokes.A）と**完全に一致**。テクスチャの取り込みも `_textures.json` の `address_x: null`（= Wrap）・sRGB・DXT5・`TEXTUREGROUP_UI` で本家と同じ。
+- 2026-09-22: **本家の顔はほぼ不透明な全面の絵で、楕円の暈しではない**（`title_screen_profile_monkey.png` 1024²。旧版と最新版〈`ProfileIcons/`〉で同一）。
+  - α > 0.95 が 91.1 %・平均 0.942。中央の列（x = 512）は上から下まで α = 1、右端の列も平均 0.957。
+  - **左だけが柔らかい**: α = 0 が x < 15、0.5 の交差が行の中ほど 80 % で x = 25〜35（幅の 2.5〜3.4 %）、0.95 が x = 45〜60（4.4〜5.9 %）。幅 30〜45 px（3〜4.5 %）の細い羽根。
+  - 上下の端で左の透明が広がる（y = 0 で x50 = 121、y = 992 で 204、最下行は x < 256 が透明）。右上の隅も小さく欠ける（32 四方の平均 0.458）。
+  - 端が暗く見えるのは**絵の側が真っ黒だから**で、α ではない。
+- 2026-09-22: **画面で見える顔の左の境界を作っているのは煙 `title_screen_video_mask`**。煙は 1920 × 1200・RGB 0・α が煙で、α = 1 が u < 0.52、0 に落ちるのが u ≈ 0.68。1920 × 1080 に左端から幅 2029.65 で描くので、**画面の x ≈ 1055 までは真っ黒・x ≈ 1380 で消える**。顔の箱は x 830.4〜1930.4（右端の中央から (−1089.6, −549.2)・1100 四方）なので、**顔の絵自身の左の羽根（画面の x ≈ 864）は真っ黒な煙の下に完全に隠れる**。見える左の境界は煙のぎざぎざの縁で、画面の上から下まで通る。
+- 2026-09-22: **本作の顔は柔らかい楕円の切り抜きで、ここが指摘の本体**。`Intermediate/Pipeline/wasami/ui/title_face.png` は α > 0.95 が 8.4 %・平均 0.285、α > 0 が x/w 0.076〜0.922・y/h 0.096〜0.941 の範囲だけ。画面では x 914〜1844・y 96〜1026 にしか絵が無く、**右端・上端・下端に黒い隙間ができ、左の境界が楕円の弧になる**。本家は上下左右とも画面の端まで絵が続き、左の境界は煙が作る。手元の絵（`Intermediate/DesktopAgent/shots/pt_title.png`）でも、写真の明るい壁が楕円の縁で切れて「境界線」に見えている。
+- 2026-09-22: **ステップ 3 の直し方 — 楕円は α から RGB へ移す**。α は本家と同じ「ほぼ不透明 + 左の細い羽根」（幅の 1.5 % まで 0 → 3.1 % で 0.5 → 5 % で 1）にする。本作の原本は明るい部屋が写った写真なので、そのまま不透明にすると画面の右半分に部屋が出る。本家の絵は端が黒いので、**楕円は RGB を黒へ落とす暈しとして残す**（黒の下地の上なので見え方はほぼ同じだが、上下左右の端まで絵が続く点が本家と同じになる）。
+  - 落とす形の目標は本家の絵の明るさの包絡（輝度 × α を σ = 幅の 8 % でぼかして正規化）。重心は箱の (0.548, 0.583)、中央付近 0.66〜1.0、x = 0.125 の列で 0.01〜0.14、**右端の列は 0〜0.47**（中ほどが明るい）、上端・下端の行は 0〜0.39。**端でも完全な 0 ではない**ので、今の楕円（0.86 で 0）より広げる。
 
 ## 要確認（ユーザー）
 
@@ -56,12 +67,12 @@ updated: 2026-09-22 00:00
 
 ## 再開時の注意
 
-- 長時間処理はまだ無い。ステップ 2・3 の `dd_ui.import_title` は `python Tools/ue_remote.py` でエディタに投げる（数秒）。ステップ 3 の `prepare_title.py` は PIL と numpy を使うのでエディタの外の Python で走らせる。
-- エディタの状態: このステップでは触っていない。ステップ 2 に入る前に PIE が残っていないかを確かめる。
-- 本家の実機を起動するのはステップ 4 だけ（起動の作法は `.claude/guides/verification.md`・`.claude/guides/observation.md`。エディタと同時に動かさない）。
+- 長時間処理は無い。ステップ 2・3 の `dd_ui.import_title` は `python Tools/ue_remote.py` でエディタに投げる（数秒）。ステップ 3 の `prepare_title.py` は PIL と numpy を使うのでエディタの外の Python で走らせる。
+- エディタの状態: ステップ 1 では触っていない。ステップ 2 に入る前に PIE が残っていないかを確かめる。PIE は終わったら必ず止める。
+- 本家の実機を起動するのはステップ 4 だけ（`.claude/guides/verification.md`・`observation.md`。エディタと同時に動かさない）。
 
 ## 検証
 
-- check_records: 未実行
+- check_records: 未実行（ステップ 1 はソースを変えていない）
 - C++ ビルド: 未実行（この項目は C++ を変えない見込み）
 - エディタでの確認（取り込み・組み立て・PIE）: 未実行
