@@ -553,7 +553,7 @@
 - 根拠: `pak_reference_2/_materials.json`（`MM_Main_Substance_Glass`・`_ColorMask`・`MM_Main_Substance_Glass_Doors`・`_DoorsNontransparent`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`（`MASTERS`・`make_material`・`BLEND`）、`Tools/dd/prepare_stage.py`、実装記録 01。
 - 依存: なし。
 - 規模: 2
-- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-glass-master`）**
+- 状態: **進行中（2026-09-22 から。進捗記録 `20260922-glass-master`）**。完了の条件 (1) の**読み取りは済み**: 原作のガラス 2 つは BaseColor 以外が同じで、**不透明度 = `Lerp(0.008, 0.9, Fresnel(1.5, 0))`・屈折 = `Lerp(1.05, 0.95, 同じ Fresnel)`（方式は Index of Refraction）・Metallic 0.1・Specular 1.0・Roughness 0・半透明のライティングは Surface TranslucencyVolume**（記録の「決定事項」）。マスターは `M_DD_Glass` 1 つに `UseMaskColor` で兼ねる。また配置を数えて**範囲を広げた**: Zone 1 の扉は `BP_06_DoubleDoors` 28 個以上でこの系列だが、**Zone 1 のポスター枠 222 個・人工呼吸器・タイルの窓は Sewerage の `M_Glass` 系**（`MI_Glass02`・`_DoorsNontransparent`）で、今は白の不透明な板になっている。指摘の「など」に当たるので、式が安く組めればこちらも直す。
 
 
 ## 取りやめた項目
