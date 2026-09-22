@@ -42,6 +42,7 @@ WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/i
 - Emissive = その RGB の `Desaturation`（Fraction なし = UE の輝度の係数 (0.3, 0.59, 0.11) の内積）。
 - Opacity = マスク `title_screen_video_mask` の α × 筆の跡の α（シェーダーは `saturate` する）。
 - 筆の跡の絵は一様な色 sRGB (151, 8, 0) で α が最大 45 なので、灰は線形で約 0.094（sRGB 約 86）、不透明度は最大 0.18 × マスク。WebGL 版の灰 179・α × 2.5・1 タイル 100 s は推定で、採らない。
+- 見え方の確かめ（2026-09-22、別窓の PIE 2580 × 1082 を 860 × 360 に縮め、本家の 3440 × 1440 の 1/4 と同じ枠で測った）: 広がり（半分に落ちる列 x ≈ 304、消える列 x ≈ 357）・色（灰にわずかな赤）・流れる速さ（−95 px/s。式の −94.7 と 1 % 以内）は本家と一致。平地の箱（x 180-280・y 155-310）の輝度は 1 周期 50 s に散らした 9 枚で 0.61〜6.43 で、本家の 1 枚の 4.84 はこの帯の中。道具は `observations/tools/title_fit/`（`shots.py` = 連写、`cmp.py` = 切り出しと形の比べ、`box.py` = この箱の輝度、`raise_pie.py` = 撮る前に PIE の窓を前へ出す〈端末が被る〉）。
 
 ### 画面（`UWasamiTitleScreenWidget`）
 本家の旧版 `UMG_TitleScreen` の木を、スロットの値のまま（書き出しに無い値はスロットの既定。キャンバスの余白 (0, 0, 100, 30)）`RebuildWidget` で組む。描く順は本家の `CanvasPanel_0` のスロットの順（WebGL 版 10 記録の styles.css「タイトル画面」と同じ）:
@@ -49,7 +50,7 @@ WebGL 版は顔とロゴを CSS で飾っていた（`.claude/references/webgl/i
 2. （`CanvasPanel_1`〈隠れたスライドと、黒の上のぼかし〉と `Image_1`〈隠れた動画〉は作らない。ぼかしは黒をぼかすだけで見えない）
 3. `Image_97`: 顔。右端の中央から (−1089.6, −549.2)、1100 四方の自動の大きさ（本家は進んだ章の敵の横顔。本作は `T_TitleFace`）。
 4. `VideoMask`: 煙の黒 `title_screen_video_mask` を左端から幅 2029.65・上から下まで。
-5. `Image_104`: 筆の跡の材質を左端から幅 1654.65・上から下まで。本家どおり無効（`SetIsEnabled(false)`）。
+5. `Image_104`: 筆の跡の材質を左端から幅 1654.65・上から下まで。本家は木の上でこれを無効（`bIsEnabled(false)`）にしているが、**本作は有効のままにする**（見え方を本家に合わせるため。作業一覧の項目 44）。UE 4 の無効の見え方は「色を輝度へ 0.8 寄せてから 0.1 の灰へ距離の分だけ寄せる」なので、もともと灰一色のこの材質には効かない（距離 0.011）。UE 5.8 の Slate（`Engine/Shaders/Private/SlateElementPixelShader.usf`。`USE_LEGACY_DISABLED_EFFECT` は 0 に固定）は代わりに `OutColor.a *= .45f` で不透明度を 0.45 倍にするので、無効のままだと筆の跡が本家の半分の濃さで出る。
 6. `LogoGlow`（本作だけ）と `Image_103`: 本作のロゴを、WebGL 版が本家のロゴ（(4, −44)、1043.7 × 564.9）の文字の箱に合わせた (58.8, 61.6)・幅 848・高さ 848 × 809 / 1942 に。グロー `T_TitleLogoGlow` はその下に、前処理の縮めたロゴ（486 × 202）がロゴの箱に重なるように縦横それぞれの倍率で、余白 100 px を含めて置く。
 7. `TextBlock_79`: 左下の注記（左端から 48・下端から 81.08。本家の著作権の代わりに WebGL 版の `UNOFFICIAL FAN GAME — NOT AFFILIATED WITH GLOWSTICK ENTERTAINMENT`）。`helvetica-normal_Font` 18、灰 0.107（linear）。
 8. `VerticalBox_160`: メニュー。左端の中央から (7.06, −93.09)、421.75 × 550.72。ボタンは上から `Resume`・`NewGame`・`Extras`・`Options`・`Quit`（本家の並び `Resume`・`NewGame`・`Chapters`・`Replay`・`Extras`・`Options`・`Quit` から `Chapters`・`Replay` を作らない）。各ボタンの縦並びのスロットは下の余白 −10。
@@ -126,6 +127,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - `python Tools/playthrough.py run z2_escape --setup`: スコア画面の NEXT から約 4 s でゲームが動き、タイトルがチェックポイント 0・RESUME なし・ライフ 3 で開いた。続けて `run title`: 問わずに暗転し、Zone 1 がチェックポイント 4・ライフ 3 で開いた。
 
 ## 変更履歴
+- 2026-09-22: 筆の跡 `Image_104` を無効にするのをやめた（UE 5 の Slate の無効は不透明度 0.45 倍。上の「画面」の 5。作業一覧の項目 44）
 - 2026-09-22: タイトルの曲を本家の最新版のテーマ曲 `DD_-_Dark_Deception_-_Theme_v1_3`（音量 0.6・ピッチ 1）にした。旧版の `Pause_Sound_v1`（音量 1・ピッチ 0.5）から替えたのはレビューの指摘とユーザーの回答による。`FadeIn(2, 0.5)` は両版で同じ。曲以外は旧版のまま（01・09・15・19 記録。作業一覧の項目 43）
 - 2026-09-20: 版を 1.0.0 にした（2026-09-20 のユーザーの回答）
 - 2026-09-19: タイトルのゲームモードの `BeginPlay` の頭で設定を読んで当てるようにした（15 記録。作業一覧の項目 18 のステップ 1）

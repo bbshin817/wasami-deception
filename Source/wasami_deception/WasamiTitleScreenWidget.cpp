@@ -196,10 +196,12 @@ void UWasamiTitleScreenWidget::BuildScreen(UCanvasPanel* Root)
 	VideoMask->SetBrush(ResourceBrush(VideoMaskTexture.LoadSynchronous(), FVector2D(32.f, 32.f)));
 	Place(Root, VideoMask, LeftEdge, FMargin(0.f, 0.f, 2029.6546630859375f, 0.f), false);
 
-	// Image_104: the brush strokes over the left 1654.65 (disabled in the tree, as in the original).
+	// Image_104: the brush strokes over the left 1654.65. The original marks it disabled in the tree, but that is
+	// left out here on purpose: UE 4's disabled effect (a lerp towards a grey) does nothing to this already grey
+	// material, while UE 5's Slate multiplies the alpha by 0.45 and would draw the strokes at half the original's
+	// brightness.
 	UImage* Strokes = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Image_104"));
 	Strokes->SetBrush(ResourceBrush(StrokesMaterial.LoadSynchronous(), FVector2D(32.f, 32.f)));
-	Strokes->SetIsEnabled(false);
 	Place(Root, Strokes, LeftEdge, FMargin(0.f, 0.f, 1654.6546630859375f, 0.f), false);
 
 	// The logo's glow, then Image_103: the logo.
