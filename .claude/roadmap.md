@@ -563,7 +563,7 @@
 - 根拠: パッケージ版のログ（`Saved/StagedBuilds/.../wasami_deception.log` の `missing usage flag ... Default Material will be used in game.`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`（`MASTER_VERSION`・`ensure_masters`）・`dd_specials.py`、`pak_reference_2/_materials.json` の各マスターの設定、実装記録 01・08・16。
 - 依存: なし（確かめの (4) は項目 39・41・43・52 と同じパッケージで済む）。
 - 規模: 2
-- 状態: 未着手
+- 状態: **完了（2026-09-23）**。**(1)** 3 レベル・14 ブループリント・全メッシュのスロットを歩いて、マスターごとに要る `bUsedWith*` を数えた（表は `dd_stage.MASTER_USAGE`、考え方は 01 記録の「用途フラグ」）。本家の `_materials.json` に `bUsedWith*` は 1 件も無い（cook で落ちる）ので、本作の実際の使われ方から決めた。**(2)** `ensure_masters` と `dd_specials`・`dd_tablet`・`dd_shards` の build がマスターを作り直すときにフラグを立てるようにし（`MASTER_VERSION` 1 → 2）、マスター 10 個を作り直した（`M_DD_Decal` は `StaticLighting` だけ、ステージのほか 6 つは `Nanite` と `StaticLighting`、`M_DD_Substance` はさらに `SkeletalMesh`。フラグ 1 つでシェーダーの組み合わせが増えるので使う種類だけ立てる）。**(3)** PIE で Zone 1・Zone 2 の 5 か所を撮り、灰色の市松も真っ黒も無く見た目が変わらないことを確かめた。**(4) パッケージ版で確かめた**: 作り直したパッケージ（クック 1658 件・0 エラー、`/game` 1147 件 = `Content/` のパッケージ数）で `Tools/game_flow.py run` を 230 s 通し（18 の節目すべて OK・落ちなし、Zone 1 と Zone 2 の両方を歩いた）、ゲームのログに `missing usage flag` も `Default Material will be used` も **0 件**（作り直す前は `m_crystal_Inst2` の 2 件）。祭壇の球（`ring_statue_2` の `m_crystal_Inst2`）はパッケージ版でも紫に光って出た（色相 283〜290°。撮り方は下の注）。**パッケージ版で Zone 2 の好きな場所を撮るには、先に Zone 1 に入ってから `Wasami.Checkpoint 10` を送る**（`Wasami.Checkpoint` はゾーンのゲームモードが要るので `L_Title` では効かず、チェックポイント 0 のまま Zone 2 を開くと `WasamiGameMode` が Zone 1 を開き直す）。実装記録 01
 
 ### 48. ライフ 0 の死亡画面でワサミの声を鳴らさない
 
