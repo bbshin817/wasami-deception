@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 9a7045b
 started: 2026-09-22 18:49
-updated: 2026-09-22 20:45
+updated: 2026-09-22 21:25
 ---
 
 # ガラスが透けない（作業一覧の項目 46）
@@ -24,16 +24,13 @@ updated: 2026-09-22 20:45
 
 - [x] 1〜2. 原作のガラスのマスター 3 つ（`MM_Main_Substance_Glass`・`_ColorMask`・Sewerage の `M_Glass`）のシェーダーを読み、式を書き出した（式は 01 記録の `ensure_masters` に写した）。
 - [x] 3. `paths.py`・`dd_stage.py`・`prepare_stage.py` を直した（コミット参照）。マスター 2 つ `M_DD_Glass`（`UseMaskColor` で `_ColorMask` と選ぶ）・`M_DD_GlassSewerage`、前処理の振り分け `glass`・`sewerglass`、`bOverride_BlendMode` の読み直し。両方の組み立てを一時マテリアルで空打ちして、つなぎ先の名前がすべて通ることを確かめた。
-- [ ] 4. 前処理をやり直し、エディタでマスターとインスタンスを作り直す ← 次
-  - `python Tools/dd/prepare_stage.py` → エディタで `dd_stage.refresh_settings()`（`materials_remade` が 4 以上になるはず）
-  - `MM_Main_Substance_Glass_Doors`・`_Police_Window` の親が `M_DD_Glass`、`MI_Glass02`・`MM_Main_Substance_Glass_DoorsNontransparent` の親が `M_DD_GlassSewerage`（後者は Blend が Opaque）になり、シェーダーのコンパイルが通ることを見る
-  - 01 記録の `resolve_material` の材質の数（`substance` 69・…・`other` 13）を、前処理が出す新しい数に直す（`glass` 1・`glassmask` 1・`sewerglass` 2 が増え、`other` が 3 減るはず）
-- [ ] 5. PIE で撮って確かめ、焼き込みと fps を見る
+- [x] 4. 前処理と、エディタでのマスターとインスタンスの作り直しを済ませた（`materials` 158、`masters_rebuilt` 2・`materials_remade` 4。ガラス 4 つの親とブレンドが狙いどおり、材質のエラーなし）。01 記録の `MASTERS` の数と `materials_remade` の例も直した。
+- [ ] 5. PIE で撮って確かめ、焼き込みと fps を見る ← 次
   - 撮る場所: Zone 1 の両開き扉（`BP_06_DoubleDoors` が 28 個以上。`hospital_entrance_walkway_doubledoor1/2` のガラス）・救急車の窓（`_Police_Window`）・ポスター枠（`MI_Glass02`、Zone 1 に 222）・タイル（`_DoorsNontransparent`、不透明に戻ったか）・**天井灯 `M_07_CeilingLamp_02`**（ブレンドの読みの直しで Masked → Opaque になる。本家どおりだが見た目が変わる所なので見る）
 
 ## 次にやること
 
-ステップ 4。`python Tools/dd/prepare_stage.py` を走らせてから、エディタで `dd_stage.refresh_settings()`。
+ステップ 5。PIE で Zone 1 の両開き扉・救急車の窓・ポスター枠・タイル・天井灯を撮り、透け方を本家の絵と見比べる。焼き込みと fps も見る。
 
 ## 決定事項
 
@@ -49,12 +46,11 @@ updated: 2026-09-22 20:45
 
 ## 再開時の注意
 
-- ステップ 4 の前処理（`python Tools/dd/prepare_stage.py`、数分）とエディタでのマスターの作成（シェーダーのコンパイル）は時間がかかる。前処理の出力は `Intermediate/Pipeline/dd/stage_ue.json`（完了の確かめ方: `materials` の `MM_Main_Substance_Glass_Doors` の `master` が `glassmask`、`MI_Glass02` が `sewerglass`、`_DoorsNontransparent` の `blend` が `BLEND_Opaque`）。
-- 逆アセンブルの出力は `Intermediate/Pipeline/dd/shaders/<マスター名>/` に残っている（git の対象外）。
-- `MaterialExpressionClamp`・`Saturate` の最初の入力には名前が無い（`"Input"` では `connect_material_expressions` が偽を返す）。空文字でつなぐ（`_Graph.clamp`）。
+- **ステップ 4 まで済み**。前処理の出力は `Intermediate/Pipeline/dd/stage_ue.json`、エディタのマスターは `/Game/Pipeline/Materials/M_DD_Glass`・`M_DD_GlassSewerage`（どちらも git の対象外）。やり直すなら `python Tools/dd/prepare_stage.py` → `python Tools/ue_remote.py Intermediate/refresh_glass.py`（中身は `wasami_tools` を `_reload.reload_module` で読み込み直して `dd_stage.refresh_settings()` を呼ぶだけ。消えていれば書き直す）。
+- ステップ 5 で撮る前に、レベル `L_Hospital_Zone1` の**焼き込み**が要るかを見る（ガラスが半透明になっただけなので、焼き直さずに見えるはず）。PIE は `Tools/pie.py start` → `place X Y --yaw N` → `stop`。
 
 ## 検証
 
-- check_records: OK（20 件。01-stage-pipeline.md を更新してハッシュを合わせた）
-- C++ ビルド: 不要（Python の前処理だけ）
-- エディタでの確認: `_build_glass`・`_build_glass_sewer` を一時マテリアル（`unreal.new_object`、ディスクには書かない）で空打ちし、式 17 / 15 ノードが例外なく組めることを確かめた。マスターのアセットとインスタンスの作り直しはステップ 4。
+- check_records: ステップ 4 で更新（下のコミット）
+- エディタでの確認: `refresh_settings()` が `masters_rebuilt` 2・`materials_remade` 4 を返し、`MM_Main_Substance_Glass_Doors` → `M_DD_Glass`（AlphaComposite）・`_Police_Window` → `M_DD_Glass`（Translucent）・`MI_Glass02` → `M_DD_GlassSewerage`（Translucent）・`_DoorsNontransparent` → `M_DD_GlassSewerage`（Opaque）。マスターの引数も宣言どおり（`M_DD_Glass`: `Albedo`・`MaskedColor`・スイッチ `UseMaskColor`、`M_DD_GlassSewerage`: `Normal` とスカラ 6・ベクタ 2）。エディタのログに材質・シェーダーのエラーなし。
+- PIE での見た目・焼き込み・fps はステップ 5。
