@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 8621beb
 started: 2026-09-26 01:15
-updated: 2026-09-26 01:40
+updated: 2026-09-26 03:40
 ---
 
 # 項目 53〜57: パッケージ版の再指摘 5 件（大目標 5）
@@ -29,21 +29,24 @@ updated: 2026-09-26 01:40
 ## 計画
 
 - [x] 0. 原因の切り分けと記録 … 2026-09-26 完了。5 件とも原因まで特定し、作業一覧に大目標 5（項目 53〜57）を書き、項目 38・41・42 に再指摘の注記を入れた。切り分けの中身は各項目の「分かっていること」。
-- [ ] 1. 項目 57（黄色い文字）と項目 56（罠で死んだときの引き継ぎ）← 作業中
-  - 変更予定: `Config/DefaultEngine.ini`、`Source/wasami_deception/WasamiGameMode.cpp`・`WasamiGameInstance.{h,cpp}`・`Tests/WasamiGameFlowTests.cpp`
-- [ ] 2. 項目 55（トンネルのシャドウプレーン）
-  - 変更予定: `Tools/dd/prepare_stage.py`、`Content/Python/wasami_tools/pipeline/dd_stage.py`・`paths.py`、`/Game/DD/Materials`、`L_Hospital_Zone1`
-- [ ] 3. 項目 53（救急車）
-  - 変更予定: `Source/wasami_deception/WasamiZone1Flow.{h,cpp}`、`L_Hospital_Zone1`
-- [ ] 4. 項目 54（Zone 2 の場面の演技）
-  - 変更予定: `.claude/references/enemy-wasami-motions.md`、`Content/Python/wasami_tools/pipeline/dd_sequence.py`、`L_Hospital_Zone2`
-- [ ] 5. パッケージを作り直して 5 件を通しで確かめる（人が遊ぶ形。`Tools/desktop.py` でキーとマウスを送る）
+- [x] 1. 項目 57（黄色い文字）と項目 56（罠で死んだときの引き継ぎ） … 2026-09-26 完了（`493e93b`）。ini に `r.Shadow.Virtual.AllowScreenOverflowMessages=0`、`AWasamiGameMode::DeathEvent` が `RememberPlayerStateOnce` を呼ぶ。テストは `Wasami.GameFlow.Lives` に足して通った。
+- [x] 2. 項目 55（トンネルのシャドウプレーン） … 2026-09-26 完了（`493e93b`）。8 つ目のマスター `M_DD_ShadowPlane` を cook のシェーダーの式から組み、PIE でトンネルの奥が暗く沈むのを見た。
+- [x] 3. パッケージを作り直して 53・55・56・57 を確かめた … 2026-09-26 完了。黄色い文字は消え（黄色い画素 167/156 → 4 = 背景のばらつき）、トンネルの奥の灰色の板も消え、救急車は 60 fps でも 15 fps でも運ばれて 1 台しか見えず、罠の死から戻ったタブレットは `tablet=1` のまま。**項目 53 は直しを足さずに閉じた**（古いパッケージが原因だった）。パッケージ版にキーが届かないと分かったので `Wasami.Tablet` と `Wasami.Status` の `tablet=`・`sprint=`・`speed=` を足した。
+- [ ] 4. `Shipping` のパッケージも作る（2026-09-26 のユーザーの回答「両方作る」。`Saved/Archive/Shipping/Windows/`）← 作業中
+- [ ] 5. 項目 57 の残り（あふれ自体を減らすか測って決める）と、`Tools/game_flow.py run` の通しで黄色い字が出ないことの確かめ
+- [ ] 6. 項目 54（Zone 2 の場面の演技）… **2026-09-26 のユーザーの回答で無人運転に渡す**。作業一覧の項目 54 に調べた中身（Matron の `Detected` が手を上げたまま止まる／シネカメラの LookAt が本家の回転キーに勝っている）を書いてあるので、この記録では進めない。
 
 ## 次にやること
 
-ステップ 1。まず `Config/DefaultEngine.ini` の `[SystemSettings]` に `r.Shadow.Virtual.AllowScreenOverflowMessages=0` を理由付きで足す。次に `AWasamiGameMode::DeathEvent` の入口で、持ち越しがまだ無いときだけ `UWasamiGameInstance::RememberPlayerState` を呼ぶようにし（`HasCarriedPlayerState()` を足す）、`Wasami.GameFlow.*` にテストを足して `python Tools/editor_cycle.py` でビルドする。
+ステップ 4。`Intermediate/Overnight/uat_package_shipping.log` が `BUILD SUCCESSFUL` で終わったのを確かめ、`Saved/Archive/Shipping/Windows/wasami_deception.exe` が起動して遊べることだけ見る（`Shipping` にはコンソールも `Wasami.*` も無いので、`-ExecCmds` の台本は使えない。絵を 1 枚撮ってタイトルが出ていれば十分）。そのあとステップ 5。
 
 ## 決定事項
+
+- 2026-09-26: **項目 53 の「2 台」と「置いていかれる」は、レベルの側はもう直っている** — エディタで `L_Hospital_Zone1` のアクタを読むと、走り出す `hospital_ambulance_new_teleport` とそれに付く 6 つの `BlockingVolume_Ambulance_*` はすべて `Movable`。土台の移動（`UpdateBasedMovement`）は土台が `Movable` のときだけ働くので、これで運ばれるはず。2026-09-23 のパッケージが古かっただけの可能性が高い。作り直したパッケージで再現しなければ項目 53 は閉じる。再現したら屋根に乗っている間プレイヤーを救急車に付ける。
+- 2026-09-26: **配布は `Development` と `Shipping` を両方作る**（ユーザーの回答）— `Development` は Claude の確かめ用（`Wasami.*` が要る）、`Shipping` は人に渡す用。`.claude/guides/distribution.md` に書いた。
+- 2026-09-26: **項目 54 は無人運転に渡す**（ユーザーの回答）。この記録では進めない。
+- 2026-09-26: **パッケージ版にはキーボードの入力が届かない**（`Tools/desktop.py` で `space` も `hold w` も効かず、プレイヤーが 1 cm も動かない。窓は前面で `"ok": true` は返る）。原因は不明で、症状索引に書いた。確かめはコンソールコマンドで組み、キーでしかできないことは `Wasami.*` を足す（`Wasami.Tablet` を足した）。
+- 2026-09-26: **画面なしのテストは粒子と音の 6 本が落ちる** — `-NullRHI -NoSound` の制約で、直しのせいではない（症状索引に書いた）。粒子と音を見るテストはエディタを前面にして回す。
 
 - 2026-09-26: **パッケージは直すたびに作り直してから見る** — 2026-09-23 のパッケージ（04:00）は Zone 1 の `.umap` の保存（05:31）より前で、`dd_sequence` の Movable の直しが入っていない見込み。項目 41 の「2 台は再現しない」という結論はこのパッケージで出したものなので当てにしない。
 - 2026-09-26: **確かめを台本（`-ExecCmds`）だけで閉じない** — 項目 38・41・42 はどれも PIE か `-ExecCmds` の台本で閉じたのに、人が遊ぶと出た。大目標 5 は `Tools/desktop.py` で実際にキーとマウスを送って通す。
@@ -57,7 +60,8 @@ updated: 2026-09-26 01:40
 - エディタは閉じている（2026-09-26 01:40 時点）。C++ を直したら `python Tools/editor_cycle.py`（閉じる → ビルド → 開き直す）。
 - パッケージの作り直しは `.claude/guides/distribution.md` の `RunUAT.bat BuildCookRun`。**エディタを閉じてから**、`run_in_background` で走らせて必ず結果を読む（10 分ほど）。
 - 2026-09-26 の調べで撮った絵: `Intermediate/DesktopAgent/shots/shot-012307.png`（黄色い文字）・`shot-012316.png`（トンネルの奥が明るい）。どちらも直す前の姿。
-- パッケージ版を起動する台本は `Intermediate/Overnight/probe_ambulance.py`（救急車）と `Tools/game_flow.py run`（通し）。二重起動の錠は `Intermediate/Perf/.game_perf.lock`。
+- パッケージ版を起動する台本は `Intermediate/Overnight/probe_ambulance.py`（救急車。`--fps N` を足した）と `Tools/game_flow.py run`（通し）。二重起動の錠は `Intermediate/Perf/.game_perf.lock`。
+- 項目 56 の確かめの台本はこのセッションの scratchpad に置いた（`pkg_carry.py`）。**セッションが変わると消える**ので、続きが要るなら作り直す: `-ExecCmds` に `Wasami.ResetSave` → `open L_Hospital_Zone1` → `Wasami.Tablet` → `Wasami.Kill` → 復帰の後に `Wasami.Status` を `Wasami.Delay` で並べ、ログの `tablet=` を読むだけ。
 
 ## 検証
 

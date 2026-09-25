@@ -7,6 +7,7 @@
 #include "Engine/Engine.h"
 #include "Engine/PlayerStartPIE.h"
 #include "EngineUtils.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerStart.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -189,6 +190,19 @@ namespace
 			}
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs TabletCommand(TEXT("Wasami.Tablet"),
+		TEXT("Wasami.Tablet [N]: presses Toggle Tablet (space) N times (1 by default), as the key does. A packaged ")
+		TEXT("build takes no key from outside, so this is the only way to raise the tablet in one (item 56)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0));
+			const int32 Presses = Args.Num() > 0 ? FMath::Max(0, FCString::Atoi(*Args[0])) : 1;
+			for (int32 Press = 0; Player && Press < Presses; ++Press)
+			{
+				Player->ToggleTablet();
+			}
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs LivesCommand(TEXT("Wasami.Lives"),
 		TEXT("Wasami.Lives N: sets the lives to N (0 to 6)."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -245,7 +259,8 @@ namespace
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs StatusCommand(TEXT("Wasami.Status"),
-		TEXT("Prints one line with where the game is (level, checkpoint, lives, shards, objective, the player, the widgets ")
+		TEXT("Prints one line with where the game is (level, checkpoint, lives, shards, objective, the player with the ")
+		TEXT("tablet, the sprint and the walk speed, the widgets ")
 		TEXT("on screen), the fields Tools/playthrough.py reads from the editor, so a packaged build can be followed in its log."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
@@ -265,7 +280,7 @@ namespace
 			Widgets.Sort();
 			const FVector Where = Player ? Player->GetActorLocation() : FVector::ZeroVector;
 			UE_LOG(LogWasamiDebug, Display,
-				TEXT("Wasami.Status level=%s checkpoint=%d start=%d lives=%d shards=%d/%d deaths=%d time=%.1f paused=%d input=%d player=%.0f,%.0f,%.0f yaw=%.0f objective='%s' widgets=%s"),
+				TEXT("Wasami.Status level=%s checkpoint=%d start=%d lives=%d shards=%d/%d deaths=%d time=%.1f paused=%d input=%d tablet=%d sprint=%d speed=%.0f player=%.0f,%.0f,%.0f yaw=%.0f objective='%s' widgets=%s"),
 				World ? *World->GetName() : TEXT("none"),
 				Save ? Save->Hospital.LevelCheckpoint : -1,
 				Mode ? Mode->GetStartCheckpoint() : -1,
@@ -276,6 +291,10 @@ namespace
 				Mode ? Mode->GetTime() : -1.f,
 				World && UGameplayStatics::IsGamePaused(World) ? 1 : 0,
 				Player && Player->bHasInput ? 1 : 0,
+				// Beyond the original, for the checks of item 56: what a death is meant to hand back (02 record).
+				Player && Player->IsTabletUp() ? 1 : 0,
+				Player && Player->IsSprintOn() ? 1 : 0,
+				Player && Player->GetCharacterMovement() ? Player->GetCharacterMovement()->MaxWalkSpeed : -1.f,
 				Where.X, Where.Y, Where.Z,
 				Player ? Player->GetControlRotation().Yaw : 0.0,
 				Mode ? *Mode->CurrentObjective.ToString() : TEXT(""),

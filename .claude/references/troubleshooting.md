@@ -859,6 +859,20 @@
 - 対処: 触るときは Steam を完全に終了してから。登録は最新版（`installdir = Dark Deception`）のままにする。
 - 出典: コミット dca8e00（2026-09-16）、`.claude/guides/verification.md`。
 
+### パッケージ版にキーボードの入力が届かない（`Tools/desktop.py` で押しても何も起きない）
+
+- 症状: 起動中のパッケージ版（`Saved/Archive/Windows/wasami_deception.exe`）に `python Tools/desktop.py key space --allow wasami_deception.exe` や `hold w --ms 1500` を送っても、ゲームが何も反応しない。`desktop.py` 自身は `"ok": true` を返し、送り先の窓も `wasami_deception (64-bit Development PCD3D_SM6)` と合っている。`Wasami.Status` で見ると `tablet=0` のままで、`hold w` の後もプレイヤーの位置が 1 cm も動かない。
+- 原因: 分かっていない（2026-09-26 時点）。窓は前面にあり、`-ExecCmds` と `Wasami.Delay` のコンソールコマンドは効くので、ゲーム側は動いている。エディタ（PIE）へは同じやり方で届く（`Tools/playthrough.py` は実際に押している）。
+- 対処: **パッケージ版の確かめはコンソールコマンドで組む**（`.claude/guides/distribution.md` の `Tools/game_flow.py` と同じ作り）。キーでしかできないことは `Wasami.*` のデバッグコマンドを足す（2026-09-26 に `Wasami.Tablet`〈= space〉を足した。既に `Wasami.Interact`〈= F〉がある）。**人が実際にキーとマウスを押す確かめはユーザーにお願いする**。
+- 出典: 2026-09-26 の有人セッション（作業一覧の項目 56 の確かめ）。
+
+### `-NullRHI -NoSound` で Automation を回すと、粒子と音のテスト 6 本が落ちる
+
+- 症状: エディタを閉じて `UnrealEditor-Cmd.exe <uproject> -ExecCmds="Automation RunTests Wasami;quit" -Unattended -NullRHI -NoSound` で回すと、151 本が通って 6 本が落ちる: `Wasami.Defib.Charge`（「both sparks going」）・`Wasami.Enemy.Actor.Chase06`・`Wasami.Enemy.Actor.Sound`（「and sounding」「which still sounds」）・`Wasami.ZoneBarrier.Actor`・`Wasami.ZoneFlow.Zone1`（「the burst woken」）・`Wasami.ZoneFlow.Zone2`。
+- 原因: **落ちるのは粒子（Cascade）と音を見ているテストだけ**。`-NullRHI` は描画装置を作らないので粒子系が動かず、`-NoSound` は音の部品を作らない。テストの側の問題ではない。
+- 対処: **この 6 本はエディタを開いたまま回す**（`unreal.SystemLibrary.execute_console_command(None, 'Automation RunTests Wasami')`。**エディタを前面にしておく**。背面では 3 fps のまま進まない）。画面なしで回すのは、ゲームの規則・セーブ・流れのテストを手早く見るときに使う。
+- 出典: 2026-09-26 の有人セッション（作業一覧の項目 56 の確かめ）。ログは `Intermediate/Overnight/tests_20260926.log`。
+
 ### 救急車の屋根からプレイヤーが落ちる（Zone 1 の救急車が走り出して 1〜2 s）
 
 - 症状: 救急車の屋根に乗ると、走り出して 1〜2 s でプレイヤーだけが屋根の後ろへ抜けて落ち、救急車だけがトンネルへ去る（読み込み画面と Zone 2 には進む）。フレームレートが低いほど出やすく、エディタが前面でない PIE（約 3 fps）では屋根の真ん中に立っていても落ちる。パッケージ版でも出る。

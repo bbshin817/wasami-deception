@@ -73,7 +73,7 @@
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "e8cdc83d70bb5e123769920bc4fd38ee98023199",
-    "Source/wasami_deception/WasamiGameMode.cpp": "f423423cd1a554f40b3990834b95794ee1b0154c",
+    "Source/wasami_deception/WasamiGameMode.cpp": "222cf6500b7f48db0756f1f37e9a0f4b64c2453d",
     "Source/wasami_deception/WasamiPlayerCharacter.h": "790cae6acaf6e872a122df0daddb0d05f30739a0",
     "Source/wasami_deception/WasamiPlayerCharacter.cpp": "1024ef80f900e072b7a3065b2fd52b5553023d68"
   },

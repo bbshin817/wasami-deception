@@ -11,7 +11,11 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
 
 ## パッケージ
 
-- 対象はこの PC と同等の Windows（DirectX 12、SM6）。`Development` か `Shipping` の Win64。Mac で作って遊ぶ手順は下の「Mac 版のパッケージ」。
+- 対象はこの PC と同等の Windows（DirectX 12、SM6）。Mac で作って遊ぶ手順は下の「Mac 版のパッケージ」。
+- **2026-09-26 のユーザーの決定: `Development` と `Shipping` を両方作る**。
+  - `Development` → `Saved/Archive/Windows/`（**Claude の確かめ用**）。`Wasami.*` のコンソールコマンドと `-ExecCmds` が使えるので、`Tools/game_flow.py`・`game_perf.py`・各 probe がそのまま動く。エンジンの画面メッセージが生きているので、開発者向けの黄色い字が出うる（VSM のあふれは `Config/DefaultEngine.ini` の `[SystemSettings]` で止めてある。作業一覧の項目 57）。
+  - `Shipping` → `Saved/Archive/Shipping/Windows/`（**人に渡す用**）。`-clientconfig=Shipping` にするだけで、同じ `BuildCookRun` の行。エンジンの画面メッセージが根こそぎ消える代わりに**コンソールと `Wasami.*` も消える**ので、Claude の自動の確かめには使えない。**見た目とゲームの中身は `Development` と同じ**（クックの中身が同じ）なので、確かめは `Development` で行い、`Shipping` は起動して遊べることだけ見る。
+  - どちらを配るかの話が出たら、**上の「素材の扱い」のとおり必ずユーザーに確認する**。
 - 手順（2026-09-21 に実際に通した。作業一覧の項目 36）。**エディタを閉じてから**走らせる（VRAM 6 GB、`.claude/guides/verification.md`）:
   ```bash
   python Tools/editor_cycle.py --quit-only

@@ -641,13 +641,16 @@
 - 根拠: `Source/wasami_deception/WasamiZone1Flow.cpp`（`On06ReachAmbulance`）、`Content/Python/wasami_tools/pipeline/dd_sequence.py`（`movable`）、症状索引「救急車の屋根からプレイヤーが落ちる」、実装記録 11・01。
 - 依存: なし。
 - 規模: 3
-- 状態: 未着手
+- 状態: **完了（2026-09-26）**。**原因はパッケージが古かったこと**で、コードにもレベルにも新しい直しは要らなかった。(1) エディタで `L_Hospital_Zone1` のアクタを読むと、走り出す `hospital_ambulance_new_teleport` とそれに付く `BlockingVolume_Ambulance_1`〜`6` はすべて `Movable`（駐車場の 4 台は `Static` のまま。本家と同じ 5 台）。土台の移動（`UpdateBasedMovement`）は土台が `Movable` のときだけ働くので、これが要る。**2026-09-23 のパッケージ（04:00）は Zone 1 の `.umap` の保存（05:31）より前**で、この可動性が入っていなかった。(2) 直しは足していない。(3)(4) **作り直したパッケージで確かめた**: `probe_ambulance.py ride` を `--fps 60` と `--fps 15`（フレームレートが落ちるほど出やすい不具合なので低い方も）で流すと、どちらも屋根（z 402）に立ったまま y −19846 → −3956 の約 159 m を運ばれ、読み込み画面を越えて Zone 2 に着いた。`look` の 13 枚では、走り出した後のトンネルにも駐車位置にも**救急車は 1 台だけ**で、止まったままの 2 台目は出ない（`Intermediate/Overnight/ambulance/look/`）。**人が遊んでの最終確認はユーザーにお願いする**（今回の確かめは屋根へ `BugItGo` で降ろしてトリガーを自然に踏ませたもので、歩いて乗ったわけではない）。
 
 ### 54. Zone 2 の捕まる場面・独房の場面の演技（項目 42 の再発）
 
 - 目標: 指摘「Zone2のボスワサミ->牢獄へのシーンで、謎に手を掲げているワサミ、振り返る際のモーションが壊滅的。ワサミが殴りかかるシーン、床に倒れ込むシーンについて、本家を踏襲できていない」。項目 42 で切れ目を `Idle` で埋め、殴打を `Chase_PickUp` に替えたが、**まだ読めていない**。
-- 分かっていること（2026-09-26 の調べ）: 項目 42 の確かめは PIE の 0.2 s 刻みの連番（`Intermediate/DesktopAgent/shots/z2cap-grid.png`）で「基準姿勢が出ないこと」だけを見ており、**演技として読めるかは見ていない**。指摘は 3 つに分かれる: (a) 手を掲げたまま立つワサミ（埋めに使った待機のクリップ自体が手を上げている見込み）、(b) 振り向きの動き（本家は振り向きの演技を持つが、v3 に該当が無く、シーケンスの回転だけが当たっているとねじれる）、(c) 殴る → 倒れるの一連。
-- 完了の条件: (1) 本家の `06_Hospital_Zone2_Capture`・`_Cell` の演技を、`pak_reference_2` のシーケンスとアニメの長さ・区間で洗い直し、「いつ・誰が・何をする」を表にする。(2) v3 の 18 本から役ごとに選び直す（手を上げない待機、振り向きに当てられるもの、殴打、倒れ込み）。届かない役は**カメラと暗転で見せ方を変える**（`.claude/guides/original-fidelity.md` の「外れる動きは引かずにカメラに追わせる」）。(3) 対応表を `.claude/references/enemy-wasami-motions.md` の「場面の代用」に書き直す。(4) **パッケージ版で 2 つの場面を通しで録り**、(a)(b)(c) のどれも不自然でないことを絵で確かめる。
+- 分かっていること（2026-09-26 の調べ）: 項目 42 の確かめは PIE の 0.2 s 刻みの連番（`Intermediate/DesktopAgent/shots/z2cap-grid.png`）で「基準姿勢が出ないこと」だけを見ており、**演技として読めるかは見ていない**。本家のシーケンスを読むと、**捕まる場面（26.23 s）で演技するのは `nurse_idle1` 1 体だけ**で、クリップは `ReaperNurse_Idle_Alert` [17.20–19.17] と殴打 `Nurse_Hospital_Zone01_Event_39` [19.23–20.87] の 2 本、可視トラックのキーは 16.8 s と 17.33 s（どちらも `bHidden` 偽）。指摘の当たりは 3 つ:
+  - **(a) 手を掲げたワサミ = Matron（ボスワサミ）の見込みが濃い**。Matron の `Detected` の代用は `Lower_Weapon_Look_Raise`（武器を下ろして見て、構え直す）で、**1 回流して最後の姿勢で止まる**（`.claude/references/enemy-wasami-motions.md`）。ワサミは武器を持たないので、**何も無い手を上げたまま固まる**。場面の代役（`Idle` = `Idle_11` の直立、`Idle_Alert` = `Idle_5` の低い構え）はどちらも手を上げないので、犯人はこちら。
+  - **(b) 振り向きが壊滅的 = シネカメラの LookAt が本家のキーに勝っている**。本家は**カメラの回転にキーを打っている**（yaw 4.5° → 85° → 167.4° → 173.4°、19.67〜22.13 s。pitch −6.1 → −0.4 → −4.6）が、本作は `ACineCameraActor::Tick` の LookAt（`cameralook` を `LookAtTrackingInterpSpeed` 4 で追う。**本家のレベルも `bEnableLookAtTracking` は真**）が毎フレーム回転を書き直すので、キーが残らない（01 記録の「既知の制約・注意点」。2026-09-21 に PIE で測り、実際は yaw 170 → 72・pitch −55 → −74 と、追う先を遅れて追っていた）。`cameralook` は 19.23〜20.07 s に x −8710 → −11105・y −1030 → −360 → −1000 と跳ねるので、追うと振り回される。**本家が 180° の振り向きをキーで書いている以上、UE 4.24 では回転のキーが見えていた**はず（見えないなら打つ意味が無い）。2026-09-23 に「回転を入れないまま」を追認してもらったのは、この「本家でも見えない」という読みが前提だったので、読み直す。
+  - **(c) 殴る → 床に倒れる**。殴打の代用 `Chase_PickUp` は 1.63 s の区間を 1 回で埋めるよう遅くしてある。倒れ込みは本家ではカメラの pitch のキー（−0.4 → −4.6）で見せる演出で、本作は (b) の LookAt で pitch −74°（床を向く）まで落ちている。(b) を直せば (c) の半分は直る見込み。
+- 完了の条件: (1) **(a) の正体を確かめる**（場面の間の Matron を撮り、`Detected` の最後の姿勢で手が上がったまま止まっているか）。上がっていれば、Matron の `Detected` を手の上がらない代用に替えるか、最後の姿勢から `Alert`/`Idle` へ戻す。(2) **(b) を直す**: 本家が回転にキーを打っている区間では、シネカメラの `bEnableLookAtTracking` を切ってキーを効かせる（本家のデータと違う作りにするので理由を 01 記録に書く）。直した後、カメラの実際の yaw・pitch がキー（yaw 4.5 → 173.4、pitch −6.1 → −4.6）に沿うことを PIE で測る。**2026-09-23 の「回転を入れないまま」の追認は、この項目で読み直す**。(3) 殴打と倒れ込みの代用を見直す（v3 の 18 本から。届かない役はカメラと暗転で見せ方を変える。`.claude/guides/original-fidelity.md`）。(4) 対応表を `.claude/references/enemy-wasami-motions.md` の「場面の代用」に書き直す。(5) **パッケージ版で 2 つの場面を通しで録り**、(a)(b)(c) のどれも不自然でないことを絵で確かめる。
 - 根拠: `pak_reference_2/_sequences/06_Hospital_Zone2_Capture.json`・`_Cell.json`、`Content/Python/wasami_tools/pipeline/dd_sequence.py`、`Source/wasami_deception/WasamiCutsceneNurse.*`、`.claude/references/enemy-wasami-motions.md`、実装記録 01・07・11。
 - 依存: なし。
 - 規模: 3
@@ -661,7 +664,7 @@
 - 根拠: `Intermediate/Pipeline/dd/stage_ue.json` の `M_06_ShadowPlane_Zone1_Tunnel`、`pak_reference_2/_levels/06_Hospital_Zone_01.scene.json` の `Plane48_2`、`Tools/dd/prepare_stage.py`（`MASTERS`）、`Content/Python/wasami_tools/pipeline/dd_stage.py`（`master_of`・`MASTER_OF`）、実装記録 01。
 - 依存: なし。
 - 規模: 2
-- 状態: 未着手
+- 状態: **完了（2026-09-26）**。(1) cook のシェーダーの式を読んだ（不透明度 = `Clamp((PixelDepth − 24) / CameraFade) × Clamp((SceneDepth − PixelDepth) / Max(Depth Fade, 1e−5))`。基本色は `Color` の黒、`BLEND_Translucent`）。(2)(3) 8 つ目のマスター `M_DD_ShadowPlane` を作り（`MASTER_VERSION` 3。`MaterialExpressionCameraDepthFade`・`DepthFade` は Python から作れないので `PixelDepth`・`SceneDepth`・`Subtract`・`Divide`・`Max`・`Clamp` で書き下した）、前処理の `MASTERS` に `shadowplane` を足して `refresh_dd_stage_assets` でインスタンスを作り直した（`materials_remade: 1`。焼き直しは不要）。(4) **PIE とパッケージ版の両方で確かめた**: トンネルの口（11245, −21200, 150）から奥を見ると、それまで見えていた明るい灰色の板（`Intermediate/DesktopAgent/shots/shot-012316.png`）が消え、奥が霧の暗がりに続く（`shot-014844.png`）。実装記録 01。
 
 ### 56. 捕獲以外の死に方でもタブレットとダッシュを引き継ぐ（項目 38 の穴）
 
@@ -671,17 +674,17 @@
 - 根拠: `Source/wasami_deception/WasamiGameMode.cpp`（`DeathEvent`）、`WasamiCapture.cpp`、`WasamiSawTrap.cpp`、`WasamiDefib.cpp`、`WasamiZone2Flow.cpp`、`WasamiGameInstance.*`、実装記録 02・06。
 - 依存: なし。
 - 規模: 1
-- 状態: 未着手
+- 状態: **完了（2026-09-26）**。(1) `UWasamiGameInstance::RememberPlayerStateOnce`（まだ持ち越しが無いときだけ書く）と `HasCarriedPlayerState()` を足し、`AWasamiGameMode::DeathEvent` の入口で呼ぶ。どの死も `DeathEvent` を通るので、これで罠の死も引き継ぐ。捕獲はタブレットを下ろす前という真っ当な値を先に書いているので、後から来るゲームモードの呼びは上書きしない。(2) `Wasami.GameFlow.Lives` にテストを足した（「罠の死が書く」「ゲームモードの後の呼びが捕獲の値を消さない」「取ると忘れる」）。画面なしで回した 157 本のうち通ったのは 151 本で、落ちた 6 本は粒子と音のテスト（`-NullRHI -NoSound` の制約。症状索引）。(3) **パッケージ版で確かめた**: `Wasami.Tablet` でタブレットを上げ（`tablet=1`）→ `Wasami.Kill`（罠と同じ `DeathEvent` の道）→ 死亡画面（ライフ 3 → 2）→ 復帰後の `Wasami.Status` が `deaths=1 lives=2 tablet=1`。**ダッシュだけは確かめ切れていない**: `bToggleSprint` が切のときの押しっぱなしは `UpdateRestoredSprint` が OS の Shift の実状態を見るので、コンソールから偽の押下を作ると戻した直後に歩きへ落ちる（作りどおり）。持ち越しはタブレットと同じ 1 つの記録に入っているので、タブレットが戻れば同じ道が働いている。**ついでに足したもの**: `Wasami.Tablet`（= space。パッケージ版にはキーが届かない。症状索引）と `Wasami.Status` の `tablet=`・`sprint=`・`speed=`。
 
 ### 57. 画面上部の黄色いデバッグ文字（VSM のあふれの警告）
 
 - 目標: 指摘「画面上部に黄色い文字が表示される。おそらくUEのデバッグ用文字列で、配布要パッケージ版としては不適切」。
 - 分かっていること（2026-09-26 にパッケージ版を起動して撮った。`Intermediate/DesktopAgent/shots/shot-012307.png`）: 文面は **`[VSM] Non-Nanite Marking Job Queue overflow. Performance may be affected. This occurs when many non-nanite meshes cover a large area of the shadow map. (N seconds ago). See r.Shadow.Virtual.AllowScreenOverflowMessages.`**。仮想シャドウマップ（`r.Shadow.Virtual.Enable=1`）が、Nanite でないメッシュで影の面積を使い切ったときにエンジンが出す画面メッセージで、`Development` のパッケージでは出る。
-- 完了の条件: (1) 画面に出さない（`Config/DefaultEngine.ini` の `[SystemSettings]` に `r.Shadow.Virtual.AllowScreenOverflowMessages=0`）。**なぜ出さないかを ini にコメントで書く**。(2) あふれ自体も減らす（`r.Shadow.Virtual.NonNaniteVSMMaxPageAreaCoverage` を上げるか、影を落とす非 Nanite のメッシュを減らすか。性能の測り方は `.claude/guides/performance.md`、本編の fps は `Tools/game_perf.py`）。上げると VRAM が増えるので、6 GB に収まることを測って決める。(3) **配布するパッケージの構成をユーザーに確認する**（`Development` のままだとほかのエンジンの画面メッセージも出うる。`Shipping` ならメッセージ自体が消えるが `Wasami.*` のコンソールコマンドも消える）。(4) パッケージ版をタイトル → Zone 1 → Zone 2 → 脱出まで通して撮り、画面に文字が出ないことを確かめる。
+- 完了の条件: (1) 画面に出さない（`Config/DefaultEngine.ini` の `[SystemSettings]` に `r.Shadow.Virtual.AllowScreenOverflowMessages=0`）。**なぜ出さないかを ini にコメントで書く**。(2) あふれ自体も減らす（`r.Shadow.Virtual.NonNaniteVSMMaxPageAreaCoverage` を上げるか、影を落とす非 Nanite のメッシュを減らすか。性能の測り方は `.claude/guides/performance.md`、本編の fps は `Tools/game_perf.py`）。上げると VRAM が増えるので、6 GB に収まることを測って決める。(3) **2026-09-26 のユーザーの回答「両方作る」のとおり、`Development`（確かめ用、`Saved/Archive/Windows/`）と `Shipping`（人に渡す用、`Saved/Archive/Shipping/Windows/`）を両方作れるようにする**（`.claude/guides/distribution.md` に書いた）。`Shipping` が起動して遊べることを 1 度見る。(4) パッケージ版をタイトル → Zone 1 → Zone 2 → 脱出まで通して撮り、画面に文字が出ないことを確かめる（`python Tools/game_flow.py run` の絵）。
 - 根拠: `Config/DefaultEngine.ini`（`[SystemSettings]`・`r.Shadow.Virtual.Enable`）、`.claude/guides/distribution.md`、`.claude/guides/performance.md`、実装記録 00。
 - 依存: なし。
 - 規模: 1
-- 状態: 未着手
+- 状態: **進行中（2026-09-26）**。**完了の条件 (1) 済み**: `[SystemSettings]` に `r.Shadow.Virtual.AllowScreenOverflowMessages=0` を理由付きで足し、作り直したパッケージ版で確かめた（同じ 7 か所を撮って黄色い画素を数えると、旧パッケージは 2 枚で 167・156 個、新パッケージは全 7 枚が 4 個 = 背景のばらつきだけ。`Intermediate/DesktopAgent/shots/shot-0123*.png` と `shot-0147*.png`〜`shot-0148*.png`）。**(2)(3)(4) は残り**（あふれ自体を減らすかは測ってから。配布の構成はユーザーに確認する）。
 
 ## 取りやめた項目
 
