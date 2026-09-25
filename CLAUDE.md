@@ -18,6 +18,7 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - コミットとブランチ（**実装ごとにコミット、大規模改修は作業ブランチ→main へマージ→ローカルブランチ削除、最終コミットから 10 分経過・未 push 2 件以上・大規模改修のマージ後のいずれかで main を push。参照データから作り直せる素材は git の外、手作りのアセットは Git LFS**）: `.claude/guides/git-workflow.md`
 - 性能とメモリ（**この PC は GTX 1660 SUPER の VRAM 6 GB・RAM 32 GB。開発中は VRAM と RAM の逼迫を避ける設定にし、そのための設定はエディタにだけ効く場所に置く。パッケージした本編の品質は落とさない**）: `.claude/guides/performance.md`
 - note の進捗記事（**実装が 1 つ終わるたびに、原稿 `docs/note/progress.md` を「いま何が出来るか」に合わせて簡潔に直し（出来ることごとに画面収録の GIF を 1 本。まだ無いもの・進み具合・更新履歴は載せない）、`tmp/note-cli` で同じ記事〈id はガイドに〉を書き換える。新しい記事は作らず、削除はしない。セッションの値は git の外の `Tools/note.local.json` に置いて実行時に読み（ほかの場所には書かず、表示もしない）、会話で新しい値をもらったらその場で書き換える。ファイルが無ければ原稿だけ直して「note へは未反映」と報告する**）: `.claude/guides/note-progress.md`
+- ワサミの 2D 素材の画像生成（**本作独自の絵〈UI の絵・紋章・ポスター・模様〉が要るときは `Tools/wasami_art/` で、ワサミの写真を参照に `tmp/codex-gpt-image`〈Codex の OAuth〉から候補を作り、`sheet.png` を見て 1 枚を `SourceArt/` へ採用する。写真の原本はユーザーのスクリーンショットのフォルダだが、無関係な画面や肌の出た写真が混ざるので丸ごと送らず、`refs.json` に載せたものだけを送る。写真の写しは git に入れない**）: `.claude/guides/wasami-art.md`
 - 配布とパッケージ（**パッケージには原作の素材が入る。配布の話が出たら必ずユーザーに確認する**）: `.claude/guides/distribution.md`
 
 ## 参考資料
@@ -51,5 +52,6 @@ Dark Deception のワサミ版ファンゲームの UE 5.8 版。WebGL 版（Bab
 - PIE を始める・プレイヤーを置く・コンソールコマンド・止める: `python Tools/pie.py start` → `place X Y --yaw N` / `cmd "slomo 0.25"` / `state` → `stop`
 - 収録を測る（本家と PIE で同じ測り方）: `python Tools/video_probe.py frames` / `sheet` / `series` / `period`
 - 画面を撮る・入力を送る（対話デスクトップ）: `python Tools/desktop.py start` → `shot` / `click` / `key` / `hold` / `look` → `stop`
+- ワサミの 2D 素材を作る: `python Tools/wasami_art/wasami_art.py gen <依頼書.json>` → `sheet.png` を見る → `adopt <候補の png>`（`refs` / `catalog` / `--dry-run`）
 - 実装記録の同期チェック / ハッシュ更新: `python .claude/scripts/check_records.py [--update]`
 - 無人運転（Claude Code の外の端末から）: `python Tools/overnight.py --until 07:00 --usage-cmd "<使用量を JSON で出すコマンド>"`（`--no-usage-check` / `--dry-run` / `--max-iterations N` / `--no-discord`。反復ごとの報告〈ステータス・作業概要・分かったこと・その反復の要検討事項・人に見せる連番のグリッドだけの画像。状態ファイルから組み、進捗率は作業一覧の規模から計算〉と終わりのまとめ〈反復回数・無人運転時間・終了理由・やったこと・要確認事項〉は送り主「Claude」で Discord の webhook へも送る〈`Tools/discord_notify.py`。URL は git の外の `Tools/overnight.local.json`〉。決まりは `.claude/guides/autonomy.md`）

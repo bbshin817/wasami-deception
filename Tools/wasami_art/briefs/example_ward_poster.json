@@ -1,0 +1,11 @@
+{
+  "name": "example_ward_poster",
+  "style": "poster",
+  "prompt": "A hospital health-campaign poster that has gone wrong: a large portrait of Wasami staring out with wide, bloodshot eyes and a too-wide grin, as if he is watching the player. A faded medical cross in the corner. The lower third is an empty, stained area where text would go.",
+  "text": "WASH YOUR HANDS",
+  "refs": ["face", "expression"],
+  "size": "1024x1536",
+  "count": 2,
+  "dest": "SourceArt/Wasami/Generated/example_ward_poster.png",
+  "final_size": "512x768"
+}

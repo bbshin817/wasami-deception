@@ -1,0 +1,46 @@
+{
+  "_comment": "作風の型。生成の指示は common + 型の prompt + 依頼書の prompt の順に組む。refs は依頼書が refs を省いたときの参照の組（refs.json の sets の名前）。size・background・quality は依頼書で上書きできる。",
+  "common": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.",
+  "styles": {
+    "silhouette": {
+      "note": "本作の白抜きのシルエットの顔（wasami_symbol.png・pause_head.png）と同じ作り。UI の紋章・アイコン",
+      "prompt": "Style: a flat two-tone stencil graphic, pure white shapes on a fully transparent background, like the house-style reference silhouettes: hair, face outline, eyes, nostrils and mouth are cut out as clean white shapes with no gradients, no grey, no outline stroke. Centered, with a small margin.",
+      "refs": ["face", "house_style"],
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high"
+    },
+    "poster": {
+      "note": "病院の壁に貼る紙のポスター・掲示（場内の飾りのテクスチャ）",
+      "prompt": "Style: a printed paper poster that hangs on the wall of a grimy, abandoned hospital; aged paper, stains, creases and faded ink, dim and desaturated colours with deep reds. Fill the whole canvas with the poster itself, viewed straight on, no wall or frame around it.",
+      "refs": ["face", "expression"],
+      "size": "1024x1536",
+      "background": "opaque",
+      "quality": "high"
+    },
+    "portrait": {
+      "note": "画面の絵（読み込み画面・結果画面・EXTRAS の絵など）",
+      "prompt": "Style: a dark, painterly horror-comedy illustration in the spirit of a stylised indie horror game: strong chiaroscuro, sickly green-grey hospital light with blood-red accents, slightly caricatured proportions that stay recognisably Wasami.",
+      "refs": ["face", "expression"],
+      "size": "1536x1024",
+      "background": "opaque",
+      "quality": "high"
+    },
+    "sprite": {
+      "note": "UI の小物・アイコン（透明の背景）",
+      "prompt": "Style: a single game UI sprite, bold readable shapes at small size, dark horror palette with red accents, clean edges, on a fully transparent background with nothing else in the frame.",
+      "refs": ["face"],
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high"
+    },
+    "texture": {
+      "note": "材質に貼る模様（真上から、継ぎ目なしを狙う）",
+      "prompt": "Style: a flat, evenly lit, straight-on surface texture for a 3D game material, seamless and tileable on all four edges, no perspective, no shadows cast by the camera, grimy abandoned-hospital wear.",
+      "refs": ["face"],
+      "size": "1024x1024",
+      "background": "opaque",
+      "quality": "high"
+    }
+  }
+}
