@@ -328,7 +328,7 @@ def write_provenance(entry):
     record = [r for r in record if r["dest"] != entry["dest"]]
     record.append(entry)
     record.sort(key=lambda r: r["dest"])
-    with open(PROVENANCE, "w", encoding="utf-8") as f:
+    with open(PROVENANCE, "w", encoding="utf-8", newline="\n") as f:
         json.dump(record, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
