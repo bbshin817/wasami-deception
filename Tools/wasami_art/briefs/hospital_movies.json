@@ -1,0 +1,43 @@
+[
+  {
+    "name": "movie_ambulance_tutorial",
+    "_orig": "/Game/Movies/ambulance_tutorial（ambulance_tutorial2.mp4。1920×1280・29.97 fps・3.9 s）。白地に救急車の絵が上下に揺れ、「NEED A RIDE? / HOP ON TOP!」。救急車の屋根に乗れというゲームの案内なので文言はそのまま",
+    "style": "print",
+    "prompt": "A flat vector cartoon on a plain white background, framed by thin grey corner brackets: a red and white ambulance seen from the side, with a cheerful cartoon Wasami sitting cross-legged on its roof and waving. The first line of text is centred above in bold black letters, the second centred below in bold red letters.",
+    "text": ["NEED A RIDE?", "HOP ON TOP!"],
+    "size": "1536x1024", "count": 1,
+    "video": {"out": "SourceArt/Wasami/Movies/ambulance_tutorial2.mp4", "size": "1920x1280", "fps": 29.97, "duration": 3.9039, "mode": "bounce", "bob": 0.008, "bobs": 4, "bg": "ffffff"}
+  },
+  {
+    "name": "movie_brainscan_01",
+    "_orig": "/Game/Movies/BrainScan_01（BrainScan_01.mp4。1280×720・25 fps・9.36 s）。黒地に水色の脳の断面が出て、形を変えて消える",
+    "style": "screen",
+    "prompt": "A 3 by 2 grid of six equal frames with no gaps, borders or numbers, all on pure black: glowing cyan MRI-style axial slices through Wasami's head, read left to right and top to bottom, from the crown of the skull (a small slice) through the middle of the brain (the biggest slice, whose folds faintly form his face) down towards the jaw (small again). Each slice centred in its cell with plenty of black margin.",
+    "size": "3072x1728", "count": 1,
+    "video": {"out": "SourceArt/Wasami/Movies/BrainScan_01.mp4", "grid": "3x2", "size": "1280x720", "fps": 25, "duration": 9.36, "mode": "sequence"}
+  },
+  {
+    "name": "movie_brainscan_02",
+    "_orig": "/Game/Movies/BrainScan_02（BrainScan_02.mp4。1280×720・25 fps・9.08 s）。黒地に灰色の胸の CT の断面が上から下へ",
+    "style": "screen",
+    "prompt": "A 3 by 2 grid of six equal frames with no gaps, borders or numbers, all on pure black: greyscale CT scan slices through Wasami's head seen from above, read left to right and top to bottom, going from the top of the head down to the mouth, showing skull, brain, eye sockets with his wide eyes, nose and teeth in turn. Each slice centred in its cell with plenty of black margin.",
+    "size": "3072x1728", "count": 1,
+    "video": {"out": "SourceArt/Wasami/Movies/BrainScan_02.mp4", "grid": "3x2", "size": "1280x720", "fps": 25, "duration": 9.08, "mode": "sequence"}
+  },
+  {
+    "name": "movie_brokenheart",
+    "_orig": "/Game/Movies/BrokenHeart（BrokenHeart.mp4。1280×720・25 fps・8.04 s）。黒地にピンクの網目の心臓が割れて崩れ、消える",
+    "style": "screen",
+    "prompt": "A 3 by 2 grid of six equal frames with no gaps, borders or numbers, all on pure black, read left to right and top to bottom: a glowing magenta wireframe mesh heart with a faint Wasami face on its surface, first whole, then twisting, cracking in two, the halves drifting apart and crumbling into fragments, and in the last frame only a few faint scattered magenta specks remain. Each centred in its cell with plenty of black margin.",
+    "size": "3072x1728", "count": 1,
+    "video": {"out": "SourceArt/Wasami/Movies/BrokenHeart.mp4", "grid": "3x2", "size": "1280x720", "fps": 25, "duration": 8.04, "mode": "sequence"}
+  },
+  {
+    "name": "movie_lungs",
+    "_orig": "/Game/Movies/Lungs（lungs.mp4。1280×720・25 fps・14.4 s）。紺地に青い X 線の肺、途中で気管支が赤く光り、また青に戻る",
+    "style": "screen",
+    "prompt": "A 3 by 2 grid of six equal frames with no gaps, borders or numbers, on a deep navy background, read left to right and top to bottom: the same glowing blue holographic X-ray of a human chest with ribs and lungs, where the lungs' outline is shaped like Wasami's face; frame by frame the bronchial tree lights up red and orange, burns brightest in the middle frames, then fades back to calm blue. Same camera and framing in every frame.",
+    "size": "3072x1728", "count": 1,
+    "video": {"out": "SourceArt/Wasami/Movies/lungs.mp4", "grid": "3x2", "size": "1280x720", "fps": 25, "duration": 14.4, "mode": "sequence"}
+  }
+]

@@ -1,0 +1,163 @@
+[
+  {
+    "name": "hospital_decal_girls",
+    "_orig": "Zone 1 のトンネル（8 枚）。本家「GIRLS, GIRLS, GIRLS!」",
+    "style": "graffiti",
+    "prompt": "Big, aggressive drippy spray-paint lettering across the wall, with a crude doodle of a hand pointing straight at the viewer beside it.",
+    "text": "オマエ・ジャ。",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_girls.png"
+  },
+  {
+    "name": "hospital_decal_healyou",
+    "_orig": "Zone 1 のトンネル（4 枚）。本家「LET US HEAL YOU」",
+    "style": "graffiti",
+    "prompt": "Cheerful but creepy hand lettering in two lines, like a friendly greeting written by someone unhinged, with a small doodle of Wasami's grinning face.",
+    "text": "こんにちワサミ！",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_healyou.png"
+  },
+  {
+    "name": "hospital_decal_mercy",
+    "_orig": "Zone 1 のトンネル（5 枚）。本家「ACCEPT OUR MERCY」",
+    "style": "graffiti",
+    "prompt": "Thin, shaky, hand-written lettering in two lines, as if scrawled in a hurry by a trembling hand.",
+    "text": "ちょっと待ってね。",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_mercy.png"
+  },
+  {
+    "name": "hospital_decal_yourstory",
+    "_orig": "Zone 1 のトンネル（12 枚）。本家「YOUR STORY ENDS HERE」",
+    "style": "graffiti",
+    "prompt": "Ominous hand lettering in two lines with long paint drips running down from the letters, like a final warning.",
+    "text": "あっ、終わりです。",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_yourstory.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_02",
+    "_orig": "Zone 2（4 枚）。本家「Men Are Stupid & Weak」",
+    "style": "graffiti",
+    "prompt": "Stacked graffiti lettering filling the square, needy and obsessive in tone.",
+    "text": "俺のことも想え",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_02.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_03",
+    "_orig": "Zone 2（5 枚）。本家「MEN ARE PIGS」",
+    "style": "graffiti",
+    "prompt": "Heavy, dripping block lettering stacked in the square, with a simple doodle of a single wide-open staring eye.",
+    "text": "ワサミは見てる",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_03.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_04",
+    "_orig": "Zone 2（15 枚。いちばん多い）。本家「LIAR LIAR」",
+    "style": "graffiti",
+    "prompt": "The same short shout written twice, stacked, in big jagged spray-paint letters that fill the square.",
+    "text": "ここか！ ここか！",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_04.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_05",
+    "_orig": "Zone 2（2 枚）。本家「LOVE IS ONLY SKIN DEEP」",
+    "style": "graffiti",
+    "prompt": "Rounded bubble-style graffiti lettering in stacked lines, sweet-looking letters with an unsettling meaning.",
+    "text": "覚えてます。",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_05.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_06",
+    "_orig": "Zone 2（1 枚）。本家「HOME WRECKER」",
+    "style": "graffiti",
+    "prompt": "Wide, heavy graffiti lettering in two lines, like a question shouted into an empty building.",
+    "text": "ほかのみんなは？",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_06.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_07",
+    "_orig": "Zone 2（6 枚）。本家「Destroy All Men!」",
+    "style": "graffiti",
+    "prompt": "Fast, slanted lettering with speed lines, as if written while running.",
+    "text": "はっや！",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_07.png"
+  },
+  {
+    "name": "hospital_decal_graffiti_08",
+    "_orig": "Zone 2（8 枚）。本家「TOXIC LOVE」",
+    "style": "graffiti",
+    "prompt": "Big, over-enthusiastic lettering in two lines with a doodle of a thumbs-up drawn in a creepy way (too many knuckles).",
+    "text": "非常にいい！",
+    "size": "1024x1024", "final_size": "1024x1024", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_08.png"
+  },
+  {
+    "name": "hospital_decal_lovesmenot",
+    "_orig": "Zone 2（2 枚。Graffiti_09）。本家「HE LOVES ME, HE LOVES ME NOT」",
+    "style": "graffiti",
+    "prompt": "The same name written over and over in two lines, obsessively, in scratchy hand lettering.",
+    "text": "ワサミ ワサミ ワサミ ワサミ",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_lovesmenot.png"
+  },
+  {
+    "name": "hospital_decal_mediocreman",
+    "_orig": "Zone 2（2 枚。Graffiti_10）。本家「MEDIOCRE MAN」",
+    "style": "graffiti",
+    "prompt": "Lazy, shrugging hand lettering, slightly crooked, with a tiny doodle of a shrugging stick figure.",
+    "text": "まぁまぁ",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_mediocreman.png"
+  },
+  {
+    "name": "hospital_decal_nohappily",
+    "_orig": "Zone 2（3 枚。Graffiti_11）。本家「NO HAPPILY EVER AFTERS」",
+    "style": "graffiti",
+    "prompt": "Sarcastic lettering in two lines, with long drips hanging from the letters.",
+    "text": "無事でしたか？",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_nohappily.png"
+  },
+  {
+    "name": "hospital_decal_prettyface",
+    "_orig": "Zone 2 の秘密の部屋の外（1 枚。Graffiti_12）。本家「JUST ANOTHER PRETTY FACE」",
+    "style": "graffiti",
+    "prompt": "A crude spray-paint line drawing of Wasami's face with huge staring eyes and a wide open mouth, next to a short call in hand lettering.",
+    "text": "おーい。",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_prettyface.png"
+  },
+  {
+    "name": "hospital_decal_virus",
+    "_orig": "Zone 2（7 枚。Graffiti_13）。本家「VIRUS」と菌の絵",
+    "style": "graffiti",
+    "prompt": "Bold lettering followed by a doodle of a virus particle whose round body is Wasami's face, spikes all around it.",
+    "text": "ワサミ菌",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_virus.png"
+  },
+  {
+    "name": "hospital_decal_mysteryroom_01",
+    "_orig": "Zone 2 の秘密の部屋（1 枚）。本家は薬のカプセルの落書き（字なし）",
+    "style": "graffiti",
+    "prompt": "Scattered doodles with no text: round soft rice-cake mochi with little Wasami faces on them, and a few pill capsules, drawn as white line art spread across the whole wide canvas.",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_mysteryroom_01.png"
+  },
+  {
+    "name": "hospital_decal_mysteryroom_02",
+    "_orig": "Zone 2 の秘密の部屋（1 枚）。本家「SHE WAS CRAZY」",
+    "style": "graffiti",
+    "prompt": "Unsettling hand lettering in two lines, like a secret confession scratched onto the wall of a hidden room.",
+    "text": "ワサミはどこにでもいる",
+    "size": "1536x768", "final_size": "1024x512", "post": "white_alpha", "count": 1,
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_mysteryroom_02.png"
+  }
+]

@@ -9,25 +9,29 @@
 
 ## 流れ
 
-1. **依頼書を書く**: `Tools/wasami_art/briefs/<名前>.json`。項目は下の表。例は `example_ward_poster.json`。短い試しなら依頼書なしで `gen --name <名前> --style <型> --prompt "..."`。
-2. **候補を作る**: `python Tools/wasami_art/wasami_art.py gen Tools/wasami_art/briefs/<名前>.json`。1 枚 40〜60 秒。出力は `Intermediate/WasamiArt/<名前>/<時刻>/`（git の外）の `out-NN.png`・`sheet.png`（上に参照、下に候補）・`prompt.txt`・`meta.json`。
-3. **選ぶ**: `sheet.png` を Read で見て、本人に似ているか・型に合っているか・字が正しいか・余計な字や透かしが無いかを確かめる。合わなければ依頼書の `prompt` を直して作り直す（前の時刻の組は残る）。
+1. **依頼書を書く**: `Tools/wasami_art/briefs/<名前>.json`。1 ファイルに 1 件でも、配列で何件でもよい。項目は下の表。例は `example_ward_poster.json`、病院の一式は `hospital_graffiti.json`・`hospital_posters.json`・`hospital_movies.json`。短い試しなら依頼書なしで `gen --name <名前> --style <型> --prompt "..."`。
+2. **候補を作る**: `python Tools/wasami_art/wasami_art.py gen <依頼書> [...] [--only 名前,名前] [--jobs 3]`。1 枚 30〜60 秒。`--jobs` で依頼書を並べて流せる（3〜5 本を同時に流して断られなかった、2026-09-26）。出力は `Intermediate/WasamiArt/<名前>/<時刻>/`（git の外）の `out-NN.png`・`sheet.png`（上に参照、下に候補）・`prompt.txt`・`meta.json`。
+3. **選ぶ**: `python Tools/wasami_art/wasami_art.py review <依頼書>` で、依頼書ごとの最新の候補を採用後の形（後処理・地の色・大きさ）で 1 枚に並べ、Read で見る。本人に似ているか・型に合っているか・字が正しいか・余計な字や透かしが無いか・切れていないかを確かめる。合わなければ依頼書を直して `--only` で作り直す（前の組は残り、`review` と採用は最新の組を見る）。
 4. **採用する**: `python Tools/wasami_art/wasami_art.py adopt <候補の png> [--dest SourceArt/...] [--size WxH]`。`SourceArt/` の下へ写し（Git LFS）、由来（依頼書・指示の全文・参照・頼んだ設定）を `SourceArt/Wasami/generated.json` に足す。同じ行き先は上書きし、由来も差し替える。
-5. **取り込む**: ゲームで使うなら、ほかの `SourceArt/Wasami/UI` の画像と同じく取り込みのツール（`Content/Python/wasami_tools`）から `/Game/Wasami/...` へ入れ、使う側の実装記録に書く。
+5. **動画にする**（画面に映す物）: `python Tools/wasami_art/wasami_art.py video <候補の png>`。依頼書の `video` の値（行き先・長さ・大きさ・fps・組み方）で mp4 を組み、`SourceArt/` に書いて由来を足す。コマの連続は 1 枚に格子で描かせて `grid` で切る（別々に作るとコマごとに絵柄がずれる）。
+6. **取り込む**: ゲームで使うなら、ほかの `SourceArt/Wasami` の素材と同じく前処理か取り込みのツールから `/Game/Wasami/...` へ入れ、使う側の実装記録に書く。
 
 ## 依頼書の項目
 
 | 項目 | 要否 | 中身 |
 |---|---|---|
 | `name` | 省略可 | 出力のフォルダ名。省くとファイル名 |
-| `style` | 省略可（`portrait`） | `styles.json` の型: `silhouette`（本作の白抜きの顔と同じ作り、透明）・`poster`（病院の壁の紙）・`portrait`（画面の絵）・`sprite`（UI の小物、透明）・`texture`（材質の模様） |
+| `style` | 省略可（`portrait`） | `styles.json` の型: `silhouette`（本作の白抜きの顔と同じ作り、透明）・`graffiti`（壁の落書き、白い塗料だけ、透明）・`print`（汚しの無い印刷のポスター）・`poster`（汚した紙のポスター）・`screen`（黒地の医療映像、動画の元）・`portrait`（画面の絵）・`sprite`（UI の小物、透明）・`texture`（材質の模様） |
 | `prompt` | 必須 | 何を描くか（英語）。作風と共通の決まりはツールが前に足すので、ここには中身だけを書く |
-| `text` | 省略可 | 絵の中に出す字（そのまま出させ、ほかの字は出させない） |
+| `text` | 省略可 | 絵の中に出す字（そのまま出させ、ほかの字は出させない）。題と見出しのように分かれるなら配列で。日本語も正しく出る |
 | `refs` | 省略可（型の既定） | 参照の組の名前（`refs.json`）: `face`・`expression`・`pose`・`house_style` |
 | `extra_refs` | 省略可 | 足す参照画像のパス（プロジェクトからの相対。PIE の撮影など） |
 | `size`・`background`・`quality`・`model` | 省略可 | 型の既定を上書き。大きさは 16 の倍数・長辺 3840 以下・縦横比 3:1 以内 |
-| `count` | 省略可（2） | 候補の枚数（1 枚ずつ頼む） |
-| `dest`・`final_size` | 省略可 | 採用の行き先（`SourceArt/` の下）と縮める大きさ（`"512x512"`） |
+| `count` | 省略可（2） | 候補の枚数（1 枚ずつ頼む）。まとめて作るときは 1 にして、`review` で外れだけを作り直すと速い |
+| `post` | 省略可 | 採用のときの後処理。`white_alpha`: 白一色にし、明るさを不透明度にする（本家の落書きのテクスチャと同じ作り） |
+| `bg` | 省略可 | 採用のときに敷く地の色（`RRGGBB`）。不透明を頼んでも透明で返ることがあるので、不透明が要る素材には書く |
+| `video` | 省略可 | 動画にするときの値: `out`（`SourceArt/` の下の mp4）・`duration`・`size`・`fps`・`mode`（`sequence`: 順に重ねて繰り返す / `bounce`: 上下に揺らす）・`grid`（`3x2` など）・`bg`・`bob`・`bobs` |
+| `dest`・`final_size` | 省略可 | 採用の行き先（`SourceArt/` の下）と合わせる大きさ（`"512x512"`）。縦横比が違えば、透明の絵は透明の余白を足し、不透明の絵は辺の 8% までなら真ん中を切り、それ以上なら縁の色で余白を足す |
 
 ## 参照画像（`Tools/wasami_art/refs.json`）
 
@@ -40,7 +44,11 @@
 
 - ユーザーが置いた codex-gpt-image の CLI（git の外）を呼ぶ。場所は環境変数 `WASAMI_GPT_IMAGE_CLI` で差し替え。認証は Codex の OAuth（`~/.codex/auth.json`）で、API キーは使わない。確かめ: `python tmp/codex-gpt-image/skills/codex-gpt-image/scripts/codex_gpt_image.py auth-status`。トークンの中身は表示しない。
 - 401・403 はユーザーに `codex login` を頼む（無人モードでは飛ばして「要確認」に書く）。
-- 2026-09-26 に確かめたこと: 参照があるときは編集の窓口（`/images/edits`）へ行く。`--count 2` でも 1 枚しか返らないので、ツールは 1 枚ずつ頼む。頼んだ大きさと実際が違う（1024² → 1254²）ので、決まった大きさが要る素材は `final_size` で縮める。どのモデルが使われたかは返事に無い。透明の背景は効いた（RGBA）。
+- 2026-09-26 に確かめたこと: 参照があるときは編集の窓口（`/images/edits`）へ行く。`--count 2` でも 1 枚しか返らないので、ツールは 1 枚ずつ頼む。頼んだ大きさと実際が違う（1024² → 1254²、1536×768 → 1916×821、3072×1728 → 1536×1024。大きな絵は頼めない）ので、決まった大きさが要る素材は `final_size` で合わせる。不透明を頼んでも透明で返ることがある（`bg` で地を敷く）。どのモデルが使われたかは返事に無い。
+
+## 病院の一式（2026-09-26）
+
+本家の病院で見せている絵・言葉・映像のうち、落書き・壁画 18（トンネル・秘密の部屋を含む）・壁のポスター 11・画面の動画 5 を、ワサミ版に作って `SourceArt/Wasami/Stage/`・`SourceArt/Wasami/Movies/` に置いた（名前は本家のテクスチャ・動画と同じ）。落書きの文言はワサミの台詞に置き換えた。扉の札・案内板・駐車場の標示・患者搬送・秘密の部屋の書類・小物は本家のまま。線引きの根拠と各件の本家の中身は依頼書の `_orig`。
 
 ## 無人運転で使うとき
 

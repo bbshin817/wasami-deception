@@ -27,6 +27,9 @@ sources:
   - Tools/wasami_art/refs.json
   - Tools/wasami_art/styles.json
   - Tools/wasami_art/briefs/example_ward_poster.json
+  - Tools/wasami_art/briefs/hospital_graffiti.json
+  - Tools/wasami_art/briefs/hospital_posters.json
+  - Tools/wasami_art/briefs/hospital_movies.json
   - Content/Python/init_unreal.py
   - Content/Python/wasami_tools/__init__.py
   - Content/Python/wasami_tools/toolsets/__init__.py
@@ -169,13 +172,16 @@ updated: 2026-09-26
 - **ゲームの中で確かめた**（2026-09-23、項目 51 のステップ 4）: 貼ってある所の座標は `Intermediate/Pipeline/dd/stage_ue.json` の `placements` から引く（`M_06_Hospital_Poster_01` 16・`M_06_Hospital_Poster_14` 7・落書きが Zone 1 に 1・Zone 2 に 2）。**ポスター枠の絵の面は枠のメッシュのローカル +X**（`hospital_posterframe` の境界は X だけ 1.5 で薄い）、**落書きの板の面は `/Engine/BasicShapes/Plane` のローカル +Z** なので、クォータニオンからその軸を世界へ回して正面を出し、`Tools/pie.py place` で 250〜800 cm 手前に立って `HighResShot 1280x720` を撮る（PIE 中ならエディタが前面でなくても書かれる）。Zone 1 の 9 か所と Zone 2 の低い方はこれで撮れ、**Zone 2 のガレージの高い方**（`Plane_71`、Z 1283 cm）は見上げると柱に隠れるので、PIE を止めて `set_level_viewport_camera_info` で絵の高さに置いて撮った（観察の手順の「プレイヤーが立てない所」）。どれもワサミの頭で、ナースの姿は 1 枚も残っていない。原作の 3 枚は `AssetRegistry.get_referencers` で**参照元 0 件**。
 
 ### ワサミの 2D 素材の画像生成（`Tools/wasami_art/`、2026-09-26）
-- 本作独自の 2D 素材を、ワサミの写真を参照画像にして GPT Image で作る道具（使い方の正本は `.claude/guides/wasami-art.md`）。`python Tools/wasami_art/wasami_art.py refs | catalog | gen | adopt`。
+- 本作独自の 2D 素材を、ワサミの写真を参照画像にして GPT Image で作る道具（使い方の正本は `.claude/guides/wasami-art.md`）。`python Tools/wasami_art/wasami_art.py refs | catalog | gen | review | adopt | video`。
 - 生成は `tmp/codex-gpt-image/skills/codex-gpt-image/scripts/codex_gpt_image.py`（git の外。`WASAMI_GPT_IMAGE_CLI` で差し替え）を子プロセスで呼ぶ。Codex の OAuth（`~/.codex/auth.json`）を使い、参照があるので編集の窓口 `https://chatgpt.com/backend-api/codex/images/edits` へ行く。**1 枚ずつ呼ぶ**（`--count 2` で 1 枚しか返らなかった、2026-09-26）。
 - `refs.json`: 参照の組 `face`（5 枚）・`expression`（5）・`pose`（4）・`house_style`（`SourceArt/Wasami/UI` の 4 枚）。`screenshots:<ファイル名>` はユーザーのスクリーンショットのフォルダ（`C:/Users/User/Pictures/Screenshots`、`WASAMI_ART_SCREENSHOTS` で差し替え）、`ui:` は `SourceArt/Wasami/UI`。`crop` は 0〜1 の割合。フォルダには無関係な画面や肌の出た写真も混ざるので、載せた写真だけを送る。
-- `styles.json`: 指示は `common`（本作とワサミの説明・写真の部屋や服を無視・字や透かしを出さない・本家のキャラクターやロゴを出さない）+ 型の `prompt` + 依頼書の `prompt`（+ `text` があれば「その字だけ」）の順に組む。型は `silhouette`（透明・1024²・`face`+`house_style`）・`poster`（不透明・1024×1536）・`portrait`（1536×1024）・`sprite`（透明・1024²）・`texture`（1024²）、品質はどれも `high`。型を省くと `portrait`、枚数を省くと 2。
-- `gen`: 参照を `Intermediate/WasamiArt/<名前>/<YYYYMMDD-HHMMSS>/refs/ref-NN.png`（切って長辺 1536 以下、PNG）に写し、`prompt.txt`・`out-NN.png`・`meta.json`（依頼書・参照・頼んだ設定・候補の実際の大きさ・CLI の最後の行）・`sheet.png`（上に参照 160 px、下に候補 480 px、灰色の地）を書く。参照は 16 枚まで。`--dry-run` は窓口に送らず 1 回分の組み立てだけを見る。
-- `adopt`: 候補を `SourceArt/` の下（`--dest` か依頼書の `dest`。ほかの場所は断る）へ写し、`--size` か `final_size` で LANCZOS で縮め、`SourceArt/Wasami/generated.json`（配列。同じ `dest` は差し替え）に由来（`run`・`candidate`・`size`・依頼書・型・参照・頼んだ設定・指示の全文・`note`）を足す。`SourceArt/**/*.png` は Git LFS。
-- 2026-09-26 に確かめた: 参照 10 枚の `poster` で本人に似た顔と正しい「WASH YOUR HANDS」の字、`silhouette` で本作の白抜きの顔と同じ作りの RGBA が出た。1 枚 36〜54 s。1024² を頼んで 1254² が返った。返事にモデルの名前は無い。
+- `styles.json`: 指示は `common`（本作とワサミの説明・写真の部屋や服を無視・字や透かしを出さない・本家のキャラクターやロゴを出さない）+ 型の `prompt` + 依頼書の `prompt`（+ `text`。文字列ならその字だけ、配列なら別々の塊として）の順に組む。型は `silhouette`（透明・1024²・`face`+`house_style`）・`poster`（汚した紙、不透明・1024×1536）・`print`（汚しの無い印刷の図案、1024²。病院のポスター用）・`portrait`（1536×1024）・`sprite`（透明・1024²）・`texture`（1024²）・`graffiti`（白い塗料だけ・透明・1536×768。病院の落書き用）・`screen`（黒地の医療映像・1536×864。動画の元）、品質はどれも `high`。型を省くと `portrait`、枚数を省くと 2。
+- `gen`: 依頼書のファイルを複数取り、1 ファイルに配列で何件も書ける（`--only` で名前を絞る、`--jobs N` で N 件を並べて流す。1 件の中は 1 枚ずつ順に）。参照を `Intermediate/WasamiArt/<名前>/<YYYYMMDD-HHMMSS>/refs/ref-NN.png`（切って長辺 1536 以下、PNG）に写し、`prompt.txt`・`out-NN.png`・`meta.json`（依頼書・参照・頼んだ設定・候補の実際の大きさ・CLI の最後の行）・`sheet.png`（上に参照 160 px、下に候補 480 px、灰色の地）を書く。参照は 16 枚まで。`--dry-run` は窓口に送らず 1 回分の組み立てだけを見る。
+- `review`: 依頼書ごとの最新の組の候補を、採用と同じ後処理・地の色・大きさで暗い壁の色（58, 52, 48）の上に並べ、`Intermediate/WasamiArt/review_<依頼書のファイル名>.png` に書く（1 マス 420 px、`--cols` 既定 4）。
+- `adopt`: 候補を `SourceArt/` の下（`--dest` か依頼書の `dest`。ほかの場所は断る）へ写す。依頼書の `post`（`white_alpha`: RGB を白、α = 元の α × RGB の平均 / 255、8 未満は 0。本家の落書きのテクスチャと同じ白一色の作り）、`bg`（`flatten`: その色の上に重ねて RGB にする）の順にかけ、`--size` か `final_size` に合わせる（`fit_size`: 縦横比が 1% より違えば、透明の絵は透明の余白を足す〈描いた物を切らない〉。不透明の絵は切る量が辺の `CROP_LIMIT` = 8% 以下なら真ん中を切り、超えるなら 4 辺の画素の中央値の色で余白を足す〈題や見出しを切らない〉。その後 LANCZOS）。由来を `SourceArt/Wasami/generated.json`（`dest` の順の配列。同じ `dest` は差し替え）に足す（`run`・`candidate`・`size`・`post`・`bg`・依頼書・型・参照・頼んだ設定・指示の全文・`note`）。`SourceArt/**/*.png` と `SourceArt/**/*.mp4` は Git LFS。
+- `video`: 生成した静止画から繰り返す mp4 を組み、`SourceArt/` の下に書いて由来（`kind: video`・元の絵・設定）を同じ JSON に足す。指定しない値は最初の絵の組の依頼書の `video` から、無ければ `VIDEO_DEFAULTS`（1280×720・25 fps・`sequence`・`xfade` 0.35・`zoom` 0.04・`bob` 0.01・`bobs` 4・黒地）。絵は `bg` の上に重ねて不透明にする（`on_background`）。`--grid CxR` は 1 枚の絵を C 列 R 行に等分して行ごとに読む。`sequence` は絵を順に出し、各絵の持ち時間の後ろ `xfade` の割合で次へ重ね（最後は最初へ戻る）、ループ全体で 1 往復する余弦の拡大（最大 1 + `zoom`）をかけるので継ぎ目が無い。`bounce` は絵を上下に揺らす（振幅 `bob` × 高さ、1 ループに `bobs` 回。`blink` 秒ごとに絵を替える）。絵は枠に収めて余白を `bg` で塗る。ffmpeg に rgb24 を流し、libx264・yuv420p・crf 18・音なし。
+- 病院の一式（2026-09-26。作り方の経緯は `.claude/guides/wasami-art.md`）: `hospital_graffiti.json`（落書き・壁画 18 件。`graffiti`・`white_alpha`・本家と同じ大きさ 1024×512 か 1024²）、`hospital_posters.json`（壁のポスター 11 件。`print`・`bg`・本家と同じ大きさ）、`hospital_movies.json`（画面の動画 5 本。`ambulance_tutorial2` は `bounce`・1920×1280・29.97 fps・3.9039 s・白地、ほか 4 本は 3×2 の格子を `sequence`・1280×720・25 fps・本家と同じ長さ）。名前は本家のテクスチャ名・動画のファイル名に合わせ、`SourceArt/Wasami/Stage/`（29 枚）・`SourceArt/Wasami/Movies/`（5 本）に採用済み。**ゲームへはまだ入れていない**（前処理の差し替えも動画の再生も無い）。
+- 2026-09-26 に確かめた: 参照 10 枚の `poster` で本人に似た顔と正しい「WASH YOUR HANDS」の字、`silhouette` で本作の白抜きの顔と同じ作りの RGBA、`graffiti` で正しい日本語（「あっ、終わりです。」）の白い落書きの RGBA が出た。1 枚 25〜54 s。1024² を頼んで 1254²、1536×768 を頼んで 1916×821、3072×1728 を頼んで 1536×1024 が返った。`print`（不透明）を頼んでも 11 枚中 10 枚が透明の地で返った。返事にモデルの名前は無い。
 
 ### cook のシェーダーを読む（`Tools/dd/cooked_shaders.py`）
 - **cook で式が消えた材質も、コンパイル済みのシェーダーは残っている**（2026-09-18 に見つけた。作業一覧の項目 23 のステップ 5d3）。最新版（UE 4.24）は材質ごとにシェーダーマップを `.uexp` に埋め込み、シェーダー 1 つが zlib のストリーム 1 つ、中身が DXBC。`python Tools/dd/cooked_shaders.py "<pak のパスの一部>."` が Steam の最新版の pak（読むだけ。`--pak` で変えられる）から `.uasset`/`.uexp` を取り出し、ストリームを戻して、システムの `d3dcompiler_47.dll` の `D3DDisassemble` で逆アセンブルし、`Intermediate/Pipeline/dd/shaders/<名前>/NN_<モデル>.txt` に書く。表（モデル・読む補間子・リソース・サンプル数）と、一様パラメータの名前（1 度ずつ、最初に出た順）と、**定数バッファ cb3 のどこがどの式か**（`cb3[4].y = hilightPower (10.0)` のように。2026-09-18、5f で足した）を印字する。cb3 は vector の式 1 つに float4 を 1 つ、その後に scalar の式を 4 つずつ詰める。並びはシェーダーマップの uniform の式の集まり（名前の表の後。式ごとにクラス名の表の番号と、クラスごとのフィールド。UE 4.24 の `MaterialUniformExpressions.h`）から読む。知らないクラスがあると名前だけになるので、そのときはコードの使い方から読む（`FIELDS` に足す。2026-09-20 に `Round` を足した）。後処理の材質では同じ表が cb2 に載る（`M_GlitchHLSL`）。`SelectionColor` はエディタの選択の色で、Emissive の最後の lerp。実行時は黒。`--show N` で N 番のコードを出す。pak の読み方は `pak_reference_2/_tools/scripts/unpak.py` を借りる。
@@ -455,6 +461,8 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-26: 採用に地の色 `bg` と、不透明の絵を大きく切らずに余白を足す `fit_size` の分け方を足し、`video` が透明の絵を地の色に重ねるようにした。病院の落書き 18・ポスター 11・動画 5 を採用した。
+- 2026-09-26: `Tools/wasami_art` に型 `graffiti`・`screen`・`print`、依頼書の複数指定と並べての生成、`review`、採用の後処理 `white_alpha` と縦横比の合わせ方、静止画から動画を組む `video` を足した。
 - 2026-09-26: ワサミの写真を参照に 2D 素材を画像生成する道具 `Tools/wasami_art/`（`wasami_art.py`・`refs.json`・`styles.json`・依頼書の例）を足した。
 - 2026-09-23: 原作のナースが描かれたテクスチャ 3 枚をワサミの絵に替える前処理 `Tools/dd/prepare_nurse_posters.py` を足した（作業一覧の項目 51）。まず `hospital_poster_nurse_01_D`（「TAKE YOUR MEDICINE!」）の紙袋の頭をワサミの頭に替えた
 - 2026-09-23: 捕まる場面のカメラアニメを**移動だけ焼き、回転は入れない**（場面のシネカメラの LookAt が毎フレーム回転を書き直すので、本家でも本作でも回転は見えない）ままにすることを、2026-09-23 のユーザーの回答で追認した（上の「既知の制約・注意点」。作業一覧の項目 28 の要確認）
