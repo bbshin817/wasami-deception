@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 8621beb
 started: 2026-09-26 01:15
-updated: 2026-09-26 08:00
+updated: 2026-09-26 08:30
 ---
 
 # 項目 53〜57: パッケージ版の再指摘 5 件（大目標 5）
@@ -34,14 +34,17 @@ updated: 2026-09-26 08:00
 - [x] 3. パッケージを作り直して 53・55・56・57 を確かめた … 2026-09-26 完了。黄色い文字は消え（黄色い画素 167/156 → 4 = 背景のばらつき）、トンネルの奥の灰色の板も消え、救急車は 60 fps でも 15 fps でも運ばれて 1 台しか見えず、罠の死から戻ったタブレットは `tablet=1` のまま。**項目 53 は直しを足さずに閉じた**（古いパッケージが原因だった）。パッケージ版にキーが届かないと分かったので `Wasami.Tablet` と `Wasami.Status` の `tablet=`・`sprint=`・`speed=` を足した。
 - [x] 4. `Shipping` のパッケージも作った … 2026-09-26 完了。`Saved/Archive/Shipping/Windows/`（クック 0 エラー）。起動して全画面でタイトルが出て、黄色い字も無い。`.claude/guides/distribution.md` に手順を書いた。
 - [x] 5. 項目 57 の残り（完了の条件 (2)）… 2026-09-26 完了。パッケージを作り直し（項目 59 の Nanite を外した後。0 エラー・1662 パッケージ）、VSM のあふれは**速さだけの注意で影は欠けない**こと・**`NonNaniteVSMMaxPageAreaCoverage` は UE 5.8 に無い**こと・測っても遅くなっていないこと（駐車場 cp6 62.0 fps、トンネル 62.1 fps、GPU メモリ 2702〜2731 MB、カードの山 3466〜3674 MB / 6144 MB）を確かめ、**何も上げずに項目 57 を閉じた**（根拠は実装記録 00 の「VSM のあふれの警告」と作業一覧の項目 57）。
-- [ ] 5b. 項目 58（note の GIF 12・14 を撮り直す。トンネルの奥の見た目が変わったため）。**作り直したパッケージで項目 59 の (3)（トンネルの y ≈ −16100 の境目が消えたこと）も見て、59 を完了にする**（59 の (1)(2) は 2026-09-26 の有人セッションで済み。Nanite から外したトンネルの天井が影を落とす）
+- [x] 5b. 項目 59 の完了の条件 (3) … 2026-09-26 完了。パッケージ版のトンネルの 5 か所から奥を撮り、境目が無く一様に暗いことを見て**項目 59 を完了にした**（絵は `Intermediate/Tunnel/pkg-*.png`）。
+- [ ] 5c. 項目 58（note の GIF `12-doors-busted.gif`・`14-ambulance-zone2.gif` をエディタの PIE で撮り直し、ほかの GIF にトンネルの奥が写っていないかも見て、`docs/note/progress.md` と note の記事を直す）
 
 ## 次にやること
 
-ステップ 5b（項目 58: note の GIF `12-doors-busted.gif`・`14-ambulance-zone2.gif` の撮り直しと、項目 59 の完了の条件 (3)）。
-**パッケージは 2026-09-26 07:50 に作り直してある**（項目 59 の Nanite を外した後の中身）ので、そのまま撮れる。
-トンネルの中から奥を見て y ≈ −16100 の境目が無く一様に暗いことを見たら項目 59 を完了にし、GIF を撮り直して `docs/note/progress.md` と note の記事（`tmp/note-cli`）を直す。
-この記録を閉じたら、無人運転が作業一覧の項目 54 から自分の記録を作って始める。
+ステップ 5c（項目 58: note の GIF `12-doors-busted.gif`・`14-ambulance-zone2.gif` をエディタの PIE で撮り直す）。
+- 撮り方は `.claude/guides/note-progress.md` の「GIF」（窓を `(1819, 68, 3279, 896)` にしてから `Tools/desktop.py record`）。12 の台本は同じ節の「2026-09-23 の撮り方」にそのまま書いてある。
+- **14（救急車で Zone 2 へ）の撮り方は記録が無い**ので組み直す: `L_Hospital_Zone1` の PIE で救急車の屋根に立たせ（`Wasami.Trigger TriggerBox_06_AmbulanceTop` か `Wasami.Flow On06ReachAmbulance`）、**1 s 後に走り出し、7 s 後に読み込み画面、その 2.5 s 後に Zone 2 が開く**（`AWasamiZone1Flow::On06ReachAmbulance`）。トンネルを走る数秒を切り出す。
+- ほかの GIF にトンネルの奥が写っていないかも見る（13 のガレージ、23 の通し）。
+- 撮り直したら `docs/note/progress.md`（文は変えない）と note の記事を直す（`tmp/note-cli`。セッションの値は `Tools/note.local.json` にある）。
+この記録を閉じたら、無人運転が作業一覧の項目 54 から自分の記録を作って始める（大目標 5 の残りは 54 だけになる）。
 
 ## 決定事項
 
@@ -57,13 +60,12 @@ updated: 2026-09-26 08:00
 
 ## 再開時の注意
 
-- エディタは開き直してある（2026-09-26 08:0x）。パッケージを作り直すときは先に `python Tools/editor_cycle.py --quit-only`（手順は `.claude/guides/distribution.md`。差分なら 2〜3 分、`run_in_background` で走らせて必ず結果を読む）。
-- **パッケージ版にはキーが届かない**ので、進める台本は `-ExecCmds` と `Wasami.*` で組む（`Tools/game_flow.py run`、fps は `Tools/game_perf.py`。二重起動の錠は `Intermediate/Perf/.game_perf.lock`）。
-- トンネルの中の見晴らしの地点（項目 59 で使った）: `BugItGo 11245 -18800 150 0 90 0`（ほかに y = −17000・−12000）。
-- 2026-09-26 の直す前の絵: `Intermediate/DesktopAgent/shots/shot-012316.png`（トンネルの奥が明るい）。
+- エディタは開き直してある（2026-09-26 08:3x。5b でパッケージを走らせるために一度閉じた）。閉じ直すときは `python Tools/editor_cycle.py --quit-only`、開き直しは `python Tools/editor_cycle.py`（`run_in_background` で走らせて必ず結果を読む）。
+- **パッケージ版にはキーが届かない**ので、進める台本は `-ExecCmds` と `Wasami.*` で組む（`Tools/game_flow.py run`、fps は `Tools/game_perf.py`、任意の場所の絵は `Wasami.Delay <秒> BugItGo …` と `Wasami.Delay <秒> Shot`。二重起動の錠は `Intermediate/Perf/.game_perf.lock`）。
+- GIF はパッケージではなく**エディタの PIE で撮る**（今までの 43 本と同じ作り方。`.claude/guides/note-progress.md`）。
 
 ## 検証
 
-- check_records: 未実行
+- check_records: OK（2026-09-26。実装記録 01 にパッケージ版での確かめを 1 行足した）
 - C++ ビルド: 未実行
 - エディタでの確認（取り込み・組み立て・PIE）: 未実行
