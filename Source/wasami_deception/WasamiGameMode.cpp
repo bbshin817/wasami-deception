@@ -417,6 +417,18 @@ void AWasamiGameMode::DeathEvent(AActor* Cause)
 		return;
 	}
 	bDeathClosed = true;
+	// Beyond the original: the tablet and the sprint the player who opens the level again gets back (item 38). Every
+	// death comes through here - the capture, the saw trap, the defibrillator and Zone 2's spikes - so this is where
+	// it is written. The capture has already written it by the time it calls this, before Put Down Tablet lowered the
+	// tablet, and that word stands (item 56, the user's report of 2026-09-26).
+	if (UWasamiGameInstance* Instance = GetGameInstance<UWasamiGameInstance>())
+	{
+		if (const AWasamiPlayerCharacter* Player =
+			Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
+		{
+			Instance->RememberPlayerStateOnce(Player->IsTabletUp(), Player->IsSprintOn());
+		}
+	}
 	// Not here: Bierce's idle lines, whose timer the original clears first (the voices are item 20).
 	OnDeath.Broadcast(Cause);
 	// The zone's DeathEvent, which listens to the dispatcher in the original. The screen's Construct zeroes the save's

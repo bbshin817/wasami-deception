@@ -59,6 +59,16 @@ bool FWasamiGameFlowLivesTest::RunTest(const FString& Parameters)
 	Instance->RememberPlayerState(false, true);
 	Instance->ForgetCollectedShards();
 	TestFalse(TEXT("a fresh start drops it"), Instance->TakeCarriedPlayerState(bTabletUp, bSprintOn));
+
+	// Remember Player State Once: what the game mode writes for every death (item 56). The capture writes the truer
+	// word first - before Put Down Tablet lowers the tablet - so the first writer's stands.
+	TestFalse(TEXT("nothing carried before the death"), Instance->HasCarriedPlayerState());
+	Instance->RememberPlayerStateOnce(true, true);
+	TestTrue(TEXT("a trap's death writes it"), Instance->HasCarriedPlayerState());
+	Instance->RememberPlayerStateOnce(false, false);
+	TestTrue(TEXT("and the game mode's later call does not wipe the capture's"),
+		Instance->TakeCarriedPlayerState(bTabletUp, bSprintOn) && bTabletUp && bSprintOn);
+	TestFalse(TEXT("taken once, as before"), Instance->HasCarriedPlayerState());
 	return true;
 }
 

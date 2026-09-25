@@ -193,6 +193,14 @@ void UWasamiGameInstance::RememberPlayerState(bool bTabletUp, bool bSprintOn)
 	bCarriedSprintOn = bSprintOn;
 }
 
+void UWasamiGameInstance::RememberPlayerStateOnce(bool bTabletUp, bool bSprintOn)
+{
+	if (!bCarriedPlayerState)
+	{
+		RememberPlayerState(bTabletUp, bSprintOn);
+	}
+}
+
 bool UWasamiGameInstance::TakeCarriedPlayerState(bool& bOutTabletUp, bool& bOutSprintOn)
 {
 	bOutTabletUp = bCarriedTabletUp;

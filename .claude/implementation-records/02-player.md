@@ -5,7 +5,7 @@ sources:
   - Source/wasami_deception/WasamiGameMode.cpp
   - Source/wasami_deception/WasamiPlayerCharacter.h
   - Source/wasami_deception/WasamiPlayerCharacter.cpp
-updated: 2026-09-23
+updated: 2026-09-26
 ---
 
 # プレイヤーとゲームモード
@@ -18,7 +18,7 @@ updated: 2026-09-23
 - `AWasamiGameMode : AGameModeBase` — コンストラクタで `DefaultPawnClass = AWasamiPlayerCharacter::StaticClass()`。`Config/DefaultEngine.ini` の `GlobalDefaultGameMode` がこれを指す。`CurrentObjective`（FText、既定は空 = 本家の `BP_DD_GameMode` の `Current Objective` の既定）はタブレットの帯に出す目的。ゾーンの流れ（11 記録）が区間ごとに入れる。ほかにゲームの流れの受け持ち（BeginPlay の頭で設定を読んで当てる〈ゲームインスタンスの `CheckSettingsSave`。15 記録〉、BeginPlay でセーブを読むか作る、0.2 秒後に回収済みのシャードを消す、時間を数えるティック、`DeathEvent`・`OnDeath`、`SaveCheckpoint`）と、本家の Zone のレベル BP の受け持ち（`ChoosePlayerStart` でセーブのチェックポイントの PlayerStart から出す、`DeathEvent` で死亡画面を出してゲームを止める、`SaveCheckpoint` の SAVING PROGRESS、開いたときの黒からの明け、デバッグのコンソールコマンド `Wasami.Kill` ほか）と、シャードの `Check Shards`（全回収の通知）と `Check Streak`（連続回収。13 記録）、病院の `Escape`・`Finished Level`（脱出でスコア画面〈設定の難易度が EASY なら EASY MODE〉を出し、NEXT の後にタイトルへ。13 記録）、開始時にゾーンの流れ（`AWasamiZoneFlow`、11 記録）を出すことを持つ。レベルの名前の定数（`Zone1LevelName`・`Zone2LevelName`・`TitleLevelName` = `L_Title`）と、セーブのチェックポイントから続けるゾーンを選ぶ `LevelForCheckpoint(Checkpoint)`（本家の病院の入口 `06_Hospital` の `Spawn` @81063: 7〜10 は Zone 2、ほかは Zone 1。タイトルの RESUME が使う。14 記録）も持つ。タイトルのレベルは別のゲームモード `AWasamiTitleGameMode`（14 記録）。その中身は 06 記録の「ライフ・セーブ・死亡の受け口」「開始の場所・死亡画面・SAVING PROGRESS」「シャードの確かめ（`Check Shards`）」。
 - `AWasamiPlayerCharacter : ACharacter`
   - `IsSprintOn()` / `IsTabletUp()`（BlueprintPure）、`ToggleTablet()` / `PutDownTablet()` / `ResizeMap()` / `SetMoveSpeeds(Walking, Sprinting)`（BlueprintCallable。`PutDownTablet` は本家の `Put Down Tablet`〈@31904〉: 上げていれば判定なしで下ろす〈woosh とカーブ〉。捕獲〈07 記録〉が呼ぶ。2 つの速さを書いて使う方を当てる。スピードブーストが使う。`StopSprinting()` は本家の `Sprinting?` を偽にするところ〈`BP_00_Teleport` の入り方〉: 押しと切り替えの両方の走りを消して歩きの速さを当てる。Zone 2 の脱出〈11 記録〉が呼ぶ）、`GetTabletScreen()`（画面のウィジェット。ウィジェットコンポーネントが作るまでは null）、`GetTablet()`（板のコンポーネント。`PlaceTablet` が毎フレーム置いた所にいる）、`GetPowers()`。
-  - `RestoreState(bTabletUp, bSprintOn)`（BlueprintCallable。**本家に無い**。2026-09-22 のレビューの指摘、作業一覧の項目 38）… 死ぬ直前のタブレットとダッシュを、レベルを開き直して作り直されたプレイヤーに戻す。`BeginPlay` がゲームインスタンスの持ち越し（06 記録の `TakeCarriedPlayerState`）を取って呼ぶ。タブレットは woosh も上がる演出も無しで**最初から上がった状態**に置き（`TabletInterp` = 1、ミニマップの撮影も入）、ダッシュは TOGGLE SPRINT なら掛け金、そうでなければ押しっぱなしとして入れる（下の「ダッシュ」）。偽を渡したものは触らない。
+  - `RestoreState(bTabletUp, bSprintOn)`（BlueprintCallable。**本家に無い**。2026-09-22 のレビューの指摘、作業一覧の項目 38。2026-09-26 に**どの死に方でも効く**ようになった: 持ち越しを書くのが捕獲だけだったので罠の死では戻らなかった。06 記録の `RememberPlayerStateOnce`、作業一覧の項目 56）… 死ぬ直前のタブレットとダッシュを、レベルを開き直して作り直されたプレイヤーに戻す。`BeginPlay` がゲームインスタンスの持ち越し（06 記録の `TakeCarriedPlayerState`）を取って呼ぶ。タブレットは woosh も上がる演出も無しで**最初から上がった状態**に置き（`TabletInterp` = 1、ミニマップの撮影も入）、ダッシュは TOGGLE SPRINT なら掛け金、そうでなければ押しっぱなしとして入れる（下の「ダッシュ」）。偽を渡したものは触らない。
   - `IsMapZoomedOut()`（Z で地図を引いているか。本家の `mapZoomedOut?`）、`GetCamera()`、`GetArrowPointer()`（地図の矢印。子のアクタができてから。03 記録）。
   - `AddToMap(Class)`・`RemoveFromMap(Class)`（本家の同名のイベント。そのクラスの今いる全アクタを地図に足す・外す。赤いシャードが敵を足す。16 記録）、`IsOnMap(Actor)`（キャプチャの `ShowOnlyActors` に入っているか。最後の作り直しの時点）。
   - `OnInteract`（`FSimpleMulticastDelegate`。C++ だけ）と `InteractPressed()`（それを流す。F が呼び、デバッグの `Wasami.Interact` も呼ぶ）。

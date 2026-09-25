@@ -26,13 +26,13 @@ MEL = unreal.MaterialEditingLibrary
 
 # Bump when a master material's graph or its usage flags (MASTER_USAGE) change: ensure_masters rebuilds it in
 # place (its instances keep it).
-MASTER_VERSION = "2"
+MASTER_VERSION = "3"
 VERSION_TAG = "WasamiGraphVersion"
 
 # Which of our masters each master of the export maps to (prepare_stage.py's `master`).
 MASTER_OF = {"decal": paths.MASTER_DECAL, "lit": paths.MASTER_UNLIT, "metal": paths.MASTER_METAL,
              "fresnel": paths.MASTER_FRESNEL, "glass": paths.MASTER_GLASS, "glassmask": paths.MASTER_GLASS,
-             "sewerglass": paths.MASTER_GLASS_SEWER}
+             "sewerglass": paths.MASTER_GLASS_SEWER, "shadowplane": paths.MASTER_SHADOW_PLANE}
 # The usage flags (bUsedWith*) each master has to carry. A master a mesh of an unflagged kind uses compiles no shader
 # for that kind: the editor makes one on the spot, a packaged build falls back to the default material (the grey
 # checker). Only the kinds in use are flagged — each flag is another set of shader permutations to cook, and this PC
@@ -48,6 +48,8 @@ MASTER_USAGE = {
     paths.MASTER_FRESNEL: ("used_with_nanite", "used_with_static_lighting"),
     paths.MASTER_GLASS: ("used_with_nanite", "used_with_static_lighting"),
     paths.MASTER_GLASS_SEWER: ("used_with_nanite", "used_with_static_lighting"),
+    # The one plane it is on is a Static /Engine/BasicShapes/Plane, never Nanite (translucency is not drawn by it).
+    paths.MASTER_SHADOW_PLANE: ("used_with_static_lighting",),
 }
 # The export's texture kinds → our texture parameters, per master.
 TEX_PARAM = {
@@ -58,6 +60,7 @@ TEX_PARAM = {
     paths.MASTER_FRESNEL: {"albedo": "Albedo", "normal": "Normal", "packed": "Packed"},
     paths.MASTER_GLASS: {"albedo": "Albedo"},
     paths.MASTER_GLASS_SEWER: {"normal": "Normal"},
+    paths.MASTER_SHADOW_PLANE: {},
 }
 # The export's parameters we can carry over. The rest (Normal Flatness, RefractionDepthBias, Emissive Multiplier,
 # Fade Length (S) …) belong to graph parts that cook removed, so they are counted and skipped, not guessed.
@@ -70,6 +73,7 @@ SCALARS = {
                            "BaseReflectFractionIn"),
     paths.MASTER_GLASS: (),
     paths.MASTER_GLASS_SEWER: ("Fresnel Power", "Max Opacity", "Min Opacity", "Metallic", "spec", "Roughness"),
+    paths.MASTER_SHADOW_PLANE: ("CameraFade", "Depth Fade"),
 }
 VECTORS = {
     paths.MASTER_SUBSTANCE: ("Emissive Color Multiplier", "Mask Color"),
@@ -79,6 +83,7 @@ VECTORS = {
     paths.MASTER_FRESNEL: ("Fresnel Setting",),
     paths.MASTER_GLASS: ("MaskedColor",),
     paths.MASTER_GLASS_SEWER: ("diffuse color", "diffuse2 color"),
+    paths.MASTER_SHADOW_PLANE: ("Color",),
 }
 BLEND = {
     None: unreal.BlendMode.BLEND_OPAQUE,
@@ -176,7 +181,8 @@ def ensure_masters():
     for asset_path, build in ((paths.MASTER_SUBSTANCE, _build_substance), (paths.MASTER_DECAL, _build_decal),
                               (paths.MASTER_UNLIT, _build_unlit), (paths.MASTER_METAL, _build_metal),
                               (paths.MASTER_FRESNEL, _build_substance_fresnel), (paths.MASTER_GLASS, _build_glass),
-                              (paths.MASTER_GLASS_SEWER, _build_glass_sewer)):
+                              (paths.MASTER_GLASS_SEWER, _build_glass_sewer),
+                              (paths.MASTER_SHADOW_PLANE, _build_shadow_plane)):
         mat, needs_build = _material(asset_path)
         if needs_build:
             build(mat)
@@ -407,6 +413,41 @@ def _build_substance_fresnel(mat):
     g.link(g.scalar("BaseReflectFractionIn", 0.04, -1100, 600), "", fresnel, "BaseReflectFractionIn")
     rim = g.multiply(fresnel, "", g.vector("Fresnel Setting", (0.0, 0.0, 0.0, 1.0), -1100, 720), "RGB", -600, 550)
     g.out(rim, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+
+def _build_shadow_plane(mat):
+    """M_ShadowPlane (the sewer boss fight's; Zone 1 uses the instance M_06_ShadowPlane_Zone1_Tunnel to take the far
+    end of its tunnel into the dark), as its cooked base pass pixel shader computes it (Tools/dd/cooked_shaders.py
+    "M_06_ShadowPlane_Zone1_Tunnel."): a translucent surface whose base colour is Color (black), lit as a translucent
+    surface is by default, with
+
+        Opacity = Saturate((PixelDepth - 24) / CameraFade) * Saturate((SceneDepth - PixelDepth) / Max(Depth Fade, 1e-5))
+
+    — the shader's `mad r1.w, r0.z, 1.0, -24.0; div_sat r1.w, r1.w, cb3[4].y` (a Camera Depth Fade of offset 24 and
+    length CameraFade) times `div_sat r0.x, r0.x, cb3[4].w` over the scene depth (a Depth Fade of distance Depth Fade,
+    whose Max(, 1e-5) is in the uniform table). So the plane is clear where something stands just in front of it and
+    solid black the further the view sees past it: at the mouth of Zone 1's tunnel the far end is 92 m off and its
+    Depth Fade is 9270, so it reads as darkness. Work list item 55.
+
+    Not reproduced: `RefractionDepthBias`, as M_DD_Glass does not (the instance leaves it at the default 0)."""
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    g = _Graph(mat, checked=True)
+    g.out(g.vector("Color", (0.0, 0.0, 0.0, 1.0), -900, -300), "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
+
+    # Camera Depth Fade and Depth Fade are not among the expressions Python can make, so both are written out of the
+    # nodes that are — which is also what the shader does, instruction for instruction.
+    pixel = g.node(unreal.MaterialExpressionPixelDepth, -1500, 0)
+    near = g.binary(unreal.MaterialExpressionSubtract, pixel, "", g.const(24.0, -1500, 120), "", -1250, 20)
+    near = g.binary(unreal.MaterialExpressionDivide, near, "", g.scalar("CameraFade", 100.0, -1500, 220), "", -1050, 60)
+    near = g.clamp(near, "", -850, 60)
+
+    far = g.binary(unreal.MaterialExpressionSubtract, g.node(unreal.MaterialExpressionSceneDepth, -1500, 340), "",
+                   pixel, "", -1250, 380)
+    distance = g.binary(unreal.MaterialExpressionMax, g.scalar("Depth Fade", 1000.0, -1500, 480), "",
+                        g.const(1e-5, -1500, 580), "", -1250, 500)
+    far = g.clamp(g.binary(unreal.MaterialExpressionDivide, far, "", distance, "", -1050, 400), "", -850, 400)
+
+    g.out(g.multiply(near, "", far, "", -600, 200), "", unreal.MaterialProperty.MP_OPACITY)
 
 
 def _build_glass(mat):

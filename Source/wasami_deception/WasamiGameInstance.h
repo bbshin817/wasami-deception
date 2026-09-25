@@ -95,6 +95,17 @@ public:
 	 */
 	bool TakeCarriedPlayerState(bool& bOutTabletUp, bool& bOutSprintOn);
 
+	/**
+	 * The same, but only when nothing is carried yet. The game mode writes this for every death (item 56), and the
+	 * capture has already written the truer word by then - before Put Down Tablet lowered the tablet - so the first
+	 * writer's stands.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void RememberPlayerStateOnce(bool bTabletUp, bool bSprintOn);
+
+	/** Whether a death has already written what to carry. */
+	bool HasCarriedPlayerState() const { return bCarriedPlayerState; }
+
 	/** FTruncVector: each component truncated toward zero, the key a shard is remembered by. */
 	static FVector ShardKey(const FVector& Location);
 

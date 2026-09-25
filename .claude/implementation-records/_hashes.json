@@ -2,7 +2,7 @@
   "00-overview.md": {
     "wasami_deception.uproject": "a2af4bff9156893997564463ebbdf04d2e64fb06",
     ".mcp.json": "d2e3ee5c9642aabc67459c39080c1497ba12eaec",
-    "Config/DefaultEngine.ini": "7703b08295d85666b6380584577893f8d0d187df",
+    "Config/DefaultEngine.ini": "92f7a7679b8123061e544ac4dddc8a9f64d147e1",
     "Config/DefaultGame.ini": "ef974a3da65369667ada40ef3dfb127d39398c07",
     "Config/DefaultInput.ini": "a919105de6016a7a1094346d603c99a3274d5083",
     "Config/DefaultEditor.ini": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
@@ -16,7 +16,7 @@
     "Tools/mac_build.sh": "0764df586893c464167b0e2a4a43a03561b6bfa8"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "fe160d9d25740f93ef3d2edc59b233c3dba3620e",
+    "Tools/dd/prepare_stage.py": "eabb917705c94d26e31e5f1de2d43651e775cdb6",
     "Tools/dd/prepare_nurse_posters.py": "6c4429e257c2b59ad051f2f09fe2651d6d9708b0",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "dcc26af84b302fe8f2051c7e495534580b58e40a",
@@ -45,10 +45,10 @@
     "Content/Python/wasami_tools/toolsets/dev.py": "173e55c8c3e1ee2ed340b6ca0b4d12bf9748c56e",
     "Content/Python/wasami_tools/toolsets/stage.py": "f9ebcebc9fb4b61ee5366300f93b92e191b45a06",
     "Content/Python/wasami_tools/pipeline/__init__.py": "f0729f12d945db178ad6c34ddf48ca29447c2fcc",
-    "Content/Python/wasami_tools/pipeline/paths.py": "e5ff59c8160311cc4df612b02aea0acc275de300",
+    "Content/Python/wasami_tools/pipeline/paths.py": "2bd34b51ca0877e397f47bfeabbb35863574f1f8",
     "Content/Python/wasami_tools/pipeline/ue_props.py": "64c9a6ba309d3a139e4dd0ef2b5011566732c9c5",
     "Content/Python/wasami_tools/pipeline/dd_assets.py": "26ff2ea9fc0a630b4b1273c7cf152c71bc7d852b",
-    "Content/Python/wasami_tools/pipeline/dd_stage.py": "847efb59bf6340d766e6b43621469e4dba47e1f3",
+    "Content/Python/wasami_tools/pipeline/dd_stage.py": "811421d460c4c909cc9fc575e567a82a6cd95e5a",
     "Content/Python/wasami_tools/pipeline/dd_level.py": "240c577ad2bced2d41c06a40acebe63fc3f97162",
     "Content/Python/wasami_tools/pipeline/dd_sequence.py": "bfebb6fc6f092b619a600faba370fc92fb00fb42",
     "Content/Python/wasami_tools/pipeline/dd_tablet.py": "3f1319fca53b67fc57aac306050d41b2d01fe671",
@@ -73,7 +73,7 @@
   },
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "e8cdc83d70bb5e123769920bc4fd38ee98023199",
-    "Source/wasami_deception/WasamiGameMode.cpp": "7b2482481d518edf9ebf9ca095d243a13c6964b8",
+    "Source/wasami_deception/WasamiGameMode.cpp": "f423423cd1a554f40b3990834b95794ee1b0154c",
     "Source/wasami_deception/WasamiPlayerCharacter.h": "790cae6acaf6e872a122df0daddb0d05f30739a0",
     "Source/wasami_deception/WasamiPlayerCharacter.cpp": "1024ef80f900e072b7a3065b2fd52b5553023d68"
   },
@@ -129,11 +129,11 @@
     "Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp": "956a79e018c51e07c01b0937d1cf1788c9d22f86"
   },
   "06-game-flow-save.md": {
-    "Source/wasami_deception/WasamiGameInstance.h": "39d6feb33dc779f92bbacbcb8df7cd9c64eb618e",
-    "Source/wasami_deception/WasamiGameInstance.cpp": "a75bfc708a62fab829e5692727449a2bbe37878f",
+    "Source/wasami_deception/WasamiGameInstance.h": "8aa950ac7700cf128a8a5e4bd296d299c80caaab",
+    "Source/wasami_deception/WasamiGameInstance.cpp": "e48996866620f7bf48d35e69135b1966bb9e1a1f",
     "Source/wasami_deception/WasamiSaveGame.h": "b3ba9a12310b0ba594ae4cd471869844d22751ed",
     "Source/wasami_deception/WasamiSaveGame.cpp": "38d605af7f43c2c3326e696a3b2b632df02274bc",
-    "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "c597c56f30ab44a78bc5f8e63f74cece13ae3579",
+    "Source/wasami_deception/Tests/WasamiGameFlowTests.cpp": "355dc9c63267dff61bb7aa3063e09f81c1a4e2f5",
     "Source/wasami_deception/WasamiShard.h": "1e09a256cd2ae8dd65ef7eb94f4e7398ab5476fc",
     "Source/wasami_deception/WasamiShard.cpp": "0d4ec6b0c430312c09536fde5f1f9184428e4ca3",
     "Source/wasami_deception/Tests/WasamiShardTests.cpp": "0ad77b94a28c7b5a88e87b3858052e8c23c5075b",
@@ -157,7 +157,7 @@
     "Source/wasami_deception/Tests/WasamiEnemyTests.cpp": "29006c71aeaee49afb78e76f5f7b38a265e6af5f",
     "Source/wasami_deception/Tests/WasamiTestListener.h": "1d0a05da143bdeda21999960ec9ccb1001db2708",
     "Source/wasami_deception/WasamiCapture.h": "d663586a9c687df4665381b61daa316e186c476e",
-    "Source/wasami_deception/WasamiCapture.cpp": "4b6de49a2ed1c1f78ce3853b55dff8ff8926228f",
+    "Source/wasami_deception/WasamiCapture.cpp": "849df9f5691d0e64de4e847b7d75a1c0cab7b1f2",
     "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "e5db84e4e216e1a8d6b78cb6ad9d7b26f70ef50d",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112",
