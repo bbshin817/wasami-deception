@@ -191,6 +191,19 @@ PIE で `r.Lumen.DiffuseIndirect.Allow` を 1 → 0 にしても画面の平均�
 - **メモリは余裕がある**: GPU メモリは VERY HIGH で 2087〜2950 MB、HIGH で 2197〜2533 MB（予算 5198 MB）。PIE より 0.7〜1.4 GB 少なく、`nvidia-smi` のカード全体の山も 2850〜3712 MB / 6144 MB。常駐 RAM は 1.5〜2.0 GB。
 - **画質の選択肢はすでに製品にある**（OPTIONS の QUALITY が LOW / MEDIUM / HIGH / VERY HIGH の 4 段と、RESOLUTION SCALE のスライダー。どちらも本家と同じ並び。15 記録）。1080p で 60 に届かないのは最高画質の VERY HIGH だけなので、新しい仕組みを足す必要は無い。
 
+### VSM のあふれの警告（2026-09-26、作業一覧の項目 57）
+
+- **`[VSM] Non-Nanite Marking Job Queue overflow` は速さだけの注意で、影は欠けない**。待ち行列は 1 スレッドグループの共有配列（`MARKING_JOB_QUEUE_SIZE` = グループのスレッド数 × 2。`Engine/Shaders/Private/VirtualShadowMaps/VirtualShadowMapBuildPerPageDrawCommands.usf`）で、あふれたジョブは `bIsSmallJob || bMarkingJobQueueOverflow` の枝が**同じページをそのスレッドで順に立てる**ので、絵は変わらない。欠けるあふれ（Page Pool・Visible Instances）は文面が「visual artifacts (missing shadow)」と書き分けてある。
+- **待ち行列を広げる設定は無い**（シェーダーの定数）。**`r.Shadow.Virtual.NonNaniteVSMMaxPageAreaCoverage` は UE 5.8 に存在しない**（`Source/Runtime/Renderer/Private` と `Shaders/Private` に 1 件も無く、パッケージ版でその名前を打っても値が返らない。在るのは診断用の `r.Shadow.Virtual.NonNanite.LargeInstancePageAreaThreshold` = −1 だけ）。画面に出さないのは `Config/DefaultEngine.ini` の `[SystemSettings]` の `r.Shadow.Virtual.AllowScreenOverflowMessages=0`。ログには 1 起動に 1 行だけ残る。
+- **測っても速さは落ちていない**（2026-09-26 07:50 に作り直したパッケージ＝項目 59 で `tiles_tile_tunnel`・`tiles_tile_parking` を Nanite から外した後。VERY HIGH・1080p・`Tools/game_perf.py`。結果の JSON は `Intermediate/Perf/pkg2_*.json`）:
+
+| 場所 | fps avg | p95 の fps | GPU ms | GPU メモリ | カード全体の山 |
+| --- | --- | --- | --- | --- | --- |
+| Z1 駐車場（cp 6） | 62.0 | 60.3 | 15.73 | 2731 MB | 3674 MB / 6144 MB |
+| Z1 トンネルの中（奥を見る） | 62.1 | 60.6 | 15.68 | 2702 MB | 3466 MB / 6144 MB |
+
+- 同じ cp 6 の 2026-09-21 は 51.7 fps・GPU 18.84 ms・2769 MB だったので、**影を落とす非 Nanite のメッシュが増えても遅くなっていない**。GPU メモリも予算 5198 MB とカードの 6144 MB の内。**あふれを本当に減らす手はトンネルの天井を Nanite に戻すことだけ**で、それは項目 59 の直し（トンネルの奥の暗がり）を捨てることになるので採らない。
+
 ### パッケージした本編の通しプレイ（2026-09-21、作業一覧の項目 36 のステップ 6b）
 
 - **パッケージ版がタイトルから脱出まで 1 回の起動（228 s）で通った**。`python Tools/game_flow.py run`（01 記録）がコマンドラインの `-ExecCmds` だけで進め、**18 の節目がすべて期待どおり**だった（タイトル → `Wasami.ResetSave` + `open` → Zone 1 の到着とステージ OP → 鍵 → 迷路で保存 5 → 全回収 → 駐車場の場面 → 救急車の屋根で保存 7 → Zone 2 → 捕まる場面と独房 → 鍵 → 保存 8・9 → 全回収と欠片 → ガレージ → ポータル → スコア画面 FINAL RANK A）。レベルの読み込みは Zone 1 が 0.60 s・Zone 2 が 1.12 s、`Saved/Archive/Windows/wasami_deception/Saved/Crashes` は 0 件。
@@ -261,3 +274,4 @@ Windows で作った物を Mac で受け取り、Metal 用にクックして遊�
 - 2026-09-20: パッケージの下ごしらえを確かめた（作業一覧の項目 21 のステップ 7）。道具のプラグイン 3 つを Editor ターゲット限定にし、パッケージ設定を空のままにする理由を `DefaultGame.ini` に書いた。クックとビルドは配布の話なので行っていない
 - 2026-09-20: 両ゾーンの性能を測って「性能」の節を足した（作業一覧の項目 21 のステップ 5・6）。1080p 相当・Epic で 46〜60 fps・どこも GPU 律速、メモリは目安内。対処は入れず、選択肢をユーザーの判断待ちにした
 - 2026-09-21: Windows の `Development` のパッケージを初めて通した（作業一覧の項目 36 のステップ 2）。`DefaultGame.ini` に `AssetManagerSettings` の `GameFeatureData` の規則を足してクックの失敗を直した。手順は `.claude/guides/distribution.md`、出来上がりは `Saved/Archive/Windows`（約 1.0 GB）
+- 2026-09-26: VSM のあふれの警告を調べ、速さだけの注意だと確かめて「VSM のあふれの警告」の節を足した（作業一覧の項目 57 の完了の条件 (2)）
