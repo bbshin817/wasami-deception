@@ -540,16 +540,7 @@ def import_mesh(entry, nanite):
     mesh = unreal.load_asset(entry["asset"])
     if not isinstance(mesh, unreal.StaticMesh):
         raise RuntimeError("import of %s made no StaticMesh at %s" % (entry["file"], entry["asset"]))
-    settings = mesh.get_editor_property("nanite_settings")
-    settings.set_editor_property("enabled", bool(nanite))
-    if nanite:
-        # the fallback mesh is what complex collision uses: keep it whole so walls and floors collide where drawn
-        for prop, value in (("fallback_target", unreal.NaniteFallbackTarget.RELATIVE_ERROR), ("fallback_relative_error", 0.0)):
-            try:
-                settings.set_editor_property(prop, value)
-            except Exception as e:  # noqa: BLE001
-                unreal.log_warning("nanite %s: %s" % (prop, e))
-    mesh.set_editor_property("nanite_settings", settings)
+    setup_nanite(mesh, nanite)
     body = mesh.get_editor_property("body_setup")
     if body is not None:
         body.set_editor_property("collision_trace_flag", unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
@@ -558,6 +549,24 @@ def import_mesh(entry, nanite):
         unreal.log_warning("mesh %s: %d slots imported, the export has %d" % (entry["asset"], len(slots), len(entry["slots"])))
     setup_lightmap(mesh, entry)
     return mesh
+
+
+def setup_nanite(mesh, nanite):
+    """Turns Nanite on or off for the mesh. Returns whether it changed (changing it rebuilds the mesh)."""
+    settings = mesh.get_editor_property("nanite_settings")
+    changed = settings.get_editor_property("enabled") != bool(nanite)
+    settings.set_editor_property("enabled", bool(nanite))
+    if nanite:
+        # the fallback mesh is what complex collision uses: keep it whole so walls and floors collide where drawn
+        for prop, value in (("fallback_target", unreal.NaniteFallbackTarget.RELATIVE_ERROR), ("fallback_relative_error", 0.0)):
+            try:
+                changed = changed or settings.get_editor_property(prop) != value
+                settings.set_editor_property(prop, value)
+            except Exception as e:  # noqa: BLE001
+                unreal.log_warning("nanite %s: %s" % (prop, e))
+    if changed:
+        mesh.set_editor_property("nanite_settings", settings)
+    return changed
 
 
 def setup_lightmap(mesh, entry):
@@ -590,6 +599,19 @@ def translucent_meshes(stage):
                 m = stage["materials"].get(key) if key else None
                 if m and (m["master"] == "decal" or m["blend"] in TRANSLUCENT_BLENDS):
                     out.add(p["mesh"])
+    return out
+
+
+def off_nanite_meshes(stage):
+    """Meshes kept off Nanite: the translucent ones, and those placed to cast their shadow as two-sided. Nanite's
+    shadows ignore a component's bCastShadowAsTwoSided (only a two-sided material makes them two-sided), so Zone 1's
+    one-sided tunnel ceiling let the movable sun onto the road from where the parking mesh above it ends
+    (y ≈ −16100) to the far end; the original, on the non-Nanite path, keeps the whole tunnel in its shadow."""
+    out = translucent_meshes(stage)
+    for zone in stage["zones"].values():
+        for p in zone["placements"]:
+            if (p.get("props") or {}).get("bCastShadowAsTwoSided"):
+                out.add(p["mesh"])
     return out
 
 
@@ -712,7 +734,7 @@ def import_batch(max_items):
     stage = paths.load_dd_stage()
     ensure_mesh_pipeline()
     ensure_masters()
-    no_nanite = translucent_meshes(stage)
+    no_nanite = off_nanite_meshes(stage)
     todo = []
     for key, m in stage["meshes"].items():
         if m["engine"] or not m["file"]:
@@ -744,7 +766,7 @@ def import_batch(max_items):
 
 def refresh_settings():
     """Brings the already imported assets up to this module: rebuilds a master material whose graph version is old,
-    re-applies each texture's settings and each mesh's lightmap settings, and recompiles every material instance (an instance with static switches keeps
+    re-applies each texture's settings and each mesh's Nanite and lightmap settings, and recompiles every material instance (an instance with static switches keeps
     a failed shader map from an older master until it is updated). An instance on one of these masters that is no
     longer the one its root maps to (a master added since, as M_DD_Metal or M_DD_SubstanceFresnel) is remade in place on the right one, and
     one of m_crystal by dd_specials; one another module has put on a master of its own is left alone."""
@@ -761,13 +783,18 @@ def refresh_settings():
             tex = unreal.load_asset(t["asset"]) if EAL.does_asset_exist(t["asset"]) else None
             if tex is not None and apply_texture_settings(tex, t):
                 changed += 1
-    lightmaps = 0
-    meshes = [m for m in stage["meshes"].values() if not m["engine"] and EAL.does_asset_exist(m["asset"])]
-    with unreal.ScopedSlowTask(len(meshes), "Updating the stage's lightmap settings") as task:
-        for m in meshes:
+    lightmaps = nanite = 0
+    no_nanite = off_nanite_meshes(stage)
+    meshes = [(k, m) for k, m in stage["meshes"].items() if not m["engine"] and EAL.does_asset_exist(m["asset"])]
+    with unreal.ScopedSlowTask(len(meshes), "Updating the stage's mesh settings") as task:
+        for key, m in meshes:
             task.enter_progress_frame(1, m["asset"])
             mesh = unreal.load_asset(m["asset"])
-            if isinstance(mesh, unreal.StaticMesh) and setup_lightmap(mesh, m):
+            if not isinstance(mesh, unreal.StaticMesh):
+                continue
+            if setup_nanite(mesh, key not in no_nanite):
+                nanite += 1
+            if setup_lightmap(mesh, m):
                 lightmaps += 1
     updated = remade = 0
     with unreal.ScopedSlowTask(len(stage["materials"]), "Recompiling the stage's material instances") as task:
@@ -789,4 +816,4 @@ def refresh_settings():
     EAL.save_directory(paths.PIPELINE_ROOT, only_if_is_dirty=True, recursive=True)
     EAL.save_directory(paths.WASAMI_ROOT, only_if_is_dirty=True, recursive=True)   # this game's own pictures
     return {"masters_rebuilt": rebuilt, "textures_updated": changed, "lightmaps_updated": lightmaps,
-            "materials_updated": updated, "materials_remade": remade}
+            "nanite_updated": nanite, "materials_updated": updated, "materials_remade": remade}

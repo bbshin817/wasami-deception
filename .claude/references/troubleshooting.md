@@ -549,6 +549,13 @@
 - 原因: 結合メッシュの `bCastShadowAsTwoSided` を取り込んでおらず、内側向きの片面の天井が Movable の平行光源を遮らない。
 - 対処: 取り込む（コミット 58b66ec）。確かめ方: 平行光源を切っても平均輝度が変わらない（変わるなら漏れている）。
 
+### トンネルのある地点（y ≈ −16100）から奥だけ路面と縁石が明るい（Nanite のメッシュが片面の天井の影を落とさない）
+
+- 症状: Zone 1 のトンネルで、手前は暗いのに、世界に固定の直線の境目から奥の路面・縁石だけが日の当たったように明るい。カメラを動かしても境目は動かない。`ShowFlag.DynamicShadows 0` でも `r.Nanite 0` でも消える。
+- 原因: **Nanite の影は部品の `bCastShadowAsTwoSided` を無視する**（両面にするのは材質の Two Sided だけ）。`tiles_tile_tunnel` が Nanite だったので、内向きの片面の天井が Movable の平行光源を遮らず、駐車場のメッシュが上に被さる所までしか影にならなかった。上の件（`bCastShadowAsTwoSided` の取り込み）は Nanite でないメッシュでしか効かない。
+- 対処: 配置が `bCastShadowAsTwoSided` のメッシュを Nanite から外す（`dd_stage.off_nanite_meshes`。既存のアセットには `refresh_dd_stage_assets` の `nanite_updated`）。焼き直しは要らない。
+- 出典: 2026-09-26、作業一覧の項目 59（01 記録）。
+
 ### PIE で敵が動かない・`find_path_to_location_synchronously` が空・`project_point_to_navigation` が `None`（レベルに道が保存されていない）
 
 - 症状: PIE の Zone 2 で、どこでも `NavigationSystemV1.project_point_to_navigation` が `None`、道の問い合わせが 0 点。見張りは見つけても追えず、迷路のナースも動かない。PIE の中で `RebuildNavigation` しても `Build total execution time: 0.00s` で何も変わらない。エディタで開いた直後も `None` だが、数秒後には道がある。

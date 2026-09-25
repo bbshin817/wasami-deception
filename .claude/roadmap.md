@@ -694,11 +694,21 @@
 ### 58. note の GIF を 2 本撮り直す（トンネルの奥と救急車）
 
 - 目標: 項目 55（トンネルの奥のシャドウプレーン）で見た目が変わったので、note の記事の GIF のうち**トンネルの奥が写るもの**を撮り直す。`.claude/guides/note-progress.md` の「実装が 1 つ終わるたびに原稿を直す」に沿った後始末で、ユーザーの指摘そのものではない。
-- 完了の条件: (1) `docs/note/progress.md` の GIF `14-ambulance-zone2.gif`（救急車でトンネルを抜けて Zone 2 へ）と `12-doors-busted.gif`（トンネルの扉が破られる）を撮り直し、奥が暗闇に沈んだ絵にする。ほかの GIF にトンネルの奥が写っていないかも見る。(2) 原稿の文は「いま何が出来るか」のままで変えない（出来ることは増えていない）。(3) `tmp/note-cli` で同じ記事を書き換える（`Tools/note.local.json` が無ければ原稿だけ直して「note へは未反映」と報告する）。
+- 完了の条件: (1) `docs/note/progress.md` の GIF `14-ambulance-zone2.gif`（救急車でトンネルを抜けて Zone 2 へ）と `12-doors-busted.gif`（トンネルの扉が破られる）を撮り直し、奥が暗闇に沈んだ絵にする。ほかの GIF にトンネルの奥が写っていないかも見る。**作り直したパッケージで撮るときに、項目 59 の完了の条件 (3)（トンネルの中から奥を見て、y ≈ −16100 の境目が無く一様に暗く続く）も一緒に見て、59 を完了にする**（2026-09-26 に足した）。(2) 原稿の文は「いま何が出来るか」のままで変えない（出来ることは増えていない）。(3) `tmp/note-cli` で同じ記事を書き換える（`Tools/note.local.json` が無ければ原稿だけ直して「note へは未反映」と報告する）。
 - 根拠: `.claude/guides/note-progress.md`、`docs/note/progress.md`、作業一覧の項目 55。
 - 依存: 55（完了）。
 - 規模: 1
 - 状態: 未着手
+
+### 59. トンネルのある地点から奥だけ光の当たり方が変わる（Nanite の天井が影を落とさない）
+
+- 目標: 指摘（2026-09-26 の有人セッション）「トンネルにおいて、ある地点から奥に向かって光の当たり方に違いを感じます。本家ではここまであからさまでなかったはずです。ここは本家に揃えて。」
+- 分かっていること: 境目は世界の y ≈ −16100 に固定で、そこから奥の路面と縁石だけが明るい。`ShowFlag.DynamicShadows 0` でも `r.Nanite 0` でも消える。**Nanite の影は部品の `bCastShadowAsTwoSided` を無視する**ので、Nanite の `tiles_tile_tunnel` の片面の天井が Movable の平行光源（本家も Movable・同じ向き）を遮らず、駐車場のメッシュが上に被さる所までしか影にならなかった。本家は Nanite が無いので天井がトンネル全体を影にする。
+- 完了の条件: (1) 配置が `bCastShadowAsTwoSided` のメッシュを Nanite から外す（取り込みと `refresh_dd_stage_assets` の両方）。(2) PIE でトンネルの中の 3 か所から奥を見て、境目が消えて一様に暗く続くこと。(3) パッケージ版で同じ見え方（項目 58 の GIF の撮り直しでパッケージを作り直すときに一緒に見る）。
+- 根拠: `Content/Python/wasami_tools/pipeline/dd_stage.py`（`off_nanite_meshes`・`setup_nanite`）、`pak_reference_2/_levels/06_Hospital_Zone_01.scene.json`（`DirectionalLight_2` は Movable、ステージ本体 5 個の `bCastShadowAsTwoSided`）、症状索引、実装記録 01。
+- 依存: なし。
+- 規模: 1
+- 状態: **(1)(2) 済み（2026-09-26）**。`tiles_tile_tunnel`・`tiles_tile_parking` を Nanite から外した（`tile_01`〜`03` は半透明で元から外れていた）。PIE で (11245, −18800 / −17000 / −12000) から +Y を見て、境目が消えたのを確かめた。**残りは (3)**（項目 58 と一緒に）。
 
 ## 取りやめた項目
 
