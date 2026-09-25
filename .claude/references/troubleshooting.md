@@ -879,7 +879,8 @@
 - 原因: 走り出しで当たりを入れる囲いのうち**後ろの壁 `BlockingVolume_Ambulance_3`**。囲いは救急車の子で、シーケンスが掃引なしで動かすので、1 フレームの進み（走り出しの終わりは 2440 cm/s）が壁との隙間を超えると、壁がプレイヤーのカプセルの中に現れる。土台の移動（`UCharacterMovementComponent::UpdateBasedMovement`）は掃引なので、始めから食い込んでいると移動が中止になり、押し出しが 46 cm 後ろへ出して屋根から外す。
 - 対処: **直した**（2026-09-22、項目 41）。`AWasamiZone1Flow::On06ReachAmbulance` は後ろの壁だけ当たりを入れない。前と左右の 3 枚はそのまま。
 - 確かめ方: `python Intermediate/Overnight/pie_ambulance.py`（PIE で屋根に落として走り出させ、`Wasami.Status` と毎ティックの測りを表にする）。プレイヤーと救急車の y の差が −66.7 のまま読み込み画面まで続けば乗っている。`--no-walls` は囲いを 4 枚とも切った比較用。
-- 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`20260918-zone-progression.md`（2026-09-19 ステップ 10a）。
+- **もう 1 つの原因（2026-09-26）**: **走り出す救急車が `Static` のままのパッケージ**。土台の移動は土台が `Movable` のときだけ働く（`MovementBaseUtility::IsDynamicBase`）ので、`Static` だと後ろの壁を外しても運ばれず、描画側が変換を焼くので**止まったままの 2 台目**も見える。`dd_sequence.movable` が `Movable` にするが、**レベルを組み立て直した後にパッケージを作り直さないと入らない**。疑うときは `Saved/Archive/Windows/wasami_deception.exe` と `Content/Stage/Maps/*.umap` の日時を比べる。
+- 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`20260918-zone-progression.md`（2026-09-19 ステップ 10a）、`20260926-package-review2.md`（2026-09-26）。
 
 ### `UnrealEditor-Cmd.exe` を Bash から直に起動するとテストが 1 件も走らずに終了コード 255 で落ちる
 

@@ -32,13 +32,14 @@ updated: 2026-09-26 03:40
 - [x] 1. 項目 57（黄色い文字）と項目 56（罠で死んだときの引き継ぎ） … 2026-09-26 完了（`493e93b`）。ini に `r.Shadow.Virtual.AllowScreenOverflowMessages=0`、`AWasamiGameMode::DeathEvent` が `RememberPlayerStateOnce` を呼ぶ。テストは `Wasami.GameFlow.Lives` に足して通った。
 - [x] 2. 項目 55（トンネルのシャドウプレーン） … 2026-09-26 完了（`493e93b`）。8 つ目のマスター `M_DD_ShadowPlane` を cook のシェーダーの式から組み、PIE でトンネルの奥が暗く沈むのを見た。
 - [x] 3. パッケージを作り直して 53・55・56・57 を確かめた … 2026-09-26 完了。黄色い文字は消え（黄色い画素 167/156 → 4 = 背景のばらつき）、トンネルの奥の灰色の板も消え、救急車は 60 fps でも 15 fps でも運ばれて 1 台しか見えず、罠の死から戻ったタブレットは `tablet=1` のまま。**項目 53 は直しを足さずに閉じた**（古いパッケージが原因だった）。パッケージ版にキーが届かないと分かったので `Wasami.Tablet` と `Wasami.Status` の `tablet=`・`sprint=`・`speed=` を足した。
-- [ ] 4. `Shipping` のパッケージも作る（2026-09-26 のユーザーの回答「両方作る」。`Saved/Archive/Shipping/Windows/`）← 作業中
-- [ ] 5. 項目 57 の残り（あふれ自体を減らすか測って決める）と、`Tools/game_flow.py run` の通しで黄色い字が出ないことの確かめ
-- [ ] 6. 項目 54（Zone 2 の場面の演技）… **2026-09-26 のユーザーの回答で無人運転に渡す**。作業一覧の項目 54 に調べた中身（Matron の `Detected` が手を上げたまま止まる／シネカメラの LookAt が本家の回転キーに勝っている）を書いてあるので、この記録では進めない。
+- [x] 4. `Shipping` のパッケージも作った … 2026-09-26 完了。`Saved/Archive/Shipping/Windows/`（クック 0 エラー）。起動して全画面でタイトルが出て、黄色い字も無い。`.claude/guides/distribution.md` に手順を書いた。
+- [ ] 5. 項目 57 の残り（完了の条件 (2) あふれ自体を減らすか測って決める、(4) `Tools/game_flow.py run` の通しの 19 枚で黄色い字が出ないことの確かめ）← 次
+- [ ] 5b. 項目 58（note の GIF 12・14 を撮り直す。トンネルの奥の見た目が変わったため）
+- [ ] 6. 項目 54（Zone 2 の場面の演技）… **2026-09-26 のユーザーの回答で無人運転に渡す**。作業一覧の項目 54 に調べた中身（Matron の `Detected` が手を上げたまま止まる／シネカメラの LookAt が本家の回転キーに勝っている）を書いてあるので、**この記録では進めない**（無人運転が項目 54 の進捗記録を別に作る）。
 
 ## 次にやること
 
-ステップ 4。`Intermediate/Overnight/uat_package_shipping.log` が `BUILD SUCCESSFUL` で終わったのを確かめ、`Saved/Archive/Shipping/Windows/wasami_deception.exe` が起動して遊べることだけ見る（`Shipping` にはコンソールも `Wasami.*` も無いので、`-ExecCmds` の台本は使えない。絵を 1 枚撮ってタイトルが出ていれば十分）。そのあとステップ 5。
+ステップ 5。項目 57 の完了の条件 (4) から: `python Tools/game_flow.py run`（**エディタを閉じてから**。約 4 分）を流し、`Intermediate/GameFlow/*.png` の 19 枚に黄色い字が 1 つも無いことを数えて確かめる。次に (2): `r.Shadow.Virtual.NonNaniteVSMMaxPageAreaCoverage`（既定 0.10）を上げたときの fps と VRAM を `Tools/game_perf.py` で測り、6 GB に収まる範囲で上げるか、上げずに閉じるかを決める。そのあとステップ 5b（項目 58）→ ステップ 6（項目 54。**無人運転に渡す**ので、この記録では触らない）。
 
 ## 決定事項
 
