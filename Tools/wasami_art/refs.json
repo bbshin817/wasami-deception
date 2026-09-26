@@ -2,45 +2,197 @@
   "_comment": "ワサミの参照画像の一覧。写真の原本はユーザーのスクリーンショットのフォルダ（git の外。環境変数 WASAMI_ART_SCREENSHOTS で差し替えられる）。フォルダには無関係な画面や肌の出た写真も混ざるので、丸ごとは送らず、ここに載せたものだけを参照に使う。選び直すときは `python Tools/wasami_art/wasami_art.py catalog` の縮小一覧を見る。crop は [左, 上, 右, 下] を 0〜1 の割合で（省略で全体）。",
   "source_dirs": {
     "screenshots": "C:/Users/User/Pictures/Screenshots",
-    "ui": "SourceArt/Wasami/UI"
+    "ui": "SourceArt/Wasami/UI",
+    "tmp_images": "tmp/images"
   },
   "sets": {
     "face": {
       "note": "本人の顔が分かる正面寄りの写真。似せるための基本の組",
       "images": [
-        {"src": "screenshots:スクリーンショット 2026-06-24 233655.png", "note": "目を見開いた正面、白い T シャツ、明るい"},
-        {"src": "screenshots:スクリーンショット 2026-03-03 144747.png", "note": "正面、口を開けた驚き（縦長の自撮り）", "crop": [0.0, 0.07, 1.0, 0.95]},
-        {"src": "screenshots:スクリーンショット 2026-06-28 212325.png", "note": "正面の寄り、目を見開く"},
-        {"src": "screenshots:スクリーンショット 2026-07-28 205258.png", "note": "寄り、ひきつった顔"},
-        {"src": "screenshots:スクリーンショット 2026-07-13 214744.png", "note": "寄り、大口の笑い"}
+        {
+          "src": "screenshots:スクリーンショット 2026-06-24 233655.png",
+          "note": "目を見開いた正面、白い T シャツ、明るい"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-03-03 144747.png",
+          "note": "正面、口を開けた驚き（縦長の自撮り）",
+          "crop": [
+            0.0,
+            0.07,
+            1.0,
+            0.95
+          ]
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-06-28 212325.png",
+          "note": "正面の寄り、目を見開く"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-07-28 205258.png",
+          "note": "寄り、ひきつった顔"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-07-13 214744.png",
+          "note": "寄り、大口の笑い"
+        }
       ]
     },
     "expression": {
       "note": "ホラーとギャグに使える大げさな表情",
       "images": [
-        {"src": "screenshots:スクリーンショット 2026-07-06 224113.png", "note": "叫ぶ"},
-        {"src": "screenshots:スクリーンショット 2026-03-16 211441.png", "note": "歯をむき出す"},
-        {"src": "screenshots:スクリーンショット 2026-08-27 002442.png", "note": "赤い光で上目づかいに迫る"},
-        {"src": "screenshots:スクリーンショット 2026-06-10 212050.png", "note": "白目をむく"},
-        {"src": "screenshots:スクリーンショット 2026-07-13 214739.png", "note": "にらむ"}
+        {
+          "src": "screenshots:スクリーンショット 2026-07-06 224113.png",
+          "note": "叫ぶ"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-03-16 211441.png",
+          "note": "歯をむき出す"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-08-27 002442.png",
+          "note": "赤い光で上目づかいに迫る"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-06-10 212050.png",
+          "note": "白目をむく"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-07-13 214739.png",
+          "note": "にらむ"
+        }
       ]
     },
     "pose": {
       "note": "上半身の身ぶり（腕・手の形）",
       "images": [
-        {"src": "screenshots:スクリーンショット 2026-03-03 210329.png", "note": "両手を顔の横で爪のように開く"},
-        {"src": "screenshots:スクリーンショット 2026-07-11 001020.png", "note": "両手を上げて舌を出す"},
-        {"src": "screenshots:スクリーンショット 2026-07-26 125957.png", "note": "両腕を広げて叫ぶ"},
-        {"src": "screenshots:スクリーンショット 2026-05-24 123050.png", "note": "両手を爪にして迫る"}
+        {
+          "src": "screenshots:スクリーンショット 2026-03-03 210329.png",
+          "note": "両手を顔の横で爪のように開く"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-07-11 001020.png",
+          "note": "両手を上げて舌を出す"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-07-26 125957.png",
+          "note": "両腕を広げて叫ぶ"
+        },
+        {
+          "src": "screenshots:スクリーンショット 2026-05-24 123050.png",
+          "note": "両手を爪にして迫る"
+        }
       ]
     },
     "house_style": {
       "note": "本作の既存の 2D 素材（白抜きのシルエットの顔・加工した顔・ロゴの字体）。作風を揃えたいときに足す",
       "images": [
-        {"src": "ui:wasami_symbol.png", "note": "白抜きのシルエットの顔（紋章・読み込み画面）"},
-        {"src": "ui:pause_head.png", "note": "白抜きのシルエットの頭（ポーズ画面）"},
-        {"src": "ui:title_face.png", "note": "タイトルの顔（写真の加工）"},
-        {"src": "ui:title_logo.png", "note": "ロゴの字体（黒に赤の縁の尖った字）"}
+        {
+          "src": "ui:wasami_symbol.png",
+          "note": "白抜きのシルエットの顔（紋章・読み込み画面）"
+        },
+        {
+          "src": "ui:pause_head.png",
+          "note": "白抜きのシルエットの頭（ポーズ画面）"
+        },
+        {
+          "src": "ui:title_face.png",
+          "note": "タイトルの顔（写真の加工）"
+        },
+        {
+          "src": "ui:title_logo.png",
+          "note": "ロゴの字体（黒に赤の縁の尖った字）"
+        }
+      ]
+    },
+    "face_2026_03": {
+      "note": "2026-09-26 にユーザーが tmp/images に置いた顔写真（git の外、WA_0001〜0031.webp。2026-03 のウェブカメラ）から正面寄りの 11 枚。「この画像を元に、オリジナルの顔に忠実に」の指示でトンネルの壁画に使った",
+      "images": [
+        {
+          "src": "tmp_images:WA_0001.webp",
+          "note": "正面、大口で叫ぶ",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0005.webp",
+          "note": "正面の寄り、目を見開き口をすぼめる"
+        },
+        {
+          "src": "tmp_images:WA_0007.webp",
+          "note": "正面、口を開けて驚く",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0010.webp",
+          "note": "正面の寄り、目を見開く"
+        },
+        {
+          "src": "tmp_images:WA_0012.webp",
+          "note": "正面、口をとがらせる",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0014.webp",
+          "note": "正面、真顔寄り",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0015.webp",
+          "note": "正面、口を閉じた真顔",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0018.webp",
+          "note": "寄り、横目で口を開ける"
+        },
+        {
+          "src": "tmp_images:WA_0022.webp",
+          "note": "正面、うつむき気味",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0023.webp",
+          "note": "正面、見上げて笑う",
+          "crop": [
+            0.18,
+            0.0,
+            0.85,
+            0.68
+          ]
+        },
+        {
+          "src": "tmp_images:WA_0026.webp",
+          "note": "寄り、大口で叫ぶ"
+        }
       ]
     }
   }
