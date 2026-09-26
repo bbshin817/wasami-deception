@@ -1,6 +1,7 @@
 #include "WasamiZone1Flow.h"
 
 #include "Camera/CameraShakeBase.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -345,21 +346,60 @@ void AWasamiZone1Flow::OnNurseLiftTrigger(AActor* OverlappedActor, AActor* Other
 	}
 }
 
-void AWasamiZone1Flow::RideAmbulance()
+void AWasamiZone1Flow::PlaceOnAmbulanceRoof()
 {
+	// The roof's trigger reaches past the roof, so a teleport whose sweep the ambulance's body stops short (aimed at the
+	// roof's edge from behind) or a jump against its side sets it off with the player off the roof; the fence then closed
+	// round an empty roof and the player rode stuck to the ambulance's back (the user's report of 2026-09-26). The
+	// inside of the fence is the four walls' bounds less a wall's thickness.
 	ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0);
-	AActor* Ambulance = Source(TEXT("hospital_ambulance_new_teleport"));
-	if (!Player || !Ambulance)
+	if (!Player)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: no player or hospital_ambulance_new_teleport to ride"), *GetClass()->GetName());
 		return;
 	}
-	if (UCharacterMovementComponent* Movement = Player->GetCharacterMovement())
+	FBox Fence(ForceInit);
+	double Wall = TNumericLimits<double>::Max();
+	for (const TCHAR* Name : {TEXT("BlockingVolume_Ambulance_1"), TEXT("BlockingVolume_Ambulance_2"),
+		TEXT("BlockingVolume_Ambulance_3"), TEXT("BlockingVolume_Ambulance_4")})
 	{
-		Movement->StopMovementImmediately();
-		Movement->DisableMovement();
+		if (const AActor* Blocker = Source(Name))
+		{
+			const FBox Box = Blocker->GetComponentsBoundingBox(true);
+			Fence += Box;
+			const FVector Size = Box.GetSize();
+			Wall = FMath::Min(Wall, FMath::Min(Size.X, Size.Y));
+		}
 	}
-	Player->AttachToActor(Ambulance, FAttachmentTransformRules::KeepWorldTransform);
+	if (!Fence.IsValid)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no BlockingVolume_Ambulance_1 to 4 round the roof"), *GetClass()->GetName());
+		return;
+	}
+	const UCapsuleComponent* Capsule = Player->GetCapsuleComponent();
+	const double Margin = Wall + Capsule->GetScaledCapsuleRadius() + 5.;
+	const FVector Location = Player->GetActorLocation();
+	FVector Inside(FMath::Clamp(Location.X, Fence.Min.X + Margin, Fence.Max.X - Margin),
+		FMath::Clamp(Location.Y, Fence.Min.Y + Margin, Fence.Max.Y - Margin), Location.Z);
+	// The roof under that point (the roof's box and the ambulance's body answer the pawn channel).
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(WasamiAmbulanceRoof), false, Player);
+	FHitResult Roof;
+	if (!GetWorld()->LineTraceSingleByChannel(Roof, FVector(Inside.X, Inside.Y, Fence.Max.Z),
+		FVector(Inside.X, Inside.Y, Fence.Min.Z - Fence.GetSize().Z), ECC_Pawn, Params))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no ambulance roof under %s"), *GetClass()->GetName(), *Inside.ToString());
+		return;
+	}
+	const double Feet = Location.Z - Capsule->GetScaledCapsuleHalfHeight();
+	constexpr double StandTolerance = 20.;
+	if (FVector::DistSquared2D(Inside, Location) < 1. && FMath::Abs(Feet - Roof.ImpactPoint.Z) < StandTolerance)
+	{
+		return;
+	}
+	Inside.Z = Roof.ImpactPoint.Z + Capsule->GetScaledCapsuleHalfHeight() + 2.;
+	UE_LOG(LogTemp, Log, TEXT("%s: the player at %s is put on the ambulance's roof at %s"), *GetClass()->GetName(),
+		*Location.ToString(), *Inside.ToString());
+	Player->GetCharacterMovement()->StopMovementImmediately();
+	Player->SetActorLocation(Inside, false, nullptr, ETeleportType::TeleportPhysics);
 }
 
 void AWasamiZone1Flow::On06ReachAmbulance()
@@ -372,6 +412,7 @@ void AWasamiZone1Flow::On06ReachAmbulance()
 	SetArrowTarget(Source(TEXT("Plane48_2")));
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGoodLuck", "GOOD LUCK"));
 	SetMusicFadeOut(true);
+	PlaceOnAmbulanceRoof();
 	// The fence all round the roof, as in the original, so that the player cannot get off once on top.
 	for (const TCHAR* Blocker : {TEXT("BlockingVolume_Ambulance_4"), TEXT("BlockingVolume_Ambulance_2"),
 		TEXT("BlockingVolume_Ambulance_1"), TEXT("BlockingVolume_Ambulance_3")})
@@ -384,7 +425,8 @@ void AWasamiZone1Flow::On06ReachAmbulance()
 		// works): the original relies on the based move, which the sequence's unswept teleport of the fence breaks
 		// (the fence lands on the capsule and pushes the player out), and a player left in the tunnel was reported
 		// three times (11 record, work list items 41 and 53). The next level is opened from here, so nothing detaches.
-		RideAmbulance();
+		PlaceOnAmbulanceRoof();
+		RidePlayerOn(TEXT("hospital_ambulance_new_teleport"));
 		PlaySequence(TEXT("06_Hospital_Zone1_AmbulanceTakeOff"));
 		PlayCameraShake(TakeOffShakeClass, TakeOffShakeScale);
 		After(LoadingDelay, [this]()

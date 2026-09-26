@@ -516,9 +516,9 @@ bool FWasamiZoneFlowZone1Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the ambulance takes the music away"), Music->bFadeOut);
 	TestEqual(TEXT("checkpoint 7 saved"), SavedCheckpoint(), 7);
 	TestEqual(TEXT("good luck"), Objective(Mode), FString(TEXT("GOOD LUCK")));
+	// The fence all round, the wall behind the player too: the player rides attached, so no wall pushes them off.
 	TestTrue(TEXT("the ambulance's sides block"), Collides(AmbulanceSide));
-	// Not the wall behind the player: the moving fence would land on the capsule and push the player off the roof.
-	TestFalse(TEXT("but not the wall behind the player"), Collides(AmbulanceRear));
+	TestTrue(TEXT("and the wall behind the player"), Collides(AmbulanceRear));
 	TestEqual(TEXT("the nurses removed"), Alive<AWasamiEnemy>(World, false).Num(), 0);
 	TestFalse(TEXT("the ambulance still"), TakeOff->GetSequencePlayer() && TakeOff->GetSequencePlayer()->IsPlaying());
 	Advance(Wrapper, AWasamiZone1Flow::TakeOffDelay + 0.1f);

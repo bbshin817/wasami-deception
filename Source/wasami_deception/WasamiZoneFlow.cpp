@@ -471,6 +471,38 @@ void AWasamiZoneFlow::TeleportPlayerTo(FName PlayerStartTag)
 	}
 }
 
+bool AWasamiZoneFlow::RidePlayerOn(FName VehicleSource)
+{
+	ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0);
+	AActor* Vehicle = Source(VehicleSource);
+	if (!Player || !Vehicle)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no player or %s to ride"), *GetClass()->GetName(), *VehicleSource.ToString());
+		return false;
+	}
+	if (UCharacterMovementComponent* Movement = Player->GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+	Player->AttachToActor(Vehicle, FAttachmentTransformRules::KeepWorldTransform);
+	return true;
+}
+
+void AWasamiZoneFlow::StopPlayerRide()
+{
+	ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0);
+	if (!Player || !Player->GetAttachParentActor())
+	{
+		return;
+	}
+	Player->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	if (UCharacterMovementComponent* Movement = Player->GetCharacterMovement())
+	{
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+}
+
 void AWasamiZoneFlow::After(float Seconds, TFunction<void()>&& Then)
 {
 	FTimerDelegate Delegate = FTimerDelegate::CreateWeakLambda(this, MoveTemp(Then));

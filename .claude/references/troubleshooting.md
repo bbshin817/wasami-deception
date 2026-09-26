@@ -914,6 +914,8 @@
 - 対処: **直した**（2026-09-22、項目 41）。`AWasamiZone1Flow::On06ReachAmbulance` は後ろの壁だけ当たりを入れない。前と左右の 3 枚はそのまま。
 - 確かめ方: `python Intermediate/Overnight/pie_ambulance.py`（PIE で屋根に落として走り出させ、`Wasami.Status` と毎ティックの測りを表にする）。プレイヤーと救急車の y の差が −66.7 のまま読み込み画面まで続けば乗っている。`--no-walls` は囲いを 4 枚とも切った比較用。
 - **もう 1 つの原因（2026-09-26）**: **走り出す救急車が `Static` のままのパッケージ**。土台の移動は土台が `Movable` のときだけ働く（`MovementBaseUtility::IsDynamicBase`）ので、`Static` だと後ろの壁を外しても運ばれず、描画側が変換を焼くので**止まったままの 2 台目**も見える。`dd_sequence.movable` が `Movable` にするが、**レベルを組み立て直した後にパッケージを作り直さないと入らない**。疑うときは `Saved/Archive/Windows/wasami_deception.exe` と `Content/Stage/Maps/*.umap` の日時を比べる。
+- **Zone 2 の到着で 2 台・置いていかれる（2026-09-26、4 度目）**: 読み込みが明けると、救急車が 1 台駐車場（ガレージ）へ走り、プレイヤーは道路の真ん中の止まった救急車に乗ったまま。**シーケンスが別の救急車を動かしていた**: 本家の到着のシーケンスの結び付けは Zone 1・入口・Zone 2 の 3 つのレベルを指し、取り込みの `_placed_name` が先頭（Zone 1 の `hospital_ambulance_new_teleport`）の名前を取っていた。Zone 2 にも同じ名前の救急車（ガレージに停めてあるもの）があるので、それが道路からガレージへ動き、プレイヤーの乗る `hospital_ambulance_new_arrive` は `Static` のまま残った。疑うときはエディタで Zone 2 の `hospital_ambulance_new_arrive` の Mobility を見る（`Movable` でなければ結び付けが外れている）。シーケンスが複数のレベルを指すときはゾーンのマップの参照を取る（01 記録）。**背面のエディタ（3 fps）や `t.MaxFPS 5` では土台の移動が 1 コマで外れて屋根から落ちる**ので、到着の間も救急車に付ける（11 記録）。低い fps で落ちるのを見て結び付けの取り違えと混同しない。
+- **テレポートで救急車の後ろに付いたまま運ばれる（2026-09-26）**: 屋根のトリガーは屋根より広く、屋根の縁を狙ったテレポートが車体に止められて後ろに浮いても入る。入ったら屋根の囲いの内側へ置き直す（`PlaceOnAmbulanceRoof`。11 記録）。
 - 出典: 進捗記録 `20260922-zone1-ambulance.md`（2026-09-22 ステップ 3b）、`20260918-zone-progression.md`（2026-09-19 ステップ 10a）、`20260926-package-review2.md`（2026-09-26）。
 
 ### `UnrealEditor-Cmd.exe` を Bash から直に起動するとテストが 1 件も走らずに終了コード 255 で落ちる

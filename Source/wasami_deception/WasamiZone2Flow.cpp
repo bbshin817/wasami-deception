@@ -101,6 +101,9 @@ void AWasamiZone2Flow::ArriveEvent()
 	TeleportPlayerTo(TEXT("PlayerStart_1"));
 	After(ArriveSequenceDelay, [this]()
 	{
+		// Unlike the original, the player rides attached to the ambulance until it stops (as off Zone 1's roof): the
+		// based move alone left them on the road when one long frame (the level just opened) pushed them off the roof.
+		RidePlayerOn(TEXT("hospital_ambulance_new_arrive"));
 		PlaySequence(TEXT("06_Hospital_Zone2_AmbulanceArrive1_2"),
 			GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnEscapeAmbulanceArrive));
 		BindTrigger(TEXT("Trigger_Arrive_CaptureScene"), GET_FUNCTION_NAME_CHECKED(AWasamiZone2Flow, OnArriveCaptureCutscene));
@@ -110,6 +113,7 @@ void AWasamiZone2Flow::ArriveEvent()
 void AWasamiZone2Flow::OnEscapeAmbulanceArrive()
 {
 	Enter(TEXT("Escape_AmbulanceArrive"));
+	StopPlayerRide();
 	if (AActor* Blocker = Source(TEXT("Ambulance_Arrive_Blockers4")))
 	{
 		Blocker->Destroy();

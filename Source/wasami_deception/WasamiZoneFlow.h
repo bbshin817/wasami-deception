@@ -210,6 +210,16 @@ protected:
 	 */
 	void TeleportPlayerTo(FName PlayerStartTag);
 
+	/**
+	 * Attaches the player to the vehicle (the level actor of that source name) with the movement off, looking around
+	 * still working: the ambulances' rides. The original carries the player by the based move alone, which a long frame
+	 * breaks (the vehicle's unswept move pushes the capsule off its roof). False when there is no player or vehicle.
+	 */
+	bool RidePlayerOn(FName VehicleSource);
+
+	/** Detaches the player from what RidePlayerOn attached them to and lets them walk again. */
+	void StopPlayerRide();
+
 	/** A Delay: Then runs Seconds on (on the next tick for 0). */
 	void After(float Seconds, TFunction<void()>&& Then);
 

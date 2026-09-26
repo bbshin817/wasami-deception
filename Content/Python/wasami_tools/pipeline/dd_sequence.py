@@ -734,14 +734,16 @@ def _source_actors(eas):
     return found
 
 
-def _placed_name(references):
+def _placed_name(references, map_name=""):
     """The level actor a root binding points at ('/Game/06_Hospital_Zone_02.06_Hospital_Zone_02:PersistentLevel.spikes'
-    → 'spikes')."""
-    for r in references:
-        path = r.get("ExternalObjectPath") or ""
-        if ":PersistentLevel." in path:
-            return path.split(":PersistentLevel.", 1)[1]
-    return None
+    → 'spikes'). A binding can point into several levels, one actor each, and the zone's own map (`map_name`) comes
+    first: Zone 2's arriving ambulance lists Zone 1's hospital_ambulance_new_teleport before its own
+    hospital_ambulance_new_arrive, and Zone 2 has a hospital_ambulance_new_teleport too (the one parked in the garage),
+    which the first reference moved in place of the one the player stands on."""
+    placed = [(r.get("ExternalObjectPath") or "").split(":PersistentLevel.", 1) for r in references]
+    placed = [p for p in placed if len(p) == 2]
+    own = [name for level, name in placed if map_name and level.endswith("." + map_name)]
+    return (own or [name for _, name in placed] or [None])[0]
 
 
 def _cine_camera(actor, camera, failures):
@@ -868,11 +870,11 @@ def place_all(eas, zone_name, zone, result=None):
     helper_names = []
     for rel, pkg in packages.values():
         refs = (pkg.asset.get("BindingReferences") or {}).get("BindingIdToReferences", {})
-        helper_names += [n for n in (_placed_name(r.get("References", [])) for r in refs.values()) if n]
+        helper_names += [n for n in (_placed_name(r.get("References", []), zone["map"]) for r in refs.values()) if n]
     _helpers(eas, zone, helper_names, existing, result)
 
     def resolve(possessable, references):
-        name = _placed_name(references)
+        name = _placed_name(references, zone["map"])
         if name is not None:
             return existing.get(name)
         # a component of the parent binding's actor ('LightComponent0' of a spot light)
@@ -882,7 +884,7 @@ def place_all(eas, zone_name, zone, result=None):
                 possessable["ParentGuid"], {}).get("References", [])
             if parent_refs:
                 break
-        parent = existing.get(_placed_name(parent_refs) or "")
+        parent = existing.get(_placed_name(parent_refs, zone["map"]) or "")
         component_name = next((r.get("ObjectPath") for r in references if r.get("ObjectPath")), possessable["Name"])
         if parent is None:
             return None
