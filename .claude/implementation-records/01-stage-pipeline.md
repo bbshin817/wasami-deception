@@ -32,7 +32,6 @@ sources:
   - Tools/wasami_art/briefs/hospital_ambulance_video.json
   - Tools/wasami_art/ambulance_video.py
   - Tools/wasami_art/game_icon.py
-  - Tools/wasami_art/briefs/game_icon.json
   - Content/Python/wasami_tools/pipeline/dd_movies.py
   - Tools/wasami_art/briefs/hospital_movies.json
   - Content/Python/init_unreal.py
@@ -201,7 +200,7 @@ updated: 2026-09-26
 
 ### ゲームのアイコン（`Tools/wasami_art/game_icon.py`、2026-09-26）
 - ユーザーの指示「Shipping用のゲームアイコン(本家の猿顔)も、ワサミで作成して。…本家っぽくなるよう」。本家の exe（本体 `DDeception-Win64-Shipping.exe`・起動役 `DDeception.exe`）のアイコンは UE の既定で、**猿の顔は Steam のアイコン**（`Steam/appcache/librarycache/332950/12bcf34c….jpg`・`Steam/steam/games/244f1761….ico`、どちらも 32×32）: 暗い立体のおもちゃの猿の頭の切り抜き、見開いた目、むき出しの歯、形に沿った赤い縁取り、透明の地。
-- 頭は依頼書 `game_icon.json`（型 `sprite`。ユーザーの写真 `C:/Users/User/Pictures/vlcsnap-2026-02-25-23h32m12s613.png` を最初、本家のアイコンを 512 に拡げて暗い地に置いたもの `Intermediate/WasamiArt/_orig/icon/steam_icon_monkey_ref.png` を最後の参照に）で 3 案作り、写真の表情に最も近いものを `SourceArt/Wasami/Icon/game_icon_head.png` に採用。
+- **頭は写真そのもの**（2026-09-26 のユーザーの指摘: 生成した顔は「私が提示した顔とは似てもにつきません」。生成では写真と別人になる）。`python Tools/wasami_art/game_icon.py --from-photo C:/Users/User/Pictures/vlcsnap-2026-02-25-23h32m12s613.png` が rembg（`pip install "rembg[cpu]"`、`isnet-general-use`。初回にモデルを落とす）で頭を切り抜き、楕円 `HEAD_ELLIPSE` で首とシャツを落とし、本家の猿のように暗く沈める色の加工 `GRADE`（明るさ 0.78・コントラスト 1.3・彩度 0.8・頭の縁を 55% まで暗く）をかけて `SourceArt/Wasami/Icon/game_icon_head.png` に書く。写真の原本は git に入れない。
 - `python Tools/wasami_art/game_icon.py [--preview]` が大きさ（16・24・32・40・48・64・256。本家の exe と同じ組）ごとに 4 倍で描いて縮め、**赤 (230,0,0) の縁は輪郭の膨張で大きさごとに付ける**（32 で 1.25 px。1〜4 px に収める。256 で 10 px にすると太すぎた）。`SourceArt/Wasami/Icon/Application.ico` に書き、`Build/Windows/Application.ico`（UBT が exe に埋め込む。`.gitignore` で追跡）へ写す。
 
 ### cook のシェーダーを読む（`Tools/dd/cooked_shaders.py`）
@@ -483,6 +482,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-26: ゲームのアイコンの頭を、生成した顔からユーザーの写真そのもの（切り抜きと色の加工）に替えた（`game_icon.py --from-photo`。ユーザーの指摘「提示した顔とは似てもにつきません」）
 - 2026-09-26: ゲームのアイコンを本家の Steam の猿の顔に倣ってワサミで作った（`game_icon.py`・`game_icon.json`。上の「ゲームのアイコン」）
 - 2026-09-26: 救急車の動画のワサミを、写真をなぞった頭を参照にするやり方で作り直した（ユーザーの指摘「顔がワサミに似つかわしくない」）
 - 2026-09-26: 救急車の案内の画面に作り直した動画を流すようにした（`dd_movies`・前処理の `ambulancescreen`・`dd_stage._make_ambulance_screen`・`DirectoriesToAlwaysStageAsNonUFS`。上の「救急車の案内の画面」）。PIE の Zone 1 で確認
