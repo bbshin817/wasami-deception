@@ -10,7 +10,8 @@ ambulance's roof, 1 in Zone 1 and 2 in Zone 2). This game draws no character of 
 nurse's head (the paper bag with the cross, the silhouette's head, the doodle's cap) replaced by Wasami's,
 as the WebGL version did to Chaotic Customer 2's posters (references/webgl/implementation-records/13):
 the head's box is filled with the colours around it and Wasami's head (SourceArt/Wasami/UI/pause_head.png,
-white with the ink in its alpha) is drawn in its place, in each picture's own style.
+white with the ink in its alpha) is drawn in its place, in each picture's own style. The tunnel's doodle is the
+exception since 2026-09-26: its rider is redrawn whole as Wasami (see decal_ambulance).
 
 It writes Intermediate/Pipeline/wasami/stage/<out>.png for Tools/dd/prepare_stage.py, which imports them as
 /Game/Wasami/Stage/T_* in the place of the original's textures. --preview also writes _nurse_sheet.png,
@@ -30,6 +31,7 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 REF = os.environ.get("PAK_REF2", os.path.join(ROOT, "pak_reference_2"))
 SRC = os.path.join(REF, "DDeception", "Content", "Textures", "06_Hospital")
 HEAD = os.path.join(ROOT, "SourceArt", "Wasami", "UI", "pause_head.png")
+DOODLE = os.path.join(ROOT, "SourceArt", "Wasami", "Stage", "parts", "nurseambulance_wasami.png")
 OUT = os.path.join(ROOT, "Intermediate", "Pipeline", "wasami", "stage")
 
 SS = 4          # the head is drawn at this many times the size and shrunk, for smooth edges
@@ -212,32 +214,58 @@ def poster_02(src):
 
 
 # ------------------------------------------------------------------------------------------------ decal
-def decal_ambulance(src):
-    """The doodle on the ambulance's roof: the nurse's cap and the paper bag over her head become Wasami's.
+def _components(mask):
+    """Labels of the 8-connected parts of a bool mask (h, w): (labels, [(label, area, (l, t, r, b)), ...])."""
+    h, w = mask.shape
+    labels = np.zeros((h, w), np.int32)
+    parts = []
+    for y0, x0 in zip(*np.nonzero(mask)):
+        if labels[y0, x0]:
+            continue
+        n = len(parts) + 1
+        labels[y0, x0] = n
+        stack, area, l, t, r, b = [(y0, x0)], 0, x0, y0, x0, y0
+        while stack:
+            y, x = stack.pop()
+            area += 1
+            l, t, r, b = min(l, x), min(t, y), max(r, x), max(b, y)
+            for yy in (y - 1, y, y + 1):
+                for xx in (x - 1, x, x + 1):
+                    if 0 <= yy < h and 0 <= xx < w and mask[yy, xx] and not labels[yy, xx]:
+                        labels[yy, xx] = n
+                        stack.append((yy, xx))
+        parts.append((n, area, (l, t, r + 1, b + 1)))
+    return labels, parts
 
-    The doodle is drawn on a fully clear white and every stroke of it is at the same alpha (166/255), so the
-    cap and the head are erased back to that clear white and Wasami's head is drawn in the doodle's own
-    colours (brown outlines, the arms' skin) and put back at the same alpha. The syringe, the arms, the
-    uniform and the ambulance stay as they are."""
-    rgba = np.array(src.convert("RGBA")).astype(np.float32)
-    ink = (49, 21, 21)                                 # the doodle's brown outlines
-    skin = (255, 205, 173)                             # her arms
-    opacity = 166.0                                    # every stroke of the doodle
-    # The cap (a tall quad up to y 130) and the paper bag below it, stopping short of the collar and of the
-    # forearm that crosses under her chin.
-    cap = [(489, 129), (577, 129), (577, 238), (572, 252), (569, 282), (548, 292),
-           (520, 290), (503, 277), (500, 250), (489, 238)]
-    hole = poly_mask(src.size, cap, grow=2)
-    rgba[..., :3] = rgba[..., :3] * (1 - hole)[..., None] + 255.0 * hole[..., None]
-    rgba[..., 3] = rgba[..., 3] * (1 - hole)
-    head, at = draw_head((501, 206, 72, 86), skin, ink, ink, tilt=-7.0)
-    over = Image.new("RGBA", src.size, (0, 0, 0, 0))
-    over.alpha_composite(head, (int(at[0]), int(at[1])))
-    o = np.array(over).astype(np.float32)
-    cover = o[..., 3:4] / 255.0                        # the head's own shape, its alpha put back by hand so
-    rgba[..., :3] = rgba[..., :3] * (1 - cover) + o[..., :3] * cover      # that it matches the doodle's
-    rgba[..., 3] = np.maximum(rgba[..., 3], cover[..., 0] * opacity)
-    return Image.fromarray(np.clip(rgba, 0, 255).astype(np.uint8))
+
+def decal_ambulance(src):
+    """The doodle on the tunnel's wall (the nurse riding the ambulance's roof with a giant syringe), redrawn whole with
+    Wasami as the rider in the doodle's own style (SourceArt/Wasami/Stage/parts/nurseambulance_wasami.png, made with
+    Tools/wasami_art from the brief hospital_nurseambulance.json; 2026-09-26, after "it looks like a face just pasted
+    on the original").
+
+    The drawing is scaled to the width of the original's drawing (its largest part), centred on it and standing on its
+    bottom, so that the ambulance is as big and where the original's is (Wasami's head stands taller than the
+    nurse's), its alpha
+    brought to the original's (every stroke of the original is at 166/255 on a fully clear white), and the original's
+    white crosses scattered around it are kept as they are (the generator saw the original on white and left them
+    out)."""
+    orig = np.array(src.convert("RGBA"))
+    labels, parts = _components(orig[..., 3] > 8)
+    main = max(parts, key=lambda p: p[1])
+    l, t, r, b = main[2]
+    art = Image.open(DOODLE).convert("RGBA")
+    art = art.crop(art.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox())
+    k = min((r - l) / art.width, b / art.height)     # as wide as the original's (the rider's head may stand taller)
+    art = art.resize((round(art.width * k), round(art.height * k)), Image.LANCZOS)
+    layer = Image.new("RGBA", src.size, (255, 255, 255, 0))
+    layer.alpha_composite(art, (round((l + r - art.width) / 2), b - art.height))
+    out = np.array(layer).astype(np.float32)
+    out[..., 3] = np.minimum(out[..., 3], 255.0) * (166.0 / 255.0)
+    out[out[..., 3] < 4] = (255, 255, 255, 0)
+    crosses = np.isin(labels, [n for n, _, _ in parts if n != main[0]]) & (out[..., 3] == 0)
+    out[crosses] = orig[crosses]
+    return Image.fromarray(np.clip(out, 0, 255).round().astype(np.uint8))
 
 
 POSTERS = {

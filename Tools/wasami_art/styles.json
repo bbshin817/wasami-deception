@@ -94,6 +94,16 @@
       "size": "1024x1024",
       "background": "transparent",
       "quality": "high"
+    },
+    "doodle": {
+      "note": "本家のトンネルの壁画 hospital_decal_nurseambulance と同じ、こげ茶の太い線と平塗りのかすれた落書き（透明の地）。本家と同じ不透明度 166・大きさ・位置・周りの十字は Tools/dd/prepare_nurse_posters.py が合わせる",
+      "prompt": "Style: a cute, chunky cartoon doodle like a sticker painted on a wall: thick uniform dark-brown outlines (#311515) around every shape, flat solid fills with no gradients and no shading except one flat shadow tone, simple rounded chibi proportions, and a worn, scratched print texture where small white specks and scuffs are missing from the paint. The background is fully transparent. Keep everything inside the canvas.",
+      "refs": [
+        "face"
+      ],
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high"
     }
   }
 }
