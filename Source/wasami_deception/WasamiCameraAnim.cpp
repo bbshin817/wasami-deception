@@ -1,6 +1,11 @@
 #include "WasamiCameraAnim.h"
 
+#include "Camera/CameraActor.h"
+#include "Camera/CameraAnimationHelper.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogWasamiCameraAnim, Log, All);
 
@@ -44,6 +49,18 @@ void UWasamiCameraAnim::ApplyPostProcessTracks(float Time, FPostProcessSettings&
 			*Value = Track.Curve.Eval(Time, *Value);
 		}
 	}
+}
+
+FTransform UWasamiCameraAnim::EvalMove(float Time) const
+{
+	if (!HasMoveTrack())
+	{
+		return FTransform::Identity;
+	}
+	const FVector Location(MoveCurves[0].Eval(Time, 0.f), MoveCurves[1].Eval(Time, 0.f), MoveCurves[2].Eval(Time, 0.f));
+	// UInterpTrackMove makes an euler of its three rotation axes and reads it as FRotator(Y, Z, X).
+	const FRotator Rotation(MoveCurves[4].Eval(Time, 0.f), MoveCurves[5].Eval(Time, 0.f), MoveCurves[3].Eval(Time, 0.f));
+	return FTransform(Rotation, Location);
 }
 
 const FWasamiCameraAnimFloatTrack* UWasamiCameraAnim::FindFieldOfViewTrack() const
@@ -233,5 +250,94 @@ bool UWasamiCameraAnimModifier::ModifyCamera(float DeltaTime, FMinimalViewInfo& 
 		}
 	}
 	Instances.RemoveAll([](const FWasamiCameraAnimInstance& Each) { return Each.Playback.bFinished; });
+	return false;
+}
+
+void AWasamiCameraAnimOffset::BeginPlay()
+{
+	Super::BeginPlay();
+	APlayerCameraManager* Manager = UGameplayStatics::GetPlayerCameraManager(this, 0);
+	if (UWasamiCameraAnimOffsetModifier* Modifier = UWasamiCameraAnimOffsetModifier::Get(Manager))
+	{
+		Modifier->Add(this);
+	}
+	else
+	{
+		UE_LOG(LogWasamiCameraAnim, Warning, TEXT("%s: no player camera manager, so %s is not played."),
+			*GetName(), Anim ? *Anim->GetName() : TEXT("its anim"));
+	}
+}
+
+void AWasamiCameraAnimOffset::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWasamiCameraAnimOffsetModifier* Modifier = UWasamiCameraAnimOffsetModifier::Get(UGameplayStatics::GetPlayerCameraManager(this, 0)))
+	{
+		Modifier->Remove(this);
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+bool AWasamiCameraAnimOffset::CurrentOffset(FTransform& OutOffset) const
+{
+	ULevelSequencePlayer* Player = Sequence ? Sequence->GetSequencePlayer() : nullptr;
+	if (!Anim || !Anim->HasMoveTrack() || !Player || !Player->IsPlaying())
+	{
+		return false;
+	}
+	const float Time = static_cast<float>(Player->GetCurrentTime().AsSeconds());
+	if (!IsInSection(Time))
+	{
+		return false;
+	}
+	OutOffset = Anim->EvalMove(Time - StartTime);
+	return true;
+}
+
+UWasamiCameraAnimOffsetModifier* UWasamiCameraAnimOffsetModifier::Get(APlayerCameraManager* CameraManager)
+{
+	if (!CameraManager)
+	{
+		return nullptr;
+	}
+	if (UCameraModifier* Found = CameraManager->FindCameraModifierByClass(StaticClass()))
+	{
+		return CastChecked<UWasamiCameraAnimOffsetModifier>(Found);
+	}
+	return Cast<UWasamiCameraAnimOffsetModifier>(CameraManager->AddNewCameraModifier(StaticClass()));
+}
+
+void UWasamiCameraAnimOffsetModifier::Add(AWasamiCameraAnimOffset* Offset)
+{
+	Offsets.AddUnique(Offset);
+}
+
+void UWasamiCameraAnimOffsetModifier::Remove(AWasamiCameraAnimOffset* Offset)
+{
+	Offsets.Remove(Offset);
+}
+
+void UWasamiCameraAnimOffsetModifier::ApplyOffset(const FTransform& Offset, FMinimalViewInfo& InOutPOV)
+{
+	const FCameraAnimationHelperOffset Move{ Offset.GetLocation(), Offset.Rotator() };
+	FVector Location;
+	FRotator Rotation;
+	FCameraAnimationHelper::ApplyOffset(InOutPOV, Move, Location, Rotation);
+	InOutPOV.Location = Location;
+	InOutPOV.Rotation = Rotation;
+}
+
+bool UWasamiCameraAnimOffsetModifier::ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV)
+{
+	Super::ModifyCamera(DeltaTime, InOutPOV);
+	const AActor* ViewTarget = CameraOwner ? CameraOwner->GetViewTarget() : nullptr;
+	for (const TObjectPtr<AWasamiCameraAnimOffset>& Offset : Offsets)
+	{
+		FTransform Move;
+		// Only what the view is looking through: the offset is in that camera's own space.
+		if (Offset && Offset->Camera == ViewTarget && Offset->CurrentOffset(Move))
+		{
+			ApplyOffset(Move, InOutPOV);
+		}
+	}
 	return false;
 }

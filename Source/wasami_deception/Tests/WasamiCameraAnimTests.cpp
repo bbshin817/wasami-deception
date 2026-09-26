@@ -176,4 +176,74 @@ bool FWasamiCameraAnimFieldOfViewTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiCameraAnimMoveTest, "Wasami.CameraAnim.Move",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FWasamiCameraAnimMoveTest::RunTest(const FString& Parameters)
+{
+	UWasamiCameraAnim* Nurse = NewObject<UWasamiCameraAnim>();
+	TestFalse(TEXT("no move track without curves"), Nurse->HasMoveTrack());
+	TestTrue(TEXT("and no offset either"), Nurse->EvalMove(1.f).Equals(FTransform::Identity));
+
+	// The capture scene's CameraAnim_Nurse_01, at four of its sixteen key times (the export's values, in the order
+	// UInterpTrackMove makes the axes: the translations, then the rotation's X, Y and Z).
+	const float Times[] = { 0.f, 1.7166667f, 1.8833333f, 2.f };
+	const float Values[UWasamiCameraAnim::MoveCurveCount][4] = {
+		{ 97.f, 215.83333f, 230.09137f, 230.09137f },
+		{ 12.000021f, 18.318903f, 38.253197f, 38.253197f },
+		{ 205.72832f, 116.87178f, 12.716431f, 9.7164307f },
+		{ 0.f, -15.874989f, -83.19455f, -81.388962f },
+		{ 0.f, -71.348885f, -11.385334f, -7.2126608f },
+		{ 179.99995f, 196.14168f, 203.27153f, 202.9792f },
+	};
+	for (const float* Axis : Values)
+	{
+		FInterpCurveFloat& Curve = Nurse->MoveCurves.AddDefaulted_GetRef();
+		for (int32 i = 0; i < UE_ARRAY_COUNT(Times); ++i)
+		{
+			AddFloatKey(Curve, Times[i], Axis[i], 0.f);
+		}
+	}
+	TestTrue(TEXT("six axes make a move track"), Nurse->HasMoveTrack());
+
+	// The camera starts 97 cm in front of where the sequence puts it, looking back over its shoulder (yaw 180).
+	const FTransform Start = Nurse->EvalMove(0.f);
+	TestEqual(TEXT("the first key's location"), Start.GetLocation(), FVector(97.0, 12.000021, 205.72832), 1e-2);
+	TestEqual(TEXT("the first key's rotation"), Start.Rotator(), FRotator(0.0, 179.99995, 0.0), 1e-2);
+
+	// 1.88 s in, the original rolls the camera onto its side: the fall to the floor the scene is about. The axes are
+	// an euler UInterpTrackMove reads as FRotator(Y, Z, X), so the roll is the X axis, not the pitch.
+	const FRotator Down = Nurse->EvalMove(1.8833333f).Rotator();
+	TestEqual(TEXT("rolled onto its side"), Down.Roll, -83.19455, 1e-2);
+	TestEqual(TEXT("pitched a little down"), Down.Pitch, -11.385334, 1e-2);
+	// FRotator keeps the yaw within (-180, 180], so the anim's 203.27 comes out as its negative turn.
+	TestEqual(TEXT("turned nearly right round"), Down.Yaw, 203.27153 - 360.0, 1e-2);
+	TestEqual(TEXT("and down on the floor"), Nurse->EvalMove(1.8833333f).GetLocation().Z, 12.716431, 1e-2);
+
+	// The section runs on to 25.27 s while the fade takes the screen, well past the last key at 2 s: the curves hold
+	// their last value there, so the view stays on its side instead of snapping upright.
+	TestEqual(TEXT("the last key"), Nurse->EvalMove(2.f).Rotator().Roll, -81.388962, 1e-2);
+	TestEqual(TEXT("held past the end"), Nurse->EvalMove(4.f).Rotator().Roll, -81.388962, 1e-2);
+
+	// The offset goes on the view in the camera's own space: the location turned by the camera's rotation, the
+	// rotation composed before it (FCameraAnimationHelper::ApplyOffset, where UE4 put a camera anim's).
+	FMinimalViewInfo View;
+	View.Location = FVector(-10900.0, -1020.0, 1017.0);
+	View.Rotation = FRotator(0.f, 90.f, 0.f);
+	UWasamiCameraAnimOffsetModifier::ApplyOffset(Nurse->EvalMove(1.8833333f), View);
+	TestEqual(TEXT("the offset's X goes along the camera's facing"), View.Location,
+		FVector(-10900.0 - 38.253197, -1020.0 + 230.09137, 1017.0 + 12.716431), 1e-2);
+	TestEqual(TEXT("and its yaw adds to the camera's"), View.Rotation.Yaw, 90.0 + 203.27153 - 360.0, 1e-2);
+	TestEqual(TEXT("the roll comes through"), View.Rotation.Roll, -83.19455, 1e-2);
+
+	AWasamiCameraAnimOffset* Offset = NewObject<AWasamiCameraAnimOffset>();
+	Offset->StartTime = 20.533333f;
+	Offset->EndTime = 25.266666f;
+	TestFalse(TEXT("before the section"), Offset->IsInSection(20.f));
+	TestTrue(TEXT("its start"), Offset->IsInSection(20.533333f));
+	TestTrue(TEXT("the fall"), Offset->IsInSection(22.416666f));
+	TestFalse(TEXT("after it"), Offset->IsInSection(25.3f));
+	return true;
+}
+
 #endif

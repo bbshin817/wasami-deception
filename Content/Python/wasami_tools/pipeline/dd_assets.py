@@ -868,10 +868,17 @@ def _linear_color(value):
     return unreal.LinearColor(*[float(v) for v in value])
 
 
+# The six axes UInterpTrackMove splits a Matinee move track into, in the order it makes them; the export leaves the
+# first one's MoveAxis out, as its default. UWasamiCameraAnim.MoveCurves keeps them in this order.
+MOVE_AXES = ("AXIS_TranslationX", "AXIS_TranslationY", "AXIS_TranslationZ",
+             "AXIS_RotationX", "AXIS_RotationY", "AXIS_RotationZ")
+
+
 def camera_anim(rel, version=1):
     """The original CameraAnim /Game/<rel> as a UWasamiCameraAnim under /Game/DD: its length, base FOV, base
-    post-process settings and weight, and its float and colour property tracks with their keys and tangents as saved.
-    The Move track is left out (the CameraAnims the powers play keep it at the origin). Returns the package path."""
+    post-process settings and weight, its float and colour property tracks with their keys and tangents as saved, and
+    the six axes of its Move track (AWasamiCameraAnimOffset hands those to a bound camera as its additive offset; the
+    CameraAnims the powers play have none of them, their camera keeping to the origin). Returns the package path."""
     target = asset_path(rel)
     if EAL.does_asset_exist(target):
         anim = unreal.load_asset(target)
@@ -892,10 +899,14 @@ def camera_anim(rel, version=1):
         raise RuntimeError("base post-process settings of %s could not be set: %s" % (rel, "; ".join(failures)))
     anim.set_editor_property("base_post_process_settings", settings)
 
-    float_tracks, color_tracks = [], []
+    float_tracks, color_tracks, axes = [], [], {}
     for e in pkg["exports"]:
         p = e["props"]
-        if e["class"] == "InterpTrackFloatProp":
+        if e["class"] == "InterpTrackMoveAxis":
+            curve = unreal.InterpCurveFloat()
+            curve.set_editor_property("points", _curve_points(p["FloatTrack"]["Points"], unreal.InterpCurvePointFloat, float))
+            axes[p.get("MoveAxis", MOVE_AXES[0])] = curve
+        elif e["class"] == "InterpTrackFloatProp":
             curve = unreal.InterpCurveFloat()
             curve.set_editor_property("points", _curve_points(p["FloatTrack"]["Points"], unreal.InterpCurvePointFloat, float))
             track = unreal.WasamiCameraAnimFloatTrack()
@@ -912,7 +923,11 @@ def camera_anim(rel, version=1):
             color_tracks.append(track)
         elif e["class"].startswith("InterpTrack") and e["class"] != "InterpTrackMove":
             raise RuntimeError("%s has a %s track, which UWasamiCameraAnim does not hold" % (rel, e["class"]))
+    if axes and sorted(axes) != sorted(MOVE_AXES):
+        raise RuntimeError("%s: the camera anim's move track has no %s"
+                           % (rel, ", ".join(a for a in MOVE_AXES if a not in axes)))
     anim.set_editor_property("float_tracks", float_tracks)
     anim.set_editor_property("color_tracks", color_tracks)
+    anim.set_editor_property("move_curves", [axes[a] for a in MOVE_AXES] if axes else [])
     EAL.save_asset(target, only_if_is_dirty=False)
     return target

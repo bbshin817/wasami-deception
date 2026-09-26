@@ -47,7 +47,9 @@ namespace
 	/** The imported clips' lengths (30 fps frames, implementation record 07). */
 	TArray<float> ImportedLengths()
 	{
-		const int32 Frames[WasamiEnemyClip::Num] = {58, 57, 31, 20, 18, 46, 75, 117, 117, 64, 83, 106, 37, 16, 63, 72, 55, 53};
+		// Idle_Alert's 180 are the original nurse's ReaperNurse_Idle_Alert retargeted onto v3 (item 54's step 4);
+		// the rest are the .glb's own.
+		const int32 Frames[WasamiEnemyClip::Num] = {58, 180, 31, 20, 18, 46, 75, 117, 117, 64, 83, 106, 37, 16, 63, 72, 55, 53};
 		TArray<float> Lengths;
 		for (int32 Count : Frames)
 		{

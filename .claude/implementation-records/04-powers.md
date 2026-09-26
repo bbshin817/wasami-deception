@@ -37,7 +37,7 @@ sources:
   - Source/wasami_deception/Tests/WasamiTestEnemy.cpp
   - Source/wasami_deception/Tests/WasamiPowerTests.cpp
   - Source/wasami_deception/Tests/WasamiCameraAnimTests.cpp
-updated: 2026-09-20
+updated: 2026-09-26
 ---
 
 # タブレットのパワー
@@ -146,6 +146,8 @@ updated: 2026-09-20
 本家の `CameraAnim`（UE4 の `UCameraAnim`。UE 5 には無い）を取り込みが写したもの（01 記録の `dd_assets.camera_anim`）。`AnimLength`（既定 3）・`BaseFOV`（既定 90。書き出しの値を持つだけで、再生には使わない）・`BasePostProcessSettings`（上書きフラグごと）・`BasePostProcessBlendWeight`（既定 0 = PP が効かない。UE4 と同じ）・`FloatTracks` / `ColorTracks`（`FWasamiCameraAnimFloatTrack` / `FWasamiCameraAnimColorTrack` = `PropertyName`〈`CameraComponent.PostProcessSettings.SceneColorTint` のような原作の名前〉と Matinee の曲線 `FInterpCurveFloat` / `FInterpCurveLinearColor`）。
 - `FindFieldOfViewTrack()` … `CameraComponent.FieldOfView` のトラック（無ければ null）。
 - `ApplyPostProcessTracks(Time, Settings)` … `CameraComponent.PostProcessSettings.` で始まるトラックの値を、`FPostProcessSettings` の同名のメンバー（float か `FLinearColor`）へ書く。上書きフラグは触らない（UE4 でもトラックは値だけを動かし、フラグは基準の設定のまま）。評価は `FInterpCurve::Eval`（保存された接線のまま。UE4 の Matinee と同じ式）。
+- `MoveCurves`（`TArray<FInterpCurveFloat>`）… Matinee の移動トラックの 6 つの軸を `UInterpTrackMove` の作る順（移動 X・Y・Z、回転 X・Y・Z）で。無いアニメでは空（パワーの 2 つはカメラが原点のまま）。`HasMoveTrack()` は 6 本そろっているか、`MoveCurveCount` は 6。
+- `EvalMove(Time)` → `FTransform` … その時刻のカメラ自身の空間のずれ。回転は `UInterpTrackMove` の読み方に合わせて `FRotator(回転 Y, 回転 Z, 回転 X)`（ピッチ・ヨー・ロールの順に入る＝回転 X はロール）。移動トラックが無ければ単位行列。最後のキーより後は `FInterpCurve::Eval` が最後の値を保つ。
 
 ### `FWasamiCameraAnimPlayback`（`WasamiCameraAnim.h`）
 再生中のアニメの時間の進み方（UE4 の `UCameraAnimInst` の写し。純粋な値の構造体でテストできる）。`Start(AnimLength, Rate, Scale, BlendIn, BlendOut, bLoop, Duration)`・`Advance(DeltaTime)`・`Stop(bImmediate)`、読み出しは `CurTime`・`Weight`・`bBlendingOut`・`bFinished`。
@@ -154,6 +156,19 @@ updated: 2026-09-20
 - `Get(PlayerCameraManager)` … カメラマネージャのこのモディファイアを返す（無ければ足す）。
 - `Play(Anim, Rate, Scale, BlendInTime, BlendOutTime, bLoop, Duration)` → ハンドル（本家の `PlayCameraAnim`。`bRandomStartTime` は常に false、再生空間は CameraLocal 相当で、移動も回転もしない）、`Stop(Handle, bImmediate)`、`IsPlaying(Handle)`。
 - static `AddFieldOfView(ViewFOV, TrackFOV, InitialFOV, Weight)` = `Clamp(ViewFOV + (TrackFOV − InitialFOV) × Weight, 5, 170)`。
+
+### `AWasamiCameraAnimOffset : AActor`（`WasamiCameraAnim.h`）
+本家の `MovieSceneCameraAnimTrack`（UE 5.8 に無い）の代わり。シーケンスが結び付けたカメラに、カメラアニメの移動トラックを**部品の加算のずれ**として当てる。取り込みが捕まる場面（`06_Hospital_Zone2_Capture`）のために 1 体置く（01 記録の `_camera_anim_offset`）。
+- 持ち物: `Anim`（`UWasamiCameraAnim`）・`Camera`（`ACameraActor`。シネカメラも含む）・`Sequence`（`ALevelSequenceActor`）・`StartTime`・`EndTime`（区間の始めと終わり。シーケンスの時刻の秒。捕まる場面は 20.533〜25.267）。`IsInSection(Time)` は区間の中か。
+- `BeginPlay` でプレイヤーのカメラマネージャの `UWasamiCameraAnimOffsetModifier` に自分を足し、`EndPlay` で外す（マネージャが無ければ警告）。ティックはしない。
+- `CurrentOffset(FTransform&)` … シーケンスが再生中で、その時刻が区間の中で、アニメに移動トラックがあれば `Anim->EvalMove(時刻 − StartTime)` を返して真。
+
+### `UWasamiCameraAnimOffsetModifier : UCameraModifier`（`WasamiCameraAnim.h`）
+`AWasamiCameraAnimOffset` のずれを視点に当てるモディファイア。`Get(CameraManager)`（無ければ足す）・`Add`・`Remove`。
+- `ModifyCamera` … 登録されたずれのうち、**視点が見ているのがその `Camera` のとき**だけ（ずれはそのカメラ自身の空間なので）`ApplyOffset` する。
+- static `ApplyOffset(ずれ, 視点)` … `FCameraAnimationHelper::ApplyOffset`（位置はカメラの向きで回して足し、回転はカメラの向きの前に掛ける）。UE4 のカメラアニメと同じ合成。
+- **なぜシーケンスのトラックでも部品の加算のずれでもないのか**（2026-09-26 の項目 54 のステップ 2・6・7）: このカメラは本家の LookAt を持ち、`ACineCameraActor::Tick` がアクタの位置から追う先を見る向きでアクタを回すので、ずれをアクタに足すと向きが壊れる。部品の相対位置に打つと位置は入るが、`UCameraComponent::GetCameraView` が LookAt の走ったフレームに部品の世界の向きを書き戻すので**回転は消える**。本家（UE 4.24）は部品の**加算のずれ**（`AddAdditiveOffset`）に渡していたが、**UE 5.8 はその枠をシーケンサーのカメラシェイクが独占する**: `UMovieSceneCameraShakeSystem` は揺れの区間が開いている間、毎フレーム `ClearAdditiveOffset()` → `AddAdditiveOffset(揺れ)` を呼ぶ（捕まる場面は 22.133 s から揺れの区間があり、PIE で測ると 22.10 → 22.13 の 1 フレームでこちらのずれが消えた）。モディファイアは `GetCameraView` の後に走るので、揺れのずれが入った視点の上に重なり、UE4 が 2 つを 1 つの加算器にまとめていたのと同じ絵になる。詳しくは 01 記録の「既知の制約・注意点」と症状索引。
+- 捕まる場面のアニメ `CameraAnim_Nurse_01` はキーが 2.0 s までで、区間は 4.733 s ある。曲線は最後の値（ロール −81.4 の横倒し）を保ったままになるが、この場面のフェードは 22.27 s から 25.2 s で真っ暗になるので、区間の後ろはほぼ見えない。
 
 ### `UWasamiChameleonComponent : UActorComponent`（`AWasamiPlayerCharacter` の `FX`）
 本家のプレイヤーの子アクタ `FX`（`/Game/ThirdParty/Chameleon/Chameleon`。ポストプロセスの効果集）。

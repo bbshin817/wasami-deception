@@ -106,18 +106,8 @@ AUDIO_CHANNELS = {"SoundVolume": ("Volume", 1.0), "PitchMultiplier": ("Pitch", 1
 CURVE_CHANNELS = {"FloatCurve": ("None", None)}   # a float property's and a fade's, without a default
 PARTICLE_CHANNELS = {"ParticleKeys": ("None", None)}
 
-# The camera component's channels a camera anim is keyed on (see camera_offset - the location alone; the rotation
-# cannot be keyed there at all, see its docstring), and the six axes UInterpTrackMove splits a Matinee move track into,
-# in the order it makes them. The export leaves the first axis' MoveAxis out, as its default.
-CAMERA_OFFSET_CHANNELS = ("Location.X", "Location.Y", "Location.Z")
-MOVE_AXES = ("AXIS_TranslationX", "AXIS_TranslationY", "AXIS_TranslationZ",
-             "AXIS_RotationX", "AXIS_RotationY", "AXIS_RotationZ")
 CAMERA_ANIM_KEYS = {"CameraAnim", "PlayRate", "PlayScale", "BlendInTime", "BlendOutTime", "bLooping",
                     "bRandomStartTime", "Duration"}
-# A Matinee key's interpolation -> how the curve between it and the next one is evaluated; anything else is a cubic
-# of the tangents saved with the keys.
-MATINEE_INTERP = {"CIM_Constant": "constant", "CIM_Linear": "linear"}
-
 INTERP = {"RCIM_Linear": "LINEAR", "RCIM_Constant": "CONSTANT"}
 CUBIC_TANGENT = {"RCTM_Auto": "AUTO", "RCTM_User": "USER", "RCTM_Break": "BREAK", "RCTM_SmartAuto": "SMART_AUTO"}
 
@@ -152,37 +142,6 @@ def _enum(cls, member):
     return getattr(cls, member)
 
 
-def _matinee_keys(points):
-    """A Matinee curve's points (FInterpCurvePoint<float>, keyed in seconds) as (x, value, arrive, leave, how)."""
-    return [(float(p["InVal"]), float(p["OutVal"]), float(p.get("ArriveTangent", 0.0)),
-             float(p.get("LeaveTangent", 0.0)), MATINEE_INTERP.get(p.get("InterpMode", ""), "cubic"))
-            for p in points]
-
-
-def _camera_anim_move(object_path):
-    """The offset of the original's CameraAnim: the six axes of its Matinee move track, as curves keyed in seconds.
-    The order is the one CAMERA_OFFSET_CHANNELS takes: three translations, then the rotation's roll, pitch and yaw
-    (UInterpTrackMove reads AXIS_RotationX/Y/Z as an euler it turns into FRotator(Y, Z, X), so the axes line up with
-    a transform section's Rotation.X/Y/Z one for one)."""
-    rel = dd_assets.game_rel(object_path)
-    pkg = dd_assets.export_json(rel, VERSION)
-    by_path = {(e["outer"] + "." if e["outer"] else "") + e["name"]: e for e in pkg["exports"]}
-    group = by_path[dd_assets.main_export(pkg, rel)["props"]["CameraInterpGroup"]]
-    axes = {}
-    for track_path in group["props"].get("InterpTracks", []):
-        track = by_path[track_path]
-        if track["class"] != "InterpTrackMove":
-            raise ValueError("%s: camera anim track %s not handled" % (rel, track["class"]))
-        for sub_path in track["props"].get("SubTracks", []):
-            sub = by_path[sub_path]
-            axes[sub["props"].get("MoveAxis", MOVE_AXES[0])] = _matinee_keys(
-                (sub["props"].get("FloatTrack") or {}).get("Points", []))
-    missing = [a for a in MOVE_AXES if a not in axes]
-    if missing:
-        raise ValueError("%s: the camera anim's move track has no %s" % (rel, ", ".join(missing)))
-    return [axes[a] for a in MOVE_AXES]
-
-
 class _Package:
     """The original's sequence package: its exports by path ('<asset>.MovieScene_0.<track>.<section>')."""
 
@@ -212,6 +171,9 @@ class _Builder:
         self.shakes = {}
         self.clips = {}
         self.lengths = {}
+        # What place_all needs to put an AWasamiCameraAnimOffset in for each sequence that plays a camera anim:
+        # {sequence's rel: {"camera": the bound actor, "anim": the UWasamiCameraAnim, "start": s, "end": s}}.
+        self.camera_offsets = {}
         # The sequence's playback range in ticks, which fill_rest_pose measures its gaps against.
         self.playback = None
 
@@ -362,8 +324,8 @@ class _Builder:
 
     # ------------------------------------------------------------------------------------------- camera anim
     def camera_anim(self, pkg, path):
-        """What a binding's MovieSceneCameraAnimTrack adds to its transform track: the section's range in ticks and
-        the CameraAnim's six move curves (camera_offset keys them)."""
+        """What a binding's MovieSceneCameraAnimTrack plays: the UWasamiCameraAnim written from the original's
+        CameraAnim (its move track included) and the section's range in the sequence, in seconds."""
         export = pkg.get(path)
         sections = export["props"].get("CameraAnimSections", [])
         if len(sections) != 1:
@@ -385,59 +347,10 @@ class _Builder:
         rng = props.get("SectionRange") or {}
         if (rng.get("lower") or {}).get("type") != "Inclusive" or (rng.get("upper") or {}).get("type") != "Exclusive":
             raise ValueError("%s: camera anim range %s" % (sec["name"], rng))
-        return {"start": int(rng["lower"]["value"]), "end": int(rng["upper"]["value"]),
-                "curves": _camera_anim_move(data["CameraAnim"])}
+        return {"start": int(rng["lower"]["value"]) / pkg.ticks_per_second,
+                "end": int(rng["upper"]["value"]) / pkg.ticks_per_second,
+                "anim": dd_assets.camera_anim(dd_assets.game_rel(data["CameraAnim"]), VERSION)}
 
-    def camera_offset(self, proxy, offset, ticks):
-        """The location of the camera anim of a bound camera, keyed on its camera component's relative location.
-
-        UE 4.24 plays a camera anim on a bound camera as an additive animation: what the anim's move track has at the
-        time is an offset in the camera's own space (FMovieSceneAdditiveCameraAnimationTrackExecutionToken ->
-        FCameraAnimationHelper::ApplyOffset, which UE 5.8 still has): the location is turned by the camera's rotation
-        before it is added, and the rotation is composed before the camera's. UE 5.8 has no camera anim track, so the
-        offset is keyed here instead, and it is keyed on the *component*: an ACameraActor hangs its camera component
-        under a plain scene root, so the component's relative location is the camera's own space and the actor itself
-        stays on the path its transform track keys.
-
-        Which of the two carries it is what the capture scene turns on, because this camera also carries the
-        original's look-at tracking (item 28's step 14c): ACineCameraActor::Tick turns the *actor* towards the actor
-        it follows every frame, from where the actor is. The original's own rotation keys say the actor does not
-        carry the offset - its key at 22.13 s (yaw 173.39, pitch -4.57) is the direction from the camera's keyed
-        place to `cameralook` to a hundredth of a degree, while from the place the offset would put it the direction
-        is yaw 42.3, pitch -9.3 (item 54's step 2, measured in PIE). Adding the offset to the actor threw the camera
-        4 m up and swung the look-at down at the floor, which is the turn the player saw as broken.
-
-        Only the location: **the rotation cannot be keyed on this camera at all** (item 54's step 6, measured in PIE
-        and read in the engine's source). UCameraComponent::GetCameraView forces the component's own world rotation
-        back to the look-at's every frame the look-at ran (`if (Cam->LookatTrackingSettings
-        .LastLookatTrackingRotationFrame == GFrameNumber) SetWorldRotation(LastLookatTrackingRotation)`), so keys on
-        the actor *and* on the component are both thrown away - with the look-at turned off the same keys come out
-        exactly as the anim has them. The original does not key the rotation either: it hands the whole offset to the
-        camera component as its *additive offset* (UCameraComponent::AddAdditiveOffset), which GetCameraView applies
-        to the view right after that override, so the original's rotation does show. Item 54's step 7 moves the
-        offset there; _camera_anim_move already reads all six curves for it.
-        """
-        track = proxy.add_track(unreal.MovieScene3DTransformTrack)
-        section = track.add_section()
-        section.set_range(offset["start"], offset["end"])
-        # The camera component goes back to sitting at the actor when the scene is over.
-        section.set_completion_mode(unreal.MovieSceneCompletionMode.RESTORE_STATE)
-        by_name = {str(c.channel_name): c for c in section.get_all_channels()}
-        # zip stops at the three location channels; curves[3:] are the rotation, which step 7 takes to the offset.
-        for name, curve in zip(CAMERA_OFFSET_CHANNELS, offset["curves"]):
-            channel = by_name[name]
-            keys = []
-            for x, value, arrive, leave, how in curve:
-                interp = {"linear": "LINEAR", "constant": "CONSTANT"}.get(how, "USER")
-                tick = offset["start"] + int(round(x * ticks))
-                keys.append((channel.add_key(_frame(tick), value, 0.0, unreal.MovieSceneTimeUnit.TICK_RESOLUTION,
-                                             _enum(unreal.MovieSceneKeyInterpolation, interp)), arrive, leave))
-            # The tangents go in after every key is in, as curve() does: adding a key recomputes the automatic ones.
-            # A Matinee curve's are in the keys' own unit (a second), a channel's in a tick.
-            for key, arrive, leave in keys:
-                key.set_arrive_tangent(arrive / ticks)
-                key.set_leave_tangent(leave / ticks)
-            self.result["keys"] += len(keys)
         self.result["tracks"] += 1
         self.result["sections"] += 1
 
@@ -714,10 +627,9 @@ class _Builder:
                         channel.remove_key(key)
                     self.curve(channel, entry["ParameterCurve"], None)
         elif cls == "MovieSceneCameraAnimTrack":
-            # UE 5.8 has no camera anim track, and UWasamiCameraAnim (item 24) holds a CameraAnim's post-process and
-            # field of view tracks, not a Matinee move track. The capture scene's CameraAnim_Nurse_01 is a move track
-            # alone, which build keys on the camera's component once every binding is in (camera_offset, item 28's
-            # step 14d and item 54's step 2).
+            # UE 5.8 has no camera anim track. The capture scene's CameraAnim_Nurse_01 is a Matinee move track alone,
+            # which build hands to place_all to put in as an AWasamiCameraAnimOffset (item 28's step 14d, item 54's
+            # steps 2, 6 and 7).
             self.result["camera_anims"] += 1
             return
         elif cls == "MovieSceneEventTrack":
@@ -786,13 +698,10 @@ class _Builder:
                 offset = (ob["ObjectGuid"], found)
             for path in tracks:
                 self.track(pkg, proxy, path)
-        # A camera anim goes on the camera's component, which is a binding of its own (camera_offset).
         if offset:
             parent, anim = offset
-            children = [g for g, p in possessables.items() if p["ParentGuid"] == parent and g in bindings]
-            if len(children) != 1:
-                raise ValueError("%s: the camera anim's camera has %d bound components" % (rel, len(children)))
-            self.camera_offset(bindings[children[0]], anim, pkg.ticks_per_second)
+            anim["camera"] = targets[parent]
+            self.camera_offsets[rel] = anim
         for path in ms.get("MasterTracks", []):
             self.track(pkg, seq, path)
         seq.set_display_rate(display)
@@ -804,7 +713,7 @@ class _Builder:
 def _new_result():
     return {"sequences": 0, "bindings": 0, "tracks": 0, "sections": 0, "keys": 0, "made_movable": [],
             "sounds": 0, "sound_cues": 0, "attenuations": 0,
-            "idle_fills": 0, "camera_shakes": 0, "camera_anims": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
+            "idle_fills": 0, "camera_shakes": 0, "camera_anims": 0, "camera_anim_offsets": 0, "sequence_actors": 0, "sequence_players": 0, "helpers": 0, "nurses": 0, "missing": [],
             "unlinked_players": [], "skipped_tracks": [], "missing_particles": []}
 
 
@@ -897,6 +806,41 @@ def _helpers(eas, zone, names, existing, result):
             result["missing"].append("%s looks at %s, which is not placed" % (actor.get_actor_label(), name))
 
 
+def _camera_anim_offset(eas, name, sequence, offset, result):
+    """The AWasamiCameraAnimOffset that plays a sequence's camera anim on the camera it is bound to, in place of the
+    MovieSceneCameraAnimTrack UE 5.8 no longer has.
+
+    UE 4.24 plays a camera anim on a bound camera as an additive animation: what the anim's move track has at the time
+    is an offset in the camera's own space (FMovieSceneAdditiveCameraAnimationTrackExecutionToken ->
+    FCameraAnimationHelper::ApplyOffset), the location turned by the camera's rotation and the rotation composed
+    before the camera's. AWasamiCameraAnimOffset puts it on the view from a camera modifier (item 54's step 7): UE 4
+    handed it to the camera component's additive offset, but UE 5.8 keeps that for the Sequencer's own camera shakes
+    and clears it every frame one is open - which the capture scene's own shake is, from 22.13 s.
+
+    Which object carries the offset is what the capture scene turns on, because its camera also carries the original's
+    look-at tracking (item 28's step 14c). It is not the actor: ACineCameraActor::Tick turns the actor towards the
+    actor it follows every frame, from where the actor is, so adding the offset there threw the camera 4 m up and swung
+    the look-at down at the floor - the turn the player saw as broken (item 54's step 2). The original's own rotation
+    keys agree: the key at 22.13 s (yaw 173.39, pitch -4.57) is the direction from the camera's keyed place to
+    `cameralook` to a hundredth of a degree, while from the place the offset would put it the direction is yaw 42.3,
+    pitch -9.3. Nor is it a transform track on the camera *component*: UCameraComponent::GetCameraView forces the
+    component's own world rotation back to the look-at's on every frame the look-at ran (`if (Cam->LookatTracking-
+    Settings.LastLookatTrackingRotationFrame == GFrameNumber) SetWorldRotation(LastLookatTrackingRotation)`), so keys
+    on the component are thrown away as well - measured in PIE, and with the look-at turned off the same keys come out
+    exactly as the anim has them (item 54's step 6). The offset is put on the view after that override, which is why
+    the original's rotation (the roll of -83 the player sees as falling to the floor) does show.
+    """
+    from wasami_tools.pipeline import dd_level
+    actor = eas.spawn_actor_from_class(unreal.WasamiCameraAnimOffset, offset["camera"].get_actor_location())
+    actor.set_editor_property("anim", unreal.load_asset(offset["anim"]))
+    actor.set_editor_property("camera", offset["camera"])
+    actor.set_editor_property("sequence", sequence)
+    actor.set_editor_property("start_time", offset["start"])
+    actor.set_editor_property("end_time", offset["end"])
+    dd_level._tag(actor, name + "_CameraAnim", SEQUENCE_FOLDER, SEQUENCE_TAG)
+    result["camera_anim_offsets"] += 1
+
+
 def place_all(eas, zone_name, zone, result=None):
     """In the open level: the zone's bound helper actors, its sequences bound to the level's actors, and the
     LevelSequenceActors that play them (set as the secret elevators' Sequence); also the free sequences and the zone's
@@ -951,6 +895,8 @@ def place_all(eas, zone_name, zone, result=None):
         actor.set_sequence(seq)
         dd_level._tag(actor, name, SEQUENCE_FOLDER, SEQUENCE_TAG, "src:" + name)
         result["sequence_actors"] += 1
+        if rel in builder.camera_offsets:
+            _camera_anim_offset(eas, name, actor, builder.camera_offsets[rel], result)
     # The secret elevators play two of them: their Sequence is the actor just placed.
     linked, unlinked = dd_level.link_sequence_players(eas, zone)
     result["sequence_players"] += linked

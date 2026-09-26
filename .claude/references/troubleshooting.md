@@ -706,6 +706,13 @@
 - 原因: `UCameraComponent::GetCameraView`（`Engine/Private/Camera/CameraComponent.cpp`）が、持ち主が `ACineCameraActor` でその LookAt がこのフレームに走っていたら、**部品の世界の向きを LookAt の向きへ書き戻す**（`if (Cam->LookatTrackingSettings.LastLookatTrackingRotationFrame == GFrameNumber) SetWorldRotation(Cam->LookatTrackingSettings.LastLookatTrackingRotation);`）。書き戻しは世界の向きなので、部品の相対回転は 0 になる。シーケンサーの側は正しく評価していて、LookAt を切ると同じキーがそのまま出る。
 - 対処: 回転を足したいときは**カメラの部品の「加算のずれ」**（`UCameraComponent::AddAdditiveOffset(FTransform, FOV)`）に渡す。`GetCameraView` はこの書き戻しの**直後**に `bUseAdditiveOffset` を当てる（`OffsetCamToWorld = AdditiveOffset * ComponentToWorld`）ので、LookAt の向きの上に乗る。本家（UE 4.24）のカメラアニメもここを通る（`FMovieSceneAdditiveCameraAnimationTrackExecutionToken`）。
 - 確かめ方: PIE で部品の `relative_rotation` を毎ティック読む（`observations/tools/cut_camera_log.py`）。LookAt を切って同じ場面を流す道具が `observations/tools/cut_nolookat.py`（切ると相対回転がアニメの曲線どおりに出る）。
+
+### カメラの「加算のずれ」に入れた値が、シーケンスのカメラシェイクの区間の間だけ消える
+
+- 症状: `UCameraComponent::AddAdditiveOffset` を毎フレーム呼んでいるのに、**ある時刻から急にずれが 1 フレームで消えて**、代わりに小さな揺れだけが残る。時刻はシーケンスの `MovieSceneCameraShakeSection` が開く時刻と一致する（捕まる場面では 22.133 s）。
+- 原因: UE 5.8 の `UMovieSceneCameraShakeSystem`（`Runtime/MovieSceneTracks/Private/Systems/MovieSceneCameraShakeSystem.cpp`）は、区間が開いている間**毎フレーム `CameraComponent->ClearAdditiveOffset()` → `AddAdditiveOffset(揺れの合計)`** を呼ぶ（`FAccumulatedShake::Apply`）。これはアクタのティックより後に走るので、こちらの値は必ず上書きされる。区間が閉じるときの `FPreAnimatedCameraComponentShakeTraits::RestorePreAnimatedValue` も `ClearAdditiveOffset` を呼ぶ。UE 4.24 はカメラアニメと揺れを**同じ加算器にまとめて**いた（`FMovieSceneAdditiveCameraAnimationTrackExecutionToken`）ので競合しなかった。
+- 対処: 部品の加算のずれを取り合わず、**カメラモディファイア**（`UCameraModifier::ModifyCamera`）で視点に当てる。`ModifyCamera` は `GetCameraView` の後に走るので、揺れの加算のずれは既に視点に入っていて、その上に乗る（本作は `UWasamiCameraAnimOffsetModifier`。合成は `FCameraAnimationHelper::ApplyOffset`）。
+- 確かめ方: PIE でカメラマネージャの視点を毎ティック読む（`observations/tools/cut_pov_log.py`。`pov` と、カメラの部品の世界の姿勢 `eye` の差が当たっているずれ）。本家のシェイクの区間は書き出しの `MovieSceneCameraShakeSection` の `SectionRange` で分かる。
 - 出典: 2026-09-26 の項目 54 のステップ 6（進捗記録 `20260926-zone2-cutscene-acting.md`、01 記録の `camera_offset`）。
 
 ## 画面の操作・本家の実機

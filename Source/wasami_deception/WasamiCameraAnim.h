@@ -4,9 +4,12 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Engine/Scene.h"
+#include "GameFramework/Actor.h"
 #include "Math/InterpCurve.h"
 #include "WasamiCameraAnim.generated.h"
 
+class ACameraActor;
+class ALevelSequenceActor;
 class APlayerCameraManager;
 
 /** A float track of a UE4 CameraAnim: the property it animates and its Matinee curve, keys and tangents as saved. */
@@ -77,6 +80,26 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Anim")
 	TArray<FWasamiCameraAnimColorTrack> ColorTracks;
+
+	/**
+	 * The Matinee move track's six axes, keyed in seconds and in the order UInterpTrackMove makes them: the three
+	 * translations, then the rotation's X, Y and Z. Empty for an anim whose camera stays at the origin (the powers').
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Anim")
+	TArray<FInterpCurveFloat> MoveCurves;
+
+	/** How many curves a move track has, one per axis. */
+	static constexpr int32 MoveCurveCount = 6;
+
+	/** Whether the anim has a move track to offset a camera by. */
+	bool HasMoveTrack() const { return MoveCurves.Num() == MoveCurveCount; }
+
+	/**
+	 * Where the move track has put the camera at Time, in the camera's own space: the three translations, and the
+	 * rotation as UInterpTrackMove reads its axes (an euler it turns into FRotator(Y, Z, X)). Identity without a
+	 * move track.
+	 */
+	FTransform EvalMove(float Time) const;
 };
 
 /**
@@ -161,4 +184,80 @@ private:
 	TArray<FWasamiCameraAnimInstance> Instances;
 
 	int32 NextHandle = 1;
+};
+
+/**
+ * What the original's MovieSceneCameraAnimTrack does to a camera a sequence binds, which UE 5.8's Sequencer no longer
+ * has: while the scene's sequence is inside the track's section, the CameraAnim's move track offsets the view the
+ * camera gives, in the camera's own space (UE4's FMovieSceneAdditiveCameraAnimationTrackExecutionToken →
+ * FCameraAnimationHelper::ApplyOffset). dd_sequence places one of these for the capture scene's CameraAnim_Nurse_01
+ * and fills it in; UWasamiCameraAnimOffsetModifier applies it.
+ */
+UCLASS()
+class WASAMI_DECEPTION_API AWasamiCameraAnimOffset : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** The anim whose move track is the offset. */
+	UPROPERTY(EditAnywhere, Category = "Camera Anim")
+	TObjectPtr<UWasamiCameraAnim> Anim;
+
+	/** The camera the original's track is on; the offset counts only while the view looks through it. */
+	UPROPERTY(EditAnywhere, Category = "Camera Anim")
+	TObjectPtr<ACameraActor> Camera;
+
+	/** The actor that plays the scene; its player's time says where in the section we are. */
+	UPROPERTY(EditAnywhere, Category = "Camera Anim")
+	TObjectPtr<ALevelSequenceActor> Sequence;
+
+	/** The section's start in the sequence (s), which is also where the anim's own time counts from. */
+	UPROPERTY(EditAnywhere, Category = "Camera Anim")
+	float StartTime = 0.f;
+
+	/** The section's end in the sequence (s); the view is the camera's own outside the section. */
+	UPROPERTY(EditAnywhere, Category = "Camera Anim")
+	float EndTime = 0.f;
+
+	/** Whether a sequence time falls in the section. */
+	bool IsInSection(float Time) const { return Time >= StartTime && Time <= EndTime; }
+
+	/** The offset the anim has this frame, or false when the scene is not playing that part of it. */
+	bool CurrentOffset(FTransform& OutOffset) const;
+};
+
+/**
+ * Applies the offsets of the AWasamiCameraAnimOffsets that are running to the player's view, where UE4's Sequencer
+ * applied a camera anim's.
+ *
+ * UE4 handed the offset to the bound camera's component (UCameraComponent::AddAdditiveOffset) together with the
+ * camera shakes the same sequence played, all accumulated into the one additive offset. UE 5.8 keeps that accumulator
+ * for shakes alone (FAccumulatedShake in MovieSceneCameraShakeSystem.cpp), and it clears the component's offset every
+ * frame a shake section is open - which is every frame from 22.13 s in the capture scene, where the original's shake
+ * starts on the same camera. So the anim's offset goes on the view instead, from a camera modifier, which runs on
+ * what GetCameraView returned: the shake's offset is already in it and both end up on the view, as they did in UE4.
+ */
+UCLASS()
+class WASAMI_DECEPTION_API UWasamiCameraAnimOffsetModifier : public UCameraModifier
+{
+	GENERATED_BODY()
+
+public:
+	/** The camera manager's modifier, added the first time it is asked for. */
+	static UWasamiCameraAnimOffsetModifier* Get(APlayerCameraManager* CameraManager);
+
+	void Add(AWasamiCameraAnimOffset* Offset);
+	void Remove(AWasamiCameraAnimOffset* Offset);
+
+	virtual bool ModifyCamera(float DeltaTime, FMinimalViewInfo& InOutPOV) override;
+
+	/** The view with an offset applied in its own space (FCameraAnimationHelper::ApplyOffset). */
+	static void ApplyOffset(const FTransform& Offset, FMinimalViewInfo& InOutPOV);
+
+private:
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AWasamiCameraAnimOffset>> Offsets;
 };
