@@ -118,7 +118,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - エンジン: `MaterialExpressionPanner`・`MaterialExpressionDesaturation`・`TextureFactory`・`SoundFactory`、`UGeneralProjectSettings`（`EngineSettings`）
 
 ## 既知の制約・注意点
-- 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は 1.0.0（`v1.0.0`。2026-09-20 のユーザーの回答。それまでは仮の 0.1.0）。
+- 版の文字の `ProjectVersion`（`Config/DefaultGame.ini`）は 1.0.1（`v1.0.1`。2026-09-27 のユーザーの指示。1.0.0 は 2026-09-20 のユーザーの回答。それまでは仮の 0.1.0）。
 - NEW GAME が問うかどうかは本家の `New Game?` の代わりに進みで決める（上の「ボタンの道」）。本家は一度でも新しいゲームを始めた後は、進みが無くても問う。
 - `L_Title` は git の外（`Content/Stage`）。作り直すときは C++ をビルドしてから `WasamiStageTools.build_title_level`。エディタで遊んで確かめるときは `L_Title` を開いて PIE（エディタの開始のレベルは Zone 1）。
 - `SetInputMode_UIOnlyEx` にこの画面を渡すと、画面が焦点を持てないので `LogPlayerController: Error: InputMode:UIOnly - Attempting to focus Non-Focusable widget` が出る。本家も焦点を持てない画面を渡しているので、そのままにしている（死亡画面も同じ）。
@@ -143,6 +143,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - 画面は `widgets=WasamiTitleScreenWidget`（`Wasami.Status`）で、NEW GAME・EXTRAS・OPTIONS・QUIT の 4 つが出ている。
 
 ## 変更履歴
+- 2026-09-27: 版を 1.0.1 にした（ユーザーの指示）
 - 2026-09-27: NEW GAME の `FadeOut` で鳴るビアスの声 `Bierce_Title_Modified_03` をワサミの `Wasami_Line_Follow`（私と一緒に行きましょう。字幕なし）にした（10 記録。ユーザーの指示）
 - 2026-09-22: 顔の α を本家の横顔と同じ切り口（ほぼ不透明 + 左の細い羽根）にし、WebGL 版の楕円は RGB を黒へ落とす暈しへ移した（上の「前処理」。右端・上端・下端の黒い隙間が消え、左の境界が煙の縁になった。作業一覧の項目 44）
 - 2026-09-22: 筆の跡 `Image_104` を無効にするのをやめた（UE 5 の Slate の無効は不透明度 0.45 倍。上の「画面」の 5。作業一覧の項目 44）
