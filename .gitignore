@@ -78,3 +78,6 @@ tmp
 # 測った値をまとめた README だけは追う（本作の判断の根拠になるので）
 /observations/*
 !/observations/README.md
+
+# Blender が保存のたびに作る控え
+*.blend1
