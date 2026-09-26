@@ -117,14 +117,23 @@ def _gltf_file(mesh_rel):
     return os.path.join(dd_assets.pak(VERSION), *entry["gltf"].split("/"))
 
 
-def frame_rate(anim_rel):
-    """The AnimSequence's keys per second: its NumFrames keys span its SequenceLength."""
+def frame_rate(anim_rel, whole=True):
+    """The AnimSequence's keys per second: its NumFrames keys span its SequenceLength.
+
+    Most of the original's takes land on a whole rate, and a rate that does not is a sign the reading is wrong, so
+    that is what this asks for. The hospital's dialogue takes are the exception: their span does not land on a frame
+    (Nurse_Hospital_Zone01_Event_40 is 186 keys over 6.127907 s = 30.19 fps), and they play a little faster than
+    30 fps because of it. Those are read as they are (whole=False), which keeps the acting the length the original
+    gives it.
+    """
     props = dd_assets.main_export(dd_assets.export_json(anim_rel, VERSION), anim_rel)["props"]
     rate = (props["NumFrames"] - 1) / props["SequenceLength"]
-    if abs(rate - round(rate)) > 1e-3:
-        raise ValueError("%s: %d frames over %.6f s is %.4f fps, not a whole rate"
-                         % (anim_rel, props["NumFrames"], props["SequenceLength"], rate))
-    return int(round(rate)), props["NumFrames"], props["SequenceLength"]
+    if whole:
+        if abs(rate - round(rate)) > 1e-3:
+            raise ValueError("%s: %d frames over %.6f s is %.4f fps, not a whole rate"
+                             % (anim_rel, props["NumFrames"], props["SequenceLength"], rate))
+        rate = int(round(rate))
+    return rate, props["NumFrames"], props["SequenceLength"]
 
 
 def _drop_idle_joint_parents(model):

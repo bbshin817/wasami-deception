@@ -125,9 +125,16 @@ FOREARM_AXIS = (1.0, 0.0, 0.0)
 #   stun_get_up    the fall's get-up (_stun_get_up)
 #   vault          see _vault
 V3, CAPTURE, NURSE = "v3", "capture", "nurse"
+# Where the original's nurse's animations live (pak_reference_2): her own, and the hospital's dialogue takes.
+NURSE_REAPER = "Animation/Enemies/Nurse/Reaper/"
+NURSE_STANDING = "Animation/06_Hospital/NurseIntro/Anims/StandingAnims/"
 ROLES = (
     ("Idle", V3, "Idle_11", "loop"),
-    ("Idle_Alert", V3, "Idle_5", "loop"),
+    # The sentries' idle, which only they play (bAggressiveIdle), and the waiting the capture scene opens on: the
+    # original's own alert idle, carried onto v3 (the work list's item 54 (a)). v3's Idle_5 stood here, and it holds
+    # the arms out to the sides where the original's holds the syringe low, which read as six Wasami with their hands
+    # up over the lobby.
+    ("Idle_Alert", NURSE, NURSE_REAPER + "ReaperNurse_Idle_Alert", "loop"),
     ("Walk", V3, "Walking", "loop"),
     ("Run", V3, "Running", "loop"),
     ("Run_Nightmare", V3, "run_fast_2", "loop_in_place"),
@@ -144,13 +151,28 @@ ROLES = (
     ("Chase_VaultLand", V3, VAULT, "vault"),
     ("Chase_RunFast", V3, "run_fast_5", "in_place"),
     ("Chase_Slide", V3, "slide_right", "in_place"),
-    # The cut scenes' acting, the original's nurse's own (the work list's item 54). A nurse clip is named by the
-    # original's path: the psa is read from there, and the AnimSequence of that path says its frame rate.
-    ("Cut_ReaperNurse_Idle_Alert", NURSE, "Animation/Enemies/Nurse/Reaper/ReaperNurse_Idle_Alert", "once"),
+    # The cell scene's acting, the original's nurse's own (the work list's item 54): she waits, speaks eight takes
+    # over the dialogue, backs away and cloaks. A nurse clip is named by the original's animation, and its path says
+    # where the psa is read from and which AnimSequence gives its frame rate. What is left out is the acting the
+    # user's decision of 2026-09-26 keeps as it is: the punch (Event_39, the syringe brought down) and the Matron's.
+    # Event_43 is here because its raise is a gesture, not a swing: its right wrist reaches 7 cm over her head once,
+    # at 4.9 m/s, where the punch's reaches 4 cm at 11.6 m/s and comes down at 4.9 m/s (nurse_ev43_probe).
+    ("Cut_nurse_idle_01", NURSE, NURSE_REAPER + "nurse_idle_01", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_40", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_40", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_41", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_41", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_42", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_42", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_43", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_43", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_44", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_44", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_45", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_45", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_46", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_46", "once"),
+    ("Cut_Nurse_Hospital_Zone01_Event_47", NURSE, NURSE_STANDING + "Nurse_Hospital_Zone01_Event_47", "once"),
+    ("Cut_ReaperNurse_Walk_Back", NURSE, NURSE_REAPER + "ReaperNurse_Walk_Back", "once"),
+    ("Cut_nurse_cloak", NURSE, NURSE_REAPER + "nurse_cloak", "once"),
 )
-# restpose is the arms-out bind pose, of no use as a motion; OLD_STUN is not used. An animation the user adds later is
+# restpose is the arms-out bind pose, of no use as a motion; OLD_STUN is not used; Idle_5 was the sentries' idle until
+# the original's own took its place (item 54 (a)), and nothing else plays it. An animation the user adds later is
 # imported as it is, under its own name.
-SKIPPED = ("restpose", OLD_STUN)
+SKIPPED = ("restpose", OLD_STUN, "Idle_5")
 CAPTURE_ANIMATIONS = ("Backflip", "sliding_rool", "Stylish_Walk")
 # An animation the user's tool made for both models, from which _Retarget measures how one's bones map onto the other's
 # (this one's pelvis goes 2.6 m, which fixes the scale; Running's hardly moves).
@@ -637,7 +659,7 @@ class _NurseRetarget:
 def _nurse_tracks(model, rel):
     """The nurse's animation of that path on v3's bones, resampled on the 30 fps grid from 0."""
     psa = _nurse_psa(rel)
-    rate, frames, length = _dd_skeletal().frame_rate(rel)
+    rate, frames, length = _dd_skeletal().frame_rate(rel, whole=False)
     if psa["frames"] != frames:
         raise ValueError("%s: the psa has %d frames, the AnimSequence %d" % (rel, psa["frames"], frames))
     retarget = _NurseRetarget(psa, model)
@@ -687,9 +709,17 @@ def prepare():
     for role, source, name, how in roles:
         moved = (0.0, 0.0)
         if source == NURSE:
-            if how != "once":
+            if how not in ("once", "loop"):
                 raise ValueError("%s: the nurse's animations are carried over as they are" % role)
             tracks = _nurse_tracks(model, name)
+            if how == "loop":
+                # Her cycles close themselves, unlike the v3 sources a loop repeats the first key after: repeating it
+                # here would hold her still for a frame every time round.
+                gap = max(gltf.angle(values[0], values[-1]) if what == "rotation"
+                          else math.dist(values[0], values[-1]) for (_, what), values in tracks.items())
+                if gap > 1e-3:
+                    raise ValueError("%s: the original's cycle does not close (%.4f between its first and last key)"
+                                     % (role, gap))
         else:
             chans = gltf.channels(*((model, blob) if source == V3 else (capture, capture_blob)),
                                   animations[source][name])

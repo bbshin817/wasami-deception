@@ -30,7 +30,7 @@
 | 役 | アニメ（v3） | 長さ | 骨盤の前進 | 備考 |
 |---|---|---|---|---|
 | `Idle` | `Idle_11` | 2.000 s | なし | 仮（Claude。2026-09-18 に PIE で見て、このままにした）。骨盤 0.91 m の直立、頭は少しうつむく |
-| `Idle_Alert` | `Idle_5` | 1.958 s | なし | 仮（同上）。骨盤 0.80 m、足を前後に開いた低い構え（Zone 2 の見張り 6 体〈本家の `bAggressiveIdle`〉） |
+| `Idle_Alert` | 本家 `ReaperNurse_Idle_Alert` を載せ替え | 6.000 s | なし | **本家のものに替えた**（2026-09-26、作業一覧の項目 54 (a)）。骨盤 0.73 m の低い構え、頭は骨盤の 0.45 m 上。Zone 2 の見張り 6 体〈本家の `bAggressiveIdle`〉だけが流し、捕まる場面の待ち構えも同じ役を引く。v3 の `Idle_5`（1.958 s、腕を左右へ伸ばす）だったが、6 体が同じ位相で手を掲げて見えるという指摘を受けた（実装記録 07 の「本家のナースの演技の載せ替え」） |
 | `Walk` | `Walking` | 1.083 s | なし | 巡回（本家 350 cm/s） |
 | `Run` | `Running` | 0.708 s | なし | 追跡（本家 800 cm/s）。捕獲の顔の 4 本目（2026-09-19。館のゴールドウォッチャーの捕獲の体）でも、別室でその場で回しながらカメラへ寄せる |
 | `Run_Nightmare` | `run_fast_2` | 0.667 s | 2.68 m（前処理で消す） | 全回収後の追跡（2026-09-17 の決定） |
@@ -68,8 +68,8 @@
 
 | 場面（本家） | 本家の演技 | 代用（仮） |
 |---|---|---|
-| Zone 1 の途中の出来事（`06_Hospital_Zone1_06Event`、2 体、約 10 s） | 構え `ReaperNurse_Boss_Idle_01` → 跳び上がる `Fast_Jump_Up`（+ `_Air`）→ 宙返りで上へ `Flip_Up` | 構え → `Idle_5`、跳び出し → `Parkour_Vault_with_Roll`、宙 → `Running`、降りて着地 → `Parkour_Vault_with_Roll`（2026-09-22 に PIE で見て確定。屋根から跳び上がって駐車場へ降り、2 体とも構えで立つ。`Vault_and_Land` は使わない。項目 42 のステップ 4） |
-| Zone 2 の始まり・捕まる（`06_Hospital_Zone2_Capture`、約 26 s） | 待ち構え `ReaperNurse_Idle_Alert` → 殴る `Nurse_Hospital_Zone01_Event_39` | 待ち構え → `Idle_5`、殴る → `Female_Run_Forward_Pick_Up_Right`（`Chase_PickUp`。2026-09-22 に `Male_Head_Down_Charge` から替えた。本家の psa を測ると振りかぶって振り下ろす動きで、v3 で同じ形なのはこれだけ。01 記録） |
+| Zone 1 の途中の出来事（`06_Hospital_Zone1_06Event`、2 体、約 10 s） | 構え `ReaperNurse_Boss_Idle_01` → 跳び上がる `Fast_Jump_Up`（+ `_Air`）→ 宙返りで上へ `Flip_Up` | 構え → `Idle_Alert`（2026-09-26 から本家の `ReaperNurse_Idle_Alert` そのもの）、跳び出し → `Parkour_Vault_with_Roll`、宙 → `Running`、降りて着地 → `Parkour_Vault_with_Roll`（2026-09-22 に PIE で見て確定。屋根から跳び上がって駐車場へ降り、2 体とも構えで立つ。`Vault_and_Land` は使わない。項目 42 のステップ 4） |
+| Zone 2 の始まり・捕まる（`06_Hospital_Zone2_Capture`、約 26 s） | 待ち構え `ReaperNurse_Idle_Alert` → 殴る `Nurse_Hospital_Zone01_Event_39` | 待ち構え → `Idle_Alert`（2026-09-26 から本家の `ReaperNurse_Idle_Alert` そのもの）、殴る → `Female_Run_Forward_Pick_Up_Right`（`Chase_PickUp`。2026-09-22 に `Male_Head_Down_Charge` から替えた。本家の psa を測ると振りかぶって振り下ろす動きで、v3 で同じ形なのはこれだけ。01 記録） |
 | Zone 2 の独房（`06_Hospital_Zone2_Cell`、約 74 s） | 待機 `nurse_idle_01`、台詞の演技 `Event_40`〜`47`、後ずさり `ReaperNurse_Walk_Back`、透明化 `nurse_cloak` | 待機と台詞の間 → `Idle_11`、後ずさり → `Walking` の逆再生、透明化 → `Idle_11`（材質の `Efficiency` で消えるので、その場に立つ。2026-09-21、項目 28 のステップ 14b。それまでは `Walking` で歩き去らせていた） |
 
 ## ボスワサミ（`boss_wasami.glb`。Matron の代わり）
