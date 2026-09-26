@@ -3,10 +3,16 @@
     "name": "hospital_poster_faceMask_01_D",
     "_orig": "M_06_Hospital_Poster_02（Zone 1 に 54 枚）。本家「ATTENTION / FACE MASK REQUIRED」とマスクの顔、赤白の斜めの縁",
     "style": "print",
-    "prompt": "A tall hospital notice poster: a red and white diagonal hazard-stripe border, a bold banner at the top, and in the middle a flat vector icon of Wasami's face wearing a teal surgical mask, his eyes wide above it. The notice text sits below the icon in bold white condensed letters on red.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same tall red-and-white hazard-striped frame, red header bar and red footer bar, and flat vector illustration style as the original. In the middle, instead of the lone mask, Wasami's head wearing the same teal surgical mask, drawn in the same flat vector style.",
     "text": [
-      "注意",
-      "マスク着用"
+      "ATTENTION",
+      "FACE MASK REQUIRED"
+    ],
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_faceMask_01_D.png"
     ],
     "size": "768x1536",
     "final_size": "512x1024",
@@ -18,12 +24,18 @@
     "name": "hospital_poster_LungCancer_01_D",
     "_orig": "M_06_Hospital_Poster_03（18 枚）。本家「Lung Cancer Stage」の 3 段の肺の図",
     "style": "print",
-    "prompt": "A wide, old-fashioned medical education chart on a pale pastel halftone background: a title across the top and three hand-drawn anatomical illustrations of Wasami's head in a row, each with a small caption under it, getting progressively more deranged from left to right (calm, twitchy, completely unhinged with bulging eyes). Soft vintage colours, pink and cream.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same pale pastel halftone background, pink script title and three illustrations in a row with small script captions, as in the original chart. The three illustrations are Wasami's head in the same soft anatomical-illustration technique, from calm to increasingly deranged.",
     "text": [
-      "ワサミ症候群の進行",
-      "初期",
-      "中期",
-      "末期"
+      "Wasami Syndrome Stage",
+      "Healthy Wasami",
+      "Early-Stage",
+      "Late-Stage"
+    ],
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_LungCancer_01_D.png"
     ],
     "size": "1536x768",
     "final_size": "2048x1024",
@@ -35,7 +47,13 @@
     "name": "hospital_poster_heart_D",
     "_orig": "M_06_Hospital_Poster_04（5 枚）。本家は解剖図の心臓の版画（字なし）",
     "style": "print",
-    "prompt": "A black ink engraving of an anatomical human heart on a plain white background, in fine cross-hatching like an old medical book plate, where the veins and chambers subtly form Wasami's face with wide staring eyes. No text.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. The same black ink line engraving of an anatomical heart on white, same size and position; Wasami's face is subtly engraved into the front of the heart in the same fine ink linework.",
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_heart_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
@@ -46,10 +64,16 @@
     "name": "hospital_poster_handsanitizer_01_D",
     "_orig": "M_06_Hospital_Poster_05（Zone 1 に 86 枚。いちばん多い）。本家「NOTICE / HAND SANITIZER STATION」の案内",
     "style": "print",
-    "prompt": "A plain square facility notice sign on white with a thin red rounded border: a solid red banner across the top with the first word, below it a red circle icon of a hand pressing a sanitizer pump bottle, and beside the icon the station name in bold black letters on two lines. In the bottom corner, a tiny cartoon of Wasami's face winking as a mascot.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same NOTICE sign layout as the original: rounded black-bordered white sign, red header bar, red circle icon with a pump bottle and hands, black condensed text on the right. Add a small round portrait of Wasami in the lower right corner in the same flat vector style.",
     "text": [
-      "お知らせ",
-      "手指消毒ステーション"
+      "NOTICE",
+      "HAND SANITIZER STATION"
+    ],
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_handsanitizer_01_D.png"
     ],
     "size": "1024x1024",
     "final_size": "1024x1024",
@@ -61,8 +85,17 @@
     "name": "hospital_poster_handsanitizer_02_D",
     "_orig": "M_06_Hospital_Poster_06（5 枚）。本家「Please Use HAND SANITIZER!」の戦時の宣伝ポスター風",
     "style": "print",
-    "prompt": "A retro wartime propaganda style poster in teal, cream, black and red: Wasami leaning forward and pointing straight at the viewer with an intense stare, a big sanitizer pump bottle with a cross on it beside him, sunburst rays behind, bold slanted lettering at the top.",
-    "text": "手を消毒しろ！",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same retro propaganda layout and flat muted teal, red and cream print colours as the original, with the same slanted headline. The gloved hands are now Wasami, shown from the chest up rubbing his hands, next to the same pump bottle.",
+    "text": [
+      "Please",
+      "Use HAND SANITIZER!"
+    ],
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_handsanitizer_02_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
@@ -73,8 +106,17 @@
     "name": "hospital_poster_mortalvaccination_D",
     "_orig": "M_06_Hospital_Poster_07（17 枚）。本家「MORTAL VACCINATION」と注射器の図案",
     "style": "print",
-    "prompt": "A muted grey, beige and black graphic design poster with diagonal stripes: huge heavy condensed title letters at the top and three large syringes angled diagonally across the lower half, one of them with a tiny Wasami face printed on its barrel.",
-    "text": "ワサミ ワクチン",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same flat geometric grey, black and white layout with the big condensed title top-left and diagonal syringes as the original. One syringe barrel shows a small printed portrait of Wasami.",
+    "text": [
+      "WASAMI",
+      "VACCINATION"
+    ],
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_mortalvaccination_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
@@ -85,8 +127,17 @@
     "name": "hospital_poster_pills_D",
     "_orig": "M_06_Hospital_Poster_08（9 枚）。本家は薬瓶と錠剤の白黒の版画（COUGH SYRUP の瓶）",
     "style": "print",
-    "prompt": "A black and white ink engraving on white of old medicine bottles, loose pills and a blister pack, in dense cross-hatching; the biggest bottle's label shows a small engraved portrait of Wasami and its name.",
-    "text": "ワサミ錠",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black-and-white hand-drawn ink sketch of medicine bottles, pills and blister pack as the original. The big bottle's label reads the text below and has a tiny ink sketch of Wasami's face.",
+    "text": [
+      "WASAMI",
+      "SYRUP"
+    ],
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_pills_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
@@ -97,7 +148,13 @@
     "name": "hospital_poster_syringe_D",
     "_orig": "M_06_Hospital_Poster_09（12 枚）。本家は赤地の注射器の絵（字なし）",
     "style": "print",
-    "prompt": "A realistic syringe lying horizontally across a flat bright red background, the clear barrel filled with liquid in which a small distorted reflection of Wasami's face stares out. No text.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same flat red background and the same realistic syringe lying diagonally as the original. The liquid in the barrel shows a faint reflection of Wasami's face.",
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_syringe_D.png"
+    ],
     "size": "1536x768",
     "final_size": "1024x512",
     "count": 1,
@@ -108,7 +165,13 @@
     "name": "hospital_poster_toxickiss_D",
     "_orig": "M_06_Hospital_Poster_10（16 枚）。本家は黒地にピンクのネオンの唇",
     "style": "print",
-    "prompt": "A glowing hot-pink neon tube sign on a pure black background: the outline of Wasami's pursed, pouting lips (as in the reference photos) with a small heart in the middle. No text.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same glowing pink-magenta neon-tube lips as the original; keep them as lips. Under them, a small neon-tube line outline of Wasami's head with short fringe.",
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_toxickiss_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
@@ -119,7 +182,13 @@
     "name": "hospital_poster_pill_01_D",
     "_orig": "M_06_Hospital_Poster_11（9 枚）。本家は黒地に青いカプセルの絵",
     "style": "print",
-    "prompt": "A single big glossy blue and white capsule pill tilted diagonally on a pure black background, flat vector style, with a simple smiling Wasami face printed on the capsule. No text.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same single blue flat capsule outline icon as the original, same line weight and angle. Inside the capsule's upper half, a simple blue line outline of Wasami's head with short fringe.",
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_pill_01_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
@@ -130,7 +199,13 @@
     "name": "hospital_poster_cross_D",
     "_orig": "M_06_Hospital_Poster_13（21 枚）。本家は黒地に青いネオンの十字の輪郭",
     "style": "print",
-    "prompt": "A thin glowing blue neon outline of Wasami's head silhouette (hair fringe, ears, wide eyes) on a pure black background, with a small blue neon medical cross in its forehead. Minimal, lots of black space. No text.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same thin blue neon cross outline as the original, same size and position. Inside the cross, a small blue neon line outline of Wasami's head with short fringe.",
+    "refs": [
+      "face"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/hospital_poster_cross_D.png"
+    ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "count": 1,
