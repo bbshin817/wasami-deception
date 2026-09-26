@@ -1,18 +1,21 @@
 """The enemy Wasami (AWasamiEnemy): its skeletal mesh, material and animations, from this game's own model.
 
   sources   SourceArt/Wasami/enemy_wasami_v3.glb, the user's model (28 bones rooted at pelvis, no root bone; 16
-            animations), and SourceArt/Wasami/enemy_wasami_capture.glb, the capture's three animations of the user's
+            animations), SourceArt/Wasami/enemy_wasami_capture.glb, the capture's three animations of the user's
             older model with the run_fast_2 both models have (its bones and those animations only: make_capture_source
-            took them out of the user's tmp/enemy_wasami.glb)
+            took them out of the user's tmp/enemy_wasami.glb), and the original's nurse's own animations as ActorX
+            files under pak_reference_2/_anims_psa (the cut scenes' acting; NURSE_BONES, _NurseRetarget)
   prepared  Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb: the model with the animations the code asks for by
             role (ROLES, .claude/references/enemy-wasami-motions.md), each resampled on a 30 fps grid from 0 — the
             sources' keys mix 24 and 30 fps and start at 1/24 s, and Interchange refuses an animation that does not end
             on a frame. Loops are closed (their last key is their first), the chase variants and the Nightmare run are
             made in place, the stun's falls start where Idle stands and each has a get-up (a roll onto the front, then
             push_up_to_idle) that ends where Idle stands (_stun_get_up), the vault off a ledge is made a vault from the
-            floor (VAULT_FRAMES), and the capture's are carried onto v3's bones (_Retarget).
+            floor (VAULT_FRAMES), and the capture's and the nurse's are carried onto v3's bones
+            (_Retarget, _NurseRetarget).
   imported  /Game/Wasami/Enemy: SK_WasamiEnemy with SK_WasamiEnemy_Skeleton and SK_WasamiEnemy_PhysicsAsset,
-            A_WasamiEnemy_<role>, T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
+            A_WasamiEnemy_<role> (the cut scenes' are A_WasamiEnemy_Cut_<the original's animation>),
+            T_WasamiEnemy_* and MI_WasamiEnemy (of M_DD_WasamiGltf, glTF's metallic-roughness
             material), and M_WasamiCaptureBlack, the black walls of the capture's room. The mesh faces +Y, as UE's
             mannequins do.
 
@@ -121,7 +124,7 @@ FOREARM_AXIS = (1.0, 0.0, 0.0)
 #   stun_fall      moved to start where Idle stands (_stun_fall)
 #   stun_get_up    the fall's get-up (_stun_get_up)
 #   vault          see _vault
-V3, CAPTURE = "v3", "capture"
+V3, CAPTURE, NURSE = "v3", "capture", "nurse"
 ROLES = (
     ("Idle", V3, "Idle_11", "loop"),
     ("Idle_Alert", V3, "Idle_5", "loop"),
@@ -141,6 +144,9 @@ ROLES = (
     ("Chase_VaultLand", V3, VAULT, "vault"),
     ("Chase_RunFast", V3, "run_fast_5", "in_place"),
     ("Chase_Slide", V3, "slide_right", "in_place"),
+    # The cut scenes' acting, the original's nurse's own (the work list's item 54). A nurse clip is named by the
+    # original's path: the psa is read from there, and the AnimSequence of that path says its frame rate.
+    ("Cut_ReaperNurse_Idle_Alert", NURSE, "Animation/Enemies/Nurse/Reaper/ReaperNurse_Idle_Alert", "once"),
 )
 # restpose is the arms-out bind pose, of no use as a motion; OLD_STUN is not used. An animation the user adds later is
 # imported as it is, under its own name.
@@ -150,6 +156,39 @@ CAPTURE_ANIMATIONS = ("Backflip", "sliding_rool", "Stylish_Walk")
 # (this one's pelvis goes 2.6 m, which fixes the scale; Running's hardly moves).
 REFERENCE_ANIMATION = "run_fast_2"
 RETARGET_TOLERANCE = (0.5, 0.002)  # degrees and metres the reference may stray from the measured mapping
+
+# The original's nurse onto v3, bone by bone: (v3's bone, hers, and the tips the two point at). Her rig has 92 bones
+# where v3 has 28, so a pair's tips say which of her segments is which of v3's: a tip is the next bone down the mapped
+# chain, or the rig's own end bone where the chain stops. Her five spine bones are taken as three (Spine_01, Spine_03,
+# Spine_Top), which splits her six spine segments as 1, 2, 2, 1 over v3's four -- Spine_01/02/Top would make it 1, 1,
+# 3, 1 -- and her clavicles hang off Spine_Top as v3's do off spine_03. Her Spine_04, Neck_02, the twenty fingers, the
+# six skirt and four wheel bones, the four at the waist, the weapon's, the trajectory's and the mesh's nodes are
+# dropped: what they do reaches v3 through the bones above them, or not at all.
+NURSE_BONES = (
+    ("pelvis", "Nurse_ROOTSHJnt", "spine_01", "Nurse_Spine_01SHJnt"),
+    ("spine_01", "Nurse_Spine_01SHJnt", "spine_02", "Nurse_Spine_03SHJnt"),
+    ("spine_02", "Nurse_Spine_03SHJnt", "spine_03", "Nurse_Spine_TopSHJnt"),
+    ("spine_03", "Nurse_Spine_TopSHJnt", "neck_01", "Nurse_Neck_01SHJnt"),
+    ("neck_01", "Nurse_Neck_01SHJnt", "head", "Nurse_Neck_TopSHJnt"),
+    ("head", "Nurse_Neck_TopSHJnt", "head_end", "Nurse_TopOfHead_AuxSHJnt"),
+    ("clavicle_l", "Nurse_l_Arm_ClavicleSHJnt", "upperarm_l", "Nurse_l_Arm_ShoulderSHJnt"),
+    ("upperarm_l", "Nurse_l_Arm_ShoulderSHJnt", "lowerarm_l", "Nurse_l_Arm_ElbowSHJnt"),
+    ("lowerarm_l", "Nurse_l_Arm_ElbowSHJnt", "hand_l", "Nurse_l_Arm_WristSHJnt"),
+    ("hand_l", "Nurse_l_Arm_WristSHJnt", "LeftHand_End", "Nurse_l_Finger_03_01SHJnt"),
+    ("clavicle_r", "Nurse_r_Arm_ClavicleSHJnt", "upperarm_r", "Nurse_r_Arm_ShoulderSHJnt"),
+    ("upperarm_r", "Nurse_r_Arm_ShoulderSHJnt", "lowerarm_r", "Nurse_r_Arm_ElbowSHJnt"),
+    ("lowerarm_r", "Nurse_r_Arm_ElbowSHJnt", "hand_r", "Nurse_r_Arm_WristSHJnt"),
+    ("hand_r", "Nurse_r_Arm_WristSHJnt", "RightHand_End", "Nurse_r_Finger_03_01SHJnt"),
+    ("thigh_l", "Nurse_l_Leg_HipSHJnt", "calf_l", "Nurse_l_Leg_KneeSHJnt"),
+    ("calf_l", "Nurse_l_Leg_KneeSHJnt", "foot_l", "Nurse_l_Leg_AnkleSHJnt"),
+    ("foot_l", "Nurse_l_Leg_AnkleSHJnt", "ball_l", "Nurse_l_Leg_BallSHJnt"),
+    ("ball_l", "Nurse_l_Leg_BallSHJnt", "LeftToe_end", "Nurse_l_Leg_ToeSHJnt"),
+    ("thigh_r", "Nurse_r_Leg_HipSHJnt", "calf_r", "Nurse_r_Leg_KneeSHJnt"),
+    ("calf_r", "Nurse_r_Leg_KneeSHJnt", "foot_r", "Nurse_r_Leg_AnkleSHJnt"),
+    ("foot_r", "Nurse_r_Leg_AnkleSHJnt", "ball_r", "Nurse_r_Leg_BallSHJnt"),
+    ("ball_r", "Nurse_r_Leg_BallSHJnt", "RightToe_end", "Nurse_r_Leg_ToeSHJnt"),
+)
+NURSE_VERSION = 2       # the hospital, and this nurse, are only in the latest version
 
 # The cloak the original's nurse dissolves into: M_06_Nurse_Body over the Basic Stealth System's M_BSS_Character1,
 # whose graph (and its material function MF_BSS_Energy1's) the cook took away, read back from its compiled shaders
@@ -464,6 +503,150 @@ class _Retarget:
         return out
 
 
+def _dd_skeletal():
+    """dd_skeletal, which reads the ActorX files. It is imported as it is used because it imports this module for the
+    glTF import pipeline, and the two cannot import each other as they load."""
+    from wasami_tools.pipeline import dd_skeletal
+    return dd_skeletal
+
+
+def _nurse_psa(rel):
+    """The original's nurse's ActorX animation of that path."""
+    return _dd_skeletal().read_psa(os.path.join(dd_assets.pak(NURSE_VERSION), "_anims_psa", *rel.split("/")) + ".psa")
+
+
+def _nurse_world(psa, frame=None):
+    """{her bone: (rotation, position) in the scene} in glTF's axes: her reference pose, or one frame of the psa's keys.
+    The positions are in her rig's own units, 30 x the mesh's (_NurseRetarget takes the scale out).
+
+    Her reference pose is the imported mesh's glTF rest pose, bone for bone, to 0.08 deg and one ratio. Her keys are
+    written in another of ActorX's conventions: every bone's but the root's is the conjugate of what the reference pose
+    is written in. Only that reading has her stand up -- read as written she lies horizontal, 20 units off the floor;
+    read this way her feet are on it (y 0.000 to 0.187) through all 181 frames of ReaperNurse_Idle_Alert.
+
+    Her rotations are made unit as they are read: the file's are up to 1.7 % short (its numbers are float), which
+    would skew every blend between two keys and leave the written keys out of glTF's rotations.
+    """
+    skeletal = _dd_skeletal()
+    names = [bone["name"] for bone in psa["bones"]]
+    out = {}
+    for i, bone in enumerate(psa["bones"]):
+        if frame is None:
+            position, rotation = bone["position"], bone["rotation"]
+        else:
+            position, rotation = psa["keys"][frame][i]
+            if i:
+                rotation = gltf.qinv(rotation)
+        r = gltf.normalized(skeletal.to_gltf_rotation(rotation))
+        t = skeletal.to_gltf_position(position)
+        if bone["parent"] < 0:
+            out[bone["name"]] = (r, t)
+        else:
+            up_r, up_t = out[names[bone["parent"]]]
+            out[bone["name"]] = (gltf.qmul(up_r, r), tuple(a + b for a, b in zip(up_t, gltf.rotate(up_r, t))))
+    return out
+
+
+def _unit(v):
+    length = math.sqrt(sum(x * x for x in v))
+    if length < 1e-9:
+        raise ValueError("a bone of no length has no direction")
+    return tuple(x / length for x in v)
+
+
+def _swing(a, b):
+    """The shortest rotation that takes the unit vector a onto the unit vector b."""
+    dot = sum(x * y for x, y in zip(a, b))
+    if dot > 1.0 - 1e-12:
+        return (0.0, 0.0, 0.0, 1.0)
+    if dot < -1.0 + 1e-12:   # opposite ways: half a turn about any axis across a
+        axis = _unit((-a[1], a[0], 0.0) if abs(a[2]) < 0.9 else (0.0, -a[2], a[1]))
+        return (axis[0], axis[1], axis[2], 0.0)
+    q = (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0], 1.0 + dot)
+    length = math.sqrt(sum(x * x for x in q))
+    return tuple(x / length for x in q)
+
+
+class _NurseRetarget:
+    """How the original's nurse's motion is carried onto v3's bones (NURSE_BONES), measured on the two reference poses.
+
+    Each of v3's bones is turned so that it points where hers does: its rotation in the scene is hers followed by a
+    constant of its own, which takes v3's rest bone onto hers (a swing) and keeps how the two rigs' bones are rolled
+    against each other (the rest of their reference poses' difference, up to half a turn -- her bones run along their
+    own +X, and so do v3's on the left, but hers run along -X on the right).
+
+    The swing has to be dropped from the reference poses' difference rather than carried with it. Taking the motion as
+    a difference from her rest pose -- what _Retarget does for the user's older model, whose bones point where v3's do
+    -- would carry it: she rests in an A pose, her arms 32 deg lower than v3's, so each of her poses would come out
+    with the arms 32 deg higher than she holds them. Her directions are the acting, so they are what is copied; only
+    the roll, which no direction fixes, comes from the reference poses.
+
+    The pelvis's position is hers about her own rest pose, scaled by the two pelvises' heights (x 1.081 of the mesh's,
+    x 0.0360 of the psa's own units); the other bones keep v3's lengths.
+    """
+
+    def __init__(self, psa, model):
+        rest_hers = _nurse_world(psa)
+        rest_v3 = gltf.world_transforms(model, {}, {})
+        missing = ([b for row in NURSE_BONES for b in row[1::2] if b not in rest_hers]
+                   + [b for row in NURSE_BONES for b in row[0::2] if b not in rest_v3])
+        if missing:
+            raise RuntimeError("NURSE_BONES names bones no rig has: %s" % sorted(set(missing)))
+        self.source = {v3_bone: hers for v3_bone, hers, _, _ in NURSE_BONES}
+        self.parents = gltf.parents(model)
+        self.rest_v3 = rest_v3
+        self.constant, swings = {}, {}
+        for v3_bone, hers, v3_tip, her_tip in NURSE_BONES:
+            # The constant takes a direction in v3's bone to one in hers: the reference poses' difference, and then the
+            # swing that is left between where the two bones point, both of them in her bone's frame.
+            into_hers = gltf.qinv(rest_hers[hers][0])
+            difference = gltf.qmul(into_hers, rest_v3[v3_bone][0])
+            along_v3 = gltf.rotate(into_hers, _unit([a - b for a, b in zip(rest_v3[v3_tip][1], rest_v3[v3_bone][1])]))
+            along_hers = gltf.rotate(into_hers, _unit([a - b for a, b in zip(rest_hers[her_tip][1],
+                                                                            rest_hers[hers][1])]))
+            swing = _swing(along_v3, along_hers)
+            self.constant[v3_bone] = gltf.qmul(swing, difference)
+            swings[v3_bone] = gltf.angle(swing, (0.0, 0.0, 0.0, 1.0))
+        self.scale = rest_v3[ROOT_BONE][1][1] / rest_hers[self.source[ROOT_BONE]][1][1]
+        self.pelvis_rest = rest_hers[self.source[ROOT_BONE]][1]
+        names = gltf.node_names(model)
+        self.pelvis_local = tuple(model["nodes"][names.index(ROOT_BONE)].get("translation", (0.0, 0.0, 0.0)))
+        self.report = (max(swings.values()), max(swings, key=swings.get), self.scale)
+
+    def apply(self, psa):
+        """Her psa on v3's bones: {track: [value per frame of the psa]}, the rotations of NURSE_BONES and the pelvis's
+        position."""
+        tracks = {(v3_bone, "rotation"): [] for v3_bone, _, _, _ in NURSE_BONES}
+        tracks[(ROOT_BONE, "translation")] = []
+        for frame in range(psa["frames"]):
+            hers = _nurse_world(psa, frame)
+            scene = {v3_bone: gltf.qmul(hers[self.source[v3_bone]][0], self.constant[v3_bone])
+                     for v3_bone, _, _, _ in NURSE_BONES}
+            for v3_bone in scene:
+                parent = self.parents.get(v3_bone)
+                # The pelvis hangs off a node of the model's own, which no bone of hers drives; it keeps its rest.
+                above = scene.get(parent) or self.rest_v3[parent][0]
+                tracks[(v3_bone, "rotation")].append(gltf.qmul(gltf.qinv(above), scene[v3_bone]))
+            moved = [self.scale * (a - b) for a, b in zip(hers[self.source[ROOT_BONE]][1], self.pelvis_rest)]
+            above = self.rest_v3[self.parents[ROOT_BONE]][0]
+            tracks[(ROOT_BONE, "translation")].append(
+                tuple(a + b for a, b in zip(self.pelvis_local, gltf.rotate(gltf.qinv(above), moved))))
+        return tracks
+
+
+def _nurse_tracks(model, rel):
+    """The nurse's animation of that path on v3's bones, resampled on the 30 fps grid from 0."""
+    psa = _nurse_psa(rel)
+    rate, frames, length = _dd_skeletal().frame_rate(rel)
+    if psa["frames"] != frames:
+        raise ValueError("%s: the psa has %d frames, the AnimSequence %d" % (rel, psa["frames"], frames))
+    retarget = _NurseRetarget(psa, model)
+    unreal.log("enemy: %s onto v3: the reference poses' bones are up to %.1f deg apart (%s), her pelvis x %.4f"
+               % (rel.split("/")[-1], *retarget.report))
+    chans = {key: ([f / rate for f in range(frames)], values) for key, values in retarget.apply(psa).items()}
+    return _sample(chans, range(int(round(length * RATE)) + 1))
+
+
 def prepare():
     """Writes the prepared glb. Returns {role: (seconds, (x, z) the pelvis was moved by, in metres)}."""
     for path in (SOURCE, CAPTURE_SOURCE):
@@ -502,36 +685,43 @@ def prepare():
 
     report = {}
     for role, source, name, how in roles:
-        chans = gltf.channels(*((model, blob) if source == V3 else (capture, capture_blob)), animations[source][name])
-        missing = {node for node, _ in chans} - set(names)
-        if missing:
-            raise RuntimeError("%s: bones not in the model: %s" % (name, sorted(missing)))
         moved = (0.0, 0.0)
-        if how == "stun_fall":
-            tracks, moved = _stun_fall(chans, target)
-        elif how == "stun_get_up":
-            tracks, got = _stun_get_up(model, _stun_fall(chans, target)[0], get_up, target, forward)
-            moved = got["move"]
-            unreal.log("enemy: %s's get-up turns the enemy by %.1f° about the origin, then moves it x %.2f m z %.2f m, "
-                       "as it starts; it rolls %s with the limbs in over %.0f %% of it, its lowest joint %.3f m, lifted "
-                       "%.3f m" % (name, got["turn"], *moved, "one way" if got["way"] > 0 else "the other way",
-                                   got["limbs"] * 100.0, got["lowest"], got["lift"]))
-        elif how == "vault":
-            tracks, height, turn = _vault(model, chans)
-            unreal.log("enemy: %s is lowered by %.1f cm until its take-off and turned by %.1f°"
-                       % (name, height * 100.0, turn))
-            moved = _in_place(tracks)
+        if source == NURSE:
+            if how != "once":
+                raise ValueError("%s: the nurse's animations are carried over as they are" % role)
+            tracks = _nurse_tracks(model, name)
         else:
-            tracks = _sample(chans, _content_frames(chans))
-            if source == CAPTURE:
-                if how != "once":
-                    raise ValueError("%s: the older model's animations are imported as they are" % role)
-                tracks = retarget.apply(tracks)
-            if how in ("in_place", "loop_in_place"):
+            chans = gltf.channels(*((model, blob) if source == V3 else (capture, capture_blob)),
+                                  animations[source][name])
+            missing = {node for node, _ in chans} - set(names)
+            if missing:
+                raise RuntimeError("%s: bones not in the model: %s" % (name, sorted(missing)))
+            if how == "stun_fall":
+                tracks, moved = _stun_fall(chans, target)
+            elif how == "stun_get_up":
+                tracks, got = _stun_get_up(model, _stun_fall(chans, target)[0], get_up, target, forward)
+                moved = got["move"]
+                unreal.log("enemy: %s's get-up turns the enemy by %.1f° about the origin, then moves it x %.2f m "
+                           "z %.2f m, as it starts; it rolls %s with the limbs in over %.0f %% of it, its lowest joint "
+                           "%.3f m, lifted %.3f m"
+                           % (name, got["turn"], *moved, "one way" if got["way"] > 0 else "the other way",
+                              got["limbs"] * 100.0, got["lowest"], got["lift"]))
+            elif how == "vault":
+                tracks, height, turn = _vault(model, chans)
+                unreal.log("enemy: %s is lowered by %.1f cm until its take-off and turned by %.1f°"
+                           % (name, height * 100.0, turn))
                 moved = _in_place(tracks)
-            if how in ("loop", "loop_in_place"):
-                for values in tracks.values():
-                    values.append(values[0])
+            else:
+                tracks = _sample(chans, _content_frames(chans))
+                if source == CAPTURE:
+                    if how != "once":
+                        raise ValueError("%s: the older model's animations are imported as they are" % role)
+                    tracks = retarget.apply(tracks)
+                if how in ("in_place", "loop_in_place"):
+                    moved = _in_place(tracks)
+                if how in ("loop", "loop_in_place"):
+                    for values in tracks.values():
+                        values.append(values[0])
         _twist_hands(tracks)
         gltf.add_animation(out, blob, ANIM_PREFIX + role, tracks, RATE)
         keys = len(next(iter(tracks.values())))

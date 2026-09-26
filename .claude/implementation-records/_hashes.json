@@ -64,9 +64,9 @@
     "Content/Python/wasami_tools/pipeline/dd_shards.py": "3747322df29725f177a332bc2c4fb743ca91f058",
     "Content/Python/wasami_tools/pipeline/dd_ui.py": "4b7717b0a8ff1cd885f5e8394562fa206e3e57f0",
     "Content/Python/wasami_tools/pipeline/dd_gimmicks.py": "aa7271939c7317513332329e32b4d20bb8746ed2",
-    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "8edd14d0a8b6f74635c2075b487922fa7991179d",
+    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "36da9779b3c79056f7549eaa9b9f969789012a49",
     "Content/Python/wasami_tools/pipeline/dd_boss.py": "9152be4681c984e45f037f5dba0a0579a82d5809",
-    "Content/Python/wasami_tools/pipeline/gltf.py": "8b3bcf347ae60d56b5b0bd1f9420e4bbf895951c",
+    "Content/Python/wasami_tools/pipeline/gltf.py": "977e210a61708d5276ebb652538b4c8ff39b6461",
     "Content/Python/wasami_tools/pipeline/dd_skeletal.py": "5a6d5f8716c774423cd5082a305305a9d7936a25",
     "Content/Python/wasami_tools/pipeline/dd_specials.py": "0c36c18346ed59182da018e731ba7541e9e79fe2",
     "Content/Python/wasami_tools/pipeline/dd_secrets.py": "e305e2a847f06e830a671d1ce8398d334c9fda53",
@@ -148,7 +148,7 @@
     "SourceArt/Wasami/wasami_mochi.glb": "f78bb3fc65c4fbc2fc02dd0cd09e86d08941fe51"
   },
   "07-enemies.md": {
-    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "8edd14d0a8b6f74635c2075b487922fa7991179d",
+    "Content/Python/wasami_tools/pipeline/dd_enemy.py": "36da9779b3c79056f7549eaa9b9f969789012a49",
     "Source/wasami_deception/WasamiEnemy.h": "0e76920166b1aabc465aa03474e8d0cfb6404c80",
     "Source/wasami_deception/WasamiEnemy.cpp": "1b06d9da3d24bdcd0b5a4a5350e185221c87f5d6",
     "Source/wasami_deception/WasamiEnemy06Chase.h": "810c290a93e980e782c23b7b3295b8617dbec5a8",

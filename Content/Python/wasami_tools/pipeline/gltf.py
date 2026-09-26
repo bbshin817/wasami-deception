@@ -180,7 +180,9 @@ def world_rotations(gltf, local):
     return {name: r for name, (r, _) in world_transforms(gltf, local, {}).items()}
 
 
-def _normalized(q):
+def normalized(q):
+    """A quaternion of length one. Rotations have to be unit: a glTF's keys are read as such, and slerp and angle
+    both take the arc from the components alone."""
     length = math.sqrt(sum(c * c for c in q)) or 1.0
     return tuple(c / length for c in q)
 
@@ -196,7 +198,7 @@ def slerp(a, b, f):
         b = tuple(-c for c in b)
         dot = -dot
     if dot > 0.9995:
-        return _normalized(tuple(x + f * (y - x) for x, y in zip(a, b)))
+        return normalized(tuple(x + f * (y - x) for x, y in zip(a, b)))
     theta = math.acos(min(dot, 1.0))
     sa = math.sin((1.0 - f) * theta) / math.sin(theta)
     sb = math.sin(f * theta) / math.sin(theta)
