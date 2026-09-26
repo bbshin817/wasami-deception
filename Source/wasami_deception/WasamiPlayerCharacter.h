@@ -184,9 +184,9 @@ public:
 	 */
 	void SetUpMouseSmoothing(const UWasamiSettingsSaveGame& Settings);
 
-	/** The OPTIONS' TOGGLE SPRINT. */
+	/** The OPTIONS' TOGGLE SPRINT (on, as its default). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Options")
-	bool bToggleSprint = false;
+	bool bToggleSprint = true;
 
 	/** The OPTIONS' MOUSE SENSITIVITY: a multiplier on the mouse axes (1 for the setting's default of 0.5). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Options")

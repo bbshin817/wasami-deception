@@ -275,6 +275,7 @@ bool FWasamiCaptureRoomTest::RunTest(const FString& Parameters)
 		// Restore State: what the death carried, back on the player the level makes again (the roadmap's 38). The tablet
 		// is up at once, where Toggle Tablet would start its rise at the bottom, and the sprint is on at its speed.
 		Player->SetMoveSpeeds(300.f, 600.f);
+		Player->bToggleSprint = false;
 		const FVector Stowed = Player->GetTablet()->GetComponentLocation();
 		Player->RestoreState(true, true);
 		TestTrue(TEXT("the tablet up again"), Player->IsTabletUp());

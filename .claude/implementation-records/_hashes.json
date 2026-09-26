@@ -87,7 +87,7 @@
   "02-player.md": {
     "Source/wasami_deception/WasamiGameMode.h": "e8cdc83d70bb5e123769920bc4fd38ee98023199",
     "Source/wasami_deception/WasamiGameMode.cpp": "222cf6500b7f48db0756f1f37e9a0f4b64c2453d",
-    "Source/wasami_deception/WasamiPlayerCharacter.h": "790cae6acaf6e872a122df0daddb0d05f30739a0",
+    "Source/wasami_deception/WasamiPlayerCharacter.h": "35978743e30c3153085d11cab0de1ad1792358e8",
     "Source/wasami_deception/WasamiPlayerCharacter.cpp": "1024ef80f900e072b7a3065b2fd52b5553023d68"
   },
   "03-tablet.md": {
@@ -171,7 +171,7 @@
     "Source/wasami_deception/Tests/WasamiTestListener.h": "1d0a05da143bdeda21999960ec9ccb1001db2708",
     "Source/wasami_deception/WasamiCapture.h": "d663586a9c687df4665381b61daa316e186c476e",
     "Source/wasami_deception/WasamiCapture.cpp": "849df9f5691d0e64de4e847b7d75a1c0cab7b1f2",
-    "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "e5db84e4e216e1a8d6b78cb6ad9d7b26f70ef50d",
+    "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "b4af5b58dac5045a7ac96421a64ea29f4538b82a",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112",
     "Tools/wasami_hands.py": "dae7a1fcb44be24f7f14bc1513bcde9667fe300c"
@@ -294,12 +294,12 @@
     "Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp": "8d771f6aa918118b8b78361ad841bac36fbcb7cf"
   },
   "15-options-pause.md": {
-    "Source/wasami_deception/WasamiSettingsSaveGame.h": "cfbec317f6b376793ffa81108071b3061d44cd09",
+    "Source/wasami_deception/WasamiSettingsSaveGame.h": "96443e2c307f799dd74617cad0fab00a157e694c",
     "Source/wasami_deception/WasamiSettingsSaveGame.cpp": "9229c77e19491df11c98dd456089db05f6699905",
-    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "39d1d4056d78ce84153b6d446832b7c7557a3bac",
+    "Source/wasami_deception/Tests/WasamiSettingsTests.cpp": "37d5b08312eaa015ff39486c21d3998b976b9d3e",
     "Source/wasami_deception/WasamiOptionsWidget.h": "fcf9d7413a90f6b97f35c4c533800cfdae1981de",
     "Source/wasami_deception/WasamiOptionsWidget.cpp": "69d46b9cfc827966aa69010191a62935f3c9ed24",
-    "Source/wasami_deception/Tests/WasamiOptionsTests.cpp": "52a873984bc79c52331c671446c4335b624a5b45",
+    "Source/wasami_deception/Tests/WasamiOptionsTests.cpp": "2e607dc1bae0e4b0234861dca5e062f1f04bf85a",
     "Source/wasami_deception/WasamiPauseWidget.h": "c01bf539ba286b16e4926f7c7a00538d749cf972",
     "Source/wasami_deception/WasamiPauseWidget.cpp": "00aa33d3d356e937c23c805ce3d254e2c4ba8db2",
     "Source/wasami_deception/Tests/WasamiPauseTests.cpp": "84bbbb23572ba8b41749022060cc76d1706dae50"

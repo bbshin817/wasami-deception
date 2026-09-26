@@ -187,9 +187,10 @@ bool FWasamiOptionsScreenTest::RunTest(const FString& Parameters)
 	// Setup Values with the defaults, and the boxes' texts.
 	TestEqual(TEXT("RESOLUTION SCALE at 1"), OptionsSliderOf(Tree, TEXT("ResolutionScaleSlider")), 1.f, 1e-5f);
 	TestEqual(TEXT("MOUSE SENSITIVITY at 0.5"), OptionsSliderOf(Tree, TEXT("MouseSensitivitySlider")), 0.5f, 1e-5f);
-	TestTrue(TEXT("SUBTITLES, HEAD BOBBING and MOUSE SMOOTHING checked"), OptionsIsChecked(Tree, TEXT("SubtitlesCheck"))
-		&& OptionsIsChecked(Tree, TEXT("HeadBobbingCheck")) && OptionsIsChecked(Tree, TEXT("MouseSmoothingCheck")));
-	TestTrue(TEXT("INVERTED Y AXIS and TOGGLE SPRINT not"), !OptionsIsChecked(Tree, TEXT("InvertedYCheck")) && !OptionsIsChecked(Tree, TEXT("ToggleSprintCheck")));
+	TestTrue(TEXT("SUBTITLES, HEAD BOBBING, MOUSE SMOOTHING and TOGGLE SPRINT checked"), OptionsIsChecked(Tree, TEXT("SubtitlesCheck"))
+		&& OptionsIsChecked(Tree, TEXT("HeadBobbingCheck")) && OptionsIsChecked(Tree, TEXT("MouseSmoothingCheck"))
+		&& OptionsIsChecked(Tree, TEXT("ToggleSprintCheck")));
+	TestTrue(TEXT("INVERTED Y AXIS not"), !OptionsIsChecked(Tree, TEXT("InvertedYCheck")));
 	TestFalse(TEXT("GOD MODE not"), OptionsIsChecked(Tree, TEXT("GodModeCheck")));
 	TestEqual(TEXT("QUALITY reads HIGH"), OptionsTextOf(Tree, TEXT("TextBlock_4")), FString(TEXT("HIGH")));
 	TestEqual(TEXT("MUSIC reads 1"), OptionsTextOf(Tree, TEXT("TextBlock_14")), FString(TEXT("1")));
@@ -386,7 +387,7 @@ bool FWasamiOptionsSaveAndCancelTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("EASY kept"), Kept->Difficulty == EWasamiDifficulty::Easy && Owner->IsEasy());
 	TestTrue(TEXT("INVERTED Y AXIS kept"), Kept->bInvertedYAxis);
 	TestFalse(TEXT("SUBTITLES off"), Kept->bSubtitles);
-	TestTrue(TEXT("the rest as they were"), Kept->SFX == 1.f && Kept->bHeadBobbing && Kept->bMouseSmoothing && !Kept->bToggleSprint);
+	TestTrue(TEXT("the rest as they were"), Kept->SFX == 1.f && Kept->bHeadBobbing && Kept->bMouseSmoothing && Kept->bToggleSprint);
 	TestEqual(TEXT("the gamma applied"), GEngine->DisplayGamma, UWasamiSettingsSaveGame::GammaFor(5.f / 9.f), 1e-5f);
 	const UWasamiSettingsSaveGame* Written = UWasamiSettingsSaveGame::Check(OptionsTestSlotName);
 	if (TestNotNull(TEXT("written"), Written))

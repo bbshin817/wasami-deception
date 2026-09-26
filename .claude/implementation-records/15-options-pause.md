@@ -10,7 +10,7 @@ sources:
   - Source/wasami_deception/WasamiPauseWidget.h
   - Source/wasami_deception/WasamiPauseWidget.cpp
   - Source/wasami_deception/Tests/WasamiPauseTests.cpp
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # 設定・オプション画面・ポーズ画面
@@ -22,7 +22,7 @@ updated: 2026-09-26
 
 ## 公開インターフェース
 - `UWasamiSettingsSaveGame`（`USaveGame`）
-  - 項目（`SaveGame`。既定値は本家のクラスの既定）: `Quality` 2（0..3 = LOW / MEDIUM / HIGH / VERY HIGH）、`ResolutionScale` 1、`Brightness` 1、`Music` / `SFX` / `Dialogue` 1、`bSubtitles` 真、`MouseSensitivity` 0.5、`bHeadBobbing` 真、`bMouseSmoothing` 真、`bInvertedYAxis` 偽・`bToggleSprint` 偽（本家のクラスの既定に無い = 偽）、`Difficulty`（`EWasamiDifficulty`: `Easy` / `Normal` / `Hard` = 本家の `ENUM_DifficultySettings` の `NewEnumerator0..2`。既定 `Normal`）、`bGodMode` 偽（**本作独自の GOD MODE**。下の「GOD MODE」）。本家の `Crosshair`（真）はメニューに無く、読むものも無いので持たない。
+  - 項目（`SaveGame`。既定値は本家のクラスの既定）: `Quality` 2（0..3 = LOW / MEDIUM / HIGH / VERY HIGH）、`ResolutionScale` 1、`Brightness` 1、`Music` / `SFX` / `Dialogue` 1、`bSubtitles` 真、`MouseSensitivity` 0.5、`bHeadBobbing` 真、`bMouseSmoothing` 真、`bInvertedYAxis` 偽（本家のクラスの既定に無い = 偽）、`bToggleSprint` **真**（本家は既定に無い = 偽。2026-09-26 のユーザーの指示で入に。セーブは既定と違う項目だけを書くので、それ以前に切り替えていないセーブもこの既定で入になる）、`Difficulty`（`EWasamiDifficulty`: `Easy` / `Normal` / `Hard` = 本家の `ENUM_DifficultySettings` の `NewEnumerator0..2`。既定 `Normal`）、`bGodMode` 偽（**本作独自の GOD MODE**。下の「GOD MODE」）。本家の `Crosshair`（真）はメニューに無く、読むものも無いので持たない。
   - `SlotName`（`Settings`）・`UserIndex` 0。
   - `Check(Slot)`: 本家の `Check Settings Save`（@33036）。スロットを読み、無ければ既定の新しいセーブを作って書く。戻り値はそのセーブ。
   - `Apply(WorldContextObject)`: 本家の `Set Settings`（@33342）。下の「当てるもの」。音量はその世界の音の装置に当てる。

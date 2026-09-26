@@ -22,7 +22,7 @@ sources:
   - SourceArt/Wasami/enemy_wasami_v3.glb
   - SourceArt/Wasami/enemy_wasami_capture.glb
   - Tools/wasami_hands.py
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # 敵ワサミ（素体の素材・アニメの再生・敵のアクタ）

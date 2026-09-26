@@ -100,9 +100,12 @@ public:
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	bool bInvertedYAxis = false;
 
-	/** TOGGLE SPRINT (not in the class's defaults: false). */
+	/**
+	 * TOGGLE SPRINT: on, not the original's (not in its class's defaults: false), the user's of 2026-09-26. A save made
+	 * before holds no value for it (the save writes only what differs from the defaults), so it is on there too.
+	 */
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Settings")
-	bool bToggleSprint = false;
+	bool bToggleSprint = true;
 
 	/** DIFFICULTY. */
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Settings")

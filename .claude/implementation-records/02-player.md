@@ -5,7 +5,7 @@ sources:
   - Source/wasami_deception/WasamiGameMode.cpp
   - Source/wasami_deception/WasamiPlayerCharacter.h
   - Source/wasami_deception/WasamiPlayerCharacter.cpp
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # プレイヤーとゲームモード
@@ -25,7 +25,7 @@ updated: 2026-09-26
   - `EscapePressed()`（Esc と、デバッグの `Wasami.Pause`〈`WasamiPauseWidget.cpp`〉が呼ぶ）: ゲームが止まっていなければポーズ画面 `UWasamiPauseWidget::Show`（Z 5。15 記録）。止まっていれば開かない（EASY でライフ 0 の死亡画面の上も。本家どおり。09 記録）。
   - 見て使う（本家の `Interact (Secondary)` と手のマーク。流れは 05 記録）: 定数 `InteractDistance` 200、`InteractSecondaryPressed()` / `InteractSecondaryReleased()`（左クリックの押し・離し）、`TraceInteract(FHitResult&)`（カメラから前 200 cm の Visibility の線のトレース）、`UpdateInteractWidget()`（ティックが呼ぶ）、`GetInteractWidget()`（`UWasamiInteractWidget`。`BeginPlay` で作る）。
   - 移動の値: `WalkingSpeed` 300、`SprintingSpeed` 600（cm/s）。
-  - オプション: `bToggleSprint`、`MouseSensitivity` 1.0、`bInvertY`、`bHeadBob`（本家の OPTIONS の TOGGLE SPRINT / MOUSE SENSITIVITY / INVERTED Y AXIS / HEAD BOBBING）。`BeginPlay` でゲームインスタンスの設定から `ApplySettings(Settings)` で入れる（感度は設定 / 0.5。既定の設定で上の値になる）。`SetUpMouseSmoothing(Settings)` は本家の `Set Up Mouse Smoothing`（スプリングアームの回転ラグ 12.5 / 50。オプションの SAVE & EXIT だけが呼ぶ）。中身は 15 記録。
+  - オプション: `bToggleSprint`（既定 真。15 記録）、`MouseSensitivity` 1.0、`bInvertY`、`bHeadBob`（本家の OPTIONS の TOGGLE SPRINT / MOUSE SENSITIVITY / INVERTED Y AXIS / HEAD BOBBING）。`BeginPlay` でゲームインスタンスの設定から `ApplySettings(Settings)` で入れる（感度は設定 / 0.5。既定の設定で上の値になる）。`SetUpMouseSmoothing(Settings)` は本家の `Set Up Mouse Smoothing`（スプリングアームの回転ラグ 12.5 / 50。オプションの SAVE & EXIT だけが呼ぶ）。中身は 15 記録。
   - カメラ: `BaseFOV` 90、`FastFOV` 115、`FOVSpeedRange` (300, 900)、`FOVInterpSpeed` 0.5。
   - 頭の揺れ: `WalkShakeClass` / `RunShakeClass`（`TSoftClassPtr`。既定は `/Game/DD/Blueprints/Main/BP_DD_PlayerCharacter_WalkShake` と `_RunShake` の `_C`）。
   - タブレット: `bCanMove`（本家の `CanMove?`。false の間は移動・視点・ダッシュ・タブレットが止まる）、`bCanUseTablet`（`Can Use Tablet?`。タブレットとパワー）、`bHasInput`（`Has Input`。本家は台本の場面で切る。パワーが見る）、`bCanInteract`（`Can Interact?`。Q / E、左クリックの見て使う、手のマークが見る）、`ShardActorClass`（画面が数え、地図に写すシャードのクラス。既定は `AWasamiShard`〈06 記録〉。空なら 0 を出す）、`MinimapActorClasses`（地図がいつも写すほかのクラス。既定は特殊シャードのオーブ `AWasamiPowerOrb` と赤いシャード `AWasamiBonusShard`〈16 記録〉。本家の `Show Only` の一覧も `BP_PowerOrb`・`BP_BonusShard` をクラスで持つ）。
@@ -62,7 +62,7 @@ updated: 2026-09-26
     | Skip Cutscene | P | 未実装 |
     | Buy Upgrade | E | 未実装 |
 - **速さ**（`ApplySpeed`）: ダッシュの有無で `SprintingSpeed` / `WalkingSpeed` を `MaxWalkSpeed` に入れる。加減速は UE の既定のまま（本家も `MaxWalkSpeed` しか上書きしていない）。スピードブーストは `SetMoveSpeeds` で 2 つの速さをどちらもブーストの速さにし、終わると 300 / 600 に戻す（本家と同じく、元の値ではなく定数に戻す。04 記録）。
-- **ダッシュ**: Shift の押下で入り、離すと戻る。`bToggleSprint` のときは押すたびに反転（本家の TOGGLE SPRINT）。向きは問わない。
+- **ダッシュ**: Shift の押下で入り、離すと戻る。`bToggleSprint` のときは押すたびに反転（本家の TOGGLE SPRINT。本作は既定で入）。向きは問わない。
 - **持ち越したダッシュの見張り**（`UpdateRestoredSprint`・`IsSprintKeyDown`。本家に無い）: Windows は Shift のような修飾キーに自動リピートを送らないので、**押したままレベルが開き直ると新しい `UPlayerInput` は押下を一度も見ない**（Enhanced Input の `Started`・`Triggered`・`Completed` がどれも来ない）。そのため `RestoreState` が押しっぱなしの側を真にしたときだけ `bSprintRestored` を立て、毎フレーム `FSlateApplication::Get().GetModifierKeys().IsLeftShiftDown()`（OS の実際のキーの状態。Slate が無い環境では押しているものとして扱う）を見て、離れていたら歩きに戻す。本物の押下・離し（`SprintPressed` / `SprintReleased`）か `StopSprinting` が来たら見張りを終う（以降は Enhanced Input が正しく追える）。死亡画面が出ている間に Shift を離した人が走りっぱなしにならない。 PIE で確かめた（2026-09-22、`L_Hospital_Zone1` のチェックポイント 7 で `Wasami.Capture` で死ぬ）: **Shift を押したまま死ぬと再開直後の `MaxWalkSpeed` が 600**（走り）、**死亡画面の間に離していれば 300**（歩き）、そのあと押し直せば 600・離せば 300 と普段どおり。**TOGGLE SPRINT 入では掛け金が戻って 600**、再開後に 1 度押すと 300（掛け金として戻っている）。**タブレットはどの場合も上がったまま**（`IsTabletUp()` が真で、画面にも最初のコマから地図が出る）。
 - **FOV**（`UpdateFOV`）: `BeginPlay` で 0.001 秒のループタイマーを張り、毎回 `FInterpTo(現在, MapRangeClamped(速さ, 300→900, 90→115), フレームの delta, 0.5)`。本家の `FOV Multiplier` と同じ仕組み（タイマーが 1 フレームに何度も呼ばれるので、追従の速さはフレームレートで変わる）。
 - **頭の揺れ**（`UpdateHeadBob` / `StopHeadBob`、本家の `Update Bob`）: ダッシュの状態が変わったら止める。速さが 1 cm/s 以下なら止める。動いていて未再生なら、`bHeadBob` のときにダッシュかどうかでシェイクを 1 つ再生する。止めるときはブレンドアウトさせる（`StopAllInstancesOfCameraShake(..., false)`）。

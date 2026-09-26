@@ -25,7 +25,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiSettingsDefaultsTest, "Wasami.Settings.D
 
 bool FWasamiSettingsDefaultsTest::RunTest(const FString& Parameters)
 {
-	// BP_DD_Settings_SaveGame's class defaults; Inverted Y Axis and Toggle Sprint are not among them.
+	// BP_DD_Settings_SaveGame's class defaults; Inverted Y Axis is not among them, and Toggle Sprint is on (the user's).
 	const UWasamiSettingsSaveGame* Settings = GetDefault<UWasamiSettingsSaveGame>();
 	TestEqual(TEXT("the slot"), UWasamiSettingsSaveGame::SlotName, FString(TEXT("Settings")));
 	TestEqual(TEXT("QUALITY HIGH"), Settings->Quality, 2);
@@ -39,7 +39,7 @@ bool FWasamiSettingsDefaultsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("HEAD BOBBING on"), Settings->bHeadBobbing);
 	TestTrue(TEXT("MOUSE SMOOTHING on"), Settings->bMouseSmoothing);
 	TestFalse(TEXT("INVERTED Y AXIS off"), Settings->bInvertedYAxis);
-	TestFalse(TEXT("TOGGLE SPRINT off"), Settings->bToggleSprint);
+	TestTrue(TEXT("TOGGLE SPRINT on"), Settings->bToggleSprint);
 	TestTrue(TEXT("DIFFICULTY NORMAL"), Settings->Difficulty == EWasamiDifficulty::Normal);
 	TestFalse(TEXT("GOD MODE off"), Settings->bGodMode);
 	return true;
@@ -247,19 +247,19 @@ bool FWasamiSettingsPlayerTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the sensitivity at 1"), Player->MouseSensitivity, 1.f);
 	TestFalse(TEXT("Y not inverted"), Player->bInvertY);
 	TestTrue(TEXT("the head bob on"), Player->bHeadBob);
-	TestFalse(TEXT("the sprint held"), Player->bToggleSprint);
+	TestTrue(TEXT("the sprint toggled"), Player->bToggleSprint);
 	TestEqual(TEXT("the lag untouched"), Arm->CameraRotationLagSpeed, 20.f);
 
 	Settings->MouseSensitivity = 1.f;
 	Settings->bInvertedYAxis = true;
 	Settings->bHeadBobbing = false;
-	Settings->bToggleSprint = true;
+	Settings->bToggleSprint = false;
 	Settings->bMouseSmoothing = false;
 	Player->ApplySettings(*Settings);
 	TestEqual(TEXT("the sensitivity doubled"), Player->MouseSensitivity, 2.f);
 	TestTrue(TEXT("Y inverted"), Player->bInvertY);
 	TestFalse(TEXT("the head bob off"), Player->bHeadBob);
-	TestTrue(TEXT("the sprint toggled"), Player->bToggleSprint);
+	TestFalse(TEXT("the sprint held"), Player->bToggleSprint);
 	TestEqual(TEXT("the lag waits for Set Up Mouse Smoothing"), Arm->CameraRotationLagSpeed, 20.f);
 	Player->SetUpMouseSmoothing(*Settings);
 	TestEqual(TEXT("no smoothing: 50"), Arm->CameraRotationLagSpeed, 50.f);
