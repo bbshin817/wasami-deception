@@ -16,7 +16,7 @@
     "Tools/mac_build.sh": "0764df586893c464167b0e2a4a43a03561b6bfa8"
   },
   "01-stage-pipeline.md": {
-    "Tools/dd/prepare_stage.py": "eabb917705c94d26e31e5f1de2d43651e775cdb6",
+    "Tools/dd/prepare_stage.py": "90d31f4c707e21db53b333960c2d2503c2488858",
     "Tools/dd/prepare_nurse_posters.py": "6c4429e257c2b59ad051f2f09fe2651d6d9708b0",
     "Tools/dd/prepare_loader.py": "727cdaad3e447ea554853383b07dd7e598de3d1b",
     "Tools/dd/cooked_shaders.py": "dcc26af84b302fe8f2051c7e495534580b58e40a",
@@ -42,8 +42,8 @@
     "Tools/wasami_art/refs.json": "fe10d394838cd69f4fe35e068d44cdd6e2a55abd",
     "Tools/wasami_art/styles.json": "b17bdb24ac66f72a4548569b321a634a6985e439",
     "Tools/wasami_art/briefs/example_ward_poster.json": "257f65a26ef4c76151e630cec5d28144d12f9b08",
-    "Tools/wasami_art/briefs/hospital_graffiti.json": "2bd5328bd6cca99d384e9b33adc0a4babba10239",
-    "Tools/wasami_art/briefs/hospital_posters.json": "8c0e09f6cbb1d9e89cbe8b153166a7261375b510",
+    "Tools/wasami_art/briefs/hospital_graffiti.json": "b52275495dad1af983dc84e86db1d84f6aacbd12",
+    "Tools/wasami_art/briefs/hospital_posters.json": "826e5929a67db73a913bd7301752905ef7c06865",
     "Tools/wasami_art/briefs/hospital_movies.json": "61b6492bd66c2f62043c1f49a96a5168fda7246a",
     "Content/Python/init_unreal.py": "06fa4cc60cf9b559955ba2765048669584056cad",
     "Content/Python/wasami_tools/__init__.py": "31c67d6fef95c2bff38af7e526afdc5ff23d2b7f",
