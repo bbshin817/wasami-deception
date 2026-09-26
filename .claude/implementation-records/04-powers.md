@@ -147,7 +147,8 @@ updated: 2026-09-26
 - `FindFieldOfViewTrack()` … `CameraComponent.FieldOfView` のトラック（無ければ null）。
 - `ApplyPostProcessTracks(Time, Settings)` … `CameraComponent.PostProcessSettings.` で始まるトラックの値を、`FPostProcessSettings` の同名のメンバー（float か `FLinearColor`）へ書く。上書きフラグは触らない（UE4 でもトラックは値だけを動かし、フラグは基準の設定のまま）。評価は `FInterpCurve::Eval`（保存された接線のまま。UE4 の Matinee と同じ式）。
 - `MoveCurves`（`TArray<FInterpCurveFloat>`）… Matinee の移動トラックの 6 つの軸を `UInterpTrackMove` の作る順（移動 X・Y・Z、回転 X・Y・Z）で。無いアニメでは空（パワーの 2 つはカメラが原点のまま）。`HasMoveTrack()` は 6 本そろっているか、`MoveCurveCount` は 6。
-- `EvalMove(Time)` → `FTransform` … その時刻のカメラ自身の空間のずれ。回転は `UInterpTrackMove` の読み方に合わせて `FRotator(回転 Y, 回転 Z, 回転 X)`（ピッチ・ヨー・ロールの順に入る＝回転 X はロール）。移動トラックが無ければ単位行列。最後のキーより後は `FInterpCurve::Eval` が最後の値を保つ。
+- `EvalMove(Time)` → `FTransform` … その時刻の移動トラックの値（キーの生の値）。回転は `UInterpTrackMove` の読み方に合わせて `FRotator(回転 Y, 回転 Z, 回転 X)`（ピッチ・ヨー・ロールの順に入る＝回転 X はロール）。移動トラックが無ければ単位行列。最後のキーより後は `FInterpCurve::Eval` が最後の値を保つ。
+- `EvalRelativeMove(Time)` → `FTransform` … `EvalMove(Time).GetRelativeTransform(EvalMove(0))`＝最初のキーからの差（カメラ自身の空間）。視点に当てるのはこれ（2026-09-26、作業一覧の項目 61）。UE4 の CameraAnim の `bRelativeToInitialTransform` は既定で真（書き出しに無い＝既定）で、`APlayerCameraManager` はアニメのカメラの変換を最初の変換からの相対にして当てていた。`CameraAnim_Nurse_01` の最初のキーは位置 (97, 12, 206)・yaw 180 なので、生の値のまま当てると 20.53 s に視点が 2 m 上へ跳んで逆を向いていた（ユーザーの指摘「殴る際に宙に浮いたまま」「カメラワークが本家と全く違う」）。差にすると 2.0 s で後ろへ 1.3 m・下へ 2 m（床の約 20 cm 上）・pitch −7.2・yaw +23・roll −81 で、殴られて床に倒れ、横倒しの視界になる。
 
 ### `FWasamiCameraAnimPlayback`（`WasamiCameraAnim.h`）
 再生中のアニメの時間の進み方（UE4 の `UCameraAnimInst` の写し。純粋な値の構造体でテストできる）。`Start(AnimLength, Rate, Scale, BlendIn, BlendOut, bLoop, Duration)`・`Advance(DeltaTime)`・`Stop(bImmediate)`、読み出しは `CurTime`・`Weight`・`bBlendingOut`・`bFinished`。
@@ -161,7 +162,7 @@ updated: 2026-09-26
 本家の `MovieSceneCameraAnimTrack`（UE 5.8 に無い）の代わり。シーケンスが結び付けたカメラに、カメラアニメの移動トラックを**部品の加算のずれ**として当てる。取り込みが捕まる場面（`06_Hospital_Zone2_Capture`）のために 1 体置く（01 記録の `_camera_anim_offset`）。
 - 持ち物: `Anim`（`UWasamiCameraAnim`）・`Camera`（`ACameraActor`。シネカメラも含む）・`Sequence`（`ALevelSequenceActor`）・`StartTime`・`EndTime`（区間の始めと終わり。シーケンスの時刻の秒。捕まる場面は 20.533〜25.267）。`IsInSection(Time)` は区間の中か。
 - `BeginPlay` でプレイヤーのカメラマネージャの `UWasamiCameraAnimOffsetModifier` に自分を足し、`EndPlay` で外す（マネージャが無ければ警告）。ティックはしない。
-- `CurrentOffset(FTransform&)` … シーケンスが再生中で、その時刻が区間の中で、アニメに移動トラックがあれば `Anim->EvalMove(時刻 − StartTime)` を返して真。
+- `CurrentOffset(FTransform&)` … シーケンスが再生中で、その時刻が区間の中で、アニメに移動トラックがあれば `Anim->EvalRelativeMove(時刻 − StartTime)` を返して真。
 
 ### `UWasamiCameraAnimOffsetModifier : UCameraModifier`（`WasamiCameraAnim.h`）
 `AWasamiCameraAnimOffset` のずれを視点に当てるモディファイア。`Get(CameraManager)`（無ければ足す）・`Add`・`Remove`。
@@ -611,6 +612,7 @@ updated: 2026-09-26
 - FX の `Custom Depth Highlighter (Clip)`（敵の縁取り）は作らない（2026-09-17 のユーザーの回答「不要」。上の「FX（`UWasamiChameleonComponent`）」）。
 
 ## 変更履歴
+- 2026-09-26: カメラアニメのずれを最初のキーからの差（`EvalRelativeMove`）で視点に当てるようにした（UE4 の `bRelativeToInitialTransform` の既定）。テスト `Wasami.CameraAnim.Move` を差の値に直した（作業一覧の項目 61）
 - 2026-09-26: 本作独自の GOD MODE を足した（`StartCooldown`・`AWasamiTelekinesisPower::bAllShards` と `PullAllShards`・`AWasamiTeleportAim::bReachToView` と `ViewReach`。15 記録）。PIE の `L_Hospital_Zone1` で、テレキネシス 1 回で 337 個のシャードが 0 になり、テレポートの届きが廊下の奥の壁まで 3018 cm（通常の上限 1500）で 30 m 先へ移り、テレポート・テレキネシスは使った直後に、ブーストは効果の終わりにゲージが 1 で使えることを確かめた
 - 2026-09-20: スピードブーストを使った瞬間にワサミの声 `fast` を鳴らすようにした（作業一覧の項目 20 のステップ 6。10 記録）
 - 2026-09-20: テレポートの移動が道の途中の扉・エレベーターの扉（WorldDynamic で Pawn を止める物。行き先の真下の物を除く）の手前で止まるようにした（`AWasamiTeleportAim::StopAtGates`。本家から外れる本作の直し。有人セッションのユーザーの指摘）。テスト `Wasami.Powers.TeleportGates`

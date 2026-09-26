@@ -67,6 +67,11 @@ def export_json(rel, version=1):
     engine asset ('/Engine/VREditor/Sounds/UI/Teleport_Committed')."""
     project, sub = _content(rel)
     path = os.path.join(pak(version), "_assets", project, "Content", *sub.split("/")) + ".json"
+    # A package Tools/dd/sequence_bools.py re-exported with the bools the export could not read (item 61).
+    fixed = os.path.join(paths.PROJECT, "Intermediate", "Pipeline", "dd", "_assets", project, "Content",
+                         *sub.split("/")) + ".json"
+    if version == 2 and os.path.exists(fixed):
+        path = fixed
     if not os.path.exists(path):
         raise FileNotFoundError("no export of %s in %s" % (rel, pak(version)))
     with open(path, encoding="utf-8") as f:

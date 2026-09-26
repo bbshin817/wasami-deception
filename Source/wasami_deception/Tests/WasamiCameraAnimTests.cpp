@@ -225,16 +225,27 @@ bool FWasamiCameraAnimMoveTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the last key"), Nurse->EvalMove(2.f).Rotator().Roll, -81.388962, 1e-2);
 	TestEqual(TEXT("held past the end"), Nurse->EvalMove(4.f).Rotator().Roll, -81.388962, 1e-2);
 
+	// What goes on the view is the change from the first key (bRelativeToInitialTransform): nothing at the start,
+	// then by 2 s the camera has been knocked 1.3 m back and 2 m down to the floor, rolled onto its side. The first
+	// key only turns yaw 180, so the change is the translation turned round and the yaw less 180.
+	TestTrue(TEXT("no change at the start"), Nurse->EvalRelativeMove(0.f).Equals(FTransform::Identity, 1e-3));
+	const FTransform Fallen = Nurse->EvalRelativeMove(2.f);
+	TestEqual(TEXT("knocked back and down"), Fallen.GetLocation(),
+		FVector(-(230.09137 - 97.0), -(38.253197 - 12.000021), 9.7164307 - 205.72832), 0.1);
+	TestEqual(TEXT("its pitch"), Fallen.Rotator().Pitch, -7.2126608, 0.05);
+	TestEqual(TEXT("its yaw, less the first key's"), Fallen.Rotator().Yaw, 202.9792 - 179.99995, 0.05);
+	TestEqual(TEXT("its roll"), Fallen.Rotator().Roll, -81.388962, 0.05);
+
 	// The offset goes on the view in the camera's own space: the location turned by the camera's rotation, the
 	// rotation composed before it (FCameraAnimationHelper::ApplyOffset, where UE4 put a camera anim's).
 	FMinimalViewInfo View;
 	View.Location = FVector(-10900.0, -1020.0, 1017.0);
 	View.Rotation = FRotator(0.f, 90.f, 0.f);
-	UWasamiCameraAnimOffsetModifier::ApplyOffset(Nurse->EvalMove(1.8833333f), View);
+	UWasamiCameraAnimOffsetModifier::ApplyOffset(Fallen, View);
 	TestEqual(TEXT("the offset's X goes along the camera's facing"), View.Location,
-		FVector(-10900.0 - 38.253197, -1020.0 + 230.09137, 1017.0 + 12.716431), 1e-2);
-	TestEqual(TEXT("and its yaw adds to the camera's"), View.Rotation.Yaw, 90.0 + 203.27153 - 360.0, 1e-2);
-	TestEqual(TEXT("the roll comes through"), View.Rotation.Roll, -83.19455, 1e-2);
+		FVector(-10900.0 + (38.253197 - 12.000021), -1020.0 - (230.09137 - 97.0), 1017.0 + 9.7164307 - 205.72832), 0.1);
+	TestEqual(TEXT("and its yaw adds to the camera's"), View.Rotation.Yaw, 90.0 + 202.9792 - 179.99995, 0.05);
+	TestEqual(TEXT("the roll comes through"), View.Rotation.Roll, -81.388962, 0.05);
 
 	AWasamiCameraAnimOffset* Offset = NewObject<AWasamiCameraAnimOffset>();
 	Offset->StartTime = 20.533333f;

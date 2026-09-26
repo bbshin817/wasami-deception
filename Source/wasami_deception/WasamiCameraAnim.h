@@ -100,6 +100,14 @@ public:
 	 * move track.
 	 */
 	FTransform EvalMove(float Time) const;
+
+	/**
+	 * The move track at Time as a change from its first key, which is what UE4 put on the view: a CameraAnim's
+	 * bRelativeToInitialTransform is true unless set otherwise (the capture scene's CameraAnim_Nurse_01 does not
+	 * set it), and APlayerCameraManager then applied the anim camera's transform relative to its initial one.
+	 * Identity at the start.
+	 */
+	FTransform EvalRelativeMove(float Time) const;
 };
 
 /**

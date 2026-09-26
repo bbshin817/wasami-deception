@@ -994,6 +994,24 @@
 - 確かめ方: 区間が進んだかは、その区間の副作用（ポータルの `locked`、目的の文字）で見る。`Section` は `UPROPERTY` ではないので Python からは読めない。
 - 出典: 2026-09-21 の作業一覧の項目 35 のステップ 6（11 記録の「脱出の間合い」）。
 
+### 本家のシーケンスの可視のキーがすべて偽（場面のナースが最初から見える・消えない）
+
+- 症状: Zone 2 の捕まる場面で、本家では 17.33 s まで隠れているナースが 0 s から通路に立っている。`pak_reference_2/_assets` と `_sequences` の可視のトラックの `Values` がどれも `false`。
+- 原因: `pak_reference_2/_tools/scripts/ue4.py` の `read_prop_value` が、配列の中の `BoolProperty` を（要素にタグが無いのに）タグの `bool_val` から読み、1 バイトも読まない。ゲーム全体の可視のキーが偽になる。
+- 対処: `python Tools/dd/sequence_bools.py`（本家の pak から取り込むシーケンスを読み直して `Intermediate/Pipeline/dd/_assets/` へ。`dd_assets.export_json` が先に読む）→ `place_dd_sequences` → 道の焼き直し。値は UE 4.24 でも「見える」なので反転しない（01 記録）。**配列の bool をほかの書き出しから読むときも同じ穴がある**。
+
+### 場面のカメラアニメで視点が宙に跳ぶ・逆を向く（CameraAnim を生の値で当てた）
+
+- 症状: 捕まる場面の 20.53 s から、視点が 2 m 上へ跳んでナースと逆を向き、上から見下ろす。
+- 原因: UE4 の CameraAnim は `bRelativeToInitialTransform`（既定 真。書き出しに無ければ真）で、**最初のキーからの差**を当てる。キーの生の値（最初のキーが (97, 12, 206)・yaw 180）を当てていた。
+- 対処: `UWasamiCameraAnim::EvalRelativeMove`（04 記録）。
+
+### 場面の撮影の時刻が場面の時刻とずれる（スローのトラック）
+
+- 症状: `observations/tools/pkg_cut_shots.py` の「18.5 s」の絵が、本家のタイムラインの 18.5 s の出来事と合わない。
+- 原因: `Wasami.Delay` は実時間で、場面にはスローのトラック（捕まる場面は ×2・×1.4）があるので、15.5 s 以降は場面の方が約 3.5 s 先行する。項目 54 はこの取り違えで確かめを閉じた。
+- 対処: 場面の再生位置を毎ティック記録して（`LevelSequenceActor` の `get_editor_property("sequence_player").get_current_time()`）、収録のコマを場面の時刻で選ぶ。
+
 ## 直さなくてよい既知の見え方
 
 - **エディタの起動直後の「メッセージログ」**（起動時の読み込みエラー 1 件、GameFeatureData の設定の警告）— 前からあるもの。ビューポートの左に重なるので PIE の前に × で閉じる（進捗記録 `20260916-tablet-powers.md` の再開時の注意）。`Tools/editor_cycle.py` の開き直しの後に閉じ忘れると、`playthrough.py` の画面のボタンのクリックが小窓に当たり、`pause` の区間がタイトルの RESUME の後に `L_Hospital_Zone1 to open did not happen within 40 s` で止まる（2026-09-19。`desktop.py ping` の前面が `メッセージ ログ` になる。窓の右上の × を `--allow UnrealEditor.exe` で押す）。

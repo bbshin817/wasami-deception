@@ -63,6 +63,11 @@ FTransform UWasamiCameraAnim::EvalMove(float Time) const
 	return FTransform(Rotation, Location);
 }
 
+FTransform UWasamiCameraAnim::EvalRelativeMove(float Time) const
+{
+	return EvalMove(Time).GetRelativeTransform(EvalMove(0.f));
+}
+
 const FWasamiCameraAnimFloatTrack* UWasamiCameraAnim::FindFieldOfViewTrack() const
 {
 	return FloatTracks.FindByPredicate([](const FWasamiCameraAnimFloatTrack& Track) { return Track.PropertyName == FieldOfViewProperty; });
@@ -289,7 +294,7 @@ bool AWasamiCameraAnimOffset::CurrentOffset(FTransform& OutOffset) const
 	{
 		return false;
 	}
-	OutOffset = Anim->EvalMove(Time - StartTime);
+	OutOffset = Anim->EvalRelativeMove(Time - StartTime);
 	return true;
 }
 

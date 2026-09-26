@@ -296,19 +296,21 @@ class _Builder:
         self.result["keys"] += len(data.get("Times", []))
 
     def boolean(self, channel, data):
-        """A bool channel of a visibility section. The original's UE 4.24 track keys bHidden (its template inverts what
-        it reads before it hides the actor); UE 5.8's UMovieSceneVisibilitySection keys visibility itself
-        (MovieSceneVisibilitySystem: SetActorHiddenInGame(!value)), so the keys and the default go in inverted."""
+        """A bool channel of a visibility section. The value is visibility in UE 4.24 as in UE 5.8 (4.24's template
+        inverts it into bHiddenInGame; 5.8's MovieSceneVisibilitySystem calls SetActorHiddenInGame(!value)), so the
+        keys and the default go in as they are. pak_reference_2's export reads every key False (the bool of an array
+        is never read); Tools/dd/sequence_bools.py re-exports the sequences with them, which export_json reads first
+        (work list item 61: Zone 2's capture scene nurse is hidden until 17.33 s, the cell's shown from 0.23 s)."""
         data = data or {}
         unknown = set(data) - {"Times", "Values", "DefaultValue", "bHasDefaultValue"}
         if unknown:
             raise ValueError("bool channel fields not handled: %s" % sorted(unknown))
         for t, v in zip(data.get("Times", []), data.get("Values", [])):
-            channel.add_key(_frame(t), not bool(v), 0.0, unreal.MovieSceneTimeUnit.TICK_RESOLUTION)
+            channel.add_key(_frame(t), bool(v), 0.0, unreal.MovieSceneTimeUnit.TICK_RESOLUTION)
         # The export keeps DefaultValue only where it differs from the channel's own (false), and the flag on its own
-        # where it does not (Zone 2's nurses start not hidden, which is visible here).
+        # where it does not.
         if data.get("bHasDefaultValue", "DefaultValue" in data):
-            channel.set_default(not bool(data.get("DefaultValue", False)))
+            channel.set_default(bool(data.get("DefaultValue", False)))
         elif channel.has_default():
             channel.remove_default()
         self.result["keys"] += len(data.get("Times", []))
@@ -558,13 +560,19 @@ class _Builder:
             spans = []
             for s in props.get("AnimationSections", []):
                 sec = pkg.get(s)
-                spans.append(self.span(sec["props"]))
+                lower, upper, restores = self.span(sec["props"])
                 section = self.section(track, sec, {"Params"})
                 p = sec["props"]["Params"]
                 unknown = set(p) - ANIMATION_KEYS
                 if unknown:
                     raise ValueError("%s: animation params not handled: %s" % (sec["name"], sorted(unknown)))
                 clip, reverse = self.clip(p["Animation"])
+                # A stand-in's last pose is not the original's (Chase_PickUp ends with the right hand up by the
+                # head, where the original's punch ends with it at the chest), so it is not held: the idle takes
+                # over after it as after a section that restores state (item 61).
+                if clip.get_name().split("A_WasamiEnemy_", 1)[-1] in ONE_SHOT_CLIPS:
+                    restores = True
+                spans.append((lower, upper, restores))
                 # The params struct is a value, so it is read, written and put back.
                 params = section.get_editor_property("params")
                 params.set_editor_property("animation", clip)
