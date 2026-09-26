@@ -46,6 +46,9 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
   - ロゴに出てよいのは、エンジンの `zenlogo_64` と本作の `t_titlelogo`・`t_titlelogoglow`・`m_dd_portallogo` だけ。`dark_deception` を含む曲のファイル名は音なので使ってよい（`original-fidelity.md` の表）。
   - スケルタルメッシュに出てよいのは本作の `sk_wasamienemy`・`sk_wasamiboss` だけ。`hospital_*_anim_skeleton` は小物（ガレージのリフト・のこぎり罠）の動きで、キャラクターではない。
   - 名前に `nurse` が出るものは中身を見る。**音・火花・小物のテクスチャは使ってよい**が、**キャラクターの姿が描かれた絵（ポスター・看板・デカール）が見つかったら `original-fidelity.md` の決まりどおりユーザーに確認する**（2026-09-21 に 3 枚見つかった: `hospital_poster_nurse_01_D`・`hospital_poster_nurse_02`・`hospital_decal_nurseambulance`。ユーザー待ち）。
+  - **名前に `nurse`・`reaper` が出る「動きのデータ」は使ってよい**（2026-09-26 の項目 54 でパッケージに入った。**姿ではなく動き**で、骨は本作の `SK_WasamiEnemy_Skeleton`、原作のスケルタルメッシュは 1 つも入らない）。名前で出るのは次の 2 種類:
+    - `/game/wasami/enemy/a_wasamienemy_cut_*` … 本家のナースの psa（`pak_reference_2/_anims_psa/Animation/`）を敵ワサミ v3 の骨へリターゲットして焼いた **11 本**（`cut_nurse_hospital_zone01_event_40`〜`47`・`cut_reapernurse_walk_back`・`cut_nurse_cloak`・`cut_nurse_idle_01`）。独房の場面の演技に使う。**名前に `nurse` が出ない `a_wasamienemy_idle_alert` も同じ作りの 12 本目**（本家の `ReaperNurse_Idle_Alert`。見張りの待機と捕まる場面の待ち構え）。作り方は `dd_enemy._NurseRetarget`（実装記録 07）。
+    - `/game/dd/animation/enemies/nurse/reaper/cameraanim_nurse_01` … 捕まる場面のカメラの動き（`UWasamiCameraAnim`。本家の Matinee の移動トラックの曲線 6 本だけで、メッシュもテクスチャも持たない）。実装記録 04・01。
 - **最後に通しで遊べるかを確かめる**: `python Tools/game_flow.py run`（**エディタを閉じてから**。2026-09-21 に実際に通した。道具は実装記録 01、結果は 00 記録の「パッケージした本編の通しプレイ」）。パッケージ版を対話デスクトップで起動し、コマンドラインの `-ExecCmds` だけでタイトル → Zone 1 → Zone 2 → 脱出のスコア画面まで **228 s** で進めて、18 の節目（レベル・チェックポイント・ライフ・シャード・目的・画面のウィジェット）を `Wasami.Status` のログで確かめ、`quit` で終える。
   - 通った印: 最後の行が `the playthrough went through`（終了コード 0）、`no crash report`、表の右端がすべて `OK`。落ちたところは表の行と `Intermediate/GameFlow/*.png` の絵で分かる。
   - 画面への入力は使わないので、**マウスとキーそのもの（タイトルの NEW GAME、欠片の画面の CLOSE、スコア画面の NEXT）は別に確かめる**（PIE では `Tools/playthrough.py` が実際に押している）。
