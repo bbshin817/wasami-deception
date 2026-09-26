@@ -35,7 +35,7 @@
     "name": "hospital_decal_mercy",
     "_orig": "Zone 1 のトンネル（5 枚）。本家「ACCEPT OUR MERCY」",
     "style": "graffiti",
-    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Thin, clean marker-like capitals as in the original.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Thin, clean marker-like capitals as in the original. Lettering only: no drawings, no faces, no doodles. Spell every word exactly, letter by letter.",
     "text": "ACCEPT WASAMI'S MERCY",
     "refs": [],
     "extra_refs": [
@@ -71,13 +71,14 @@
     "text": "Wasami Is Watching & Waiting",
     "refs": [],
     "extra_refs": [
-      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_02.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
     ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "post": "white_alpha",
     "count": 1,
-    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_02.png"
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_02.png",
+    "_ref_note": "本家のこの絵の文言は安全審査で断られる（2026-09-26、moderation_blocked）ので、同じ白い垂れる手書きの graffiti_05 を画風の参照にする"
   },
   {
     "name": "hospital_decal_graffiti_03",
@@ -151,13 +152,14 @@
     "text": "Hurry Up, It's Over!",
     "refs": [],
     "extra_refs": [
-      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_07.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
     ],
     "size": "1024x1024",
     "final_size": "1024x1024",
     "post": "white_alpha",
     "count": 1,
-    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_07.png"
+    "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_07.png",
+    "_ref_note": "本家のこの絵の文言は安全審査で断られる（2026-09-26、moderation_blocked）ので、同じ白い垂れる手書きの graffiti_05 を画風の参照にする"
   },
   {
     "name": "hospital_decal_graffiti_08",
@@ -179,7 +181,7 @@
     "name": "hospital_decal_lovesmenot",
     "_orig": "Zone 2（2 枚。Graffiti_09）。本家「HE LOVES ME, HE LOVES ME NOT」",
     "style": "graffiti",
-    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+    "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original. Lettering only: no drawings, no faces, no doodles. Spell every word exactly, letter by letter.",
     "text": "WASAMI LOVES ME, WASAMI LOVES ME NOT",
     "refs": [],
     "extra_refs": [

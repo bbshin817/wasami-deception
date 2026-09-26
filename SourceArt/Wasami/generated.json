@@ -127,19 +127,24 @@
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_girls.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_girls/20260926-032038",
+    "run": "Intermediate/WasamiArt/hospital_decal_girls/20260926-133452",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_girls",
       "_orig": "Zone 1 のトンネル（8 枚）。本家「GIRLS, GIRLS, GIRLS!」",
       "style": "graffiti",
-      "prompt": "Big, aggressive drippy spray-paint lettering across the wall, with a crude doodle of a hand pointing straight at the viewer beside it.",
-      "text": "オマエ・ジャ。",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. ",
+      "text": "WASAMI, WASAMI, WASAMI!",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_girls.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -148,11 +153,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_girls.png"
     ],
     "requested": {
       "model": null,
@@ -161,38 +162,40 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Big, aggressive drippy spray-paint lettering across the wall, with a crude doodle of a hand pointing straight at the viewer beside it.\n\nExact visible text, spelled exactly: \"オマエ・ジャ。\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel.\n\nExact visible text, spelled exactly: \"WASAMI, WASAMI, WASAMI!\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_02.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_02/20260926-032107",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_02/20260926-133717",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_02",
       "_orig": "Zone 2（4 枚）。本家「Men Are Stupid & Weak」",
       "style": "graffiti",
-      "prompt": "Stacked graffiti lettering filling the square, needy and obsessive in tone.",
-      "text": "俺のことも想え",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on four lines like the original.",
+      "text": "Wasami Is Watching & Waiting",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_02.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_02.png",
+      "_ref_note": "本家のこの絵の文言は安全審査で断られる（2026-09-26、moderation_blocked）ので、同じ白い垂れる手書きの graffiti_05 を画風の参照にする"
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
     ],
     "requested": {
       "model": null,
@@ -201,25 +204,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Stacked graffiti lettering filling the square, needy and obsessive in tone.\n\nExact visible text, spelled exactly: \"俺のことも想え\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on four lines like the original.\n\nExact visible text, spelled exactly: \"Wasami Is Watching & Waiting\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_03.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_03/20260926-032112",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_03/20260926-133523",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_03",
       "_orig": "Zone 2（5 枚）。本家「MEN ARE PIGS」",
       "style": "graffiti",
-      "prompt": "Heavy, dripping block lettering stacked in the square, with a simple doodle of a single wide-open staring eye.",
-      "text": "ワサミは見てる",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on three lines like the original.",
+      "text": "WASAMI SEES YOU",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_03.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
@@ -228,11 +236,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_03.png"
     ],
     "requested": {
       "model": null,
@@ -241,25 +245,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Heavy, dripping block lettering stacked in the square, with a simple doodle of a single wide-open staring eye.\n\nExact visible text, spelled exactly: \"ワサミは見てる\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on three lines like the original.\n\nExact visible text, spelled exactly: \"WASAMI SEES YOU\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_04.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_04/20260926-032114",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_04/20260926-133524",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_04",
       "_orig": "Zone 2（15 枚。いちばん多い）。本家「LIAR LIAR」",
       "style": "graffiti",
-      "prompt": "The same short shout written twice, stacked, in big jagged spray-paint letters that fill the square.",
-      "text": "ここか！ ここか！",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on two lines like the original.",
+      "text": "IT'S YOU IT'S YOU",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_04.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
@@ -268,11 +277,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_04.png"
     ],
     "requested": {
       "model": null,
@@ -281,25 +286,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The same short shout written twice, stacked, in big jagged spray-paint letters that fill the square.\n\nExact visible text, spelled exactly: \"ここか！ ここか！\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on two lines like the original.\n\nExact visible text, spelled exactly: \"IT'S YOU IT'S YOU\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_05.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_05/20260926-032152",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_05/20260926-133524",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_05",
       "_orig": "Zone 2（2 枚）。本家「LOVE IS ONLY SKIN DEEP」",
       "style": "graffiti",
-      "prompt": "Rounded bubble-style graffiti lettering in stacked lines, sweet-looking letters with an unsettling meaning.",
-      "text": "覚えてます。",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on three lines like the original.",
+      "text": "WASAMI IS ONLY SKIN DEEP",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
@@ -308,11 +318,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
     ],
     "requested": {
       "model": null,
@@ -321,25 +327,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Rounded bubble-style graffiti lettering in stacked lines, sweet-looking letters with an unsettling meaning.\n\nExact visible text, spelled exactly: \"覚えてます。\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Stacked on three lines like the original.\n\nExact visible text, spelled exactly: \"WASAMI IS ONLY SKIN DEEP\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_06.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_06/20260926-032156",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_06/20260926-133525",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_06",
       "_orig": "Zone 2（1 枚）。本家「HOME WRECKER」",
       "style": "graffiti",
-      "prompt": "Wide, heavy graffiti lettering in two lines, like a question shouted into an empty building.",
-      "text": "ほかのみんなは？",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+      "text": "HOME WASAMI",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_06.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
@@ -348,11 +359,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_06.png"
     ],
     "requested": {
       "model": null,
@@ -361,38 +368,40 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Wide, heavy graffiti lettering in two lines, like a question shouted into an empty building.\n\nExact visible text, spelled exactly: \"ほかのみんなは？\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.\n\nExact visible text, spelled exactly: \"HOME WASAMI\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_07.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_07/20260926-032156",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_07/20260926-133717",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_07",
       "_orig": "Zone 2（6 枚）。本家「Destroy All Men!」",
       "style": "graffiti",
-      "prompt": "Fast, slanted lettering with speed lines, as if written while running.",
-      "text": "はっや！",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+      "text": "Hurry Up, It's Over!",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_07.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_07.png",
+      "_ref_note": "本家のこの絵の文言は安全審査で断られる（2026-09-26、moderation_blocked）ので、同じ白い垂れる手書きの graffiti_05 を画風の参照にする"
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_05.png"
     ],
     "requested": {
       "model": null,
@@ -401,25 +410,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Fast, slanted lettering with speed lines, as if written while running.\n\nExact visible text, spelled exactly: \"はっや！\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.\n\nExact visible text, spelled exactly: \"Hurry Up, It's Over!\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_graffiti_08.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_08/20260926-032225",
+    "run": "Intermediate/WasamiArt/hospital_decal_graffiti_08/20260926-133530",
     "candidate": "out-01.png",
     "size": [
       1024,
       1024
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_graffiti_08",
       "_orig": "Zone 2（8 枚）。本家「TOXIC LOVE」",
       "style": "graffiti",
-      "prompt": "Big, over-enthusiastic lettering in two lines with a doodle of a thumbs-up drawn in a creepy way (too many knuckles).",
-      "text": "非常にいい！",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two big lines like the original.",
+      "text": "RUN AWAY",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_08.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "post": "white_alpha",
@@ -428,11 +442,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_graffiti_08.png"
     ],
     "requested": {
       "model": null,
@@ -441,25 +451,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Big, over-enthusiastic lettering in two lines with a doodle of a thumbs-up drawn in a creepy way (too many knuckles).\n\nExact visible text, spelled exactly: \"非常にいい！\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two big lines like the original.\n\nExact visible text, spelled exactly: \"RUN AWAY\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_healyou.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_healyou/20260926-032038",
+    "run": "Intermediate/WasamiArt/hospital_decal_healyou/20260926-133456",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_healyou",
       "_orig": "Zone 1 のトンネル（4 枚）。本家「LET US HEAL YOU」",
       "style": "graffiti",
-      "prompt": "Cheerful but creepy hand lettering in two lines, like a friendly greeting written by someone unhinged, with a small doodle of Wasami's grinning face.",
-      "text": "こんにちワサミ！",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Thin, clean marker-like capitals as in the original.",
+      "text": "LET WASAMI HEAL YOU",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_healyou.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -468,11 +483,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_healyou.png"
     ],
     "requested": {
       "model": null,
@@ -481,25 +492,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Cheerful but creepy hand lettering in two lines, like a friendly greeting written by someone unhinged, with a small doodle of Wasami's grinning face.\n\nExact visible text, spelled exactly: \"こんにちワサミ！\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Thin, clean marker-like capitals as in the original.\n\nExact visible text, spelled exactly: \"LET WASAMI HEAL YOU\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_lovesmenot.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_lovesmenot/20260926-032228",
+    "run": "Intermediate/WasamiArt/hospital_decal_lovesmenot/20260926-133732",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_lovesmenot",
       "_orig": "Zone 2（2 枚。Graffiti_09）。本家「HE LOVES ME, HE LOVES ME NOT」",
       "style": "graffiti",
-      "prompt": "The same name written over and over in two lines, obsessively, in scratchy hand lettering.",
-      "text": "ワサミ ワサミ ワサミ ワサミ",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original. Lettering only: no drawings, no faces, no doodles. Spell every word exactly, letter by letter.",
+      "text": "WASAMI LOVES ME, WASAMI LOVES ME NOT",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_lovesmenot.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -508,11 +524,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_lovesmenot.png"
     ],
     "requested": {
       "model": null,
@@ -521,25 +533,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The same name written over and over in two lines, obsessively, in scratchy hand lettering.\n\nExact visible text, spelled exactly: \"ワサミ ワサミ ワサミ ワサミ\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original. Lettering only: no drawings, no faces, no doodles. Spell every word exactly, letter by letter.\n\nExact visible text, spelled exactly: \"WASAMI LOVES ME, WASAMI LOVES ME NOT\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_mediocreman.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_mediocreman/20260926-032232",
+    "run": "Intermediate/WasamiArt/hospital_decal_mediocreman/20260926-133601",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_mediocreman",
       "_orig": "Zone 2（2 枚。Graffiti_10）。本家「MEDIOCRE MAN」",
       "style": "graffiti",
-      "prompt": "Lazy, shrugging hand lettering, slightly crooked, with a tiny doodle of a shrugging stick figure.",
-      "text": "まぁまぁ",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+      "text": "MEDIOCRE WASAMI",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_mediocreman.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -548,11 +565,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_mediocreman.png"
     ],
     "requested": {
       "model": null,
@@ -561,25 +574,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Lazy, shrugging hand lettering, slightly crooked, with a tiny doodle of a shrugging stick figure.\n\nExact visible text, spelled exactly: \"まぁまぁ\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.\n\nExact visible text, spelled exactly: \"MEDIOCRE WASAMI\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_mercy.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_mercy/20260926-032038",
+    "run": "Intermediate/WasamiArt/hospital_decal_mercy/20260926-133732",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_mercy",
       "_orig": "Zone 1 のトンネル（5 枚）。本家「ACCEPT OUR MERCY」",
       "style": "graffiti",
-      "prompt": "Thin, shaky, hand-written lettering in two lines, as if scrawled in a hurry by a trembling hand.",
-      "text": "ちょっと待ってね。",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Thin, clean marker-like capitals as in the original. Lettering only: no drawings, no faces, no doodles. Spell every word exactly, letter by letter.",
+      "text": "ACCEPT WASAMI'S MERCY",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_mercy.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -588,11 +606,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_mercy.png"
     ],
     "requested": {
       "model": null,
@@ -601,24 +615,29 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Thin, shaky, hand-written lettering in two lines, as if scrawled in a hurry by a trembling hand.\n\nExact visible text, spelled exactly: \"ちょっと待ってね。\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Thin, clean marker-like capitals as in the original. Lettering only: no drawings, no faces, no doodles. Spell every word exactly, letter by letter.\n\nExact visible text, spelled exactly: \"ACCEPT WASAMI'S MERCY\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_mysteryroom_01.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_mysteryroom_01/20260926-032323",
+    "run": "Intermediate/WasamiArt/hospital_decal_mysteryroom_01/20260926-133610",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_mysteryroom_01",
       "_orig": "Zone 2 の秘密の部屋（1 枚）。本家は薬のカプセルの落書き（字なし）",
       "style": "graffiti",
-      "prompt": "Scattered doodles with no text: round soft rice-cake mochi with little Wasami faces on them, and a few pill capsules, drawn as white line art spread across the whole wide canvas.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is scattered white drippy spray-paint doodles of pill capsules and pills with no text. Keep the same pill doodles in the same places and style; the single largest capsule has a small, simple spray-painted outline of Wasami's head (short hair with a heavy fringe) instead of its middle band. No text.",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_mysteryroom_01.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -627,11 +646,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_mysteryroom_01.png"
     ],
     "requested": {
       "model": null,
@@ -640,25 +655,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Scattered doodles with no text: round soft rice-cake mochi with little Wasami faces on them, and a few pill capsules, drawn as white line art spread across the whole wide canvas.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is scattered white drippy spray-paint doodles of pill capsules and pills with no text. Keep the same pill doodles in the same places and style; the single largest capsule has a small, simple spray-painted outline of Wasami's head (short hair with a heavy fringe) instead of its middle band. No text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_mysteryroom_02.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_mysteryroom_02/20260926-032340",
+    "run": "Intermediate/WasamiArt/hospital_decal_mysteryroom_02/20260926-133616",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_mysteryroom_02",
       "_orig": "Zone 2 の秘密の部屋（1 枚）。本家「SHE WAS CRAZY」",
       "style": "graffiti",
-      "prompt": "Unsettling hand lettering in two lines, like a secret confession scratched onto the wall of a hidden room.",
-      "text": "ワサミはどこにでもいる",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+      "text": "HE WAS CRAZY",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_mysteryroom_02.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -667,11 +687,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_mysteryroom_02.png"
     ],
     "requested": {
       "model": null,
@@ -680,25 +696,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Unsettling hand lettering in two lines, like a secret confession scratched onto the wall of a hidden room.\n\nExact visible text, spelled exactly: \"ワサミはどこにでもいる\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.\n\nExact visible text, spelled exactly: \"HE WAS CRAZY\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_nohappily.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_nohappily/20260926-032254",
+    "run": "Intermediate/WasamiArt/hospital_decal_nohappily/20260926-133602",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_nohappily",
       "_orig": "Zone 2（3 枚。Graffiti_11）。本家「NO HAPPILY EVER AFTERS」",
       "style": "graffiti",
-      "prompt": "Sarcastic lettering in two lines, with long drips hanging from the letters.",
-      "text": "無事でしたか？",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+      "text": "NO HAPPY WASAMI ENDINGS",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_nohappily.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -707,11 +728,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_nohappily.png"
     ],
     "requested": {
       "model": null,
@@ -720,25 +737,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Sarcastic lettering in two lines, with long drips hanging from the letters.\n\nExact visible text, spelled exactly: \"無事でしたか？\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.\n\nExact visible text, spelled exactly: \"NO HAPPY WASAMI ENDINGS\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_prettyface.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_prettyface/20260926-032303",
+    "run": "Intermediate/WasamiArt/hospital_decal_prettyface/20260926-133605",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_prettyface",
       "_orig": "Zone 2 の秘密の部屋の外（1 枚。Graffiti_12）。本家「JUST ANOTHER PRETTY FACE」",
       "style": "graffiti",
-      "prompt": "A crude spray-paint line drawing of Wasami's face with huge staring eyes and a wide open mouth, next to a short call in hand lettering.",
-      "text": "おーい。",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.",
+      "text": "JUST ANOTHER WASAMI FACE",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_prettyface.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -747,11 +769,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_prettyface.png"
     ],
     "requested": {
       "model": null,
@@ -760,25 +778,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: A crude spray-paint line drawing of Wasami's face with huge staring eyes and a wide open mouth, next to a short call in hand lettering.\n\nExact visible text, spelled exactly: \"おーい。\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Two lines like the original.\n\nExact visible text, spelled exactly: \"JUST ANOTHER WASAMI FACE\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_virus.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_virus/20260926-032309",
+    "run": "Intermediate/WasamiArt/hospital_decal_virus/20260926-133605",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_virus",
       "_orig": "Zone 2（7 枚。Graffiti_13）。本家「VIRUS」と菌の絵",
       "style": "graffiti",
-      "prompt": "Bold lettering followed by a doodle of a virus particle whose round body is Wasami's face, spikes all around it.",
-      "text": "ワサミ菌",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Keep the round germ doodle after the word like the original, with the same dripping outline.",
+      "text": "WASAMI VIRUS",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_virus.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -787,11 +810,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_virus.png"
     ],
     "requested": {
       "model": null,
@@ -800,25 +819,30 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Bold lettering followed by a doodle of a virus particle whose round body is Wasami's face, spikes all around it.\n\nExact visible text, spelled exactly: \"ワサミ菌\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. Keep the round germ doodle after the word like the original, with the same dripping outline.\n\nExact visible text, spelled exactly: \"WASAMI VIRUS\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_yourstory.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_decal_yourstory/20260926-031942",
+    "run": "Intermediate/WasamiArt/hospital_decal_yourstory/20260926-133519",
     "candidate": "out-01.png",
     "size": [
       1024,
       512
     ],
     "post": "white_alpha",
+    "bg": null,
     "brief": {
       "name": "hospital_decal_yourstory",
       "_orig": "Zone 1 のトンネル（12 枚）。本家「YOUR STORY ENDS HERE」",
       "style": "graffiti",
-      "prompt": "Ominous hand lettering in two lines with long paint drips running down from the letters, like a final warning.",
-      "text": "あっ、終わりです。",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel. ",
+      "text": "YOUR STORY ENDS HERE",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_decal_yourstory.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "post": "white_alpha",
@@ -827,11 +851,7 @@
     },
     "style": "graffiti",
     "references": [
-      "screenshots:スクリーンショット 2026-06-24 233655.png",
-      "screenshots:スクリーンショット 2026-03-03 144747.png",
-      "screenshots:スクリーンショット 2026-06-28 212325.png",
-      "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "Intermediate/WasamiArt/_orig/hospital_decal_yourstory.png"
     ],
     "requested": {
       "model": null,
@@ -840,13 +860,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: Ominous hand lettering in two lines with long paint drips running down from the letters, like a final warning.\n\nExact visible text, spelled exactly: \"あっ、終わりです。\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: hand-sprayed graffiti on a wall, pure white paint only, rough spray-paint edges with a few drips and overspray speckles, bold hand lettering; drawings are simple white line doodles. Nothing else: no wall, no background texture, no shadows, no second colour. The background is fully transparent. Keep everything inside the canvas with a small margin.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. The original is white drippy spray-paint lettering on a dark wall; paint the new words in exactly that hand lettering, the same size on the canvas and the same line breaks feel.\n\nExact visible text, spelled exactly: \"YOUR STORY ENDS HERE\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_LungCancer_01_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_LungCancer_01_D/20260926-032310",
+    "run": "Intermediate/WasamiArt/hospital_poster_LungCancer_01_D/20260926-133401",
     "candidate": "out-01.png",
     "size": [
       2048,
@@ -858,12 +878,18 @@
       "name": "hospital_poster_LungCancer_01_D",
       "_orig": "M_06_Hospital_Poster_03（18 枚）。本家「Lung Cancer Stage」の 3 段の肺の図",
       "style": "print",
-      "prompt": "A wide, old-fashioned medical education chart on a pale pastel halftone background: a title across the top and three hand-drawn anatomical illustrations of Wasami's head in a row, each with a small caption under it, getting progressively more deranged from left to right (calm, twitchy, completely unhinged with bulging eyes). Soft vintage colours, pink and cream.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same pale pastel halftone background, pink script title and three illustrations in a row with small script captions, as in the original chart. The three illustrations are Wasami's head in the same soft anatomical-illustration technique, from calm to increasingly deranged.",
       "text": [
-        "ワサミ症候群の進行",
-        "初期",
-        "中期",
-        "末期"
+        "Wasami Syndrome Stage",
+        "Healthy Wasami",
+        "Early-Stage",
+        "Late-Stage"
+      ],
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_LungCancer_01_D.png"
       ],
       "size": "1536x768",
       "final_size": "2048x1024",
@@ -877,7 +903,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_LungCancer_01_D.png"
     ],
     "requested": {
       "model": null,
@@ -886,13 +913,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A wide, old-fashioned medical education chart on a pale pastel halftone background: a title across the top and three hand-drawn anatomical illustrations of Wasami's head in a row, each with a small caption under it, getting progressively more deranged from left to right (calm, twitchy, completely unhinged with bulging eyes). Soft vintage colours, pink and cream.\n\nExact visible text, as 4 separate pieces placed as described, spelled exactly: \"ワサミ症候群の進行\"; \"初期\"; \"中期\"; \"末期\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same pale pastel halftone background, pink script title and three illustrations in a row with small script captions, as in the original chart. The three illustrations are Wasami's head in the same soft anatomical-illustration technique, from calm to increasingly deranged.\n\nExact visible text, as 4 separate pieces placed as described, spelled exactly: \"Wasami Syndrome Stage\"; \"Healthy Wasami\"; \"Early-Stage\"; \"Late-Stage\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_cross_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_cross_D/20260926-032625",
+    "run": "Intermediate/WasamiArt/hospital_poster_cross_D/20260926-133444",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -904,7 +931,13 @@
       "name": "hospital_poster_cross_D",
       "_orig": "M_06_Hospital_Poster_13（21 枚）。本家は黒地に青いネオンの十字の輪郭",
       "style": "print",
-      "prompt": "A thin glowing blue neon outline of Wasami's head silhouette (hair fringe, ears, wide eyes) on a pure black background, with a small blue neon medical cross in its forehead. Minimal, lots of black space. No text.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same thin blue neon cross outline as the original, same size and position. Inside the cross, a small blue neon line outline of Wasami's head with short fringe.",
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_cross_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -917,7 +950,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_cross_D.png"
     ],
     "requested": {
       "model": null,
@@ -926,13 +960,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A thin glowing blue neon outline of Wasami's head silhouette (hair fringe, ears, wide eyes) on a pure black background, with a small blue neon medical cross in its forehead. Minimal, lots of black space. No text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same thin blue neon cross outline as the original, same size and position. Inside the cross, a small blue neon line outline of Wasami's head with short fringe.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_faceMask_01_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_faceMask_01_D/20260926-032310",
+    "run": "Intermediate/WasamiArt/hospital_poster_faceMask_01_D/20260926-133401",
     "candidate": "out-01.png",
     "size": [
       512,
@@ -944,10 +978,16 @@
       "name": "hospital_poster_faceMask_01_D",
       "_orig": "M_06_Hospital_Poster_02（Zone 1 に 54 枚）。本家「ATTENTION / FACE MASK REQUIRED」とマスクの顔、赤白の斜めの縁",
       "style": "print",
-      "prompt": "A tall hospital notice poster: a red and white diagonal hazard-stripe border, a bold banner at the top, and in the middle a flat vector icon of Wasami's face wearing a teal surgical mask, his eyes wide above it. The notice text sits below the icon in bold white condensed letters on red.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same tall red-and-white hazard-striped frame, red header bar and red footer bar, and flat vector illustration style as the original. In the middle, instead of the lone mask, Wasami's head wearing the same teal surgical mask, drawn in the same flat vector style.",
       "text": [
-        "注意",
-        "マスク着用"
+        "ATTENTION",
+        "FACE MASK REQUIRED"
+      ],
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_faceMask_01_D.png"
       ],
       "size": "768x1536",
       "final_size": "512x1024",
@@ -961,7 +1001,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_faceMask_01_D.png"
     ],
     "requested": {
       "model": null,
@@ -970,13 +1011,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A tall hospital notice poster: a red and white diagonal hazard-stripe border, a bold banner at the top, and in the middle a flat vector icon of Wasami's face wearing a teal surgical mask, his eyes wide above it. The notice text sits below the icon in bold white condensed letters on red.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"注意\"; \"マスク着用\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same tall red-and-white hazard-striped frame, red header bar and red footer bar, and flat vector illustration style as the original. In the middle, instead of the lone mask, Wasami's head wearing the same teal surgical mask, drawn in the same flat vector style.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"ATTENTION\"; \"FACE MASK REQUIRED\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_handsanitizer_01_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_handsanitizer_01_D/20260926-032357",
+    "run": "Intermediate/WasamiArt/hospital_poster_handsanitizer_01_D/20260926-133401",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -988,10 +1029,16 @@
       "name": "hospital_poster_handsanitizer_01_D",
       "_orig": "M_06_Hospital_Poster_05（Zone 1 に 86 枚。いちばん多い）。本家「NOTICE / HAND SANITIZER STATION」の案内",
       "style": "print",
-      "prompt": "A plain square facility notice sign on white with a thin red rounded border: a solid red banner across the top with the first word, below it a red circle icon of a hand pressing a sanitizer pump bottle, and beside the icon the station name in bold black letters on two lines. In the bottom corner, a tiny cartoon of Wasami's face winking as a mascot.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same NOTICE sign layout as the original: rounded black-bordered white sign, red header bar, red circle icon with a pump bottle and hands, black condensed text on the right. Add a small round portrait of Wasami in the lower right corner in the same flat vector style.",
       "text": [
-        "お知らせ",
-        "手指消毒ステーション"
+        "NOTICE",
+        "HAND SANITIZER STATION"
+      ],
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_handsanitizer_01_D.png"
       ],
       "size": "1024x1024",
       "final_size": "1024x1024",
@@ -1005,7 +1052,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_handsanitizer_01_D.png"
     ],
     "requested": {
       "model": null,
@@ -1014,13 +1062,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A plain square facility notice sign on white with a thin red rounded border: a solid red banner across the top with the first word, below it a red circle icon of a hand pressing a sanitizer pump bottle, and beside the icon the station name in bold black letters on two lines. In the bottom corner, a tiny cartoon of Wasami's face winking as a mascot.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"お知らせ\"; \"手指消毒ステーション\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same NOTICE sign layout as the original: rounded black-bordered white sign, red header bar, red circle icon with a pump bottle and hands, black condensed text on the right. Add a small round portrait of Wasami in the lower right corner in the same flat vector style.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"NOTICE\"; \"HAND SANITIZER STATION\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_handsanitizer_02_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_handsanitizer_02_D/20260926-032428",
+    "run": "Intermediate/WasamiArt/hospital_poster_handsanitizer_02_D/20260926-133401",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1032,8 +1080,17 @@
       "name": "hospital_poster_handsanitizer_02_D",
       "_orig": "M_06_Hospital_Poster_06（5 枚）。本家「Please Use HAND SANITIZER!」の戦時の宣伝ポスター風",
       "style": "print",
-      "prompt": "A retro wartime propaganda style poster in teal, cream, black and red: Wasami leaning forward and pointing straight at the viewer with an intense stare, a big sanitizer pump bottle with a cross on it beside him, sunburst rays behind, bold slanted lettering at the top.",
-      "text": "手を消毒しろ！",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same retro propaganda layout and flat muted teal, red and cream print colours as the original, with the same slanted headline. The gloved hands are now Wasami, shown from the chest up rubbing his hands, next to the same pump bottle.",
+      "text": [
+        "Please",
+        "Use HAND SANITIZER!"
+      ],
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_handsanitizer_02_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -1046,7 +1103,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_handsanitizer_02_D.png"
     ],
     "requested": {
       "model": null,
@@ -1055,13 +1113,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A retro wartime propaganda style poster in teal, cream, black and red: Wasami leaning forward and pointing straight at the viewer with an intense stare, a big sanitizer pump bottle with a cross on it beside him, sunburst rays behind, bold slanted lettering at the top.\n\nExact visible text, spelled exactly: \"手を消毒しろ！\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same retro propaganda layout and flat muted teal, red and cream print colours as the original, with the same slanted headline. The gloved hands are now Wasami, shown from the chest up rubbing his hands, next to the same pump bottle.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"Please\"; \"Use HAND SANITIZER!\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_heart_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_heart_D/20260926-032346",
+    "run": "Intermediate/WasamiArt/hospital_poster_heart_D/20260926-133401",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1073,7 +1131,13 @@
       "name": "hospital_poster_heart_D",
       "_orig": "M_06_Hospital_Poster_04（5 枚）。本家は解剖図の心臓の版画（字なし）",
       "style": "print",
-      "prompt": "A black ink engraving of an anatomical human heart on a plain white background, in fine cross-hatching like an old medical book plate, where the veins and chambers subtly form Wasami's face with wide staring eyes. No text.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. The same black ink line engraving of an anatomical heart on white, same size and position; Wasami's face is subtly engraved into the front of the heart in the same fine ink linework.",
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_heart_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -1086,7 +1150,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_heart_D.png"
     ],
     "requested": {
       "model": null,
@@ -1095,13 +1160,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A black ink engraving of an anatomical human heart on a plain white background, in fine cross-hatching like an old medical book plate, where the veins and chambers subtly form Wasami's face with wide staring eyes. No text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. The same black ink line engraving of an anatomical heart on white, same size and position; Wasami's face is subtly engraved into the front of the heart in the same fine ink linework.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_mortalvaccination_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_mortalvaccination_D/20260926-032443",
+    "run": "Intermediate/WasamiArt/hospital_poster_mortalvaccination_D/20260926-133401",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1113,8 +1178,17 @@
       "name": "hospital_poster_mortalvaccination_D",
       "_orig": "M_06_Hospital_Poster_07（17 枚）。本家「MORTAL VACCINATION」と注射器の図案",
       "style": "print",
-      "prompt": "A muted grey, beige and black graphic design poster with diagonal stripes: huge heavy condensed title letters at the top and three large syringes angled diagonally across the lower half, one of them with a tiny Wasami face printed on its barrel.",
-      "text": "ワサミ ワクチン",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same flat geometric grey, black and white layout with the big condensed title top-left and diagonal syringes as the original. One syringe barrel shows a small printed portrait of Wasami.",
+      "text": [
+        "WASAMI",
+        "VACCINATION"
+      ],
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_mortalvaccination_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -1127,7 +1201,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_mortalvaccination_D.png"
     ],
     "requested": {
       "model": null,
@@ -1136,13 +1211,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A muted grey, beige and black graphic design poster with diagonal stripes: huge heavy condensed title letters at the top and three large syringes angled diagonally across the lower half, one of them with a tiny Wasami face printed on its barrel.\n\nExact visible text, spelled exactly: \"ワサミ ワクチン\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same flat geometric grey, black and white layout with the big condensed title top-left and diagonal syringes as the original. One syringe barrel shows a small printed portrait of Wasami.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"WASAMI\"; \"VACCINATION\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_pill_01_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_pill_01_D/20260926-032556",
+    "run": "Intermediate/WasamiArt/hospital_poster_pill_01_D/20260926-133444",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1154,7 +1229,13 @@
       "name": "hospital_poster_pill_01_D",
       "_orig": "M_06_Hospital_Poster_11（9 枚）。本家は黒地に青いカプセルの絵",
       "style": "print",
-      "prompt": "A single big glossy blue and white capsule pill tilted diagonally on a pure black background, flat vector style, with a simple smiling Wasami face printed on the capsule. No text.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same single blue flat capsule outline icon as the original, same line weight and angle. Inside the capsule's upper half, a simple blue line outline of Wasami's head with short fringe.",
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_pill_01_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -1167,7 +1248,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_pill_01_D.png"
     ],
     "requested": {
       "model": null,
@@ -1176,13 +1258,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A single big glossy blue and white capsule pill tilted diagonally on a pure black background, flat vector style, with a simple smiling Wasami face printed on the capsule. No text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same single blue flat capsule outline icon as the original, same line weight and angle. Inside the capsule's upper half, a simple blue line outline of Wasami's head with short fringe.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_pills_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_pills_D/20260926-032507",
+    "run": "Intermediate/WasamiArt/hospital_poster_pills_D/20260926-133426",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1194,8 +1276,17 @@
       "name": "hospital_poster_pills_D",
       "_orig": "M_06_Hospital_Poster_08（9 枚）。本家は薬瓶と錠剤の白黒の版画（COUGH SYRUP の瓶）",
       "style": "print",
-      "prompt": "A black and white ink engraving on white of old medicine bottles, loose pills and a blister pack, in dense cross-hatching; the biggest bottle's label shows a small engraved portrait of Wasami and its name.",
-      "text": "ワサミ錠",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black-and-white hand-drawn ink sketch of medicine bottles, pills and blister pack as the original. The big bottle's label reads the text below and has a tiny ink sketch of Wasami's face.",
+      "text": [
+        "WASAMI",
+        "SYRUP"
+      ],
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_pills_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -1208,7 +1299,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_pills_D.png"
     ],
     "requested": {
       "model": null,
@@ -1217,13 +1309,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A black and white ink engraving on white of old medicine bottles, loose pills and a blister pack, in dense cross-hatching; the biggest bottle's label shows a small engraved portrait of Wasami and its name.\n\nExact visible text, spelled exactly: \"ワサミ錠\". No other text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black-and-white hand-drawn ink sketch of medicine bottles, pills and blister pack as the original. The big bottle's label reads the text below and has a tiny ink sketch of Wasami's face.\n\nExact visible text, as 2 separate pieces placed as described, spelled exactly: \"WASAMI\"; \"SYRUP\". No other text.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_syringe_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_syringe_D/20260926-032523",
+    "run": "Intermediate/WasamiArt/hospital_poster_syringe_D/20260926-133428",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1235,7 +1327,13 @@
       "name": "hospital_poster_syringe_D",
       "_orig": "M_06_Hospital_Poster_09（12 枚）。本家は赤地の注射器の絵（字なし）",
       "style": "print",
-      "prompt": "A realistic syringe lying horizontally across a flat bright red background, the clear barrel filled with liquid in which a small distorted reflection of Wasami's face stares out. No text.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same flat red background and the same realistic syringe lying diagonally as the original. The liquid in the barrel shows a faint reflection of Wasami's face.",
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_syringe_D.png"
+      ],
       "size": "1536x768",
       "final_size": "1024x512",
       "count": 1,
@@ -1248,7 +1346,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_syringe_D.png"
     ],
     "requested": {
       "model": null,
@@ -1257,13 +1356,13 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A realistic syringe lying horizontally across a flat bright red background, the clear barrel filled with liquid in which a small distorted reflection of Wasami's face stares out. No text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same flat red background and the same realistic syringe lying diagonally as the original. The liquid in the barrel shows a faint reflection of Wasami's face.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   },
   {
     "dest": "SourceArt/Wasami/Stage/hospital_poster_toxickiss_D.png",
     "adopted": "2026-09-26",
-    "run": "Intermediate/WasamiArt/hospital_poster_toxickiss_D/20260926-032546",
+    "run": "Intermediate/WasamiArt/hospital_poster_toxickiss_D/20260926-133441",
     "candidate": "out-01.png",
     "size": [
       1024,
@@ -1275,7 +1374,13 @@
       "name": "hospital_poster_toxickiss_D",
       "_orig": "M_06_Hospital_Poster_10（16 枚）。本家は黒地にピンクのネオンの唇",
       "style": "print",
-      "prompt": "A glowing hot-pink neon tube sign on a pure black background: the outline of Wasami's pursed, pouting lips (as in the reference photos) with a small heart in the middle. No text.",
+      "prompt": "The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same glowing pink-magenta neon-tube lips as the original; keep them as lips. Under them, a small neon-tube line outline of Wasami's head with short fringe.",
+      "refs": [
+        "face"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/hospital_poster_toxickiss_D.png"
+      ],
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
@@ -1288,7 +1393,8 @@
       "screenshots:スクリーンショット 2026-03-03 144747.png",
       "screenshots:スクリーンショット 2026-06-28 212325.png",
       "screenshots:スクリーンショット 2026-07-28 205258.png",
-      "screenshots:スクリーンショット 2026-07-13 214744.png"
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "Intermediate/WasamiArt/_orig/hospital_poster_toxickiss_D.png"
     ],
     "requested": {
       "model": null,
@@ -1297,7 +1403,7 @@
       "quality": "high",
       "count": 1
     },
-    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: A glowing hot-pink neon tube sign on a pure black background: the outline of Wasami's pursed, pouting lips (as in the reference photos) with a small heart in the middle. No text.",
-    "note": ""
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: a clean, flat printed hospital wall poster graphic, crisp and evenly lit, viewed straight on and filling the entire canvas edge to edge; no wall, frame, paper curl, stains or photo effects (the game adds wear itself). Follow the graphic style described for the asset.\n\nAsset: The LAST reference image is the original hospital asset that this image replaces. Reproduce its look as closely as possible: the same drawing technique, lettering style and letter shapes, stroke weight, colours, amount of detail, composition and layout, so that it could pass as part of the same set. Change only the words and subject as described. It must NOT look like a glossy AI illustration. Wasami must look exactly like the real young man in the photo references (same face shape, eyes, nose, mouth, short black hair with a heavy fringe) rendered in the original asset's technique; do not caricature, cartoonify or beautify him. Same black background and the same glowing pink-magenta neon-tube lips as the original; keep them as lips. Under them, a small neon-tube line outline of Wasami's head with short fringe.",
+    "note": "2026-09-26 のユーザーの指示で作り直し（写真に忠実・英語・本家の画風）"
   }
 ]
