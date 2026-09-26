@@ -129,7 +129,7 @@ UWasamiTitleScreenWidget::UWasamiTitleScreenWidget(const FObjectInitializer& Obj
 	MenuFont = TSoftObjectPtr<UFont>(WasamiAssets::Path(TEXT("/Game/DD/UI/Fonts/helvetica-normal_Font")));
 	MusicSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/DD_-_Dark_Deception_-_Theme_v1_3")));
 	StartSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Start_New_Game")));
-	VoiceSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Titlescreen/Bierce_Title_Modified_03")));
+	VoiceSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Follow")));
 	SelectSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_Select_V3")));
 }
 

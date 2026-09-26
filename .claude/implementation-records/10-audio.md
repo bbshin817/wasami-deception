@@ -15,7 +15,7 @@ sources:
   - Content/Python/wasami_tools/pipeline/dd_dialogue.py
   - Content/Python/wasami_tools/pipeline/dd_voices.py
   - Tools/dd/prepare_voices.py
-updated: 2026-09-22
+updated: 2026-09-27
 ---
 
 # 曲と環境音と台詞（ゾーンの曲の切り替え・台詞の取り込み）
@@ -179,7 +179,32 @@ updated: 2026-09-22
 
 - 注意: 相互相関の値は 2026-09-22 の測り（0.996〜0.997）より低いが、**捕獲の側は変えていない**。原本 `you.wav` は 5.007 s のうち実音が 0.103〜1.992 s で残りが無音なので、窓がステージ側の音まで拾って正規化の分母が膨らむ。何も引き金を引かずに録った同じ PIE（`tmp/pie_idle_record.py`、`idle_zone1.wav`）でも、Zone 1 の到着そのものが 0〜1.0 s・1.2〜1.9 s・2.0〜2.5 s・3.4〜6.0 s に最大 0.36 の音を出している。山と次点の比（顔の `over` で 3.9 倍、ホテル型の `you` で 6.4 倍）と、上の曲を引いた残りで判定している。
 
+## 本家のナース・ビアスの声をワサミの声に（2026-09-27）
+
+ユーザーの指示「本家ナース・ビアスの声を除き、すべてワサミボイスに置き換えてください」。本家の声を 1 本ずつ、ワサミの台詞 1 本に置き換える。
+- 素材: WebGL 版の `<WEBGL>/voices/` の生の台詞（55 本。mp3 の 15 本の元と同じ長さで、音量だけ揃っていない）から、`Tools/dd/prepare_voices.py`（`--lines-only` で台詞だけ）の `LINES` の 37 本を `SourceArt/Wasami/Voices/Lines/<id>.wav` と `lines.json` にする。**先にモノラル 44.1 kHz にしてから** 2 パスの `loudnorm`（-23 LUFS・-6 dBTP、`linear=true`）で揃える（正規化の後にモノラルへ合成すると 2〜3 dB 小さくなった）。0.4 s より短い台詞は積分ラウドネスが測れない（-inf）ので、5 回繰り返した音で測る。結果は -23〜-27 LUFS（-6 dBTP の上限で下がるものは WebGL 版の声と同じ扱い）。
+- **字幕を出す台詞は、字幕の長さ max(2.2, 長さ + 1.2) s まで無音を足す**: UE は波が終わると字幕を下げ、これらはシーケンスと `AWasamiBierceTalk` からも鳴るので、`WasamiVoice` のように字幕を延ばせない。ビアス（案内役）の台詞と館内放送 Event_37 は字幕付き（本家どおり）、ナース（敵ワサミ）の台詞は字幕なし（本家も無い）。
+- 取り込み: `dd_voices.import_lines`（`import_all` から。`WasamiDDTools.import_wasami_voices` の戻り値に `lines` 37）→ `/Game/Wasami/Voices/Lines/Wasami_Line_<Id>`（`line_asset(id)`。音量 1・`DD_SoundClass_Dialogue`）。
+- **置き換え表は `dd_voices.REPLACES` の 1 か所**（本家の `/Game/DD/<rel>` → ワサミの波）。シーケンスは `dd_sequence` が組み立てで引き（その区間は繰り返さない。01 記録）、C++ は同じ波を名前で持つ（`AWasamiZone1Flow`・`AWasamiZone2Flow`〈11 記録〉・`UWasamiTitleScreenWidget`〈14 記録〉）。本家の波は取り込んだまま（使わない）。
+
+| 本家 | 場面 | ワサミ |
+|---|---|---|
+| ビアス Event_09 / 10 | Zone 1 の館内放送の後 / 扉が破られた | Alert（大丈夫かコレ）/ Huh（えっ） |
+| ビアス Gameplay_01〜05（SoundCue） | 近くのナース（2 割） | Kimo・Kimochi・Help・Muimi・Oomou から無作為 |
+| ビアス Event_11 / 12 / 13 / 15 | Zone 2 の捕獲の場面 | Wow（わぁ…）/ Eh（え）/ Va（ヴァ！！）/ Dead（死んだわ） |
+| ビアス Event_14 / 16 / 18B | 独房の場面 / 独房の扉 | Acho（あ～ちょ…）/ Ketcha（ケチャくんっ！）/ Safe（無事でしたか！） |
+| ビアス Event_17 / 19 / 20 / 21 / 22 | 独房の後 / 寮母 / 全回収 / 指輪 / ガレージ | Hunch / Sasuga / Nowwhile / Naruhodo / Gone |
+| ビアス Gameplay_07 / 08 | リフト / 迷路 | Korenanka / Iya |
+| ビアス Bierce_Title_Modified_03 | タイトルの NEW GAME | Follow（私と一緒に行きましょう。字幕なし。Zone 1 の開始で `greeting` が続くため） |
+| ナース Event_37 / 48（館内放送） | Zone 1 / 寮母の後ろ | DekokodeBright（でココで。字幕付き）/ Wait（ちょっと待ってね） |
+| ナース Detected_01・Attack_04/06/07/08・Laugh_08 | 駐車場の場面 | `Wasami_Found`・Gero・Vooo・Uooo・Vaa・Dufu |
+| ナース Event_38 / 39 | 捕獲の場面 | Kodomo（お前こどもやな）/ `Wasami_You` |
+| ナース Event_40〜47 | 独房の場面 | Calling・Aanannka・Greeting（字幕なし）・Haihai・Follow・Fire・Dekokode・Okay |
+
+- どの台詞を当てるかは Claude が意味の近いものを選んだ仮の表（進捗記録の要確認）。
+
 ## 変更履歴
+- 2026-09-27: 本家のナース・ビアスの声をすべてワサミの台詞に置き換えた（上の「本家のナース・ビアスの声をワサミの声に」。`prepare_voices.py` の `LINES`・`dd_voices.REPLACES`・`import_lines`。ユーザーの指示）
 - 2026-09-23: ライフ 0 の死亡画面に声がまったく残っていないことを PIE の収録で確かめ、項目 48 を終えた（上の「確かめたこと（2026-09-23）」。09 記録）
 - 2026-09-23: 死亡画面のゲームオーバーの段で `over` を鳴らすのをやめた（`UWasamiDeathScreenWidget::GameOverVoiceSound` を削除）。`over` は顔の捕獲が鳴らすほうだけになる（2026-09-23 のユーザーの回答「死亡画面を黙らせる」。作業一覧の項目 48 のステップ 1。09 記録）
 - 2026-09-23: 捕獲の `you`（「オマエ・ジャ。」5.007 s）に**字幕を出さない**ことを 2026-09-23 のユーザーの回答で追認した。出す場合は波の `Subtitles` に入れるだけでは足りないと調べてある（捕獲は `PlaySound2D` で鳴らすので UE は波の長さ 5.0 s のあいだ字幕を出し続け、実音が沈む 1.8 s・死亡画面へ切り替わる 3.5 s を越えて**死亡画面に 1.5 s 食い込む**。出すなら `WasamiVoice::Say` 経由にするか捕獲の終わりで消す一手が要る）（作業一覧の項目 40 の要確認）

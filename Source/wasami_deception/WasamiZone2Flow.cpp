@@ -53,15 +53,16 @@ AWasamiZone2Flow::AWasamiZone2Flow()
 	DoorPickedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/04_Sewer/Bossfight/BP_04_BossFight_CameraShake_Initial")));
 	SpikesSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/DD_Needle_Trap_R1_V3")));
 	RingPiecePickupSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/RingStatue/Ring_Piece_Pickup_v1")));
+	BehindMatronAnnouncement = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Wait")));
 	EscapeSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/21-Ballroom_portal_V2")));
 	ParameterCollection = TSoftObjectPtr<UMaterialParameterCollection>(WasamiAssets::Path(TEXT("/Game/DD/Materials/Special/Mat_ParameterCol")));
-	CellLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_17")));
-	MinibossLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_19")));
-	LiftQuipLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Gameplay_07")));
-	MazeLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Gameplay_08")));
-	MazeAllShardsLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_20")));
-	RingPieceLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_21")));
-	GarageLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_22")));
+	CellLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Hunch")));
+	MinibossLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Sasuga")));
+	LiftQuipLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Korenanka")));
+	MazeLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Iya")));
+	MazeAllShardsLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Nowwhile")));
+	RingPieceLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Naruhodo")));
+	GarageLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Gone")));
 }
 
 void AWasamiZone2Flow::BeginPlay()
@@ -250,10 +251,16 @@ void AWasamiZone2Flow::OnMinibossBehindMatron()
 {
 	Enter(TEXT("Miniboss_BehindMatron"));
 	// @22264: Nurse_Hospital_Zone01_Event_48_Intercom_2's AudioComponent Play(0) — the announcement is the level's own
-	// AmbientSound, not a line of Bierce's, and it is placed without bAutoActivate, so this is what starts it.
+	// AmbientSound, not a line of Bierce's, and it is placed without bAutoActivate, so this is what starts it. The
+	// nurse's Nurse_Hospital_Zone01_Event_48_Intercom it holds is put back to Wasami's line first (the level keeps the
+	// original's, dd_voices.REPLACES; the header).
 	const AAmbientSound* Intercom = Cast<AAmbientSound>(Source(BehindMatronIntercom));
 	if (UAudioComponent* Audio = Intercom ? Intercom->GetAudioComponent() : nullptr)
 	{
+		if (USoundBase* Announcement = BehindMatronAnnouncement.LoadSynchronous())
+		{
+			Audio->SetSound(Announcement);
+		}
 		Audio->Play(0.f);
 	}
 	else

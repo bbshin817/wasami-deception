@@ -446,11 +446,6 @@ bool FWasamiLevelClearShowResultsTest::RunTest(const FString& Parameters)
 			AddError(FString::Printf(TEXT("%s is missing: run WasamiDDTools.import_dd_ui"), Path));
 		}
 	}
-	const USoundWave* Fill = LoadObject<USoundWave>(nullptr, TEXT("/Game/DD/Audio/UI/UI_XP_Bar_Fill_V2A_0617.UI_XP_Bar_Fill_V2A_0617"));
-	if (TestNotNull(TEXT("the fill sound"), Fill))
-	{
-		TestTrue(TEXT("it loops"), Fill->bLooping);
-	}
 
 	// A new save's results, frame by frame at 60 fps: TIME +70, SOUL SHARDS none, BONUS SHARDS and SECRETS +0,
 	// LIVES LOST +40, SHARD STREAK +15.

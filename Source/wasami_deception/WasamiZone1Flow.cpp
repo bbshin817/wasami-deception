@@ -38,10 +38,13 @@ AWasamiZone1Flow::AWasamiZone1Flow()
 	DoorsBustedShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Blueprints/07_FunPlace/Boss/BP_07_CameraShake_Jump")));
 	TakeOffShakeClass = TSoftClassPtr<UCameraShakeBase>(WasamiAssets::ClassPath(TEXT("/Game/DD/Animation/06_Hospital/06_CameraShake_Zone1_AmbulanceTakeOff")));
 	PortalSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/00_Ballroom/21-Ballroom_portal_V2")));
-	IntercomSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/06_Hospital/Nurse_Hospital_Zone01_Event_37_Intercom")));
-	IntercomLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_09")));
-	DoorBreakLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Event_10")));
-	NurseQuipCue = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/Dialogue/Bierce/Ch06/TT/Bierce_TormentTherapy_Gameplay")));
+	IntercomSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_DekokodeBright")));
+	IntercomLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Alert")));
+	DoorBreakLine = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_Huh")));
+	for (const TCHAR* Quip : {TEXT("Kimo"), TEXT("Kimochi"), TEXT("Help"), TEXT("Muimi"), TEXT("Oomou")})
+	{
+		NurseQuips.Add(TSoftObjectPtr<USoundBase>(WasamiAssets::Path(*FString::Printf(TEXT("/Game/Wasami/Voices/Lines/Wasami_Line_%s"), Quip))));
+	}
 }
 
 void AWasamiZone1Flow::StartAt(int32 Checkpoint)
@@ -290,7 +293,7 @@ void AWasamiZone1Flow::OnBierceNurseQuip()
 	// Random Bool With Weight(0.2): Bierce keeps most of them to himself.
 	if (UKismetMathLibrary::RandomBoolWithWeight(NurseQuipChance))
 	{
-		BierceTalk(NurseQuipCue);
+		BierceTalk(NurseQuips[FMath::RandRange(0, NurseQuips.Num() - 1)]);
 	}
 }
 

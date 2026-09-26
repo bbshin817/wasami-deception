@@ -126,11 +126,24 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<USoundBase> RingPiecePickupSound;
 
+	/**
+	 * Miniboss_BehindMatron: what the level's intercom (Nurse_Hospital_Zone01_Event_48_Intercom_2) announces. The
+	 * original's nurse says Event_48 there; here Wasami says Wasami_Line_Wait in her place (2026-09-27, the user's
+	 * instruction: every voice of the original's nurses and Bierce is Wasami's, dd_voices.REPLACES), put on the
+	 * AmbientSound as it is started, so the level is left as it was built.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
+	TSoftObjectPtr<USoundBase> BehindMatronAnnouncement;
+
 	/** The escape: 21-Ballroom_portal_V2 (PlaySound2D), as the ambulance's ride ends in the original. */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<USoundBase> EscapeSound;
 
-	/** Cell Cutscene Finished: Bierce's Event_17, a second after the cell's scene. */
+	/**
+	 * Cell Cutscene Finished: Bierce's Event_17, a second after the cell's scene. This and Bierce's lines below are
+	 * Wasami's here (2026-09-27, dd_voices.REPLACES): Event_17 Hunch, Event_19 Sasuga, Gameplay_07 Korenanka,
+	 * Gameplay_08 Iya, Event_20 Nowwhile, Event_21 Naruhodo, Event_22 Gone (/Game/Wasami/Voices/Lines/Wasami_Line_*).
+	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
 	TSoftObjectPtr<USoundBase> CellLine;
 

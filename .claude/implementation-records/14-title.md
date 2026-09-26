@@ -7,7 +7,7 @@ sources:
   - Source/wasami_deception/WasamiTitleGameMode.h
   - Source/wasami_deception/WasamiTitleGameMode.cpp
   - Source/wasami_deception/Tests/WasamiTitleScreenTests.cpp
-updated: 2026-09-22
+updated: 2026-09-27
 ---
 
 # タイトル画面
@@ -143,6 +143,7 @@ Construct（`NativeConstruct`。本家どおり DoOnce）: セーブ（`SaveSlot
 - 画面は `widgets=WasamiTitleScreenWidget`（`Wasami.Status`）で、NEW GAME・EXTRAS・OPTIONS・QUIT の 4 つが出ている。
 
 ## 変更履歴
+- 2026-09-27: NEW GAME の `FadeOut` で鳴るビアスの声 `Bierce_Title_Modified_03` をワサミの `Wasami_Line_Follow`（私と一緒に行きましょう。字幕なし）にした（10 記録。ユーザーの指示）
 - 2026-09-22: 顔の α を本家の横顔と同じ切り口（ほぼ不透明 + 左の細い羽根）にし、WebGL 版の楕円は RGB を黒へ落とす暈しへ移した（上の「前処理」。右端・上端・下端の黒い隙間が消え、左の境界が煙の縁になった。作業一覧の項目 44）
 - 2026-09-22: 筆の跡 `Image_104` を無効にするのをやめた（UE 5 の Slate の無効は不透明度 0.45 倍。上の「画面」の 5。作業一覧の項目 44）
 - 2026-09-22: タイトルの曲を本家の最新版のテーマ曲 `DD_-_Dark_Deception_-_Theme_v1_3`（音量 0.6・ピッチ 1）にした。旧版の `Pause_Sound_v1`（音量 1・ピッチ 0.5）から替えたのはレビューの指摘とユーザーの回答による。`FadeIn(2, 0.5)` は両版で同じ。曲以外は旧版のまま（01・09・15・19 記録。作業一覧の項目 43）

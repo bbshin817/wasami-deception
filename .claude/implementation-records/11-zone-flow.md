@@ -18,7 +18,7 @@ sources:
   - Source/wasami_deception/WasamiCutsceneNurse.h
   - Source/wasami_deception/WasamiCutsceneNurse.cpp
   - Source/wasami_deception/Tests/WasamiCutsceneNurseTests.cpp
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # ゾーンの進行（トリガー・区間の流れ・扉の破壊）
@@ -205,6 +205,7 @@ updated: 2026-09-26
 **2026-09-26 に確かめ直した**（ユーザーが Windows のパッケージ版を遊んで「置いていかれる・2 台ある」と再指摘したため。作業一覧の項目 53）。**どちらもパッケージが古かっただけで、コードにもレベルにも直しは要らなかった**: 2026-09-23 のパッケージ（04:00）は Zone 1 の `.umap` の保存（05:31）より前で、`dd_sequence.movable` が走り出す救急車を `Movable` にした直し（2026-09-22）が入っていなかった。**土台の移動は土台が `Movable` のときだけ働く**（`MovementBaseUtility::IsDynamicBase`）ので、`Static` のままでは後ろの壁を外しても運ばれず、描画側が変換を焼くので止まったままの 2 台目も見えていた。作り直したパッケージでは、エディタで読んだ`hospital_ambulance_new_teleport` とその子の `BlockingVolume_Ambulance_1`〜`6` がすべて `Movable` で、`probe_ambulance.py ride` は `--fps 60` でも `--fps 15` でも（フレームレートが低いほど出やすい不具合なので）屋根の z 402 のまま y −19846 → −3956 を運ばれ、`look` の 13 枚は走り出す前も後もトンネルの救急車 1 台だけだった。**パッケージの中身を疑うときは、まず `Saved/Archive/Windows/wasami_deception.exe` の日時と`Content/Stage/Maps/*.umap` の日時を比べる**。
 
 ## 変更履歴
+- 2026-09-27: 流れが鳴らす本家の声をワサミの台詞にした（Zone 1 の館内放送 `IntercomSound`・`IntercomLine`・`DoorBreakLine`、近くのナースの小言は SoundCue の代わりに `NurseQuips` の 5 本から無作為、Zone 2 のビアスの 7 本、寮母の後ろの館内放送は `BehindMatronAnnouncement` をレベルの `AmbientSound` に鳴らす前に載せる〈マップは作り直さない〉。表は 10 記録。ユーザーの指示）
 - 2026-09-26: Zone 2 の到着で救急車が 2 台になり置いていかれるのを直した（原因は取り込みの結び付けの取り違え。01 記録）。到着の間もプレイヤーを救急車に付けて運ぶ（基底の `RidePlayerOn`・`StopPlayerRide`。Zone 1 の `RideAmbulance` もこれに置き換え）。Zone 1 の屋根のトリガーが屋根の外で入ったら屋根へ置き直す（`PlaceOnAmbulanceRoof`）。テスト `Zone1` を囲い 4 枚の閉じに合わせた（4 度目の指摘。作業一覧の項目 61）
 - 2026-09-26: `AWasamiZoneFlow` に救急車の案内の画面の動画（`ScreenPlayer`・`ScreenSource`）を足し、`BeginPlay` で開いて `EndPlay` で閉じるようにした（ユーザーの指示「救急車の動画も作成してください」）。PIE の Zone 1 で 2 つの画面にループで流れることを確認
 - 2026-09-26: 救急車の囲い 4 枚をすべて閉じ、走り出しでプレイヤーを救急車に付けて運ぶようにした（`RideAmbulance`。作業一覧の項目 53 の 3 度目の指摘）。

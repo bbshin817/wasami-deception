@@ -247,7 +247,6 @@ UWasamiLevelClearWidget::UWasamiLevelClearWidget(const FObjectInitializer& Objec
 	EscapedSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_YouEscaped")));
 	RowStampSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Level_Clear_Grade_Stamp_v2")));
 	FinalStampSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/Level_Clear_Grade_Stamp_v1")));
-	FillSound = TSoftObjectPtr<USoundBase>(WasamiAssets::Path(TEXT("/Game/DD/Audio/UI/UI_XP_Bar_Fill_V2A_0617")));
 }
 
 UWasamiLevelClearWidget* UWasamiLevelClearWidget::Show(const UObject* WorldContextObject, const FWasamiLevelResults& InResults)
@@ -497,13 +496,8 @@ void UWasamiLevelClearWidget::Begin()
 
 void UWasamiLevelClearWidget::NativeDestruct()
 {
-	// The fill sounds loop until their counters stop them; the level opening after Finished ends them in the original.
 	for (FCounter& Counter : Counters)
 	{
-		if (UAudioComponent* Sound = Counter.Sound.Get())
-		{
-			Sound->Stop();
-		}
 		Counter.bDelaying = false;
 	}
 	Super::NativeDestruct();
@@ -654,24 +648,19 @@ void UWasamiLevelClearWidget::TickResultsEvents()
 
 void UWasamiLevelClearWidget::StartCounter(int32 Index, int32 Number, float Span)
 {
-	// CreateSound2D(UI_XP_Bar_Fill_V2A_0617, 1, 1, 0, None, False, True) → Play, then the loop's first pass at once.
+	// The original's CreateSound2D(UI_XP_Bar_Fill_V2A_0617) → Play is left out (the XP gauge's sound; the header), then
+	// the loop's first pass at once.
 	FCounter& Counter = Counters[Index];
 	Counter = FCounter();
 	Counter.Number = Number;
 	Counter.Span = Span;
-	USoundBase* Sound = GetWorld() ? FillSound.LoadSynchronous() : nullptr;
-	if (UAudioComponent* Component = Sound ? UGameplayStatics::CreateSound2D(this, Sound, 1.f, 1.f, 0.f, nullptr, false, true) : nullptr)
-	{
-		Component->Play(0.f);
-		Counter.Sound = Component;
-	}
 	StepCounter(Index);
 }
 
 void UWasamiLevelClearWidget::StepCounter(int32 Index)
 {
-	// +1; below n: "+count" and Delay(span / n); at n: "+n" and the sound stops. TOTAL SHARDS' text is bound to the
-	// total (Get_TotalShardAmount_Text_0), so its counter's SetText shows nothing: only its sound tells.
+	// +1; below n: "+count" and Delay(span / n); at n: "+n". TOTAL SHARDS' text is bound to the total
+	// (Get_TotalShardAmount_Text_0), so its counter's SetText shows nothing.
 	FCounter& Counter = Counters[Index];
 	UTextBlock* Text = ShardsTexts.IsValidIndex(Index) ? ShardsTexts[Index].Get() : nullptr;
 	++Counter.Count;
@@ -688,10 +677,6 @@ void UWasamiLevelClearWidget::StepCounter(int32 Index)
 	if (Text)
 	{
 		Text->SetText(FText::FromString(FString::Printf(TEXT("+%d"), Counter.Number)));
-	}
-	if (UAudioComponent* Sound = Counter.Sound.Get())
-	{
-		Sound->Stop();
 	}
 	Counter.bDelaying = false;
 }

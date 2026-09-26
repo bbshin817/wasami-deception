@@ -207,9 +207,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Level Clear|Assets")
 	TSoftObjectPtr<USoundBase> FinalStampSound;
 
-	/** UI_XP_Bar_Fill_V2A_0617 (looping), which a counter plays until it reaches its number. */
-	UPROPERTY(EditAnywhere, Category = "Level Clear|Assets")
-	TSoftObjectPtr<USoundBase> FillSound;
+	// The original's counters also loop UI_XP_Bar_Fill_V2A_0617 until they reach their number: it is the XP gauge's
+	// sound, and this game shows no XP gauge, so it is not played (2026-09-27, the user's instruction).
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -221,7 +220,7 @@ protected:
 	void ShowResults();
 
 private:
-	/** A counter (the original's *Counter events): +1 each Delay(span / n) from 1 to n, the fill sound until n. */
+	/** A counter (the original's *Counter events): +1 each Delay(span / n) from 1 to n. */
 	struct FCounter
 	{
 		int32 Number = 0;
@@ -230,7 +229,6 @@ private:
 		// Its Delay: the time left, which each tick after the one that started it takes from.
 		float DelayRemaining = 0.f;
 		bool bDelaying = false;
-		TWeakObjectPtr<UAudioComponent> Sound;
 	};
 
 	void BuildScreen(UCanvasPanel* Root);

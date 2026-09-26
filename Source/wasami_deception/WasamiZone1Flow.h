@@ -84,20 +84,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<USoundBase> PortalSound;
 
-	/** 04_Intercom: the nurse's announcement over the intercom, and Bierce's Event_09 13 s after it. */
+	/**
+	 * 04_Intercom: the nurse's announcement over the intercom, and Bierce's Event_09 13 s after it. Theirs and every
+	 * line below are Wasami's here (2026-09-27, the user's instruction; the table is dd_voices.REPLACES): the
+	 * announcement's Nurse_Hospital_Zone01_Event_37_Intercom is Wasami_Line_DekokodeBright, Event_09 Wasami_Line_Alert.
+	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
 	TSoftObjectPtr<USoundBase> IntercomSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
 	TSoftObjectPtr<USoundBase> IntercomLine;
 
-	/** 04_DoorBreak: Bierce's Event_10, a second after the lift's doors swing open. */
+	/** 04_DoorBreak: Bierce's Event_10 (Wasami_Line_Huh), a second after the lift's doors swing open. */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
 	TSoftObjectPtr<USoundBase> DoorBreakLine;
 
-	/** Bierce Nurse Quip: Bierce_TormentTherapy_Gameplay, the cue that picks one of the five remarks at random. */
+	/**
+	 * Bierce Nurse Quip: the original's cue Bierce_TormentTherapy_Gameplay picks one of its five remarks at random
+	 * (SoundNodeRandom, even weights); here one of the five Wasami lines in their place is picked at random.
+	 */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Dialogue")
-	TSoftObjectPtr<USoundBase> NurseQuipCue;
+	TArray<TSoftObjectPtr<USoundBase>> NurseQuips;
 
 private:
 	/** The entrance's 00_Initial Start, for a new start: the stage's title card, the player held meanwhile. */

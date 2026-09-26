@@ -1,0 +1,304 @@
+{
+  "normalization": {
+    "integratedLUFS": -23,
+    "truePeakDB": -6
+  },
+  "lines": [
+    {
+      "id": "alert",
+      "source": "大丈夫かコレ.wav",
+      "subtitle": "大丈夫かコレ",
+      "subtitled": true,
+      "duration": 0.802018,
+      "padded": 2.2
+    },
+    {
+      "id": "huh",
+      "source": "えっ (意表を突かれる).wav",
+      "subtitle": "えっ",
+      "subtitled": true,
+      "duration": 0.269864,
+      "padded": 2.2
+    },
+    {
+      "id": "wow",
+      "source": "わぁ...(唖然).mp3",
+      "subtitle": "わぁ…",
+      "subtitled": true,
+      "duration": 1.984694,
+      "padded": 3.185011
+    },
+    {
+      "id": "eh",
+      "source": "え.wav",
+      "subtitle": "え",
+      "subtitled": true,
+      "duration": 0.262336,
+      "padded": 2.2
+    },
+    {
+      "id": "va",
+      "source": "ヴァ！！.mp3",
+      "subtitle": "ヴァ！！",
+      "subtitled": true,
+      "duration": 2.429569,
+      "padded": 3.63
+    },
+    {
+      "id": "acho",
+      "source": "あ～ちょ....wav",
+      "subtitle": "あ～ちょ…",
+      "subtitled": true,
+      "duration": 0.652109,
+      "padded": 2.2
+    },
+    {
+      "id": "dead",
+      "source": "死んだわ.wav",
+      "subtitle": "死んだわ",
+      "subtitled": true,
+      "duration": 0.644603,
+      "padded": 2.2
+    },
+    {
+      "id": "ketcha",
+      "source": "ケチャくんっ!.wav",
+      "subtitle": "ケチャくんっ！",
+      "subtitled": true,
+      "duration": 0.56966,
+      "padded": 2.2
+    },
+    {
+      "id": "hunch",
+      "source": "今なんかそういう予感しました!.wav",
+      "subtitle": "今なんかそういう予感しました！",
+      "subtitled": true,
+      "duration": 1.379161,
+      "padded": 2.579002
+    },
+    {
+      "id": "safe",
+      "source": "無事でしたか!.wav",
+      "subtitle": "無事でしたか！",
+      "subtitled": true,
+      "duration": 0.682086,
+      "padded": 2.2
+    },
+    {
+      "id": "sasuga",
+      "source": "さすがに.wav",
+      "subtitle": "さすがに",
+      "subtitled": true,
+      "duration": 0.944444,
+      "padded": 2.2
+    },
+    {
+      "id": "nowwhile",
+      "source": "ま今のうちにね.wav",
+      "subtitle": "ま、今のうちにね",
+      "subtitled": true,
+      "duration": 0.914467,
+      "padded": 2.2
+    },
+    {
+      "id": "naruhodo",
+      "source": "なるほどね!.wav",
+      "subtitle": "なるほどね！",
+      "subtitled": true,
+      "duration": 0.719569,
+      "padded": 2.2
+    },
+    {
+      "id": "gone",
+      "source": "これ居なくなるよね？.wav",
+      "subtitle": "これ居なくなるよね？",
+      "subtitled": true,
+      "duration": 0.861973,
+      "padded": 2.2
+    },
+    {
+      "id": "korenanka",
+      "source": "これなんかさぁ.wav",
+      "subtitle": "これなんかさぁ",
+      "subtitled": true,
+      "duration": 0.951927,
+      "padded": 2.2
+    },
+    {
+      "id": "iya",
+      "source": "いや、こういうのはさ.wav",
+      "subtitle": "いや、こういうのはさ",
+      "subtitled": true,
+      "duration": 1.109342,
+      "padded": 2.309002
+    },
+    {
+      "id": "kimo",
+      "source": "キモ・チワリ.wav",
+      "subtitle": "キモ・チワリ",
+      "subtitled": true,
+      "duration": 2.335646,
+      "padded": 3.536009
+    },
+    {
+      "id": "kimochi",
+      "source": "ちょっと気持ち悪かったカ!.wav",
+      "subtitle": "ちょっと気持ち悪かったカ！",
+      "subtitled": true,
+      "duration": 1.304218,
+      "padded": 2.504014
+    },
+    {
+      "id": "help",
+      "source": "あ～助けてくれ.wav",
+      "subtitle": "あ～助けてくれ",
+      "subtitled": true,
+      "duration": 1.17678,
+      "padded": 2.377007
+    },
+    {
+      "id": "muimi",
+      "source": "これもしかして意味ない？.wav",
+      "subtitle": "これもしかして意味ない？",
+      "subtitled": true,
+      "duration": 1.026893,
+      "padded": 2.227007
+    },
+    {
+      "id": "oomou",
+      "source": "おぉもうこれ.wav",
+      "subtitle": "おぉもうこれ",
+      "subtitled": true,
+      "duration": 0.682086,
+      "padded": 2.2
+    },
+    {
+      "id": "dekokode_bright",
+      "source": "でココで(明るめ).wav",
+      "subtitle": "でココで",
+      "subtitled": true,
+      "duration": 1.49161,
+      "padded": 2.691995
+    },
+    {
+      "id": "wait",
+      "source": "ちょっ　と待っ　てね.wav",
+      "subtitle": "ちょっと待ってね",
+      "subtitled": false,
+      "duration": 1.446644,
+      "padded": 1.446644
+    },
+    {
+      "id": "vaa",
+      "source": "ヴァ！！.mp3",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 2.429569,
+      "padded": 2.429569
+    },
+    {
+      "id": "vooo",
+      "source": "ヴォォォ!!!.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 5.659025,
+      "padded": 5.659025
+    },
+    {
+      "id": "uooo",
+      "source": "うぉぉぉ.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 5.017914,
+      "padded": 5.017914
+    },
+    {
+      "id": "gero",
+      "source": "ゲロ.mp3",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 5.003356,
+      "padded": 5.003356
+    },
+    {
+      "id": "dufu",
+      "source": "デゥフッ.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 4.991837,
+      "padded": 4.991837
+    },
+    {
+      "id": "kodomo",
+      "source": "お前こどもやな.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 0.899456,
+      "padded": 0.899456
+    },
+    {
+      "id": "calling",
+      "source": "おーい(暗め).wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 1.026871,
+      "padded": 1.026871
+    },
+    {
+      "id": "aanannka",
+      "source": "あぁなんか.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 0.539683,
+      "padded": 0.539683
+    },
+    {
+      "id": "greeting",
+      "source": "こんにちワサミ！.mp3",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 3.877732,
+      "padded": 3.877732
+    },
+    {
+      "id": "haihai",
+      "source": "あぃ～はいはいはい.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 1.086848,
+      "padded": 1.086848
+    },
+    {
+      "id": "follow",
+      "source": "私と一緒に行きましょう.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 1.034376,
+      "padded": 1.034376
+    },
+    {
+      "id": "fire",
+      "source": "火がつきませんに？.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 1.409161,
+      "padded": 1.409161
+    },
+    {
+      "id": "dekokode",
+      "source": "でココで.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 0.787029,
+      "padded": 0.787029
+    },
+    {
+      "id": "okay",
+      "source": "んあぁオーケーオーケー.wav",
+      "subtitle": "",
+      "subtitled": false,
+      "duration": 0.876961,
+      "padded": 0.876961
+    }
+  ]
+}

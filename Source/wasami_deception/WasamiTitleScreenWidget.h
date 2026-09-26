@@ -216,7 +216,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<USoundBase> MusicSound;
 
-	/** Start_New_Game and Bierce_Title_Modified_03: FadeOut's audio track. */
+	/**
+	 * Start_New_Game and Bierce_Title_Modified_03: FadeOut's audio track. Bierce's line is Wasami's here (2026-09-27,
+	 * dd_voices.REPLACES): Wasami_Line_Follow, 私と一緒に行きましょう, without a subtitle.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Title|Assets")
 	TSoftObjectPtr<USoundBase> StartSound;
 
