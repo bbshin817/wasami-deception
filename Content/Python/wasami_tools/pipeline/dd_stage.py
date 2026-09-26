@@ -669,11 +669,31 @@ def _make_crystal(m):
     return unreal.load_asset(m["asset"])
 
 
+def _make_ambulance_screen(m):
+    """The ambulance screens' material: an instance of dd_movies' media material with nothing set, at the original's
+    path, so the placed screens keep pointing at it."""
+    from wasami_tools.pipeline import dd_movies
+    parent = dd_movies.ensure_ambulance_screen()
+    if EAL.does_asset_exist(m["asset"]):
+        mic = unreal.load_asset(m["asset"])
+    else:
+        folder, name = paths.split(m["asset"])
+        mic = _tools().create_asset(name, folder, unreal.MaterialInstanceConstant,
+                                    unreal.MaterialInstanceConstantFactoryNew())
+    MEL.set_material_instance_parent(mic, parent)
+    MEL.clear_all_material_instance_parameters(mic)
+    mic.set_editor_property("base_property_overrides", unreal.MaterialInstanceBasePropertyOverrides())
+    MEL.update_material_instance(mic)
+    return mic
+
+
 def make_material(m, textures, skipped=None):
     """One material instance of the export → a MaterialInstanceConstant of our matching master. One that exists is
     remade in place (its parameters cleared, then set again): what the levels placed keeps pointing at the same asset."""
     if m["master"] == "crystal":
         return _make_crystal(m)
+    if m["master"] == "ambulancescreen":
+        return _make_ambulance_screen(m)
     master_path = master_of(m)
     masters = ensure_masters()
     if EAL.does_asset_exist(m["asset"]):

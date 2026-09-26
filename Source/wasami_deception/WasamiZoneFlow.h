@@ -14,6 +14,8 @@ class AWasamiTriggerBox;
 class AWasamiZoneBarrier;
 class UCameraShakeBase;
 class ULevelSequence;
+class UMediaPlayer;
+class UMediaSource;
 class ULevelSequencePlayer;
 class USoundAttenuation;
 class USoundBase;
@@ -89,6 +91,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** The zone's Spawn: the section of the checkpoint the level opened at. */
 	virtual void StartAt(int32 Checkpoint) {}
@@ -216,6 +219,14 @@ protected:
 	/** Basic DD Fade Out's sequence (/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade, made by the level build). */
 	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
 	TSoftObjectPtr<ULevelSequence> FadeSequence;
+
+	/** The ambulance screens' video (the original's Setup opens Video_AmbulanceTutorial on its looping player; the
+	 *  screens' material shows the player's MediaTexture). Made by dd_movies under /Game/Wasami/Movies. */
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<UMediaPlayer> ScreenPlayer;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Wasami|Zone")
+	TSoftObjectPtr<UMediaSource> ScreenSource;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AWasamiGameMode> Mode;

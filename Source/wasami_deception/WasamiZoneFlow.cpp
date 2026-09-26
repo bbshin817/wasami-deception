@@ -14,6 +14,8 @@
 #include "LevelSequence.h"
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
+#include "MediaPlayer.h"
+#include "MediaSource.h"
 #include "Particles/Emitter.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundAttenuation.h"
@@ -56,6 +58,8 @@ AWasamiZoneFlow::AWasamiZoneFlow()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	FadeSequence = TSoftObjectPtr<ULevelSequence>(WasamiAssets::Path(TEXT("/Game/DD/Animation/00_Ballroom/Ballroom_Event_Fade")));
+	ScreenPlayer = TSoftObjectPtr<UMediaPlayer>(WasamiAssets::Path(TEXT("/Game/Wasami/Movies/MP_AmbulanceTutorial")));
+	ScreenSource = TSoftObjectPtr<UMediaSource>(WasamiAssets::Path(TEXT("/Game/Wasami/Movies/FMS_AmbulanceTutorial")));
 }
 
 AWasamiZoneFlow* AWasamiZoneFlow::SpawnFor(AWasamiGameMode* Mode, int32 Zone)
@@ -155,9 +159,31 @@ void AWasamiZoneFlow::DestroyAllShards(UWorld* World)
 void AWasamiZoneFlow::BeginPlay()
 {
 	Super::BeginPlay();
+	// Setup's OpenSource(Video_AmbulanceTutorial): the player loops and plays on open.
+	UMediaPlayer* Player = ScreenPlayer.LoadSynchronous();
+	UMediaSource* Video = ScreenSource.LoadSynchronous();
+	if (Player && Video)
+	{
+		Player->OpenSource(Video);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no ambulance screen video (%s, %s)"), *GetClass()->GetName(),
+			*ScreenPlayer.ToString(), *ScreenSource.ToString());
+	}
 	// The zone's Setup: Important Casts and Spawn. Its Spawn also blends the view to the player and enables their input,
 	// which a level just opened already has.
 	StartAt(Mode ? Mode->GetStartCheckpoint() : 0);
+}
+
+void AWasamiZoneFlow::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// The player is an asset: without Close it would keep decoding into the next level (and the editor after PIE).
+	if (UMediaPlayer* Player = ScreenPlayer.Get())
+	{
+		Player->Close();
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 bool AWasamiZoneFlow::CallEvent(FName Function)

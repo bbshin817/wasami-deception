@@ -76,6 +76,9 @@ MASTERS = {
     # The sewer boss fight's shadow plane, which Zone 1 puts across the far end of the tunnel so that it goes dark
     # (M_06_ShadowPlane_Zone1_Tunnel on Plane48_2). Work list item 55.
     "/Game/Blueprints/04_Sewer/Bossfight/M_ShadowPlane": "shadowplane",
+    # The ambulance screens' video material (a MediaTexture, which no master of ours takes): dd_movies makes this
+    # game's own video and material, and dd_stage parents the instance to it.
+    "/Game/Movies/Ambulance_Tutorial_MediaPlayer_Video_Mat": "ambulancescreen",
 }
 # Which texture parameter feeds which input of our rebuilt master materials.
 TEX_KIND = {
