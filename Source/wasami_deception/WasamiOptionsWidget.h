@@ -20,7 +20,8 @@ class UWasamiGameInstance;
  * The options screen, after Dark Deception's UI/Menu/UMG_Options as of v1.6.1 (pak_reference; the latest version put
  * the AutoSettings plugin's SettingsUI in its place, and the WebGL version copied this one): a blurred red wash, and
  * over it the options frame with GRAPHICS (QUALITY, RESOLUTION SCALE, BRIGHTNESS), AUDIO (MUSIC, SFX, DIALOGUE,
- * SUBTITLES), CONTROLS (MOUSE SENSITIVITY, HEAD BOBBING, INVERTED Y AXIS, TOGGLE SPRINT, MOUSE SMOOTHING) and
+ * SUBTITLES), CONTROLS (MOUSE SENSITIVITY, HEAD BOBBING, INVERTED Y AXIS, TOGGLE SPRINT, MOUSE SMOOTHING, and this
+ * game's own GOD MODE under them) and
  * DIFFICULTY in a grid, and SAVE & EXIT / CANCEL under it, which FadeIn scales and fades in. The tree is built here
  * slot for slot, the two RESOLUTION rows the original keeps unseen included, with the style Construct gives the check
  * boxes and QUALITY's arrows. Construct takes the input with the cursor, plays FadeIn and reads the settings into the
@@ -79,7 +80,7 @@ public:
 
 	/**
 	 * Setup Values: QUALITY and DIFFICULTY into the screen's QualitySetting and Difficulty Setting, the six sliders to
-	 * their values and the five check boxes to theirs.
+	 * their values and the five check boxes (and GOD MODE's) to theirs.
 	 */
 	void SetupValues(const UWasamiSettingsSaveGame& InSettings);
 
@@ -287,6 +288,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCheckBox> MouseSmoothingCheck;
+
+	/** GOD MODE's (not the original's). */
+	UPROPERTY(Transient)
+	TObjectPtr<UCheckBox> GodModeCheck;
 
 	// The value boxes' texts, bound as in the original: QUALITY's, the sliders' and the DIFFICULTY's.
 	UPROPERTY(Transient)

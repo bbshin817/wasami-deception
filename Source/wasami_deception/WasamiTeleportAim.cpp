@@ -151,6 +151,31 @@ FVector AWasamiTeleportAim::StopAtGates(const UCapsuleComponent* Capsule, const 
 	return First ? First->Location : To;
 }
 
+float AWasamiTeleportAim::ViewReach(const AActor* Player, const FVector& ViewLocation, const FRotator& ViewRotation, const AActor* Ignored)
+{
+	const UWorld* World = Player ? Player->GetWorld() : nullptr;
+	if (!World)
+	{
+		return MinDistance;
+	}
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(WasamiTeleportView), false, Player);
+	Params.AddIgnoredActor(Ignored);
+	const FVector End = ViewLocation + ViewRotation.Vector() * ViewTraceLength;
+	FHitResult Hit;
+	FVector Reached = End;
+	if (World->LineTraceSingleByChannel(Hit, ViewLocation, End, ECC_Visibility, Params))
+	{
+		Reached = Hit.ImpactPoint;
+		if (Hit.ImpactNormal.Z < WallNormalZ)
+		{
+			Reached -= FVector(ViewRotation.Vector().GetSafeNormal2D()) * WallMargin;
+		}
+	}
+	// The aim goes along the actor's facing, so the reach is how far the point lies along it.
+	const double Along = FVector::DotProduct(Reached - Player->GetActorLocation(), Player->GetActorForwardVector().GetSafeNormal2D());
+	return FMath::Max(static_cast<float>(Along), MinDistance);
+}
+
 void AWasamiTeleportAim::BeginPlay()
 {
 	Super::BeginPlay();
@@ -163,7 +188,11 @@ void AWasamiTeleportAim::BeginPlay()
 	ParticleSystem->SetTemplate(AimParticles.LoadSynchronous());
 
 	// The original's wheel binding writes Distance on every frame, zero or not: from the first frame it is the one for
-	// Alpha 0.6 and the spawned Max Distance.
+	// Alpha 0.6 and the spawned Max Distance. GOD MODE starts at the far end (Tick sets the reach before the trace).
+	if (bReachToView)
+	{
+		Alpha = 1.f;
+	}
 	Distance = DistanceFor(Alpha, MaxDistance);
 	GetWorldTimerManager().SetTimer(LagTimer, this, &AWasamiTeleportAim::EnableLag, LagDelay, false);
 }
@@ -192,6 +221,17 @@ void AWasamiTeleportAim::Tick(float DeltaSeconds)
 	if (!Player)
 	{
 		return;
+	}
+	if (bReachToView)
+	{
+		if (const APlayerController* PC = Cast<APlayerController>(Player->GetController()))
+		{
+			FVector ViewLocation;
+			FRotator ViewRotation;
+			PC->GetPlayerViewPoint(ViewLocation, ViewRotation);
+			MaxDistance = ViewReach(Player, ViewLocation, ViewRotation, this);
+			Distance = DistanceFor(Alpha, MaxDistance);
+		}
 	}
 	// From the capsule's centre, along the actor's facing (its yaw), then straight down; complex collision, self ignored.
 	const FVector Start = Player->GetActorLocation() + Player->GetActorForwardVector() * Distance;

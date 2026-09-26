@@ -163,6 +163,12 @@
 - 対処: 1 つずつ順に呼び、結果を確かめてから次を呼ぶ（失敗しても例外にならない道具がある）。
 - 出典: `.claude/guides/unreal-workflow.md`。
 
+### `ue_remote.py` が返らずエディタ全体が固まる（`pie.py state` が `no editor answered`、ログは最後の `LogPython` の行で止まる）
+
+- 原因: リモート実行の Python はゲームスレッドで走るので、中の `while` が終わらないとエディタごと止まる。2026-09-26 は `while c.get_socket_power(True) != …: c.cycle_power(True)` —— **`CyclePower` はタブレットが上がっていないと何もしない**（`IsTabletUp`。`Wasami.Tablet` は出し入れの切り替えなので、2 回目で下りていた）ので、枠が変わらず回り続けた。
+- 対処: 固まったら戻らない。未保存のアセットが無いのを確かめて（PIE だけなら無い）`taskkill /F /IM UnrealEditor.exe` → `python Tools/editor_cycle.py --no-quit --no-build`。**リモート実行の中の繰り返しは必ず回数で区切る**（`for _ in range(6)`）。枠を回す前に `p.is_tablet_up()` を見て、下りていれば `Wasami.Tablet`。
+- 出典: 2026-09-26、GOD MODE の note の GIF の収録（04 記録）。
+
 ### エディタが背面にあると PIE のティックが 3 fps ほどに落ちる（時間に依存する確認があてにならない）
 
 - 症状: リモート実行から `LaunchCharacter` などで動かしても速さが出ない。Automation テストも進まない（テストの道具は前面で 10 fps を超えるまで、背面なら最大 600 秒待つ）。`UWidgetComponent` の画面（タブレットの地図）も描き直されない（`bTickWhenOffscreen` が偽）。

@@ -10,7 +10,7 @@ sources:
   - Source/wasami_deception/WasamiPauseWidget.h
   - Source/wasami_deception/WasamiPauseWidget.cpp
   - Source/wasami_deception/Tests/WasamiPauseTests.cpp
-updated: 2026-09-22
+updated: 2026-09-26
 ---
 
 # 設定・オプション画面・ポーズ画面
@@ -22,13 +22,13 @@ updated: 2026-09-22
 
 ## 公開インターフェース
 - `UWasamiSettingsSaveGame`（`USaveGame`）
-  - 項目（`SaveGame`。既定値は本家のクラスの既定）: `Quality` 2（0..3 = LOW / MEDIUM / HIGH / VERY HIGH）、`ResolutionScale` 1、`Brightness` 1、`Music` / `SFX` / `Dialogue` 1、`bSubtitles` 真、`MouseSensitivity` 0.5、`bHeadBobbing` 真、`bMouseSmoothing` 真、`bInvertedYAxis` 偽・`bToggleSprint` 偽（本家のクラスの既定に無い = 偽）、`Difficulty`（`EWasamiDifficulty`: `Easy` / `Normal` / `Hard` = 本家の `ENUM_DifficultySettings` の `NewEnumerator0..2`。既定 `Normal`）。本家の `Crosshair`（真）はメニューに無く、読むものも無いので持たない。
+  - 項目（`SaveGame`。既定値は本家のクラスの既定）: `Quality` 2（0..3 = LOW / MEDIUM / HIGH / VERY HIGH）、`ResolutionScale` 1、`Brightness` 1、`Music` / `SFX` / `Dialogue` 1、`bSubtitles` 真、`MouseSensitivity` 0.5、`bHeadBobbing` 真、`bMouseSmoothing` 真、`bInvertedYAxis` 偽・`bToggleSprint` 偽（本家のクラスの既定に無い = 偽）、`Difficulty`（`EWasamiDifficulty`: `Easy` / `Normal` / `Hard` = 本家の `ENUM_DifficultySettings` の `NewEnumerator0..2`。既定 `Normal`）、`bGodMode` 偽（**本作独自の GOD MODE**。下の「GOD MODE」）。本家の `Crosshair`（真）はメニューに無く、読むものも無いので持たない。
   - `SlotName`（`Settings`）・`UserIndex` 0。
   - `Check(Slot)`: 本家の `Check Settings Save`（@33036）。スロットを読み、無ければ既定の新しいセーブを作って書く。戻り値はそのセーブ。
   - `Apply(WorldContextObject)`: 本家の `Set Settings`（@33342）。下の「当てるもの」。音量はその世界の音の装置に当てる。
   - `LoadSoundMix()`・`LoadMusicClass()`・`LoadSFXClass()`・`LoadDialogueClass()`: `/Game/DD/Audio/SoundMix/` の `DD_SoundMix` と 3 つの SoundClass（柔らかい参照を読む）。
   - 規則の静的関数（オプション画面とテストが使う）: `Snap(v)`（`GridSnap_Float(v, 1/9)` を 0..1 に。`SliderGrid` = 1/9）、`SliderText(v)`（`Round(v × 10) / 10` を小数 0〜3 桁の数の文字に。10 段は 0, 0.1 … 0.4, 0.6 … 0.9, 1 と読める）、`StepValue(v, d, max)`（`Clamp(v + d, 0, max)`。`QualityMax` 3・`DifficultyMax` 1）、`QualityText`（LOW / MEDIUM / HIGH / VERY HIGH）、`DifficultyText`（EASY / NORMAL / HARD）、`GammaFor(b)`（`MapRangeClamped(b, 0, 1, 1.8, 2.2)`）、`PostProcessingQualityFor(q)`（0..2 → 2、3 → 3）、`PlayerSensitivityFor(s)`（s / 0.5）、`RotationLagSpeedFor(bSmoothing)`（12.5 / 50）。
-- `UWasamiGameInstance`（06 記録）の `CheckSettingsSave()`・`GetSettings()`・`SaveSettings()`・`IsEasy()`（設定の `Difficulty` が EASY か。本家の `Global Settings Save Instance.Difficulty == 0`）・`SettingsSlotName`（下の「持ち主と流れ」）。
+- `UWasamiGameInstance`（06 記録）の `CheckSettingsSave()`・`GetSettings()`・`SaveSettings()`・`IsEasy()`（設定の `Difficulty` が EASY か。本家の `Global Settings Save Instance.Difficulty == 0`）・静的 `IsGodMode(WorldContextObject)`（その世界のゲームインスタンスの設定の `bGodMode`。無ければ偽）・`SettingsSlotName`（下の「持ち主と流れ」）。
 - `AWasamiPlayerCharacter`（02 記録）の `ApplySettings(Settings)`・`SetUpMouseSmoothing(Settings)`。
 - デバッグ: `Wasami.Settings`（今の値と、音の装置が Music・SFX・Dialogue のクラスに今当てている音量〈`FAudioDevice::GetSoundClassCurrentProperties`。上書きは 1 s かけて届く〉を `LogWasamiSettings` に並べる）、`Wasami.Settings <名前> <値>`（`UWasamiSettingsSaveGame` の UPROPERTY の名前〈`Quality`・`MouseSensitivity`・`bInvertedYAxis`・`Difficulty` ほか〉に値を入れ、SAVE & EXIT と同じく当てて書いてプレイヤーに渡す）、`Wasami.ResetSettings`（既定値に戻して同じく保存）。どちらも `WasamiGameInstance.cpp`。**音量の読みは `FAudioThread::RunCommandOnAudioThread` に包み、`FAudioCommandFence` で待ってからゲームスレッドで印字する**（`GetSoundClassCurrentProperties` は `check(IsInAudioThread())` 持ち。エディタは音声スレッドを別に立てないのでゲームスレッドでも通るが、パッケージ版は別スレッドなので落ちていた。2026-09-21。症状索引）。
 - `UWasamiOptionsWidget`（`UUserWidget`。C++ で木を組む。下の「オプション画面」）
@@ -73,6 +73,11 @@ updated: 2026-09-22
 - 死亡画面の EASY の分岐は**最新版に倣う**（2026-09-19 のユーザーの回答。09 記録の「時間の流れ」）: 旧版の `UMG_DeathScreen` は難易度を読まない。最新版はライフ 0 で EASY なら `Life Animation` だけで止まり、ボタンが出ず開き直しもしない。死亡画面は `NativeConstruct` で `IsEasy()` を読む。**本家どおり抜け道の無い行き止まり**（ゲームが止まっているので Esc でポーズも開かない。2026-09-20 のユーザーの回答「本家通り」。それまでは 2026-09-19 の回答「抜けるのはポーズから」で、その画面の上でだけ Esc でポーズを開いていた）。
 - 病院の敵は難易度を読まない（両版で `Difficulty` を読むのはホテル・学校・屋敷・下水・サーカスの敵と、死亡画面・スコア画面・ポーズ・オプション・ゲームインスタンス）。
 - ポーズ画面の EASY MODE（下）: EASY のときだけ暗い赤で見える。
+
+### GOD MODE（本作独自。2026-09-26 のユーザーの依頼）
+- 依頼の原文: 「develop/shipping に共通させて、本家にはない『GodMode』を追加。切り替えはタイトル画面/ポーズ画面からの Option 内のチェックボックス。各特殊効果が即回復・テレキネシスでステージ上の全シャードを一度に吸い寄せる・テレポーテーションの範囲が広い（視界に映る壁の端っこまで対象にできる）」。
+- 設定 `bGodMode`（既定は外れ。スロット `Settings` に保存）。オプション画面の CONTROLS の MOUSE SMOOTHING の下の `GodModeRow`（ラベル `GOD MODE`・チェックボックス `GodModeCheck`。ほかのチェックの行と同じ作り）で切り替え、SAVE & EXIT で保存する。タイトルとポーズのどちらの OPTIONS にも出る。エディタ専用の分岐は無く、開発版・Shipping で同じ。デバッグは `Wasami.Settings bGodMode True`。
+- 効き先はパワー（04 記録の「GOD MODE」）。パワーは使うたび・クールダウンの始まりのたびに `IsGodMode` を読むので、ポーズから切り替えるとすぐ効く。
 
 ### オプション画面（`UWasamiOptionsWidget`）
 本家の旧版 `UMG_Options` の木を、スロットの値のまま（書き出しに無い値はスロット・部品の既定）`RebuildWidget` で組む（死亡画面・タイトルと同じ作り。09・14 記録）。書き出しの `UMG_Options_C.WidgetTree` の側の部品と、その `Slot` の値を読んだ。
@@ -188,6 +193,7 @@ GIVING UP? の枠 `quit_window_frame` は死亡画面、曲 `Pause_Sound_v1` は
 - 2026-09-19（ステップ 3、PIE、`L_Title`、エディタを右半分・ビューポート約 1050 × 690）: リモート実行の `unreal.WasamiOptionsWidget.show(<ゲームのワールド>)` で、タイトルの上に赤くぼけた幕と OPTIONS の枠が出て、左に GRAPHICS（QUALITY の矢印と HIGH、RESOLUTION SCALE・BRIGHTNESS の 1 と右端のつまみ）と AUDIO（MUSIC・SFX・DIALOGUE の 1、SUBTITLES の入り）、右に DIFFICULTY（NORMAL）と CONTROLS（MOUSE SENSITIVITY の 0.5 と中ほどのつまみ、HEAD BOBBING・MOUSE SMOOTHING の入り、INVERTED Y AXIS・TOGGLE SPRINT の外れ）、下に灰色の SAVE & EXIT・CANCEL が並んだ（WebGL 版 10 記録の styles.css「OPTIONS」と同じ配置）。
 
 ## 変更履歴
+- 2026-09-26: 本作独自の GOD MODE を足した（設定 `bGodMode`・オプションの CONTROLS の最後の行 `GodModeRow`・`UWasamiGameInstance::IsGodMode`。効き先は 04 記録）。テストの既定値と画面の既定の表示に足した
 - 2026-09-20: 要確認への回答（2026-09-20）を入れた: EASY でライフ 0 の死亡画面は本家どおりの行き止まりにし（Esc の例外と、その上の RESUME が止まりを解かない例外を外した。02・09 記録）、ポーズの RESTART の YES がライフを 3 に戻すようにした（`ResetLives`）。オプション画面の Esc は本家どおり閉じない（回答「いいえ」。変更なし）
 - 2026-09-19: 初版（作業一覧の項目 18 のステップ 1: 設定のセーブと適用）。
 - 2026-09-19: 音量（`DD_SoundMix` のクラスの上書きとベースのミックス）と難易度の効き先（スコア画面の EASY、`IsEasy`）を足した（ステップ 2）。

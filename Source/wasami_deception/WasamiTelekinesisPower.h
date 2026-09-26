@@ -30,6 +30,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Telekinesis", meta = (WorldContext = "WorldContextObject"))
 	static int32 PullShards(const UObject* WorldContextObject, FVector Center, float Radius);
 
+	/**
+	 * GOD MODE's pull (not the original's): Activate on every actor in the world that implements the telekinesis
+	 * interface, however far. Returns how many.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Telekinesis", meta = (WorldContext = "WorldContextObject"))
+	static int32 PullAllShards(const UObject* WorldContextObject);
+
 	/** Loads what the power uses into Out, so that a spawn waits on nothing. */
 	static void LoadAssets(TArray<TObjectPtr<UObject>>& Out);
 
@@ -43,6 +50,10 @@ public:
 	/** Range (cm): the power sets it by the upgrade level before the spawn finishes. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Telekinesis", meta = (ExposeOnSpawn = "true"))
 	float Range = 1500.f;
+
+	/** GOD MODE (the power sets it before the spawn finishes): the pull takes every shard (PullAllShards), not Range's. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Telekinesis", meta = (ExposeOnSpawn = "true"))
+	bool bAllShards = false;
 
 	/** Stun_Wave_Attack_New_04. */
 	UPROPERTY(EditAnywhere, Category = "Telekinesis|Assets")

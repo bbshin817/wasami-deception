@@ -48,6 +48,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Settings")
 	bool IsEasy();
 
+	/** Whether the settings' GOD MODE is on for WorldContextObject's game instance (false without one). */
+	static bool IsGodMode(const UObject* WorldContextObject);
+
 	/** The settings' slot; empty for the original's Settings (the tests use their own). */
 	UPROPERTY(EditAnywhere, Category = "Settings")
 	FString SettingsSlotName;

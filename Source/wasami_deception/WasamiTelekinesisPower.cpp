@@ -2,8 +2,10 @@
 
 #include "Camera/CameraShakeBase.h"
 #include "Components/PostProcessComponent.h"
+#include "Engine/Engine.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -82,6 +84,32 @@ int32 AWasamiTelekinesisPower::PullShards(const UObject* WorldContextObject, FVe
 	return Pulled;
 }
 
+int32 AWasamiTelekinesisPower::PullAllShards(const UObject* WorldContextObject)
+{
+	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	if (!World)
+	{
+		return 0;
+	}
+	// Gathered first: Activate may move or collect (destroy) what it is called on.
+	TArray<AActor*> Found;
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		if (It->Implements<UWasamiTelekinesisInterface>())
+		{
+			Found.Add(*It);
+		}
+	}
+	for (AActor* Each : Found)
+	{
+		if (IsValid(Each))
+		{
+			IWasamiTelekinesisInterface::Execute_Activate(Each);
+		}
+	}
+	return Found.Num();
+}
+
 void AWasamiTelekinesisPower::StartPower()
 {
 	// From the spawn 50 m down onto the player's capsule centre, where it stays.
@@ -94,7 +122,14 @@ void AWasamiTelekinesisPower::StartPower()
 	{
 		PC->ClientStartCameraShake(ShakeClass.LoadSynchronous(), TelekinesisShakeScale, ECameraShakePlaySpace::CameraLocal);
 	}
-	PullShards(this, Center, Range);
+	if (bAllShards)
+	{
+		PullAllShards(this);
+	}
+	else
+	{
+		PullShards(this, Center, Range);
+	}
 	// The timeline plays next (the base's BeginPlay); the original's Delay(0.2) then brings the force field.
 	GetWorldTimerManager().SetTimer(ForceFieldTimer, this, &AWasamiTelekinesisPower::SpawnForceField, ForceFieldDelay);
 }

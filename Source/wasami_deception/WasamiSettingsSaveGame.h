@@ -108,6 +108,14 @@ public:
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	EWasamiDifficulty Difficulty = EWasamiDifficulty::Normal;
 
+	/**
+	 * GOD MODE: not the original's (the user's of 2026-09-26). The powers come back as soon as they are over, the
+	 * telekinesis pulls every shard in the world, and the teleport reaches as far as the player looks
+	 * (UWasamiGameInstance::IsGodMode).
+	 */
+	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite, Category = "Settings")
+	bool bGodMode = false;
+
 	/** The sliders' grid: each change snaps to it (GridSnap_Float), so a slider has ten stops. */
 	static constexpr float SliderGrid = 1.f / 9.f;
 

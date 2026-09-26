@@ -3,6 +3,7 @@
 #include "AudioDevice.h"
 #include "AudioThread.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -151,6 +152,14 @@ bool UWasamiGameInstance::IsEasy()
 {
 	const UWasamiSettingsSaveGame* Current = GetSettings();
 	return Current && Current->Difficulty == EWasamiDifficulty::Easy;
+}
+
+bool UWasamiGameInstance::IsGodMode(const UObject* WorldContextObject)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	UWasamiGameInstance* Instance = World ? World->GetGameInstance<UWasamiGameInstance>() : nullptr;
+	const UWasamiSettingsSaveGame* Current = Instance ? Instance->GetSettings() : nullptr;
+	return Current && Current->bGodMode;
 }
 
 FString UWasamiGameInstance::GetSettingsSlot() const

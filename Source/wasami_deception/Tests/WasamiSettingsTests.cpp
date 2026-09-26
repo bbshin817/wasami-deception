@@ -41,6 +41,7 @@ bool FWasamiSettingsDefaultsTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("INVERTED Y AXIS off"), Settings->bInvertedYAxis);
 	TestFalse(TEXT("TOGGLE SPRINT off"), Settings->bToggleSprint);
 	TestTrue(TEXT("DIFFICULTY NORMAL"), Settings->Difficulty == EWasamiDifficulty::Normal);
+	TestFalse(TEXT("GOD MODE off"), Settings->bGodMode);
 	return true;
 }
 

@@ -10,6 +10,7 @@
 #include "WasamiAssets.h"
 #include "WasamiCameraAnim.h"
 #include "WasamiChameleonComponent.h"
+#include "WasamiGameInstance.h"
 #include "WasamiPlayerCharacter.h"
 #include "WasamiPrimalPower.h"
 #include "WasamiTelekinesisPower.h"
@@ -310,6 +311,26 @@ bool UWasamiPowerComponent::IsPowerAvailable(EWasamiPower Power) const
 	return Slot && Slot->bAvailable;
 }
 
+void UWasamiPowerComponent::StartCooldown(EWasamiPower Power, float Seconds, bool bTeleport, FTimerHandle& Handle,
+	void (UWasamiPowerComponent::*Callback)(), bool bRefill)
+{
+	Gauge(Power).SetDelay(Seconds, bTeleport);
+	if (UWasamiGameInstance::IsGodMode(this))
+	{
+		// GOD MODE: no cooldown. The gauge's SetDelay still runs, so its FlipFlop keeps in step for the next use.
+		Gauge(Power).Stop();
+		if (bRefill)
+		{
+			(this->*Callback)();
+		}
+		return;
+	}
+	if (bRefill)
+	{
+		Delay(Handle, Seconds, Callback);
+	}
+}
+
 void UWasamiPowerComponent::SetPowerAvailable(EWasamiPower Power, bool bAvailable)
 {
 	for (FWasamiPowerSlot& Slot : Powers)
@@ -413,8 +434,7 @@ void UWasamiPowerComponent::EndSpeedBoost()
 		BoostWidget->RemoveFromParent();
 		BoostWidget = nullptr;
 	}
-	Gauge(EWasamiPower::SpeedBoost).SetDelay(Tuning.BoostCooldown, false);
-	Delay(BoostRefillTimer, Tuning.BoostCooldown, &UWasamiPowerComponent::RefillSpeedBoost);
+	StartCooldown(EWasamiPower::SpeedBoost, Tuning.BoostCooldown, false, BoostRefillTimer, &UWasamiPowerComponent::RefillSpeedBoost);
 }
 
 void UWasamiPowerComponent::RefillSpeedBoost()
@@ -443,6 +463,7 @@ void UWasamiPowerComponent::UseTeleport(bool bLeft)
 	if (Aim)
 	{
 		Aim->MaxDistance = GetTuning(EWasamiPower::Teleport).TeleportDistance;
+		Aim->bReachToView = UWasamiGameInstance::IsGodMode(this);
 		Aim->FinishSpawning(SpawnTransform);
 		Aim->OnUsed.AddDynamic(this, &UWasamiPowerComponent::UsedTeleport);
 	}
@@ -460,11 +481,7 @@ void UWasamiPowerComponent::UsedTeleport()
 	ActivePowers.Remove(EWasamiPower::Teleport);
 	// The same at every level (the original's 1 s is for its ballroom only).
 	const float Cooldown = FWasamiPowerTuning::TeleportCooldown;
-	Gauge(EWasamiPower::Teleport).SetDelay(Cooldown, true);
-	if (bTeleportGateOpen)
-	{
-		Delay(TeleportRefillTimer, Cooldown, &UWasamiPowerComponent::RefillTeleport);
-	}
+	StartCooldown(EWasamiPower::Teleport, Cooldown, true, TeleportRefillTimer, &UWasamiPowerComponent::RefillTeleport, bTeleportGateOpen);
 }
 
 void UWasamiPowerComponent::RefillTeleport()
@@ -522,8 +539,7 @@ void UWasamiPowerComponent::EndTelepathy()
 	ActivePowers.Remove(EWasamiPower::Telepathy);
 	UGameplayStatics::PlaySound2D(this, LoadedTelepathyEndSound, TelepathyEndVolume, TelepathyEndPitch);
 	const float Cooldown = GetTuning(EWasamiPower::Telepathy).TelepathyCooldown;
-	Gauge(EWasamiPower::Telepathy).SetDelay(Cooldown, false);
-	Delay(TelepathyRefillTimer, Cooldown, &UWasamiPowerComponent::RefillTelepathy);
+	StartCooldown(EWasamiPower::Telepathy, Cooldown, false, TelepathyRefillTimer, &UWasamiPowerComponent::RefillTelepathy);
 }
 
 void UWasamiPowerComponent::UsePrimal()
@@ -548,9 +564,8 @@ void UWasamiPowerComponent::StartPrimalCooldown()
 {
 	// The original's 5 s is for its circus entrance only.
 	const float Cooldown = GetTuning(EWasamiPower::PrimalFear).PrimalCooldown;
-	Gauge(EWasamiPower::PrimalFear).SetDelay(Cooldown, false);
 	ActivePowers.Remove(EWasamiPower::PrimalFear);
-	Delay(PrimalRefillTimer, Cooldown, &UWasamiPowerComponent::RefillPrimal);
+	StartCooldown(EWasamiPower::PrimalFear, Cooldown, false, PrimalRefillTimer, &UWasamiPowerComponent::RefillPrimal);
 }
 
 void UWasamiPowerComponent::UseTelekinesis()
@@ -566,6 +581,7 @@ void UWasamiPowerComponent::UseTelekinesis()
 		SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
 	{
 		Telekinesis->Range = GetTuning(EWasamiPower::Telekinesis).TelekinesisRange;
+		Telekinesis->bAllShards = UWasamiGameInstance::IsGodMode(this);
 		Telekinesis->FinishSpawning(SpawnTransform);
 	}
 	Delay(TelekinesisCooldownTimer, TelekinesisCooldownDelay, &UWasamiPowerComponent::StartTelekinesisCooldown);
@@ -575,9 +591,8 @@ void UWasamiPowerComponent::StartTelekinesisCooldown()
 {
 	// The original's 1 s is for its ballroom only.
 	const float Cooldown = GetTuning(EWasamiPower::Telekinesis).TelekinesisCooldown;
-	Gauge(EWasamiPower::Telekinesis).SetDelay(Cooldown, false);
 	ActivePowers.Remove(EWasamiPower::Telekinesis);
-	Delay(TelekinesisRefillTimer, Cooldown, &UWasamiPowerComponent::RefillTelekinesis);
+	StartCooldown(EWasamiPower::Telekinesis, Cooldown, false, TelekinesisRefillTimer, &UWasamiPowerComponent::RefillTelekinesis);
 }
 
 void UWasamiPowerComponent::UseVanish()
@@ -613,13 +628,12 @@ void UWasamiPowerComponent::EndVanish()
 {
 	// Nothing tells the enemies: the capsule just blocks their sight again.
 	const float Cooldown = GetTuning(EWasamiPower::Vanish).VanishCooldown;
-	Gauge(EWasamiPower::Vanish).SetDelay(Cooldown, false);
 	ActivePowers.Remove(EWasamiPower::Vanish);
 	if (AWasamiPlayerCharacter* Player = GetPlayer())
 	{
 		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Block);
 	}
-	Delay(VanishRefillTimer, Cooldown, &UWasamiPowerComponent::RefillVanish);
+	StartCooldown(EWasamiPower::Vanish, Cooldown, false, VanishRefillTimer, &UWasamiPowerComponent::RefillVanish);
 }
 
 void UWasamiPowerComponent::RefillVanish()

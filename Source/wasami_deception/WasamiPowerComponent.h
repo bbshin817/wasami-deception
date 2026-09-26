@@ -25,7 +25,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWasamiPowerUsedSignature, EWasamiPo
  * to use a socket and 1 / 2 to cycle it, each power's gauge on the tablet, the values of the upgrade level, the reset
  * on death, and the powers themselves (the speed boost, the teleport with its aim, AWasamiTeleportAim, the telepathy,
  * AWasamiTelepathyPower, Primal Fear, AWasamiPrimalPower, the telekinesis, AWasamiTelekinesisPower, and Vanish,
- * AWasamiVanishPower). The tablet's screen only shows what this holds.
+ * AWasamiVanishPower). The tablet's screen only shows what this holds. With the settings' GOD MODE (not the
+ * original's), the cooldowns are skipped, the telekinesis pulls every shard and the teleport reaches as far as the
+ * player looks.
  */
 UCLASS(ClassGroup = (Wasami), meta = (BlueprintSpawnableComponent))
 class WASAMI_DECEPTION_API UWasamiPowerComponent : public UActorComponent
@@ -185,6 +187,13 @@ private:
 
 	/** A Blueprint Delay: counts down and calls Callback, unless that delay is already counting (then nothing). */
 	void Delay(FTimerHandle& Handle, float Seconds, void (UWasamiPowerComponent::*Callback)());
+
+	/**
+	 * A cooldown's start: the gauge's Set Delay over Seconds and, with bRefill, the Delay into Callback (the refill).
+	 * With GOD MODE on there is no wait: the gauge stops full and the refill comes at once.
+	 */
+	void StartCooldown(EWasamiPower Power, float Seconds, bool bTeleport, FTimerHandle& Handle,
+		void (UWasamiPowerComponent::*Callback)(), bool bRefill = true);
 
 	/** Array_Find(Power, {P, !bAvailable}) and Array_Set on it with bAvailable. */
 	void SetPowerAvailable(EWasamiPower Power, bool bAvailable);

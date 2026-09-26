@@ -26,7 +26,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FWasamiTeleportUsedSignature);
  * The mouse wheel sets the distance and a
  * left click confirms, playing CameraAnim_Teleport: 0.12 s later the player is swept to the decal's spot, and the aim
  * reports Used and goes away. Unlike the original, the move stops in front of a door or an elevator's doors on the way
- * (StopAtGates).
+ * (StopAtGates). With the settings' GOD MODE (bReachToView, not the original's), the reach is not the upgrade
+ * level's but as far as the player looks, up to the foot of the wall in view (ViewReach), and the aim starts there.
  * The player forwards the wheel and the click (the original's actor takes them itself, without consuming them).
  */
 UCLASS()
@@ -79,6 +80,25 @@ public:
 	/** Max Distance (cm): the power sets it by the upgrade level before the spawn finishes. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Teleport", meta = (ExposeOnSpawn = "true"))
 	float MaxDistance = 1000.f;
+
+	/**
+	 * GOD MODE (the power sets it before the spawn finishes): every tick MaxDistance becomes ViewReach, and Alpha
+	 * starts at 1, so the aim starts as far as the player looks and the wheel brings it back.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Teleport", meta = (ExposeOnSpawn = "true"))
+	bool bReachToView = false;
+
+	/**
+	 * GOD MODE's reach: along the player's facing, how far off the player's view meets something (a Visibility trace
+	 * from the camera along its view, ViewTraceLength long). A wall (a hit whose normal is steeper than WallNormalZ) is
+	 * met WallMargin short of it, so the trace down lands on the floor in front of it; nothing met is the whole
+	 * length. Never under the wheel's shortest distance.
+	 */
+	static float ViewReach(const AActor* Player, const FVector& ViewLocation, const FRotator& ViewRotation, const AActor* Ignored);
+
+	static constexpr float ViewTraceLength = 30000.f;
+	static constexpr float WallNormalZ = 0.7f;
+	static constexpr float WallMargin = 60.f;
 
 	/** How far in front of the player the trace starts (cm). */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Teleport")

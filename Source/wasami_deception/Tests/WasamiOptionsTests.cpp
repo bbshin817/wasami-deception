@@ -190,6 +190,7 @@ bool FWasamiOptionsScreenTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("SUBTITLES, HEAD BOBBING and MOUSE SMOOTHING checked"), OptionsIsChecked(Tree, TEXT("SubtitlesCheck"))
 		&& OptionsIsChecked(Tree, TEXT("HeadBobbingCheck")) && OptionsIsChecked(Tree, TEXT("MouseSmoothingCheck")));
 	TestTrue(TEXT("INVERTED Y AXIS and TOGGLE SPRINT not"), !OptionsIsChecked(Tree, TEXT("InvertedYCheck")) && !OptionsIsChecked(Tree, TEXT("ToggleSprintCheck")));
+	TestFalse(TEXT("GOD MODE not"), OptionsIsChecked(Tree, TEXT("GodModeCheck")));
 	TestEqual(TEXT("QUALITY reads HIGH"), OptionsTextOf(Tree, TEXT("TextBlock_4")), FString(TEXT("HIGH")));
 	TestEqual(TEXT("MUSIC reads 1"), OptionsTextOf(Tree, TEXT("TextBlock_14")), FString(TEXT("1")));
 	TestEqual(TEXT("MOUSE SENSITIVITY reads 0.5"), OptionsTextOf(Tree, TEXT("TextBlock_15")), FString(TEXT("0.5")));

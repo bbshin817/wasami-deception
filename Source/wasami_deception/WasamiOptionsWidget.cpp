@@ -391,6 +391,8 @@ void UWasamiOptionsWidget::BuildScreen(UCanvasPanel* Root)
 	AddCheckRow(Controls, TEXT("HorizontalBox_15"), TEXT("TextBlock_30"), TEXT("INVERTED Y AXIS"), TEXT("InvertedYCheck"), &InvertedYCheck);
 	AddCheckRow(Controls, TEXT("HorizontalBox_10"), TEXT("TextBlock_22"), TEXT("TOGGLE SPRINT"), TEXT("ToggleSprintCheck"), &ToggleSprintCheck);
 	AddCheckRow(Controls, TEXT("HorizontalBox_12"), TEXT("TextBlock_24"), TEXT("MOUSE SMOOTHING"), TEXT("MouseSmoothingCheck"), &MouseSmoothingCheck);
+	// Not the original's: GOD MODE (the user's of 2026-09-26), a check row like the rest.
+	AddCheckRow(Controls, TEXT("GodModeRow"), TEXT("GodModeLabel"), TEXT("GOD MODE"), TEXT("GodModeCheck"), &GodModeCheck);
 
 	// DifficultyBox: DIFFICULTY (its label narrower).
 	DifficultyBox = MakeColumn(TEXT("DifficultyBox"), TEXT("TextBlock_25"), TEXT("DIFFICULTY"), FVector2D(650.f, -92.f));
@@ -581,6 +583,7 @@ void UWasamiOptionsWidget::SetupValues(const UWasamiSettingsSaveGame& InSettings
 	SetCheck(InvertedYCheck, InSettings.bInvertedYAxis);
 	SetCheck(ToggleSprintCheck, InSettings.bToggleSprint);
 	SetCheck(MouseSmoothingCheck, InSettings.bMouseSmoothing);
+	SetCheck(GodModeCheck, InSettings.bGodMode);
 	DifficultySetting = InSettings.Difficulty;
 	RefreshTexts();
 }
@@ -659,6 +662,7 @@ void UWasamiOptionsWidget::WriteValues(UWasamiSettingsSaveGame& InSettings) cons
 	InSettings.bInvertedYAxis = IsChecked(InvertedYCheck, InSettings.bInvertedYAxis);
 	InSettings.bToggleSprint = IsChecked(ToggleSprintCheck, InSettings.bToggleSprint);
 	InSettings.bMouseSmoothing = IsChecked(MouseSmoothingCheck, InSettings.bMouseSmoothing);
+	InSettings.bGodMode = IsChecked(GodModeCheck, InSettings.bGodMode);
 	InSettings.Difficulty = DifficultySetting;
 }
 
