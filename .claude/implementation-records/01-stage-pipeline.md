@@ -31,6 +31,8 @@ sources:
   - Tools/wasami_art/briefs/hospital_posters.json
   - Tools/wasami_art/briefs/hospital_ambulance_video.json
   - Tools/wasami_art/ambulance_video.py
+  - Tools/wasami_art/game_icon.py
+  - Tools/wasami_art/briefs/game_icon.json
   - Content/Python/wasami_tools/pipeline/dd_movies.py
   - Tools/wasami_art/briefs/hospital_movies.json
   - Content/Python/init_unreal.py
@@ -196,6 +198,11 @@ updated: 2026-09-26
 - 前処理の `MASTERS` がこの材質を `ambulancescreen` に分け、`dd_stage.make_material` が `_make_ambulance_screen` へ回す: `dd_movies.ensure_ambulance_screen` が動画を `SourceArt/Wasami/Movies/ambulance_tutorial2.mp4` から `Content/Movies/` へ写し（無いか古いときだけ）、`/Game/Wasami/Movies/` に `FMS_AmbulanceTutorial`（`file_path` は本家と同じ `./Movies/ambulance_tutorial2.mp4`）・`MP_AmbulanceTutorial`（Loop・PlayOnOpen）・`MT_AmbulanceTutorial`・`M_AmbulanceScreen`（無照明、TextureSample → Emissive、Nanite と静的ライティングの用途）を作り、本家のパスの材質インスタンスの**親をこれにする**（置いた画面の参照はそのまま。`refresh_settings` は本作のマスターの子でないので触らない）。開くのは `AWasamiZoneFlow::BeginPlay`（11 記録）。
 - **UE 5.8 の MediaTexture は `SAMPLERTYPE_COLOR` で読む**（本家の UE 4.24 の材質は External。External のままだと「Sampler type is External, should be Color」でコンパイルに失敗し、画面が既定の材質の灰色のチェックになる）。
 - 動画はアセットでなくファイルなので、`Config/DefaultGame.ini` の `+DirectoriesToAlwaysStageAsNonUFS=(Path="Movies")` で pak の外へそのまま置く。`Content/` は git の外なので、動画の正本は `SourceArt`（LFS）。
+
+### ゲームのアイコン（`Tools/wasami_art/game_icon.py`、2026-09-26）
+- ユーザーの指示「Shipping用のゲームアイコン(本家の猿顔)も、ワサミで作成して。…本家っぽくなるよう」。本家の exe（本体 `DDeception-Win64-Shipping.exe`・起動役 `DDeception.exe`）のアイコンは UE の既定で、**猿の顔は Steam のアイコン**（`Steam/appcache/librarycache/332950/12bcf34c….jpg`・`Steam/steam/games/244f1761….ico`、どちらも 32×32）: 暗い立体のおもちゃの猿の頭の切り抜き、見開いた目、むき出しの歯、形に沿った赤い縁取り、透明の地。
+- 頭は依頼書 `game_icon.json`（型 `sprite`。ユーザーの写真 `C:/Users/User/Pictures/vlcsnap-2026-02-25-23h32m12s613.png` を最初、本家のアイコンを 512 に拡げて暗い地に置いたもの `Intermediate/WasamiArt/_orig/icon/steam_icon_monkey_ref.png` を最後の参照に）で 3 案作り、写真の表情に最も近いものを `SourceArt/Wasami/Icon/game_icon_head.png` に採用。
+- `python Tools/wasami_art/game_icon.py [--preview]` が大きさ（16・24・32・40・48・64・256。本家の exe と同じ組）ごとに 4 倍で描いて縮め、**赤 (230,0,0) の縁は輪郭の膨張で大きさごとに付ける**（32 で 1.25 px。1〜4 px に収める。256 で 10 px にすると太すぎた）。`SourceArt/Wasami/Icon/Application.ico` に書き、`Build/Windows/Application.ico`（UBT が exe に埋め込む。`.gitignore` で追跡）へ写す。
 
 ### cook のシェーダーを読む（`Tools/dd/cooked_shaders.py`）
 - **cook で式が消えた材質も、コンパイル済みのシェーダーは残っている**（2026-09-18 に見つけた。作業一覧の項目 23 のステップ 5d3）。最新版（UE 4.24）は材質ごとにシェーダーマップを `.uexp` に埋め込み、シェーダー 1 つが zlib のストリーム 1 つ、中身が DXBC。`python Tools/dd/cooked_shaders.py "<pak のパスの一部>."` が Steam の最新版の pak（読むだけ。`--pak` で変えられる）から `.uasset`/`.uexp` を取り出し、ストリームを戻して、システムの `d3dcompiler_47.dll` の `D3DDisassemble` で逆アセンブルし、`Intermediate/Pipeline/dd/shaders/<名前>/NN_<モデル>.txt` に書く。表（モデル・読む補間子・リソース・サンプル数）と、一様パラメータの名前（1 度ずつ、最初に出た順）と、**定数バッファ cb3 のどこがどの式か**（`cb3[4].y = hilightPower (10.0)` のように。2026-09-18、5f で足した）を印字する。cb3 は vector の式 1 つに float4 を 1 つ、その後に scalar の式を 4 つずつ詰める。並びはシェーダーマップの uniform の式の集まり（名前の表の後。式ごとにクラス名の表の番号と、クラスごとのフィールド。UE 4.24 の `MaterialUniformExpressions.h`）から読む。知らないクラスがあると名前だけになるので、そのときはコードの使い方から読む（`FIELDS` に足す。2026-09-20 に `Round` を足した）。後処理の材質では同じ表が cb2 に載る（`M_GlitchHLSL`）。`SelectionColor` はエディタの選択の色で、Emissive の最後の lerp。実行時は黒。`--show N` で N 番のコードを出す。pak の読み方は `pak_reference_2/_tools/scripts/unpak.py` を借りる。
@@ -476,6 +483,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-26: ゲームのアイコンを本家の Steam の猿の顔に倣ってワサミで作った（`game_icon.py`・`game_icon.json`。上の「ゲームのアイコン」）
 - 2026-09-26: 救急車の動画のワサミを、写真をなぞった頭を参照にするやり方で作り直した（ユーザーの指摘「顔がワサミに似つかわしくない」）
 - 2026-09-26: 救急車の案内の画面に作り直した動画を流すようにした（`dd_movies`・前処理の `ambulancescreen`・`dd_stage._make_ambulance_screen`・`DirectoriesToAlwaysStageAsNonUFS`。上の「救急車の案内の画面」）。PIE の Zone 1 で確認
 - 2026-09-26: 救急車の案内の動画を、平らなベクター画の部品（`hospital_ambulance_video.json`、型 `vector` を `styles.json` に足した）と組み立て `Tools/wasami_art/ambulance_video.py` で作り直した（ユーザーの指示「割と凝ったものを」。上の「救急車の案内の動画」）

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "game_icon_head",
+    "style": "sprite",
+    "prompt": "The LAST reference image is the original game's desktop icon: a creepy toy monkey's head cut out on a transparent background, rendered like a dark, glossy, slightly realistic 3D horror toy with bulging bloodshot glassy eyes, a leering grin of crooked teeth and a thin red outline glow. Make the same kind of icon from the FIRST reference photo instead of the monkey: the same young man's head, faithful to his real face (round broad face, full cheeks, small round eyes opened very wide, thick straight eyebrows, broad nose, the pouting protruding lips, heavy black fringe), front view, filling the frame, rendered in the same dark creepy glossy horror-toy way as the monkey: dim lighting from above, deep shadows, slightly sickly skin, glassy staring eyes with red veins, a faint unsettling grin with a hint of teeth. Head only (no neck or shoulders), cleanly cut out on a fully transparent background, no outline (it is added later), no text.",
+    "refs": [],
+    "extra_refs": [
+      "C:/Users/User/Pictures/vlcsnap-2026-02-25-23h32m12s613.png",
+      "Intermediate/WasamiArt/_orig/icon/steam_icon_monkey_ref.png"
+    ],
+    "size": "1024x1024",
+    "count": 3,
+    "dest": "SourceArt/Wasami/Icon/game_icon_head.png",
+    "_orig": "本家のアイコンは Steam の 332950 のアイコン（黒い猿の顔の切り抜き・赤い縁取り）。ユーザーの指示「本家っぽくなるよう」"
+  }
+]

@@ -16,6 +16,7 @@ WebGL 版の「デプロイ（Cloudflare Pages）の運用ルール」を UE5 �
   - `Development` → `Saved/Archive/Windows/`（**Claude の確かめ用**）。`Wasami.*` のコンソールコマンドと `-ExecCmds` が使えるので、`Tools/game_flow.py`・`game_perf.py`・各 probe がそのまま動く。エンジンの画面メッセージが生きているので、開発者向けの黄色い字が出うる（VSM のあふれは `Config/DefaultEngine.ini` の `[SystemSettings]` で止めてある。作業一覧の項目 57）。
   - `Shipping` → `Saved/Archive/Shipping/Windows/`（**人に渡す用**）。`-clientconfig=Shipping` にするだけで、同じ `BuildCookRun` の行。エンジンの画面メッセージが根こそぎ消える代わりに**コンソールと `Wasami.*` も消える**ので、Claude の自動の確かめには使えない。**見た目とゲームの中身は `Development` と同じ**（クックの中身が同じ）なので、確かめは `Development` で行い、`Shipping` は起動して遊べることだけ見る。
   - どちらを配るかの話が出たら、**上の「素材の扱い」のとおり必ずユーザーに確認する**。
+- **exe のアイコン**は `Build/Windows/Application.ico`（本家の Steam の猿の顔に倣ったワサミの顔。`python Tools/wasami_art/game_icon.py` が作る。実装記録 01「ゲームのアイコン」）。UBT が起動役と本体の両方の exe に埋め込む（2026-09-26 に Shipping で確かめた）。
 - 手順（2026-09-21 に実際に通した。作業一覧の項目 36）。**エディタを閉じてから**走らせる（VRAM 6 GB、`.claude/guides/verification.md`）:
   ```bash
   python Tools/editor_cycle.py --quit-only
