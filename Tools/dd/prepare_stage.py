@@ -738,13 +738,17 @@ def read_zone(ex, map_name, level_path, meshes, textures, materials, problems):
                                     rel.get("RelativeRotation") or [0, 0, 0], rel.get("RelativeScale3D") or [1, 1, 1])
         if not props.get("Mobility"):
             props["Mobility"] = ex.default_mobility(owner, comp_name, e["class"])
+        parent = actor_of(props["AttachParent"]) if props.get("AttachParent") else None
         for k in LIGHT_BOOKKEEPING + RELATIVE:
             props.pop(k, None)
         if e["class"] == "SkyLightComponent":
             sky = {"path": e["path"], "world": world, "props": props}
             continue
-        lights.append({"path": e["path"], "actor": actor, "actorClass": owner, "class": e["class"],
-                       "world": world, "props": props})
+        light = {"path": e["path"], "actor": actor, "actorClass": owner, "class": e["class"],
+                 "world": world, "props": props}
+        if parent and parent != actor:
+            light["attachParent"] = parent   # moves with it (the ambulances' headlights)
+        lights.append(light)
 
     # ---------------------------------------------------------------- environment
     captures, fog, post = [], None, []

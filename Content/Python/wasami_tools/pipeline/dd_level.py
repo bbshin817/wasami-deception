@@ -423,6 +423,9 @@ def _meshes(eas, stage, zone, counts, failures):
 
 # ------------------------------------------------------------------------------------------------ lights
 def _lights(eas, zone, counts, failures):
+    """Places the zone's lights (not those that are a component of an actor this game makes as a class), each fixed to
+    what it moves with (the ambulances' headlights, attachParent) when that is in the level."""
+    attach = []
     with unreal.ScopedSlowTask(len(zone["lights"]), "Placing the hospital's lights") as task:
         for lt in zone["lights"]:
             task.enter_progress_frame(1)
@@ -444,6 +447,26 @@ def _lights(eas, zone, counts, failures):
             _tag(actor, lt["actor"] + "." + lt["path"].rsplit(".", 1)[-1],
                  "Hospital/Lights/" + (lt["actorClass"] or lt["class"]), "src:" + lt["actor"])
             counts["lights"] += 1
+            if lt.get("attachParent"):
+                attach.append((actor, lt["attachParent"]))
+    attach_lights(eas, attach, counts, failures)
+
+
+def attach_lights(eas, attach, counts, failures):
+    """Fixes each (light, source name) to the level's actor made from that source (tag src:<name>), keeping where it is."""
+    by_source = {}
+    for actor in eas.get_all_level_actors():
+        for t in actor.tags:
+            if str(t).startswith("src:"):
+                by_source.setdefault(str(t)[4:], actor)
+    for actor, name in attach:
+        parent = by_source.get(name)
+        if parent is None:
+            failures.append("light %s: no %s to attach to" % (actor.get_actor_label(), name))
+            continue
+        actor.attach_to_actor(parent, "", unreal.AttachmentRule.KEEP_WORLD, unreal.AttachmentRule.KEEP_WORLD,
+                              unreal.AttachmentRule.KEEP_WORLD, False)
+        counts["attached"] = counts.get("attached", 0) + 1
 
 
 # ------------------------------------------------------------------------------------------------ environment
