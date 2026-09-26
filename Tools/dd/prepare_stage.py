@@ -13,7 +13,8 @@ whose sections share a material — UE's import would give those a single slot a
 glTF is written again under Intermediate/Pipeline/dd/meshes/ with one material per section. Its .bin is not copied.
 The other exception is this game's own: the three textures that draw the original's nurse are imported from
 Intermediate/Pipeline/wasami/stage/ (Tools/dd/prepare_nurse_posters.py) as /Game/Wasami/Stage/T_*, with Wasami's head
-in her place and the original's size, sRGB and compression.
+in her place and the original's size, sRGB and compression. So are the graffiti, murals and wall posters redrawn as
+Wasami's (SourceArt/Wasami/Stage/<the original's texture name>.png, made with Tools/wasami_art).
 
 Env: PAK_REF2 — the export (default <repo>/pak_reference_2).
 """
@@ -47,6 +48,10 @@ WASAMI_TEXTURES = {
     "hospital_decal_nurseambulance": ("wasami_decal_nurseambulance.png",
                                       "/Game/Wasami/Stage/T_Hospital_Decal_NurseAmbulance"),
 }
+
+# The hospital's graffiti, murals and wall posters redrawn as Wasami's (Tools/wasami_art, 2026-09-26): a PNG here named
+# after an original texture takes that texture's place as /Game/Wasami/Stage/T_<name>, with the original's settings.
+WASAMI_ART = os.path.join(ROOT, "SourceArt", "Wasami", "Stage")
 
 ZONES = (
     ("Zone1", "06_Hospital_Zone_01", "/Game/Stage/Maps/L_Hospital_Zone1"),
@@ -206,7 +211,10 @@ def wasami_texture(png):
     """(file, asset) of the Wasami picture that takes this texture's place, or None for every other texture."""
     name = re.sub(r"\.[A-Za-z0-9]+$", "", png.replace("\\", "/").split("/")[-1])
     swap = WASAMI_TEXTURES.get(name)
-    return (os.path.join(WASAMI_OUT, swap[0]), swap[1]) if swap else None
+    if swap:
+        return os.path.join(WASAMI_OUT, swap[0]), swap[1]
+    art = os.path.join(WASAMI_ART, name + ".png")
+    return (art, "/Game/Wasami/Stage/T_" + name) if os.path.exists(art) else None
 
 
 def draw_wasami_textures(problems):
@@ -521,7 +529,8 @@ def note_texture(ex, png, kind, textures, problems):
     if swap:                                   # this game's own picture, in the place of the original's nurse
         path, asset = swap
         if not os.path.exists(path):
-            problems.append("wasami texture missing (python Tools/dd/prepare_nurse_posters.py): " + path)
+            problems.append("wasami texture missing (python Tools/dd/prepare_nurse_posters.py or SourceArt/Wasami/Stage): "
+                            + path)
             return
     textures[png] = {
         "asset": asset, "file": path, "kind": kind,

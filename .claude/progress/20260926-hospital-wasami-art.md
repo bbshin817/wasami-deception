@@ -16,14 +16,13 @@ updated: 2026-09-26 13:20
 ## 計画
 
 - [x] 1. ポスター 11 枚に依頼書の `bg` を敷き直した … 2026-09-26 完了。候補から flatten → fit_size で採用し直し、`generated.json` の `bg` も直した（どれも RGB・不透明）。
-- [ ] 2. 前処理の差し替え `Tools/dd/prepare_stage.py` の `WASAMI_TEXTURES` に 29 枚を足し（`SourceArt/Wasami/Stage/<本家の名前>.png` → `/Game/Wasami/Stage/T_<名前>`）、取り込み直し・材質を指し直し、PIE で見る
-  - 変更予定: `Tools/dd/prepare_stage.py`、`/Game/Wasami/Stage`、`/Game/DD/Materials/06_Hospital`
+- [x] 2. `prepare_stage.py` が `SourceArt/Wasami/Stage/<本家の名前>.png` を `/Game/Wasami/Stage/T_<名前>` として差し替える … 2026-09-26 完了。29 枚を取り込み材質 29 個を指し直し、本家の 29 枚は参照元 0。PIE の Zone 1 で 6 か所を確認。
 - [ ] 3. 救急車の案内の画面（`Ambulance_Tutorial_MediaPlayer_Video_Mat`。Zone 1 に 6・Zone 2 に 12）に `ambulance_tutorial2.mp4` を流す。本家の Zone 1・2 で画面に映るのはこの 1 本だけ（BrainScan・Lungs・BrokenHeart はレベル BP が開くが、映す材質を置いた物が無い）
 - [ ] 4. 記録（実装記録 01・original-fidelity の表・wasami-art・作業一覧）、パッケージの中身の確かめ、コミット
 
 ## 次にやること
 
-ステップ 2: `WASAMI_TEXTURES` を `SourceArt/Wasami/Stage` の 29 枚へ広げる。
+ステップ 3: 救急車の案内の画面に `ambulance_tutorial2.mp4` を流す。
 
 ## 決定事項
 
