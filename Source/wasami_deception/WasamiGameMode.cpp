@@ -11,6 +11,8 @@
 #include "GameFramework/PlayerStart.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NavMesh/NavMeshBoundsVolume.h"
+#include "NavigationSystem.h"
 #include "TimerManager.h"
 #include "UObject/UObjectIterator.h"
 #include "WasamiBlackFadeWidget.h"
@@ -53,6 +55,24 @@ namespace
 			++Count;
 		}
 		return Count;
+	}
+
+	// "<bounds volumes with paths>/<bounds volumes>", as the editor's build_navigation counts them: the enemies' paths
+	// come only from the saved navmesh (DynamicModifiersOnly), so a level saved in the same call it was opened in has
+	// none and every enemy stands still (troubleshooting).
+	FString CountNavigableVolumes(UWorld* World)
+	{
+		int32 Found = 0;
+		int32 Volumes = 0;
+		for (TActorIterator<ANavMeshBoundsVolume> It(World); It; ++It)
+		{
+			++Volumes;
+			FVector Origin, Extent, Point;
+			It->GetActorBounds(false, Origin, Extent);
+			Found += UNavigationSystemV1::K2_GetRandomLocationInNavigableRadius(World, Origin, Point,
+				FMath::Max(Extent.X, Extent.Y)) ? 1 : 0;
+		}
+		return FString::Printf(TEXT("%d/%d"), Found, Volumes);
 	}
 
 	AWasamiGameMode* WasamiModeOf(UWorld* World)
@@ -260,7 +280,7 @@ namespace
 
 	FAutoConsoleCommandWithWorldAndArgs StatusCommand(TEXT("Wasami.Status"),
 		TEXT("Prints one line with where the game is (level, checkpoint, lives, shards, objective, the player with the ")
-		TEXT("tablet, the sprint and the walk speed, the widgets ")
+		TEXT("tablet, the sprint and the walk speed, the bounds volumes with paths, the widgets ")
 		TEXT("on screen), the fields Tools/playthrough.py reads from the editor, so a packaged build can be followed in its log."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
@@ -280,7 +300,7 @@ namespace
 			Widgets.Sort();
 			const FVector Where = Player ? Player->GetActorLocation() : FVector::ZeroVector;
 			UE_LOG(LogWasamiDebug, Display,
-				TEXT("Wasami.Status level=%s checkpoint=%d start=%d lives=%d shards=%d/%d deaths=%d time=%.1f paused=%d input=%d tablet=%d sprint=%d speed=%.0f player=%.0f,%.0f,%.0f yaw=%.0f objective='%s' widgets=%s"),
+				TEXT("Wasami.Status level=%s checkpoint=%d start=%d lives=%d shards=%d/%d deaths=%d time=%.1f paused=%d input=%d tablet=%d sprint=%d speed=%.0f player=%.0f,%.0f,%.0f yaw=%.0f nav=%s objective='%s' widgets=%s"),
 				World ? *World->GetName() : TEXT("none"),
 				Save ? Save->Hospital.LevelCheckpoint : -1,
 				Mode ? Mode->GetStartCheckpoint() : -1,
@@ -297,6 +317,7 @@ namespace
 				Player && Player->GetCharacterMovement() ? Player->GetCharacterMovement()->MaxWalkSpeed : -1.f,
 				Where.X, Where.Y, Where.Z,
 				Player ? Player->GetControlRotation().Yaw : 0.0,
+				World ? *CountNavigableVolumes(World) : TEXT("-1/0"),
 				Mode ? *Mode->CurrentObjective.ToString() : TEXT(""),
 				Widgets.Num() > 0 ? *FString::Join(Widgets, TEXT(",")) : TEXT("none"));
 		}));

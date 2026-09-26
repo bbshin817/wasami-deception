@@ -73,7 +73,7 @@ ROUTE = [
     Step("z1_doorbreak", 4.0, ["Wasami.Flow On04DoorBreak"], shot=True, level="L_Hospital_Zone1", checkpoint=4,
          note="the lock picked: the doors in front swing open"),
     Step("z1_maze", 4.0, ["Wasami.Trigger BP_04_Trigger_Maze"], shot=True, checkpoint=5, shards=337,
-         objective="SHARDS", note="into the maze (saved 5, COLLECT ALL SHARDS)"),
+         objective="SHARDS", nav=True, note="into the maze (saved 5, COLLECT ALL SHARDS)"),
     Step("z1_collect", 3.0, ["Wasami.CollectShards"], status=False, note="every shard of the maze collected"),
     Step("z1_shards", 3.0, shot=True, checkpoint=5, objective="PARKING", shards=0,
          note="all 337 collected: REACH THE PARKING LOT, the barrier gone"),
@@ -100,7 +100,7 @@ ROUTE = [
          note="the corridor (saved 8, GET PAST THE NURSES): the six sentries wake"),
     Step("z2_maze_at", 4.0, [MAZE_AT], status=False, note="past the Matron, to the maze's way in"),
     Step("z2_maze", 1.5, ["Wasami.Trigger Trigger_MazeStart"], shot=True, checkpoint=9, objective="SHARDS",
-         shards=342, note="the maze (saved 9, COLLECT ALL SHARDS)"),
+         shards=342, nav=True, note="the maze (saved 9, COLLECT ALL SHARDS)"),
     Step("z2_collect", 3.0, ["Wasami.CollectShards"], status=False, note="every shard of the maze collected"),
     Step("z2_shards", 3.0, shot=True, checkpoint=10, objective="RING", shards=0,
          note="all 342 collected (saved 10, COLLECT THE RING PIECE)"),
@@ -162,6 +162,11 @@ def check(step, fields):
             want = str(want)
             if got != want:
                 wrong.append("shards %s, not %s" % (got or "?", want))
+            continue
+        if name == "nav":                          # 'N/Volumes': paths in every bounds volume (enemies stand still without)
+            found, _, volumes = (got or "0/0").partition("/")
+            if found != volumes or volumes in ("", "0"):
+                wrong.append("paths in nav %s bounds volumes: the level was saved without them" % got)
             continue
         if name in ("objective", "widgets"):
             if want.upper() not in (got or "").upper():

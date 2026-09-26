@@ -562,13 +562,14 @@
 - 対処: 配置が `bCastShadowAsTwoSided` のメッシュを Nanite から外す（`dd_stage.off_nanite_meshes`。既存のアセットには `refresh_dd_stage_assets` の `nanite_updated`）。焼き直しは要らない。
 - 出典: 2026-09-26、作業一覧の項目 59（01 記録）。
 
-### PIE で敵が動かない・`find_path_to_location_synchronously` が空・`project_point_to_navigation` が `None`（レベルに道が保存されていない）
+### PIE・パッケージ版（Shipping）で敵が動かない・追わず直立する・`find_path_to_location_synchronously` が空・`project_point_to_navigation` が `None`（レベルに道が保存されていない）
 
 - 症状: PIE の Zone 2 で、どこでも `NavigationSystemV1.project_point_to_navigation` が `None`、道の問い合わせが 0 点。見張りは見つけても追えず、迷路のナースも動かない。PIE の中で `RebuildNavigation` しても `Build total execution time: 0.00s` で何も変わらない。エディタで開いた直後も `None` だが、数秒後には道がある。
 - 原因: ゲームのワールドは `RuntimeGeneration=DynamicModifiersOnly` なので形から道を作らず、**保存した道をそのまま使う**（UE 5.8 の `IsGeometryRebuildDisabled`）。エディタはレベルを開くと道を空にして数秒のティックで焼き直す（`bForceRebuildOnLoad`）ので、開いたのと同じ Python の呼び出しで保存すると空の道が保存される。同じ呼び出しの `RebuildNavigation` は `UNavigationSystemV1::Build Navigation NOT building because navigation build is locked (flags: 0x20).`（`AsyncLoadLock`）で断られる。
 - 対処: レベルを保存するツールの後に、**別の呼び出しで** `WasamiStageTools.build_navigation()`（開いているレベルを同期で焼き、すべての `NavMeshBoundsVolume` に道があれば保存）。保存するツールは道の無いボリュームがあると `… is saved with navigation in N of M bounds volumes` と警告する。マップは git の外なので、組み立て直したら毎回要る。
 - 確かめ方: `build_navigation()` の戻り値の `navigable` が `volumes` と同じ（Zone 1 は 2、Zone 2 は 29）。PIE で `open L_Hospital_Zone2` の後に `project_point_to_navigation(world, (-7406, -607, 0), None, None, (200, 200, 500))` が点を返す。Zone 2 のマップは道を焼くと約 0.7 MB 大きくなった（4.62 → 5.35 MB）。
 - 出典: 2026-09-19、作業一覧の項目 27 のステップ 2（01 記録の「ナビゲーション」）。
+- **再発（2026-09-27）: パッケージ版（Shipping）で敵ワサミが追わず直立する**。項目 63 の使い捨てのスクリプトが両マップを開いて `les.save_current_level()` を直に呼び（ログでは `MAP LOAD` と `SavePackage` が同じフレーム）、道が空のまま保存された。`_save_level` を通らないので警告も出ない。PIE は開き直すと焼き直されるので気づけず、そのまま Release 用 Shipping をクックした。**マップを保存するスクリプトを書いたら、必ずあとで別の呼び出しの `build_navigation()` を通す**。パッケージでは `Tools/game_flow.py` が迷路の節目の `Wasami.Status` の `nav=`（道のあるボリューム/全部）が揃っているかを見る。道を焼き直すとマップが約 0.75 MB 大きくなる（Zone 1 5.40 → 6.17 MB、Zone 2 4.94 → 5.68 MB）ので、パッケージの前に大きさでも見当がつく。
 
 ### ステージを組み立て直すと焼き込みが外れる
 
