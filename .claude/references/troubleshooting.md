@@ -700,6 +700,14 @@
 - 確かめ方: テスト `Wasami.Powers.TeleportGates`。PIE でエレベーターの中 (−25, 3735)・南向きから撃つと y 3548.7 で止まる（04 記録の「テレポートの扉の手前での止まり」）。
 - 出典: 2026-09-20 の有人セッションのユーザーの指摘（進捗記録 `20260920-teleport-gates`）。
 
+### シネカメラの「回転」のキーが効かない（LookAt を使うカメラ。アクタでも部品でも消える）
+
+- 症状: `ACineCameraActor`（`bEnableLookAtTracking` が真）に結び付けた LevelSequence の変換トラックで、**位置のキーは効くのに回転のキーだけが効かない**。カメラの**部品**（`CameraComponent`）の相対回転に打っても同じで、PIE で測ると相対回転は毎フレーム 0 に戻り、部品の世界の向きはアクタの向きと 1 度も違わない（相対位置は打ったとおりに動く）。Python から `set_relative_rotation` で入れても次のフレームで 0 に戻る。
+- 原因: `UCameraComponent::GetCameraView`（`Engine/Private/Camera/CameraComponent.cpp`）が、持ち主が `ACineCameraActor` でその LookAt がこのフレームに走っていたら、**部品の世界の向きを LookAt の向きへ書き戻す**（`if (Cam->LookatTrackingSettings.LastLookatTrackingRotationFrame == GFrameNumber) SetWorldRotation(Cam->LookatTrackingSettings.LastLookatTrackingRotation);`）。書き戻しは世界の向きなので、部品の相対回転は 0 になる。シーケンサーの側は正しく評価していて、LookAt を切ると同じキーがそのまま出る。
+- 対処: 回転を足したいときは**カメラの部品の「加算のずれ」**（`UCameraComponent::AddAdditiveOffset(FTransform, FOV)`）に渡す。`GetCameraView` はこの書き戻しの**直後**に `bUseAdditiveOffset` を当てる（`OffsetCamToWorld = AdditiveOffset * ComponentToWorld`）ので、LookAt の向きの上に乗る。本家（UE 4.24）のカメラアニメもここを通る（`FMovieSceneAdditiveCameraAnimationTrackExecutionToken`）。
+- 確かめ方: PIE で部品の `relative_rotation` を毎ティック読む（`observations/tools/cut_camera_log.py`）。LookAt を切って同じ場面を流す道具が `observations/tools/cut_nolookat.py`（切ると相対回転がアニメの曲線どおりに出る）。
+- 出典: 2026-09-26 の項目 54 のステップ 6（進捗記録 `20260926-zone2-cutscene-acting.md`、01 記録の `camera_offset`）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` が `PermissionError: the foreground window is PickerHost.exe` で入力を断る（Windows のファイアウォールの確認が出たまま）

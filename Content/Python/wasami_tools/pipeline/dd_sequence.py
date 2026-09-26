@@ -106,9 +106,9 @@ AUDIO_CHANNELS = {"SoundVolume": ("Volume", 1.0), "PitchMultiplier": ("Pitch", 1
 CURVE_CHANNELS = {"FloatCurve": ("None", None)}   # a float property's and a fade's, without a default
 PARTICLE_CHANNELS = {"ParticleKeys": ("None", None)}
 
-# The camera component's channels a camera anim is keyed on (see camera_offset), and the six axes UInterpTrackMove
-# splits a Matinee move track into, in the order it makes them. The export leaves the first axis' MoveAxis out, as its
-# default.
+# The camera component's channels a camera anim is keyed on (see camera_offset - the location alone; the rotation
+# cannot be keyed there at all, see its docstring), and the six axes UInterpTrackMove splits a Matinee move track into,
+# in the order it makes them. The export leaves the first axis' MoveAxis out, as its default.
 CAMERA_OFFSET_CHANNELS = ("Location.X", "Location.Y", "Location.Z")
 MOVE_AXES = ("AXIS_TranslationX", "AXIS_TranslationY", "AXIS_TranslationZ",
              "AXIS_RotationX", "AXIS_RotationY", "AXIS_RotationZ")
@@ -160,9 +160,10 @@ def _matinee_keys(points):
 
 
 def _camera_anim_move(object_path):
-    """The translation of the original's CameraAnim: the three translation axes of its Matinee move track, as curves
-    keyed in seconds. The rotation axes are read only to be sure the anim is one of these (camera_offset leaves them
-    out)."""
+    """The offset of the original's CameraAnim: the six axes of its Matinee move track, as curves keyed in seconds.
+    The order is the one CAMERA_OFFSET_CHANNELS takes: three translations, then the rotation's roll, pitch and yaw
+    (UInterpTrackMove reads AXIS_RotationX/Y/Z as an euler it turns into FRotator(Y, Z, X), so the axes line up with
+    a transform section's Rotation.X/Y/Z one for one)."""
     rel = dd_assets.game_rel(object_path)
     pkg = dd_assets.export_json(rel, VERSION)
     by_path = {(e["outer"] + "." if e["outer"] else "") + e["name"]: e for e in pkg["exports"]}
@@ -179,7 +180,7 @@ def _camera_anim_move(object_path):
     missing = [a for a in MOVE_AXES if a not in axes]
     if missing:
         raise ValueError("%s: the camera anim's move track has no %s" % (rel, ", ".join(missing)))
-    return [axes[a] for a in MOVE_AXES[:3]]
+    return [axes[a] for a in MOVE_AXES]
 
 
 class _Package:
@@ -362,7 +363,7 @@ class _Builder:
     # ------------------------------------------------------------------------------------------- camera anim
     def camera_anim(self, pkg, path):
         """What a binding's MovieSceneCameraAnimTrack adds to its transform track: the section's range in ticks and
-        the CameraAnim's three translation curves (bake_location adds them)."""
+        the CameraAnim's six move curves (camera_offset keys them)."""
         export = pkg.get(path)
         sections = export["props"].get("CameraAnimSections", [])
         if len(sections) != 1:
@@ -388,14 +389,15 @@ class _Builder:
                 "curves": _camera_anim_move(data["CameraAnim"])}
 
     def camera_offset(self, proxy, offset, ticks):
-        """The camera anim of a bound camera, keyed on its camera component's relative location.
+        """The location of the camera anim of a bound camera, keyed on its camera component's relative location.
 
         UE 4.24 plays a camera anim on a bound camera as an additive animation: what the anim's move track has at the
         time is an offset in the camera's own space (FMovieSceneAdditiveCameraAnimationTrackExecutionToken ->
-        FCameraAnimationHelper::ApplyOffset, which UE 5.8 still has). UE 5.8 has no camera anim track, so the offset
-        is keyed here instead, and it is keyed on the *component*: an ACameraActor hangs its camera component under a
-        plain scene root, so the component's relative location is the camera's own space and the actor itself stays
-        on the path its transform track keys.
+        FCameraAnimationHelper::ApplyOffset, which UE 5.8 still has): the location is turned by the camera's rotation
+        before it is added, and the rotation is composed before the camera's. UE 5.8 has no camera anim track, so the
+        offset is keyed here instead, and it is keyed on the *component*: an ACameraActor hangs its camera component
+        under a plain scene root, so the component's relative location is the camera's own space and the actor itself
+        stays on the path its transform track keys.
 
         Which of the two carries it is what the capture scene turns on, because this camera also carries the
         original's look-at tracking (item 28's step 14c): ACineCameraActor::Tick turns the *actor* towards the actor
@@ -405,8 +407,15 @@ class _Builder:
         is yaw 42.3, pitch -9.3 (item 54's step 2, measured in PIE). Adding the offset to the actor threw the camera
         4 m up and swung the look-at down at the floor, which is the turn the player saw as broken.
 
-        The anim's rotation is left out (the user's answer of 2026-09-23, kept by item 54's step 2): with the offset
-        off the actor, the look-at turns the camera the way the original's rotation keys have it anyway.
+        Only the location: **the rotation cannot be keyed on this camera at all** (item 54's step 6, measured in PIE
+        and read in the engine's source). UCameraComponent::GetCameraView forces the component's own world rotation
+        back to the look-at's every frame the look-at ran (`if (Cam->LookatTrackingSettings
+        .LastLookatTrackingRotationFrame == GFrameNumber) SetWorldRotation(LastLookatTrackingRotation)`), so keys on
+        the actor *and* on the component are both thrown away - with the look-at turned off the same keys come out
+        exactly as the anim has them. The original does not key the rotation either: it hands the whole offset to the
+        camera component as its *additive offset* (UCameraComponent::AddAdditiveOffset), which GetCameraView applies
+        to the view right after that override, so the original's rotation does show. Item 54's step 7 moves the
+        offset there; _camera_anim_move already reads all six curves for it.
         """
         track = proxy.add_track(unreal.MovieScene3DTransformTrack)
         section = track.add_section()
@@ -414,6 +423,7 @@ class _Builder:
         # The camera component goes back to sitting at the actor when the scene is over.
         section.set_completion_mode(unreal.MovieSceneCompletionMode.RESTORE_STATE)
         by_name = {str(c.channel_name): c for c in section.get_all_channels()}
+        # zip stops at the three location channels; curves[3:] are the rotation, which step 7 takes to the offset.
         for name, curve in zip(CAMERA_OFFSET_CHANNELS, offset["curves"]):
             channel = by_name[name]
             keys = []
