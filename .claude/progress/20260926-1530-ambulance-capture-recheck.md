@@ -30,7 +30,7 @@ updated: 2026-09-26 23:00
 
 ## 次にやること
 
-パッケージは 2026-09-26 16:1x に作り直した（Shipping・Development とも 0 エラー、本編 1196 パッケージ）。ユーザーが Shipping（`Saved/Archive/Shipping/Windows/wasami_deception.exe`）を遊んで確かめるのを待つ。問題が無ければ項目 61 と大目標 6 を閉じ、この記録を畳む。
+4 度目の直しでパッケージを 2026-09-26 23:0x に作り直した（Development・Shipping とも 0 エラー、本編 1196 パッケージ）。Development で `probe_ambulance.py track`: Zone 1 の屋根で y −20060 → −3958 を z 402 のまま運ばれ、Zone 2 の `PlayerStart_1` から x −22545 → −14392 を z 1222 のまま運ばれた。ユーザーが Shipping（`Saved/Archive/Shipping/Windows/wasami_deception.exe`）を遊んで確かめるのを待つ。問題が無ければ項目 61 と大目標 6 を閉じ、この記録を畳む。
 
 ## 決定事項
 
