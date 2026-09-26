@@ -163,6 +163,9 @@ private:
 	UFUNCTION()
 	void On06ReachAmbulance();
 
+	/** Attaches the player to the ambulance that takes off, with the movement off, until zone 2 opens. */
+	void RideAmbulance();
+
 	/** 06 Nurses: those Spawn Nurses_06 spawned (gone once destroyed). */
 	TArray<TWeakObjectPtr<AWasamiEnemy06Chase>> Nurses06;
 };

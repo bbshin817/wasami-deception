@@ -1,6 +1,7 @@
 #include "WasamiZone1Flow.h"
 
 #include "Camera/CameraShakeBase.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Sound/SoundAttenuation.h"
@@ -344,6 +345,23 @@ void AWasamiZone1Flow::OnNurseLiftTrigger(AActor* OverlappedActor, AActor* Other
 	}
 }
 
+void AWasamiZone1Flow::RideAmbulance()
+{
+	ACharacter* Player = UGameplayStatics::GetPlayerCharacter(this, 0);
+	AActor* Ambulance = Source(TEXT("hospital_ambulance_new_teleport"));
+	if (!Player || !Ambulance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: no player or hospital_ambulance_new_teleport to ride"), *GetClass()->GetName());
+		return;
+	}
+	if (UCharacterMovementComponent* Movement = Player->GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+	Player->AttachToActor(Ambulance, FAttachmentTransformRules::KeepWorldTransform);
+}
+
 void AWasamiZone1Flow::On06ReachAmbulance()
 {
 	Enter(TEXT("06_ReachAmbulance"));
@@ -354,17 +372,19 @@ void AWasamiZone1Flow::On06ReachAmbulance()
 	SetArrowTarget(Source(TEXT("Plane48_2")));
 	SetObjective(NSLOCTEXT("Wasami", "ObjectiveGoodLuck", "GOOD LUCK"));
 	SetMusicFadeOut(true);
-	// The original also turns on the fence behind the player (Ambulance_3), but leaving it off is what keeps the
-	// player on the roof: the sequence teleports the fence along with the ambulance, so as soon as one frame's move
-	// is longer than the gap to that wall it lands on the capsule, which aborts the based move and pushes the player
-	// out the back. The other three never close in on the player (11 record, work list item 41).
+	// The fence all round the roof, as in the original, so that the player cannot get off once on top.
 	for (const TCHAR* Blocker : {TEXT("BlockingVolume_Ambulance_4"), TEXT("BlockingVolume_Ambulance_2"),
-		TEXT("BlockingVolume_Ambulance_1")})
+		TEXT("BlockingVolume_Ambulance_1"), TEXT("BlockingVolume_Ambulance_3")})
 	{
 		SetVolumeCollision(Blocker, ECollisionEnabled::QueryAndPhysics);
 	}
 	After(TakeOffDelay, [this]()
 	{
+		// Unlike the original, the player rides attached to the ambulance with the movement off (looking around still
+		// works): the original relies on the based move, which the sequence's unswept teleport of the fence breaks
+		// (the fence lands on the capsule and pushes the player out), and a player left in the tunnel was reported
+		// three times (11 record, work list items 41 and 53). The next level is opened from here, so nothing detaches.
+		RideAmbulance();
 		PlaySequence(TEXT("06_Hospital_Zone1_AmbulanceTakeOff"));
 		PlayCameraShake(TakeOffShakeClass, TakeOffShakeScale);
 		After(LoadingDelay, [this]()
