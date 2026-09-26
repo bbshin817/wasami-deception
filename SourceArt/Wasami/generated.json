@@ -853,7 +853,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "f6e4de",
     "brief": {
       "name": "hospital_poster_LungCancer_01_D",
       "_orig": "M_06_Hospital_Poster_03（18 枚）。本家「Lung Cancer Stage」の 3 段の肺の図",
@@ -868,7 +868,8 @@
       "size": "1536x768",
       "final_size": "2048x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_LungCancer_01_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_LungCancer_01_D.png",
+      "bg": "f6e4de"
     },
     "style": "print",
     "references": [
@@ -898,7 +899,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "000000",
     "brief": {
       "name": "hospital_poster_cross_D",
       "_orig": "M_06_Hospital_Poster_13（21 枚）。本家は黒地に青いネオンの十字の輪郭",
@@ -907,7 +908,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_cross_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_cross_D.png",
+      "bg": "000000"
     },
     "style": "print",
     "references": [
@@ -937,7 +939,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "ffffff",
     "brief": {
       "name": "hospital_poster_faceMask_01_D",
       "_orig": "M_06_Hospital_Poster_02（Zone 1 に 54 枚）。本家「ATTENTION / FACE MASK REQUIRED」とマスクの顔、赤白の斜めの縁",
@@ -950,7 +952,8 @@
       "size": "768x1536",
       "final_size": "512x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_faceMask_01_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_faceMask_01_D.png",
+      "bg": "ffffff"
     },
     "style": "print",
     "references": [
@@ -980,7 +983,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "ffffff",
     "brief": {
       "name": "hospital_poster_handsanitizer_01_D",
       "_orig": "M_06_Hospital_Poster_05（Zone 1 に 86 枚。いちばん多い）。本家「NOTICE / HAND SANITIZER STATION」の案内",
@@ -993,7 +996,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_handsanitizer_01_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_handsanitizer_01_D.png",
+      "bg": "ffffff"
     },
     "style": "print",
     "references": [
@@ -1023,7 +1027,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "efe4c8",
     "brief": {
       "name": "hospital_poster_handsanitizer_02_D",
       "_orig": "M_06_Hospital_Poster_06（5 枚）。本家「Please Use HAND SANITIZER!」の戦時の宣伝ポスター風",
@@ -1033,7 +1037,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_handsanitizer_02_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_handsanitizer_02_D.png",
+      "bg": "efe4c8"
     },
     "style": "print",
     "references": [
@@ -1063,7 +1068,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "ffffff",
     "brief": {
       "name": "hospital_poster_heart_D",
       "_orig": "M_06_Hospital_Poster_04（5 枚）。本家は解剖図の心臓の版画（字なし）",
@@ -1072,7 +1077,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_heart_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_heart_D.png",
+      "bg": "ffffff"
     },
     "style": "print",
     "references": [
@@ -1102,7 +1108,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "cfc6b5",
     "brief": {
       "name": "hospital_poster_mortalvaccination_D",
       "_orig": "M_06_Hospital_Poster_07（17 枚）。本家「MORTAL VACCINATION」と注射器の図案",
@@ -1112,7 +1118,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_mortalvaccination_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_mortalvaccination_D.png",
+      "bg": "cfc6b5"
     },
     "style": "print",
     "references": [
@@ -1142,7 +1149,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "000000",
     "brief": {
       "name": "hospital_poster_pill_01_D",
       "_orig": "M_06_Hospital_Poster_11（9 枚）。本家は黒地に青いカプセルの絵",
@@ -1151,7 +1158,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_pill_01_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_pill_01_D.png",
+      "bg": "000000"
     },
     "style": "print",
     "references": [
@@ -1181,7 +1189,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "ffffff",
     "brief": {
       "name": "hospital_poster_pills_D",
       "_orig": "M_06_Hospital_Poster_08（9 枚）。本家は薬瓶と錠剤の白黒の版画（COUGH SYRUP の瓶）",
@@ -1191,7 +1199,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_pills_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_pills_D.png",
+      "bg": "ffffff"
     },
     "style": "print",
     "references": [
@@ -1221,7 +1230,7 @@
       512
     ],
     "post": null,
-    "bg": null,
+    "bg": "d20000",
     "brief": {
       "name": "hospital_poster_syringe_D",
       "_orig": "M_06_Hospital_Poster_09（12 枚）。本家は赤地の注射器の絵（字なし）",
@@ -1230,7 +1239,8 @@
       "size": "1536x768",
       "final_size": "1024x512",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_syringe_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_syringe_D.png",
+      "bg": "d20000"
     },
     "style": "print",
     "references": [
@@ -1260,7 +1270,7 @@
       1024
     ],
     "post": null,
-    "bg": null,
+    "bg": "000000",
     "brief": {
       "name": "hospital_poster_toxickiss_D",
       "_orig": "M_06_Hospital_Poster_10（16 枚）。本家は黒地にピンクのネオンの唇",
@@ -1269,7 +1279,8 @@
       "size": "1024x1024",
       "final_size": "1024x1024",
       "count": 1,
-      "dest": "SourceArt/Wasami/Stage/hospital_poster_toxickiss_D.png"
+      "dest": "SourceArt/Wasami/Stage/hospital_poster_toxickiss_D.png",
+      "bg": "000000"
     },
     "style": "print",
     "references": [
