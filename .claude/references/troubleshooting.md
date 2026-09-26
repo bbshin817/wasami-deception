@@ -721,6 +721,12 @@
 - 確かめ方: PIE でカメラマネージャの視点を毎ティック読む（`observations/tools/cut_pov_log.py`。`pov` と、カメラの部品の世界の姿勢 `eye` の差が当たっているずれ）。本家のシェイクの区間は書き出しの `MovieSceneCameraShakeSection` の `SectionRange` で分かる。
 - 出典: 2026-09-26 の項目 54 のステップ 6（進捗記録 `20260926-zone2-cutscene-acting.md`、01 記録の `camera_offset`）。
 
+### 本家のアニメ（psa）を載せたモデルが、足は床に着くのに腹でねじれ、肩や手がおかしい
+- 症状: `pak_reference*/_anims_psa` の psa をほかのリグへ載せると、立ち方と足の位置は合うのに、胴が大きくねじれ肩・手首の形が崩れる（2026-09-26、本家のナースの演技を載せた敵ワサミ）。
+- 原因: psa のキーは UE の姿勢を Y で鏡に映した ActorX の約束（位置の y が逆、回転は根以外 (x, −y, z, w)、根は (−x, y, −z, w)）。BONENAMES の基準姿勢は UE の約束のまま。回転を共役にするだけでも立つので見落とす。
+- 見分け方: 何も動かさない骨（`*_AuxSHJnt` など）のキーが基準姿勢に一致するかを見る。正しい読み方なら 0°、共役だけだと 180°。キーの位置も y の符号が基準姿勢と逆になっている。
+- 対処: `dd_enemy._nurse_world` の読み方（07 記録）。
+
 ## 画面の操作・本家の実機
 
 ### `desktop.py` が `PermissionError: the foreground window is PickerHost.exe` で入力を断る（Windows のファイアウォールの確認が出たまま）

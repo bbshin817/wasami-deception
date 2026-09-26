@@ -542,9 +542,13 @@ def _nurse_world(psa, frame=None):
     The positions are in her rig's own units, 30 x the mesh's (_NurseRetarget takes the scale out).
 
     Her reference pose is the imported mesh's glTF rest pose, bone for bone, to 0.08 deg and one ratio. Her keys are
-    written in another of ActorX's conventions: every bone's but the root's is the conjugate of what the reference pose
-    is written in. Only that reading has her stand up -- read as written she lies horizontal, 20 units off the floor;
-    read this way her feet are on it (y 0.000 to 0.187) through all 181 frames of ReaperNurse_Idle_Alert.
+    written in ActorX's own convention, UE's mirrored across its Y: every key's position has its y negated, and every
+    rotation but the root's is (x, -y, z, w) of UE's (the mirror, then the conjugate ActorX keeps for the bones under
+    the root); the root's is the mirror alone, (-x, y, -z, w). Read so, the bones nothing animates (the waist's, the
+    top of the head's) sit on the reference pose exactly, and her other bones are 6 deg off it at the median through
+    ReaperNurse_Idle_Alert. (Conjugating the rotations alone, as this read until 2026-09-26, also stands her up, but
+    leaves those bones half a turn off and twists her body -- the user's finding: Wasami twisted at the belly, the
+    shoulders and hands wrong.)
 
     Her rotations are made unit as they are read: the file's are up to 1.7 % short (its numbers are float), which
     would skew every blend between two keys and leave the written keys out of glTF's rotations.
@@ -556,9 +560,9 @@ def _nurse_world(psa, frame=None):
         if frame is None:
             position, rotation = bone["position"], bone["rotation"]
         else:
-            position, rotation = psa["keys"][frame][i]
-            if i:
-                rotation = gltf.qinv(rotation)
+            (x, y, z), (qx, qy, qz, qw) = psa["keys"][frame][i]
+            position = (x, -y, z)
+            rotation = (qx, -qy, qz, qw) if i else (-qx, qy, -qz, qw)
         r = gltf.normalized(skeletal.to_gltf_rotation(rotation))
         t = skeletal.to_gltf_position(position)
         if bone["parent"] < 0:
