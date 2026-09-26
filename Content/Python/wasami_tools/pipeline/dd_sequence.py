@@ -53,33 +53,40 @@ NURSE_CLASSES = {"BP_06_Nurse_Cutscene_C": True, "SkeletalMeshActor": False}
 NURSE_TAG = "dd_nurse"
 WASAMI_CLIP = "/Game/Wasami/Enemy/A_WasamiEnemy_%s"
 
-# The nurse animations the cut scenes play → the enemy Wasami's clip that stands in for it, and whether it is played
-# backwards (.claude/references/enemy-wasami-motions.md の「場面の代用」, 2026-09-18 のユーザーの回答「場面は残し、v3 の
-# 動きで代用」). The dialogue animations (Nurse_Hospital_Zone01_Event_40..47) are the cell scene's acting, which the
-# idle stands in for.
+# The nurse animations the cut scenes play → the enemy Wasami's clip that plays in its place, and whether it is played
+# backwards. Two kinds: the original's own animation carried onto the enemy Wasami's bones (CARRIED below, item 54),
+# and a v3 clip standing in for it where the original's cannot be carried
+# (.claude/references/enemy-wasami-motions.md の「場面の代用」, 2026-09-18 のユーザーの回答「場面は残し、v3 の動きで代用」).
 NURSE_ANIMS = {
     "ReaperNurse_Boss_Idle_01": ("Idle_Alert", False),      # the low stance the two take before they leap
     "ReaperNurse_Fast_Jump_Up": ("Chase_VaultRoll", False),
     "ReaperNurse_Fast_Jump_Up_Air": ("Run", False),
     "ReaperNurse_Flip_Up": ("Chase_VaultRoll", False),
+    # Idle_Alert is the original's own alert idle, carried onto v3 (dd_enemy's ROLES), so these two are the
+    # original's acting as well - the role is shared with the sentries, which play the same thing here.
     "ReaperNurse_Idle_Alert": ("Idle_Alert", False),
-    # The punch that takes the player. The original swings: it sinks, rises winding the right arm and the
-    # syringe a trunk's length above the hips, then brings them down in the last 0.13 s (measured off
+    # The punch that takes the player, which the user's decision of 2026-09-26 leaves as a stand-in (the syringe
+    # is out of scope). The original swings: it sinks, rises winding the right arm and the syringe a trunk's
+    # length above the hips, then brings them down in the last 0.13 s (measured off
     # Nurse_Hospital_Zone01_Event_39.psa). Chase_PickUp is the only clip of the v3 set whose right hand does
     # the same shape late in the take, and the camera is 0.4 m from her as it lands.
     "Nurse_Hospital_Zone01_Event_39": ("Chase_PickUp", False),
-    "nurse_idle_01": ("Idle", False),
-    "ReaperNurse_Walk_Back": ("Walk", True),                # backing away
-    # She turns invisible where she stands (the cell scene never moves her: its transform track holds one key of
-    # zeroes). The Wasami has no cloaking of its own, so the idle stands in while the material takes her away
-    # (dd_enemy's cloak, item 28's step 14b); until that cloak existed she walked off instead.
-    "nurse_cloak": ("Idle", False),
 }
-NURSE_ANIMS.update({"Nurse_Hospital_Zone01_Event_%d" % n: ("Idle", False) for n in range(40, 48)})
-# The stand-in the gaps in a nurse's animation track are filled with (fill_rest_pose).
-FILL_CLIP = "Idle"
+# The cell scene's acting, played by the original's own animations on the enemy Wasami's bones (dd_enemy's Cut_* roles,
+# named after the original's animation): the idle the scene opens on, the eight dialogue takes, the backing away and
+# the cloak. Each is its own length, so none of them is reversed (the original's Walk_Back backs away by itself, where
+# the Walk cycle had to be played backwards) or slowed (ONE_SHOT_CLIPS below).
+CARRIED = (["nurse_idle_01", "ReaperNurse_Walk_Back", "nurse_cloak"]
+           + ["Nurse_Hospital_Zone01_Event_%d" % n for n in range(40, 48)])
+NURSE_ANIMS.update({name: ("Cut_" + name, False) for name in CARRIED})
+# The clip the gaps in a nurse's animation track are filled with (fill_rest_pose): the original's own nurse idle, which
+# is what her Anim Blueprint holds her in outside the scene's sections
+# (nurse_idle1_Skeleton_AnimBlueprint_lookat_cutscene plays nurse_idle_01 under its look-at).
+FILL_CLIP = "Cut_nurse_idle_01"
 # The stand-ins that are one action rather than a cycle. A section the original holds a single take in slows these to
 # fill it once instead of repeating the action (play_rate below); the cycles loop, as the original's own cycles do.
+# A carried animation is neither: it is the very animation the section was keyed for, so it plays at 1 as the
+# original's does, and a section shorter than it cuts it short instead of hurrying it along.
 ONE_SHOT_CLIPS = {"Chase_Charge", "Chase_PickUp", "Chase_VaultRoll"}
 
 # UE 4.24's UMovieScene defaults for what the export leaves out (60000 ticks a second, 30 frames).
@@ -639,8 +646,9 @@ class _Builder:
                 params = section.get_editor_property("params")
                 params.set_editor_property("animation", clip)
                 params.set_editor_property("slot_name", p.get("SlotName", "DefaultSlot"))
-                # Ticks, and this sequence keeps the original's tick resolution, so the original's offset carries over
-                # (it is an offset into another animation, but the stand-in is at least as long as the two we have).
+                # Ticks, and this sequence keeps the original's tick resolution, so the original's offset carries
+                # over (into the very animation it was keyed for where that one is carried, and a stand-in is at
+                # least as long as the two that have one).
                 params.set_editor_property("start_frame_offset", _frame(p.get("StartFrameOffset", 0)))
                 params.set_editor_property("reverse", reverse)
                 self.play_rate(params, pkg, sec, p, clip)

@@ -659,7 +659,7 @@
 - 根拠: `pak_reference_2/_sequences/06_Hospital_Zone2_Capture.json`・`_Cell.json`、`Content/Python/wasami_tools/pipeline/dd_sequence.py`、`Source/wasami_deception/WasamiCutsceneNurse.*`、`.claude/references/enemy-wasami-motions.md`、実装記録 01・07・11。
 - 依存: なし。
 - 規模: 5（2026-09-26 にリターゲットの分を足して 3 から上げた）
-- 状態: **進行中（2026-09-26 から）**。(1) の正体の特定と (2) の (b) の直しは済み（上）。**(3b) の載せ替えも済み**: 本家の 12 本（`Idle_Alert` + `Cut_*` 11 本。`Event_43` を含む）を敵ワサミへ焼いて取り込み、**(a) の直しとして見張りの `Idle_Alert` の役そのものを本家の `ReaperNurse_Idle_Alert` に替えた**（`bAggressiveIdle` は見張りだけなので、ほかの敵は変わらない）。残りは読み替えの差し替えと (c)、対応表と実装記録、パッケージでの確かめ。
+- 状態: **進行中（2026-09-26 から）**。(1) の正体の特定と (2) の (b) の直しは済み（上）。**(3b) の載せ替えも済み**: 本家の 12 本（`Idle_Alert` + `Cut_*` 11 本。`Event_43` を含む）を敵ワサミへ焼いて取り込み、**(a) の直しとして見張りの `Idle_Alert` の役そのものを本家の `ReaperNurse_Idle_Alert` に替えた**（`bAggressiveIdle` は見張りだけなので、ほかの敵は変わらない）。**読み替えの差し替えと (4) の対応表も済み**: `NURSE_ANIMS` の独房の 11 本と切れ目の埋め（`FILL_CLIP`）を `Cut_*` にして Zone 2 を置き直し、PIE で 2 場面を通して連番で見た（独房の台詞は本家の身振りになり、基準姿勢は出ない）。残りは **(c) の殴打と倒れ込み**（殴打の直後に壁を見たまま暗転する。カメラアニメの回転を部品に当てるかの判断）と、distribution とパッケージでの確かめ。
 
 ### 55. トンネルの奥が暗闇にならない（シャドウプレーンの材質）
 

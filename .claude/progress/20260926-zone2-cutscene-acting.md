@@ -4,7 +4,7 @@ status: 進行中
 branch: main
 base: 02a1ea4
 started: 2026-09-26 08:25
-updated: 2026-09-26 14:05
+updated: 2026-09-26 15:40
 ---
 
 # 項目 54 Zone 2 の捕まる場面・独房の場面の演技（項目 42 の再発）
@@ -23,44 +23,42 @@ updated: 2026-09-26 14:05
 
 ## 計画
 
-- [x] 1. (a) の正体を確かめた → **Matron ではなく Zone 2 の見張り 6 体（`AWasamiEnemySentry`）の `Idle_Alert`（`Idle_5`）**（作業一覧の項目 54 の (a)）
-- [x] 2. (b) 振り向きを直した → カメラアニメのずれをカメラ**アクタ**ではなく**カメラの部品**に当てるようにして、LookAt がアクタの keyed な道から追うようにした。PIE で測った向きは本家の回転キーと一致（下の「決定事項」、01 記録）
-- [x] 3. ナースの psa → v3 のリターゲットを `dd_enemy` に作った（`_NurseRetarget`・`NURSE_BONES`・`_nurse_world`。作り方と限界は 07 記録）
-- [x] 4. 本家のナースの 12 本を焼いて取り込んだ（`Idle_Alert` + `Cut_*` 11 本）。`Event_43` は載せる側にし、(a) の直しとして見張りの `Idle_Alert` を本家のものに替えた（下の「決定事項」、07・01 記録）
-- [ ] 5. 場面の読み替えを差し替え（捕まる場面・独房の場面）、(c) 殴打と倒れ込みを見直す。**カメラアニメの回転を部品に当てるかをここで決める**（要確認 2）
-  - 変更予定: `Content/Python/wasami_tools/pipeline/dd_sequence.py`（`NURSE_ANIMS`・`ONE_SHOT_CLIPS`）、`Source/wasami_deception/WasamiCutsceneNurse.*`
-- [ ] 6. 対応表（`.claude/references/enemy-wasami-motions.md` の「場面の代用」）・実装記録・`distribution.md` を直し、パッケージを作り直して 2 場面を通しで録って確かめる
+- [x] 1. (a) の正体は **Zone 2 の見張り 6 体（`AWasamiEnemySentry`）の `Idle_Alert`**（Matron ではない）
+- [x] 2. (b) 振り向きを直した → カメラアニメのずれをカメラ**アクタ**ではなく**カメラの部品**へ（01 記録）
+- [x] 3. ナースの psa → v3 のリターゲットを `dd_enemy` に作った（`_NurseRetarget`。07 記録）
+- [x] 4. 本家のナースの 12 本を焼いて取り込み、見張りの `Idle_Alert` を本家のものに替えた（07・01 記録）
+- [x] 5. 読み替えを本家のクリップへ差し替え（`NURSE_ANIMS` の `Cut_*`・`FILL_CLIP`）、Zone 2 を置き直して 2 場面を PIE で通して見た。対応表と 01 記録も直した
+- [ ] 6. カメラアニメの回転を部品に当てて、(c) 殴打と倒れ込みを絵で判断する（要確認 2。`dd_sequence` の `camera_offset`・`CAMERA_OFFSET_CHANNELS`・`_camera_anim_move`）
+- [ ] 7. `.claude/guides/distribution.md`（本家のアニメが入る）を直し、パッケージを作り直して 2 場面を通しで録って確かめる（対応表と 01 記録はステップ 5 で済み）
 
 ## 次にやること
 
-ステップ 5。`dd_sequence.NURSE_ANIMS` の読み替えを、取り込んだ本家のクリップに差し替える（`nurse_idle_01` → `Cut_nurse_idle_01`、`Nurse_Hospital_Zone01_Event_40`〜`47` → `Cut_…_Event_40`〜`47`〈`43` も〉、`ReaperNurse_Walk_Back` → `Cut_ReaperNurse_Walk_Back`〈逆再生の `True` は要らなくなる。本家のクリップ自身が後ずさり）、`nurse_cloak` → `Cut_nurse_cloak`。`ReaperNurse_Idle_Alert`・`ReaperNurse_Boss_Idle_01` は `Idle_Alert` のままでよい（役の中身が本家のものになった）。**`ONE_SHOT_CLIPS`（1 回で区間を埋めるよう遅くするもの）に `Cut_*` を入れるかを決める** — 本家は区間の長さでそのまま流すので、入れずに等速で流し、余りは最後の姿勢で持たせるのが本家に近い（`dd_sequence` の `play_rate` と `fill_rest_pose` を読んでから決める）。`Chase_PickUp`（殴打の代用）はそのまま。差し替えたら `WasamiStageTools.place_dd_sequences(zone="Zone2")` → 別の呼び出しで `build_navigation()` → PIE で 2 場面を流して連番で見る（下の「再開時の注意」）。**カメラアニメの回転（要確認 2）もこのステップで絵を見て決める**。
+ステップ 6。**捕まる場面のカメラアニメ `CameraAnim_Nurse_01` の回転を、移動と同じくカメラの部品（`CameraComponent` の相対回転）に打ってみて、絵で判断する**（要確認 2。`camera_offset` は今 `CAMERA_OFFSET_CHANNELS` の位置 3 軸だけを打ち、`_camera_anim_move` は回転 3 軸を「あることの確認」だけして捨てている。Matinee の回転の下トラックは `AXIS_RotationX/Y/Z` で、`MOVE_AXES[3:]` にある）。UE 4.24 は カメラアニメをカメラの空間で足す（`FCameraAnimationHelper::ApplyOffset`: 位置はカメラの向きで回して足し、**回転は掛け合わせる**）ので、部品の相対回転に打つのは同じ合成になる（部品の世界の向き = 部品の相対回転 ∘ アクタの向き、アクタの向きは LookAt が毎フレーム書く）。**判断の材料**: 今の絵では殴打の腕が横切った直後、**24.2〜25.2 s（場面の 20.5〜21.5 s）にレンガの壁を正面から見たまま暗転**する（下の「検証」の連番）。回転を入れて「掴まれて向きを変えられ、横倒しに倒れる」絵になれば (c) の答え。ならなければ入れずに戻し、理由を決定事項に書く。手順は下の「再開時の注意」。
 
 ## 決定事項
 
-- 2026-09-26（ステップ 2）: **カメラアニメ `CameraAnim_Nurse_01` のずれは、カメラのアクタではなく `CameraComponent` の相対位置に打つ**（`dd_sequence.camera_offset`）。理由: `ACineCameraActor::Tick` の LookAt は**アクタの位置**から追う先を見た向きでアクタを回すので、ずれをアクタに足すと向きが壊れる（直す前は pitch −74° で床を向いていた＝指摘の「壊滅的」）。部品へ移すと向きは本家の回転キーと一致した（01 記録）。**この決定が要確認 2 の前提**。
-- 2026-09-26（ステップ 4）: **`Idle_Alert` の役そのものを本家の `ReaperNurse_Idle_Alert` に替えた**（要確認 1 をこの向きで進めた）。`bAggressiveIdle` を立てるのは Zone 2 の見張り 6 体だけなので、この役を替えても迷路のナースたちは変わらない。捕まる場面の待ち構えも `NURSE_ANIMS` で同じ役を引いているので、C++ も読み替えも触らずに両方が本家の構えになる（列挙に `Cut_*` を足す口は要らなかった）。v3 の `Idle_5` は誰も使わなくなったので `SKIPPED` に入れ、取り込み済みの `A_WasamiEnemy_Idle_5` とステップ 3 の `A_WasamiEnemy_Cut_ReaperNurse_Idle_Alert` は消した（どちらも前処理が作った物で、この記録が名指ししている物）。
-- 2026-09-26（ステップ 4）: **`Event_43` は載せる側**（作業一覧の「見て決める」への答え）。上げるのは片手で、右手首が頭の 7 cm 上まで 4.9 m/s、左手は 1.1 m/s で止まったまま。殴打 `Event_39` は 4 cm を 11.6 m/s で上げて 4.9 m/s で振り下ろすので、別物の身振り（`observations/tools/nurse_ev43_probe.py`）。Blender で本家と v3 を並べた絵（`Intermediate/Overnight/ev43_pair.png`）でも、腕を肩の高さへ振る台詞の身振りに見える。
-- 2026-09-26（ステップ 4）: **病院の台詞の 8 本はコマの速さが整数でない**（`Event_40` は 186 コマ・6.127907 s = 30.19 fps）。本家の AnimSequence はキーを `SequenceLength` に等間隔で並べるので、本家でも 30 fps より少し速く流れているということ。`dd_skeletal.frame_rate(rel, whole=False)` を足してそのまま読み、30 fps の格子へ標本化し直した（取り込んだ長さは本家と 0.017 s 以内）。整数を求める既定は残した（整数でない速さは普通は読み違いの印）。
-- 2026-09-26: `Event_46`（14.5 s）・`47`（5.0 s）・`Walk_Back` の**脚が滑る動きはそのまま使う**（2026-09-26 のユーザーの決定「本家のアニメのまま滑らせる」）。
-- 本家のクリップの役の名前は `Cut_<本家のアニメ名>`、`ROLES` の `name` の列は**本家のパス**（psa と AnimSequence の両方をそこから引く）。
+- 2026-09-26（ステップ 2）: **カメラアニメのずれは、カメラのアクタではなく `CameraComponent` の相対位置に打つ**（`dd_sequence.camera_offset`）。理由: `ACineCameraActor::Tick` の LookAt は**アクタの位置**から追う先を見た向きでアクタを回すので、ずれをアクタに足すと向きが壊れる（直す前は pitch −74° で床を向いていた＝指摘の「壊滅的」）。部品へ移すと向きは本家の回転キーと一致した（01 記録）。**この決定が要確認 2 とステップ 6 の前提**。
+- 2026-09-26: `Event_46`（14.5 s）・`47`（5.0 s）・`Walk_Back` の**脚が滑る動きはそのまま使う**（2026-09-26 のユーザーの決定「本家のアニメのまま滑らせる」）。ステップ 6・7 の絵でも直さない。
 
 ## 要確認（ユーザー）
 
 1. **見張り 6 体の待機を、リターゲットした `ReaperNurse_Idle_Alert` に替えた**（2026-09-26、ステップ 1・4）。2026-09-26 の決定は「Zone2 のカットシーンでプレイヤーを攻撃 → 投獄までの流れ等に適用」で、見張り（ゲーム中の敵）は名指しされていない。ただし (a) の「手を掲げたワサミ」の正体は見張りの `Idle_5` で、本家の見張りは同じ場面で `ReaperNurse_Idle_Alert` を流すので、替えるのが本家に近いと判断した。**違うなら `dd_enemy.ROLES` の `Idle_Alert` の行を `(V3, "Idle_5", "loop")` に戻し、`SKIPPED` から `Idle_5` を外して取り込み直す**（捕まる場面の待ち構えだけを本家のものにするなら、`Cut_ReaperNurse_Idle_Alert` の役を足して `NURSE_ANIMS` の `ReaperNurse_Idle_Alert` をそこへ向ける）。
-2. **捕まる場面のカメラアニメの「回転」を入れてよいか**（2026-09-26、ステップ 2）。2026-09-23 に「回転は入れない」を追認してもらったが、その理由は「LookAt が毎フレーム回転を書き直すので見えない」で、これは**ずれをアクタに足していたとき**の話。部品に当てる今は LookAt が触るのはアクタだけなので、**部品に当てれば回転も見える**。`CameraAnim_Nurse_01` の回転は yaw +180 → +203・pitch −45 → −71・roll −83 で、「掴まれて向きを変えられ、横倒しに倒れる」絵になり、(c) の「床に倒れ込む」に近づく見込み。いま見えている 20.5〜22.3 s は、ずれでナースを通り抜けた先の壁を向いたまま暗転する。**無人運転ではステップ 5 で入れる方向で試し、絵で判断する**。
+2. **捕まる場面のカメラアニメの「回転」を入れてよいか**（2026-09-26、ステップ 2）。2026-09-23 に「回転は入れない」を追認してもらったが、その理由は「LookAt が毎フレーム回転を書き直すので見えない」で、これは**ずれをアクタに足していたとき**の話。部品に当てる今は LookAt が触るのはアクタだけなので、**部品に当てれば回転も見える**。`CameraAnim_Nurse_01` の回転は yaw +180 → +203・pitch −45 → −71・roll −83 で、「掴まれて向きを変えられ、横倒しに倒れる」絵になり、(c) の「床に倒れ込む」に近づく見込み。**無人運転ではステップ 6 で入れる方向で試し、絵で判断する**。
+3. **独房の場面のカメラの手前に、灰色の四角が浮いている**（2026-09-26、ステップ 5 の連番で見つけた。項目 54 の外）。正体は本家の落書きのデカール `Plane30_2`（`/Engine/BasicShapes/Plane` に材質 `M_06_Hospital_Decal_Graffiti_07`、位置 −14800, 1631, 205、拡縮 5.09）。**この材質の親 `/Game/Pipeline/Materials/M_DD_Decal` はドメインが `MD_DEFERRED_DECAL`** で、デカール専用の材質はスタティックメッシュに貼れないため、UE が既定の灰色で描いている。本家は同じ板に同じ材質を貼っているので、**前処理の側で「デカールの材質がメッシュに貼られているときは、半透明の面の材質（`Surface`・`Translucent`）を親にする」か、板を `DecalActor` に置き換えるか**の判断が要る。独房の場面のカメラの手前 2.6 m にあり、被写界深度でぼけた灰色の板として毎回映る。直すなら作業一覧に項目を足す。
 
 ## 再開時の注意
 
-- **取り込みと確かめ**（git の外の道具。エディタもレベルも触らない）: `python Tools/ue_remote.py observations/tools/nurse_step4_import.py`（`dd_enemy.import_all()` → 12 本の長さを本家と並べる。エディタの Python はモジュールを抱え込むので、前処理を変えたら `importlib.reload` を通すこの台本から呼ぶ）、`observations/tools/nurse_step4_check.py`（取り込んだ 12 本を前処理の glb と比べ、足の高さ・頭の高さ・骨盤の移動を出す）。
-- **1 本ずつ描いて見る**: `"C:\Program Files\Blender Foundation\Blender 4.0lender.exe" -b --factory-startup --python observations/tools/motion_gifs_blender.py -- Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb <出力先> <アニメ名>` で 20 fps の PNG。**Blender はアクション名を 63 文字で切る**ので、長い名前（`A_WasamiEnemy_Cut_Nurse_Hospital_Zone01_Event_4*`）は `…_Event_43_target_charact` のように切られた名前で指定する。本家のナース自身は `observations/tools/nurse_step4_probe.py`（`Intermediate/Overnight/nurse_<名前>.glb` を書く。`LOOK` に並べた分）→ 同じ台本に `--pelvis Nurse_ROOTSHJnt`。並べた絵は PIL で組む。
-- **場面を PIE で流す手順**（git の外の道具）: `python Tools/pie.py start` → `cmd "t.MaxFPS 60"` →（撮るなら `python Tools/desktop.py record --grab gdi --region 1819 268 2865 1108 --seconds 30 --name <名前>.mkv`）→ `python Tools/pie.py cmd "Wasami.Flow OnArriveCaptureCutscene"`（捕まる 26.23 s → 約 1 s → 独房 74.07 s）→ 終わったら `python Tools/pie.py stop`。**場面は 1 回の PIE で 1 回だけ流す**（2 回流すと前の独房の場面と重なって絵が読めない）。撮った物は `python Tools/video_probe.py sheet <mkv> <png> --start T --end T --every <フレーム数> --cols 5 --width 400` で並べる（47.7 fps なので `--every 24` で約 0.5 s）。
-- 姿勢を毎フレーム測るのは `python Tools/ue_remote.py observations/tools/cut_pose_log.py`（1 回目で開始・2 回目で停止。出力 `Intermediate/Overnight/cut_pose.jsonl`）。カメラは `observations/tools/cut_camera_log.py`（同じ使い方。アクタと部品の位置・向き・追う先）。ビューポートの範囲は `python observations/tools/check_viewport.py`。
-- 前処理やシーケンスを変えたら `WasamiStageTools.place_dd_sequences(zone="Zone2")` → **別の呼び出しで** `build_navigation()`（置き直しでナビが空になる）。
-- 本家のアニメがパッケージに入るので、ステップ 6 で `.claude/guides/distribution.md` に書く。
-- パッケージの作り直しは `.claude/guides/distribution.md` の手順（前のパッケージは 2026-09-23 04:00）。
+- **場面を PIE で流す手順**（git の外の道具）: `python Tools/pie.py start` → `cmd "t.MaxFPS 60"` → `python Tools/desktop.py start`（入っていなければ）→ `python Tools/desktop.py record --grab gdi --region 1819 68 3279 1268 --seconds 106 --name <名前>.mkv`（範囲は `python observations/tools/check_viewport.py` の値。高さは偶数に）→ `python Tools/pie.py cmd "Wasami.Flow OnArriveCaptureCutscene"` → `python Tools/desktop.py wait --ms 112000 --timeout 150` → `record_status` → `python Tools/pie.py stop`。**場面は 1 回の PIE で 1 回だけ流す**（2 回流すと重なって絵が読めない）。
+- **収録の時刻と場面の時刻**: 引き金から収録が始まるまで約 3.75 s。捕まる場面は収録の 3.75〜30.0 s（26.23 s）、独房は 31〜105 s（74.07 s）。連番は `python Tools/video_probe.py sheet <mkv> <png> --start T --end T --every <フレーム数> --cols 5 --width 400 --crop 0,90,1060,960`（51 fps なので `--every 26` で約 0.5 s、`--crop` はビューポートからエディタの枠を落とす）。
+- 姿勢を毎フレーム測るのは `python Tools/ue_remote.py observations/tools/cut_pose_log.py`（1 回目で開始・2 回目で停止。出力 `Intermediate/Overnight/cut_pose.jsonl`）。カメラは `observations/tools/cut_camera_log.py`（同じ使い方。アクタと部品の位置・向き・追う先）。
+- 前処理やシーケンスを変えたら `python Tools/ue_remote.py observations/tools/nurse_step5_place.py`（`dd_sequence` を `importlib.reload` して `place("Zone2")`。エディタの Python はモジュールを抱え込む）→ **別の呼び出しで** `dd_level.build_navigation('')`（置き直しでナビが空になる）。
+- 本家のアニメがパッケージに入るので、ステップ 7 で `.claude/guides/distribution.md` に書く。パッケージの作り直しは同じガイドの手順（前のパッケージは 2026-09-23 04:00）。
 
 ## 検証
 
-- check_records: OK（20 件。ステップ 4 で `dd_enemy.py`・`dd_skeletal.py` の変更に合わせて 07・01 記録を直した）
+- check_records: OK（20 件。ステップ 5 で `dd_sequence.py` の変更に合わせて 01 記録を直した）
 - C++ ビルド: この項目ではまだ C++ を変えていない
-- エディタでの確認（ステップ 4）: `import_all()` を走らせ（textures 5 / materials 3 / meshes 1 / **animations 29** / sounds 1）、本家の 12 本が入った。取り込んだ姿勢は前処理の glb と **0.0006 m 以内**で一致、足は床（−0.007〜+0.025 m。`Event_47` の踏み出しだけ +0.308 m）、頭は骨盤の 0.38〜0.55 m 上、長さは本家と 0.017 s 以内。`Event_43` は本家と v3 を並べて描いて演技の一致を見た（`Intermediate/Overnight/ev43_pair.png`、git の外）。`Tools/wasami_hands.py palms` の「最も内を向かない手のひら」は **−0.96**（本家の台詞の身振り。項目 37 の退行ではない。07 記録）。PIE は使っていない（レベルを触らずに済んだ）。
+- **ステップ 5 の PIE**（収録 `Intermediate/DesktopAgent/shots/step5_scenes.mkv`、106 s・51 fps。連番は `Intermediate/Overnight/step5_*.png`。どれも git の外）:
+  - シーケンスの区間を読み出して差し替えを確かめた（`06_Hospital_Zone2_Cell` の 17 区間が `Cut_nurse_idle_01`・`Cut_…_Event_40`〜`47`・`Cut_ReaperNurse_Walk_Back`・`Cut_nurse_cloak` で `reverse` は全て False、`06_Hospital_Zone2_Capture` は埋めの `Cut_nurse_idle_01` 0〜17.2 s → `Idle_Alert` 17.2〜19.17 s → 殴打 `Chase_PickUp` 19.23〜20.87 s）。置き直しは 6 シーケンス・29 結び付け・123 区間・埋め 5、ナビは 29/29。
+  - 独房の場面: 台詞の間、腕を上げる・腰に当てる・身振りをする本家の演技が出る（基準姿勢も T ポーズも出ない）。透明化は場面の 23.9 s と終わり（収録 101.8〜102.4 s）に赤い粒とともに消える。
+  - 捕まる場面: 殴打の腕が画面を横切った後（収録 23.8 s）、**24.2〜25.2 s はレンガの壁を正面から見たまま暗転する**（(c) の「床に倒れ込む」がまだ無い。ステップ 6 の判断の材料）。

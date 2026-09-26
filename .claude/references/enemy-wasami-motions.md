@@ -64,13 +64,13 @@
 
 2026-09-18 のユーザーの回答「場面は残し、v3 の動きで代用」。本家の専用の演技の代わりに、次の対応を仮に使う（項目 6 で PIE を見て決める）。
 
-**2026-09-26 のユーザーの決定で、Zone 2 の捕まる場面の待ち構えと独房の場面の演技は、本家のナースのアニメを敵ワサミへリターゲットしたものに替える**（殴打 `Event_39` と Matron は対象外で v3 の代用のまま。滑る移動の演技も本家のまま。当てはめは作業一覧の項目 54）。項目 54 で差し替えたら、下の表の該当の行を書き直す。
+**2026-09-26 のユーザーの決定で、Zone 2 の捕まる場面の待ち構えと独房の場面の演技は、本家のナースのアニメを敵ワサミへリターゲットしたものに替える**（殴打 `Event_39` と Matron は対象外で v3 の代用のまま。滑る移動の演技も本家のまま。当てはめは作業一覧の項目 54）。差し替え済み（2026-09-26、項目 54 のステップ 4・5。下の表に反映）。
 
 | 場面（本家） | 本家の演技 | 代用（仮） |
 |---|---|---|
 | Zone 1 の途中の出来事（`06_Hospital_Zone1_06Event`、2 体、約 10 s） | 構え `ReaperNurse_Boss_Idle_01` → 跳び上がる `Fast_Jump_Up`（+ `_Air`）→ 宙返りで上へ `Flip_Up` | 構え → `Idle_Alert`（2026-09-26 から本家の `ReaperNurse_Idle_Alert` そのもの）、跳び出し → `Parkour_Vault_with_Roll`、宙 → `Running`、降りて着地 → `Parkour_Vault_with_Roll`（2026-09-22 に PIE で見て確定。屋根から跳び上がって駐車場へ降り、2 体とも構えで立つ。`Vault_and_Land` は使わない。項目 42 のステップ 4） |
 | Zone 2 の始まり・捕まる（`06_Hospital_Zone2_Capture`、約 26 s） | 待ち構え `ReaperNurse_Idle_Alert` → 殴る `Nurse_Hospital_Zone01_Event_39` | 待ち構え → `Idle_Alert`（2026-09-26 から本家の `ReaperNurse_Idle_Alert` そのもの）、殴る → `Female_Run_Forward_Pick_Up_Right`（`Chase_PickUp`。2026-09-22 に `Male_Head_Down_Charge` から替えた。本家の psa を測ると振りかぶって振り下ろす動きで、v3 で同じ形なのはこれだけ。01 記録） |
-| Zone 2 の独房（`06_Hospital_Zone2_Cell`、約 74 s） | 待機 `nurse_idle_01`、台詞の演技 `Event_40`〜`47`、後ずさり `ReaperNurse_Walk_Back`、透明化 `nurse_cloak` | 待機と台詞の間 → `Idle_11`、後ずさり → `Walking` の逆再生、透明化 → `Idle_11`（材質の `Efficiency` で消えるので、その場に立つ。2026-09-21、項目 28 のステップ 14b。それまでは `Walking` で歩き去らせていた） |
+| Zone 2 の独房（`06_Hospital_Zone2_Cell`、約 74 s） | 待機 `nurse_idle_01`、台詞の演技 `Event_40`〜`47`、後ずさり `ReaperNurse_Walk_Back`、透明化 `nurse_cloak` | **2026-09-26 から本家のアニメそのもの**（項目 54 のステップ 5）: 待機 → `Cut_nurse_idle_01`、台詞 → `Cut_Nurse_Hospital_Zone01_Event_40`〜`47`、後ずさり → `Cut_ReaperNurse_Walk_Back`（逆再生は要らない）、透明化 → `Cut_nurse_cloak`（演技はその場で、消すのは材質の `Efficiency`。項目 28 のステップ 14b）。区間の切れ目の埋めも `Cut_nurse_idle_01`。それまでの代用: 待機と台詞 → `Idle_11`、後ずさり → `Walking` の逆再生、透明化 → `Idle_11`（2026-09-21 までは `Walking` で歩き去らせていた） |
 
 ## ボスワサミ（`boss_wasami.glb`。Matron の代わり）
 
