@@ -174,7 +174,8 @@
     "Source/wasami_deception/Tests/WasamiCaptureTests.cpp": "b4af5b58dac5045a7ac96421a64ea29f4538b82a",
     "SourceArt/Wasami/enemy_wasami_v3.glb": "7d7ce1a85d76e815837b4bbaf7e6d399f8a05c65",
     "SourceArt/Wasami/enemy_wasami_capture.glb": "d41abf615f44810bfd298dd784980dcb8a7df112",
-    "Tools/wasami_hands.py": "dae7a1fcb44be24f7f14bc1513bcde9667fe300c"
+    "Tools/wasami_hands.py": "dae7a1fcb44be24f7f14bc1513bcde9667fe300c",
+    "Tools/blender/capture_camera_setup.py": "124f2495f074eb3237f3b0bee7472566f9826c5b"
   },
   "09-ui.md": {
     "Source/wasami_deception/WasamiSwitchboxWidget.h": "e474249fd2b11fe5a5b08671a4f3249141ad2cfc",

@@ -22,6 +22,7 @@ sources:
   - SourceArt/Wasami/enemy_wasami_v3.glb
   - SourceArt/Wasami/enemy_wasami_capture.glb
   - Tools/wasami_hands.py
+  - Tools/blender/capture_camera_setup.py
 updated: 2026-09-27
 ---
 
@@ -297,6 +298,7 @@ emis  = If(rim, n, A>B → GlowColor, それ以外 → 黒) * GlowIntensity
 | `/Game/DD/Audio/Misc/AgathaAttenuation` | 声の減衰（`bEnableOcclusion` 真・`bUseComplexCollisionForOcclusion` 真・`LPFRadiusMin` 2000・`LPFRadiusMax` 3600・`LPFFrequencyAtMax` 50・`OcclusionLowPassFilterFrequency` 10000・`OcclusionInterpolationTime` 0.5・`NaturalSound`・`FalloffDistance` 8000。`dd_enemy.TALK_ATTENUATION`、版 2） |
 | `/Game/Pipeline/Interchange/PL_Wasami_Skeletal` | 取り込みのパイプライン（`paths.SKELETAL_PIPELINE`） |
 | `Intermediate/Pipeline/wasami/enemy/WasamiEnemy.glb`・PNG 3 枚 | 前処理の出力（git の外。元の glb の BIN をそのまま持ち、使われなくなった元のアニメの accessor も残る） |
+| `SourceArt/Wasami/CaptureCamera/capture_camera.blend` | 捕獲のカメラを人が Blender 4.0 で付けるための原本（Git LFS）。`Tools/blender/capture_camera_setup.py` が上の glb から作る: 捕獲 4 種を 1 シーンずつ、ゲームの別室と同じ置き方（ワサミの足元が原点・+X 向き・1.3591 倍、UE → Blender は x = X/100・y = −Y/100・z = Z/100）、30 fps のゲームの実時間（`SceneTime`・`ClipStarts`・`BodyStart`・顔型の寄りを焼き込み）、t=0 の前と真っ黒の後に収録用の余白 3 秒（ゲームには入らない）。カメラ `<シーン>_CaptureCam` はゲームのいまの t=0 の位置（ホテル型は `neck_01` を向く）と水平の画角（90°・顔型 75°）。**既にあるファイルは `--force` なしでは作り直さない（人が付けたカメラが消える）**。ゲームへの取り込みはまだ無い |
 
 ## 原作データの根拠
 - モデルとモーションはユーザーの作ったもの（2026-09-18 の指示「`enemy_wasami_v3`・`wasami_mochi_v3`・`boss_wasami` をそれぞれ使用」、捕獲は「旧 glb の 3 本を流用」）。役の対応は一覧（`.claude/references/enemy-wasami-motions.md`）。
@@ -374,6 +376,7 @@ emis  = If(rim, n, A>B → GlowColor, それ以外 → 黒) * GlowIntensity
 - **ライフ 0 のときだけ `Over` が 2 回続く**: 顔の捕獲で 0.213 s と 1.920 s（死亡 1.15 s + 死亡画面の 0.5 s + `GameOverDelay` 0.25 s = 1.90 s と一致）。1 本目が終わってから 2 本目まで 0.98 s の無音。ホテル型では `You`（0 s）とゲームオーバーの `Over`（4.224 s ≒ 3.5 + 0.75）で重ならない。ライフが残っているときの死亡画面は `Fine` なので、続くのは**顔 × ライフ 0** だけ（要確認: 作業一覧の項目 40）。
 
 ## 変更履歴
+- 2026-09-27: 捕獲のカメラを人が Blender で付けるお膳立てを足した（`Tools/blender/capture_camera_setup.py` → `SourceArt/Wasami/CaptureCamera/capture_camera.blend`。上の「作るアセット」。ユーザーの依頼）
 - 2026-09-26: 見張りの `Idle_Alert` を本家のナースの `ReaperNurse_Idle_Alert` に替えたときに、テストの長さの表（`WasamiEnemyTests.cpp` の `ImportedLengths`）だけ 57 コマのままだったのを 180 コマ（6.000 s）に直した（作業一覧の項目 54 のステップ 7。下の対応表は初めから 6.000 s）
 - 2026-09-23: 顔の捕獲の `Over` が唯一の `Over` になった（死亡画面のゲームオーバーの段が声を鳴らさなくなったため。作業一覧の項目 48 のステップ 1。09・10 記録）
 - 2026-09-23: 敵ワサミの手のひらと手の甲が逆だったのを前処理で補正した（`_twist_hands`・`HAND_TWIST` 左 +170.1°・右 −172.2°・`ELBOW_SHARE` 0.5。原因は原本 v3 の基準姿勢が手のひら上なのにアニメがそれを前提にしていないこと。ユーザーの回答で本作の側を直すと決めた）。角度を測り直せるよう `Tools/wasami_hands.py`（`twist`・`palms`）を足した（作業一覧の項目 37）。取り込み直して PIE で 4 つの姿勢を撮り、`Wasami.Enemy` のテスト 17 本が通ることも見た

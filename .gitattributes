@@ -14,3 +14,5 @@ SourceArt/**/*.png filter=lfs diff=lfs merge=lfs -text
 SourceArt/**/*.wav filter=lfs diff=lfs merge=lfs -text
 # 本作の手作りの動画の原本（病院の画面に映す。Tools/wasami_art/wasami_art.py video が生成した静止画から組む）
 SourceArt/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
+# 本作の手作りの Blender の原本（捕獲のカメラ。Tools/blender/capture_camera_setup.py がお膳立てし、人がカメラを付ける）
+*.blend filter=lfs diff=lfs merge=lfs -text
