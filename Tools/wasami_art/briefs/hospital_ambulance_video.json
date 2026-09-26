@@ -1,0 +1,60 @@
+[
+  {
+    "name": "amb_body",
+    "style": "vector",
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. The same boxy ambulance seen exactly from the side, facing right, with the red cross emblem, red and white stripes, slate lower band and the word on the side. Draw it WITHOUT wheels: the two wheel arches are empty semicircle cut-outs showing transparency, and WITHOUT the roof beacon light (the roof is flat and clear). Nothing else.",
+    "text": "AMBULANCE",
+    "refs": [],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "size": "1536x1024",
+    "count": 1,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_body.png"
+  },
+  {
+    "name": "amb_wasami_wave",
+    "style": "vector",
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami kneeling on one knee on a flat surface (the ambulance roof), seen from the side facing right, one hand holding on to the surface and the other hand raised high waving at the viewer, big excited grin, casual white T-shirt and dark trousers. Nothing else.",
+    "refs": [
+      "face",
+      "pose"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "size": "1024x1024",
+    "count": 1,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_wave.png"
+  },
+  {
+    "name": "amb_wasami_hold",
+    "style": "vector",
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami crouched low and flat on a surface (the ambulance roof), seen from the side facing right, gripping the edge with both hands, hair blown back by the wind, terrified wide eyes and open mouth screaming, white T-shirt and dark trousers. Nothing else.",
+    "refs": [
+      "face",
+      "expression"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "size": "1024x1024",
+    "count": 1,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_hold.png"
+  },
+  {
+    "name": "amb_wasami_cheer",
+    "style": "vector",
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami standing on a surface (the ambulance roof), seen from the side facing right, surfing pose with knees bent, both arms thrown up in triumph, mouth wide open laughing, white T-shirt and dark trousers. Nothing else.",
+    "refs": [
+      "face",
+      "pose"
+    ],
+    "extra_refs": [
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "size": "1024x1024",
+    "count": 1,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_cheer.png"
+  }
+]

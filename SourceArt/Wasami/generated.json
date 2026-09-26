@@ -125,6 +125,192 @@
     "note": ""
   },
   {
+    "dest": "SourceArt/Wasami/Movies/parts/amb_body.png",
+    "adopted": "2026-09-26",
+    "run": "Intermediate/WasamiArt/amb_body/20260926-134442",
+    "candidate": "out-01.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "post": null,
+    "bg": null,
+    "brief": {
+      "name": "amb_body",
+      "style": "vector",
+      "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. The same boxy ambulance seen exactly from the side, facing right, with the red cross emblem, red and white stripes, slate lower band and the word on the side. Draw it WITHOUT wheels: the two wheel arches are empty semicircle cut-outs showing transparency, and WITHOUT the roof beacon light (the roof is flat and clear). Nothing else.",
+      "text": "AMBULANCE",
+      "refs": [],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+      ],
+      "size": "1536x1024",
+      "count": 1,
+      "dest": "SourceArt/Wasami/Movies/parts/amb_body.png"
+    },
+    "style": "vector",
+    "references": [
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "requested": {
+      "model": null,
+      "size": "1536x1024",
+      "background": "transparent",
+      "quality": "high",
+      "count": 1
+    },
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: flat vector clip-art illustration: solid flat colour fills, no gradients, no textures, no heavy outlines, simple clean geometric shapes and crisp edges, bright friendly colours, like a clean infographic sticker. A single isolated element on a fully transparent background with nothing else in the frame, not touching the edges.\n\nAsset: The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. The same boxy ambulance seen exactly from the side, facing right, with the red cross emblem, red and white stripes, slate lower band and the word on the side. Draw it WITHOUT wheels: the two wheel arches are empty semicircle cut-outs showing transparency, and WITHOUT the roof beacon light (the roof is flat and clear). Nothing else.\n\nExact visible text, spelled exactly: \"AMBULANCE\". No other text.",
+    "note": "救急車の案内の動画の部品（2026-09-26）"
+  },
+  {
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_cheer.png",
+    "adopted": "2026-09-26",
+    "run": "Intermediate/WasamiArt/amb_wasami_cheer/20260926-134442",
+    "candidate": "out-01.png",
+    "size": [
+      1374,
+      1145
+    ],
+    "post": null,
+    "bg": null,
+    "brief": {
+      "name": "amb_wasami_cheer",
+      "style": "vector",
+      "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami standing on a surface (the ambulance roof), seen from the side facing right, surfing pose with knees bent, both arms thrown up in triumph, mouth wide open laughing, white T-shirt and dark trousers. Nothing else.",
+      "refs": [
+        "face",
+        "pose"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+      ],
+      "size": "1024x1024",
+      "count": 1,
+      "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_cheer.png"
+    },
+    "style": "vector",
+    "references": [
+      "screenshots:スクリーンショット 2026-06-24 233655.png",
+      "screenshots:スクリーンショット 2026-03-03 144747.png",
+      "screenshots:スクリーンショット 2026-06-28 212325.png",
+      "screenshots:スクリーンショット 2026-07-28 205258.png",
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "screenshots:スクリーンショット 2026-03-03 210329.png",
+      "screenshots:スクリーンショット 2026-07-11 001020.png",
+      "screenshots:スクリーンショット 2026-07-26 125957.png",
+      "screenshots:スクリーンショット 2026-05-24 123050.png",
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "requested": {
+      "model": null,
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high",
+      "count": 1
+    },
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: flat vector clip-art illustration: solid flat colour fills, no gradients, no textures, no heavy outlines, simple clean geometric shapes and crisp edges, bright friendly colours, like a clean infographic sticker. A single isolated element on a fully transparent background with nothing else in the frame, not touching the edges.\n\nAsset: The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami standing on a surface (the ambulance roof), seen from the side facing right, surfing pose with knees bent, both arms thrown up in triumph, mouth wide open laughing, white T-shirt and dark trousers. Nothing else.",
+    "note": "救急車の案内の動画の部品（2026-09-26）"
+  },
+  {
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_hold.png",
+    "adopted": "2026-09-26",
+    "run": "Intermediate/WasamiArt/amb_wasami_hold/20260926-134442",
+    "candidate": "out-01.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "post": null,
+    "bg": null,
+    "brief": {
+      "name": "amb_wasami_hold",
+      "style": "vector",
+      "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami crouched low and flat on a surface (the ambulance roof), seen from the side facing right, gripping the edge with both hands, hair blown back by the wind, terrified wide eyes and open mouth screaming, white T-shirt and dark trousers. Nothing else.",
+      "refs": [
+        "face",
+        "expression"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+      ],
+      "size": "1024x1024",
+      "count": 1,
+      "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_hold.png"
+    },
+    "style": "vector",
+    "references": [
+      "screenshots:スクリーンショット 2026-06-24 233655.png",
+      "screenshots:スクリーンショット 2026-03-03 144747.png",
+      "screenshots:スクリーンショット 2026-06-28 212325.png",
+      "screenshots:スクリーンショット 2026-07-28 205258.png",
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "screenshots:スクリーンショット 2026-07-06 224113.png",
+      "screenshots:スクリーンショット 2026-03-16 211441.png",
+      "screenshots:スクリーンショット 2026-08-27 002442.png",
+      "screenshots:スクリーンショット 2026-06-10 212050.png",
+      "screenshots:スクリーンショット 2026-07-13 214739.png",
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "requested": {
+      "model": null,
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high",
+      "count": 1
+    },
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: flat vector clip-art illustration: solid flat colour fills, no gradients, no textures, no heavy outlines, simple clean geometric shapes and crisp edges, bright friendly colours, like a clean infographic sticker. A single isolated element on a fully transparent background with nothing else in the frame, not touching the edges.\n\nAsset: The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami crouched low and flat on a surface (the ambulance roof), seen from the side facing right, gripping the edge with both hands, hair blown back by the wind, terrified wide eyes and open mouth screaming, white T-shirt and dark trousers. Nothing else.",
+    "note": "救急車の案内の動画の部品（2026-09-26）"
+  },
+  {
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_wave.png",
+    "adopted": "2026-09-26",
+    "run": "Intermediate/WasamiArt/amb_wasami_wave/20260926-134442",
+    "candidate": "out-01.png",
+    "size": [
+      1374,
+      1145
+    ],
+    "post": null,
+    "bg": null,
+    "brief": {
+      "name": "amb_wasami_wave",
+      "style": "vector",
+      "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami kneeling on one knee on a flat surface (the ambulance roof), seen from the side facing right, one hand holding on to the surface and the other hand raised high waving at the viewer, big excited grin, casual white T-shirt and dark trousers. Nothing else.",
+      "refs": [
+        "face",
+        "pose"
+      ],
+      "extra_refs": [
+        "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+      ],
+      "size": "1024x1024",
+      "count": 1,
+      "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_wave.png"
+    },
+    "style": "vector",
+    "references": [
+      "screenshots:スクリーンショット 2026-06-24 233655.png",
+      "screenshots:スクリーンショット 2026-03-03 144747.png",
+      "screenshots:スクリーンショット 2026-06-28 212325.png",
+      "screenshots:スクリーンショット 2026-07-28 205258.png",
+      "screenshots:スクリーンショット 2026-07-13 214744.png",
+      "screenshots:スクリーンショット 2026-03-03 210329.png",
+      "screenshots:スクリーンショット 2026-07-11 001020.png",
+      "screenshots:スクリーンショット 2026-07-26 125957.png",
+      "screenshots:スクリーンショット 2026-05-24 123050.png",
+      "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
+    ],
+    "requested": {
+      "model": null,
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high",
+      "count": 1
+    },
+    "prompt": "This image is an asset for \"Wasami Deception\", a fan-made horror-comedy game inspired by Dark Deception, set in a dark, abandoned hospital (\"Torment Therapy\"). The character \"Wasami\" is the young man shown in the reference photos: keep his likeness (short black hair with a heavy fringe, face shape, eyes, skin) and his exaggerated, goofy-creepy expressions. The reference photos are casual webcam shots: ignore their rooms, furniture, clothes and lighting unless asked. Do not include any logos, watermarks, signatures, UI frames, or text unless exact text is quoted below. Do not depict characters, logos or other copyrighted designs from Dark Deception itself.\n\nStyle: flat vector clip-art illustration: solid flat colour fills, no gradients, no textures, no heavy outlines, simple clean geometric shapes and crisp edges, bright friendly colours, like a clean infographic sticker. A single isolated element on a fully transparent background with nothing else in the frame, not touching the edges.\n\nAsset: The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami kneeling on one knee on a flat surface (the ambulance roof), seen from the side facing right, one hand holding on to the surface and the other hand raised high waving at the viewer, big excited grin, casual white T-shirt and dark trousers. Nothing else.",
+    "note": "救急車の案内の動画の部品（2026-09-26）"
+  },
+  {
     "dest": "SourceArt/Wasami/Stage/hospital_decal_girls.png",
     "adopted": "2026-09-26",
     "run": "Intermediate/WasamiArt/hospital_decal_girls/20260926-133452",

@@ -29,6 +29,8 @@ sources:
   - Tools/wasami_art/briefs/example_ward_poster.json
   - Tools/wasami_art/briefs/hospital_graffiti.json
   - Tools/wasami_art/briefs/hospital_posters.json
+  - Tools/wasami_art/briefs/hospital_ambulance_video.json
+  - Tools/wasami_art/ambulance_video.py
   - Tools/wasami_art/briefs/hospital_movies.json
   - Content/Python/init_unreal.py
   - Content/Python/wasami_tools/__init__.py
@@ -182,6 +184,11 @@ updated: 2026-09-26
 - `video`: 生成した静止画から繰り返す mp4 を組み、`SourceArt/` の下に書いて由来（`kind: video`・元の絵・設定）を同じ JSON に足す。指定しない値は最初の絵の組の依頼書の `video` から、無ければ `VIDEO_DEFAULTS`（1280×720・25 fps・`sequence`・`xfade` 0.35・`zoom` 0.04・`bob` 0.01・`bobs` 4・黒地）。絵は `bg` の上に重ねて不透明にする（`on_background`）。`--grid CxR` は 1 枚の絵を C 列 R 行に等分して行ごとに読む。`sequence` は絵を順に出し、各絵の持ち時間の後ろ `xfade` の割合で次へ重ね（最後は最初へ戻る）、ループ全体で 1 往復する余弦の拡大（最大 1 + `zoom`）をかけるので継ぎ目が無い。`bounce` は絵を上下に揺らす（振幅 `bob` × 高さ、1 ループに `bobs` 回。`blink` 秒ごとに絵を替える）。絵は枠に収めて余白を `bg` で塗る。ffmpeg に rgb24 を流し、libx264・yuv420p・crf 18・音なし。
 - 病院の一式（2026-09-26。作り方の経緯は `.claude/guides/wasami-art.md`）: `hospital_graffiti.json`（落書き・壁画 18 件。`graffiti`・`white_alpha`・本家と同じ大きさ 1024×512 か 1024²）、`hospital_posters.json`（壁のポスター 11 件。`print`・`bg`・本家と同じ大きさ）、`hospital_movies.json`（画面の動画 5 本。`ambulance_tutorial2` は `bounce`・1920×1280・29.97 fps・3.9039 s・白地、ほか 4 本は 3×2 の格子を `sequence`・1280×720・25 fps・本家と同じ長さ）。名前は本家のテクスチャ名・動画のファイル名に合わせ、`SourceArt/Wasami/Stage/`（29 枚）・`SourceArt/Wasami/Movies/`（5 本）に採用済み。絵 29 枚は前処理の差し替え（上の `WASAMI_ART`）でゲームへ入る（2026-09-26）。動画はまだ流していない。**2026-09-26 のユーザーの指示で依頼書を書き直した**: 顔は写真に忠実、字は英語（本家の文言をワサミに寄せた言い換え）、画風は本家の同じテクスチャに倣う（`extra_refs` に `Intermediate/WasamiArt/_orig/<名前>.png` を最後の参照として渡す。落書きは暗い地・ポスターは白に重ねて書き出したもの）。落書きは顔の参照を送らない（`refs: []`）。**本家の `graffiti_02`（Men Are Stupid & Weak）と `graffiti_07`（Destroy All Men!）は参照に渡すと安全審査で断られる**（HTTP 400 `moderation_blocked`）ので、この 2 件は同じ手書きの `graffiti_05` を画風の参照にする（依頼書の `_ref_note`）。29 枚とも作り直して採用・取り込み済み（2026-09-26）。
 - 2026-09-26 に確かめた: 参照 10 枚の `poster` で本人に似た顔と正しい「WASH YOUR HANDS」の字、`silhouette` で本作の白抜きの顔と同じ作りの RGBA、`graffiti` で正しい日本語（「あっ、終わりです。」）の白い落書きの RGBA が出た。1 枚 25〜54 s。1024² を頼んで 1254²、1536×768 を頼んで 1916×821、3072×1728 を頼んで 1536×1024 が返った。`print`（不透明）を頼んでも 11 枚中 10 枚が透明の地で返った。返事にモデルの名前は無い。
+
+### 救急車の案内の動画（`Tools/wasami_art/ambulance_video.py`、2026-09-26）
+- 本家は Steam の `DDeception/Content/Movies/ambulance_tutorial2.mp4`（1920×1280・29.97 fps・3.9 s。白地、灰 (163) の括弧の枠 x 136〜1780・y 172〜1110、上に濃い灰 (34) の「NEED A RIDE?」、下に赤 (232,0,1) の「HOP ON TOP!」、平らなベクター画の救急車が揺れてビーコンの光線が点滅）。ユーザーの指示「救急車の動画も作成してください。割と凝ったものを。」で、同じ枠・色・文言のまま動きを足した版を作る。
+- 部品は依頼書 `hospital_ambulance_video.json`（型 `vector`＝平らなベクター画・透明。本家の 1 コマ `Intermediate/WasamiArt/_orig/ambulance_tutorial2.png` を画風の参照、ワサミは写真も）で作り `SourceArt/Wasami/Movies/parts/` に採用: 車輪とビーコンの無い車体 `amb_body.png`（車輪の穴の中心 x 381・1287、y 745、半径 92。切り抜かずに読む）とワサミの 3 つのポーズ `amb_wasami_{wave,hold,cheer}.png`。
+- `python Tools/wasami_art/ambulance_video.py [--preview] [--seconds 8]` が組んで `SourceArt/Wasami/Movies/ambulance_tutorial2.mp4`（既定 8.008 s = 240 コマ、H.264・yuv420p・音なし）に書く。車輪（自前で描く）の回転・道路の破線と速度線・排気の煙・車体の揺れと 1 ループに 1 度の段差での跳ね（p = 0.36）と傾き・ビーコンの点滅と光・ワサミ（段差まで手を振る → しがみつく → 0.66 から万歳）・下の字の 1 文字ずつの跳ね。**動きはどれもループの長さで割り切れる周期**なので継ぎ目が無い。`--preview` は 12 コマの一覧 `Intermediate/WasamiArt/ambulance_preview.png`。
 
 ### cook のシェーダーを読む（`Tools/dd/cooked_shaders.py`）
 - **cook で式が消えた材質も、コンパイル済みのシェーダーは残っている**（2026-09-18 に見つけた。作業一覧の項目 23 のステップ 5d3）。最新版（UE 4.24）は材質ごとにシェーダーマップを `.uexp` に埋め込み、シェーダー 1 つが zlib のストリーム 1 つ、中身が DXBC。`python Tools/dd/cooked_shaders.py "<pak のパスの一部>."` が Steam の最新版の pak（読むだけ。`--pak` で変えられる）から `.uasset`/`.uexp` を取り出し、ストリームを戻して、システムの `d3dcompiler_47.dll` の `D3DDisassemble` で逆アセンブルし、`Intermediate/Pipeline/dd/shaders/<名前>/NN_<モデル>.txt` に書く。表（モデル・読む補間子・リソース・サンプル数）と、一様パラメータの名前（1 度ずつ、最初に出た順）と、**定数バッファ cb3 のどこがどの式か**（`cb3[4].y = hilightPower (10.0)` のように。2026-09-18、5f で足した）を印字する。cb3 は vector の式 1 つに float4 を 1 つ、その後に scalar の式を 4 つずつ詰める。並びはシェーダーマップの uniform の式の集まり（名前の表の後。式ごとにクラス名の表の番号と、クラスごとのフィールド。UE 4.24 の `MaterialUniformExpressions.h`）から読む。知らないクラスがあると名前だけになるので、そのときはコードの使い方から読む（`FIELDS` に足す。2026-09-20 に `Round` を足した）。後処理の材質では同じ表が cb2 に載る（`M_GlitchHLSL`）。`SelectionColor` はエディタの選択の色で、Emissive の最後の lerp。実行時は黒。`--show N` で N 番のコードを出す。pak の読み方は `pak_reference_2/_tools/scripts/unpak.py` を借りる。
@@ -462,6 +469,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-26: 救急車の案内の動画を、平らなベクター画の部品（`hospital_ambulance_video.json`、型 `vector` を `styles.json` に足した）と組み立て `Tools/wasami_art/ambulance_video.py` で作り直した（ユーザーの指示「割と凝ったものを」。上の「救急車の案内の動画」）
 - 2026-09-26: 前処理の差し替えを `SourceArt/Wasami/Stage` の 29 枚へ広げ（`WASAMI_ART`）、エディタで取り込んで材質 29 個を指し直した（本家の 29 枚は参照元 0。PIE の Zone 1 で 6 か所を確認）。ポスター 11 枚は採用の後で `bg` を足したため透明のままだったので、候補から地を敷いて採用し直した。ユーザーの指示で病院の依頼書 2 つを書き直し、29 枚を作り直して採用・取り込み直した（顔は写真に忠実・英語・本家の画風。PIE の Zone 1 で 6 か所を確認）
 - 2026-09-26: `dd_sequence` の場面の読み替えを、本家のナースのアニメを敷ワサミへ載せ替えた `Cut_*` に差し替えた（`NURSE_ANIMS`・`CARRIED`・`FILL_CLIP`。独房の台詞 8 本・待機・後ずさり・透明化と、切れ目の埋め。残る代用は殴りの `Chase_PickUp` と飛び越えの 3 つ）。Zone 2 を置き直して道を焼き、PIE で 2 場面を通して見た（作業一覧の項目 54 のステップ 5。上の「シーケンス」）
 - 2026-09-26: 採用に地の色 `bg` と、不透明の絵を大きく切らずに余白を足す `fit_size` の分け方を足し、`video` が透明の絵を地の色に重ねるようにした。病院の落書き 18・ポスター 11・動画 5 を採用した。

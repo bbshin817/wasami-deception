@@ -84,6 +84,16 @@
       "size": "1024x1024",
       "background": "opaque",
       "quality": "high"
+    },
+    "vector": {
+      "note": "平らなベクター画の部品（透明の地）。本家の救急車の案内の動画のような明るいクリップアート。動画の部品に使う",
+      "prompt": "Style: flat vector clip-art illustration: solid flat colour fills, no gradients, no textures, no heavy outlines, simple clean geometric shapes and crisp edges, bright friendly colours, like a clean infographic sticker. A single isolated element on a fully transparent background with nothing else in the frame, not touching the edges.",
+      "refs": [
+        "face"
+      ],
+      "size": "1024x1024",
+      "background": "transparent",
+      "quality": "high"
     }
   }
 }
