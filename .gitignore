@@ -55,6 +55,8 @@
 /Content/Wasami/
 /Content/Developers/
 /Content/Collections/
+# dd_movies が SourceArt/Wasami/Movies から写す動画（正本は SourceArt）
+/Content/Movies/
 
 # ---- Python のキャッシュ ----
 __pycache__/
