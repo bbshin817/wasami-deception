@@ -13,48 +13,57 @@
     "dest": "SourceArt/Wasami/Movies/parts/amb_body.png"
   },
   {
+    "name": "amb_wasami_head",
+    "style": "vector",
+    "prompt": "A vector trace of the FIRST photo reference: the same young man's head and neck, same angle, same wide-eyed open-mouthed expression, same hair shape, reproduced as a flat vector portrait made of a few flat colour layers (like a posterised vector tracing: skin base, skin shadow, cheek flush, hair black, hair highlight, eye whites, mouth). Keep his exact proportions: round broad face, full cheeks, wide jaw, small round very wide-open eyes, straight thick eyebrows, broad nose, wide mouth, heavy fringe. It must be unmistakably the same person as in the photos. Head and neck only, transparent background, no text.",
+    "refs": [
+      "face"
+    ],
+    "size": "1024x1024",
+    "count": 2,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_head.png",
+    "_feedback": "2026-09-26 のユーザーの指摘（顔がワサミに似ていない）で、先に写真をなぞった頭を作り、ポーズの参照にする"
+  },
+  {
     "name": "amb_wasami_wave",
     "style": "vector",
-    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami kneeling on one knee on a flat surface (the ambulance roof), seen from the side facing right, one hand holding on to the surface and the other hand raised high waving at the viewer, big excited grin, casual white T-shirt and dark trousers. Nothing else.",
-    "refs": [
-      "face",
-      "pose"
-    ],
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), The FIRST reference image is Wasami's head, already drawn: put exactly this head on the body — the same face, proportions, hair and vector shading (only the expression and angle may follow the pose). The body is in the simpler flat vector style of the LAST reference image. Draw ONLY the character: no vehicle, no roof, no ground, no shadow under him. Full-body Wasami kneeling on one knee on a flat surface (the ambulance roof), seen from the side facing right, one hand holding on to the surface and the other hand raised high waving at the viewer, big excited grin, casual white T-shirt and dark trousers. Nothing else.",
+    "refs": [],
     "extra_refs": [
+      "SourceArt/Wasami/Movies/parts/amb_wasami_head.png",
       "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
     ],
     "size": "1024x1024",
-    "count": 1,
-    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_wave.png"
+    "count": 2,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_wave.png",
+    "_feedback": "2026-09-26 のユーザーの指摘「載っているおそらくワサミであろう男性の顔が、ワサミに似つかわしくありません」で、顔の特徴を書き足して作り直した"
   },
   {
     "name": "amb_wasami_hold",
     "style": "vector",
-    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami crouched low and flat on a surface (the ambulance roof), seen from the side facing right, gripping the edge with both hands, hair blown back by the wind, terrified wide eyes and open mouth screaming, white T-shirt and dark trousers. Nothing else.",
-    "refs": [
-      "face",
-      "expression"
-    ],
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), The FIRST reference image is Wasami's head, already drawn: put exactly this head on the body — the same face, proportions, hair and vector shading (only the expression and angle may follow the pose). The body is in the simpler flat vector style of the LAST reference image. Draw ONLY the character: no vehicle, no roof, no ground, no shadow under him. Full-body Wasami crouched low and flat on a surface (the ambulance roof), seen from the side facing right, gripping the edge with both hands, hair blown back by the wind, terrified wide eyes and open mouth screaming, white T-shirt and dark trousers. Nothing else.",
+    "refs": [],
     "extra_refs": [
+      "SourceArt/Wasami/Movies/parts/amb_wasami_head.png",
       "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
     ],
     "size": "1024x1024",
-    "count": 1,
-    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_hold.png"
+    "count": 2,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_hold.png",
+    "_feedback": "2026-09-26 のユーザーの指摘「載っているおそらくワサミであろう男性の顔が、ワサミに似つかわしくありません」で、顔の特徴を書き足して作り直した"
   },
   {
     "name": "amb_wasami_cheer",
     "style": "vector",
-    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), simplified into the same flat vector style but still clearly recognisable; do not caricature or beautify him. Full-body Wasami standing on a surface (the ambulance roof), seen from the side facing right, surfing pose with knees bent, both arms thrown up in triumph, mouth wide open laughing, white T-shirt and dark trousers. Nothing else.",
-    "refs": [
-      "face",
-      "pose"
-    ],
+    "prompt": "The LAST reference image is a frame of the original video this replaces. Match its flat vector art style exactly: the same palette (crimson red, white, slate grey-blue, near-black), the same flat fills without outlines, proportions and level of detail. Wasami must look like the real young man in the photo references (face shape, eyes, nose, mouth, short black hair with a heavy fringe), The FIRST reference image is Wasami's head, already drawn: put exactly this head on the body — the same face, proportions, hair and vector shading (only the expression and angle may follow the pose). The body is in the simpler flat vector style of the LAST reference image. Draw ONLY the character: no vehicle, no roof, no ground, no shadow under him. Full-body Wasami standing on a surface (the ambulance roof), seen from the side facing right, surfing pose with knees bent, both arms thrown up in triumph, mouth wide open laughing, white T-shirt and dark trousers. Nothing else.",
+    "refs": [],
     "extra_refs": [
+      "SourceArt/Wasami/Movies/parts/amb_wasami_head.png",
       "Intermediate/WasamiArt/_orig/ambulance_tutorial2.png"
     ],
     "size": "1024x1024",
-    "count": 1,
-    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_cheer.png"
+    "count": 2,
+    "dest": "SourceArt/Wasami/Movies/parts/amb_wasami_cheer.png",
+    "_feedback": "2026-09-26 のユーザーの指摘「載っているおそらくワサミであろう男性の顔が、ワサミに似つかわしくありません」で、顔の特徴を書き足して作り直した"
   }
 ]

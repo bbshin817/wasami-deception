@@ -46,7 +46,9 @@ BEACON_X_SRC = 1050                     # the cab roof, where the beacon sits
 GROUND_Y = BODY_Y + round((ARCH_Y_SRC + WHEEL_R_SRC) * BODY_SCALE)
 
 # Wasami's poses: target height on the card, and x of his centre on the roof (in part pixels).
-POSES = {"wave": (250, 560), "hold": (165, 600), "cheer": (290, 560)}
+POSES = {"wave": (280, 560), "hold": (185, 600), "cheer": (295, 560)}
+# How far each pose sinks into the roof line (the cheer's white soles would float on the white roof otherwise).
+SINK = {"wave": 18, "hold": 18, "cheer": 34}
 
 
 def load_part(name, height=None):
@@ -208,7 +210,7 @@ class Video:
         sprite = sprite.rotate(wob, resample=Image.BICUBIC, expand=True)
         roof = BODY_Y + ROOF_Y_SRC * BODY_SCALE
         x = BODY_X + x_src * BODY_SCALE - sprite.width / 2
-        y = roof - sprite.height + 18 - lift
+        y = roof - sprite.height + SINK[name] - lift
         layer.alpha_composite(sprite, (round(x), round(y)))
 
     def draw_text(self, im, p):

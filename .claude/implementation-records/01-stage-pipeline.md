@@ -188,7 +188,7 @@ updated: 2026-09-26
 
 ### 救急車の案内の動画（`Tools/wasami_art/ambulance_video.py`、2026-09-26）
 - 本家は Steam の `DDeception/Content/Movies/ambulance_tutorial2.mp4`（1920×1280・29.97 fps・3.9 s。白地、灰 (163) の括弧の枠 x 136〜1780・y 172〜1110、上に濃い灰 (34) の「NEED A RIDE?」、下に赤 (232,0,1) の「HOP ON TOP!」、平らなベクター画の救急車が揺れてビーコンの光線が点滅）。ユーザーの指示「救急車の動画も作成してください。割と凝ったものを。」で、同じ枠・色・文言のまま動きを足した版を作る。
-- 部品は依頼書 `hospital_ambulance_video.json`（型 `vector`＝平らなベクター画・透明。本家の 1 コマ `Intermediate/WasamiArt/_orig/ambulance_tutorial2.png` を画風の参照、ワサミは写真も）で作り `SourceArt/Wasami/Movies/parts/` に採用: 車輪とビーコンの無い車体 `amb_body.png`（車輪の穴の中心 x 381・1287、y 745、半径 92。切り抜かずに読む）とワサミの 3 つのポーズ `amb_wasami_{wave,hold,cheer}.png`。
+- 部品は依頼書 `hospital_ambulance_video.json`（型 `vector`＝平らなベクター画・透明。本家の 1 コマ `Intermediate/WasamiArt/_orig/ambulance_tutorial2.png` を画風の参照、ワサミは写真も）で作り `SourceArt/Wasami/Movies/parts/` に採用: 車輪とビーコンの無い車体 `amb_body.png`（車輪の穴の中心 x 381・1287、y 745、半径 92。切り抜かずに読む）とワサミの 3 つのポーズ `amb_wasami_{wave,hold,cheer}.png`。**ワサミは 2 段で作る**（2026-09-26 のユーザーの指摘「顔がワサミに似つかわしくない」から）: まず写真 1 枚を平らな色の層でなぞった頭 `amb_wasami_head.png`（`refs: face`）を作って選び、ポーズはその頭を最初の参照・本家の 1 コマを最後の参照にして「この頭をそのまま載せる」と頼む（`refs: []`。写真を直に渡して体ごと描かせると、細い顎のアニメ調の少年になった）。ポーズの大きさと沈め方は `POSES`・`SINK`（万歳の白い靴底が白い屋根で浮いて見えるので 34）。
 - `python Tools/wasami_art/ambulance_video.py [--preview] [--seconds 8]` が組んで `SourceArt/Wasami/Movies/ambulance_tutorial2.mp4`（既定 8.008 s = 240 コマ、H.264・yuv420p・音なし）に書く。車輪（自前で描く）の回転・道路の破線と速度線・排気の煙・車体の揺れと 1 ループに 1 度の段差での跳ね（p = 0.36）と傾き・ビーコンの点滅と光・ワサミ（段差まで手を振る → しがみつく → 0.66 から万歳）・下の字の 1 文字ずつの跳ね。**動きはどれもループの長さで割り切れる周期**なので継ぎ目が無い。`--preview` は 12 コマの一覧 `Intermediate/WasamiArt/ambulance_preview.png`。
 
 ### 救急車の案内の画面（`dd_movies`、2026-09-26）
@@ -476,6 +476,7 @@ Cascade のエミッタ・LOD・モジュール・分布は `UPROPERTY(instanced
 - `Wasami.Cascade.Build` … 一時的なシステムに斬撃のエミッタ（LOD 2 つ、共有のモジュールと LOD ごとの生成モジュール）を組み、`LODValidity`（共有 3・近 1・遠 2）、LOD の生成と更新の一覧、読み戻しの並び、表の値（生成数 10 / 25、大きさの乱数が表の範囲に収まる、コマ番号の表の中間 0.5 で (12.728793 + 13.479359) / 2）、分布オブジェクトの無い表、モジュールが自分で作った分布が仕上げで外へ出ること、cook が残した分布オブジェクトはモジュールの中に残って読まれること（生成のバーストの倍率 1）、テキストの読み戻しと型名、断る場合（Cascade 以外・抽象クラス・無いプロパティ・構造体に無いメンバー・テキストの残り・固定長配列の外・システムの外のモジュール）、作り直しで古い名前が空くことを確かめる。
 
 ## 変更履歴
+- 2026-09-26: 救急車の動画のワサミを、写真をなぞった頭を参照にするやり方で作り直した（ユーザーの指摘「顔がワサミに似つかわしくない」）
 - 2026-09-26: 救急車の案内の画面に作り直した動画を流すようにした（`dd_movies`・前処理の `ambulancescreen`・`dd_stage._make_ambulance_screen`・`DirectoriesToAlwaysStageAsNonUFS`。上の「救急車の案内の画面」）。PIE の Zone 1 で確認
 - 2026-09-26: 救急車の案内の動画を、平らなベクター画の部品（`hospital_ambulance_video.json`、型 `vector` を `styles.json` に足した）と組み立て `Tools/wasami_art/ambulance_video.py` で作り直した（ユーザーの指示「割と凝ったものを」。上の「救急車の案内の動画」）
 - 2026-09-26: 前処理の差し替えを `SourceArt/Wasami/Stage` の 29 枚へ広げ（`WASAMI_ART`）、エディタで取り込んで材質 29 個を指し直した（本家の 29 枚は参照元 0。PIE の Zone 1 で 6 か所を確認）。ポスター 11 枚は採用の後で `bg` を足したため透明のままだったので、候補から地を敷いて採用し直した。ユーザーの指示で病院の依頼書 2 つを書き直し、29 枚を作り直して採用・取り込み直した（顔は写真に忠実・英語・本家の画風。PIE の Zone 1 で 6 か所を確認）
