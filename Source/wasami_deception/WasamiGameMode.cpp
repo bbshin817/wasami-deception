@@ -24,6 +24,7 @@
 #include "WasamiLevelClearWidget.h"
 #include "WasamiLevelResults.h"
 #include "WasamiPlayerCharacter.h"
+#include "WasamiPowerComponent.h"
 #include "WasamiSaveGame.h"
 #include "WasamiSavingWidget.h"
 #include "WasamiShard.h"
@@ -221,6 +222,26 @@ namespace
 			{
 				Player->ToggleTablet();
 			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs PowerCommand(TEXT("Wasami.Power"),
+		TEXT("Wasami.Power Name: with the tablet up (Wasami.Tablet), turns the right socket (2) until it holds the power ")
+		TEXT("(SpeedBoost, Teleport, Telepathy, PrimalFear, Telekinesis or Vanish) and uses it (E), as the keys do; a packaged ")
+		TEXT("build takes no key from outside."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			const AWasamiPlayerCharacter* Player = Cast<AWasamiPlayerCharacter>(UGameplayStatics::GetPlayerCharacter(World, 0));
+			UWasamiPowerComponent* Powers = Player ? Player->GetPowers() : nullptr;
+			const int64 Wanted = Args.Num() > 0 ? StaticEnum<EWasamiPower>()->GetValueByNameString(Args[0]) : INDEX_NONE;
+			if (!Powers || Wanted == INDEX_NONE)
+			{
+				return;
+			}
+			for (int32 Turn = 0; Turn < WasamiPowerCount && Powers->GetSocketPower(false) != static_cast<EWasamiPower>(Wanted); ++Turn)
+			{
+				Powers->CyclePower(false);
+			}
+			Powers->UsePower(false);
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs LivesCommand(TEXT("Wasami.Lives"),

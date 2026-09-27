@@ -4,7 +4,7 @@ status: ユーザー待ち
 branch: main
 base: 18177ef
 started: 2026-09-27 11:00
-updated: 2026-09-27 19:10
+updated: 2026-09-27 20:15
 ---
 
 # Telepathy の印を敵の体の煙のシルエットにする（項目 64）
@@ -16,11 +16,12 @@ updated: 2026-09-27 19:10
 
 - [x] 1. C++: 印を体のカスタム深度＋ステンシルのフェードとポストプロセスに替え、丸のウィジェットを消した。`r.CustomDepth=3` … 2026-09-27 完了。実装記録 04 の「印」
 - [x] 2. 材質 `M_DD_TelepathySilhouette`・`MI_WasamiTelepathySilhouette` を作り、PIE で撮った … 2026-09-27 完了。実装記録 04 の表
-- [ ] 3. ユーザーの見た目の確かめ（煙の濃さ・広がり・色の指示があれば `dd_powers.TELEPATHY_SILHOUETTE_*` を直して `make_telepathy_silhouette()` を呼ぶ）。問題が無ければ note の記事を直し、記録を閉じる。
+- [x] 3. パッケージ 3 つを作り直した … 2026-09-27 20:08 完了（Development `Saved/Archive/Windows`・Shipping `Saved/Archive/Shipping/Windows`・Release の zip `Saved/Archive/Release/WasamiDeception-Windows-x64.zip`。どれも 0 エラー・1235 パッケージ）。パッケージ版で使うためのコマンド `Wasami.Power Name` を足した（06 記録）。Development の Zone 2 で見張りが壁越しに赤い煙の人影になるのを撮った（`Intermediate/DesktopAgent/shots/shot-201116.png`・`shot-201136.png`。どちらもポーズ画面越し）
+- [ ] 4. ユーザーの見た目の確かめ（煙の濃さ・広がり・色の指示があれば `dd_powers.TELEPATHY_SILHOUETTE_*` を直して `make_telepathy_silhouette()` を呼ぶ）。問題が無ければ note の記事を直し、記録を閉じる。
 
 ## 次にやること
 
-ユーザーが PIE（またはパッケージを作り直して）で Telepathy の煙を見て、値の直しを指示するのを待つ。煙の周りの輪の標本がずれた「残像」のように見えるときは、輪の数を増やすか `RadiusPx` を下げる。
+ユーザーがパッケージ（どれも 2026-09-27 20:08 のもの）で Telepathy の煙を見て、値の直しを指示するのを待つ。煙の周りの輪の標本がずれた「残像」のように見えるときは、輪の数を増やすか `RadiusPx` を下げる。
 
 ## 決定事項
 
@@ -32,7 +33,7 @@ updated: 2026-09-27 19:10
 
 ## 再開時の注意
 
-（なし。エディタは開いたまま、PIE は止めてある）
+（なし。エディタは開き直してある）
 
 ## 検証
 

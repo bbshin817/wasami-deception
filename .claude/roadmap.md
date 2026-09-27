@@ -759,7 +759,7 @@
 - 根拠: `.claude/references/powers/04-primal-telepathy.md` §3（本家の最新版の丸と旧版のカスタム深度）、実装記録 04、進捗記録 `.claude/progress/20260927-1100-telepathy-silhouette.md`。
 - 依存: なし。
 - 規模: 2
-- 状態: 進行中（見た目のユーザーの確かめ待ち）。(1)〜(3) は 2026-09-27 に作った（実装記録 04 の「印」と `M_DD_TelepathySilhouette`）。(4) PIE の Zone 1 のエレベーターで、見張り 2 体が赤い煙をまとい、閉じた扉越しにも煙の人影が見えた。材質の値はすべて仮の値（`dd_powers.TELEPATHY_SILHOUETTE_*`）。**パッケージは作り直していない**。
+- 状態: 進行中（見た目のユーザーの確かめ待ち）。(1)〜(3) は 2026-09-27 に作った（実装記録 04 の「印」と `M_DD_TelepathySilhouette`）。(4) PIE の Zone 1 のエレベーターで、見張り 2 体が赤い煙をまとい、閉じた扉越しにも煙の人影が見えた。材質の値はすべて仮の値（`dd_powers.TELEPATHY_SILHOUETTE_*`）。2026-09-27 20:08 に Development・Shipping・Release の zip を作り直し、Development の Zone 2 で見張りが壁越しに煙の人影になるのを撮った（パッケージ版で使うためのコマンド `Wasami.Power` を足した）。
 
 ## 取りやめた項目
 
