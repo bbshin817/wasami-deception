@@ -9,14 +9,11 @@
 #include "../WasamiVanishWidget.h"
 #include "../WasamiTelepathyPower.h"
 #include "../WasamiTelepathyTracker.h"
-#include "../WasamiTelepathyTrackerWidget.h"
 #include "WasamiTestEnemy.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PostProcessComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/SizeBox.h"
-#include "Components/Image.h"
-#include "Components/WidgetComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -541,56 +538,49 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWasamiTelepathyTrackerTest, "Wasami.Powers.Tel
 
 bool FWasamiTelepathyTrackerTest::RunTest(const FString& Parameters)
 {
-	// The marker's scale by the distance to the player, unclamped.
-	TestEqual(TEXT("next to the player"), AWasamiTelepathyTracker::SizeForDistance(0.f), 0.5f, 1e-6f);
-	TestEqual(TEXT("50 m away"), AWasamiTelepathyTracker::SizeForDistance(5000.f), 0.3f, 1e-6f);
-	TestEqual(TEXT("100 m away"), AWasamiTelepathyTracker::SizeForDistance(10000.f), 0.1f, 1e-6f);
-	TestEqual(TEXT("125 m away, nothing"), AWasamiTelepathyTracker::SizeForDistance(12500.f), 0.f, 1e-6f);
-	TestTrue(TEXT("further, below 0"), AWasamiTelepathyTracker::SizeForDistance(15000.f) < 0.f);
-
-	// Appear and Disappear (Bezier over the exported tangents): the image grows past 1 and settles at 0.95 while it fades
-	// in; it swells to 1.1 and shrinks to nothing while it fades out.
+	// The fade in and out, the original's Appear and Disappear opacity (Bezier over flat tangents).
 	struct FRow
 	{
-		float Seconds, Scale, Opacity;
+		float Seconds, Opacity;
 	};
 	const FRow AppearRows[] = {
-		{0.f, 0.f, 0.f},
-		{0.0625f, 0.135156f, 0.042966f},
-		{0.125f, 0.44375f, 0.156241f},
-		{0.25f, 1.f, 0.499975f},
-		{0.375f, 1.03125f, 0.843722f},
-		{0.5f, 0.95f, 1.f},
-		{0.75f, 0.95f, 1.f},
+		{0.f, 0.f},
+		{0.0625f, 0.042966f},
+		{0.125f, 0.156241f},
+		{0.25f, 0.499975f},
+		{0.375f, 0.843722f},
+		{0.5f, 1.f},
+		{0.75f, 1.f},
 	};
 	for (const FRow& Row : AppearRows)
 	{
-		const FString At = FString::Printf(TEXT(" %.4f s into Appear"), Row.Seconds);
-		TestEqual(TEXT("the scale") + At, UWasamiTelepathyTrackerWidget::EvaluateAppearScale(Row.Seconds), Row.Scale, 1e-5f);
-		TestEqual(TEXT("the opacity") + At, UWasamiTelepathyTrackerWidget::EvaluateAppearOpacity(Row.Seconds), Row.Opacity, 1e-5f);
+		TestEqual(FString::Printf(TEXT("the fade %.4f s into Appear"), Row.Seconds),
+			AWasamiTelepathyTracker::EvaluateAppearOpacity(Row.Seconds), Row.Opacity, 1e-5f);
 	}
 	const FRow DisappearRows[] = {
-		{0.f, 1.f, 1.f},
-		{0.075f, 1.0875f, 0.84375f},
-		{0.15f, 1.1f, 0.5f},
-		{0.225f, 0.5125f, 0.15625f},
-		{0.3f, 0.f, 0.f},
+		{0.f, 1.f},
+		{0.075f, 0.84375f},
+		{0.15f, 0.5f},
+		{0.225f, 0.15625f},
+		{0.3f, 0.f},
 	};
 	for (const FRow& Row : DisappearRows)
 	{
-		const FString At = FString::Printf(TEXT(" %.3f s into Disappear"), Row.Seconds);
-		TestEqual(TEXT("the scale") + At, UWasamiTelepathyTrackerWidget::EvaluateDisappearScale(Row.Seconds), Row.Scale, 1e-5f);
-		TestEqual(TEXT("the opacity") + At, UWasamiTelepathyTrackerWidget::EvaluateDisappearOpacity(Row.Seconds), Row.Opacity, 1e-5f);
+		TestEqual(FString::Printf(TEXT("the fade %.3f s into Disappear"), Row.Seconds),
+			AWasamiTelepathyTracker::EvaluateDisappearOpacity(Row.Seconds), Row.Opacity, 1e-5f);
 	}
 
-	// The tracker's widget component, as the export sets it over the engine's defaults.
-	const UWidgetComponent* Widget = GetDefault<AWasamiTelepathyTracker>()->GetWidget();
-	TestTrue(TEXT("the marker is drawn in screen space"), Widget->GetWidgetSpace() == EWidgetSpace::Screen);
-	TestTrue(TEXT("its class"), Widget->GetWidgetClass() == UWasamiTelepathyTrackerWidget::StaticClass());
-	TestTrue(TEXT("the default draw size"), Widget->GetDrawSize() == FVector2D(500., 500.));
-	TestTrue(TEXT("the default pivot"), Widget->GetPivot() == FVector2D(0.5, 0.5));
-	TestFalse(TEXT("not at its desired size"), Widget->GetDrawAtDesiredSize());
-	TestTrue(TEXT("the tracker ticks"), GetDefault<AWasamiTelepathyTracker>()->PrimaryActorTick.bCanEverTick);
+	// The fade goes into the stencil, 0 - 255.
+	TestEqual(TEXT("no fade, stencil 0"), AWasamiTelepathyTracker::StencilForFade(0.f), 0);
+	TestEqual(TEXT("half, 128"), AWasamiTelepathyTracker::StencilForFade(0.5f), 128);
+	TestEqual(TEXT("whole, 255"), AWasamiTelepathyTracker::StencilForFade(1.f), 255);
+	TestEqual(TEXT("clamped"), AWasamiTelepathyTracker::StencilForFade(1.5f), 255);
+
+	// The tracker's unbound post-process component, which gets the material at BeginPlay.
+	const AWasamiTelepathyTracker* Default = GetDefault<AWasamiTelepathyTracker>();
+	TestTrue(TEXT("the smoke covers the whole view"), Default->GetPostProcess()->bUnbound);
+	TestFalse(TEXT("the silhouette material is set"), Default->SilhouetteMaterial.IsNull());
+	TestTrue(TEXT("the tracker ticks"), Default->PrimaryActorTick.bCanEverTick);
 	TestEqual(TEXT("the telepathy's class Time"), GetDefault<AWasamiTelepathyPower>()->Time, 0.f);
 	return true;
 }
@@ -642,6 +632,10 @@ bool FWasamiTelepathyTargetsTest::RunTest(const FString& Parameters)
 	// interface (the original's Zone 2 matron).
 	AWasamiTestEnemy* Near = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(500., 0., 0.));
 	AWasamiTestEnemy* Far = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(200000., 0., 0.));
+	// The near one gets a body (a skinned mesh without an asset) for the marker to draw.
+	USkeletalMeshComponent* NearBody = NewObject<USkeletalMeshComponent>(Near);
+	NearBody->SetupAttachment(Near->GetRootComponent());
+	NearBody->RegisterComponent();
 	AWasamiTestEnemy* Hidden = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(0., 500., 0.));
 	Hidden->bNoTelepathy = true;
 	AActor* TagOnly = World->SpawnActor<AActor>();
@@ -660,13 +654,13 @@ bool FWasamiTelepathyTargetsTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("on the near or the far enemy"), Each->Actor == Near || Each->Actor == Far);
 		TestTrue(TEXT("spawned at its enemy"), Each->GetActorLocation().Equals(Each->Actor->GetActorLocation()));
 		TestTrue(TEXT("following from its BeginPlay"), Each->IsFollowing());
-		TestNotNull(TEXT("with its marker"), Each->GetWidgetReference());
+		TestEqual(TEXT("fading in from nothing"), Each->GetFade(), 0.f);
 	}
 	TestNull(TEXT("none on the enemy that answers No Telepathy"), TrackerOn(Hidden));
 	TestNull(TEXT("none on the tag without the interface"), TrackerOn(TagOnly));
 	TestEqual(TEXT("a direct second look finds nothing new"), Telepathy->UpdateTargets(), 0);
 
-	// A tracker follows its enemy; with no player the distance reads 0, so the marker's box is at 0.5.
+	// A tracker follows its enemy and marks its body, fading in.
 	AWasamiTelepathyTracker* OnNear = TrackerOn(Near);
 	if (!TestNotNull(TEXT("the near enemy's tracker"), OnNear))
 	{
@@ -676,11 +670,9 @@ bool FWasamiTelepathyTargetsTest::RunTest(const FString& Parameters)
 	Near->SetActorLocation(FVector(600., 700., 50.));
 	TickFor(0.1f);
 	TestTrue(TEXT("the tracker moved onto its enemy"), OnNear->GetActorLocation().Equals(FVector(600., 700., 50.)));
-	if (const UWasamiTelepathyTrackerWidget* Marker = OnNear->GetWidgetReference())
-	{
-		TestTrue(TEXT("the marker's box at 0.5"), Marker->GetSizeBox()->GetRenderTransform().Scale == FVector2D(0.5, 0.5));
-		TestNotNull(TEXT("the marker's image shows the telepathy's material"), Marker->GetImage()->GetBrush().GetResourceObject());
-	}
+	TestEqual(TEXT("the near enemy's body is marked"), OnNear->GetMarkedMeshes().Num(), 1);
+	TestTrue(TEXT("it renders into custom depth"), NearBody->bRenderCustomDepth);
+	TestTrue(TEXT("part way in at 0.1 s"), NearBody->CustomDepthStencilValue > 0 && NearBody->CustomDepthStencilValue < 255);
 
 	// An enemy that appears later is found by the next look, 0.8 s after the start.
 	AWasamiTestEnemy* Late = AWasamiTestEnemy::SpawnTestEnemy(World, FVector(-800., 0., 0.));
@@ -688,6 +680,7 @@ bool FWasamiTelepathyTargetsTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("not before 0.8 s"), TrackerOn(Late));
 	TickFor(0.2f);
 	TestNotNull(TEXT("found by the look at 0.8 s"), TrackerOn(Late));
+	TestEqual(TEXT("the near body faded in by 0.5 s, the whole stencil"), NearBody->CustomDepthStencilValue, 255);
 
 	// A tracker whose enemy is gone stops on its next tick and goes 0.5 s later.
 	AWasamiTelepathyTracker* OnLate = TrackerOn(Late);
@@ -708,13 +701,12 @@ bool FWasamiTelepathyTargetsTest::RunTest(const FString& Parameters)
 	for (const AWasamiTelepathyTracker* Each : Found)
 	{
 		TestFalse(TEXT("no longer following"), Each->IsFollowing());
-		if (const UWasamiTelepathyTrackerWidget* Marker = Each->GetWidgetReference())
-		{
-			TestTrue(TEXT("its marker disappears"), Marker->IsDisappearPlaying());
-		}
+		TestTrue(TEXT("its marker fades out"), Each->IsFadingOut());
 	}
 	TickFor(0.6f);
 	TestEqual(TEXT("the trackers are gone after 0.5 s"), Trackers().Num(), 0);
+	TestFalse(TEXT("the body no longer renders into custom depth"), NearBody->bRenderCustomDepth);
+	TestEqual(TEXT("its stencil back to 0"), NearBody->CustomDepthStencilValue, 0);
 
 	// Another telepathy puts trackers on the same enemies again (its own list starts empty).
 	AWasamiTelepathyPower* Again = World->SpawnActorDeferred<AWasamiTelepathyPower>(AWasamiTelepathyPower::StaticClass(), AtOrigin);

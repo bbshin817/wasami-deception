@@ -2,8 +2,8 @@
 the power system (UWasamiPowerComponent), the teleport's aim (AWasamiTeleportAim), Primal Fear (AWasamiPrimalPower),
 Vanish (AWasamiVanishPower, UWasamiVanishWidget), the telekinesis (AWasamiTelekinesisPower) and the player's FX
 (UWasamiChameleonComponent) use. The icons on the
-tablet's sockets are the tablet's own (dd_tablet). The telepathy's markers (UWasamiTelepathyTrackerWidget) show
-MM_Telepathy_Inst.
+tablet's sockets are the tablet's own (dd_tablet). The telepathy's markers (AWasamiTelepathyTracker) show
+MI_WasamiTelepathySilhouette, this game's own (the user's choice, 2026-09-27), in place of the original's MM_Telepathy_Inst.
 
   M_Speedlines                  the original's graph (FlipBook over T_Speedlines' 2 × 5 frames, 30 a second, the
                                 sheet's alpha as the opacity)
@@ -19,7 +19,9 @@ MM_Telepathy_Inst.
   M_DD_Telepathy                the master of the telepathy's marker, its graph read back off MM_Telepathy's compiled
                                 shaders (the cook drops the graph, but a UI material keeps a shader map too);
                                 MM_Telepathy is an instance of it and MM_Telepathy_Inst an instance of that, as the
-                                original's
+                                original's (the game no longer shows them; they stay as the original's reference)
+  M_DD_TelepathySilhouette      this game's own post-process smoke over the enemies' bodies (their custom depth
+                                stencil); MI_WasamiTelepathySilhouette under /Game/Wasami/Powers is an instance of it
   M_DD_KyWall02, M_DD_KyAura7, M_DD_KyShockWave02, M_DD_KyStarDust
                                 the masters of the telekinesis's force field (P_ky_forceField_Telekinesis), their
                                 graphs read back off the original's compiled shaders; the original's paths hold
@@ -27,9 +29,11 @@ MM_Telepathy_Inst.
 
 Sources: pak_reference_2 (UE 4.24, the latest version), which the powers follow except the teleport (pak_reference).
 """
+import math
+
 import unreal
 
-from wasami_tools.pipeline import dd_assets, dd_particles, dd_stage, paths
+from wasami_tools.pipeline import dd_assets, dd_particles, dd_secrets, dd_stage, paths
 
 EAL = unreal.EditorAssetLibrary
 MEL = unreal.MaterialEditingLibrary
@@ -183,6 +187,43 @@ TELEPATHY_GRADIENT_DENSITY = 1.0
 # MM_Telepathy_Inst's values its parent has (its Size is not one of MM_Telepathy's parameters, and
 # RefractionDepthBias is the engine's, which a UI material does not use).
 TELEPATHY_INST_SCALARS = ("Speed",)
+
+# The telepathy's marker as this game draws it (the user's choice, 2026-09-27: the enemy's body wreathed in smoke, in
+# place of the original's disc): a post-process pass over the enemies' bodies, which the trackers render into custom
+# depth with their fade as the stencil (0 - 255). No original has it, so every value here is this game's own, set by
+# eye. The pass reads the stencil at the pixel and on two rings around it, pulled down the view so that the smoke
+# rises off the body, and T_ky_noise (the original marker's cloud noise) streams up the view through it.
+TELEPATHY_SILHOUETTE_MASTER = "/Game/Pipeline/Materials/M_DD_TelepathySilhouette"
+TELEPATHY_SILHOUETTE = paths.WASAMI_ROOT + "/Powers/MI_WasamiTelepathySilhouette"
+TELEPATHY_SILHOUETTE_DEFAULTS = {
+    "Intensity": 1.0,     # the smoke's opacity at its thickest
+    "RadiusPx": 30.0,     # the outer ring's radius in pixels of a 1080-line view (it scales with the view's height)
+    "WarpPx": 9.0,        # how far the noise shifts where the stencil is read: the outline's waver
+    "Rise": 0.7,          # how far down the rings are pulled (x each ring's radius): the smoke's lift off the body
+    "BodyFill": 0.3,      # the body's own fill under the smoke (0 leaves only the smoke)
+    "Tiling": 3.0,        # T_ky_noise's repeats over the view's height
+    "Speed": 0.15,        # its rise (view heights a second)
+}
+TELEPATHY_SILHOUETTE_COLOR = (1.0, 0.06, 0.03, 1.0)
+TELEPATHY_SILHOUETTE_RING = 8  # directions on each ring
+TELEPATHY_SILHOUETTE_RINGS = (0.3, 0.6, 1.0)  # the rings' radii (x RadiusPx), each fainter than the last
+TELEPATHY_SILHOUETTE_COMBINE = """
+float c = Center.r / 255.0;
+float r0 = max(max(max(S0.r, S1.r), max(S2.r, S3.r)), max(max(S4.r, S5.r), max(S6.r, S7.r))) / 255.0;
+float r1 = max(max(max(S8.r, S9.r), max(S10.r, S11.r)), max(max(S12.r, S13.r), max(S14.r, S15.r))) / 255.0;
+float r2 = max(max(max(S16.r, S17.r), max(S18.r, S19.r)), max(max(S20.r, S21.r), max(S22.r, S23.r))) / 255.0;
+// T_ky_noise's G (its cloud; the sample is sRGB-decoded, so back to the stored value) and T_ky_noise16's R (its
+// wisps, linear), each lifted to about 0.5 at its median.
+float cloud = pow(max(NoiseA.g, 0.0), 1.0 / 2.2) * 2.2;
+float wisp = saturate(NoiseB.r * 5.0);
+float smoke = saturate(cloud * (0.5 + wisp));
+float halo = saturate(r0 * 0.55 + r1 * 0.35 + r2 * 0.25) * smoke;
+float body = c * (BodyFill + (1.0 - BodyFill) * smoke);
+float a = saturate(max(body, halo) * Intensity);
+return saturate(Scene.rgb + Color.rgb * a);
+"""
+TELEPATHY_SILHOUETTE_INPUTS = (["Center"] + ["S%d" % i for i in range(TELEPATHY_SILHOUETTE_RING * len(TELEPATHY_SILHOUETTE_RINGS))]
+                               + ["NoiseA", "NoiseB", "Scene", "Color", "Intensity", "BodyFill"])
 
 # The telekinesis's force field (AdvancedMagicFX09, pak_reference_2): its four materials' graphs are cooked away, so
 # masters holding them, read back off the original's compiled shaders, sit under /Game/Pipeline
@@ -517,6 +558,109 @@ def make_telepathy_materials():
     for asset in made:
         EAL.save_loaded_asset(asset, only_if_is_dirty=False)
     return [a.get_path_name() for a in made]
+
+
+def _build_telepathy_silhouette(mat):
+    """M_DD_TelepathySilhouette, this game's own (TELEPATHY_SILHOUETTE_DEFAULTS): after tonemapping, the view plus
+    Color x the smoke's opacity, which is the body's fill where the pixel's stencil is set and the smoke found on the
+    rings around it, both through the rising noise (TELEPATHY_SILHOUETTE_COMBINE). Every stencil read is shifted by the
+    cloud noise (WarpPx), so the outline wavers like smoke. The stencil is the tracker's fade."""
+    g = dd_stage._Graph(mat, checked=True)
+    p = {name: g.scalar(name, value, -2800, -1400 + 80 * i)
+         for i, (name, value) in enumerate(TELEPATHY_SILHOUETTE_DEFAULTS.items())}
+    screen = g.node(unreal.MaterialExpressionScreenPosition, -2800, 0)
+    view = g.node(unreal.MaterialExpressionViewSize, -2800, 150)
+    view_y = g.node(unreal.MaterialExpressionComponentMask, -2650, 150)
+    for channel in "rgba":
+        view_y.set_editor_property(channel, channel == "g")
+    g.link(view, "", view_y, "")
+    # A pixel of a 1080-line view, in viewport UV per axis: (1080 / the view's height) / the view's size.
+    scale = g.binary(unreal.MaterialExpressionDivide, dd_assets.constant(g, 1080.0, -2650, 250), "", view_y, "",
+                     -2500, 200)
+    pixel = g.binary(unreal.MaterialExpressionDivide, scale, "", view, "", -2350, 200)
+    radius = g.multiply(pixel, "", p["RadiusPx"], "", -2200, 200)
+
+    combine = dd_secrets._custom(g, TELEPATHY_SILHOUETTE_COMBINE, TELEPATHY_SILHOUETTE_INPUTS, "CMOT_FLOAT3", -600, 0)
+
+    # The noise in the view's own proportions, rising: UV x (aspect, 1) x Tiling + (0, Time x Speed); the finer
+    # T_ky_noise16 at twice the tiling rises 1.6 times as fast.
+    aspect = g.binary(unreal.MaterialExpressionDivide, view, "", view_y, "", -2500, 1400)
+    coords = g.multiply(g.multiply(screen, "ViewportUV", aspect, "", -2350, 1400), "", p["Tiling"], "", -2200, 1400)
+    flow = g.multiply(g.node(unreal.MaterialExpressionTime, -2500, 1550), "", p["Speed"], "", -2350, 1550)
+    rise = g.node(unreal.MaterialExpressionAppendVector, -2200, 1550)
+    g.link(dd_assets.constant(g, 0.0, -2350, 1650), "", rise, "A")
+    g.link(flow, "", rise, "B")
+    noises = []
+    for rel, sampler, pin, tiling, speed, y in (
+            (TELEPATHY_NOISE_B, unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, "NoiseA", 1.0, 1.0, 1400),
+            (TELEPATHY_NOISE_A, unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR, "NoiseB", 2.0, 1.6, 1600)):
+        tiled = g.multiply(coords, "", dd_assets.constant(g, tiling, -2050, y + 50), "", -1900, y)
+        moved = g.multiply(rise, "", dd_assets.constant(g, speed, -2050, y + 100), "", -1900, y + 100)
+        sample = g.node(unreal.MaterialExpressionTextureSample, -1600, y)
+        sample.set_editor_property("texture", unreal.load_asset(dd_assets.asset_path(rel)))
+        sample.set_editor_property("sampler_type", sampler)
+        g.link(dd_assets.add(g, tiled, "", moved, "", -1750, y), "", sample, "UVs")
+        g.link(sample, "RGB", combine, pin)
+        noises.append(sample)
+
+    # Where the stencil is read: the viewport UV shifted by the cloud noise's G and B (centred) x WarpPx pixels (the
+    # finer T_ky_noise16 is streaked and tears the outline into vertical slivers).
+    warp_rg = g.node(unreal.MaterialExpressionComponentMask, -1450, 1100)
+    for channel in "rgba":
+        warp_rg.set_editor_property(channel, channel in "gb")
+    g.link(noises[0], "RGB", warp_rg, "")
+    # T_ky_noise's G and B sit near 0.05 - 0.3 once sRGB-decoded: x 3 puts their middle near 0.5, then centred on 0.
+    lifted = g.multiply(warp_rg, "", dd_assets.constant(g, 3.0, -1450, 1200), "", -1350, 1100)
+    centred = g.binary(unreal.MaterialExpressionSubtract, lifted, "", dd_assets.constant(g, 0.5, -1350, 1200), "",
+                       -1250, 1100)
+    warp = g.multiply(g.multiply(centred, "", p["WarpPx"], "", -1150, 1100), "", pixel, "", -1000, 1100)
+    base = dd_assets.add(g, screen, "ViewportUV", warp, "", -2200, 0)
+
+    def stencil(uv, pin, y):
+        e = g.node(unreal.MaterialExpressionSceneTexture, -1100, y)
+        e.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_CUSTOM_STENCIL)
+        g.link(uv, "", e, "UVs")
+        g.link(e, "Color", combine, pin)
+
+    stencil(base, "Center", -1300)
+    # Each ring's directions, pulled down the view (+V) by Rise x the ring's radius, so a pixel above the body finds it.
+    n = TELEPATHY_SILHOUETTE_RING
+    for ring, ring_radius in enumerate(TELEPATHY_SILHOUETTE_RINGS):
+        y0 = -1200 + 800 * ring
+        lift = g.node(unreal.MaterialExpressionAppendVector, -2050, y0)
+        g.link(dd_assets.constant(g, 0.0, -2200, y0), "", lift, "A")
+        g.link(g.multiply(p["Rise"], "", dd_assets.constant(g, ring_radius, -2350, y0 + 50), "", -2200, y0 + 50), "",
+               lift, "B")
+        for k in range(n):
+            angle = 2.0 * math.pi * (k + 0.5 * ring) / n
+            y = y0 + 100 * k
+            direction = g.node(unreal.MaterialExpressionConstant2Vector, -1900, y)
+            direction.set_editor_property("r", ring_radius * math.cos(angle))
+            direction.set_editor_property("g", ring_radius * math.sin(angle))
+            offset = g.multiply(dd_assets.add(g, direction, "", lift, "", -1750, y), "", radius, "", -1600, y)
+            stencil(dd_assets.add(g, base, "", offset, "", -1450, y), "S%d" % (ring * n + k), y)
+
+    scene = g.node(unreal.MaterialExpressionSceneTexture, -1100, 1800)
+    scene.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
+    g.link(screen, "ViewportUV", scene, "UVs")
+    g.link(scene, "Color", combine, "Scene")
+    g.link(g.vector("Color", TELEPATHY_SILHOUETTE_COLOR, -1100, 1950), "", combine, "Color")
+    g.link(p["Intensity"], "", combine, "Intensity")
+    g.link(p["BodyFill"], "", combine, "BodyFill")
+    g.out(combine, "", MP.MP_EMISSIVE_COLOR)
+
+
+def make_telepathy_silhouette():
+    """The telepathy's marker as this game draws it: the post-process master and its instance under /Game/Wasami
+    (saved). Returns their paths."""
+    def build(mat):
+        mat.set_editor_property("blendable_location", unreal.BlendableLocation.BL_SCENE_COLOR_AFTER_TONEMAPPING)
+        _build_telepathy_silhouette(mat)
+    master = dd_assets.material(TELEPATHY_SILHOUETTE_MASTER, build, domain=unreal.MaterialDomain.MD_POST_PROCESS)
+    inst = dd_assets.material_instance(TELEPATHY_SILHOUETTE, master)
+    for asset in (master, inst):
+        EAL.save_loaded_asset(asset, only_if_is_dirty=False)
+    return [a.get_path_name() for a in (master, inst)]
 
 
 def _ky09_texture(name):
@@ -865,7 +1009,8 @@ def make_materials():
                                     domain=unreal.MaterialDomain.MD_UI, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
     shake = dd_assets.material(CAMERA_SHAKE_MASTER, _build_camera_shake, domain=unreal.MaterialDomain.MD_POST_PROCESS)
     return ([speedlines.get_path_name(), shake.get_path_name()] + make_teleport_materials() + make_primal_material()
-            + make_vanish_materials() + make_telepathy_materials() + make_telekinesis_materials())
+            + make_vanish_materials() + make_telepathy_materials() + make_telepathy_silhouette()
+            + make_telekinesis_materials())
 
 
 def import_all():

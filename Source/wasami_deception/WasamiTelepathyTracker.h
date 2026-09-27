@@ -4,15 +4,19 @@
 #include "GameFramework/Actor.h"
 #include "WasamiTelepathyTracker.generated.h"
 
-class UWasamiTelepathyTrackerWidget;
-class UWidgetComponent;
+class UMaterialInterface;
+class UPostProcessComponent;
+class USkinnedMeshComponent;
 
 /**
  * One telepathy marker, after Dark Deception's BP_TelepathyTracker (pak_reference_2). The telepathy spawns one on each
- * enemy it finds; every tick it moves onto its enemy and sizes its marker by the distance to the player. The marker is a
- * screen-space widget component (UMG_TelepathyTracker), which the viewport draws over the world, so it shows through
- * walls. Remove stops the following, plays the marker's Disappear and destroys the tracker 0.5 s later; a tracker whose
- * enemy is gone removes itself.
+ * enemy it finds; every tick it moves onto its enemy. The original's tracker shows a smoky red disc over the enemy (the
+ * screen-space widget UMG_TelepathyTracker); this game marks the enemy's body instead (the user's choice, 2026-09-27):
+ * each of the enemy's skinned meshes renders into custom depth with a stencil value, which the post-process material
+ * MI_WasamiTelepathySilhouette (on the tracker's unbound post-process component) draws as red smoke on and around the
+ * body, through walls. The stencil carries the marker's fade: in over the original's Appear (0.5 s), out over its
+ * Disappear (0.3 s). Remove stops the following, fades out and destroys the tracker 0.5 s later; a tracker whose enemy
+ * is gone removes itself.
  */
 UCLASS()
 class WASAMI_DECEPTION_API AWasamiTelepathyTracker : public AActor
@@ -24,11 +28,19 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-	/** The marker's scale at a distance (cm) from the player: 0.5 at 0 to 0.1 at 10000, unclamped (0 at 12500). */
-	UFUNCTION(BlueprintPure, Category = "Telepathy")
-	static float SizeForDistance(float Distance);
+	/** Loads what the markers show into Out, so that the first telepathy does not wait for it. */
+	static void LoadAssets(TArray<TObjectPtr<UObject>>& Out);
 
-	/** Remove: stops following, plays the marker's Disappear, and destroys the tracker 0.5 s later. */
+	/** The fade in (the original's Appear opacity) at a time (s) of its 0.5 s, and out (Disappear's) of its 0.3 s. */
+	static float EvaluateAppearOpacity(float Seconds);
+	static float EvaluateDisappearOpacity(float Seconds);
+	static constexpr float AppearLength = 0.5f;
+	static constexpr float DisappearLength = 0.3f;
+
+	/** The custom depth stencil value a fade (0 - 1) is drawn with: 0 shows nothing, 255 the whole smoke. */
+	static int32 StencilForFade(float Fade);
+
+	/** Remove: stops following, fades out, and destroys the tracker 0.5 s later. */
 	UFUNCTION(BlueprintCallable, Category = "Telepathy")
 	void Remove();
 
@@ -36,10 +48,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Telepathy", meta = (ExposeOnSpawn = "true"))
 	TObjectPtr<AActor> Actor;
 
+	/** The smoke's post-process material. */
+	UPROPERTY(EditAnywhere, Category = "Telepathy")
+	TSoftObjectPtr<UMaterialInterface> SilhouetteMaterial;
+
 	/** Whether the Gate before Update is open (from BeginPlay until Remove). */
 	bool IsFollowing() const { return bGateOpen; }
-	UWidgetComponent* GetWidget() const { return Widget; }
-	UWasamiTelepathyTrackerWidget* GetWidgetReference() const { return WidgetReference; }
+	bool IsFadingOut() const { return bFadingOut; }
+	float GetFade() const { return Fade; }
+	UPostProcessComponent* GetPostProcess() const { return PostProcess; }
+	const TArray<TWeakObjectPtr<USkinnedMeshComponent>>& GetMarkedMeshes() const { return MarkedMeshes; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -48,20 +66,28 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Telepathy")
 	TObjectPtr<USceneComponent> SceneRoot;
 
-	/** Widget: UMG_TelepathyTracker in screen space, at the engine's default draw size and pivot. */
+	/** Unbound, with the silhouette material; the engine draws one material once however many trackers hold it. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Telepathy")
-	TObjectPtr<UWidgetComponent> Widget;
+	TObjectPtr<UPostProcessComponent> PostProcess;
 
 private:
-	/** Update: onto the enemy, and the marker's size; Remove when the enemy is gone. */
+	/** Update: onto the enemy; Remove when the enemy is gone. */
 	void Update();
+	/** The fade by the time since the fade in or out began, onto the marked meshes' stencil. */
+	void UpdateFade();
+	/** Custom depth on the enemy's skinned meshes (the body), remembered. */
+	void MarkMeshes();
+	/** Custom depth off again on the meshes no other tracker marks. */
+	void UnmarkMeshes();
 	void DestroyAfterRemove() { Destroy(); }
 
-	/** Widget Reference: the component's UMG_TelepathyTracker. */
 	UPROPERTY(Transient)
-	TObjectPtr<UWasamiTelepathyTrackerWidget> WidgetReference;
+	TArray<TWeakObjectPtr<USkinnedMeshComponent>> MarkedMeshes;
 
 	/** The Gate, which starts closed. */
 	bool bGateOpen = false;
+	bool bFadingOut = false;
+	float FadeTime = 0.f;
+	float Fade = 0.f;
 	FTimerHandle RemoveTimer;
 };

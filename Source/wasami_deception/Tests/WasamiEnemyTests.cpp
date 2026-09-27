@@ -1234,6 +1234,7 @@ bool FWasamiEnemyActorPowersTest::RunTest(const FString& Parameters)
 		OnEnemy += It->Actor.Get() == Enemy ? 1 : 0;
 	}
 	TestEqual(TEXT("the telepathy marks it"), OnEnemy, 1);
+	TestTrue(TEXT("its body renders into custom depth"), Enemy->GetMesh()->bRenderCustomDepth);
 	return true;
 }
 

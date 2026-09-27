@@ -17,7 +17,7 @@
 #include "WasamiSpeedBoostWidget.h"
 #include "WasamiTabletWidget.h"
 #include "WasamiTelepathyPower.h"
-#include "WasamiTelepathyTrackerWidget.h"
+#include "WasamiTelepathyTracker.h"
 #include "WasamiTeleportAim.h"
 #include "WasamiVanishPower.h"
 #include "WasamiVanishWidget.h"
@@ -113,7 +113,7 @@ void UWasamiPowerComponent::BeginPlay()
 	LoadedTelepathySound = TelepathySound.LoadSynchronous();
 	LoadedTelepathyEndSound = TelepathyEndSound.LoadSynchronous();
 	LoadedTelepathyShake = TelepathyShakeClass.LoadSynchronous();
-	UWasamiTelepathyTrackerWidget::LoadAssets(LoadedTelepathyAssets);
+	AWasamiTelepathyTracker::LoadAssets(LoadedTelepathyAssets);
 	AWasamiPrimalPower::LoadAssets(LoadedPrimalAssets);
 	AWasamiTelekinesisPower::LoadAssets(LoadedTelekinesisAssets);
 	AWasamiVanishPower::LoadAssets(LoadedVanishAssets);
